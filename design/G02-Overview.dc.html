@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>小秘的設定：基本</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3,h4,strong,b{font-weight:400}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+button{font-family:inherit;font-weight:400}
+input,textarea{font-family:inherit}
+input::placeholder,textarea::placeholder{color:#FCFCFC90}
+</style>
+</helmet>
+<div style="width: 1100px; height: 900px; box-sizing: border-box; position: relative; display: flex; flex-direction: column; border-radius: 18px; background: #111111; border: 1px solid #262626; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.5">
+<header style="height: 64px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 16px 0 24px">
+<dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#111111" size="40" hint-size="40px,40px"></dc-import>
+<div style="display: flex; flex-direction: column; min-width: 0; flex: 1">
+<div style="display: flex; align-items: center; gap: 6px"><h1 style="margin: 0; font-size: 17px; line-height: 1.3">小秘</h1><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7FC0FF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"></path><path d="M5 21h14"></path></svg></div>
+<span style="font-size: 13px; color: #FCFCFC99">幕僚長 · 每日重點與協調</span>
+</div>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12.5px; white-space: nowrap; flex: none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg>簡化：12 個分頁 → 4 個</span>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</header>
+<nav aria-label="Bot 設定分頁" style="flex: none; padding: 0 24px 16px; border-bottom: 1px solid #262626">
+<div style="width: 520px; display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #191919; box-sizing: border-box"><a href="G02-Overview.dc.html" aria-current="page" style="flex: 1 1 0; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; text-decoration: none; background: #2F2F2F; color: #FCFCFC">基本</a><a href="G05-Soul.dc.html" style="flex: 1 1 0; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; text-decoration: none; background: transparent; color: #FCFCFC99">能力</a><a href="G08-Access.dc.html" style="flex: 1 1 0; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; text-decoration: none; background: transparent; color: #FCFCFC99">權限與花費</a><a href="G09-Model.dc.html" style="flex: 1 1 0; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; text-decoration: none; background: transparent; color: #FCFCFC99">進階</a></div>
+</nav>
+<main style="flex: 1 1 auto; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px">
+<div style="display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 32px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 16px">
+<section style="background: #191919; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box"><div style="display: flex; align-items: center; justify-content: space-between"><span style="font-size: 14px">頭像</span><span style="font-size: 12.5px; color: #FCFCFC90">眼睛會跟著狀態變</span></div>
+<a href="G03-Identity.dc.html" aria-label="換頭像外觀" style="position: relative; height: 170px; border-radius: 12px; background: #111111; display: flex; align-items: center; justify-content: center; text-decoration: none">
+<dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#111111" size="128" hint-size="128px,128px"></dc-import>
+<span style="position: absolute; right: 10px; bottom: 10px; width: 32px; height: 32px; border-radius: 50%; background: #2F2F2F; color: #FCFCFC; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></svg></span>
+</a>
+<div style="display: flex; gap: 8px"><a href="G03-Identity.dc.html" style="height: 36px; padding: 0 16px; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; border: 0; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; cursor: pointer; box-sizing: border-box; flex: none; text-decoration: none; flex: 1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"></path><path d="M13 6.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0"></path><path d="M17 10.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0"></path><path d="M6 12.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0"></path><path d="M8 7.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0"></path></svg>換外觀</a><a href="G04-AvatarUpload.dc.html" style="height: 36px; padding: 0 16px; border-radius: 999px; background: transparent; color: #FCFCFC; border: 1px solid #333333; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; cursor: pointer; box-sizing: border-box; flex: none; text-decoration: none; flex: 1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M16 5h6"></path><path d="M19 2v6"></path><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"></path><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path><path d="M7 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg>上傳圖片</a></div></section>
+<section style="background: #191919; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box"><div style="display: flex; align-items: center; gap: 8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"></path></svg><span style="font-size: 14px">不想看設定頁？</span></div>
+<p style="margin: 0; font-size: 13px; color: #FCFCFC99; line-height: 1.6">在對話裡輸入 <span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #FCFCFC">/setup</span>，小秘會一題一題問你，答完就填好。</p>
+<a href="G12-History.dc.html" style="font-size: 13.5px; display: inline-flex; align-items: center; gap: 2px">用聊天設定<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m9 18 6-6-6-6"></path></svg></a></section>
+</div>
+<div style="display: flex; flex-direction: column; gap: 24px; min-width: 0">
+<div style="display: flex; flex-direction: column; gap: 8px"><div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14px; color: #FCFCFC">名字</span></div><input type="text" aria-label="名字" value="小秘" style="width: 100%; height: 40px; box-sizing: border-box; padding: 0 12px; background: #191919; border: 1px solid #333333; border-radius: 10px; color: #FCFCFC; font-size: 14.5px; outline: none"></div>
+<div style="display: flex; flex-direction: column; gap: 8px"><div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14px; color: #FCFCFC">它做什麼</span><span style="font-size: 12.5px; color: #FCFCFC90">一句話，會顯示在側欄和隊友名單</span></div><input type="text" aria-label="它做什麼" value="每天整理重點，把工作交給對的隊友" style="width: 100%; height: 40px; box-sizing: border-box; padding: 0 12px; background: #191919; border: 1px solid #333333; border-radius: 10px; color: #FCFCFC; font-size: 14.5px; outline: none"></div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; gap: 8px"><div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14px; color: #FCFCFC">人設</span><span style="font-size: 12.5px; color: #FCFCFC90">怎麼說話、負責什麼、界線</span></div><span style="flex: 1"></span><button type="button" style="border: 0; background: transparent; padding: 0; cursor: pointer; color: #7FC0FF; font-size: 13.5px; display: inline-flex; align-items: center; gap: 4px; margin-right: 8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"></path><path d="m14 7 3 3"></path><path d="M5 6v4"></path><path d="M19 14v4"></path><path d="M10 2v2"></path><path d="M7 8H3"></path><path d="M21 16h-4"></path><path d="M11 3H9"></path></svg>請小秘幫我改寫</button><button type="button" onClick="{{toggle}}" aria-expanded="{{ariaExp}}" style="height: 30px; padding: 0 10px 0 12px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font-size: 13.5px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer">{{toggleText}}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: rotate({{rot}}deg)"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+<sc-if value="{{collapsed}}" hint-placeholder-val="{{ true }}">
+<div style="position: relative; height: 92px; overflow: hidden; background: #191919; border: 1px solid #333333; border-radius: 10px; padding: 10px 14px; box-sizing: border-box">
+<p style="margin: 0; font-size: 14px; line-height: 1.6; color: #FCFCFCCC; white-space: pre-line">你是小秘，我的幕僚長。說話簡短、先講結論，用台灣用語。
+負責：每天早上 8:30 整理昨天到今天的變化、哪些事要我決定；把工作交給對的隊友——選品給阿哲、文案給小編、對帳給帳房、數字給數據喵。
+交付：先講結論，再列三個以內的重點，附上來源或檔案；需要我決定的事給兩到三個選項和你的建議。
+界線：不替我回覆客戶、不付款、不公開發佈；這些先問我。不確定的事寫「待查證」，不要猜。</p>
+<span style="position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(rgba(25,25,25,0), #191919)"></span>
+</div>
+</sc-if>
+<sc-if value="{{expanded}}" hint-placeholder-val="{{ false }}">
+<textarea aria-label="人設" style="width: 100%; height: 196px; resize: none; box-sizing: border-box; background: #191919; border: 1px solid #459FFE; border-radius: 10px; padding: 10px 14px; color: #FCFCFC; font-size: 14px; line-height: 1.6; outline: none">你是小秘，我的幕僚長。說話簡短、先講結論，用台灣用語。
+負責：每天早上 8:30 整理昨天到今天的變化、哪些事要我決定；把工作交給對的隊友——選品給阿哲、文案給小編、對帳給帳房、數字給數據喵。
+交付：先講結論，再列三個以內的重點，附上來源或檔案；需要我決定的事給兩到三個選項和你的建議。
+界線：不替我回覆客戶、不付款、不公開發佈；這些先問我。不確定的事寫「待查證」，不要猜。</textarea>
+</sc-if>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px"><div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14px; color: #FCFCFC">回覆長度</span></div><div role="group" aria-label="回覆長度" style="width: 420px; display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #191919; box-sizing: border-box"><button type="button" aria-pressed="false" style="flex: 1 1 0; min-width: 0; height: 34px; border: 0; border-radius: 8px; padding: 0 12px; background: transparent; color: #FCFCFC99; font-size: 14px; white-space: nowrap; cursor: pointer">精簡</button><button type="button" aria-pressed="true" style="flex: 1 1 0; min-width: 0; height: 34px; border: 0; border-radius: 8px; padding: 0 12px; background: #2F2F2F; color: #FCFCFC; font-size: 14px; white-space: nowrap; cursor: pointer">標準</button><button type="button" aria-pressed="false" style="flex: 1 1 0; min-width: 0; height: 34px; border: 0; border-radius: 8px; padding: 0 12px; background: transparent; color: #FCFCFC99; font-size: 14px; white-space: nowrap; cursor: pointer">詳細</button></div><span style="font-size: 12.5px; color: #FCFCFC90">標準：先講結論，約 8 行內。精簡是 1 到 3 行；詳細會完整說明。</span></div>
+<div style="display: flex; flex-direction: column; gap: 8px"><div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14px; color: #FCFCFC">回覆語氣</span></div><div role="group" aria-label="回覆語氣" style="width: 280px; display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #191919; box-sizing: border-box"><button type="button" aria-pressed="true" style="flex: 1 1 0; min-width: 0; height: 34px; border: 0; border-radius: 8px; padding: 0 12px; background: #2F2F2F; color: #FCFCFC; font-size: 14px; white-space: nowrap; cursor: pointer">預設</button><button type="button" aria-pressed="false" style="flex: 1 1 0; min-width: 0; height: 34px; border: 0; border-radius: 8px; padding: 0 12px; background: transparent; color: #FCFCFC99; font-size: 14px; white-space: nowrap; cursor: pointer">輕鬆</button></div><span style="font-size: 12.5px; color: #FCFCFC90">輕鬆會少用標題和清單，像在聊天。</span></div>
+</div>
+</div>
+</main>
+<footer style="height: 56px; flex: none; box-sizing: border-box; border-top: 1px solid #262626; display: flex; align-items: center; gap: 12px; padding: 0 16px 0 24px">
+<span style="font-size: 12.5px; color: #FCFCFC90; flex: 1">變更會自動儲存</span>
+<button type="button" style="height: 36px; padding: 0 20px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; font-size: 14px; cursor: pointer">完成</button>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const open = !!(this.state && this.state.open);
+return {
+collapsed: !open, expanded: open, ariaExp: open ? 'true' : 'false',
+toggleText: open ? '收起' : '展開', rot: open ? 180 : 0,
+toggle: () => this.setState({ open: !open })
+};
+}
+}
+</script>
+</body>
+</html>

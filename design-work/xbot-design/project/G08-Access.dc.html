@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>小秘的設定：權限與花費</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3,strong,b{font-weight:400}
+a{color:#7FC0FF;text-decoration:none}
+button{font-synthesis:none}
+</style>
+</helmet>
+<div role="dialog" aria-label="小秘的設定" style="width: 1100px; height: 900px; box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; display: flex; flex-direction: column; overflow: hidden; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; color: #FCFCFC; font-size: 14.5px; line-height: 1.5">
+<header style="height: 64px; flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 0 16px 0 24px">
+<dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#111111" size="40" hint-size="40px,40px"></dc-import>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 6px"><h1 style="margin: 0; font-size: 17px; font-weight: 400; line-height: 1.3">小秘</h1><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7FC0FF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"></path><path d="M5 21h14"></path></svg></div>
+<span style="font-size: 13px; color: #FCFCFC99; line-height: 1.4">幕僚長 · 每日重點與協調</span>
+</div>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12.5px; white-space: nowrap; flex: none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7FC0FF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg>簡化：12 個分頁 → 4 個</span>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</header>
+<nav aria-label="Bot 設定分頁" style="flex: none; padding: 0 24px 16px; border-bottom: 1px solid #262626">
+<div style="width: 520px; display: flex; background: #191919; border-radius: 10px; padding: 3px; gap: 2px; box-sizing: border-box"><a href="G02-Overview.dc.html" style="flex: 1 1 0; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 14px; text-decoration: none; color: #FCFCFC99; background: transparent">基本</a><a href="G05-Soul.dc.html" style="flex: 1 1 0; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 14px; text-decoration: none; color: #FCFCFC99; background: transparent">能力</a><a href="G08-Access.dc.html" aria-current="page" style="flex: 1 1 0; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 14px; text-decoration: none; color: #FCFCFC; background: #2F2F2F">權限與花費</a><a href="G09-Model.dc.html" style="flex: 1 1 0; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 14px; text-decoration: none; color: #FCFCFC99; background: transparent">進階</a></div>
+</nav>
+<main style="flex: 1; min-height: 0; box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow: hidden">
+
+<div style="flex: 1; min-height: 0; display: flex; gap: 32px"><section aria-label="權限" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: flex-end; gap: 12px"><div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0; font-size: 15px; font-weight: 400; color: #FCFCFC">權限</h3><p style="margin: 0; font-size: 13px; color: #FCFCFC99; line-height: 1.5">小秘做事時，哪些要先問你</p></div></div>
+<div role="radiogroup" aria-label="權限等級" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{levels}}" as="l" hint-placeholder-count="4">
+<button type="button" role="radio" aria-checked="{{l.aria}}" onClick="{{l.pick}}" style="text-align: left; background: #191919; border: 1.5px solid {{l.bd}}; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; font: inherit; color: #FCFCFC; cursor: pointer; min-height: 72px; box-sizing: border-box">
+<span style="display: flex; align-items: center; gap: 8px; width: 100%">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{l.ic}}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><sc-for list="{{l.icon}}" as="d" hint-placeholder-count="2"><path d="{{d}}"></path></sc-for></svg>
+<span style="font-size: 14.5px">{{l.t}}<span style="color: #FF5667">{{l.risk}}</span></span>
+<sc-if value="{{l.def}}" hint-placeholder-val="{{ false }}"><span style="font-size: 11.5px; color: #FCFCFC99; background: #2F2F2F; border-radius: 999px; padding: 1px 8px">預設</span></sc-if>
+<span style="flex: 1"></span>
+<sc-if value="{{l.on}}" hint-placeholder-val="{{ false }}"><span style="width: 20px; height: 20px; border-radius: 999px; background: #1084FE; display: flex; align-items: center; justify-content: center; flex: none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></span></sc-if>
+</span>
+<span style="font-size: 12.5px; color: #FCFCFC99; line-height: 1.45">{{l.d}}</span>
+</button>
+</sc-for>
+</div>
+<div style="display: flex; gap: 10px; align-items: flex-start; background: #191919; border-radius: 14px; padding: 12px 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 1px"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg><span style="font-size: 13px; line-height: 1.55; color: #FCFCFCcc"><span style="color: #FCFCFC">安全底線（不管選哪一種都有效）</span>：危險指令一律擋下；新商品定價、新增支出、簽約、上架、重要對客承諾只有你能決定，隊友或主管說可以也不算數。</span></div>
+<div style="height: 14px"></div>
+<div style="display: flex; align-items: flex-end; gap: 12px"><div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0; font-size: 15px; font-weight: 400; color: #FCFCFC">這些事先問我</h3><p style="margin: 0; font-size: 13px; color: #FCFCFC99; line-height: 1.5">預設全開；關掉的項目照上面的權限處理</p></div></div>
+<div style="background: #191919; border-radius: 14px; display: flex; flex-direction: column">
+<sc-for list="{{asks}}" as="a" hint-placeholder-count="4">
+<div style="border-top: 1px solid {{a.line}}; padding: 0 16px; display: flex; align-items: center; gap: 12px; height: 52px; box-sizing: border-box">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><sc-for list="{{a.icon}}" as="d" hint-placeholder-count="2"><path d="{{d}}"></path></sc-for></svg>
+<span style="flex: 1; font-size: 14.5px">{{a.t}}</span>
+<button type="button" role="switch" aria-checked="{{a.aria}}" aria-label="{{a.t}}" onClick="{{a.flip}}" style="width: 40px; height: 24px; flex: none; border: 0; border-radius: 999px; background: {{a.bg}}; padding: 2px; box-sizing: border-box; display: flex; justify-content: {{a.jc}}; align-items: center; cursor: pointer"><span style="width: 20px; height: 20px; border-radius: 999px; background: #FFFFFF; display: block"></span></button>
+</div>
+</sc-for>
+</div>
+</section><section aria-label="花費與聯絡" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: flex-end; gap: 12px"><div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0; font-size: 15px; font-weight: 400; color: #FCFCFC">花費上限</h3><p style="margin: 0; font-size: 13px; color: #FCFCFC99; line-height: 1.5">用到 80% 提醒你，到上限就暫停並問你</p></div></div>
+<div style="background: #191919; border-radius: 14px; display: flex; flex-direction: column"><div style="padding: 12px 16px; display: flex; align-items: center; gap: 16px"><div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px"><div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14.5px">每日</span><span style="font-size: 12.5px; color: #FCFCFC99">今天已用 NT$186 · 62%</span></div><div role="img" aria-label="每日已用 62%" style="height: 6px; border-radius: 999px; background: #2F2F2F; overflow: hidden"><div style="width: 62%; height: 6px; border-radius: 999px; background: #1084FE"></div></div></div><label style="display: flex; align-items: center; gap: 4px; height: 40px; width: 120px; box-sizing: border-box; border: 1px solid #333333; border-radius: 10px; background: #191919; padding: 0 12px; flex: none"><span style="font-size: 13.5px; color: #FCFCFC99">NT$</span><input type="text" inputmode="numeric" value="300" aria-label="每日上限" style="width: 100%; min-width: 0; background: transparent; border: 0; outline: none; color: #FCFCFC; font: inherit; font-size: 14.5px; text-align: right; padding: 0"></label></div><div style="border-top: 1px solid #262626; padding: 12px 16px; display: flex; align-items: center; gap: 16px"><div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px"><div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14.5px">每月</span><span style="font-size: 12.5px; color: #FFB547">10 月已用 NT$5,040 · 84%，提醒過你了</span></div><div role="img" aria-label="每月已用 84%" style="height: 6px; border-radius: 999px; background: #2F2F2F; overflow: hidden"><div style="width: 84%; height: 6px; border-radius: 999px; background: #FF9800"></div></div></div><label style="display: flex; align-items: center; gap: 4px; height: 40px; width: 120px; box-sizing: border-box; border: 1px solid #333333; border-radius: 10px; background: #191919; padding: 0 12px; flex: none"><span style="font-size: 13.5px; color: #FCFCFC99">NT$</span><input type="text" inputmode="numeric" value="6,000" aria-label="每月上限" style="width: 100%; min-width: 0; background: transparent; border: 0; outline: none; color: #FCFCFC; font: inherit; font-size: 14.5px; text-align: right; padding: 0"></label></div><div style="border-top: 1px solid #262626; padding: 12px 16px; display: flex; align-items: center; gap: 16px"><div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px"><div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14.5px">每條工作鏈</span><span style="font-size: 12.5px; color: #FCFCFC99">目前最高 NT$42 · 比價調價</span></div><div role="img" aria-label="每條工作鏈已用 42%" style="height: 6px; border-radius: 999px; background: #2F2F2F; overflow: hidden"><div style="width: 42%; height: 6px; border-radius: 999px; background: #1084FE"></div></div></div><label style="display: flex; align-items: center; gap: 4px; height: 40px; width: 120px; box-sizing: border-box; border: 1px solid #333333; border-radius: 10px; background: #191919; padding: 0 12px; flex: none"><span style="font-size: 13.5px; color: #FCFCFC99">NT$</span><input type="text" inputmode="numeric" value="100" aria-label="每條工作鏈上限" style="width: 100%; min-width: 0; background: transparent; border: 0; outline: none; color: #FCFCFC; font: inherit; font-size: 14.5px; text-align: right; padding: 0"></label></div><div style="border-top: 1px solid #262626; padding: 0 16px; height: 52px; display: flex; align-items: center; gap: 12px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg><span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 14.5px; color: #FCFCFC">用到 80% 時提醒我</span></span><button type="button" role="switch" aria-checked="true" aria-label="用到 80% 時提醒我" style="width: 40px; height: 24px; flex: none; border: 0; border-radius: 999px; background: #1084FE; padding: 2px; box-sizing: border-box; display: flex; justify-content: flex-end; align-items: center; cursor: pointer"><span style="width: 20px; height: 20px; border-radius: 999px; background: #FFFFFF; display: block"></span></button></div><div style="border-top: 1px solid #262626; padding: 10px 16px; display: flex; align-items: center; gap: 12px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M15 3h3a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1Z"></path><path d="M6 3h3a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1Z"></path></svg><span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 14.5px; color: #FCFCFC">到上限就暫停並問我</span><span style="font-size: 12.5px; color: #FCFCFC99; line-height: 1.45">暫停後在「待我處理」出現卡片，可以加額度或停止</span></span><button type="button" role="switch" aria-checked="true" aria-label="到上限就暫停並問我" style="width: 40px; height: 24px; flex: none; border: 0; border-radius: 999px; background: #1084FE; padding: 2px; box-sizing: border-box; display: flex; justify-content: flex-end; align-items: center; cursor: pointer"><span style="width: 20px; height: 20px; border-radius: 999px; background: #FFFFFF; display: block"></span></button></div></div>
+<div style="height: 14px"></div>
+<div style="display: flex; align-items: flex-end; gap: 12px"><div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0; font-size: 15px; font-weight: 400; color: #FCFCFC">可以找誰</h3><p style="margin: 0; font-size: 13px; color: #FCFCFC99; line-height: 1.5">小秘可以交辦、詢問哪些 Bot</p></div></div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div role="radiogroup" aria-label="可以找誰" style="display: flex; background: #191919; border-radius: 10px; padding: 3px; gap: 2px">
+<sc-for list="{{whos}}" as="w" hint-placeholder-count="3">
+<button type="button" role="radio" aria-checked="{{w.aria}}" onClick="{{w.pick}}" style="flex: 1; height: 34px; border: 0; border-radius: 8px; background: {{w.bg}}; color: {{w.fg}}; font: inherit; font-size: 13.5px; cursor: pointer">{{w.t}}</button>
+</sc-for>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; min-height: 28px">
+<div style="display: flex; align-items: center; gap: 4px">
+<sc-for list="{{peers}}" as="p" hint-placeholder-count="6">
+<span title="{{p.n}}" style="display: flex"><dc-import name="Avatar" color="{{p.c}}" body="{{p.b}}" state="{{p.s}}" dot="{{p.d}}" ring="#111111" size="26" hint-size="26px,26px"></dc-import></span>
+</sc-for>
+</div>
+<span style="font-size: 13px; color: #FCFCFC99">{{whoNote}}</span>
+</div>
+<div style="background: #191919; border-radius: 14px; padding: 10px 16px; display: flex; align-items: center; gap: 12px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path></svg><span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 14.5px; color: #FCFCFC">聯絡其他 Bot 前先問我</span><span style="font-size: 12.5px; color: #FCFCFC99; line-height: 1.45">Bot 之間同一條往來最多 6 次，超過就停下來回報你</span></span>
+<button type="button" role="switch" aria-checked="{{peerAria}}" aria-label="聯絡其他 Bot 前先問我" onClick="{{flipPeer}}" style="width: 40px; height: 24px; flex: none; border: 0; border-radius: 999px; background: {{peerBg}}; padding: 2px; box-sizing: border-box; display: flex; justify-content: {{peerJc}}; align-items: center; cursor: pointer"><span style="width: 20px; height: 20px; border-radius: 999px; background: #FFFFFF; display: block"></span></button>
+</div>
+</div>
+</section></div>
+</main>
+<footer style="height: 56px; flex: none; box-sizing: border-box; border-top: 1px solid #262626; display: flex; align-items: center; gap: 12px; padding: 0 16px 0 24px">
+<span style="flex: 1; font-size: 12.5px; color: #FCFCFC90">變更會自動儲存</span>
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; font: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; flex: none; box-sizing: border-box; white-space: nowrap; text-decoration: none; padding: 0 20px">完成</button>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const st = this.state || {};
+const lv = st.lv || 'ask';
+const sw = Object.assign({ send: true, publish: true, pay: true, del: true }, st.sw || {});
+const who = st.who || 'team';
+const peer = st.peer === undefined ? false : st.peer;
+const I = {"hand": ["M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2", "M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2", "M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8", "M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"], "pencil": ["M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z", "m15 5 4 4"], "sparkles": ["M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z", "M20 2v4", "M22 4h-4", "M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"], "zap": ["M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"], "send": ["M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z", "m21.854 2.147-10.94 10.939"], "megaphone": ["M11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z", "M6 14a12 12 0 0 0 2.4 7.2 2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14", "M8 6v8"], "credit-card": ["M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z", "M2 10L22 10", "M6 14h2"], "trash": ["M10 11v6", "M14 11v6", "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", "M3 6h18", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"]};
+const L = [
+['ask', '先問我', '', '動手做事之前，都先問過你', 'hand', true],
+['edits', '自動接受編輯', '', '改檔案不用問，其他照樣先問', 'pencil', false],
+['auto', '幫我決定', '', '低風險直接做，有風險才問你', 'sparkles', false],
+['full', '完全存取', '（風險較高）', '除了安全底線，其餘都直接做', 'zap', false]
+];
+const A = [['send', '寄出或傳送訊息給別人', 'send'], ['publish', '公開發佈內容', 'megaphone'], ['pay', '付款或購買', 'credit-card'], ['del', '刪除資料或檔案', 'trash']];
+const BOTS = {
+azhe: { n: '阿哲', c: 'orange', b: 'blob', s: 'working', d: 'none' },
+bian: { n: '小編', c: 'pink', b: 'circle', s: 'notifying', d: 'waiting' },
+kai: { n: '阿凱', c: 'green', b: 'squircle', s: 'idle', d: 'none' },
+zhang: { n: '帳房', c: 'yellow', b: 'hexagon', s: 'notifying', d: 'waiting' },
+miao: { n: '數據喵', c: 'purple', b: 'diamond', s: 'idle', d: 'queued' },
+xin: { n: '信差', c: 'cyan', b: 'star', s: 'sleeping', d: 'none' },
+bug: { n: '抓蟲', c: 'red', b: 'shield', s: 'idle', d: 'none' }
+};
+const W = [['all', '全部'], ['team', '同團隊'], ['list', '名單']];
+const PEERS = {
+all: ['azhe', 'bian', 'kai', 'zhang', 'miao', 'xin', 'bug'],
+team: ['azhe', 'bian', 'kai', 'zhang', 'miao', 'xin'],
+list: ['azhe', 'miao']
+};
+const NOTE = { all: '你所有的 Bot（7 個）', team: '營運部、後勤的 6 個 Bot', list: '只有你勾選的 2 個 Bot' };
+return {
+levels: L.map(([k, t, risk, d, icon, def]) => ({
+t, risk, d, def, on: lv === k, aria: lv === k ? 'true' : 'false', icon: I[icon],
+bd: lv === k ? '#1084FE' : '#262626', ic: lv === k ? '#FCFCFC' : '#FCFCFC99',
+pick: () => this.setState({ lv: k })
+})),
+asks: A.map(([k, t, icon], i) => ({
+t, icon: I[icon], line: i ? '#262626' : 'transparent', aria: sw[k] ? 'true' : 'false',
+bg: sw[k] ? '#1084FE' : '#3D3D3D', jc: sw[k] ? 'flex-end' : 'flex-start',
+flip: () => this.setState({ sw: Object.assign({}, sw, { [k]: !sw[k] }) })
+})),
+whos: W.map(([k, t]) => ({ t, aria: who === k ? 'true' : 'false', bg: who === k ? '#2F2F2F' : 'transparent', fg: who === k ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ who: k }) })),
+peers: PEERS[who].map((k) => BOTS[k]),
+whoNote: NOTE[who],
+peerAria: peer ? 'true' : 'false', peerBg: peer ? '#1084FE' : '#3D3D3D', peerJc: peer ? 'flex-end' : 'flex-start',
+flipPeer: () => this.setState({ peer: !peer })
+};
+}
+}
+</script>
+</body>
+</html>

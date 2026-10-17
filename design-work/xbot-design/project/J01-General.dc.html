@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>設定：一般</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=Noto+Sans+TC:wght@400;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+input::placeholder{color:#FCFCFC90}
+input:focus{outline:none;border-color:#459FFE}
+main > *{flex-shrink:0}
+</style>
+</helmet>
+<div role="dialog" aria-label="設定" style="width: 1100px; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; border-radius: 18px; background: #111111; border: 1px solid #262626; overflow: hidden; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; color: #FCFCFC; font-size: 14.5px; line-height: 1.5">
+<header style="height: 64px; flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 0 14px 0 22px; border-bottom: 1px solid #262626">
+<h1 style="margin: 0; font-size: 17px; font-weight: 400; flex: 1">設定</h1>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12.5px; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><circle cx="4" cy="20" r="2"></circle></svg>簡化：15 個區塊 → 5 個</span>
+<button type="button" aria-label="關閉設定" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</header>
+<div style="flex: 1; min-height: 0; display: flex">
+<nav aria-label="設定分類" style="width: 220px; flex: none; box-sizing: border-box; padding: 12px; border-right: 1px solid #262626; display: flex; flex-direction: column; gap: 2px"><a href="J01-General.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; background: #2F2F2F; color: #FCFCFC; text-decoration: none; font-size: 14.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M14 17H5"></path><path d="M19 7h-9"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg>一般</a><a href="J02-Models.dc.html" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; background: transparent; color: #FCFCFCcc; text-decoration: none; font-size: 14.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path><path d="M9 13a4.5 4.5 0 0 0 3-4"></path><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"></path><path d="M3.477 10.896a4 4 0 0 1 .585-.396"></path><path d="M6 18a4 4 0 0 1-1.967-.516"></path><path d="M12 13h4"></path><path d="M12 18h6a2 2 0 0 1 2 2v1"></path><path d="M12 8h8"></path><path d="M16 8V5a2 2 0 0 1 2-2"></path><circle cx="16" cy="13" r=".5"></circle><circle cx="18" cy="3" r=".5"></circle><circle cx="20" cy="21" r=".5"></circle><circle cx="20" cy="8" r=".5"></circle></svg>AI 模型</a><a href="J06-Computers.dc.html" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; background: transparent; color: #FCFCFCcc; text-decoration: none; font-size: 14.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><rect width="20" height="14" x="2" y="3" rx="2"></rect><line x1="8" x2="16" y1="21" y2="21"></line><line x1="12" x2="12" y1="17" y2="21"></line></svg>電腦與裝置</a><a href="J04-Usage.dc.html" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; background: transparent; color: #FCFCFCcc; text-decoration: none; font-size: 14.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg>用量與花費</a><a href="J07-Backup.dc.html" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; background: transparent; color: #FCFCFCcc; text-decoration: none; font-size: 14.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 5H3"></path><path d="M12 19H3"></path><path d="M14 3v4"></path><path d="M16 17v4"></path><path d="M21 12h-9"></path><path d="M21 19h-5"></path><path d="M21 5h-7"></path><path d="M8 10v4"></path><path d="M8 12H3"></path></svg>進階</a><a href="J07-Backup.dc.html" style="display: flex; align-items: center; height: 32px; padding: 0 10px 0 38px; border-radius: 10px; background: transparent; color: #FCFCFC99; text-decoration: none; font-size: 13.5px">備份與更新</a><a href="J08-People.dc.html" style="display: flex; align-items: center; height: 32px; padding: 0 10px 0 38px; border-radius: 10px; background: transparent; color: #FCFCFC99; text-decoration: none; font-size: 13.5px">成員與紀錄</a><a href="J09-SkillsLab.dc.html" style="display: flex; align-items: center; height: 32px; padding: 0 10px 0 38px; border-radius: 10px; background: transparent; color: #FCFCFC99; text-decoration: none; font-size: 13.5px">技能庫與實驗</a><span style="margin-top: auto; padding: 0 10px; font-size: 12px; color: #FCFCFC90">XBot 0.3.2 · 變更會自動儲存</span></nav>
+<main data-fit="content" style="flex: 1; min-width: 0; overflow-y: auto; box-sizing: border-box; padding: 22px 28px 24px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; align-items: flex-start; gap: 16px"><div style="flex: 1; min-width: 0"><h2 style="margin: 0; font-size: 18px; font-weight: 400; color: #FCFCFC">一般</h2><p style="margin: 2px 0 0; font-size: 13.5px; color: #FCFCFC99; line-height: 1.5">外觀、語言與通知。改了馬上生效，不用按儲存。</p></div></div>
+<section style="display: flex; flex-direction: column; gap: 10px"><div style="display: flex; align-items: center; gap: 12px; min-height: 22px"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0; font-size: 15px; font-weight: 400; color: #FCFCFC">外觀</h3></span></div><div style="background: #262626; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden"><div style="padding: 14px 16px 16px; border-top: 0"><div style="display: flex; flex-direction: column; gap: 12px"><span><span style="display: block; font-size: 14.5px; color: #FCFCFC; line-height: 1.45">主題</span><span style="display: block; font-size: 13px; color: #FCFCFC99; line-height: 1.5; margin-top: 2px">預設 Midnight 深色；介面黑白為底，顏色留給 Bot。</span></span><div role="group" aria-label="主題" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{themes}}" as="t" hint-placeholder-count="3">
+<button type="button" aria-pressed="{{t.sel}}" onClick="{{t.pick}}" style="display: flex; flex-direction: column; gap: 8px; padding: 6px 6px 10px; border-radius: 14px; border: 2px solid {{t.ring}}; background: #191919; color: #FCFCFC; font: inherit; text-align: left; cursor: pointer">
+<span style="display: flex; height: 76px; border-radius: 10px; overflow: hidden; border: 1px solid #333333">
+<sc-for list="{{t.halves}}" as="h" hint-placeholder-count="1">
+<span style="flex: 1; display: flex; background: {{h.bg}}">
+<span style="width: 28%; background: {{h.side}}; display: flex; flex-direction: column; gap: 5px; padding: 8px 6px; box-sizing: border-box">
+<span style="height: 6px; border-radius: 3px; background: {{h.line}}"></span>
+<span style="height: 6px; width: 70%; border-radius: 3px; background: {{h.line}}"></span>
+<span style="height: 6px; width: 85%; border-radius: 3px; background: {{h.line}}"></span>
+</span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 5px; padding: 8px; box-sizing: border-box">
+<span style="align-self: flex-end; width: 46%; height: 12px; border-radius: 6px; background: {{h.you}}"></span>
+<span style="width: 70%; height: 20px; border-radius: 8px; background: {{h.bot}}"></span>
+<span style="margin-top: auto; height: 12px; border-radius: 999px; background: {{h.comp}}"></span>
+</span>
+</span>
+</sc-for>
+</span>
+<span style="display: flex; align-items: center; gap: 8px; padding: 0 4px">
+<span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 14px">{{t.name}}</span><span style="font-size: 12.5px; color: #FCFCFC99">{{t.sub}}</span></span>
+<sc-if value="{{t.on}}" hint-placeholder-val="{{ false }}"><span style="width: 20px; height: 20px; border-radius: 999px; background: #1084FE; display: flex; align-items: center; justify-content: center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></span></sc-if>
+</span>
+</button>
+</sc-for>
+</div></div></div><div style="display: flex; flex-direction: column; gap: 10px; padding: 12px 16px; border-top: 1px solid #333333">
+<div style="display: flex; align-items: center; gap: 16px">
+<span style="flex: 1; min-width: 0"><span style="display: block; font-size: 14.5px; color: #FCFCFC; line-height: 1.45">字型 <span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; background: rgba(255,152,0,.14); color: #FFB547; font-size: 12px; white-space: nowrap; flex: none; margin-left: 6px; vertical-align: 1px">待你決定</span></span><span style="display: block; font-size: 13px; color: #FCFCFC99; line-height: 1.5; margin-top: 2px">粉圓較親切；思源黑體有粗細，層次更接近 Grok。選定後全部畫面一起換。</span></span>
+<div role="group" aria-label="字型" style="display: inline-flex; flex: none; gap: 2px; padding: 3px; border-radius: 10px; background: #191919">
+<sc-for list="{{fonts}}" as="f" hint-placeholder-count="2">
+<button type="button" aria-pressed="{{f.sel}}" onClick="{{f.pick}}" style="height: 30px; padding: 0 14px; border: 0; border-radius: 8px; background: {{f.bg}}; color: {{f.fg}}; font-family: {{f.family}}; font-weight: {{f.weight}}; font-size: 13.5px; cursor: pointer">{{f.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; align-items: baseline; gap: 12px; padding: 10px 14px; border-radius: 10px; background: #191919; font-family: {{fontFamily}}">
+<span style="font-size: 16px; font-weight: {{titleWeight}}">小秘</span>
+<span style="font-size: 14.5px; color: #FCFCFCcc">比較完成：有 5 項商品比競品貴，建議先調降經典帆布包。</span>
+</div>
+</div></div></section>
+<section style="display: flex; flex-direction: column; gap: 10px"><div style="display: flex; align-items: center; gap: 12px; min-height: 22px"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0; font-size: 15px; font-weight: 400; color: #FCFCFC">語言</h3></span></div><div style="background: #262626; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden"><div style="display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-top: 0"><span style="flex: 1; min-width: 0"><span style="display: block; font-size: 14.5px; color: #FCFCFC; line-height: 1.45">介面語言</span><span style="display: block; font-size: 13px; color: #FCFCFC99; line-height: 1.5; margin-top: 2px">用注音、倉頡選字時按 Enter 不會送出訊息</span></span><button type="button" aria-haspopup="listbox" aria-label="介面語言" style="width: 220px; height: 40px; flex: none; box-sizing: border-box; padding: 0 10px 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; white-space: nowrap; cursor: pointer"><span style="overflow: hidden; text-overflow: ellipsis">繁體中文（台灣）</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></button></div></div></section>
+<section style="display: flex; flex-direction: column; gap: 10px"><div style="display: flex; align-items: center; gap: 12px; min-height: 22px"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0; font-size: 15px; font-weight: 400; color: #FCFCFC">通知</h3></span></div><div style="background: #262626; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden"><div style="display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-top: 0"><span style="flex: 1; min-width: 0"><span style="display: block; font-size: 14.5px; color: #FCFCFC; line-height: 1.45">Bot 做完或等你時通知我</span><span style="display: block; font-size: 13px; color: #FCFCFC99; line-height: 1.5; margin-top: 2px">XBot 在背景時跳系統通知；手機網頁版目前沒有推播</span></span><button type="button" role="switch" aria-checked="true" aria-label="Bot 做完或等你時通知我" style="width: 40px; height: 24px; flex: none; border: 0; border-radius: 999px; background: #1084FE; padding: 2px; display: flex; justify-content: flex-end; cursor: pointer"><span style="width: 20px; height: 20px; border-radius: 999px; background: #FFFFFF"></span></button></div><div style="display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-top: 1px solid #333333"><span style="flex: 1; min-width: 0"><span style="display: block; font-size: 14.5px; color: #FCFCFC; line-height: 1.45">通知音效</span><span style="display: block; font-size: 13px; color: #FCFCFC99; line-height: 1.5; margin-top: 2px">只有等你的事（核定、提問、接手電腦）才發出聲音</span></span><button type="button" role="switch" aria-checked="true" aria-label="通知音效" style="width: 40px; height: 24px; flex: none; border: 0; border-radius: 999px; background: #1084FE; padding: 2px; display: flex; justify-content: flex-end; cursor: pointer"><span style="width: 20px; height: 20px; border-radius: 999px; background: #FFFFFF"></span></button></div></div></section>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 1100, "height": 900}}'>
+class Component extends DCLogic {
+renderVals() {
+const theme = (this.state && this.state.theme) || 'midnight';
+const font = (this.state && this.state.font) || 'huninn';
+const D = { bg: '#070707', side: '#111111', line: '#333333', you: '#5A5A5A', bot: '#262626', comp: '#2F2F2F' };
+const L = { bg: '#FFFFFF', side: '#F3F3F4', line: '#D9D9DC', you: '#D4D4D8', bot: '#EDEDEF', comp: '#E6E6E9' };
+const defs = [
+  { k: 'midnight', name: 'Midnight', sub: '深色 · 預設', halves: [D] },
+  { k: 'daylight', name: 'Daylight', sub: '淺色', halves: [L] },
+  { k: 'system', name: '跟隨系統', sub: '白天淺色、晚上深色', halves: [D, L] }
+];
+const themes = defs.map((t) => Object.assign({}, t, {
+  on: theme === t.k, sel: theme === t.k ? 'true' : 'false',
+  ring: theme === t.k ? '#1084FE' : '#262626',
+  pick: () => this.setState({ theme: t.k })
+}));
+const FAM = { huninn: "'Huninn', 'PingFang TC', sans-serif", noto: "'Noto Sans TC', 'PingFang TC', sans-serif" };
+const fonts = [{ k: 'huninn', label: '粉圓', weight: 400 }, { k: 'noto', label: '思源黑體', weight: 600 }].map((f) => ({
+  label: f.label, family: FAM[f.k], weight: f.weight,
+  sel: font === f.k ? 'true' : 'false', bg: font === f.k ? '#2F2F2F' : 'transparent', fg: font === f.k ? '#FCFCFC' : '#FCFCFC99',
+  pick: () => this.setState({ font: f.k })
+}));
+return { themes, fonts, fontFamily: FAM[font], titleWeight: font === 'noto' ? 600 : 400 };
+}
+}
+</script>
+</body>
+</html>

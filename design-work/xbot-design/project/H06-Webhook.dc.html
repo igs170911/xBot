@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>觸發條件：網址詳細</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}
+button{font:inherit}
+</style>
+</helmet>
+<div role="dialog" aria-label="觸發條件：GitHub 新 issue 分類" style="width: 1100px; height: 900px; box-sizing: border-box; overflow: hidden; border-radius: 18px; background: #111111; border: 1px solid #262626; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.6; display: flex; flex-direction: column">
+
+<div style="height: 64px; flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 14px; border-bottom: 1px solid #262626">
+<a href="H05-Triggers.dc.html" aria-label="回到觸發條件" style="width: 36px; height: 36px; border-radius: 10px; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronLeft}}"></path></svg></a>
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1084FE" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.webhook}}"></path></svg>
+<h2 style="margin: 0; flex: 1; font-size: 17px; font-weight: 400">觸發條件</h2>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.x}}"></path></svg></button>
+</div>
+
+<div style="flex: 1; min-height: 0; display: flex">
+<nav aria-label="你的觸發" style="width: 260px; flex: none; box-sizing: border-box; border-right: 1px solid #262626; padding: 14px 10px; display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{hooks}}" as="h" hint-placeholder-count="4">
+<button type="button" aria-current="{{h.cur}}" style="min-height: 56px; border: 0; border-radius: 12px; background: {{h.bg}}; color: #FCFCFC; padding: 6px 10px; display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer">
+<span style="width: 32px; height: 32px; border-radius: 99px; background: {{h.circle}}; color: #FCFCFC; display: flex; align-items: center; justify-content: center; flex: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{h.icon}}"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35"><span style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{h.name}}</span><span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #FCFCFC99"><span style="width: 6px; height: 6px; border-radius: 9px; background: {{h.dot}}"></span>{{h.state}}</span></span>
+</button>
+</sc-for>
+<a href="H05-Triggers.dc.html" style="margin-top: auto; height: 36px; border-radius: 999px; border: 1px solid #333333; color: #FCFCFC; font-size: 13.5px; display: flex; align-items: center; justify-content: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.plus}}"></path></svg>新增觸發</a>
+</nav>
+
+<div style="flex: 1; min-width: 0; padding: 20px 24px 20px; display: flex; flex-direction: column; gap: 16px">
+
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="width: 40px; height: 40px; border-radius: 99px; background: #262626; color: #FCFCFC; display: flex; align-items: center; justify-content: center; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.circleDot}}"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.4"><span style="font-size: 18px">GitHub 新 issue 分類</span><span style="font-size: 13px; color: #FCFCFC99">{{onText}}</span></span>
+<button type="button" role="switch" aria-checked="{{onAria}}" aria-label="開啟這個觸發" onClick="{{toggleOn}}" style="width: 40px; height: 24px; flex: none; border: 0; border-radius: 999px; background: {{track}}; padding: 0; position: relative; cursor: pointer"><span style="position: absolute; top: 3px; left: {{knob}}; width: 18px; height: 18px; border-radius: 99px; background: #FFFFFF"></span></button>
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FF5667; font-size: 14px; cursor: pointer; flex: none">刪除</button>
+</div>
+
+<div style="background: #262626; border-radius: 18px; padding: 14px 16px; display: flex; align-items: center; gap: 12px">
+<span style="flex: 1; min-width: 0; font-size: 15px; line-height: 1.7">當 <span style="background: #2F2F2F; border-radius: 8px; padding: 2px 8px">GitHub 有新 issue</span> 時，<span style="display: inline-flex; align-items: center; gap: 6px; background: #2F2F2F; border-radius: 8px; padding: 2px 8px; vertical-align: middle"><dc-import name="Avatar" color="red" body="shield" state="idle" dot="none" size="18" hint-size="18px,18px"></dc-import>抓蟲</span> 要分類、能重現就附上步驟和截圖，草稿先給你看。</span>
+<a href="H05-Triggers.dc.html" style="height: 30px; padding: 0 12px; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 13px; display: flex; align-items: center; flex: none">編輯</a>
+</div>
+
+<section aria-label="網址與金鑰" style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 14px">網址與金鑰</span>
+<div style="background: #191919; border-radius: 14px; padding: 0 14px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 48px">
+<span style="width: 40px; flex: none; font-size: 13px; color: #FCFCFC99">網址</span>
+<span style="flex: 1; min-width: 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{url}}</span>
+<button type="button" onClick="{{copyUrl}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer; flex: none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{copyIcon}}"></path></svg>{{copyText}}</button>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; min-height: 48px; border-top: 1px solid #262626">
+<span style="width: 40px; flex: none; font-size: 13px; color: #FCFCFC99">金鑰</span>
+<span style="flex: 1; min-width: 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Bearer {{token}}</span>
+<button type="button" onClick="{{toggleShow}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer; flex: none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{showIcon}}"></path></svg>{{showText}}</button>
+<button type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 13px; cursor: pointer; flex: none">換新金鑰</button>
+</div>
+</div>
+</section>
+
+<section aria-label="用指令送一個測試" style="background: #191919; border-radius: 14px; display: flex; flex-direction: column">
+<div style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 14px; border-bottom: 1px solid #262626">
+<span style="flex: 1; font-size: 13px; color: #FCFCFC99">在這台主機用指令送一個測試</span>
+<button type="button" style="height: 28px; padding: 0 10px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 12.5px; display: flex; align-items: center; gap: 6px; cursor: pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.copy}}"></path></svg>複製指令</button>
+</div>
+<div style="padding: 10px 14px 12px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 21px; white-space: pre; overflow-x: auto; color: #FCFCFCcc"><sc-for list="{{curl}}" as="l" hint-placeholder-count="4"><div><sc-for list="{{l}}" as="t" hint-placeholder-count="3"><span style="color: {{t.c}}">{{t.t}}</span></sc-for></div></sc-for></div>
+</section>
+
+<button type="button" aria-expanded="{{advOpen}}" onClick="{{toggleAdv}}" style="border: 0; border-radius: 14px; background: #191919; color: #FCFCFC; padding: 10px 14px; display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: rotate({{advRot}}); transition: transform .15s"><path d="{{I.chevronRight}}"></path></svg>
+<span style="font-size: 14px">進階設定</span>
+<span style="flex: 1; min-width: 0; font-size: 12.5px; color: #FCFCFC99; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{advSummary}}</span>
+</button>
+
+<section aria-label="最近收到" style="display: flex; flex-direction: column; gap: 8px; min-height: 0">
+<div style="display: flex; align-items: baseline; justify-content: space-between"><span style="font-size: 14px">最近收到</span><a href="H03-RoutineList.dc.html" style="font-size: 12.5px">看全部紀錄</a></div>
+<div role="table" aria-label="最近收到" style="border: 1px solid #262626; border-radius: 14px; overflow: hidden; display: grid; grid-template-columns: 128px 140px 116px minmax(0, 1fr); font-size: 13px">
+<sc-for list="{{head}}" as="h" hint-placeholder-count="4"><span role="columnheader" style="height: 34px; box-sizing: border-box; padding: 0 12px; display: flex; align-items: center; background: #191919; color: #FCFCFC99; font-size: 12.5px">{{h}}</span></sc-for>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="16"><span role="cell" style="height: 40px; box-sizing: border-box; padding: 0 12px; display: flex; align-items: center; border-top: 1px solid #262626; min-width: 0; font-family: {{r.ff}}; font-size: {{r.fs}}; color: {{r.fg}}"><sc-if value="{{r.pill}}" hint-placeholder-val="{{ false }}"><span style="height: 24px; padding: 0 10px; border-radius: 999px; background: {{r.pbg}}; color: {{r.pfg}}; font-size: 12.5px; display: flex; align-items: center; white-space: nowrap">{{r.t}}</span></sc-if><sc-if value="{{r.plain}}" hint-placeholder-val="{{ true }}"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.t}}</span></sc-if></span></sc-for>
+</div>
+</section>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+// ICONS: chevron-left chevron-right webhook x plus circle-dot clipboard-list credit-card file-text copy check eye eye-off
+const I = {"chevronLeft":"M15 18 l-6-6 6-6","chevronRight":"M9 18 l6-6-6-6","webhook":"M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2 M6 17 l3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06 M12 6 l3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8","x":"M18 6 6 18 M6 6 l12 12","plus":"M5 12h14 M12 5v14","circleDot":"M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0 M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0","clipboardList":"M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1Z M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2 M12 11h4 M12 16h4 M8 11h.01 M8 16h.01","creditCard":"M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z M2 10L22 10 M6 14h2","fileText":"M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z M14 2v5a1 1 0 0 0 1 1h5 M10 9H8 M16 13H8 M16 17H8","copy":"M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2","check":"M20 6 9 17l-5-5","eye":"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0 M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0","eyeOff":"M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49 M14.084 14.158a3 3 0 0 1-4.242-4.242 M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143 M2 2 l20 20"};
+const st = this.state || {};
+const on = st.on !== false;
+const show = !!st.show;
+const copied = !!st.copied;
+const adv = !!st.adv;
+const URL = 'http://192.168.1.20:8790/hooks/r/9f2c7a1e…e41a';
+const token = show ? 'xbh_7Qm2vK9pL4sT8wR3f1c' : 'xbh_••••••••••••3f1c';
+const K = '#7FC0FF', S = '#FFB547', T = '#FCFCFCcc', D = '#FCFCFC80';
+const tk = (...p) => { const o = []; for (let i = 0; i < p.length; i += 2) o.push({ t: p[i], c: p[i + 1] }); return o; };
+const P = { ok: ['rgba(56,213,145,.14)', '#38D591'], wait: ['rgba(255,152,0,.14)', '#FFB547'], bad: ['rgba(255,86,103,.14)', '#FF8A96'], mute: ['#262626', '#FCFCFC99'] };
+const rows = [];
+[
+['10/17 11:40', 'issues.opened', '等你看草稿', 'wait', '#128 登入頁按鈕沒反應 · 已重現'],
+['10/16 18:22', 'issues.opened', '已完成', 'ok', '#127 匯出亂碼 · 已附步驟'],
+['10/16 18:22', 'issues.opened', '已略過', 'mute', '距上一次不到 60 秒'],
+['10/16 09:03', 'issues.opened', '失敗', 'bad', '#126 缺測試帳號，沒辦法登入'],
+['10/14 15:02', 'ping', '測試', 'mute', '收得到，沒有開始工作']
+].forEach(([at, ev, s, k, res]) => {
+const base = { pill: false, plain: true, ff: "'Huninn', sans-serif", fs: '13px', fg: '#FCFCFC' };
+rows.push(Object.assign({}, base, { t: at, fg: '#FCFCFCcc' }));
+rows.push(Object.assign({}, base, { t: ev, ff: "'JetBrains Mono', monospace", fs: '12.5px', fg: '#FCFCFCcc' }));
+rows.push(Object.assign({}, base, { t: s, pill: true, plain: false, pbg: P[k][0], pfg: P[k][1] }));
+rows.push(Object.assign({}, base, { t: res }));
+});
+const H = (name, state, dot, icon, cur) => ({ name, state, dot, icon, cur: cur ? 'page' : 'false', bg: cur ? '#2F2F2F' : 'transparent', circle: cur ? '#3D3D3D' : '#262626' });
+return {
+I, url: URL, token,
+onText: on ? '使用中 · 抓蟲 · 本週 14 次 · 上次今天上午 11:40' : '已暫停 · 送來的請求會被拒絕',
+onAria: on ? 'true' : 'false', track: on ? '#1084FE' : '#3D3D3D', knob: on ? '19px' : '3px', toggleOn: () => this.setState({ on: !on }),
+copyText: copied ? '已複製' : '複製', copyIcon: copied ? I.check : I.copy, copyUrl: () => this.setState({ copied: true }),
+showText: show ? '隱藏' : '顯示', showIcon: show ? I.eyeOff : I.eye, toggleShow: () => this.setState({ show: !show }),
+advOpen: adv ? 'true' : 'false', advRot: adv ? '90deg' : '0deg', toggleAdv: () => this.setState({ adv: !adv }),
+advSummary: adv ? '只接受 issues.opened · 同時 1 件 · 抓蟲自己的電腦 · 沒附任務時照上面那句做' : '只接受 issues.opened · 同時 1 件 · 抓蟲自己的電腦',
+curl: [
+tk('curl', K, ' -X POST ', T, URL, T, ' \\', D),
+tk('  -H ', T, '"Authorization: Bearer ' + token + '"', S, ' \\', D),
+tk('  -H ', T, '"Content-Type: application/json"', S, ' \\', D),
+tk('  -d ', T, '\'{"task":"分類 issue #128，能重現就附步驟"}\'', S)
+],
+head: ['時間', '事件', '狀態', '結果'],
+rows,
+hooks: [
+H('GitHub 新 issue 分類', on ? '使用中' : '已暫停', on ? '#38D591' : '#8A8A8A', I.circleDot, true),
+H('官網詢價表單 → 開發信', '使用中', '#38D591', I.clipboardList, false),
+H('收到付款 → 帳房記帳', '還沒測試', '#FF9800', I.creditCard, false),
+H('舊版詢價表單', '已暫停', '#8A8A8A', I.fileText, false)
+]
+};
+}
+}
+</script>
+</body>
+</html>

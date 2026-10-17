@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>兩個 Bot 的往來</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+</style>
+</helmet>
+<section role="dialog" aria-label="小秘和阿哲的往來" style="width: 640px; height: 780px; box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; box-sizing: border-box; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.6; background: #111111; display: flex; flex-direction: column; overflow: hidden">
+<header style="display: flex; align-items: center; gap: 10px; gap: 12px; height: 64px; flex: none; padding: 0 12px 0 20px; border-bottom: 1px solid #262626">
+<span style="position: relative; width: 46px; height: 30px; flex: none">
+<span style="position: absolute; left: 0; top: 2px"><dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#111111" size="26" hint-size="26px,26px"></dc-import></span>
+<span style="position: absolute; left: 20px; top: 2px"><dc-import name="Avatar" color="orange" body="blob" state="working" dot="none" ring="#111111" size="26" hint-size="26px,26px"></dc-import></span>
+</span>
+<div style="flex: 1; display: flex; flex-direction: column; min-width: 0">
+<h2 style="margin: 0; font-size: 16px; font-weight: 400; display: flex; align-items: center; gap: 10px; gap: 6px">小秘<span style="color: #FCFCFC99; display: flex"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M8 3 4 7l4 4 M4 7h16 M16 21 l4-4-4-4 M20 17H4"></path></svg></span>阿哲</h2>
+<span style="font-size: 12.5px; color: #FCFCFC99">今天 · 這條往來 3 / 6 次，到 6 次會先停下來回報你</span>
+</div>
+<button type="button" aria-label="關閉" style="width: 32px; height: 32px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18 M6 6 l12 12"></path></svg></button>
+</header>
+
+<div style="flex: 1; padding: 12px 20px 14px; display: flex; flex-direction: column; gap: 10px">
+
+<sc-for list="{{msgs}}" as="m" hint-placeholder-count="5">
+<sc-if value="{{m.isDate}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 10px; gap: 12px; font-size: 12.5px; color: #FCFCFC90"><span style="flex: 1; height: 1px; background: #262626"></span>{{m.date}}<span style="flex: 1; height: 1px; background: #262626"></span></div>
+</sc-if>
+<sc-if value="{{m.isNote}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 10px; gap: 8px; margin-left: 38px; padding: 8px 12px; border-radius: 12px; border: 1px dashed #333333; font-size: 13px; color: #FCFCFC99"><span style="display: flex"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 22h14 M5 2h14 M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22 M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"></path></svg></span><span style="flex: 1">{{m.text}}</span></div>
+</sc-if>
+<sc-if value="{{m.isMsg}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; gap: 10px">
+<dc-import name="Avatar" color="{{m.color}}" body="{{m.body}}" state="{{m.state}}" dot="none" ring="#111111" size="28" hint-size="28px,28px"></dc-import>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; align-items: flex-start">
+<div style="display: flex; align-items: center; gap: 10px; gap: 8px; align-self: stretch; font-size: 13px">
+<span style="font-size: 14px">{{m.who}}</span>
+<span style="height: 22px; padding: 0 8px; border-radius: 999px; display: inline-flex; align-items: center; font-size: 12px; background: {{m.tagBg}}; color: {{m.tagFg}}">{{m.tag}}</span>
+<span style="color: #FCFCFC90; font-size: 12.5px">{{m.hop}}</span>
+<span style="margin-left: auto; color: #FCFCFC90; font-size: 12.5px">{{m.time}}</span>
+</div>
+<div style="max-width: 100%; box-sizing: border-box; background: #262626; border-radius: 18px; padding: 9px 14px; font-size: 14.5px; line-height: 1.6">{{m.text}}</div>
+<sc-if value="{{m.files}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 10px; gap: 8px; flex-wrap: wrap">
+<span style="display: inline-flex; align-items: center; gap: 8px; height: 32px; box-sizing: border-box; padding: 0 14px; border: 1px solid #333333; border-radius: 999px; font-size: 13.5px; color: #FCFCFCcc; background: transparent; white-space: nowrap; align-self: flex-start; height: 30px; font-size: 13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M16 6 l-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"></path></svg>帶了 2 個檔案 · 48 KB</span>
+<span style="display: inline-flex; align-items: center; gap: 8px; height: 32px; box-sizing: border-box; padding: 0 14px; border: 1px solid #333333; border-radius: 999px; font-size: 13.5px; color: #FCFCFCcc; background: transparent; white-space: nowrap; align-self: flex-start; height: 30px; padding: 0 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z M14 2v5a1 1 0 0 0 1 1h5"></path></svg>競品價格.csv</span>
+<span style="display: inline-flex; align-items: center; gap: 8px; height: 32px; box-sizing: border-box; padding: 0 14px; border: 1px solid #333333; border-radius: 999px; font-size: 13.5px; color: #FCFCFCcc; background: transparent; white-space: nowrap; align-self: flex-start; height: 30px; padding: 0 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z M7 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M21 15 l-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>價差圖.png</span>
+</div>
+</sc-if>
+<sc-if value="{{m.long}}" hint-placeholder-val="{{ false }}">
+<div style="align-self: stretch; display: flex; gap: 12px; padding: 12px 12px 12px 14px; border-radius: 12px; background: #191919">
+<span style="color: #7FC0FF; display: flex; padding-top: 2px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z M14 2v5a1 1 0 0 0 1 1h5 M10 9H8 M16 13H8 M16 17H8"></path></svg></span>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+<span style="font-size: 14px">完整回覆共 18,240 字，太長放不進訊息，已存成檔案</span>
+<span style="font-size: 12.5px; color: #FCFCFC90"><code style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-size: 12px; color: #FCFCFC99">/workspace/from/阿哲/result-1430.md</code> · 訊息只放前 3,000 字</span>
+</div>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap; align-self: center">打開</button>
+</div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+</sc-for>
+</div>
+
+<footer style="display: flex; align-items: center; gap: 10px; gap: 12px; flex: none; padding: 12px 16px 12px 20px; border-top: 1px solid #262626">
+<span style="flex: 1; font-size: 12.5px; color: #FCFCFC90">Bot 的訊息不能當成你的同意；需要你決定的事會另外問你。</span>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FF5667; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M10 9h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1Z"></path></svg>停止這條往來</button>
+</footer>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":640,"height":780}}'>
+class Component extends DCLogic {
+renderVals() {
+const TAG = {
+'請求': ['rgba(16,132,254,.2)', '#7FC0FF'],
+'提問': ['#2F2F2F', '#FCFCFC'],
+'回覆': ['rgba(56,213,145,.14)', '#38D591'],
+'通知': ['#2F2F2F', '#FCFCFC99']
+};
+const XM = { color: 'blue', body: 'cursor', state: 'working', who: '小秘' };
+const AZ = { color: 'orange', body: 'blob', state: 'working', who: '阿哲' };
+const base = { isDate: false, isNote: false, isMsg: false, files: false, long: false, hop: '', date: '' };
+const M = (who, tag, hop, time, text, extra) => Object.assign({}, base, who, { isMsg: true, tag, hop, time, text, tagBg: TAG[tag][0], tagFg: TAG[tag][1] }, extra || {});
+return {
+msgs: [
+M(XM, '請求', '第 1/6 棒', '下午 2:03', '請抓蝦皮上三家競品的主力帆布包價格，容量相同的款式對齊，做成 CSV。'),
+M(AZ, '提問', '第 2/6 棒', '下午 2:05', '第三家有兩款都叫「經典帆布包」，一款帆布一款皮革，都要算嗎？'),
+M(XM, '回覆', '回覆不算次數', '下午 2:05', '只算帆布款。'),
+Object.assign({}, base, { isNote: true, text: '阿哲把「算價差」轉給數據喵（第 3/6 棒），等它回來才一起回覆小秘。' }),
+M(AZ, '回覆', '', '下午 2:11', '完成。三家共 36 項商品，平均比我們便宜約 8%，價差表在附檔。', { files: true }),
+M(AZ, '回覆', '', '下午 2:30', '各款逐項比較與來源網址放在檔案裡，重點：B 店 12 項比我們低超過 10%。', { long: true }),
+M(XM, '通知', '', '下午 2:32', '收到。明天上午 9:00 的每日重點會用這份價差表。')
+]
+};
+}
+}
+</script>
+</body>
+</html>

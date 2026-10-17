@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>Bot 頭像</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A8D4FF}
+button{font:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1100px; box-sizing: border-box; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.5; padding: 28px 48px 24px; display: flex; flex-direction: column; gap: 20px">
+
+<header style="display: flex; align-items: flex-end; gap: 24px">
+<div style="flex: 1">
+<p style="margin: 0 0 4px; font-size: 13px; color: #FCFCFC90">XBot 設計系統 · N02</p>
+<h1 style="margin: 0; font-size: 28px; font-weight: 400; line-height: 1.2">Bot 頭像：Grok 平面吉祥物 · 10 種形狀</h1>
+</div>
+<p style="margin: 0; max-width: 760px; font-size: 13.5px; color: #FCFCFC99; text-align: right">跟 Grok Bot 一樣：一個平面實色剪影＋兩顆眼睛，沒有嘴巴。<br>只是形狀更多：10 種形狀 × 10 色，一組分出是誰；游標是品牌與預設；眼睛和灰字說它在做什麼。</p>
+</header>
+
+<div style="display: flex; gap: 20px">
+<section style="width: 340px; flex: none; background: #111111; border-radius: 18px; padding: 22px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+<div><h2 style="margin: 0; font-size: 17px; font-weight: 400">品牌吉祥物</h2><p style="margin: 2px 0 0; font-size: 13px; color: #FCFCFC99">綠色游標，不帶小點；新 Bot 預設也是它。用在品牌列、登入、首次設定、空狀態、載入中。</p></div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{poses}}" as="p" hint-placeholder-count="4">
+<div style="background: #191919; border-radius: 12px; padding: 10px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+<dc-import name="Mochi" size="48" pose="{{p.pose}}" hint-size="48px,48px"></dc-import>
+<span style="font-size: 12.5px; white-space: nowrap">{{p.label}}</span>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0 0 4px; font-size: 14.5px; font-weight: 400">眼睛 6 種（狀態都對到這幾種）</h3>
+<sc-for list="{{eyes}}" as="e" hint-placeholder-count="6">
+<div style="display: flex; align-items: center; gap: 10px; min-height: 31px; border-top: 1px solid #262626">
+<dc-import name="Avatar" color="green" body="circle" state="{{e.st}}" dot="none" size="26" hint-size="26px,26px"></dc-import>
+<span style="width: 50px; flex: none; font-size: 13px">{{e.zh}}</span>
+<span style="flex: 1; min-width: 0; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; line-height: 1.35; color: #FCFCFC90">{{e.ids}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section style="flex: 1; min-width: 0; background: #111111; border-radius: 18px; padding: 22px 24px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: baseline; gap: 12px"><h2 style="margin: 0; font-size: 17px; font-weight: 400">10 種形狀 × 眼睛 × 顏色</h2><span style="font-size: 13px; color: #FCFCFC99">全部平面、只有眼睛；任何形狀配任何顏色；只有等你、出錯有小點</span></div>
+<div role="table" aria-label="頭像形狀、眼睛與顏色" style="display: grid; grid-template-columns: 96px repeat(10, minmax(0, 1fr)); row-gap: 0">
+<span role="columnheader"></span>
+<sc-for list="{{shapes}}" as="b" hint-placeholder-count="10">
+<span role="columnheader" style="display: flex; flex-direction: column; align-items: center; line-height: 1.3; padding-bottom: 6px"><span style="font-size: 13px; color: {{b.ink}}; white-space: nowrap">{{b.zh}}</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: {{b.sub}}">{{b.id}}</span></span>
+</sc-for>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+<span role="rowheader" style="display: flex; flex-direction: column; justify-content: center; line-height: 1.3; border-top: 1px solid #262626"><span style="font-size: 13.5px; color: {{r.ink}}">{{r.zh}}</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #FCFCFC90">{{r.id}}</span></span>
+<sc-for list="{{r.cells}}" as="c" hint-placeholder-count="10">
+<span role="cell" style="height: 47px; display: flex; align-items: center; justify-content: center; border-top: 1px solid #262626"><dc-import name="Avatar" color="{{c.color}}" body="{{c.body}}" state="{{c.state}}" dot="auto" ring="#111111" size="38" hint-size="38px,38px"></dc-import></span>
+</sc-for>
+</sc-for>
+</div>
+<div style="display: flex; align-items: center; gap: 14px; padding-top: 8px; border-top: 1px solid #262626; font-size: 12.5px; color: #FCFCFC99"><span>10 色</span>
+<sc-for list="{{colors}}" as="b" hint-placeholder-count="10"><span style="display: inline-flex; align-items: center; gap: 5px"><span style="width: 11px; height: 11px; border-radius: 50%; background: {{b.hex}}"></span>{{b.zh}}</span></sc-for>
+<span style="flex: 1"></span><span>格子裡顏色輪著排，只是示範</span></div>
+</section>
+</div>
+
+<section style="background: #111111; border-radius: 18px; padding: 16px 24px 18px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: baseline; gap: 12px"><h2 style="margin: 0; font-size: 17px; font-weight: 400">示範角色（全站一致）</h2><span style="font-size: 13px; color: #FCFCFC99">每個 Bot 一組形狀＋顏色，到哪裡都一樣；標題列、側欄、卡片都說同一個狀態</span></div>
+<div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{cast}}" as="m" hint-placeholder-count="8">
+<div style="background: #191919; border-radius: 14px; padding: 12px; display: flex; align-items: center; gap: 10px; min-width: 0">
+<dc-import name="Avatar" color="{{m.color}}" body="{{m.body}}" state="{{m.state}}" dot="auto" ring="#191919" size="40" hint-size="40px,40px"></dc-import>
+<span style="min-width: 0; display: flex; flex-direction: column; line-height: 1.35">
+<span style="font-size: 15px; white-space: nowrap">{{m.name}}</span>
+<span style="font-size: 12px; color: #FCFCFC90; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{m.role}}</span>
+<span style="font-size: 12.5px; color: {{m.ink}}; white-space: nowrap">{{m.status}}</span>
+</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 20px">
+<section style="background: #111111; border-radius: 18px; padding: 18px 24px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 17px; font-weight: 400">尺寸</h2>
+<div style="flex: 1; display: flex; align-items: flex-end; justify-content: space-between; gap: 6px">
+<sc-for list="{{sizes}}" as="z" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+<span style="height: 96px; display: flex; align-items: flex-end"><dc-import name="Avatar" color="{{z.c}}" body="{{z.b}}" state="{{z.st}}" dot="auto" ring="#111111" size="{{z.n}}" hint-size="{{z.n}}px,{{z.n}}px"></dc-import></span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">{{z.n}} px</span>
+<span style="font-size: 12px; color: #FCFCFC90; text-align: center; white-space: nowrap">{{z.use}}</span>
+</div>
+</sc-for>
+</div>
+<p style="margin: 0; font-size: 12.5px; color: #FCFCFC99">每種形狀 16 px 也看得出兩顆眼睛；小點的外框填所在底色。</p>
+</section>
+
+<section style="background: #111111; border-radius: 18px; padding: 18px 24px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: baseline; gap: 10px"><h2 style="margin: 0; font-size: 17px; font-weight: 400">改用圖片</h2><span style="font-size: 13px; color: #FCFCFC99">形狀就是裁切框</span></div>
+<div style="flex: 1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; align-items: center">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px">
+<span style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center"><dc-import name="Avatar" color="green" body="cursor" state="happy" dot="none" ring="#111111" size="62" hint-size="62px,62px"></dc-import></span>
+<span style="font-size: 13px">吉祥物</span>
+</div>
+<sc-for list="{{crops}}" as="k" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px">
+<span style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center"><dc-import name="Avatar" body="{{k.b}}" img="sample" state="idle" dot="{{k.dot}}" ring="#111111" size="62" hint-size="62px,62px"></dc-import></span>
+<span style="font-size: 13px">{{k.zh}}</span>
+</div>
+</sc-for>
+</div>
+<p style="margin: 0; font-size: 12.5px; color: #FCFCFC99; line-height: 1.6">10 種形狀都能當上傳或 AI 圖片的裁切框。用圖片時不疊眼睛，狀態只看灰字和小點。</p>
+</section>
+
+<section style="background: #111111; border-radius: 18px; padding: 18px 24px; display: flex; flex-direction: column; gap: 4px">
+<h2 style="margin: 0 0 6px; font-size: 17px; font-weight: 400">規則</h2>
+<sc-for list="{{rules}}" as="d" hint-placeholder-count="5">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 40px">
+<dc-import name="Avatar" color="{{d.color}}" body="{{d.body}}" state="{{d.state}}" dot="auto" ring="#111111" size="30" hint-size="30px,30px"></dc-import>
+<span style="flex: 1; font-size: 14px">{{d.zh}}</span>
+</div>
+</sc-for>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() {
+const poses = [
+{ pose: 'lazy', label: '待命（預設）' }, { pose: 'happy', label: '開心' },
+{ pose: 'thinking', label: '思考' }, { pose: 'sleep', label: '睡著' }
+];
+const colors = [
+{ id: 'green', zh: '綠', hex: '#46a758' }, { id: 'blue', zh: '藍', hex: '#3f8cff' }, { id: 'red', zh: '紅', hex: '#e5484d' },
+{ id: 'orange', zh: '橘', hex: '#f28a30' }, { id: 'purple', zh: '紫', hex: '#8e4ec6' }, { id: 'cyan', zh: '青', hex: '#2ab0d4' },
+{ id: 'pink', zh: '粉紅', hex: '#e5579a' }, { id: 'yellow', zh: '黃', hex: '#f2c230' }, { id: 'teal', zh: '藍綠', hex: '#22a68f' },
+{ id: 'coral', zh: '珊瑚', hex: '#f0694f' }
+];
+const states = [
+{ id: 'idle', zh: '待命 · 圓點', ink: '#FCFCFC' }, { id: 'working', zh: '工作 · 看旁邊', ink: '#FCFCFC' },
+{ id: 'notifying', zh: '等你 · 橘點', ink: '#FFB547' }, { id: 'alerting', zh: '出錯 · 睜大', ink: '#FF5667' },
+{ id: 'happy', zh: '完成 · 開心', ink: '#FCFCFC' }, { id: 'drowsy', zh: '無聊 · 半閉', ink: '#FCFCFC' },
+{ id: 'sleeping', zh: '休息 · 閉眼', ink: '#FCFCFC' }
+];
+const shapes = [['cursor', '游標'], ['blob', '果凍'], ['circle', '圓'], ['squircle', '圓角'], ['capsule', '膠囊'], ['drop', '水滴'], ['shield', '盾牌'], ['hexagon', '六角'], ['diamond', '菱形'], ['star', '星星']].map(([id, zh]) => ({ id, zh: id === 'cursor' ? zh + ' · 預設' : zh, b: id, ink: id === 'cursor' ? '#7FC0FF' : '#FCFCFC', sub: id === 'cursor' ? '#7FC0FF' : '#FCFCFC90' }));
+const rows = states.map((s, i) => ({ id: s.id, zh: s.zh, ink: s.ink, cells: shapes.map((h, j) => ({ body: h.b, color: colors[(i + j) % 10].id, state: s.id })) }));
+const cast = [
+{ name: '小秘', body: 'cursor', role: '幕僚長', color: 'blue', state: 'working', status: '工作中', ink: '#FCFCFC99' },
+{ name: '阿哲', body: 'blob', role: '選品研究員', color: 'orange', state: 'working', status: '工作中', ink: '#FCFCFC99' },
+{ name: '小編', body: 'circle', role: '社群小編', color: 'pink', state: 'notifying', status: '等你回覆', ink: '#FFB547' },
+{ name: '阿凱', body: 'squircle', role: '業務開發', color: 'green', state: 'idle', status: '待命', ink: '#FCFCFC99' },
+{ name: '帳房', body: 'hexagon', role: '費用管理', color: 'yellow', state: 'notifying', status: '等你允許', ink: '#FFB547' },
+{ name: '數據喵', body: 'diamond', role: '數據分析師', color: 'purple', state: 'idle', status: '排隊中', ink: '#FCFCFC99' },
+{ name: '信差', body: 'star', role: '收件匣管家', color: 'cyan', state: 'sleeping', status: '休息', ink: '#FCFCFC99' },
+{ name: '抓蟲', body: 'shield', role: 'Bug 重現', color: 'red', state: 'idle', status: '待命', ink: '#FCFCFC99' }
+];
+const sizes = [
+{ n: '16', use: '行內', st: 'working', c: 'blue', b: 'cursor' }, { n: '24', use: '群組疊放', st: 'working', c: 'orange', b: 'blob' }, { n: '32', use: '側欄列', st: 'working', c: 'cyan', b: 'star' },
+{ n: '40', use: '卡片', st: 'notifying', c: 'yellow', b: 'hexagon' }, { n: '48', use: '列表', st: 'working', c: 'pink', b: 'circle' }, { n: '96', use: '外觀預覽', st: 'happy', c: 'blue', b: 'cursor' }
+];
+const crops = [{ zh: '圓', b: 'circle', dot: 'none' }, { zh: '圓角', b: 'squircle', dot: 'none' }, { zh: '六角', b: 'hexagon', dot: 'waiting' }, { zh: '星星', b: 'star', dot: 'none' }];
+const rules = [
+{ zh: '平面、只有眼睛、沒有嘴巴、跟 Grok Bot 一樣', color: 'green', body: 'cursor', state: 'idle' },
+{ zh: '10 形狀 × 10 色分人：一個 Bot 一組，全站一致', color: 'purple', body: 'diamond', state: 'happy' },
+{ zh: '眼睛與灰字分狀態（看旁邊＝工作中…）', color: 'blue', body: 'cursor', state: 'working' },
+{ zh: '只有等你（橘）、出錯（紅）有小點', color: 'pink', body: 'circle', state: 'notifying' },
+{ zh: '形狀也是上傳圖片的裁切框', color: 'teal', body: 'drop', state: 'curious' }
+];
+const eyes = [
+{ st: 'idle', zh: '圓點', ids: 'idle · listening · notifying' },
+{ st: 'working', zh: '看旁邊', ids: 'working · searching · thinking · curious · confused' },
+{ st: 'happy', zh: '開心 ^', ids: 'happy · excited · celebrate · laughing · proud · playful · shy' },
+{ st: 'surprised', zh: '睜大', ids: 'surprised · scared · alerting' },
+{ st: 'drowsy', zh: '半閉', ids: 'drowsy · bored · waking · suspicious · sad · angry' },
+{ st: 'sleeping', zh: '閉眼', ids: 'sleeping' }
+];
+return { eyes, poses, colors, shapes, rows, cast, sizes, crops, rules };
+}
+}
+</script>
+</body>
+</html>

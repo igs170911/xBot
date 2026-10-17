@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>定時任務清單</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}
+</style>
+</helmet>
+<div style="min-height: 960px; display: flex; flex-wrap: wrap; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.5">
+
+<div style="flex: 1 1 300px; max-width: 300px; border-right: 1px solid #262626; background: #111111">
+<dc-import name="Sidebar" active="none" theme="dark" hint-size="100%,960px"></dc-import>
+</div>
+
+<main style="flex: 999 1 560px; min-width: 0; min-height: 960px; box-sizing: border-box; padding: 18px 24px 20px; display: flex; flex-direction: column; gap: 14px">
+<header style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px">
+<div style="flex: 1 1 280px; min-width: 0">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1084FE" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m17 2 4 4-4 4"></path><path d="M3 11v-1a4 4 0 0 1 4-4h14"></path><path d="m7 22-4-4 4-4"></path><path d="M21 13v1a4 4 0 0 1-4 4H3"></path></svg>
+<h1 style="margin: 0; font-size: 20px; font-weight: 400; line-height: 1.4">定時任務</h1>
+</div>
+<p style="margin: 2px 0 0; font-size: 13px; color: #FCFCFC99">也可以直接在對話裡說：「每天早上 9 點整理新聞給我」。</p>
+</div>
+<a href="H02-RoutineEditor.dc.html" style="height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #FCFCFC; color: #070707"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>新增定時任務</a>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<nav aria-label="行事曆分頁" style="display: inline-flex; padding: 3px; gap: 2px; background: #111111; border-radius: 10px; flex: none">
+<a href="H01-Calendar.dc.html" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: transparent; color: #FCFCFC99"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M8 2v3"></path><path d="M16 2v3"></path><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z"></path><path d="M3 9h18"></path><path d="M8 13h.01"></path><path d="M12 13h.01"></path><path d="M16 13h.01"></path><path d="M8 17h.01"></path><path d="M12 17h.01"></path><path d="M16 17h.01"></path></svg>行事曆</a>
+<span style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: #2F2F2F; color: #FCFCFC"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m17 2 4 4-4 4"></path><path d="M3 11v-1a4 4 0 0 1 4-4h14"></path><path d="m7 22-4-4 4-4"></path><path d="M21 13v1a4 4 0 0 1-4 4H3"></path></svg>定時任務</span>
+<a href="H04-Agenda.dc.html" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: transparent; color: #FCFCFC99"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M22 12L16 12L14 15L10 15L8 12L2 12"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>等你的事 <span style="color: #FFB547">3</span></a>
+</nav>
+<span style="flex: 1"></span>
+<div role="group" aria-label="篩選" style="display: inline-flex; padding: 3px; gap: 2px; background: #111111; border-radius: 10px; flex: none">
+<button type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: #2F2F2F; color: #FCFCFC">全部 6</button>
+<button type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: transparent; color: #FCFCFC99">執行中 1</button>
+<button type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: transparent; color: #FCFCFC99">有問題 1</button>
+<button type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: transparent; color: #FCFCFC99">已暫停 1</button>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+
+<article style="background: #2F2F2F; border-radius: 18px; padding: 14px 16px; box-shadow: inset 0 0 0 1px #459FFE">
+<div style="display: flex; align-items: center; gap: 10px">
+<dc-import name="Avatar" color="orange" body="blob" state="working" dot="none" ring="#2F2F2F" size="28" hint-size="28px,28px"></dc-import>
+<h2 style="margin: 0; font-size: 16px; font-weight: 400">每日競品價格巡檢</h2>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; background: rgba(56,213,145,.14); color: #38D591">啟用中</span>
+<span style="flex: 1"></span>
+<button type="button" aria-label="立即執行" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path></svg></button>
+<button type="button" aria-label="暫停" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M15 3h3a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1Z"></path><path d="M6 3h3a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1Z"></path></svg></button>
+<a href="H02-RoutineEditor.dc.html" aria-label="編輯" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></svg></a>
+</div>
+<div style="margin: 6px 0 0 38px; font-size: 13.5px; color: #FCFCFC99">阿哲 · 每週一、三、五 上午 10:00 · 隨機延後 30 分鐘內 · 結果貼到阿哲的主要對話</div>
+<div style="margin: 2px 0 0 38px; font-size: 13.5px; color: #FCFCFC99">上次 10 月 16 日上午 10:12 · <span style="color: #38D591">已完成</span> · 下次 10 月 19 日（一）上午 10:00–10:30</div>
+</article>
+
+<article style="background: #262626; border-radius: 18px; padding: 14px 16px">
+<div style="display: flex; align-items: center; gap: 10px">
+<dc-import name="Avatar" color="pink" body="circle" state="notifying" dot="none" ring="#262626" size="28" hint-size="28px,28px"></dc-import>
+<h2 style="margin: 0; font-size: 16px; font-weight: 400">找 10 個高佣金新品</h2>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; background: rgba(16,132,254,.2); color: #7FC0FF">第 5 輪執行中…</span>
+<span style="flex: 1"></span>
+<button type="button" aria-label="停止這一輪" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M15 3h3a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1Z"></path><path d="M6 3h3a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1Z"></path></svg></button>
+<a href="H02-RoutineEditor.dc.html" aria-label="編輯" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></svg></a>
+</div>
+<div style="margin: 6px 0 0 38px; font-size: 13.5px; color: #FCFCFC99">小編 · 每 2 小時 · 從今天上午 8:00 開始</div>
+<div style="margin: 10px 0 0 38px; background: #191919; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 13.5px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 13V2l8 4-8 4"></path><path d="M20.561 10.222a9 9 0 1 1-12.55-5.29"></path><path d="M8.002 9.997a5 5 0 1 0 8.9 2.02"></path></svg><span style="color: #FCFCFC99">完成條件</span><span>找到 10 個佣金 15% 以上、近 30 天熱銷的新品</span></div>
+<div style="display: flex; align-items: center; gap: 12px">
+<div role="progressbar" aria-valuemin="0" aria-valuemax="10" aria-valuenow="4" aria-label="已跑 4 輪，共 10 輪" style="flex: 1; height: 6px; border-radius: 999px; background: #333333; overflow: hidden"><div style="width: 40%; height: 100%; background: #1084FE; border-radius: 999px"></div></div>
+<span style="font-size: 13.5px; white-space: nowrap">已跑 4 / 10 輪</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: #FCFCFC99">
+<span>目前找到 6 個，上一輪新增「折疊收納箱」「矽膠保鮮蓋」</span>
+<span>進度記在 <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #FCFCFC">/workspace/goals/a3f9c2e1.md</span></span>
+</div>
+</div>
+</article>
+
+<article style="background: #262626; border-radius: 18px; padding: 14px 16px">
+<div style="display: flex; align-items: center; gap: 10px">
+<dc-import name="Avatar" color="red" body="shield" state="idle" dot="none" ring="#262626" size="28" hint-size="28px,28px"></dc-import>
+<h2 style="margin: 0; font-size: 16px; font-weight: 400">GitHub 新 issue 分類</h2>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; background: rgba(56,213,145,.14); color: #38D591">啟用中</span>
+<span style="flex: 1"></span>
+<button type="button" aria-label="暫停" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M15 3h3a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1Z"></path><path d="M6 3h3a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1Z"></path></svg></button>
+<a href="H02-RoutineEditor.dc.html" aria-label="編輯" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></svg></a>
+</div>
+<div style="margin: 6px 0 0 38px; font-size: 13.5px; color: #FCFCFC99">抓蟲 · 只由網址觸發 · 上次 今天上午 11:40 · <span style="color: #38D591">已完成</span> · 本週 14 次</div>
+<div style="margin: 10px 0 0 38px; display: flex; align-items: center; gap: 8px">
+<span style="color: #FCFCFC99; display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"></path><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06"></path><path d="m12 6 3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8"></path></svg></span>
+<div style="flex: 1; min-width: 0; height: 34px; display: flex; align-items: center; padding: 0 12px; background: #191919; border: 1px solid #333333; border-radius: 10px; box-sizing: border-box; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #FCFCFC; white-space: nowrap; overflow: hidden">https://xbot.tail4c2e.ts.net/hooks/r/9f2c7a1e…e41a</div>
+<button type="button" style="height: 30px; padding: 0 12px; font-size: 13px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #2F2F2F; color: #FCFCFC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>複製</button>
+<button type="button" style="height: 30px; padding: 0 12px; font-size: 13px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 1px solid #333333; background: transparent; color: #FCFCFC">換新網址</button>
+</div>
+</article>
+
+<article style="background: #262626; border-radius: 18px; padding: 14px 16px">
+<div style="display: flex; align-items: center; gap: 10px">
+<dc-import name="Avatar" color="purple" body="diamond" state="sad" dot="none" ring="#262626" size="28" hint-size="28px,28px"></dc-import>
+<h2 style="margin: 0; font-size: 16px; font-weight: 400">週報資料</h2>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; background: rgba(255,86,103,.16); color: #FF8A96">有問題</span>
+<span style="flex: 1"></span>
+<button type="button" style="height: 30px; padding: 0 12px; font-size: 13px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #2F2F2F; color: #FCFCFC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>重跑一次</button>
+<a href="H02-RoutineEditor.dc.html" aria-label="編輯" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></svg></a>
+</div>
+<div style="margin: 6px 0 0 38px; font-size: 13.5px; color: #FCFCFC99">數據喵 · 每週三 下午 2:00 · 結果貼到「每週一早會」</div>
+<div style="margin: 8px 0 0 38px; display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: #FF8A96"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg><span>10 月 14 日下午 2:00 失敗：模型連線逾時，已自動重試 3 次（2／10／30 分鐘後）都沒成功。</span></div>
+</article>
+
+<article style="background: #262626; border-radius: 18px; padding: 14px 16px">
+<div style="display: flex; align-items: center; gap: 10px">
+<dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#262626" size="28" hint-size="28px,28px"></dc-import>
+<h2 style="margin: 0; font-size: 16px; font-weight: 400">每日重點</h2>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; background: rgba(56,213,145,.14); color: #38D591">啟用中</span>
+<span style="flex: 1"></span>
+<button type="button" aria-label="立即執行" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path></svg></button>
+<button type="button" aria-label="暫停" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M15 3h3a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1Z"></path><path d="M6 3h3a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1Z"></path></svg></button>
+<a href="H02-RoutineEditor.dc.html" aria-label="編輯" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></svg></a>
+</div>
+<div style="margin: 6px 0 0 38px; font-size: 13.5px; color: #FCFCFC99">小秘 · 每天 上午 9:00 · 上次 今天上午 9:00 · <span style="color: #38D591">已完成</span> · 下次 明天上午 9:00</div>
+</article>
+
+<article style="background: #262626; border-radius: 18px; padding: 14px 16px">
+<div style="display: flex; align-items: center; gap: 10px">
+<dc-import name="Avatar" color="yellow" body="hexagon" state="idle" dot="none" ring="#262626" size="28" hint-size="28px,28px"></dc-import>
+<h2 style="margin: 0; font-size: 16px; font-weight: 400; color: #FCFCFC99">月底對帳</h2>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; background: #2F2F2F; color: #FCFCFC99">已暫停</span>
+<span style="flex: 1"></span>
+<button type="button" style="height: 30px; padding: 0 12px; font-size: 13px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #2F2F2F; color: #FCFCFC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path></svg>恢復</button>
+<a href="H02-RoutineEditor.dc.html" aria-label="編輯" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></svg></a>
+</div>
+<div style="margin: 6px 0 0 38px; font-size: 13.5px; color: #FCFCFC99">帳房 · 每月 28 日 下午 6:00 · 10 月 2 日你暫停的</div>
+</article>
+</div>
+</main>
+
+<aside aria-label="執行紀錄" style="flex: 1 1 380px; max-width: 420px; min-height: 960px; box-sizing: border-box; background: #111111; border-left: 1px solid #262626; display: flex; flex-direction: column">
+<div style="height: 64px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 20px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg>
+<h2 style="margin: 0; font-size: 17px; font-weight: 400; flex: 1">執行紀錄</h2>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</div>
+<div style="padding: 0 20px 12px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #262626">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 13.5px"><dc-import name="Avatar" color="orange" body="blob" state="working" dot="none" ring="#111111" size="20" hint-size="20px,20px"></dc-import><span>每日競品價格巡檢</span><span style="flex: 1"></span><a href="H01-Calendar.dc.html" style="font-size: 13px">看所有紀錄</a></div>
+<div role="group" aria-label="篩選紀錄" style="display: inline-flex; padding: 3px; gap: 2px; background: #191919; border-radius: 10px; flex: none; align-self: flex-start">
+<button type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: #2F2F2F; color: #FCFCFC">全部 7</button>
+<button type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: transparent; color: #FCFCFC99">已完成 5</button>
+<button type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: transparent; color: #FCFCFC99">要你處理 1</button>
+<button type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: transparent; color: #FCFCFC99">補跑 1</button>
+</div>
+</div>
+<ol style="list-style: none; margin: 0; padding: 4px 20px 12px">
+<sc-for list="{{runs}}" as="r" hint-placeholder-count="7">
+<li style="display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid #262626">
+<span style="{{r.iconStyle}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.d1}}"></path><path d="{{r.d2}}"></path><path d="{{r.d3}}"></path></svg></span>
+<div style="flex: 1; min-width: 0">
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="font-size: 14px">{{r.when}}</span>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; height: 20px; font-size: 11.5px; background: #262626; color: #FCFCFC99">{{r.trigger}}</span>
+<span style="flex: 1"></span>
+<span style="font-size: 12.5px; color: #FCFCFC90">{{r.dur}}</span>
+</div>
+<div style="{{r.noteStyle}}">{{r.note}}</div>
+</div>
+</li>
+</sc-for>
+</ol>
+<div style="padding: 0 20px"><button type="button" style="height: 30px; padding: 0 12px; font-size: 13px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 1px solid #333333; background: transparent; color: #FCFCFC; width: 100%">載入更早的紀錄</button></div>
+<span style="flex: 1"></span>
+<div style="padding: 12px 20px 16px; font-size: 12.5px; color: #FCFCFC90; display: flex; align-items: center; gap: 8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>每次執行都是一則新的對話，點紀錄就能打開。</div>
+</aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const ICON = {
+      ok: ['M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0', 'm16 9-5.5 5.5L8 12', ''],
+      warn: ['M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0', 'M12 8L12 12', 'M12 16L12.01 16'],
+      redo: ['M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8', 'M3 3v5h5', '']
+    };
+    const C = { ok: '#38D591', warn: '#FFB547', redo: '#7FC0FF' };
+    const run = (k, when, trigger, dur, note) => ({
+      when, trigger, dur, note, d1: ICON[k][0], d2: ICON[k][1], d3: ICON[k][2],
+      iconStyle: 'display: flex; padding-top: 2px; flex: none; color: ' + C[k],
+      noteStyle: 'margin-top: 2px; font-size: 13px; line-height: 1.55; color: ' + (k === 'warn' ? '#FFB547' : '#FCFCFC99')
+    });
+    return {
+      runs: [
+        run('ok', '10/16（五）上午 10:12', '排程', '4 分 12 秒', '2 項降價超過 5%：經典帆布包 −8%、旅行收納袋 −6%，已附連結。'),
+        run('ok', '10/14（三）上午 10:27', '排程', '3 分 40 秒', '三家價格都沒變。'),
+        run('ok', '10/13（二）下午 2:05', '手動', '5 分 02 秒', '保溫隨行杯降價 5%，其他沒變。'),
+        run('warn', '10/12（一）上午 10:03', '排程', '停在第 3 步', '蝦皮要求簡訊驗證，等你接手電腦；10 分鐘沒回應，這次沒做完。'),
+        run('ok', '10/09（五）上午 10:18', '排程', '4 分 50 秒', '新增一家競品「好物選品社」，已列入比較。'),
+        run('redo', '10/07（三）上午 11:02', '補跑', '3 分 58 秒', '主機在 10:00 休眠，恢復後合併補跑一次。'),
+        run('ok', '10/05（一）上午 10:21', '排程', '4 分 05 秒', '經典帆布包回到原價。')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

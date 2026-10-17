@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>輸入框所有狀態</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+input::placeholder{color:#FCFCFC90}
+button{font:inherit;cursor:pointer}
+@keyframes xpulse{0%,100%{opacity:1}50%{opacity:.35}}
+</style>
+</helmet>
+<div style="width: 900px; height: 1400px; box-sizing: border-box; padding: 24px 28px; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.6; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start">
+
+<div style="display: flex; flex-direction: column; gap: 18px; min-width: 0">
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">1 · 空白：麥克風與語音通話</span>
+<div style="height: 52px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 2px; padding: 0 9px 0 8px">
+<button type="button" aria-label="加入檔案或更多" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+
+<input type="text" aria-label="交代小秘" placeholder="交代小秘…" style="flex: 1; min-width: 0; height: 36px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none; padding: 0 6px">
+<button type="button" aria-label="語音輸入" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 19v3"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><path d="M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z"></path></svg></button>
+
+<button type="button" aria-label="語音通話" style="width: 34px; height: 34px; flex: none; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 10v3"></path><path d="M6 6v11"></path><path d="M10 3v18"></path><path d="M14 8v7"></path><path d="M18 5v13"></path><path d="M22 10v3"></path></svg></button>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">2 · 輸入中：出現送出鈕</span>
+<div style="height: 52px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 2px; padding: 0 9px 0 8px">
+<button type="button" aria-label="加入檔案或更多" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+
+<input type="text" aria-label="交代小秘" value="幫我把三家的價格整理成表格" style="flex: 1; min-width: 0; height: 36px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none; padding: 0 6px">
+<button type="button" aria-label="語音輸入" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 19v3"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><path d="M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z"></path></svg></button>
+
+<button type="button" aria-label="送出" style="width: 34px; height: 34px; flex: none; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">3 · 工作中：補充進目前的工作，或停止</span>
+<div style="height: 52px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 2px; padding: 0 9px 0 8px">
+<button type="button" aria-label="加入檔案或更多" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+
+<input type="text" aria-label="補充說明給小秘" placeholder="補充說明給小秘…" style="flex: 1; min-width: 0; height: 36px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none; padding: 0 6px">
+<button type="button" aria-label="語音輸入" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 19v3"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><path d="M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z"></path></svg></button>
+
+<button type="button" aria-label="停止小秘" style="width: 34px; height: 34px; flex: none; border: 0; border-radius: 999px; background: #FCFCFC; display: flex; align-items: center; justify-content: center"><span style="width: 11px; height: 11px; border-radius: 2px; background: #070707"></span></button>
+
+</div>
+<span style="align-self: center; font-size: 12px; color: #FCFCFC90">小秘工作中 · 送出的話會補充進目前的工作</span>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">4 · 在別的對話串忙：訊息會排隊</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #FCFCFC99; padding-left: 16px"><span style="display: flex"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="M12 6v6l4 2"></path></svg></span>小秘正在「新品上架專案」工作，這則會排在後面</span>
+<div style="height: 52px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 2px; padding: 0 9px 0 8px">
+<button type="button" aria-label="加入檔案或更多" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+
+<input type="text" aria-label="交代小秘" value="做完幫我看一下日本賣場" style="flex: 1; min-width: 0; height: 36px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none; padding: 0 6px">
+<button type="button" aria-label="排隊送出" style="height: 34px; flex: none; padding: 0 12px 0 10px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 13.5px; display: flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M16 5H3"></path><path d="M11 12H3"></path><path d="M16 19H3"></path><path d="M18 9v6"></path><path d="M21 12h-6"></path></svg>排隊</button>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">5 · 回答卡片：直接打字回答</span>
+<div style="box-sizing: border-box; border-radius: 24px; background: #2F2F2F; display: flex; flex-direction: column; padding: 8px 9px 8px 8px; gap: 4px">
+<span style="align-self: flex-start; display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 6px 0 10px; border-radius: 999px; background: #262626; font-size: 13px; color: #FCFCFCcc; max-width: 100%; box-sizing: border-box"><span style="display: flex; color: #7FC0FF"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"></path></svg></span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">正在回答：要比較哪幾家賣場？</span><button type="button" aria-label="取消回答" style="width: 22px; height: 22px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; padding: 0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></span>
+<div style="display: flex; align-items: center; gap: 2px">
+<button type="button" aria-label="加入檔案或更多" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+
+<input type="text" aria-label="你的答案" value="好物生活館、簡單選物、日日家居" style="flex: 1; min-width: 0; height: 36px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none; padding: 0 6px">
+<button type="button" aria-label="送出" style="width: 34px; height: 34px; flex: none; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+
+</div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">6 · 被卡片擋住：先處理上面的核准</span>
+<div style="height: 52px; box-sizing: border-box; border-radius: 999px; background: #191919; border: 1px solid #333333; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 18px">
+<span style="display: flex; color: #FFB547"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path></svg></span>
+<span style="flex: 1; min-width: 0; font-size: 14px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">帳房在等你允許付款</span>
+<button type="button" style="height: 32px; flex: none; padding: 0 14px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 13.5px; display: flex; align-items: center; gap: 4px">跳到卡片<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">7 · 回覆某一則訊息</span>
+<div style="box-sizing: border-box; border-radius: 24px; background: #2F2F2F; display: flex; flex-direction: column; padding: 8px 9px 8px 8px; gap: 4px">
+<div style="display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border-radius: 16px; background: #262626">
+<span style="display: flex; color: #FCFCFC99"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"></path><path d="m10 8-3 3 3 3"></path><path d="M17 14v-1a2 2 0 0 0-2-2H7"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35"><span style="font-size: 12px; color: #FCFCFC99">回覆小秘</span><span style="font-size: 13px; color: #FCFCFCcc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">三家都比完了。12 項主力商品裡有 3 項比三家都貴…</span></span>
+<button type="button" aria-label="取消回覆" style="width: 28px; height: 28px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</div>
+<div style="display: flex; align-items: center; gap: 2px">
+<button type="button" aria-label="加入檔案或更多" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+
+<input type="text" aria-label="回覆小秘" value="帆布包先不要動，其他兩項照建議" style="flex: 1; min-width: 0; height: 36px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none; padding: 0 6px">
+<button type="button" aria-label="送出" style="width: 34px; height: 34px; flex: none; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+
+</div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">8 · 附件：圖片、試算表、PDF</span>
+<div style="box-sizing: border-box; border-radius: 24px; background: #2F2F2F; display: flex; flex-direction: column; padding: 12px 9px 8px 8px; gap: 8px">
+<div style="display: flex; gap: 10px; padding: 0 6px">
+<figure style="margin: 0; width: 64px; display: flex; flex-direction: column; gap: 4px; position: relative">
+<span role="img" aria-label="商品照片" style="width: 64px; height: 64px; border-radius: 10px; background: linear-gradient(160deg, #EADFD1, #CDBBA6); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px; box-sizing: border-box; overflow: hidden"><span style="display: flex; flex-direction: column; align-items: center"><span style="width: 12px; height: 6px; border-radius: 3px 3px 0 0; background: #1C2F48"></span><span style="width: 22px; height: 40px; border-radius: 6px 6px 7px 7px; background: linear-gradient(90deg, #2F4D73, #4C6E99 60%, #2F4D73)"></span></span></span>
+<figcaption style="font-size: 11.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">IMG_2041.jpg</figcaption>
+<button type="button" aria-label="移除 IMG_2041.jpg" style="position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border: 2px solid #2F2F2F; border-radius: 999px; background: #070707; color: #FCFCFC; display: flex; align-items: center; justify-content: center; padding: 0"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</figure>
+<figure style="margin: 0; width: 64px; display: flex; flex-direction: column; gap: 4px; position: relative">
+<span role="img" aria-label="試算表" style="width: 64px; height: 64px; border-radius: 10px; background: #F4F6F4; padding: 7px; box-sizing: border-box; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 7px; gap: 3px">
+<span style="grid-column: span 3; background: #1F8F55; border-radius: 1px"></span><span style="background: #D3DAD5"></span><span style="background: #D3DAD5"></span><span style="background: #D3DAD5"></span><span style="background: #D3DAD5"></span><span style="background: #F3C9A6"></span><span style="background: #D3DAD5"></span><span style="background: #D3DAD5"></span><span style="background: #D3DAD5"></span><span style="background: #D3DAD5"></span><span style="background: #D3DAD5"></span><span style="background: #D3DAD5"></span><span style="background: #F3C9A6"></span>
+</span>
+<figcaption style="font-size: 11.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">10月訂單.xlsx</figcaption>
+<button type="button" aria-label="移除 10月訂單.xlsx" style="position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border: 2px solid #2F2F2F; border-radius: 999px; background: #070707; color: #FCFCFC; display: flex; align-items: center; justify-content: center; padding: 0"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</figure>
+<figure style="margin: 0; width: 64px; display: flex; flex-direction: column; gap: 4px; position: relative">
+<span role="img" aria-label="PDF 文件" style="width: 64px; height: 64px; border-radius: 10px; background: #FAFAF8; padding: 8px 9px; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; position: relative">
+<span style="height: 4px; width: 75%; background: #3A3A3A; border-radius: 1px"></span><span style="height: 2px; background: #BDBDB8; border-radius: 1px"></span><span style="height: 2px; background: #BDBDB8; border-radius: 1px"></span><span style="height: 2px; width: 85%; background: #BDBDB8; border-radius: 1px"></span><span style="height: 2px; background: #BDBDB8; border-radius: 1px"></span><span style="height: 2px; width: 55%; background: #BDBDB8; border-radius: 1px"></span>
+<span style="position: absolute; left: 6px; bottom: 5px; padding: 0 4px; border-radius: 3px; background: #E5383B; color: #FFFFFF; font-size: 8.5px; line-height: 13px">PDF</span>
+</span>
+<figcaption style="font-size: 11.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">報價單.pdf</figcaption>
+<button type="button" aria-label="移除 報價單.pdf" style="position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border: 2px solid #2F2F2F; border-radius: 999px; background: #070707; color: #FCFCFC; display: flex; align-items: center; justify-content: center; padding: 0"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</figure>
+<span style="align-self: center; margin-left: auto; font-size: 12px; color: #FCFCFC90">3 個 · 4.2 MB</span>
+</div>
+<div style="display: flex; align-items: center; gap: 2px">
+<button type="button" aria-label="加入檔案或更多" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+
+<input type="text" aria-label="交代小秘" value="照這三個檔案整理比較表" style="flex: 1; min-width: 0; height: 36px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none; padding: 0 6px">
+<button type="button" aria-label="送出" style="width: 34px; height: 34px; flex: none; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+
+</div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">9 · 聽寫中</span>
+<span style="font-size: 13.5px; color: #FCFCFC99; padding: 0 16px">「幫我看一下日本賣場的價格，順便…」</span>
+<div style="height: 52px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 10px; padding: 0 9px 0 8px">
+<button type="button" aria-label="取消聽寫" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+<span style="width: 8px; height: 8px; flex: none; border-radius: 50%; background: #FF5667; animation: xpulse 1.2s ease-in-out infinite"></span>
+<span aria-hidden="true" style="flex: 1; min-width: 0; height: 28px; display: flex; align-items: center; gap: 2px; overflow: hidden">
+<sc-for list="{{wave}}" as="h" hint-placeholder-count="40"><span style="width: 3px; flex: none; height: {{h}}px; border-radius: 2px; background: #FCFCFCcc"></span></sc-for>
+</span>
+<span style="font-size: 13px; color: #FCFCFC99">0:07</span>
+<button type="button" aria-label="完成聽寫" style="width: 34px; height: 34px; flex: none; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></button>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">10 · 排隊中的訊息</span>
+<div style="background: #191919; border-radius: 16px; padding: 8px; display: flex; flex-direction: column; gap: 2px">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #FCFCFC99; padding: 2px 8px 4px"><span style="display: flex"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="M12 6v6l4 2"></path></svg></span>排隊中 2 則 · 小秘做完目前的工作就會讀</span>
+<sc-for list="{{queued}}" as="q" hint-placeholder-count="2">
+<div style="display: flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 4px 0 10px; border-radius: 10px; background: #262626">
+<span style="flex: 1; min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{q}}</span>
+<button type="button" aria-label="現在送出" style="height: 28px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: #7FC0FF; font-size: 12.5px">現在送</button>
+<button type="button" aria-label="編輯" style="width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></svg></button>
+<button type="button" aria-label="刪除" style="width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+</div>
+</sc-for>
+</div>
+<div style="height: 52px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 2px; padding: 0 9px 0 8px">
+<button type="button" aria-label="加入檔案或更多" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+
+<input type="text" aria-label="補充說明給小秘" placeholder="補充說明給小秘…" style="flex: 1; min-width: 0; height: 36px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none; padding: 0 6px">
+<button type="button" aria-label="停止小秘" style="width: 34px; height: 34px; flex: none; border: 0; border-radius: 999px; background: #FCFCFC; display: flex; align-items: center; justify-content: center"><span style="width: 11px; height: 11px; border-radius: 2px; background: #070707"></span></button>
+
+</div>
+</section>
+
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 18px; min-width: 0">
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">11 · ＋ 選單</span>
+<div role="menu" aria-label="加入" style="width: 264px; background: #262626; border-radius: 12px; padding: 6px; box-shadow: 0 12px 32px rgba(0,0,0,.5); display: flex; flex-direction: column">
+<sc-for list="{{plusMenu}}" as="m" hint-placeholder-count="5">
+<button type="button" role="menuitem" style="display: flex; align-items: center; gap: 12px; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: {{m.bg}}; color: #FCFCFC; font-size: 14px; text-align: left"><span style="display: flex; color: #FCFCFC99"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><sc-for list="{{m.icon}}" as="d" hint-placeholder-count="2"><path d="{{d}}"></path></sc-for></svg></span>{{m.t}}</button>
+</sc-for>
+</div>
+<div style="height: 52px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 2px; padding: 0 9px 0 8px">
+<button type="button" aria-label="關閉選單" aria-expanded="true" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: #3D3D3D; color: #FCFCFC; display: flex; align-items: center; justify-content: center; transform: rotate(45deg)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+<input type="text" aria-label="交代小秘" placeholder="交代小秘…" style="flex: 1; min-width: 0; height: 36px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none; padding: 0 6px">
+<button type="button" aria-label="語音輸入" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 19v3"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><path d="M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z"></path></svg></button>
+
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">12 · 打 / 叫出技能</span>
+<div role="listbox" aria-label="技能" style="background: #262626; border-radius: 12px; padding: 6px; box-shadow: 0 12px 32px rgba(0,0,0,.5); display: flex; flex-direction: column">
+<span style="font-size: 12px; color: #FCFCFC90; padding: 4px 10px">小秘的技能</span>
+<sc-for list="{{skills}}" as="k" hint-placeholder-count="4">
+<button type="button" role="option" aria-selected="{{k.sel}}" style="display: flex; align-items: center; gap: 12px; height: 38px; padding: 0 10px; border: 0; border-radius: 8px; background: {{k.bg}}; color: #FCFCFC; font-size: 14px; text-align: left"><span style="display: flex; color: #FCFCFC99"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg></span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; min-width: 72px">{{k.c}}</span><span style="flex: 1; min-width: 0; color: #FCFCFC99; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{k.d}}</span></button>
+</sc-for>
+</div>
+<div style="height: 52px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 2px; padding: 0 9px 0 8px">
+<button type="button" aria-label="加入檔案或更多" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+
+<input type="text" aria-label="交代小秘" value="/" style="flex: 1; min-width: 0; height: 36px; border: 0; background: transparent; color: #FCFCFC; font-family: 'JetBrains Mono', monospace; font-size: 15px; outline: none; padding: 0 6px">
+<button type="button" aria-label="送出" style="width: 34px; height: 34px; flex: none; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">13 · 打 @ 找隊友</span>
+<div role="listbox" aria-label="提及" style="background: #262626; border-radius: 12px; padding: 6px; box-shadow: 0 12px 32px rgba(0,0,0,.5); display: flex; flex-direction: column">
+<button type="button" role="option" aria-selected="true" style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: #2F2F2F; color: #FCFCFC; font-size: 14px; text-align: left">
+<dc-import name="Avatar" color="orange" body="blob" state="working" dot="none" ring="#2F2F2F" size="28" hint-size="28px,28px"></dc-import>
+<span style="flex: 1">阿哲</span><span style="font-size: 12.5px; color: #FCFCFC99">選品研究員 · 工作中</span></button>
+<button type="button" role="option" aria-selected="false" style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC; font-size: 14px; text-align: left">
+<dc-import name="Avatar" color="green" body="squircle" state="idle" dot="none" ring="#262626" size="28" hint-size="28px,28px"></dc-import>
+<span style="flex: 1">阿凱</span><span style="font-size: 12.5px; color: #FCFCFC99">業務開發 · 待命</span></button>
+</div>
+<div style="height: 52px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 2px; padding: 0 9px 0 8px">
+<button type="button" aria-label="加入檔案或更多" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+
+<input type="text" aria-label="交代小秘" value="請 @阿" style="flex: 1; min-width: 0; height: 36px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none; padding: 0 6px">
+<button type="button" aria-label="送出" style="width: 34px; height: 34px; flex: none; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+
+</div>
+</section>
+
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">14 · 權限膠囊：這個對話串可以自己做多少</span>
+<div role="listbox" aria-label="權限" style="background: #262626; border-radius: 12px; padding: 6px; box-shadow: 0 12px 32px rgba(0,0,0,.5); display: flex; flex-direction: column">
+<sc-for list="{{perms}}" as="p" hint-placeholder-count="4">
+<button type="button" role="option" aria-selected="{{p.on}}" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 4px 10px; border: 0; border-radius: 8px; background: {{p.bg}}; color: #FCFCFC; text-align: left">
+<span style="flex: 1; display: flex; flex-direction: column; line-height: 1.35"><span style="font-size: 14px">{{p.t}}</span><span style="font-size: 12px; color: #FCFCFC99">{{p.d}}</span></span>
+<sc-if value="{{p.on}}" hint-placeholder-val="{{ false }}"><span style="display: flex; color: #1084FE"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></span></sc-if>
+</button>
+</sc-for>
+</div>
+<div style="height: 52px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 4px; padding: 0 9px 0 8px">
+<button type="button" aria-label="加入檔案或更多" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+
+<button type="button" aria-haspopup="listbox" aria-expanded="true" style="height: 32px; flex: none; padding: 0 8px 0 10px; border: 0; border-radius: 999px; background: #3D3D3D; color: #FCFCFC; font-size: 13px; display: flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>先問我<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m18 15-6-6-6 6"></path></svg></button>
+<button type="button" aria-haspopup="listbox" style="height: 32px; flex: none; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; font-size: 13px; display: flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M8 21L16 21"></path><path d="M12 17L12 21"></path></svg>地端</button>
+<input type="text" aria-label="交代小秘" placeholder="交代小秘…" style="flex: 1; min-width: 0; height: 36px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none; padding: 0 4px">
+<button type="button" aria-label="語音輸入" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 19v3"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><path d="M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z"></path></svg></button>
+
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">15 · 在哪裡跑：只改這個對話串</span>
+<div role="listbox" aria-label="在哪裡跑" style="background: #262626; border-radius: 12px; padding: 6px; box-shadow: 0 12px 32px rgba(0,0,0,.5); display: flex; flex-direction: column">
+<sc-for list="{{wheres}}" as="w" hint-placeholder-count="4">
+<button type="button" role="option" aria-selected="{{w.on}}" style="display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: {{w.bg}}; color: #FCFCFC; font-size: 14px; text-align: left"><span style="display: flex; color: #FCFCFC99"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><sc-for list="{{w.icon}}" as="d" hint-placeholder-count="2"><path d="{{d}}"></path></sc-for></svg></span><span style="flex: 1">{{w.t}}</span><span style="font-size: 12px; color: #FCFCFC90">{{w.d}}</span><sc-if value="{{w.on}}" hint-placeholder-val="{{ false }}"><span style="display: flex; color: #1084FE"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></span></sc-if></button>
+</sc-for>
+</div>
+<div style="height: 52px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 4px; padding: 0 9px 0 8px">
+<button type="button" aria-label="加入檔案或更多" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+
+<button type="button" aria-haspopup="listbox" style="height: 32px; flex: none; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; font-size: 13px; display: flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>先問我</button>
+<button type="button" aria-haspopup="listbox" aria-expanded="true" style="height: 32px; flex: none; padding: 0 8px 0 10px; border: 0; border-radius: 999px; background: #3D3D3D; color: #FCFCFC; font-size: 13px; display: flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M8 21L16 21"></path><path d="M12 17L12 21"></path></svg>地端<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m18 15-6-6-6 6"></path></svg></button>
+<input type="text" aria-label="交代小秘" placeholder="交代小秘…" style="flex: 1; min-width: 0; height: 36px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none; padding: 0 4px">
+<button type="button" aria-label="語音輸入" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 19v3"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><path d="M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z"></path></svg></button>
+
+</div>
+</section>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":900,"height":1400}}'>
+class Component extends DCLogic {
+renderVals() {
+const IC = {"paperclip": ["m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"], "folder": ["M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"], "at-sign": ["M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0", "M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"], "hand": ["M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2", "M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2", "M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8", "M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"], "clock": ["M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0", "M12 6v6l4 2"], "monitor": ["M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z", "M8 21L16 21", "M12 17L12 21"], "cloud": ["M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"], "globe": ["M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0", "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20", "M2 12h20"], "power": ["M12 2v10", "M18.4 6.6a9 9 0 1 1-12.77.04"]};
+const wave = [];
+for (let i = 0; i < 44; i++) wave.push(Math.round(5 + Math.abs(Math.sin(i * 0.9) * Math.cos(i * 0.37)) * 20));
+return {
+wave,
+plusMenu: [['paperclip', '上傳檔案或圖片'], ['folder', '從小秘的電腦選檔案'], ['at-sign', '交辦給其他 Bot'], ['hand', '教它一件事'], ['clock', '新增定時任務']].map(([i, t], n) => ({ t, icon: IC[i], bg: n === 0 ? '#2F2F2F' : 'transparent' })),
+skills: [['/比價', '蝦皮三家比價，整理成表格'], ['/週報', '整理這週的銷售與廣告'], ['/setup', '用聊天設定小秘'], ['/停止', '停止目前的工作']].map(([c, d], n) => ({ c, d, sel: n === 0, bg: n === 0 ? '#2F2F2F' : 'transparent' })),
+queued: ['做完幫我看一下日本賣場', '表格多加一欄「價差 %」'],
+perms: [['先問我（預設）', '花錢、對外發送、刪除前都先問你'], ['一般的事自己做', '只有你能決定的事才問'], ['放手做', '付款、簽約、上架仍然一定問你'], ['只能看', '不改任何東西、不對外發送']].map(([t, d], n) => ({ t, d, on: n === 0, bg: n === 0 ? '#2F2F2F' : 'transparent' })),
+wheres: [['monitor', '地端電腦', '這台主機 · 已就緒'], ['cloud', '雲端電腦', '約 2 秒開好'], ['globe', '只用瀏覽器', '不開整台電腦'], ['power', '關閉', '只聊天和查資料']].map(([i, t, d], n) => ({ t, d, icon: IC[i], on: n === 0, bg: n === 0 ? '#2F2F2F' : 'transparent' }))
+};
+}
+}
+</script>
+</body>
+</html>

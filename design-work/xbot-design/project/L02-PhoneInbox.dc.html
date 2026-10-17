@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>手機：待我處理</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A8D4FF}
+button{font:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.45; display: flex; flex-direction: column">
+<div aria-hidden="true" style="height: 47px; flex: none"></div>
+
+<header style="flex: none; height: 60px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 20px">
+<div style="flex: 1; min-width: 0">
+<h1 style="margin: 0; font-size: 22px; font-weight: 400; line-height: 1.25">待我處理</h1>
+<p style="margin: 2px 0 0; font-size: 13px; color: #FCFCFC99">{{countLine}}</p>
+</div>
+<span style="height: 24px; display: inline-flex; align-items: center; gap: 4px; padding: 0 9px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12px; white-space: nowrap; flex: none"><span style="display: flex"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg></span>簡化：3 步 → 1 步</span>
+<button type="button" aria-label="已處理的紀錄" style="width: 44px; height: 44px; border: 0; border-radius: 12px; background: transparent; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="M12 6v6l4 2"></path></svg></button>
+</header>
+
+<div style="flex: 1; min-height: 0; overflow-y: auto; padding: 4px 12px 12px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px">
+
+<article aria-label="帳房 待你核定" style="flex: none; background: #262626; border-radius: 18px; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px">
+<dc-import name="Avatar" color="yellow" body="hexagon" state="{{payState}}" dot="{{payDot}}" ring="#262626" size="34" hint-size="34px,34px"></dc-import>
+<div style="flex: 1; min-width: 0">
+<div style="display: flex; align-items: center; gap: 8px"><span style="font-size: 15.5px">帳房想付款</span><span style="font-size: 12px; line-height: 20px; padding: 0 8px; border-radius: 999px; background: {{payTagBg}}; color: {{payTagInk}}">{{payTag}}</span></div>
+<div style="font-size: 13px; color: #FCFCFC99">小秘交辦的工作 · 第 2/6 棒 · 3 分鐘前</div>
+</div>
+</div>
+<div style="background: #191919; border-radius: 10px; padding: 10px 12px; font-size: 15px">付款 NT$1,280 給晨光廣告（10 月廣告費）</div>
+<sc-if value="{{payOpen}}" hint-placeholder-val="{{ true }}">
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<button type="button" onClick="{{allowPay}}" style="height: 44px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 15px; cursor: pointer">允許這次</button>
+<button type="button" onClick="{{rejectPay}}" style="height: 44px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 15px; cursor: pointer">退回</button>
+</div>
+</sc-if>
+<sc-if value="{{payDone}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="display: flex; align-items: center; gap: 8px; height: 44px; font-size: 14.5px; color: {{payColor}}">
+<span style="display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="m16 9-5.5 5.5L8 12"></path></svg></span>
+<span style="flex: 1">{{payResult}}</span>
+<button type="button" onClick="{{undoPay}}" style="height: 44px; padding: 0 14px; border: 1px solid #333333; border-radius: 999px; background: transparent; color: #FCFCFC; font-size: 14px; cursor: pointer">復原</button>
+</div>
+</sc-if>
+</article>
+
+<article aria-label="小編 需要你接手電腦" style="flex: none; background: #262626; border-radius: 18px; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px">
+<dc-import name="Avatar" color="pink" body="circle" state="notifying" dot="waiting" ring="#262626" size="34" hint-size="34px,34px"></dc-import>
+<div style="flex: 1; min-width: 0">
+<div style="display: flex; align-items: center; gap: 8px"><span style="font-size: 15.5px">小編需要你的手</span><span style="font-size: 12px; line-height: 20px; padding: 0 8px; border-radius: 999px; background: rgba(255,152,0,.16); color: #FFB547">等你回覆</span></div>
+<div style="font-size: 13px; color: #FCFCFC99">發新品貼文 · 社群後台要簡訊驗證碼</div>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<a href="L04-PhoneComputer.dc.html" style="height: 44px; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M8 21L16 21"></path><path d="M12 17L12 21"></path></svg>接手電腦</a>
+<a href="L03-PhoneChat.dc.html" style="height: 44px; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 15px; display: flex; align-items: center; justify-content: center">看對話</a>
+</div>
+</article>
+
+<article aria-label="小秘 有問題問你" style="flex: none; background: #262626; border-radius: 18px; padding: 14px 16px 6px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; gap: 10px">
+<dc-import name="Avatar" color="blue" body="cursor" state="{{askState}}" dot="none" ring="#262626" size="34" hint-size="34px,34px"></dc-import>
+<div style="flex: 1; min-width: 0">
+<div style="font-size: 15.5px">要不要也比較日本賣場？</div>
+<div style="font-size: 13px; color: #FCFCFC99">小秘 · 比價三家競品 · 選接近的，之後都能改</div>
+</div>
+</div>
+<sc-if value="{{askOpen}}" hint-placeholder-val="{{ true }}">
+<div role="group" aria-label="選項" style="display: flex; flex-direction: column">
+<sc-for list="{{opts}}" as="o" hint-placeholder-count="2">
+<button type="button" onClick="{{o.pick}}" style="height: 44px; display: flex; align-items: center; gap: 12px; padding: 0; border: 0; border-top: 1px solid #333333; background: transparent; color: #FCFCFC; font-size: 15px; text-align: left; cursor: pointer">
+<span style="width: 20px; height: 20px; border-radius: 5px; background: #333333; color: #FCFCFC99; font-size: 12px; line-height: 20px; text-align: center; flex: none">{{o.k}}</span>{{o.label}}</button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{askDone}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="display: flex; align-items: center; gap: 8px; height: 44px; border-top: 1px solid #333333; font-size: 14.5px; color: #38D591">
+<span style="display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="m16 9-5.5 5.5L8 12"></path></svg></span><span style="flex: 1">已回覆：{{askAnswer}}</span>
+<button type="button" onClick="{{undoAsk}}" style="height: 44px; padding: 0 4px; border: 0; background: transparent; color: #7FC0FF; font-size: 14px; cursor: pointer">改答案</button>
+</div>
+</sc-if>
+</article>
+
+<div style="flex: none; background: #262626; border-radius: 18px; padding: 4px 0">
+<a href="L03-PhoneChat.dc.html" style="height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 16px; color: #FCFCFC">
+<dc-import name="Avatar" color="orange" body="blob" state="curious" dot="none" ring="#262626" size="30" hint-size="30px,30px"></dc-import>
+<span style="flex: 1; min-width: 0"><span style="display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">提案：經典帆布包定價 NT$1,020</span><span style="display: block; font-size: 13px; color: #FCFCFC99">阿哲 · 附三家比價表</span></span>
+<span style="color: #FCFCFC90; display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m9 18 6-6-6-6"></path></svg></span>
+</a>
+<a href="L05-PhoneRoom.dc.html" style="height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 16px; color: #FCFCFC; border-top: 1px solid #333333; margin-left: 0">
+<dc-import name="Avatar" color="blue" body="cursor" state="thinking" dot="none" ring="#262626" size="30" hint-size="30px,30px"></dc-import>
+<span style="flex: 1; min-width: 0"><span style="display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">討論：週一早會改到 10 點？</span><span style="display: block; font-size: 13px; color: #FCFCFC99">小秘 · 每週一早會 · 2 則留言</span></span>
+<span style="color: #FCFCFC90; display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m9 18 6-6-6-6"></path></svg></span>
+</a>
+</div>
+
+</div>
+
+<nav aria-label="主要分頁" style="flex: none; background: #111111; border-top: 1px solid #262626; padding: 0 8px 34px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+<a href="L02-PhoneInbox.dc.html" aria-current="page" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M22 12L16 12L14 15L10 15L8 12L2 12"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg><span aria-label="{{badge}} 件" style="position: absolute; left: 15px; top: -5px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 999px; background: #FF9800; color: #1A1100; font-size: 11.5px; line-height: 18px; text-align: center; border: 2px solid #111111">{{badge}}</span></span>待我處理</a>
+<a href="L01-PhoneList.dc.html" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC90; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"></path></svg></span>對話</a>
+<a href="E03-Office.dc.html" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC90; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M8 21L16 21"></path><path d="M12 17L12 21"></path></svg></span>辦公室</a>
+<a href="H01-Calendar.dc.html" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC90; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M8 2v3"></path><path d="M16 2v3"></path><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z"></path><path d="M3 9h18"></path></svg></span>行事曆</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const st = this.state || {};
+const pay = st.pay || 'open';
+const ans = st.ans || '';
+const left = 5 - (pay === 'open' ? 0 : 1) - (ans ? 1 : 0);
+const opts = [
+{ k: 'A', label: '要，一起比較' },
+{ k: 'B', label: '不用，台灣就好' }
+].map((o) => Object.assign({}, o, { pick: () => this.setState({ ans: o.label }) }));
+return {
+badge: String(left),
+countLine: left + ' 件需要你，其他 Bot 照常工作',
+payOpen: pay === 'open',
+payTag: pay === 'open' ? '待你核定' : '已處理',
+payTagBg: pay === 'open' ? 'rgba(255,152,0,.16)' : '#2F2F2F',
+payTagInk: pay === 'open' ? '#FFB547' : '#FCFCFC99',
+payDone: pay !== 'open',
+payState: pay === 'allowed' ? 'happy' : (pay === 'rejected' ? 'sad' : 'notifying'),
+payDot: pay === 'open' ? 'waiting' : 'none',
+payResult: pay === 'allowed' ? '已允許這次 · 帳房繼續付款' : '已退回 · 帳房會告訴小秘',
+payColor: pay === 'allowed' ? '#38D591' : '#FCFCFC99',
+allowPay: () => this.setState({ pay: 'allowed' }),
+rejectPay: () => this.setState({ pay: 'rejected' }),
+undoPay: () => this.setState({ pay: 'open' }),
+askOpen: !ans,
+askDone: !!ans,
+askAnswer: ans,
+askState: ans ? 'happy' : 'curious',
+undoAsk: () => this.setState({ ans: '' }),
+opts
+};
+}
+}
+</script>
+</body>
+</html>

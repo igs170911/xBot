@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>XBot 待我處理</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3,legend{font-weight:400}
+a{color:#7FC0FF;text-decoration:none}
+input::placeholder{color:#FCFCFC90}
+button:hover{filter:brightness(1.08)}
+</style>
+</helmet>
+<div style="min-height: 960px; display: flex; flex-wrap: wrap; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.55">
+
+<div style="flex: 1 1 300px; max-width: 100%; border-right: 1px solid #1C1C1C; background: #111111">
+<dc-import name="Sidebar" active="home" hint-size="100%,960px"></dc-import>
+</div>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 16px 32px 10px">
+<div style="max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; padding-bottom: 6px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap"><h1 style="margin: 0; font-size: 24px; line-height: 1.35">{{headline}}</h1><span style="display: flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12.5px; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.sparkles}}"></path></svg>簡化：核定 3 步 → 1 步</span></div>
+<span style="font-size: 13.5px; color: #FCFCFC99">10 月 17 日（六）· 2 個 Bot 工作中 · 今天完成 4 件 · 其他事 Bot 會自己處理</span>
+</div>
+<a href="J04-Usage.dc.html" style="display: flex; flex-direction: column; gap: 6px; width: 200px; color: #FCFCFC">
+<span style="display: flex; justify-content: space-between; font-size: 12.5px; color: #FCFCFC99"><span>本月花費</span><span>$38 / $100</span></span>
+<span style="height: 4px; border-radius: 999px; background: #333333; display: block"><span style="display: block; width: 38%; height: 4px; border-radius: 999px; background: #1084FE"></span></span>
+</a>
+</header>
+
+<article style="background: #262626; border-radius: 18px; padding: 12px 18px 14px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 12px">
+<dc-import name="Avatar" color="yellow" body="hexagon" state="{{ap.state}}" dot="{{ap.dot}}" ring="#262626" size="32" hint-size="32px,32px"></dc-import>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<span style="display: flex; align-items: center; gap: 8px"><span style="font-size: 15px">帳房</span><span style="font-size: 12px; color: {{ap.chipFg}}; background: {{ap.chipBg}}; border-radius: 999px; padding: 1px 8px">{{ap.chip}}</span></span>
+<span style="font-size: 13px; color: #FCFCFC99">小秘交辦的工作 · 第 2/6 棒 · 3 分鐘前</span>
+</div>
+<a href="C08-Cards-Approval.dc.html" style="font-size: 13.5px">打開對話</a>
+</div>
+<p style="margin: 0">付款 NT$1,280 給晨光廣告（10 月廣告費）。帳單和投放紀錄已比對過，金額一致。</p>
+<sc-if value="{{ap.pending}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" onClick="{{allowOnce}}" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; font: inherit; font-size: 14px; cursor: pointer">允許這次</button>
+<button type="button" onClick="{{allowAlways}}" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 14px; cursor: pointer">一律允許</button>
+<button type="button" onClick="{{deny}}" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 1px solid #333333; background: transparent; color: #FCFCFC; font: inherit; font-size: 14px; cursor: pointer">拒絕</button>
+</div>
+</sc-if>
+<sc-if value="{{ap.settled}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 8px; height: 36px; font-size: 14px; color: {{ap.doneFg}}">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ap.icon}}"></path></svg>
+<span style="flex: 1">{{ap.doneText}}</span>
+<button type="button" onClick="{{undo}}" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 13.5px; cursor: pointer">復原</button>
+</div>
+</sc-if>
+</article>
+
+<article style="background: #262626; border-radius: 18px; padding: 12px 12px 12px 18px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center">
+<div style="flex: 999 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 12px">
+<dc-import name="Avatar" color="pink" body="circle" state="notifying" dot="waiting" ring="#262626" size="32" hint-size="32px,32px"></dc-import>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<span style="display: flex; align-items: center; gap: 8px"><span style="font-size: 15px">小編</span><span style="font-size: 12px; color: #FFB547; background: rgba(255,152,0,.14); border-radius: 999px; padding: 1px 8px">需要你接手電腦</span></span>
+<span style="font-size: 13px; color: #FCFCFC99">發佈新品貼文 · 已暫停 8 分鐘</span>
+</div>
+</div>
+<p style="margin: 0">登入社群後台要簡訊驗證碼，碼傳到你的手機。請接手電腦輸入，好了按「完成，交還」。</p>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<a href="E02-Takeover.dc.html" style="height: 36px; padding: 0 16px; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14px; display: inline-flex; align-items: center; gap: 8px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.hand}}"></path></svg>接手電腦</a>
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FF5667; font: inherit; font-size: 14px; cursor: pointer">停止這件工作</button>
+</div>
+</div>
+<a href="E02-Takeover.dc.html" aria-label="小編的電腦畫面：輸入驗證碼" style="flex: 1 1 190px; max-width: 216px; height: 124px; border-radius: 10px; overflow: hidden; background: #F4F5F7; display: flex; flex-direction: column; box-shadow: 0 0 0 1.5px #FF9800">
+<span style="height: 16px; flex: none; background: #E3E6EA; display: flex; align-items: center; gap: 3px; padding: 0 6px">
+<span style="width: 5px; height: 5px; border-radius: 9px; background: #FF5F57"></span><span style="width: 5px; height: 5px; border-radius: 9px; background: #FEBC2E"></span><span style="width: 5px; height: 5px; border-radius: 9px; background: #28C840"></span>
+<span style="flex: 1; height: 8px; margin-left: 6px; border-radius: 4px; background: #FFFFFF; font-size: 6px; line-height: 8px; color: #6B7280; padding-left: 4px">studio.social.example/login</span>
+</span>
+<span style="flex: 1; display: flex; align-items: center; justify-content: center">
+<span style="width: 132px; background: #FFFFFF; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.12); padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px">
+<span style="font-size: 8px; line-height: 1.2; color: #111827">輸入簡訊驗證碼</span>
+<span style="font-size: 6px; line-height: 1.2; color: #6B7280">已傳到 09xx-xxx-381</span>
+<span style="display: flex; gap: 3px">
+<span style="width: 13px; height: 16px; border-radius: 3px; border: 1px solid #FF9800; background: #FFF7EB"></span><span style="width: 13px; height: 16px; border-radius: 3px; border: 1px solid #D1D5DB"></span><span style="width: 13px; height: 16px; border-radius: 3px; border: 1px solid #D1D5DB"></span><span style="width: 13px; height: 16px; border-radius: 3px; border: 1px solid #D1D5DB"></span><span style="width: 13px; height: 16px; border-radius: 3px; border: 1px solid #D1D5DB"></span><span style="width: 13px; height: 16px; border-radius: 3px; border: 1px solid #D1D5DB"></span>
+</span>
+<span style="width: 100%; height: 12px; border-radius: 3px; background: #1084FE; font-size: 6px; line-height: 12px; color: #FFFFFF; text-align: center">驗證</span>
+</span>
+</span>
+</a>
+</article>
+
+<article style="background: #262626; border-radius: 18px; padding: 12px 18px 14px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 12px">
+<dc-import name="Avatar" color="orange" body="blob" state="{{q.state}}" dot="none" ring="#262626" size="32" hint-size="32px,32px"></dc-import>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<span style="display: flex; align-items: center; gap: 8px"><span style="font-size: 15px">阿哲</span><span style="font-size: 12px; color: {{q.chipFg}}; background: {{q.chipBg}}; border-radius: 999px; padding: 1px 8px">{{q.chip}}</span></span>
+<span style="font-size: 13px; color: #FCFCFC99">{{q.sub}}</span>
+</div>
+</div>
+<p style="margin: 0">競品比較要不要也放進日本賣場的價格？會多花約 10 分鐘。</p>
+<sc-if value="{{q.pending}}" hint-placeholder-val="{{ true }}">
+<div role="group" aria-label="選一個回答" style="border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; gap: 1px; background: #333333; border: 1px solid #333333">
+<sc-for list="{{options}}" as="o" hint-placeholder-count="3">
+<button type="button" onClick="{{o.pick}}" style="display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 12px; border: 0; background: #2A2A2A; color: #FCFCFC; font: inherit; font-size: 14.5px; text-align: left; cursor: pointer">
+<span style="width: 20px; height: 20px; flex: none; border-radius: 5px; background: #333333; color: #FCFCFC99; font-size: 12px; display: flex; align-items: center; justify-content: center">{{o.k}}</span>{{o.t}}</button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{q.settled}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 8px; height: 36px; font-size: 14px; color: #38D591">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg>
+<span style="flex: 1">已回答「{{q.answer}}」· 阿哲繼續比價</span>
+<button type="button" onClick="{{undoQ}}" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 13.5px; cursor: pointer">改答案</button>
+</div>
+</sc-if>
+</article>
+
+<article style="background: #262626; border-radius: 18px; padding: 12px 18px 14px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 12px">
+<dc-import name="Avatar" color="purple" body="diamond" state="idle" dot="queued" ring="#262626" size="32" hint-size="32px,32px"></dc-import>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<span style="display: flex; align-items: center; gap: 8px"><span style="font-size: 15px">數據喵</span><span style="font-size: 12px; color: #FCFCFC99; background: #333333; border-radius: 999px; padding: 1px 8px">想找你討論</span></span>
+<span style="font-size: 13px; color: #FCFCFC99">排隊中，等週報資料 · 1 小時前</span>
+</div>
+</div>
+<p style="margin: 0">經典帆布包上週退貨變多，留言多半說「比照片小」。要不要先在商品頁補一張尺寸對照圖？</p>
+<div style="display: flex; gap: 8px; align-items: center">
+<label style="flex: 1; min-width: 0; position: relative; display: flex">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">回覆數據喵</span>
+<input type="text" placeholder="直接回覆，不用開會" style="flex: 1; min-width: 0; height: 40px; box-sizing: border-box; padding: 0 48px 0 14px; border-radius: 10px; border: 1px solid #333333; background: #191919; color: #FCFCFC; font: inherit; font-size: 14.5px; outline: none">
+<button type="button" aria-label="送出回覆" style="position: absolute; right: 4px; top: 4px; width: 32px; height: 32px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.arrowUp}}"></path></svg></button>
+</label>
+<button type="button" style="height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid #333333; background: transparent; color: #FCFCFC; font: inherit; font-size: 14px; cursor: pointer; flex: none">不用討論</button>
+</div>
+</article>
+
+<article style="background: #262626; border-radius: 18px; padding: 12px 14px 12px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px">
+<dc-import name="Avatar" color="red" body="shield" state="idle" dot="none" ring="#262626" size="32" hint-size="32px,32px"></dc-import>
+<div style="flex: 999 1 300px; min-width: 0; display: flex; flex-direction: column">
+<span style="display: flex; align-items: center; gap: 8px"><span style="font-size: 15px">抓蟲</span><span style="font-size: 12px; color: #FFB547; background: rgba(255,152,0,.14); border-radius: 999px; padding: 1px 8px">預算用完，已暫停</span></span>
+<span style="font-size: 13.5px; color: #FCFCFC99">「重現結帳失敗」這條工作鏈用完 $5 上限，停在第 4 步。</span>
+</div>
+<div style="display: flex; gap: 8px">
+<button type="button" style="height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 14px; cursor: pointer">結束並回報</button>
+<button type="button" style="height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; font: inherit; font-size: 14px; cursor: pointer">再給 $5</button>
+</div>
+</article>
+
+<article style="background: #262626; border-radius: 18px; padding: 10px 14px 10px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px">
+<dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#262626" size="32" hint-size="32px,32px"></dc-import>
+<div style="flex: 999 1 300px; min-width: 0; display: flex; flex-direction: column">
+<span style="font-size: 14.5px">小秘提案：每週一上午 9:00 整理銷售週報，發到「每週一早會」</span>
+<span style="font-size: 13px; color: #FCFCFC99">不用你處理 · 沒意見就在 10 月 20 日照做</span>
+</div>
+<div style="display: flex; gap: 8px">
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid #333333; background: transparent; color: #FCFCFC; font: inherit; font-size: 13.5px; cursor: pointer">否決</button>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 13.5px; cursor: pointer">現在就同意</button>
+</div>
+</article>
+
+</div>
+</main>
+
+<aside aria-label="團隊現況" style="flex: 1 1 340px; max-width: 100%; box-sizing: border-box; padding: 22px 20px; background: #111111; border-left: 1px solid #1C1C1C; display: flex; flex-direction: column; gap: 24px">
+
+<section style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><h2 style="margin: 0; font-size: 15px">電腦</h2><a href="E03-Office.dc.html" style="font-size: 13px">打開辦公室</a></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px">
+
+<a href="E01-Computer.dc.html" aria-label="小秘的電腦：試算表" style="display: flex; flex-direction: column; gap: 6px; color: #FCFCFC">
+<span style="height: 90px; border-radius: 10px; overflow: hidden; background: #FFFFFF; display: flex; flex-direction: column">
+<span style="height: 12px; flex: none; background: #1E7A46; display: flex; align-items: center; padding: 0 5px; font-size: 6px; color: #FFFFFF">競品定價.xlsx</span>
+<span style="flex: 1; display: grid; grid-template-columns: 14px repeat(4, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 1px; background: #DADCE0; padding-top: 1px">
+<sc-for list="{{sheet}}" as="c" hint-placeholder-count="30"><span style="background: {{c.bg}}; font-size: 5.5px; line-height: 1; color: #374151; display: flex; align-items: center; padding-left: 2px; overflow: hidden; white-space: nowrap">{{c.t}}</span></sc-for>
+</span>
+</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 13px; min-width: 0"><dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#111111" size="18" hint-size="18px,18px"></dc-import>小秘<span style="color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">彙整價差表</span></span>
+</a>
+
+<a href="E01-Computer.dc.html" aria-label="阿哲的電腦：購物網站比價" style="display: flex; flex-direction: column; gap: 6px; color: #FCFCFC">
+<span style="height: 90px; border-radius: 10px; overflow: hidden; background: #F5F5F5; display: flex; flex-direction: column">
+<span style="height: 14px; flex: none; background: #F05A28; display: flex; align-items: center; gap: 4px; padding: 0 5px">
+<span style="font-size: 6px; color: #FFFFFF">購物</span><span style="flex: 1; height: 7px; border-radius: 2px; background: #FFFFFF; font-size: 5px; line-height: 7px; color: #6B7280; padding-left: 3px">帆布托特包</span>
+</span>
+<span style="flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 4px">
+<sc-for list="{{shop}}" as="p" hint-placeholder-count="6">
+<span style="background: #FFFFFF; border-radius: 2px; display: flex; flex-direction: column; overflow: hidden">
+<span style="flex: 1; background: {{p.bg}}; display: flex; align-items: flex-end; justify-content: center; overflow: hidden"><svg width="20" height="10" viewBox="0 0 20 10" aria-hidden="true"><path d="M0 10 7 3l4 4 3-3 6 6Z" fill="{{p.fg}}"></path></svg></span>
+<span style="font-size: 5px; line-height: 7px; color: #F05A28; padding: 0 2px">{{p.price}}</span>
+</span>
+</sc-for>
+</span>
+</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 13px; min-width: 0"><dc-import name="Avatar" color="orange" body="blob" state="searching" dot="none" ring="#111111" size="18" hint-size="18px,18px"></dc-import>阿哲<span style="color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">比價第 3 家</span></span>
+</a>
+
+<a href="E02-Takeover.dc.html" aria-label="小編的電腦：等你輸入驗證碼" style="display: flex; flex-direction: column; gap: 6px; color: #FCFCFC">
+<span style="height: 90px; border-radius: 10px; overflow: hidden; background: #F4F5F7; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 1.5px #FF9800">
+<span style="width: 92px; background: #FFFFFF; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.12); padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+<span style="font-size: 6px; line-height: 1.2; color: #111827">輸入簡訊驗證碼</span>
+<span style="display: flex; gap: 2px"><span style="width: 9px; height: 11px; border-radius: 2px; border: 1px solid #FF9800"></span><span style="width: 9px; height: 11px; border-radius: 2px; border: 1px solid #D1D5DB"></span><span style="width: 9px; height: 11px; border-radius: 2px; border: 1px solid #D1D5DB"></span><span style="width: 9px; height: 11px; border-radius: 2px; border: 1px solid #D1D5DB"></span><span style="width: 9px; height: 11px; border-radius: 2px; border: 1px solid #D1D5DB"></span><span style="width: 9px; height: 11px; border-radius: 2px; border: 1px solid #D1D5DB"></span></span>
+<span style="width: 100%; height: 8px; border-radius: 2px; background: #1084FE"></span>
+</span>
+</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 13px; min-width: 0"><dc-import name="Avatar" color="pink" body="circle" state="notifying" dot="waiting" ring="#111111" size="18" hint-size="18px,18px"></dc-import>小編<span style="color: #FFB547; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">等你接手</span></span>
+</a>
+
+<a href="E01-Computer.dc.html" aria-label="帳房的電腦：付款頁" style="display: flex; flex-direction: column; gap: 6px; color: #FCFCFC">
+<span style="height: 90px; border-radius: 10px; overflow: hidden; background: #F3F5FA; display: flex; flex-direction: column; box-shadow: 0 0 0 1.5px #FF9800">
+<span style="height: 12px; flex: none; background: #FFFFFF; border-bottom: 1px solid #E5E7EB; display: flex; align-items: center; padding: 0 5px; font-size: 6px; color: #374151">晨光廣告 · 帳單付款</span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 4px; padding: 6px 8px">
+<span style="font-size: 6px; line-height: 1; color: #6B7280">應付金額</span>
+<span style="font-size: 11px; line-height: 1; color: #111827">NT$1,280</span>
+<span style="height: 9px; border-radius: 2px; background: #FFFFFF; border: 1px solid #D1D5DB; font-size: 5px; line-height: 9px; color: #9CA3AF; padding-left: 3px">卡號 •••• 4021</span>
+<span style="display: flex; gap: 3px"><span style="flex: 1; height: 9px; border-radius: 2px; background: #FFFFFF; border: 1px solid #D1D5DB"></span><span style="flex: 1; height: 9px; border-radius: 2px; background: #FFFFFF; border: 1px solid #D1D5DB"></span></span>
+<span style="height: 10px; border-radius: 2px; background: #9CA3AF; font-size: 5px; line-height: 10px; color: #FFFFFF; text-align: center">等你允許後付款</span>
+</span>
+</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 13px; min-width: 0"><dc-import name="Avatar" color="yellow" body="hexagon" state="notifying" dot="waiting" ring="#111111" size="18" hint-size="18px,18px"></dc-import>帳房<span style="color: {{ap.scrFg}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ap.scr}}</span></span>
+</a>
+
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0; font-size: 15px">Bot 之間</h2>
+<sc-for list="{{handoffs}}" as="h" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: #191919">
+<div style="display: flex; align-items: center; gap: 6px; font-size: 13.5px">
+<dc-import name="Avatar" color="{{h.fc}}" body="{{h.fb}}" state="idle" dot="none" size="18" hint-size="18px,18px"></dc-import>
+<span>{{h.from}}</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC90" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.arrowRight}}"></path></svg>
+<dc-import name="Avatar" color="{{h.tc}}" body="{{h.tb}}" state="idle" dot="none" size="18" hint-size="18px,18px"></dc-import>
+<span>{{h.to}}</span>
+<span style="margin-left: auto; font-size: 12px; color: {{h.tagFg}}; background: {{h.tagBg}}; border-radius: 999px; padding: 1px 8px; white-space: nowrap">{{h.tag}}</span>
+</div>
+<span style="font-size: 13px; color: #FCFCFC99">{{h.text}}</span>
+</div>
+</sc-for>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0 0 2px; font-size: 15px">今天完成</h2>
+<sc-for list="{{doneList}}" as="d" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; min-height: 24px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg>
+<span style="flex: 1">{{d.t}}</span><span style="color: #FCFCFC90">{{d.who}}</span>
+</div>
+</sc-for>
+</section>
+</aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+renderVals() {
+const I = {"arrowRight": "M5 12h14 M0 0m12 5 7 7-7 7", "arrowUp": "M0 0m5 12 7-7 7 7 M12 19V5", "check": "M20 6 9 17l-5-5", "hand": "M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2 M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2 M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8 M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15", "sparkles": "M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z M20 2v4 M22 4h-4 M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0", "x": "M18 6 6 18 M0 0m6 6 12 12"};
+const st = this.state || {};
+const d = st.decision || null;
+const ans = st.answer || null;
+const left = 5 - (d ? 1 : 0) - (ans ? 1 : 0);
+const AP = {
+once: { text: '已允許這次 · 帳房正在付款', fg: '#38D591', icon: I.check, chip: '已允許', chipFg: '#38D591', chipBg: 'rgba(56,213,145,.14)', state: 'working' },
+always: { text: '已一律允許「付款給晨光廣告」· 之後不再問', fg: '#38D591', icon: I.check, chip: '一律允許', chipFg: '#38D591', chipBg: 'rgba(56,213,145,.14)', state: 'working' },
+deny: { text: '已拒絕 · 已告訴帳房和小秘', fg: '#FCFCFC99', icon: I.x, chip: '已拒絕', chipFg: '#FCFCFC99', chipBg: '#333333', state: 'idle' }
+};
+const a = d ? AP[d] : null;
+const opts = [['A', '要，一起比較日本賣場'], ['B', '不用，台灣三家就好'], ['C', '只比日本前 3 名的商品']];
+const sheetRows = [['', 'A', 'B', 'C', 'D'], ['1', '商品', '我們', '甲店', '乙店'], ['2', '帆布包', '890', '850', '820'], ['3', '托特包', '1,290', '1,190', '1,250'], ['4', '筆袋', '320', '299', '310'], ['5', '束口袋', '450', '420', '']];
+const sheet = [];
+sheetRows.forEach((r, ri) => r.forEach((t, ci) => sheet.push({ t, bg: ri === 0 || ci === 0 ? '#F1F3F4' : (ri === 1 ? '#E8F0FE' : (ri === 3 && ci === 2 ? '#FCE8E6' : '#FFFFFF')) })));
+const shopC = [['#F6E7D8', '#D9B48F'], ['#DDE8F3', '#9DB7D1'], ['#E5EFE2', '#A9C79F'], ['#F3E1E6', '#D3A1AF'], ['#ECE6F4', '#B7A6D3'], ['#F4EED9', '#D2C38E']];
+const prices = ['$850', '$820', '$890', '$1,190', '$1,250', '$299'];
+return {
+I,
+headline: left > 0 ? '早安，有 ' + left + ' 件事等你' : '早安，事情都處理完了',
+ap: { pending: !d, settled: !!d, doneText: a ? a.text : '', doneFg: a ? a.fg : '#38D591', icon: a ? a.icon : I.check, chip: a ? a.chip : '等你允許', chipFg: a ? a.chipFg : '#FFB547', chipBg: a ? a.chipBg : 'rgba(255,152,0,.14)', state: a ? a.state : 'notifying', dot: d ? 'none' : 'waiting', scr: d === 'deny' ? '待命' : (d ? '付款中' : '等你允許'), scrFg: d ? '#FCFCFC99' : '#FFB547' },
+allowOnce: () => this.setState({ decision: 'once' }),
+allowAlways: () => this.setState({ decision: 'always' }),
+deny: () => this.setState({ decision: 'deny' }),
+undo: () => this.setState({ decision: null }),
+q: { pending: !ans, settled: !!ans, answer: ans || '', chip: ans ? '已回答' : '有問題問你', chipFg: ans ? '#38D591' : '#FFB547', chipBg: ans ? 'rgba(56,213,145,.14)' : 'rgba(255,152,0,.14)', state: ans ? 'happy' : 'curious', sub: ans ? '工作中 · 你剛剛回答' : '工作中，邊比價邊等你 · 10 分鐘沒回答就過期（還有 7 分鐘）' },
+options: opts.map(([k, t]) => ({ k, t, pick: () => this.setState({ answer: t }) })),
+undoQ: () => this.setState({ answer: null }),
+sheet,
+shop: shopC.map(([bg, fg], i) => ({ bg, fg, price: prices[i] })),
+handoffs: [
+{ from: '小秘', fc: 'blue', fb: 'cursor', to: '阿哲', tc: 'orange', tb: 'blob', tag: '進行中 · 第 1/6 棒', tagFg: '#7FC0FF', tagBg: 'rgba(16,132,254,.16)', text: '請求：抓三家競品主力商品的價格' },
+{ from: '數據喵', fc: 'purple', fb: 'diamond', to: '小秘', tc: 'blue', tb: 'cursor', tag: '已回覆', tagFg: '#38D591', tagBg: 'rgba(56,213,145,.14)', text: '回覆：上週銷售摘要與 2 張圖（附檔）' },
+{ from: '小秘', fc: 'blue', fb: 'cursor', to: '帳房', tc: 'yellow', tb: 'hexagon', tag: '等你允許', tagFg: '#FFB547', tagBg: 'rgba(255,152,0,.14)', text: '請求：結清 10 月廣告費' }
+],
+doneList: [{ t: '10 月對帳單整理', who: '帳房' }, { t: '新品貼文文案三版', who: '小編' }, { t: '開發信草稿 3 封', who: '阿凱' }, { t: '收件匣分類 24 封', who: '信差' }]
+};
+}
+}
+</script>
+</body>
+</html>

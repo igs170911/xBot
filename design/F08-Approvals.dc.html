@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>待你核定</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3,h4,p{font-weight:400;margin:0}
+button,input,textarea{font:inherit;color:inherit}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+input::placeholder,textarea::placeholder{color:#FCFCFC90}
+</style>
+</helmet>
+<div role="dialog" aria-label="待你核定" style="width: 640px; height: 920px; box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; display: flex; flex-direction: column; overflow: hidden">
+<div style="display: flex; align-items: flex-start; gap: 12px; padding: 20px 16px 0 24px">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding-top: 4px">
+<h2 style="font-size: 20px; line-height: 1.3">待你核定 <span style="font-size: 15px; color: #FCFCFC90">{{count}}</span></h2>
+<p style="font-size: 13.5px; color: #FCFCFC99; line-height: 1.55">在這裡、通知或手機上都能直接決定，不用打開對話。<br>這些事不會過期，等你有空再決定也可以。</p>
+</div>
+<span style="padding-top: 5px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12.5px; white-space: nowrap; flex: none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg>簡化：3 步 → 1 步</span></span>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</div>
+<div style="flex: 1; min-height: 0; overflow: auto; padding: 16px 24px 24px; display: flex; flex-direction: column; gap: 12px">
+
+<sc-for list="{{pending}}" as="c" hint-placeholder-count="3">
+<article aria-label="{{c.title}}" style="background: #262626; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 12px">
+<dc-import name="Avatar" color="{{c.color}}" body="{{c.body}}" state="notifying" dot="waiting" ring="#262626" size="34" hint-size="34px,34px"></dc-import>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 16px">{{c.title}}</span>
+<span style="font-size: 13px; color: #FCFCFC99">{{c.sub}}</span>
+</div>
+</div>
+<p style="background: #191919; border-radius: 10px; padding: 10px 12px; font-size: 14px; line-height: 1.6; color: #FCFCFCcc">{{c.detail}}</p>
+<sc-if value="{{c.danger}}" hint-placeholder-val="{{ false }}">
+<p style="display: flex; align-items: center; gap: 10px; background: rgba(255,86,103,.12); color: #FF8A95; border-radius: 10px; padding: 10px 12px; font-size: 14px; line-height: 1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF5667" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>刪除後它的對話、技能、檔案和電腦會一起刪掉，無法復原。</p>
+</sc-if>
+<div style="display: flex; gap: 8px; align-items: center">
+<label style="flex: 1; min-width: 0; display: flex"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">給 {{c.who}} 的備註</span><input type="text" onChange="{{c.onNote}}" placeholder="{{c.ph}}" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14.5px; outline: none; min-width: 0; flex: 1; height: 36px; background: #191919"></label>
+<button type="button" onClick="{{c.reject}}" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none">退回</button>
+<sc-if value="{{c.safe}}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{c.approve}}" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>允許這次</button></sc-if>
+<sc-if value="{{c.danger}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{c.approve}}" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FF5667; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>允許刪除</button></sc-if>
+</div>
+</article>
+</sc-for>
+
+<sc-if value="{{allDone}}" hint-placeholder-val="{{ false }}">
+<div style="background: #191919; border-radius: 18px; padding: 24px; display: flex; align-items: center; gap: 16px">
+<dc-import name="Mochi" size="56" pose="happy" hint-size="56px,56px"></dc-import>
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 16px">都處理完了</span><span style="font-size: 13.5px; color: #FCFCFC99">有新的事要你決定時，會在這裡和通知裡出現。</span></div>
+</div>
+</sc-if>
+
+<h3 style="font-size: 15px; margin-top: 8px; display: flex; align-items: center; gap: 8px">最近的決定<span style="font-size: 13px; color: #FCFCFC90">決定會以「【董事長核定】」送回給 Bot</span></h3>
+<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; background: #191919; border-radius: 14px; overflow: hidden">
+<sc-for list="{{recent}}" as="r" hint-placeholder-count="3">
+<li style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: {{r.line}}">
+<span style="display: inline-flex; color: {{r.c}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.icon}}"></path></svg></span>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<span style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="color: {{r.c}}">{{r.verdict}}</span>{{r.sep}}{{r.text}}</span>
+<sc-if value="{{r.hasNote}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: #FCFCFC99">備註：{{r.note}}</span></sc-if>
+<sc-if value="{{r.hasSub}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.sub}}</span></sc-if>
+</div>
+<span style="font-size: 12.5px; color: #FCFCFC90; flex: none">{{r.when}}</span>
+<sc-if value="{{r.undoable}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{r.undo}}" style="height: 30px; padding: 0 14px; border: 1px solid #333333; border-radius: 999px; background: transparent; color: #FCFCFC; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; text-decoration: none">復原</button></sc-if>
+</li>
+</sc-for>
+</ul>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 640, "height": 920}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const decided = s.decided || {};
+    const notes = this.notes || (this.notes = {});
+    const ITEMS = [
+      { id: 'pay', who: '帳房', color: 'yellow', body: 'hexagon', title: '付款 NT$1,280 給晨光包材', sub: '帳房 · 3 分鐘前 · 小秘交辦的工作 · 第 2/6 棒', detail: '10 月包材：牛皮紙袋 500 個，發票 AB-12345678，從公司帳戶轉帳。', ph: '給帳房的備註（選填），例如：下次先比價', danger: false },
+      { id: 'price', who: '小秘', color: 'blue', body: 'cursor', title: '調降 5 項主打商品售價 10%', sub: '小秘 · 12 分鐘前 · 你交辦的定價比較', detail: '依三家競品平均價調整；調價後毛利約 31%，仍高於底線 25%。', ph: '給小秘的備註（選填）', danger: false },
+      { id: 'del', who: '小秘', color: 'blue', body: 'cursor', title: '刪除 Bot「舊客服」', sub: '小秘 · 昨天 · 整理組織時提出', detail: '「舊客服」30 天沒有工作，客服信已改由信差處理。', ph: '給小秘的備註（選填）', danger: true }
+    ];
+    const OLD = [
+      { verdict: '已允許', ok: true, text: '帳房 付款 NT$2,400 給飛鴿物流', when: '昨天', note: '' },
+      { verdict: '已退回', ok: false, text: '阿哲 上架「保溫隨行杯」', when: '週二', note: '等樣品到了再上架' },
+    ];
+    const DG = s.dgUndone
+      ? { verdict: '已復原', ok: false, text: 'Claude Code（MCP）的代為核准', sub: '貼文已收回 · 對外發送：小編 發佈「秋季新品」到 Threads', when: '剛剛', note: '', undoable: false }
+      : { verdict: '已由 Claude Code（MCP）代為核准', ok: true, dg: true, text: '對外發送', sub: '小編 發佈「秋季新品」貼文到 Threads · 10 分鐘內可復原', when: '09:44', note: '', undoable: true, undo: () => this.setState({ dgUndone: true }) };
+    const CHECK = 'M20 6 9 17l-5-5';
+    const XI = 'M18 6 6 18M6 6l12 12';
+    const decide = (id, ok) => () => this.setState({ decided: Object.assign({}, decided, { [id]: { ok, note: notes[id] || '', at: Date.now() } }) });
+    const pending = ITEMS.filter((c) => !decided[c.id]).map((c) => Object.assign({}, c, {
+      safe: !c.danger, approve: decide(c.id, true), reject: decide(c.id, false), onNote: (e) => { notes[c.id] = e.target.value; }
+    }));
+    const fresh = ITEMS.filter((c) => decided[c.id]).sort((a, b) => decided[b.id].at - decided[a.id].at).map((c) => ({
+      verdict: decided[c.id].ok ? (c.danger ? '已允許刪除' : '已允許') : '已退回', ok: decided[c.id].ok,
+      text: c.who + ' ' + c.title, when: '剛剛', note: decided[c.id].note, undoable: true,
+      undo: () => { const d = Object.assign({}, decided); delete d[c.id]; this.setState({ decided: d }); }
+    }));
+    const SHIELD = 'M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1zM9 12l2 2 4-4';
+    const recent = fresh.concat([DG], OLD.map((r) => Object.assign({ undoable: false, undo: null }, r))).map((r, i) => Object.assign({}, r, {
+      c: r.dg ? '#7FC0FF' : r.ok ? '#38D591' : '#FCFCFC99', icon: r.dg ? SHIELD : r.ok ? CHECK : XI, hasNote: !!r.note, hasSub: !!r.sub, sep: ' · ', line: i === 0 ? '0' : '1px solid #262626'
+    }));
+    return { pending, recent, count: pending.length ? String(pending.length) : '', allDone: pending.length === 0 };
+  }
+}
+</script>
+</body>
+</html>

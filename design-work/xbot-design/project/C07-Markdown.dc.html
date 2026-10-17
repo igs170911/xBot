@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>回覆內容排版</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+input::placeholder{color:#FCFCFC90}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 900px; height: 1400px; box-sizing: border-box; padding: 24px 28px; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.75; display: flex; flex-direction: column; gap: 14px">
+
+<div style="align-self: flex-end; max-width: 75%; background: #5A5A5A; color: #FFFFFF; border-radius: 20px; padding: 10px 16px; line-height: 1.6">把這次比價整理成一份報告給我</div>
+
+<article aria-label="小秘的報告" style="background: #262626; border-radius: 20px; padding: 20px 24px 22px; display: flex; flex-direction: column; gap: 14px">
+
+<h1 style="margin: 0; font-size: 20px; font-weight: 400; line-height: 1.4">三家競品定價比較 · 10 月</h1>
+<p style="margin: 0; color: #FCFCFCdd">這次比了 <span style="color: #FCFCFC">12 項主力商品</span>，資料來自三家蝦皮賣場的公開頁面<a href="#src1" aria-label="來源 1" style="display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin: 0 2px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #3D3D3D; color: #FCFCFC; font-size: 11px; line-height: 1; text-decoration: none; vertical-align: 2px">1</a><a href="#src2" aria-label="來源 2" style="display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin: 0 2px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #3D3D3D; color: #FCFCFC; font-size: 11px; line-height: 1; text-decoration: none; vertical-align: 2px">2</a>，抓取時間是 10 月 17 日下午 2 點。完整表格在 <code style="font-family: 'JetBrains Mono', monospace; font-size: 13px; background: #191919; border-radius: 6px; padding: 2px 6px">/workspace/reports/pricing-1017.xlsx</code>，也可以在<a href="#" style="color: #7FC0FF; text-decoration: none">檔案</a>裡打開。</p>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<div role="note" style="display: flex; gap: 10px; padding: 12px 14px; border-radius: 12px; background: rgba(16,132,254,.13); line-height: 1.6">
+<span style="display: flex; color: #7FC0FF; padding-top: 2px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+<span style="display: flex; flex-direction: column; font-size: 14px"><span style="color: #7FC0FF">提示</span><span style="color: #FCFCFCdd">價差在 5% 以內的 9 項先不動。下週一的週報會再比一次，有變化再告訴你。</span></span>
+</div>
+<div role="note" style="display: flex; gap: 10px; padding: 12px 14px; border-radius: 12px; background: rgba(255,152,0,.13); line-height: 1.6">
+<span style="display: flex; color: #FFB547; padding-top: 2px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+<span style="display: flex; flex-direction: column; font-size: 14px"><span style="color: #FFB547">需要你決定</span><span style="color: #FCFCFCdd">3 項調價已送進待你核定。你允許之前，我不會動賣場上的價格。</span></span>
+</div>
+</div>
+
+<h2 style="margin: 4px 0 0; font-size: 18px; font-weight: 400; line-height: 1.4">價差最大的 5 項</h2>
+<div style="background: #191919; border-radius: 12px; overflow: hidden">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 10px 10px 12px; border-bottom: 1px solid #333333">
+<label style="flex: 1 1 200px; position: relative; display: flex; align-items: center"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">搜尋表格</span><span style="position: absolute; left: 10px; display: flex; color: #FCFCFC90"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m21 21-4.34-4.34"></path><path d="M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0"></path></svg></span><input type="search" placeholder="搜尋表格…" style="width: 100%; height: 34px; box-sizing: border-box; border: 1px solid #333333; border-radius: 10px; background: #111111; color: #FCFCFC; font: inherit; font-size: 13.5px; padding: 0 10px 0 34px; outline: none"></label>
+<span style="font-size: 12.5px; color: #FCFCFC90; padding: 0 4px">12 列 · 6 欄</span>
+<button type="button" style="height: 30px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; background: transparent; color: #FCFCFC; font-size: 13px; display: flex; align-items: center; gap: 6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 15V3"></path><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="m7 10 5 5 5-5"></path></svg>下載 CSV</button>
+<button type="button" aria-label="放大表格" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M15 3h6v6"></path><path d="m21 3-7 7"></path><path d="m3 21 7-7"></path><path d="M9 21H3v-6"></path></svg></button>
+</div>
+<div style="overflow-x: auto">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.4; white-space: nowrap">
+<thead><tr style="font-size: 12.5px; color: #FCFCFC99; text-align: right">
+<th scope="col" style="text-align: left; padding: 10px 12px; font-weight: 400">商品</th>
+<th scope="col" style="padding: 10px; font-weight: 400">我們</th>
+<th scope="col" style="padding: 10px; font-weight: 400">最低競品</th>
+<th scope="col" aria-sort="descending" style="padding: 10px; font-weight: 400; color: #FCFCFC"><span style="display: inline-flex; align-items: center; gap: 4px">價差<span style="display: flex; color: #7FC0FF"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m3 16 4 4 4-4"></path><path d="M7 20V4"></path><path d="M11 4h10"></path><path d="M11 8h7"></path><path d="M11 12h4"></path></svg></span></span></th>
+<th scope="col" style="padding: 10px; font-weight: 400">建議價</th>
+<th scope="col" style="text-align: left; padding: 10px 12px; font-weight: 400">狀態</th>
+</tr></thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="5">
+<tr style="border-top: 1px solid #333333; text-align: right">
+<td style="text-align: left; padding: 9px 12px">{{r.n}}</td>
+<td style="padding: 9px 10px">{{r.us}}</td>
+<td style="padding: 9px 10px; color: #FCFCFCcc">{{r.low}}<span style="font-size: 12px; color: #FCFCFC90"> {{r.who}}</span></td>
+<td style="padding: 9px 10px; color: {{r.gapC}}">{{r.gap}}</td>
+<td style="padding: 9px 10px; color: #FCFCFCcc">{{r.s}}</td>
+<td style="text-align: left; padding: 9px 12px"><span style="display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; background: {{r.tagBg}}; color: {{r.tagC}}; font-size: 12px">{{r.tag}}</span></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-top: 1px solid #333333; font-size: 12.5px; color: #FCFCFC90"><span>顯示 5／12 列 · 單位 NT$</span><button type="button" style="height: 26px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: #7FC0FF; font-size: 12.5px">顯示全部</button></div>
+</div>
+
+<h2 style="margin: 4px 0 0; font-size: 18px; font-weight: 400; line-height: 1.4">怎麼算的</h2>
+<div style="display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 14px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div role="math" aria-label="建議價等於三家最低價乘以 1.02" style="padding: 14px 8px; text-align: center; font-family: 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif; font-size: 21px; line-height: 1.3; color: #FCFCFC; border-radius: 12px; background: #191919">建議價 = min(<i>p</i><sub style="font-size: 13px">1</sub>, <i>p</i><sub style="font-size: 13px">2</sub>, <i>p</i><sub style="font-size: 13px">3</sub>) × 1.02</div>
+<p style="margin: 0; font-size: 14px; color: #FCFCFCdd">價差用 <span style="font-family: 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif; font-size: 16px">(我們 − 最低) ÷ 最低</span> 算；超過 5% 才建議調價。日日家居的餐具組目前缺貨，表格裡用的是它 10 月 15 日的價格（估計值）。</p>
+</div>
+<div style="background: #191919; border-radius: 12px; overflow: hidden">
+<div style="display: flex; align-items: center; justify-content: space-between; height: 36px; padding: 0 6px 0 12px; border-bottom: 1px solid #333333"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #FCFCFC90">python</span><button type="button" onClick="{{copy}}" style="height: 28px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: {{copyC}}; font-size: 12.5px; display: flex; align-items: center; gap: 6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><sc-for list="{{copyIcon}}" as="d" hint-placeholder-count="2"><path d="{{d}}"></path></sc-for></svg>{{copyT}}</button></div>
+<pre style="margin: 0; padding: 12px 14px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.7; color: #E6E6E6; overflow-x: auto"><code><span style="color: #FF8FB1">def</span> <span style="color: #7FC0FF">suggest</span>(ours, rivals, margin=<span style="color: #FFB547">1.02</span>):
+    low = <span style="color: #7FC0FF">min</span>(rivals)
+    <span style="color: #FF8FB1">if</span> ours &lt;= low * <span style="color: #FFB547">1.05</span>:
+        <span style="color: #FF8FB1">return</span> <span style="color: #FF8FB1">None</span>  <span style="color: #8A8A8A"># 差 5% 以內不動</span>
+    <span style="color: #FF8FB1">return</span> <span style="color: #7FC0FF">round</span>(low * margin)</code></pre>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; align-items: stretch">
+<figure style="margin: 0; background: #191919; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden">
+<div style="display: flex; align-items: center; justify-content: space-between; height: 36px; padding: 0 6px 0 12px; border-bottom: 1px solid #333333"><figcaption style="font-size: 12.5px; color: #FCFCFC99">流程圖 · 這次誰做了什麼</figcaption>
+<div role="tablist" aria-label="顯示方式" style="display: flex; gap: 2px; padding: 2px; border-radius: 8px; background: #111111"><button type="button" role="tab" aria-selected="true" style="height: 24px; padding: 0 10px; border: 0; border-radius: 6px; background: #2F2F2F; color: #FCFCFC; font-size: 12px">圖</button><button type="button" role="tab" aria-selected="false" style="height: 24px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #FCFCFC99; font-size: 12px">原始碼</button></div></div>
+<div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 16px 8px; font-size: 12.5px; line-height: 1.35; text-align: center; white-space: nowrap">
+<span style="padding: 8px 9px; border-radius: 10px; border: 1px solid #3D3D3D; background: #262626">你</span>
+<span style="display: flex; color: #FCFCFC90"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span>
+<span style="padding: 6px 8px; border-radius: 10px; border: 1px solid #1084FE; background: rgba(16,132,254,.14); display: flex; flex-direction: column">小秘<span style="font-size: 11px; color: #FCFCFC99">幕僚長</span></span>
+<span style="display: flex; flex-direction: column; gap: 22px; color: #FCFCFC90"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m7 7 10 10"></path><path d="M17 7v10H7"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 10px">
+<span style="padding: 6px 8px; border-radius: 10px; border: 1px solid #3D3D3D; background: #262626; display: flex; flex-direction: column">阿哲<span style="font-size: 11px; color: #FCFCFC99">抓三家價格</span></span>
+<span style="padding: 6px 8px; border-radius: 10px; border: 1px solid #3D3D3D; background: #262626; display: flex; flex-direction: column">數據喵<span style="font-size: 11px; color: #FCFCFC99">算價差</span></span>
+</span>
+<span style="display: flex; flex-direction: column; gap: 22px; color: #FCFCFC90"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m7 7 10 10"></path><path d="M17 7v10H7"></path></svg><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></span>
+<span style="padding: 8px 9px; border-radius: 10px; border: 1px solid #3D3D3D; background: #262626">比較表</span>
+<span style="display: flex; color: #FCFCFC90"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span>
+<span style="padding: 6px 8px; border-radius: 10px; border: 1px solid #FF9800; background: rgba(255,152,0,.14); display: flex; flex-direction: column">待你核定<span style="font-size: 11px; color: #FFB547">3 項</span></span>
+</div>
+</figure>
+
+<figure style="margin: 0; display: flex; flex-direction: column; gap: 6px">
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px">
+<span role="img" aria-label="日日家居的 750ml 保溫瓶商品照" style="height: 92px; border-radius: 10px; background: radial-gradient(circle at 50% 30%, #F4EDE3, #D6C6B1); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; box-sizing: border-box; position: relative; overflow: hidden"><span style="position: absolute; bottom: 7px; width: 46px; height: 8px; border-radius: 50%; background: rgba(60,40,20,.18)"></span><span style="display: flex; flex-direction: column; align-items: center; position: relative"><span style="width: 14px; height: 7px; border-radius: 3px 3px 0 0; background: #1C2F48"></span><span style="width: 26px; height: 58px; border-radius: 7px 7px 9px 9px; background: linear-gradient(90deg, #243F61, #4C6E99 55%, #243F61)"></span></span></span>
+<span role="img" aria-label="經典帆布托特包商品照" style="height: 92px; border-radius: 10px; background: linear-gradient(170deg, #DCE4DD, #B9C7BC); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 12px; box-sizing: border-box"><span style="display: flex; flex-direction: column; align-items: center"><span style="width: 26px; height: 18px; border: 3px solid #8A6A43; border-bottom: 0; border-radius: 14px 14px 0 0; box-sizing: border-box"></span><span style="width: 52px; height: 46px; border-radius: 3px 3px 6px 6px; background: linear-gradient(180deg, #EFE5D2, #DCCDB2)"></span></span></span>
+<span role="img" aria-label="賣場首頁橫幅：山景" style="height: 92px; border-radius: 10px; overflow: hidden; position: relative; background: linear-gradient(180deg, #FAD7A8 0%, #F3A97C 45%, #C97A6E 100%)"><span style="position: absolute; left: 62%; top: 18px; width: 22px; height: 22px; border-radius: 50%; background: #FFF1D6"></span><svg viewBox="0 0 200 92" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%"><path d="M0 70 L40 38 L70 58 L105 26 L150 66 L175 48 L200 60 L200 92 L0 92 Z" fill="#6E4A5E"></path><path d="M0 82 L50 60 L95 78 L140 56 L200 80 L200 92 L0 92 Z" fill="#3E2B3C"></path></svg></span>
+<span role="img" aria-label="蝦皮搜尋結果截圖" style="height: 92px; border-radius: 10px; overflow: hidden; background: #F5F5F5; display: flex; flex-direction: column"><span style="height: 16px; flex: none; background: #EE4D2D; display: flex; align-items: center; padding: 0 6px"><span style="height: 8px; width: 60%; border-radius: 2px; background: #FFFFFF"></span></span><span style="flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 5px"><span style="background: #FFFFFF; border-radius: 2px; display: flex; flex-direction: column; padding: 3px; gap: 3px"><span style="flex: 1; background: #C9D8CC"></span><span style="height: 3px; background: #EE4D2D; width: 50%"></span></span><span style="background: #FFFFFF; border-radius: 2px; display: flex; flex-direction: column; padding: 3px; gap: 3px; outline: 1.5px solid #1084FE"><span style="flex: 1; background: #9CB3CF"></span><span style="height: 3px; background: #EE4D2D; width: 50%"></span></span><span style="background: #FFFFFF; border-radius: 2px; display: flex; flex-direction: column; padding: 3px; gap: 3px"><span style="flex: 1; background: #F7C7CF"></span><span style="height: 3px; background: #EE4D2D; width: 50%"></span></span></span></span>
+</div>
+<figcaption style="font-size: 12.5px; color: #FCFCFC90">4 張圖 · 點一下放大</figcaption>
+</figure>
+</div>
+
+<blockquote style="margin: 0; padding: 2px 0 2px 14px; border-left: 3px solid #3D3D3D; color: #FCFCFCcc; font-size: 14.5px">好物生活館的帆布包已經連續 3 週比我們便宜 7% 左右，可能是長期定價，不是短期促銷。</blockquote>
+
+<hr style="border: 0; border-top: 1px solid #333333; margin: 2px 0">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; color: #FCFCFC99">來源</span>
+<ol style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{sources}}" as="c" hint-placeholder-count="3">
+<li id="{{c.id}}"><a href="#" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: #2F2F2F; color: #FCFCFC; text-decoration: none; line-height: 1.35"><span style="width: 18px; height: 18px; flex: none; border-radius: 999px; background: #3D3D3D; font-size: 11px; display: flex; align-items: center; justify-content: center">{{c.n}}</span><span style="width: 24px; height: 24px; flex: none; border-radius: 6px; background: {{c.bg}}; color: #FFFFFF; font-size: 12px; display: flex; align-items: center; justify-content: center">{{c.ini}}</span><span style="min-width: 0; display: flex; flex-direction: column"><span style="font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{c.t}}</span><span style="font-size: 11.5px; color: #FCFCFC90; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{c.d}}</span></span></a></li>
+</sc-for>
+</ol>
+</div>
+</article>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":900,"height":1400}}'>
+class Component extends DCLogic {
+renderVals() {
+const s = Object.assign({ copied: false }, this.state || {});
+const IC = {"copy": ["M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z", "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"], "check": ["M20 6 9 17l-5-5"]};
+const R = (n, us, low, who, gap, sg, adj) => ({ n, us, low, who, gap, s: sg, gapC: adj ? '#FFB547' : '#FCFCFCcc', tag: adj ? '待你核定' : '不動', tagBg: adj ? 'rgba(255,152,0,.16)' : '#2F2F2F', tagC: adj ? '#FFB547' : '#FCFCFC99' });
+return {
+rows: [
+R('真空保溫瓶 500ml', '590', '499', '好物', '+18.2%', '529', true),
+R('竹纖維餐具組', '450', '399', '好物', '+12.8%', '419', true),
+R('經典帆布托特包', '1,280', '1,180', '日日', '+8.5%', '1,199', true),
+R('陶瓷內膽保溫杯', '629', '610', '簡單', '+3.1%', '—', false),
+R('隨行咖啡杯 360ml', '450', '439', '日日', '+2.5%', '—', false)
+],
+copy: () => this.setState({ copied: true }),
+copyIcon: s.copied ? IC.check : IC.copy,
+copyT: s.copied ? '已複製' : '複製',
+copyC: s.copied ? '#38D591' : '#FCFCFC99',
+sources: [
+{ id: 'src1', n: 1, ini: '好', bg: '#B5523B', t: '好物生活館 · 蝦皮賣場', d: 'shopee.tw/goodlife.tw' },
+{ id: 'src2', n: 2, ini: '日', bg: '#2F4D73', t: '日日家居 · 蝦皮賣場', d: 'shopee.tw/daily.home' },
+{ id: 'src3', n: 3, ini: '簡', bg: '#4E6B57', t: '簡單選物 · 蝦皮賣場', d: 'shopee.tw/simple.select' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

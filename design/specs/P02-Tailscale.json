@@ -1,0 +1,47 @@
+{
+ "file": "P02-Tailscale.dc.html",
+ "title": "說明：用 Tailscale 安全連線",
+ "prd": [
+  "§17",
+  "§16.2",
+  "§6.14 MB",
+  "§7 SEC"
+ ],
+ "what": "說明手機、筆電與你自己的雲端主機如何經 tailnet 與只綁 127.0.0.1 的 XBot 服務相連（XBot 經 SSH 控制雲端主機），配對步驟、MagicDNS／HTTPS 設定、ACL 範例、斷線行為與區網兩步 QR 備用方案。",
+ "goal": "使用者照四步把手機接上 XBot，且知道主機沒有開任何公開埠。",
+ "accept": [
+  "連線圖：手機／筆電／你的雲端主機（cloud-01）→ tailnet（WireGuard）→ tailscale serve → XBot 只綁 127.0.0.1；網際網路連不到（沒有公開埠）",
+  "配對四步：裝 Tailscale App 登入同帳號 → 主機開 tailscale serve → 掃一個 QR → 配對成功",
+  "設定卡顯示 MagicDNS 與 HTTPS 憑證兩個開關與 https://xbot.<tailnet>.ts.net 網址",
+  "ACL 範例只允許自己的裝置連 tag:xbot 的 443，只有 tag:xbot 能連 tag:xbot-host 的 22",
+  "斷線行為的時間與提示文字和 RESEARCH §B 一致",
+  "沒有 Tailscale 時顯示區網兩步 QR（CA＋登入網址）"
+ ],
+ "states": [
+  "說明畫板（靜態）"
+ ],
+ "edge": [
+  "MagicDNS 或 HTTPS 憑證沒開：tailscale serve 拿不到 *.ts.net 正式憑證",
+  "配對碼過期（5 分鐘）或已用過：重新產生 QR",
+  "配對碼錯 10 次：鎖 60 秒",
+  "手機網路斷：沒有離線聊天、沒有推播；主機工作不中斷",
+  "電腦畫面自動重試 2 次仍失敗：顯示「畫面連不上，請按重新連線」",
+  "Bot 連線中斷：工作標記「已中斷」，未完成的操作不自動重播"
+ ],
+ "limits": [
+  "配對碼 12 碼、5 分鐘、單次使用（OpenMausBot）",
+  "session 30 天、最多續到 180 天",
+  "錯誤 10 次鎖 60 秒",
+  "SSE keepalive 10 秒；側欄輪詢 5 秒、進度 4 秒",
+  "電腦畫面：8 秒重試、冷卻 15 秒、穩定 30 秒、20 秒失敗、最多自動 2 次、背景 15 秒暫停",
+  "區網：HTTP 8790、HTTPS 8791；CA 3650 天；伺服器憑證 397 天、到期前 30 天更新；登入 cookie 30 天",
+  "登入次數限制：規劃 5 次鎖 10 分鐘"
+ ],
+ "simplified": {
+  "flow": "連手機",
+  "before": "2 個 QR＋裝憑證",
+  "after": "1 個 QR",
+  "how": "用 Tailscale Serve 的正式 HTTPS 網址，掃一次就開網址並配對；沒有 Tailscale 才走區網兩步。"
+ },
+ "status": "簡化過"
+}

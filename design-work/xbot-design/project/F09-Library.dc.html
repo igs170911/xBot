@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>範本庫</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3,h4,p{font-weight:400;margin:0}
+button,input,textarea{font:inherit;color:inherit}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+input::placeholder,textarea::placeholder{color:#FCFCFC90}
+</style>
+</helmet>
+<div role="dialog" aria-label="範本庫" style="width: 1100px; height: 712px; box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; display: flex; flex-direction: column; overflow: hidden">
+<div style="display: flex; align-items: flex-start; gap: 12px; padding: 20px 16px 0 24px">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding-top: 4px">
+<h2 style="font-size: 20px; line-height: 1.3">範本庫</h2>
+<p style="font-size: 13.5px; color: #FCFCFC99; line-height: 1.55">從一整套做法開始，或帶入你自己的團隊。加入後成員、技能、定時任務都能再改。</p>
+</div>
+<a href="#community" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; font-size: 14px; padding-top: 0">社群範本<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M15 3h6v6"></path><path d="M10 14 21 3"></path><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg></a>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</div>
+<div style="flex: 1; padding: 16px 24px 24px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap">
+<div role="tablist" aria-label="範本來源" style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #191919">
+<button type="button" role="tab" aria-selected="true" style="height: 34px; padding: 0 16px; border: 0; border-radius: 8px; background: #2F2F2F; color: #FCFCFC; font-size: 14px; cursor: pointer">探索</button>
+<button type="button" role="tab" aria-selected="false" style="height: 34px; padding: 0 16px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC99; font-size: 14px; cursor: pointer">我的團隊</button>
+<button type="button" role="tab" aria-selected="false" style="height: 34px; padding: 0 16px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC99; font-size: 14px; cursor: pointer">我分享的</button>
+</div>
+<label style="flex: 1; min-width: 240px; position: relative; display: flex; align-items: center">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">搜尋範本</span>
+<span style="position: absolute; left: 12px; display: inline-flex; color: #FCFCFC90"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m21 21-4.34-4.34"></path><path d="M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0"></path></svg></span>
+<input type="search" placeholder="搜尋範本，例如：蝦皮、客服、記帳" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14.5px; outline: none; min-width: 0; flex: 1; padding-left: 40px">
+</label>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+<sc-for list="{{templates}}" as="t" hint-placeholder-count="6">
+<article style="background: #262626; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="display: flex; align-items: center">
+<sc-for list="{{t.team}}" as="m" hint-placeholder-count="4">
+<span style="display: inline-flex; margin-left: {{m.ml}}; border-radius: 999px"><dc-import name="Avatar" color="{{m.c}}" body="{{m.b}}" state="idle" dot="none" ring="#262626" size="36" hint-size="36px,36px"></dc-import></span>
+</sc-for>
+</span>
+<span style="flex: 1"></span>
+<sc-if value="{{t.rec}}" hint-placeholder-val="{{ false }}"><span style="height: 24px; padding: 0 10px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12.5px; display: inline-flex; align-items: center">推薦</span></sc-if>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h3 style="font-size: 17px">{{t.name}}</h3>
+<p style="font-size: 13.5px; line-height: 1.6; color: #FCFCFC99">{{t.desc}}</p>
+</div>
+<p style="font-size: 13px; color: #FCFCFC90">{{t.meta}}</p>
+<div style="display: flex; gap: 8px">
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none; flex: 1">詳細</button>
+<a href="F10-ImportReview.dc.html" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none; flex: 1">加入</a>
+</div>
+</article>
+</sc-for>
+</div>
+
+<section aria-label="帶入你自己的團隊" style="background: #191919; border-radius: 18px; padding: 18px 20px; display: flex; gap: 24px; align-items: center; flex-wrap: wrap">
+<div style="display: flex; align-items: center; gap: 14px; flex: 1.2; min-width: 300px">
+<span style="width: 48px; height: 48px; flex: none; border-radius: 12px; border: 1px dashed #5A5A5A; display: flex; align-items: center; justify-content: center; color: #FCFCFC99"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"></path><path d="M14 2v5a1 1 0 0 0 1 1h5"></path><path d="M12 12v6"></path><path d="m15 15-3-3-3 3"></path></svg></span>
+<div style="display: flex; flex-direction: column; gap: 3px">
+<h3 style="font-size: 15px">帶入你自己的團隊</h3>
+<p style="font-size: 13px; color: #FCFCFC99; line-height: 1.5">拖放檔案到這裡，或按右邊選擇</p>
+<p style="font-size: 12.5px; color: #FCFCFC90; font-family: 'JetBrains Mono', monospace">.xbot.json · .lazyboy.json · .mausteam.json</p>
+</div>
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none; margin-left: auto">選擇檔案</button>
+</div>
+<span style="width: 1px; align-self: stretch; background: #333333"></span>
+<div style="display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 280px">
+<label for="tpl-url" style="font-size: 13.5px; color: #FCFCFC99">或從網址載入（GitHub 或分享連結）</label>
+<div style="display: flex; gap: 8px"><input id="tpl-url" type="url" placeholder="https://github.com/…/team.xbot.json" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14.5px; outline: none; min-width: 0; flex: 1"><button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none; height: 40px">載入</button></div>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 1100, "height": 712}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const T = (name, desc, meta, rec, team) => ({ name, desc, meta, rec, team: team.map(([c, b], i) => ({ c, b, ml: i ? '-10px' : '0' })) });
+    return {
+      templates: [
+        T('電商營運小隊', '幕僚長帶選品、社群、業務，經營蝦皮賣場。', '4 個 Bot · 11 個技能 · 1 個群組 · 3 個定時任務', true, [['blue', 'cursor'], ['orange', 'blob'], ['pink', 'circle'], ['green', 'squircle']]),
+        T('一人公司後勤', '收據、對帳、收件匣與每週報表都交給它們。', '3 個 Bot · 7 個技能 · 4 個定時任務', true, [['yellow', 'hexagon'], ['purple', 'diamond'], ['cyan', 'star']]),
+        T('內容工作室', '企劃、寫稿、短影音腳本，維持品牌語氣。', '4 個 Bot · 9 個技能 · 1 個群組 · 2 個定時任務', false, [['pink', 'circle'], ['teal', 'drop'], ['coral', 'capsule'], ['orange', 'blob']]),
+        T('業務開發', '研究目標公司、找窗口，開發信草稿先給你看。', '2 個 Bot · 5 個技能 · 1 個定時任務', false, [['green', 'squircle'], ['blue', 'shield']]),
+        T('軟體維運', '重現 Bug、看日誌、整理修正建議給工程師。', '3 個 Bot · 8 個技能 · 1 個群組 · 2 個定時任務', false, [['red', 'shield'], ['cyan', 'capsule'], ['purple', 'diamond']]),
+        T('招募小組', '依職缺找候選人、整理名單、準備邀約訊息。', '2 個 Bot · 4 個技能', false, [['purple', 'blob'], ['teal', 'cursor']])
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

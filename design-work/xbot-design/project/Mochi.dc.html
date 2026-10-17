@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>XBot 品牌吉祥物</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<span style="display: block; width: {{s}}px; height: {{s}}px; flex: none" role="img" aria-label="XBot 吉祥物">
+<dc-import name="Avatar" color="green" body="cursor" state="{{st}}" dot="none" size="{{s}}" hint-size="{{hs}}"></dc-import>
+</span>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"pose":{"editor":"enum","default":"lazy","options":["lazy","sleep","happy","wave","working","thinking","notifying","alerting"]},"size":{"editor":"int","default":200,"min":16,"max":480},"$preview":{"width":200,"height":200}}'>
+class Component extends DCLogic {
+renderVals() {
+const MAP = { lazy: 'idle', sleep: 'sleeping', happy: 'happy', wave: 'excited' };
+const pose = this.props.pose || 'lazy';
+const s = Number(this.props.size ?? 200) || 200;
+return { s, st: MAP[pose] || pose, hs: s + 'px,' + s + 'px' };
+}
+}
+</script>
+</body>
+</html>

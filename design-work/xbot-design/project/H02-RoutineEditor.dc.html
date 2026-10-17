@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>新增定時任務</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}
+</style>
+</helmet>
+<div role="dialog" aria-label="新增定時任務" style="width: 760px; height: 720px; box-sizing: border-box; display: flex; flex-direction: column; background: #111111; border: 1px solid #262626; border-radius: 18px; overflow: hidden; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.5">
+
+<header style="flex: none; height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 16px 0 24px; border-bottom: 1px solid #262626">
+<h2 style="margin: 0; font-size: 18px; font-weight: 400; flex: 1">新增定時任務</h2>
+<span style="display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12.5px; white-space: nowrap; flex: none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg>簡化：15 個欄位 → 1 句話＋確認</span>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</header>
+
+<div style="flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 18px">
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<label for="h02-say" style="font-size: 15px">用一句話說要它定時做什麼</label>
+<div style="display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 8px 0 16px; background: #191919; border: 1px solid #459FFE; border-radius: 14px; box-sizing: border-box">
+<span style="color: #7FC0FF; display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg></span>
+<input id="h02-say" type="text" value="{{text}}" onChange="{{onText}}" placeholder="例如：每天早上 9 點整理新聞給我" style="flex: 1; min-width: 0; height: 48px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none">
+<button type="button" aria-label="清除" onClick="{{clear}}" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+<span style="font-size: 13px; color: #FCFCFC90">試試：</span>
+<sc-for list="{{examples}}" as="ex" hint-placeholder-count="3">
+<button type="button" onClick="{{ex.pick}}" style="height: 30px; padding: 0 12px; font-size: 13px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 1px solid #333333; background: transparent; color: #FCFCFC; font-size: 12.5px; color: #FCFCFC99">{{ex.t}}</button>
+</sc-for>
+</div>
+</div>
+
+<section aria-label="系統解析結果" style="background: #262626; border-radius: 18px; padding: 16px 20px 6px">
+<div style="display: flex; align-items: center; gap: 8px; padding-bottom: 10px">
+<span style="font-size: 16px; flex: 1">確認一下</span>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; background: rgba(16,132,254,.2); color: #7FC0FF"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg>系統判斷 · 都可以改</span>
+</div>
+
+<div style="display: flex; align-items: center; gap: 14px; min-height: 52px; border-top: 1px solid #333333">
+<span style="width: 84px; flex: none; font-size: 13.5px; color: #FCFCFC99">誰做</span>
+<button type="button" aria-haspopup="listbox" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; outline: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left; white-space: nowrap; flex: 1; background: transparent; border-color: transparent; padding: 0; height: 40px"><span style="display: inline-flex; align-items: center; gap: 10px"><dc-import name="Avatar" color="{{who.color}}" body="{{who.body}}" state="idle" dot="none" ring="#262626" size="24" hint-size="24px,24px"></dc-import>{{who.name}}<span style="font-size: 13px; color: #FCFCFC99">{{who.role}}</span></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></button>
+</div>
+
+<div style="display: flex; align-items: center; gap: 14px; min-height: 52px; border-top: 1px solid #333333">
+<span style="width: 84px; flex: none; font-size: 13.5px; color: #FCFCFC99">做什麼</span>
+<span style="flex: 1; font-size: 14.5px">{{what}}</span>
+<button type="button" aria-label="修改內容" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></svg></button>
+</div>
+
+<div style="display: flex; align-items: center; gap: 14px; min-height: 52px; border-top: 1px solid #333333">
+<span style="width: 84px; flex: none; font-size: 13.5px; color: #FCFCFC99">什麼時候</span>
+<sc-if value="{{hasTime}}" hint-placeholder-val="{{ true }}">
+<div style="flex: 1; display: flex; gap: 8px; flex-wrap: wrap">
+<button type="button" aria-haspopup="listbox" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; outline: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left; white-space: nowrap; height: 36px; font-size: 14px">{{freq}}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></button>
+<button type="button" aria-haspopup="listbox" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; outline: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left; white-space: nowrap; height: 36px; font-size: 14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="M12 6v6l4 2"></path></svg>{{timeLabel}}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></button>
+</div>
+</sc-if>
+<sc-if value="{{noTime}}" hint-placeholder-val="{{ false }}">
+<span style="flex: 1; display: inline-flex; align-items: center; gap: 8px; color: #FFB547; font-size: 14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="M12 8L12 12"></path><path d="M12 16L12.01 16"></path></svg>沒看到時間，要幾點做？</span>
+<button type="button" aria-haspopup="listbox" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; outline: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left; white-space: nowrap; height: 36px; font-size: 14px; color: #FCFCFC99">選時間<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></button>
+</sc-if>
+</div>
+
+<div style="display: flex; align-items: center; gap: 14px; min-height: 52px; border-top: 1px solid #333333">
+<span style="width: 84px; flex: none; font-size: 13.5px; color: #FCFCFC99">結果貼到</span>
+<button type="button" aria-haspopup="listbox" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; outline: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left; white-space: nowrap; flex: 1; background: transparent; border-color: transparent; padding: 0; height: 40px"><span style="display: inline-flex; align-items: center; gap: 8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"></path></svg><span>{{who.name}}的主要對話</span></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></button>
+</div>
+
+<div style="display: flex; align-items: center; gap: 14px; min-height: 52px; border-top: 1px solid #333333">
+<span style="width: 84px; flex: none; font-size: 13.5px; color: #FCFCFC99">下次執行</span>
+<span style="flex: 1; font-size: 14.5px">{{next}}</span>
+<span style="font-size: 13px; color: #FCFCFC90">{{nextRel}}</span>
+</div>
+</section>
+
+<section aria-label="進階設定" style="border: 1px solid #262626; border-radius: 14px">
+<button type="button" aria-expanded="{{adv}}" onClick="{{toggleAdv}}" style="width: 100%; min-height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border: 0; background: transparent; color: #FCFCFC; font: inherit; cursor: pointer; text-align: left">
+<span style="{{chevStyle}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m9 18 6-6-6-6"></path></svg></span>
+<span style="font-size: 14.5px">進階設定</span>
+<span style="flex: 1; min-width: 0; font-size: 13px; color: #FCFCFC90; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right">{{advSummary}}</span>
+</button>
+<sc-if value="{{adv}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 4px 16px 16px 44px; display: flex; flex-direction: column; gap: 16px">
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 14px">時間飄移</span>
+<div role="radiogroup" aria-label="時間飄移" style="display: inline-flex; padding: 3px; gap: 2px; background: #191919; border-radius: 10px; flex: none; align-self: flex-start">
+<sc-for list="{{jitters}}" as="j" hint-placeholder-count="6">
+<button type="button" role="radio" aria-checked="{{j.on}}" onClick="{{j.pick}}" style="{{j.style}}">{{j.t}}</button>
+</sc-for>
+</div>
+<span style="font-size: 12.5px; color: #FCFCFC90">{{jitterHint}}</span>
+</div>
+
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 160px; gap: 12px">
+<label style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 14px">完成條件（選填）</span>
+<input type="text" placeholder="例如：找到 10 則和電商物流有關的新聞就停" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; outline: none"></label>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 14px">最多幾輪</span>
+<div style="display: flex; align-items: center; height: 40px; border: 1px solid #333333; border-radius: 10px; background: #191919; box-sizing: border-box">
+<button type="button" aria-label="減少" onClick="{{dec}}" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 38px; height: 38px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m15 18-6-6 6-6"></path></svg></button>
+<span style="flex: 1; text-align: center; font-size: 14.5px">{{rounds}} 輪</span>
+<button type="button" aria-label="增加" onClick="{{inc}}" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0; width: 38px; height: 38px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m9 18 6-6-6-6"></path></svg></button>
+</div></div>
+</div>
+<span style="font-size: 12.5px; color: #FCFCFC90; margin-top: -8px">有完成條件才會分輪做：預設 10 輪、最多 50 輪；達成或連續兩輪沒進展就收尾，最後一輪一定寫報告。進度記在 <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">/workspace/goals/</span> 下。</span>
+
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 14px">時區</span>
+<button type="button" aria-haspopup="listbox" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; outline: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left; white-space: nowrap">台北（GMT+8）<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 14px">在哪裡跑</span>
+<div role="radiogroup" aria-label="在哪裡跑" style="display: inline-flex; padding: 3px; gap: 2px; background: #191919; border-radius: 10px; flex: none; padding: 3px; height: 40px; box-sizing: border-box">
+<button type="button" role="radio" aria-checked="true" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: #2F2F2F; color: #FCFCFC; flex: 1; height: 34px"><span>{{who.name}}的電腦</span></button>
+<button type="button" role="radio" aria-checked="false" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: transparent; color: #FCFCFC99; flex: 1; height: 34px">雲端電腦</button>
+</div></div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px">
+<div style="flex: 1"><div style="font-size: 14px">也可以用網址觸發</div><div style="font-size: 12.5px; color: #FCFCFC90">給 Slack、GitHub 等服務呼叫；建立後會產生一組專屬網址。</div></div>
+<button type="button" role="switch" aria-checked="false" aria-label="也可以用網址觸發" style="width: 40px; height: 24px; flex: none; border: 0; padding: 0; border-radius: 999px; background: #3D3D3D; position: relative; cursor: pointer"><span style="position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #FFFFFF"></span></button>
+</div>
+</div>
+</sc-if>
+</section>
+</div>
+
+<footer style="flex: none; height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 24px; border-top: 1px solid #262626">
+<span style="flex: 1; font-size: 12.5px; color: #FCFCFC90">建立後隨時可以在定時任務裡改。</span>
+<button type="button" style="height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #2F2F2F; color: #FCFCFC">取消</button>
+<button type="button" disabled="{{noTime}}" style="{{createStyle}}">建立</button>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":760,"height":720}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { text: '每天早上 9 點整理新聞給我', adv: false, jitter: 0, rounds: 10 }; }
+  parse(t) {
+    const BOT = { '小秘': ['blue', 'cursor', '幕僚長'], '阿哲': ['orange', 'blob', '選品研究員'], '小編': ['pink', 'circle', '社群小編'], '阿凱': ['green', 'squircle', '業務開發'], '帳房': ['yellow', 'hexagon', '費用管理'], '數據喵': ['purple', 'diamond', '數據分析師'], '信差': ['cyan', 'star', '收件匣管家'], '抓蟲': ['red', 'shield', 'Bug 重現'] };
+    let name = Object.keys(BOT).find(n => t.indexOf(n) >= 0) || '小秘';
+    const W = '一二三四五六日';
+    let freq = '每天', days = [0, 1, 2, 3, 4, 5, 6];
+    let m;
+    if (/平日|週一到週五|週一至週五|工作日/.test(t)) { freq = '週一至週五'; days = [0, 1, 2, 3, 4]; }
+    else if ((m = t.match(/每(?:週|周|星期)([一二三四五六日天])/))) { const d = W.indexOf(m[1] === '天' ? '日' : m[1]); freq = '每週' + W[d]; days = [d]; }
+    const tm = t.match(/(凌晨|早上|上午|中午|下午|傍晚|晚上)?\s*(\d{1,2})\s*(?:點|:|：)\s*(半|\d{1,2})?\s*(?:分)?/);
+    let h = null, mi = 0;
+    if (tm) {
+      h = +tm[2]; mi = tm[3] === '半' ? 30 : (tm[3] ? +tm[3] : 0);
+      if (/下午|傍晚|晚上/.test(tm[1] || '') && h < 12) h += 12;
+      if (h > 23 || mi > 59) h = null;
+    }
+    let what = t.replace(/(每天|每日|平日|工作日|每(?:週|周|星期)[一二三四五六日天]|週一[到至]週五)/g, '')
+      .replace(/(凌晨|早上|上午|中午|下午|傍晚|晚上)?\s*\d{1,2}\s*(?:點|:|：)\s*(半|\d{1,2})?\s*(分)?/g, '')
+      .replace(/^(請|叫|讓)?\s*/, '').replace(new RegExp('^' + name), '').replace(/給我$/, '').replace(/^[，,\s]+|[，,。\s]+$/g, '').trim();
+    if (!what) what = '（還沒說要做什麼）';
+    if (/新聞/.test(what) && what.length < 10) what = what + '，挑 5 則重點、附來源網址';
+    return { name, bot: BOT[name], freq, days, h, mi, what };
+  }
+  renderVals() {
+    const S = this.state, p = this.parse(S.text);
+    const hasTime = p.h !== null;
+    const label = (h, m) => {
+      const mm = (m < 10 ? '0' : '') + m;
+      if (h === 0) return '午夜 12:' + mm;
+      if (h < 12) return '上午 ' + h + ':' + mm;
+      if (h === 12) return '中午 12:' + mm;
+      if (h < 18) return '下午 ' + (h - 12) + ':' + mm;
+      return '晚上 ' + (h - 12) + ':' + mm;
+    };
+    let next = '—', nextRel = '';
+    if (hasTime) {
+      const now = new Date(2026, 9, 17, 15, 20);
+      for (let i = 0; i < 8; i++) {
+        const d = new Date(2026, 9, 17 + i, p.h, p.mi);
+        const wd = (d.getDay() + 6) % 7;
+        if (d > now && p.days.indexOf(wd) >= 0) {
+          next = (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日（' + '一二三四五六日'[wd] + '）' + label(p.h, p.mi);
+          nextRel = i === 0 ? '今天' : i === 1 ? '明天' : i + ' 天後';
+          break;
+        }
+      }
+    }
+    const J = [0, 15, 30, 60, 90, 120];
+    const SEGI = 'height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: transparent; color: #FCFCFC99', SEGON = 'height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: #2F2F2F; color: #FCFCFC';
+    const jitters = J.map(v => ({ t: v === 0 ? '不飄移' : v + ' 分鐘', on: S.jitter === v, style: S.jitter === v ? SEGON : SEGI, pick: () => this.setState({ jitter: v }) }));
+    const examples = ['每天早上 9 點整理新聞給我', '每週一 10 點請阿哲比價', '平日晚上 6 點請信差整理信件'].map(t => ({ t, pick: () => this.setState({ text: t }) }));
+    const BP = 'height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #FCFCFC; color: #070707';
+    return {
+      text: S.text, onText: e => this.setState({ text: e.target.value }), clear: () => this.setState({ text: '' }),
+      examples,
+      who: { name: p.name, color: p.bot[0], body: p.bot[1], role: p.bot[2] },
+      what: p.what, freq: p.freq, hasTime, noTime: !hasTime, timeLabel: hasTime ? label(p.h, p.mi) : '',
+      next, nextRel,
+      adv: S.adv, toggleAdv: () => this.setState({ adv: !S.adv }),
+      chevStyle: 'display: flex; transition: transform .15s; transform: rotate(' + (S.adv ? 90 : 0) + 'deg)',
+      advSummary: (S.jitter ? '隨機延後 ' + S.jitter + ' 分鐘內' : '準時') + ' · 一次做完 · 台北時間 · ' + p.name + '的電腦',
+      jitters,
+      jitterHint: S.jitter ? '每次在設定時間後 ' + S.jitter + ' 分鐘內隨機開始，像真人發文。' : '準時開始。選一個範圍，每次就會在那之內隨機延後，像真人發文。',
+      rounds: S.rounds,
+      dec: () => this.setState({ rounds: Math.max(1, S.rounds - 1) }), inc: () => this.setState({ rounds: Math.min(50, S.rounds + 1) }),
+      createStyle: BP + (hasTime ? '' : '; opacity: .4; cursor: default')
+    };
+  }
+}
+</script>
+</body>
+</html>

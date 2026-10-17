@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>卡片：核准與收據</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+input::placeholder{color:#FCFCFC90}
+</style>
+</helmet>
+<div style="width: 900px; height: 1400px; padding: 14px 70px 20px; box-sizing: border-box; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.6; display: flex; flex-direction: column; gap: 7px">
+
+<p style="margin: 0; font-size: 12.5px; color: #FCFCFC90">核准 · 等待中（無人在場的工作：10 分鐘沒回覆會自動拒絕）</p>
+<sc-if value="{{pending}}" hint-placeholder-val="{{ true }}">
+<section aria-label="需要允許這項操作" style="width: 760px; box-sizing: border-box; background: #262626; border-radius: 18px; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px; gap: 12px">
+<dc-import name="Avatar" color="yellow" body="hexagon" state="notifying" dot="waiting" ring="#262626" size="34" hint-size="34px,34px"></dc-import>
+<div style="display: flex; flex-direction: column; flex: 1; min-width: 0">
+<h2 style="margin: 0; font-size: 16px; line-height: 1.4; color: #FCFCFC; font-weight: 400">需要允許這項操作</h2>
+<p style="margin: 0; font-size: 13px; line-height: 1.5; color: #FCFCFC99">帳房 · 小秘交辦的工作 · 第 2/6 棒</p>
+</div>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(255,152,0,.14); color: #FFB547; font-size: 12.5px; flex: none; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M12 6v6l4 2"></path></svg>10 分鐘內沒回覆會過期</span>
+</div>
+<div style="background: #191919; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 4px">
+<p style="margin: 0; font-size: 14.5px; line-height: 1.6; color: #FCFCFC">付款 NT$1,280 給晨光廣告（10 月廣告費，發票 INV-1027）</p>
+<code style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #FCFCFC99; word-break: break-all">python3 /workspace/pay.py --vendor 晨光廣告 --amount 1280 --invoice INV-1027</code>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; gap: 8px">
+<button type="button" onClick="{{allow}}" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">允許這次</button>
+<button type="button" onClick="{{always}}" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">一律允許</button>
+<button type="button" onClick="{{deny}}" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 1px solid #333333; background: transparent; color: #FCFCFC; font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">拒絕</button>
+<span style="margin-left: auto; font-size: 12.5px; color: #FCFCFC90">一律允許＝以後帳房付這家廠商不再問</span>
+</div>
+</section>
+</sc-if>
+<sc-if value="{{settled}}" hint-placeholder-val="{{ false }}">
+<div style="width: 760px; box-sizing: border-box; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 8px 0 16px; border: 1px solid #333333; border-radius: 14px; font-size: 14px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{settledColor}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{settledIcon}}"></path></svg>
+<span style="flex: 1">{{settledText}}</span>
+<span style="font-size: 12.5px; color: #FCFCFC90">你 · 剛剛</span>
+<button type="button" onClick="{{reset}}" style="height: 30px; padding: 0 10px; border-radius: 999px; border: 0; background: transparent; color: #FCFCFC99; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8 M3 3v5h5"></path></svg>重看</button>
+</div>
+</sc-if>
+
+<p style="margin: 0; font-size: 12.5px; color: #FCFCFC90; margin-top: 4px">精簡列 · 在對話裡，細節收起（你自己發起的工作不會過期）</p>
+<div style="width: 760px; box-sizing: border-box; display: flex; align-items: center; gap: 10px; gap: 12px; min-height: 48px; padding: 0 8px 0 16px; border: 1px solid #333333; border-radius: 14px">
+<span style="color: #FFB547; display: flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z M12 8v4 M12 16h.01"></path></svg></span>
+<span style="font-size: 14.5px">阿哲想執行指令</span>
+<code style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; background: #191919; border-radius: 6px; padding: 1px 8px; color: #FCFCFCcc">npm install playwright</code>
+<span style="flex: 1"></span>
+<span style="font-size: 12.5px; color: #FFB547">等你確認</span>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">允許</button>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid #333333; background: transparent; color: #FCFCFC; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">拒絕</button>
+<button type="button" aria-label="展開細節" style="width: 32px; height: 32px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M6 9 l6 6 6-6"></path></svg></button>
+</div>
+
+<div style="width: 760px; box-sizing: border-box; display: flex; align-items: center; gap: 10px; gap: 12px; min-height: 48px; padding: 0 8px 0 16px; border: 1px solid #333333; border-radius: 14px">
+<span style="color: #FFB547; display: flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M22 7 l-8.991 5.727a2 2 0 0 1-2.009 0L2 7 M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2Z"></path></svg></span>
+<span style="font-size: 14.5px">阿凱要寄 3 封信</span>
+<span style="font-size: 13px; color: #FCFCFC99; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Gmail · 新品合作邀請 · 林經理、陳小姐、王先生</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(255,152,0,.14); color: #FFB547; font-size: 12.5px; flex: none; white-space: nowrap">會寄出</span>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">允許</button>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid #333333; background: transparent; color: #FCFCFC; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">看草稿</button>
+</div>
+<p style="margin: 0; font-size: 12.5px; color: #FCFCFC90; margin-top: 4px">對外發送 · 完整卡片（你勾了「先問我」：寄出、公開發佈、用你的名義）</p>
+<section aria-label="要用你的名義發佈嗎" style="width: 760px; box-sizing: border-box; background: #262626; border-radius: 18px; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px; gap: 12px">
+<dc-import name="Avatar" color="pink" body="circle" state="notifying" dot="waiting" ring="#262626" size="34" hint-size="34px,34px"></dc-import>
+<div style="display: flex; flex-direction: column; flex: 1; min-width: 0">
+<h2 style="margin: 0; font-size: 16px; line-height: 1.4; color: #FCFCFC; font-weight: 400">要用你的名義在 Threads 發文嗎？</h2>
+<p style="margin: 0; font-size: 13px; line-height: 1.5; color: #FCFCFC99">小編 · 新品上架專案</p>
+</div>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(255,152,0,.14); color: #FFB547; font-size: 12.5px; flex: none; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z M6 14a12 12 0 0 0 2.4 7.2 2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14 M8 6v8"></path></svg>公開發佈</span>
+</div>
+<div style="background: #191919; border-radius: 12px; padding: 8px 10px; display: flex; align-items: center; gap: 12px">
+<span style="width: 36px; height: 36px; flex: none; border-radius: 8px; background: #E9DCCB; display: flex; align-items: flex-end; justify-content: center; overflow: hidden"><span style="width: 20px; height: 24px; border-radius: 5px 5px 0 0; background: #8A6A4A"></span></span>
+<p style="margin: 0; font-size: 14px; line-height: 1.6; color: #FCFCFCcc">經典帆布包新色到貨！奶茶色、霧藍色兩款，週末限定 9 折。#帆布包 #新品</p>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; gap: 8px">
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">允許發佈</button>
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">我改一下再發</button>
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 1px solid #333333; background: transparent; color: #FCFCFC; font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">拒絕</button>
+</div>
+</section>
+
+<div style="display: flex; align-items: center; gap: 10px; width: 760px; margin-top: 4px">
+<p style="margin: 0; font-size: 12.5px; color: #FCFCFC90; flex: 1">提案 · Bot 想改自己的設定或排程（點右邊切換四種）</p>
+<div role="tablist" aria-label="提案類型" style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #111111">
+<sc-for list="{{kinds}}" as="k" hint-placeholder-count="4">
+<button type="button" role="tab" aria-selected="{{k.on}}" onClick="{{k.pick}}" style="height: 28px; padding: 0 12px; border: 0; border-radius: 8px; background: {{k.bg}}; color: {{k.fg}}; font-family: inherit; font-size: 13px; cursor: pointer">{{k.t}}</button>
+</sc-for>
+</div>
+</div>
+<section aria-label="提案" style="width: 760px; box-sizing: border-box; background: #262626; border-radius: 18px; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px; gap: 12px">
+<dc-import name="Avatar" color="{{p.color}}" body="{{p.body}}" state="curious" dot="none" ring="#262626" size="34" hint-size="34px,34px"></dc-import>
+<div style="display: flex; flex-direction: column; flex: 1; min-width: 0">
+<h2 style="margin: 0; font-size: 16px; line-height: 1.4; color: #FCFCFC; font-weight: 400">{{p.title}}</h2>
+<p style="margin: 0; font-size: 13px; line-height: 1.5; color: #FCFCFC99">{{p.sub}}</p>
+</div>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12.5px; flex: none; white-space: nowrap">提案 · {{p.kind}}</span>
+</div>
+<div style="display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 1px; border-radius: 12px; overflow: hidden; background: #333333">
+<sc-for list="{{p.facts}}" as="f" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; background: #191919">
+<span style="font-size: 12.5px; color: #FCFCFC99">{{f.k}}</span><span style="font-size: 14px; line-height: 1.5; color: #FCFCFC">{{f.v}}</span>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{proposalOpen}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: center; gap: 10px; gap: 8px">
+<button type="button" onClick="{{accept}}" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">{{p.yes}}</button>
+<button type="button" onClick="{{decline}}" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 1px solid #333333; background: transparent; color: #FCFCFC; font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">先不要</button>
+<span style="margin-left: auto; font-size: 12.5px; color: #FCFCFC90">被否決的提案 14 天內不會再提</span>
+</div>
+</sc-if>
+<sc-if value="{{proposalDone}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 10px; gap: 8px; font-size: 14px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{propColor}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{propIcon}}"></path></svg>
+<span style="flex: 1">{{propText}}</span>
+<button type="button" onClick="{{reopen}}" style="height: 30px; padding: 0 10px; border-radius: 999px; border: 0; background: transparent; color: #FCFCFC99; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8 M3 3v5h5"></path></svg>重看</button>
+</div>
+</sc-if>
+</section>
+
+<p style="margin: 0; font-size: 12.5px; color: #FCFCFC90; margin-top: 4px">等待核准面板 · 輸入框正上方，一次多件（更多選單已打開）</p>
+<div style="width: 760px; display: flex; flex-direction: column; gap: 8px">
+<sc-if value="{{queueOpen}}" hint-placeholder-val="{{ true }}">
+<section aria-label="等你允許" style="position: relative; box-sizing: border-box; background: #262626; border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-height: 150px">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="display: flex; align-items: center; gap: 10px; gap: 2px; font-size: 13px; color: #FCFCFC99">
+<button type="button" aria-label="上一件" onClick="{{prev}}" style="width: 32px; height: 32px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; width: 26px; height: 26px"><span style="display: flex; transform: rotate(180deg)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9 18 l6-6-6-6"></path></svg></span></button>
+<span style="min-width: 34px; text-align: center">{{q.n}} / 3</span>
+<button type="button" aria-label="下一件" onClick="{{next}}" style="width: 32px; height: 32px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; width: 26px; height: 26px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9 18 l6-6-6-6"></path></svg></button>
+</span>
+<dc-import name="Avatar" color="{{q.color}}" body="{{q.body}}" state="{{q.state}}" dot="none" ring="#262626" size="24" hint-size="24px,24px"></dc-import>
+<span style="font-size: 14.5px">{{q.who}}</span>
+<code style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; background: #191919; border-radius: 6px; padding: 1px 8px; color: #FCFCFCcc">{{q.cmd}}</code>
+<span style="flex: 1"></span>
+<button type="button" aria-label="更多選項" aria-expanded="{{menuOpen}}" onClick="{{toggleMenu}}" style="width: 32px; height: 32px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; background: {{menuBg}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0 M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0 M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path></svg></button>
+</div>
+<p style="margin: 0; font-size: 13px; line-height: 1.5; color: #FCFCFC99; padding-left: 4px">{{q.why}}</p>
+<div style="display: flex; align-items: center; gap: 10px; gap: 8px">
+<button type="button" onClick="{{qAllow}}" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">允許這次</button>
+<button type="button" onClick="{{qAllow}}" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 1px solid #333333; background: transparent; color: #FCFCFC; font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">拒絕</button>
+<button type="button" style="height: 30px; padding: 0 10px; border-radius: 999px; border: 0; background: transparent; color: #FCFCFC99; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">細節<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M6 9 l6 6 6-6"></path></svg></button>
+</div>
+<sc-if value="{{menuOpen}}" hint-placeholder-val="{{ true }}">
+<div role="menu" style="width: 260px; box-sizing: border-box; background: #262626; border: 1px solid #333333; border-radius: 12px; padding: 6px; box-shadow: 0 12px 32px rgba(0,0,0,.5); display: flex; flex-direction: column; position: absolute; right: 12px; top: 48px; z-index: 2">
+<button type="button" role="menuitem" style="display: flex; align-items: center; gap: 12px; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC; font-family: inherit; font-size: 14px; text-align: left; cursor: pointer; white-space: nowrap"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>{{qMenu}}</button>
+<span style="height: 1px; background: #333333; margin: 4px 6px"></span>
+<button type="button" role="menuitem" style="display: flex; align-items: center; gap: 12px; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC; font-family: inherit; font-size: 14px; text-align: left; cursor: pointer; white-space: nowrap; color: #FF5667"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF5667" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M15 9 l-6 6 M9 9 l6 6"></path></svg>取消這輪工作</button>
+</div>
+</sc-if>
+</section>
+</sc-if>
+<sc-if value="{{queueDone}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 10px; gap: 8px; min-height: 44px; padding: 0 8px 0 16px; border: 1px solid #333333; border-radius: 14px; font-size: 14px">
+<span style="color: #38D591; display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></span><span style="flex: 1">3 件都處理好了，Bot 繼續工作</span>
+<button type="button" onClick="{{qReset}}" style="height: 30px; padding: 0 10px; border-radius: 999px; border: 0; background: transparent; color: #FCFCFC99; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8 M3 3v5h5"></path></svg>重看</button>
+</div>
+</sc-if>
+<div style="height: 52px; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 12px; padding: 0 9px 0 16px; color: #FCFCFC90; font-size: 14.5px">
+<span style="color: #FCFCFC99; display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14 M12 5v14"></path></svg></span><span style="flex: 1">先處理上面的允許，或直接補充…</span>
+<span style="color: #FCFCFC99; display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 19v3 M19 10v2a7 7 0 0 1-14 0v-2 M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z"></path></svg></span>
+<span style="width: 34px; height: 34px; border-radius: 999px; background: #FCFCFC; color: #070707; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12 l7-7 7 7 M12 19V5"></path></svg></span>
+</div>
+</div>
+
+<p style="margin: 0; font-size: 12.5px; color: #FCFCFC90; margin-top: 4px">處理後 · 一行結果</p>
+<div style="width: 760px; display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{outcomes}}" as="o" hint-placeholder-count="5">
+<span style="display: inline-flex; align-items: center; gap: 8px; height: 32px; box-sizing: border-box; padding: 0 14px; border: 1px solid #333333; border-radius: 999px; font-size: 13.5px; color: #FCFCFCcc; background: transparent; white-space: nowrap; align-self: flex-start; padding: 0 12px; gap: 6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{o.c}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{o.icon}}"></path></svg>{{o.t}}<span style="color: #FCFCFC90">{{o.m}}</span></span>
+</sc-for>
+</div>
+
+<p style="margin: 0; font-size: 12.5px; color: #FCFCFC90; margin-top: 4px">自我設定收據 · 可復原</p>
+<div style="width: 760px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 3px 0 12px; border: 1px solid #333333; border-radius: 14px; font-size: 14px">
+<dc-import name="Avatar" color="blue" body="cursor" state="happy" dot="none" ring="#070707" size="22" hint-size="22px,22px"></dc-import>
+<span style="flex: 1">小秘排了一個定時任務：每日新聞（每天 上午 8:00）</span>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9 14 4 9l5-5 M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"></path></svg>復原</button>
+<button type="button" style="height: 30px; padding: 0 10px; border-radius: 999px; border: 0; background: transparent; color: #FCFCFC99; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">分享給團隊</button>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 16px 0 12px; border: 1px solid #333333; border-radius: 14px; font-size: 14px; color: #FCFCFC99">
+<dc-import name="Avatar" color="orange" body="blob" state="working" dot="none" ring="#070707" size="22" hint-size="22px,22px"></dc-import>
+<span style="flex: 1; text-decoration: line-through">阿哲新增了技能：蝦皮比價</span><span style="font-size: 13px">已復原 · 你 09:20</span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 16px 0 12px; border: 1px solid #333333; border-radius: 14px; font-size: 14px">
+<dc-import name="Avatar" color="purple" body="diamond" state="idle" dot="queued" ring="#070707" size="22" hint-size="22px,22px"></dc-import>
+<span style="flex: 1">數據喵更新了人設：回覆先給結論，再附表格</span><span style="font-size: 13px; color: #FCFCFC90">之後又改過，這裡不能復原</span>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":900,"height":1400}}'>
+class Component extends DCLogic {
+renderVals() {
+const I = {"check": "M20 6 9 17l-5-5", "x": "M18 6 6 18 M6 6 l12 12", "clock": "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M12 6v6l4 2", "undo-2": "M9 14 4 9l5-5 M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11", "hand": "M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2 M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2 M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8 M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"};
+const s = this.state || {};
+const r = s.r || '';
+const kind = s.kind || 'routine';
+const P = {
+routine: { kind: '定時任務', color: 'blue', body: 'cursor', title: '小秘想新增一個定時任務', sub: '每日競品價格快報 · 有變動才通知你', yes: '建立定時任務', done: '已建立定時任務：每日競品價格快報',
+facts: [['什麼時候', '每天 上午 8:30'], ['做什麼', '看三家競品主力商品的價格，有變動才通知你'], ['結果貼到', '和小秘的主要對話']] },
+skill: { kind: '技能', color: 'orange', body: 'blob', title: '阿哲想新增一個技能：蝦皮比價', sub: '從這次比價的做法整理出來', yes: '新增技能', done: '已新增技能：蝦皮比價（阿哲）',
+facts: [['用途', '比對同款商品在三家賣場的價格'], ['步驟', '7 步 · 會用到瀏覽器'], ['誰能用', '只有阿哲，可再分享']] },
+persona: { kind: '人設', color: 'purple', body: 'diamond', title: '數據喵想更新自己的人設', sub: '你上週兩次說「先講結論」', yes: '套用', done: '已更新數據喵的人設',
+facts: [['原本', '回覆先附完整表格'], ['改成', '回覆先給結論，再附表格'], ['影響', '只有數據喵之後的回覆']] },
+model: { kind: '模型', color: 'blue', body: 'cursor', title: '小秘想換預設模型', sub: '週報要整理很多來源，想用推理比較強的模型', yes: '換模型', done: '已把小秘的預設模型換成 Claude Opus 5',
+facts: [['現在', 'Claude Sonnet 5.5'], ['改成', 'Claude Opus 5'], ['花費', '比較貴，上限不變']] }
+};
+const p0 = P[kind];
+const p = Object.assign({}, p0, { facts: p0.facts.map(([k, v], i) => ({ k, v, line: i === p0.facts.length - 1 ? 'transparent' : '#333333' })) });
+const pr = s.pr || '';
+const Q = [
+{ n: 1, color: 'orange', body: 'blob', state: 'working', who: '阿哲想執行指令', cmd: 'npm install playwright', short: '阿哲安裝套件', why: '安裝瀏覽器自動化套件，用來抓蝦皮價格' },
+{ n: 2, color: 'yellow', body: 'hexagon', state: 'notifying', who: '帳房想付款', cmd: 'pay.py INV-1027', short: '帳房付晨光廣告', why: '付款 NT$1,280 給晨光廣告（10 月廣告費）' },
+{ n: 3, color: 'pink', body: 'circle', state: 'notifying', who: '小編想發文', cmd: 'threads.post', short: '小編發 Threads', why: '用你的名義發佈新品貼文' }
+];
+const qi = s.qi || 0;
+return {
+pending: !r, settled: !!r,
+settledText: r === 'deny' ? '已拒絕 · 帳房不會付款，會回報小秘' : r === 'always' ? '一律允許 · 以後帳房付晨光廣告不再問（可在權限設定改回）' : '已允許 · 帳房繼續付款 NT$1,280',
+settledColor: r === 'deny' ? '#FF5667' : '#38D591',
+settledIcon: r === 'deny' ? I.x : I.check,
+allow: () => this.setState({ r: 'allow' }),
+always: () => this.setState({ r: 'always' }),
+deny: () => this.setState({ r: 'deny' }),
+reset: () => this.setState({ r: '' }),
+kinds: [['routine', '定時任務'], ['skill', '技能'], ['persona', '人設'], ['model', '模型']].map(([id, t]) => ({ t, on: id === kind ? 'true' : 'false', bg: id === kind ? '#2F2F2F' : 'transparent', fg: id === kind ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ kind: id, pr: '' }) })),
+p,
+proposalOpen: !pr, proposalDone: !!pr,
+propText: pr === 'no' ? '先不要 · 14 天內不會再提這個提案' : p0.done,
+propColor: pr === 'no' ? '#FCFCFC99' : '#38D591',
+propIcon: pr === 'no' ? I.x : I.check,
+accept: () => this.setState({ pr: 'yes' }),
+decline: () => this.setState({ pr: 'no' }),
+reopen: () => this.setState({ pr: '' }),
+queueOpen: qi < 3, queueDone: qi >= 3,
+q: Q[Math.min(qi, 2)],
+qMenu: '以後都允許：' + Q[Math.min(qi, 2)].short,
+menuOpen: s.menu === undefined ? true : s.menu,
+menuBg: (s.menu === undefined ? true : s.menu) ? '#2F2F2F' : 'transparent',
+toggleMenu: () => this.setState({ menu: !(s.menu === undefined ? true : s.menu) }),
+qAllow: () => this.setState({ qi: qi + 1, menu: false }),
+next: () => this.setState({ qi: Math.min(qi + 1, 2) }),
+prev: () => this.setState({ qi: Math.max(qi - 1, 0) }),
+qReset: () => this.setState({ qi: 0, menu: true }),
+outcomes: [
+{ t: '已允許 · 帳房付款', m: '你 09:12', c: '#38D591', icon: I.check },
+{ t: '已拒絕 · 阿凱寄信', m: '你 09:14', c: '#FF5667', icon: I.x },
+{ t: '一律允許 · 阿哲裝套件', m: '可改回', c: '#38D591', icon: I.check },
+{ t: '已過期 · 10 分鐘沒回覆，自動拒絕', m: '', c: '#FCFCFC99', icon: I.clock },
+{ t: '已允許 · 在通話裡說的', m: '09:30', c: '#38D591', icon: I.check }
+]
+};
+}
+}
+</script>
+</body>
+</html>

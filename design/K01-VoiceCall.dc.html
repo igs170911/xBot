@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>和小秘語音對話</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3{font-weight:400}
+a{color:#7FC0FF;text-decoration:none}
+</style>
+</helmet>
+<div style="min-height: 960px; display: flex; flex-wrap: wrap; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.55">
+
+<div style="flex: 1 1 300px; max-width: 100%; border-right: 1px solid #1C1C1C; background: #111111">
+<dc-import name="Sidebar" active="xiaomi" hint-size="100%,960px"></dc-import>
+</div>
+
+<main style="flex: 999 1 560px; min-width: 0; min-height: 960px; display: flex; flex-direction: column">
+<div style="height: 56px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 20px">
+<dc-import name="Avatar" color="blue" body="cursor" state="{{p.state}}" dot="none" ring="#070707" size="26" hint-size="26px,26px"></dc-import>
+<span style="font-size: 16px">小秘</span>
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-label="幕僚長"><path d="{{I.crown}}"></path></svg>
+<span style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #333333; font-size: 13px; color: #FCFCFCcc"><span style="width: 7px; height: 7px; border-radius: 9px; background: #38D591"></span>通話中 · 3:42</span>
+<span style="flex: 1"></span>
+<button type="button" aria-label="字幕" aria-pressed="true" style="width: 36px; height: 36px; border-radius: 10px; border: 0; background: #2F2F2F; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.captions}}"></path></svg></button>
+<a href="E01-Computer.dc.html" aria-label="打開小秘的電腦" style="width: 36px; height: 36px; border-radius: 10px; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.monitor}}"></path></svg></a>
+</div>
+
+<div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 0 32px 24px">
+
+<div style="position: relative; width: 300px; height: 300px; display: flex; align-items: center; justify-content: center">
+<span aria-hidden="true" style="position: absolute; inset: 0; border-radius: 999px; border: 1.5px {{p.ringStyle}} {{p.ring1}}"></span>
+<span aria-hidden="true" style="position: absolute; inset: 26px; border-radius: 999px; background: {{p.glow}}"></span>
+<dc-import name="Avatar" color="blue" body="cursor" state="{{p.state}}" dot="none" size="200" hint-size="200px,200px"></dc-import>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 620px; text-align: center">
+<span style="font-size: 20px">{{p.label}}</span>
+<sc-if value="{{p.hasPill}}" hint-placeholder-val="{{ false }}">
+<span style="display: flex; align-items: center; gap: 6px; border: 1px solid #333333; border-radius: 999px; padding: 3px 12px; font-size: 13px; color: #FCFCFCcc"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg>已傳請求給阿哲 · 第 1/6 棒</span>
+</sc-if>
+<span style="font-size: 17px; color: #FCFCFC; min-height: 27px">{{p.cap}}<span style="color: #FCFCFC90">{{p.capTail}}</span></span>
+<span style="font-size: 13px; color: #FCFCFC90">{{p.who}}</span>
+</div>
+
+<div aria-hidden="true" style="height: 36px; display: flex; align-items: center; gap: 4px">
+<sc-for list="{{bars}}" as="b" hint-placeholder-count="24"><span style="width: 4px; height: {{b.h}}px; border-radius: 4px; background: {{b.c}}"></span></sc-for>
+</div>
+
+<div style="display: flex; align-items: center; gap: 14px">
+<button type="button" onClick="{{toggleMute}}" aria-label="{{muteLabel}}" aria-pressed="{{mutedA}}" style="width: 56px; height: 56px; border-radius: 999px; border: 0; background: {{muteBg}}; color: {{muteFg}}; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{muteIcon}}"></path></svg></button>
+<button type="button" onClick="{{interrupt}}" style="height: 56px; padding: 0 22px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 15px; display: flex; align-items: center; gap: 8px; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.hand}}"></path></svg>打斷</button>
+<a href="C02-Chat-Answer.dc.html" style="height: 56px; padding: 0 22px; border-radius: 999px; background: #2F2F2F; color: #FF5667; font-size: 15px; display: flex; align-items: center; gap: 8px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.phoneOff}}"></path></svg>結束通話</a>
+</div>
+<span style="font-size: 13px; color: #FCFCFC90">說完停一下就會送出 · 隨時開口就能打斷它 · ⌘⇧M 靜音</span>
+</div>
+</main>
+
+<aside aria-label="這通電話" style="flex: 1 1 380px; max-width: 100%; box-sizing: border-box; background: #111111; border-left: 1px solid #1C1C1C; display: flex; flex-direction: column">
+<div style="height: 56px; flex: none; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid #1C1C1C">
+<h2 style="margin: 0; font-size: 16px; flex: 1">這通電話</h2>
+<span style="font-size: 12.5px; color: #FCFCFC90">自動存進對話</span>
+</div>
+<div style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 10px; padding: 16px 16px">
+<span style="align-self: center; font-size: 12px; color: #FCFCFC90">今天 下午 3:02</span>
+<div style="align-self: flex-end; max-width: 80%; background: #5A5A5A; border-radius: 18px; padding: 8px 14px; font-size: 14px">競品比完了嗎？</div>
+<div style="align-self: flex-start; max-width: 85%; background: #262626; border-radius: 18px; padding: 8px 14px; font-size: 14px">比完了。三家都比我們便宜一些，有 5 項差最多，我把清單放進對話了。</div>
+<div style="align-self: flex-end; max-width: 80%; background: #5A5A5A; border-radius: 18px; padding: 8px 14px; font-size: 14px">日本賣場也看一下。</div>
+<span style="align-self: flex-start; display: flex; align-items: center; gap: 6px; border: 1px solid #333333; border-radius: 999px; padding: 3px 12px; font-size: 12.5px; color: #FCFCFCcc"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg>已傳請求給阿哲 · 第 1/6 棒</span>
+<div style="align-self: flex-end; max-width: 80%; background: #5A5A5A; border-radius: 18px; padding: 8px 14px; font-size: 14px">那就調降那 5 項，其他維持。</div>
+
+<div style="background: #262626; border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 10px">
+<dc-import name="Avatar" color="blue" body="cursor" state="notifying" dot="waiting" ring="#262626" size="28" hint-size="28px,28px"></dc-import>
+<span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 14.5px">調降 5 項商品售價</span><span style="font-size: 12.5px; color: #FFB547">定價要你核定 · 用說的也算</span></span>
+</div>
+<sc-if value="{{pending}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; gap: 8px">
+<button type="button" onClick="{{approve}}" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; font: inherit; font-size: 13.5px; cursor: pointer">允許這次</button>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 13.5px; cursor: pointer">先看清單</button>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid #333333; background: transparent; color: #FCFCFC; font: inherit; font-size: 13.5px; cursor: pointer">拒絕</button>
+</div>
+</sc-if>
+<sc-if value="{{approved}}" hint-placeholder-val="{{ false }}">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: #38D591"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg>已允許 · 小秘開始改價</span>
+</sc-if>
+</div>
+</div>
+
+<div style="flex: none; padding: 14px 16px 18px; border-top: 1px solid #1C1C1C; display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 12.5px; color: #FCFCFC90">掛斷後，對話裡會留下這一列</span>
+<div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: #191919">
+<span style="width: 32px; height: 32px; border-radius: 999px; background: #262626; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; flex: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.phone}}"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 14px">和小秘通話 · 6 分 12 秒</span><span style="font-size: 12.5px; color: #FCFCFC99">1 個請求 · 1 件核定</span></span>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 13px; cursor: pointer">看逐字稿</button>
+</div>
+</div>
+</aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"phase":{"editor":"enum","default":"listening","options":["listening","thinking","working","talking"]},"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+renderVals() {
+const I = {"captions": "M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z M7 15h4M15 15h2M7 11h2M13 11h4", "check": "M20 6 9 17l-5-5", "crown": "M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z M5 21h14", "hand": "M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2 M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2 M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8 M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15", "mic": "M12 19v3 M19 10v2a7 7 0 0 1-14 0v-2 M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z", "micOff": "M12 19v3 M15 9.34V5a3 3 0 0 0-5.68-1.33 M16.95 16.95A7 7 0 0 1 5 12v-2 M18.89 13.23A7 7 0 0 0 19 12v-2 M0 0m2 2 20 20 M9 9v3a3 3 0 0 0 5.12 2.12", "monitor": "M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z M8 21L16 21 M12 17L12 21", "phone": "M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384", "phoneOff": "M10.1 13.9a14 14 0 0 0 3.732 2.668 1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2 18 18 0 0 1-12.728-5.272 M22 2 2 22 M4.76 13.582A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 .244.473"};
+const st = this.state || {};
+const phase = st.phase || this.props.phase || 'listening';
+const muted = !!st.muted;
+const P = {
+listening: { state: 'listening', label: muted ? '已靜音' : '正在聽…', cap: '「那就調降那 5 項，', capTail: '其他維持」', who: '你 · 字幕', ring1: 'rgba(16,132,254,.55)', ringStyle: 'solid', glow: 'rgba(16,132,254,.10)', hasPill: false, bar: '#FCFCFC' },
+thinking: { state: 'thinking', label: '想一下…', cap: '', capTail: '「調降 5 項，其他維持」', who: '你剛剛說的', ring1: '#3D3D3D', ringStyle: 'dashed', glow: 'rgba(252,252,252,.04)', hasPill: false, bar: '#3D3D3D' },
+working: { state: 'working', label: '去做了，邊做邊陪你聊', cap: '', capTail: '改價要你核定，卡片在右邊', who: '小秘', ring1: 'rgba(56,213,145,.5)', ringStyle: 'solid', glow: 'rgba(56,213,145,.08)', hasPill: true, bar: '#3D3D3D' },
+talking: { state: 'happy', label: '正在說…', cap: '「好，5 項的新價格我列好了，', capTail: '你點允許我就改。」', who: '小秘 · 字幕', ring1: 'rgba(127,192,255,.6)', ringStyle: 'solid', glow: 'rgba(127,192,255,.12)', hasPill: false, bar: '#7FC0FF' }
+};
+const p = P[phase] || P.listening;
+const H = [6, 10, 18, 26, 14, 30, 22, 12, 8, 20, 32, 24, 16, 10, 22, 28, 18, 12, 26, 16, 10, 14, 8, 6];
+const flat = phase === 'thinking' || phase === 'working' || (phase === 'listening' && muted);
+return {
+I,
+p,
+bars: H.map((h) => ({ h: flat ? 4 : h, c: p.bar })),
+toggleMute: () => this.setState({ muted: !muted }),
+interrupt: () => this.setState({ phase: 'listening' }),
+muteLabel: muted ? '取消靜音' : '靜音',
+mutedA: muted ? 'true' : 'false',
+muteBg: muted ? '#FCFCFC' : '#2F2F2F',
+muteFg: muted ? '#070707' : '#FCFCFC',
+muteIcon: muted ? I.micOff : I.mic,
+pending: !st.approved,
+approved: !!st.approved,
+approve: () => this.setState({ approved: true })
+};
+}
+}
+</script>
+</body>
+</html>

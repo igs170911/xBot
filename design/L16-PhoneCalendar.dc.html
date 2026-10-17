@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>手機：行事曆</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A8D4FF}
+button{font:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.45; display: flex; flex-direction: column">
+<div aria-hidden="true" style="height: 47px; flex: none"></div>
+
+<header style="flex: none; height: 56px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 20px">
+<h1 style="margin: 0; flex: 1; font-size: 22px; font-weight: 400; line-height: 1.2">2026 年 10 月</h1>
+<button type="button" onClick="{{goToday}}" style="height: 44px; padding: 0 16px; box-sizing: border-box; border-radius: 999px; background: #191919; border: 1px solid #333333; color: #FCFCFC; font-size: 14.5px; cursor: pointer">今天</button>
+<a href="L17-PhoneRoutine.dc.html" aria-label="新增定時任務" style="width: 44px; height: 44px; box-sizing: border-box; border-radius: 999px; background: #191919; border: 1px solid #333333; color: #FCFCFC; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></a>
+</header>
+
+<div role="group" aria-label="選擇日期" style="flex: none; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 2px 8px 6px; border-bottom: 1px solid #262626">
+<sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+<button type="button" onClick="{{d.pick}}" aria-pressed="{{d.on}}" aria-label="{{d.aria}}" style="height: 62px; border: 0; background: transparent; padding: 0; color: #FCFCFC; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px">
+<span style="font-size: 12px; color: #FCFCFC90; line-height: 16px">{{d.wd}}</span>
+<span style="{{d.numStyle}}">{{d.n}}</span>
+<span style="width: 4px; height: 4px; border-radius: 4px; background: {{d.dot}}"></span>
+</button>
+</sc-for>
+</div>
+
+<div style="flex: none; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 20px">
+<span style="font-size: 13.5px">{{dayTitle}}</span>
+<span style="font-size: 12.5px; color: #FCFCFC90">{{dayCount}}</span>
+</div>
+
+<div style="flex: 1; min-height: 0; position: relative; margin: 0 12px 0 0">
+<sc-for list="{{hours}}" as="h" hint-placeholder-count="15">
+<div aria-hidden="true" style="{{h.style}}"><span style="width: 52px; flex: none; text-align: right; padding-right: 8px; font-size: 11.5px; color: #FCFCFC90">{{h.label}}</span><span style="flex: 1; border-top: 1px solid #1E1E1E"></span></div>
+</sc-for>
+
+<sc-for list="{{events}}" as="e" hint-placeholder-count="4">
+<a href="{{e.href}}" aria-label="{{e.aria}}" style="{{e.style}}">
+<dc-import name="Avatar" color="{{e.color}}" body="{{e.body}}" state="{{e.state}}" dot="none" ring="#070707" size="20" hint-size="20px,20px"></dc-import>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3">
+<span style="font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{e.title}}</span>
+<sc-if value="{{e.tall}}" hint-placeholder-val="{{ true }}"><span style="font-size: 11.5px; color: #FCFCFCA8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{e.sub}}</span></sc-if>
+</span>
+<span style="{{e.pillStyle}}">{{e.status}}</span>
+</a>
+</sc-for>
+
+<sc-if value="{{isToday}}" hint-placeholder-val="{{ true }}">
+<div role="img" aria-label="現在 下午 3:10" style="position: absolute; left: 0; right: 0; top: {{nowTop}}; height: 0; display: flex; align-items: center; pointer-events: none">
+<span style="width: 52px; flex: none; text-align: right; padding-right: 6px; box-sizing: border-box; font-size: 11.5px; color: #7FC0FF; transform: translateY(-1px)">15:10</span>
+<span style="width: 8px; height: 8px; border-radius: 8px; background: #1084FE; margin-left: 2px"></span>
+<span style="flex: 1; height: 2px; background: #1084FE"></span>
+</div>
+</sc-if>
+</div>
+
+<nav aria-label="主要分頁" style="flex: none; background: #111111; border-top: 1px solid #262626; padding: 0 8px 34px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+<a href="L02-PhoneInbox.dc.html" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC90; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M22 12L16 12L14 15L10 15L8 12L2 12"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg><span aria-label="5 件" style="position: absolute; left: 15px; top: -5px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 999px; background: #FF9800; color: #1A1100; font-size: 11.5px; line-height: 18px; text-align: center; border: 2px solid #111111">5</span></span>待我處理</a>
+<a href="L01-PhoneList.dc.html" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC90; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"></path></svg></span>對話</a>
+<a href="L15-PhoneOffice.dc.html" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC90; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M8 21L16 21"></path><path d="M12 17L12 21"></path></svg></span>辦公室</a>
+<a href="L16-PhoneCalendar.dc.html" aria-current="page" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M8 2v3"></path><path d="M16 2v3"></path><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z"></path><path d="M3 9h18"></path></svg></span>行事曆</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const TODAY = 5, NOW = 15 + 10 / 60, HOUR = 38, TOP = 10;
+const sel = (this.state && this.state.day != null) ? this.state.day : TODAY;
+const BOT = { '小秘': ['blue', '#3f8cff'], '阿哲': ['orange', '#f28a30'], '小編': ['pink', '#e5579a'], '阿凱': ['green', '#46a758'], '帳房': ['yellow', '#f2c230'], '數據喵': ['purple', '#8e4ec6'], '信差': ['cyan', '#2ab0d4'] };
+const mix = (hex, a) => { const n = parseInt(hex.slice(1), 16), c = [(n >> 16) & 255, (n >> 8) & 255, n & 255]; return 'rgb(' + c.map((v) => Math.round(v * a + 7 * (1 - a))).join(',') + ')'; };
+const ev = [];
+const add = (bot, title, dl, s, e, kind) => dl.forEach((d) => ev.push({ bot, title, d, s, e, kind: kind || 'routine' }));
+add('信差', '收件匣整理', [0, 1, 2, 3, 4], 7.5, 8);
+add('小秘', '每日重點', [0, 1, 2, 3, 4, 5, 6], 9, 10);
+add('阿哲', '競品價格巡檢', [0, 2, 4], 10, 11);
+add('小編', '社群貼文', [1, 3, 5], 12, 13);
+add('數據喵', '週報資料', [2], 14, 15, 'failed');
+add('阿凱', '開發信回顧', [3], 15, 16);
+add('帳房', '討論：11 月廣告預算', [5], 16, 17, 'talk');
+add('阿哲', '提案生效：每天巡檢競品價格', [5], 18, 19, 'proposal');
+add('小秘', '每週檢討', [6], 10, 11);
+add('信差', '信件摘要', [0, 1, 2, 3, 4], 18, 18.5);
+add('阿哲', '晚間價格快照', [1, 4], 20, 20.5);
+const fmt = (t) => { const h = Math.floor(t), m = Math.round((t - h) * 60); return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m; };
+const PILL = 'flex: none; height: 20px; padding: 0 7px; border-radius: 999px; font-size: 11.5px; line-height: 20px; white-space: nowrap; ';
+const wd = ['一', '二', '三', '四', '五', '六', '日'];
+const days = wd.map((w, i) => {
+const n = 12 + i, isT = i === TODAY, on = i === sel;
+const has = ev.some((x) => x.d === i);
+const attn = ev.some((x) => x.d === i && (x.kind === 'talk' || x.kind === 'proposal' || x.kind === 'failed'));
+return {
+wd: w, n, on: on ? 'true' : 'false', aria: '10 月 ' + n + ' 日（' + w + '）' + (isT ? '，今天' : ''),
+numStyle: 'width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; box-sizing: border-box; ' +
+(isT ? (on ? 'background: #FCFCFC; color: #070707' : 'color: #7FC0FF') : (on ? 'background: #2F2F2F; color: #FCFCFC' : (i < TODAY ? 'color: #FCFCFC99' : 'color: #FCFCFC'))),
+dot: has ? (attn ? '#FF9800' : '#FCFCFC90') : 'transparent',
+pick: () => this.setState({ day: i })
+};
+});
+const hours = [];
+for (let h = 7; h <= 21; h++) hours.push({ label: (sel === TODAY && Math.abs(h - NOW) < 0.4) ? '' : (h < 10 ? '0' : '') + h + ':00', style: 'position: absolute; left: 0; right: 0; top: ' + (TOP + (h - 7) * HOUR) + 'px; height: 0; display: flex; align-items: center' });
+const SH = { blue: 'cursor', orange: 'blob', pink: 'circle', green: 'squircle', yellow: 'hexagon', purple: 'diamond', cyan: 'star', red: 'shield', teal: 'drop' };
+const events = ev.filter((x) => x.d === sel).map((x) => {
+const b = BOT[x.bot];
+const past = x.d < TODAY || (x.d === TODAY && x.e <= NOW);
+let status = '排程中', pill = 'background: #2F2F2F; color: #FCFCFC99', state = 'idle', bg = mix(b[1], 0.32), ring = '';
+if (past) { status = '已完成'; pill = 'background: rgba(56,213,145,.14); color: #38D591'; state = 'happy'; bg = mix(b[1], 0.2); }
+if (x.kind === 'failed') { status = '失敗'; pill = 'background: rgba(255,86,103,.16); color: #FF8A96'; state = 'sad'; ring = '; box-shadow: inset 0 0 0 1px #FF5667'; }
+if (x.kind === 'talk') { status = '等你討論'; pill = 'background: rgba(255,152,0,.16); color: #FFB547'; state = 'curious'; ring = '; box-shadow: inset 0 0 0 1px #FF9800'; }
+if (x.kind === 'proposal') { status = '提案'; pill = 'background: rgba(255,152,0,.16); color: #FFB547'; state = 'curious'; ring = '; box-shadow: inset 0 0 0 1px #FF9800'; }
+const tall = (x.e - x.s) >= 0.75;
+const top = TOP + (x.s - 7) * HOUR + 1, h = Math.max(20, (x.e - x.s) * HOUR - 2);
+return {
+title: x.title, color: b[0], body: SH[b[0]], state, status, tall,
+sub: x.kind === 'proposal' ? '18:00 · 阿哲 · 你沒意見就生效' : fmt(x.s) + '–' + fmt(x.e) + ' · ' + x.bot,
+aria: fmt(x.s) + ' ' + x.bot + ' ' + x.title + '，' + status,
+href: x.kind === 'talk' || x.kind === 'proposal' ? 'H04-Agenda.dc.html' : 'L03-PhoneChat.dc.html',
+pillStyle: PILL + pill,
+style: 'position: absolute; left: 60px; right: 0; top: ' + top + 'px; height: ' + h + 'px; box-sizing: border-box; border-radius: 8px; padding: 0 8px; display: flex; align-items: center; gap: 8px; color: #FCFCFC; background: ' + bg + ring
+};
+});
+const isToday = sel === TODAY;
+return {
+days, hours, events, isToday,
+nowTop: (TOP + (NOW - 7) * HOUR) + 'px',
+dayTitle: '10 月 ' + (12 + sel) + ' 日（' + wd[sel] + '）' + (isToday ? ' · 今天' : ''),
+dayCount: events.length ? events.length + ' 件' : '這天沒有排程',
+goToday: () => this.setState({ day: TODAY })
+};
+}
+}
+</script>
+</body>
+</html>

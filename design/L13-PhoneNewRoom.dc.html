@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>手機：新增群組</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A8D4FF}
+button{font:inherit}
+textarea::placeholder,input::placeholder{color:#FCFCFC90}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.45; display: flex; flex-direction: column">
+<div aria-hidden="true" style="height: 47px; flex: none"></div>
+<header style="flex: none; height: 56px; padding: 0 12px; display: flex; align-items: center; gap: 10px">
+<a href="L01-PhoneList.dc.html" aria-label="返回" style="width: 44px; height: 44px; flex: none; box-sizing: border-box; border-radius: 999px; background: #191919; border: 1px solid #333333; color: #FCFCFC; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m15 18-6-6 6-6"></path></svg></a>
+<h1 style="margin: 0; flex: 1; min-width: 0; font-size: 17px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{title}}</h1>
+<span style="font-size: 13px; color: #FCFCFC99; padding-right: 6px">{{stepNo}}/2</span>
+</header>
+<div style="flex: none; display: flex; justify-content: flex-end; padding: 0 16px 10px; margin-top: -4px"><span style="height: 24px; display: inline-flex; align-items: center; gap: 4px; padding: 0 9px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12px; white-space: nowrap; flex: none"><span style="display: flex"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg></span>簡化：5 個欄位 → 2 步</span></div>
+
+<sc-if value="{{isPick}}" hint-placeholder-val="{{ true }}">
+<div style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column">
+<p style="flex: none; margin: 0; padding: 0 20px 8px; font-size: 14px; color: #FCFCFC99">勾 2–10 個 Bot。名字和回應規則會自動設好。</p>
+<sc-for list="{{bots}}" as="b" hint-placeholder-count="8">
+<label style="flex: none; position: relative; height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 20px 0 16px; cursor: pointer; background: {{b.rowBg}}">
+<input type="checkbox" checked="{{b.on}}" onChange="{{b.flip}}" style="position: absolute; opacity: 0; width: 1px; height: 1px">
+<dc-import name="Avatar" color="{{b.color}}" body="{{b.body}}" state="{{b.state}}" dot="{{b.dot}}" ring="#070707" size="40" hint-size="40px,40px"></dc-import>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<span style="font-size: 15.5px">{{b.name}}</span>
+<span style="font-size: 13px; color: {{b.subInk}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{b.sub}}</span>
+</span>
+<span aria-hidden="true" style="width: 22px; height: 22px; box-sizing: border-box; border-radius: 6px; flex: none; background: {{b.boxBg}}; border: {{b.boxLine}}; color: #FFFFFF; display: flex; align-items: center; justify-content: center"><sc-if value="{{b.on}}" hint-placeholder-val="{{ false }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span>
+</label>
+</sc-for>
+</div>
+<div style="flex: none; padding: 10px 16px 0; border-top: 1px solid #262626; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; gap: 8px; min-height: 30px">
+<span style="display: flex; align-items: center"><sc-for list="{{chosen}}" as="c" hint-placeholder-count="3"><span style="margin-right: -6px; display: flex"><dc-import name="Avatar" color="{{c.color}}" body="{{c.body}}" state="idle" dot="none" ring="#070707" size="26" hint-size="26px,26px"></dc-import></span></sc-for></span>
+<span style="flex: 1; margin-left: 10px; font-size: 13.5px; color: #FCFCFC99">已選 {{count}} 位</span>
+<span style="font-size: 12.5px; color: {{hintInk}}">{{hint}}</span>
+</div>
+<button type="button" onClick="{{next}}" disabled="{{cantNext}}" style="height: 48px; border: 0; border-radius: 999px; background: {{nextBg}}; color: {{nextInk}}; font-size: 15.5px; cursor: pointer">下一步</button>
+</div>
+</sc-if>
+
+<sc-if value="{{isConfirm}}" hint-placeholder-val="{{ false }}">
+<div style="flex: 1; min-height: 0; padding: 4px 16px 0; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 8px">
+<span style="display: flex; align-items: center"><sc-for list="{{chosen}}" as="c" hint-placeholder-count="3"><span style="margin: 0 -8px; display: flex"><dc-import name="Avatar" color="{{c.color}}" body="{{c.body}}" state="happy" dot="none" ring="#070707" size="52" hint-size="52px,52px"></dc-import></span></sc-for></span>
+<span style="font-size: 14px; color: #FCFCFC99">{{count}} 位成員</span>
+</div>
+<label style="display: flex; flex-direction: column; gap: 6px">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #FCFCFC99">群組名稱<span style="height: 20px; display: inline-flex; align-items: center; gap: 3px; padding: 0 7px; border-radius: 999px; background: #2F2F2F; font-size: 11.5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg>自動</span></span>
+<input type="text" value="{{roomName}}" readonly style="height: 44px; box-sizing: border-box; padding: 0 14px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 15px; outline: none">
+</label>
+<div style="background: #262626; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px">
+<span style="display: flex; align-items: center; gap: 8px"><span style="flex: 1; font-size: 15px">誰回答</span><span style="font-size: 14px; color: #FCFCFC99">自動挑一位</span></span>
+<span style="font-size: 13px; color: #FCFCFC90">沒點名時，系統挑最適合的一位回答。用 @ 可以點名。</span>
+</div>
+<p style="margin: 0; padding: 0 2px; font-size: 13px; color: #FCFCFC90">名稱、成員、回應規則都可以在群組裡改。</p>
+<div style="margin-top: auto; display: flex; flex-direction: column; gap: 6px">
+<a href="L05-PhoneRoom.dc.html" style="height: 48px; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 15.5px; display: flex; align-items: center; justify-content: center">建立</a>
+<button type="button" onClick="{{back}}" style="height: 44px; border: 0; background: transparent; color: #FCFCFC99; font-size: 14.5px; cursor: pointer">改成員</button>
+</div>
+</div>
+</sc-if>
+<div aria-hidden="true" style="height: 34px; flex: none"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const st = this.state || {};
+const step = st.step || 1;
+const sel = Object.assign({ xm: true, az: true, xb: true }, st.sel || {});
+const all = [
+['xm', '小秘', 'blue', 'working', 'none', '幕僚長 · 工作中'],
+['az', '阿哲', 'orange', 'searching', 'none', '選品研究員 · 工作中'],
+['xb', '小編', 'pink', 'notifying', 'waiting', '社群小編 · 等你回覆'],
+['ak', '阿凱', 'green', 'idle', 'none', '業務開發 · 待命'],
+['zf', '帳房', 'yellow', 'notifying', 'waiting', '費用管理 · 等你允許'],
+['sj', '數據喵', 'purple', 'idle', 'none', '數據分析師 · 排隊中'],
+['xc', '信差', 'cyan', 'sleeping', 'none', '收件匣管家 · 休息'],
+['zc', '抓蟲', 'red', 'idle', 'none', 'Bug 重現 · 待命']
+];
+const SH = { blue: 'cursor', orange: 'blob', pink: 'circle', green: 'squircle', yellow: 'hexagon', purple: 'diamond', cyan: 'star', red: 'shield', teal: 'drop' };
+const count = all.filter((a) => sel[a[0]]).length;
+const bots = all.map(([id, name, color, state, dot, sub]) => {
+const on = !!sel[id];
+const full = !on && count >= 10;
+return { name, color, body: SH[color], state, dot, sub, on,
+subInk: dot === 'waiting' ? '#FFB547' : '#FCFCFC99',
+rowBg: on ? '#111111' : 'transparent',
+boxBg: on ? '#1084FE' : 'transparent', boxLine: on ? '0' : '1.5px solid #5A5A5A',
+flip: () => { if (!full) this.setState({ sel: Object.assign({}, sel, { [id]: !on }) }); } };
+});
+const chosen = all.filter((a) => sel[a[0]]).map((a) => ({ color: a[2], body: SH[a[2]], name: a[1] }));
+const names = chosen.map((c) => c.name);
+const roomName = names.length > 3 ? names.slice(0, 3).join('、') + ' 等 ' + names.length + ' 位' : names.join('、');
+const ok = count >= 2 && count <= 10;
+return {
+isPick: step === 1, isConfirm: step === 2, stepNo: step,
+title: step === 1 ? '新增群組：勾成員' : '新增群組：建立',
+bots, chosen, count, roomName,
+hint: count < 2 ? '至少 2 位' : '最多 10 位', hintInk: count < 2 ? '#FFB547' : '#FCFCFC90',
+cantNext: !ok, nextBg: ok ? '#FCFCFC' : '#2F2F2F', nextInk: ok ? '#070707' : '#FCFCFC90',
+next: () => { if (ok) this.setState({ step: 2 }); },
+back: () => this.setState({ step: 1 })
+};
+}
+}
+</script>
+</body>
+</html>

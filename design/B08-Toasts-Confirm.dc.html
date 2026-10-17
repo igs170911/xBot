@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>提示與確認對話框</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3{font-weight:400}
+</style>
+</helmet>
+<div style="width: 1200px; height: 676px; box-sizing: border-box; padding: 32px 36px; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.5; display: grid; grid-template-columns: 430px minmax(0, 1fr); gap: 40px">
+
+<section style="display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 18px">提示</h2>
+<p style="margin: 0 0 6px; font-size: 13px; color: #FCFCFC99">底部置中，最多同時 3 則。一般 4 秒、出錯 7 秒；要你決定的提示不會自己消失，也一定會出現在「待我處理」。</p>
+<sc-for list="{{toasts}}" as="t" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">{{t.cap}}</span>
+<div role="{{t.role}}" style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 8px 8px 14px; box-sizing: border-box; background: #262626; border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,.5)">
+<sc-if value="{{t.bot}}" hint-placeholder-val="{{ false }}"><dc-import name="Avatar" color="{{t.color}}" body="{{t.body}}" state="{{t.state}}" dot="{{t.dot}}" ring="#262626" size="28" hint-size="28px,28px"></dc-import></sc-if>
+<sc-if value="{{t.ico}}" hint-placeholder-val="{{ true }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{t.ic}}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin: 0 4px"><path d="{{t.icon}}"></path></svg></sc-if>
+<span style="flex: 1; min-width: 0; font-size: 14px">{{t.text}}</span>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: {{t.bbg}}; color: {{t.bfg}}; font: inherit; font-size: 13.5px; cursor: pointer; flex: none">{{t.btn}}</button>
+<button type="button" aria-label="關閉提示" style="width: 30px; height: 30px; border-radius: 8px; border: 0; background: transparent; color: #FCFCFC90; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.x}}"></path></svg></button>
+</div>
+</div>
+</sc-for>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<h2 style="margin: 0; font-size: 18px">確認對話框</h2>
+<p style="margin: 0 0 6px; font-size: 13px; color: #FCFCFC99">說清楚什麼會保留、能不能復原。只有這裡用實心紅色按鈕；按下後顯示「處理中…」。</p>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start">
+<sc-for list="{{dialogs}}" as="d" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">{{d.cap}}</span>
+<div role="alertdialog" aria-label="{{d.title}}" style="background: #111111; border: 1px solid #262626; border-radius: 18px; padding: 20px 20px 18px 22px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 24px 64px rgba(0,0,0,.6)">
+<h3 style="margin: 0; font-size: 17px">{{d.title}}</h3>
+<p style="margin: 0; font-size: 14px; color: #FCFCFC99">{{d.body}}</p>
+<div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; flex-wrap: wrap">
+<sc-for list="{{d.btns}}" as="b" hint-placeholder-count="2">
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: {{b.bg}}; color: {{b.fg}}; opacity: {{b.op}}; font: inherit; font-size: 14px; display: flex; align-items: center; gap: 8px; cursor: pointer">
+<sc-if value="{{b.spin}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.loaderCircle}}"></path></svg></sc-if>{{b.t}}</button>
+</sc-for>
+</div>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":676}}'>
+class Component extends DCLogic {
+renderVals() {
+const I = {"check": "M20 6 9 17l-5-5", "circleAlert": "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M12 8L12 12 M12 16L12.01 16", "loaderCircle": "M21 12a9 9 0 1 1-6.219-8.56", "refreshCw": "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8 M21 3v5h-5 M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16 M8 16H3v5", "x": "M18 6 6 18 M0 0m6 6 12 12"};
+const T = (cap, text, btn, primary, o) => Object.assign({ cap, text, btn, bbg: primary ? '#FCFCFC' : '#3D3D3D', bfg: primary ? '#070707' : '#FCFCFC', bot: false, ico: false, role: 'status' }, o);
+const cancel = { t: '取消', bg: '#2F2F2F', fg: '#FCFCFC', op: 1, spin: false };
+const red = (t) => ({ t, bg: '#FF5667', fg: '#FFFFFF', op: 1, spin: false });
+return {
+I,
+toasts: [
+T('完成 · 4 秒', '小秘完成了：競品定價表', '查看', false, { bot: true, color: 'blue', body: 'cursor', state: 'happy', dot: 'none' }),
+T('要你決定 · 不會自己消失', '帳房等你允許：付款 NT$1,280', '允許這次', true, { bot: true, color: 'yellow', body: 'hexagon', state: 'notifying', dot: 'waiting' }),
+T('學到新東西 · 4 秒', '阿哲學會了 2 個新技能', '看看', false, { bot: true, color: 'orange', body: 'blob', state: 'proud', dot: 'none' }),
+T('可以復原 · 4 秒', '已封存「舊客服」', '復原', false, { ico: true, icon: I.check, ic: '#38D591' }),
+T('出錯 · 7 秒', '連線逾時，訊息還沒送出', '重試', false, { ico: true, icon: I.circleAlert, ic: '#FF5667', role: 'alert' }),
+T('新版本 · 不會自己重新整理', 'XBot 有新版本，重新啟動就會套用', '重新啟動', true, { ico: true, icon: I.refreshCw, ic: '#7FC0FF' })
+],
+dialogs: [
+{ cap: '清除對話', title: '清除和「小秘」的主要對話？', body: '只清空主要對話的紀錄。其他對話串、技能、記憶、檔案和電腦都會保留。', btns: [cancel, red('清除對話')] },
+{ cap: '刪除 Bot（需要你核定）', title: '刪除「阿凱」？', body: '它的對話、技能、檔案和電腦都會刪除，無法復原。想保留紀錄，可以改成封存。', btns: [cancel, { t: '改成封存', bg: '#2F2F2F', fg: '#FCFCFC', op: 1, spin: false }, red('永久刪除')] },
+{ cap: '停止群組', title: '停止所有成員？', body: '「新品上架專案」裡 3 個 Bot 的回覆都會停下，它們交辦出去的工作也會一起停止。已送出的訊息會保留。', btns: [cancel, red('全部停止')] },
+{ cap: '處理中', title: '刪除分區「營運部」？', body: '分區裡的 Bot 不會被刪除，會移回未分區。', btns: [Object.assign({}, cancel, { op: 0.4 }), { t: '刪除中…', bg: '#FF5667', fg: '#FFFFFF', op: 0.7, spin: true }] }
+]
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>手機：Bot 清單</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A8D4FF}
+button{font:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.45; display: flex; flex-direction: column">
+<div aria-hidden="true" style="height: 47px; flex: none"></div>
+
+<header style="flex: none; height: 56px; display: flex; align-items: center; gap: 4px; padding: 0 8px 0 18px">
+<dc-import name="Mochi" size="26" pose="lazy" hint-size="26px,26px"></dc-import>
+<h1 style="margin: 0 0 0 8px; flex: 1; font-size: 22px; font-weight: 400; line-height: 1">對話</h1>
+<button type="button" aria-label="搜尋 Bot 或群組" aria-pressed="{{searchOn}}" onClick="{{toggleSearch}}" style="width: 44px; height: 44px; border: 0; border-radius: 12px; background: {{searchBg}}; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m21 21-4.34-4.34"></path><path d="M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0"></path></svg></button>
+<button type="button" aria-label="新增 Bot 或群組對話" style="width: 44px; height: 44px; border: 0; border-radius: 12px; background: transparent; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+<a href="L06-PhoneSettings.dc.html" aria-label="設定" style="width: 44px; height: 44px; border-radius: 12px; color: #FCFCFC; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"></path></svg></a>
+</header>
+
+<sc-if value="{{searchOn}}" hint-placeholder-val="{{ false }}">
+<label style="flex: none; position: relative; display: flex; align-items: center; margin: 0 16px 8px">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">搜尋</span>
+<span style="position: absolute; left: 14px; color: #FCFCFC90"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m21 21-4.34-4.34"></path><path d="M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0"></path></svg></span>
+<input type="search" placeholder="搜尋 Bot、群組或訊息" style="width: 100%; height: 44px; box-sizing: border-box; padding: 0 14px 0 42px; border: 1px solid #459FFE; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 15px; outline: none">
+</label>
+</sc-if>
+
+<div style="flex: 1; min-height: 0; overflow-y: auto">
+<sc-for list="{{sections}}" as="sec" hint-placeholder-count="4">
+<h2 style="margin: 0; height: 30px; display: flex; align-items: flex-end; padding: 0 20px 4px; box-sizing: border-box; font-size: 13px; font-weight: 400; color: #FCFCFC90">{{sec.title}}</h2>
+<sc-for list="{{sec.rows}}" as="b" hint-placeholder-count="2">
+<a href="{{b.href}}" style="height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; color: #FCFCFC">
+<sc-if value="{{b.solo}}" hint-placeholder-val="{{ true }}">
+<dc-import name="Avatar" color="{{b.color}}" body="{{b.body}}" state="{{b.state}}" dot="{{b.dot}}" ring="#070707" size="40" hint-size="40px,40px"></dc-import>
+</sc-if>
+<sc-if value="{{b.room}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="width: 40px; height: 40px; flex: none; position: relative">
+<span style="position: absolute; left: 0; top: 2px"><dc-import name="Avatar" color="{{b.m1}}" body="{{b.b1}}" state="idle" dot="none" ring="#070707" size="24" hint-size="24px,24px"></dc-import></span>
+<span style="position: absolute; left: 15px; top: 2px"><dc-import name="Avatar" color="{{b.m2}}" body="{{b.b2}}" state="idle" dot="none" ring="#070707" size="24" hint-size="24px,24px"></dc-import></span>
+<span style="position: absolute; left: 17px; top: 22px; height: 18px; min-width: 22px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; border: 1.5px solid #070707; color: #FCFCFC; font-size: 10.5px; line-height: 15px; text-align: center">{{b.more}}</span>
+</span>
+</sc-if>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+<span style="display: flex; align-items: center; gap: 6px">
+<span style="font-size: 15.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{b.label}}</span>
+<sc-if value="{{b.star}}" hint-placeholder-val="{{ false }}"><span role="img" aria-label="幕僚長" style="color: #FCFCFC99; display: flex"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"></path><path d="M5 21h14"></path></svg></span></sc-if>
+<span style="margin-left: auto; flex: none; font-size: 12.5px; color: #FCFCFC90">{{b.time}}</span>
+</span>
+<span style="display: flex; align-items: center; gap: 8px">
+<span style="flex: 1; min-width: 0; font-size: 13.5px; color: {{b.subColor}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{b.sub}}</span>
+<sc-if value="{{b.unread}}" hint-placeholder-val="{{ false }}"><span aria-label="有新訊息" style="width: 8px; height: 8px; border-radius: 9px; background: #1084FE; flex: none"></span></sc-if>
+</span>
+</span>
+</a>
+</sc-for>
+</sc-for>
+</div>
+
+<nav aria-label="主要分頁" style="flex: none; background: #111111; border-top: 1px solid #262626; padding: 0 8px 34px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+<a href="L02-PhoneInbox.dc.html" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC90; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M22 12L16 12L14 15L10 15L8 12L2 12"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg><span aria-label="5 件" style="position: absolute; left: 15px; top: -5px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 999px; background: #FF9800; color: #1A1100; font-size: 11.5px; line-height: 18px; text-align: center; border: 2px solid #111111">5</span></span>待我處理</a>
+<a href="L01-PhoneList.dc.html" aria-current="page" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"></path></svg></span>對話</a>
+<a href="E03-Office.dc.html" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC90; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M8 21L16 21"></path><path d="M12 17L12 21"></path></svg></span>辦公室</a>
+<a href="H01-Calendar.dc.html" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC90; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M8 2v3"></path><path d="M16 2v3"></path><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z"></path><path d="M3 9h18"></path></svg></span>行事曆</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const on = !!(this.state && this.state.search);
+const B = (label, color, body, state, dot, time, sub, extra) => Object.assign({ label, color, body, state, dot, time, sub, solo: true, room: false, star: false, unread: false, href: 'L03-PhoneChat.dc.html', subColor: dot === 'waiting' ? '#FFB547' : '#FCFCFC99' }, extra || {});
+const R = (label, m1, b1, m2, b2, more, time, sub) => ({ label, m1, b1, m2, b2, more, time, sub, solo: false, room: true, star: false, unread: false, href: 'L05-PhoneRoom.dc.html', subColor: '#FCFCFC99' });
+const sections = [
+{ title: '已釘選', rows: [B('小秘', 'blue', 'cursor', 'working', 'none', '下午 3:02', '工作中…彙整三家競品定價', { star: true })] },
+{ title: '群組對話', rows: [R('新品上架專案', 'blue', 'cursor', 'orange', 'blob', '+1', '下午 2:58', '阿哲 正在回覆…'), R('每週一早會', 'blue', 'cursor', 'purple', 'diamond', '+4', '週一', '數據喵：週報資料排隊中')] },
+{ title: '營運部', rows: [
+B('阿哲', 'orange', 'blob', 'searching', 'none', '下午 3:01', '工作中…在蝦皮比價第 3 家'),
+B('小編', 'pink', 'circle', 'notifying', 'waiting', '下午 2:47', '等你回覆：需要你輸入驗證碼'),
+B('阿凱', 'green', 'squircle', 'idle', 'none', '上午 10:42', '待命 · 3 封開發信草稿已完成', { unread: true })
+] },
+{ title: '後勤', rows: [
+B('帳房', 'yellow', 'hexagon', 'notifying', 'waiting', '下午 2:55', '等你允許：付款 NT$1,280'),
+B('數據喵', 'purple', 'diamond', 'idle', 'queued', '下午 2:50', '排隊中 · 週報資料處理'),
+B('信差', 'cyan', 'star', 'sleeping', 'none', '昨天', '休息 · 整理了 24 封信')
+] }
+];
+return { sections, searchOn: on, searchBg: on ? '#2F2F2F' : 'transparent', toggleSearch: () => this.setState({ search: !on }) };
+}
+}
+</script>
+</body>
+</html>

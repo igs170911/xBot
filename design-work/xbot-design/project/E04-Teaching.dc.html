@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>教抓蟲一件事</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3,h4,p{font-weight:400;margin:0}
+button,input,textarea{font:inherit;color:inherit}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+input::placeholder,textarea::placeholder{color:#FCFCFC90}
+</style>
+</helmet>
+<div style="min-height: 960px; display: flex; flex-wrap: wrap; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif">
+<div style="flex: 1 1 300px; min-width: 0; border-right: 1px solid #262626; background: #111111"><dc-import name="Sidebar" active="none" theme="dark" hint-size="100%,960px"></dc-import></div>
+<main style="flex: 999 1 420px; min-width: 0; height: 960px; display: flex; flex-direction: column">
+<header style="height: 56px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 20px">
+<dc-import name="Avatar" color="red" body="shield" state="listening" dot="none" ring="#070707" size="26" hint-size="26px,26px"></dc-import>
+<span style="font-size: 16px">抓蟲</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; background: rgba(255,86,103,.16); color: #FF8A95; font-size: 12.5px"><span style="width: 6px; height: 6px; border-radius: 9px; background: #FF5667"></span>教學中</span>
+<span style="flex: 1"></span>
+<button type="button" aria-label="電腦" aria-pressed="true" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; background: #2F2F2F; color: #1084FE"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M8 21L16 21"></path><path d="M12 17L12 21"></path></svg></button>
+<button type="button" aria-label="更多" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path><path d="M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path><path d="M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path></svg></button>
+</header>
+<div style="flex: 1; min-height: 0; overflow: hidden; box-sizing: border-box; padding: 8px 20px 16px; display: flex; flex-direction: column; gap: 12px">
+<span style="align-self: center; font-size: 12.5px; color: #FCFCFC90; padding: 4px 0">今天 上午 11:02</span>
+<div style="align-self: flex-end; max-width: 85%; background: #5A5A5A; border-radius: 20px; padding: 10px 16px; font-size: 15px; line-height: 1.6">結帳頁套用折扣碼之後，運費好像會變成 0。我示範一次給你看，以後你自己檢查。</div>
+<div style="align-self: flex-start; max-width: 85%; background: #262626; border-radius: 20px; padding: 10px 16px; font-size: 15px; line-height: 1.6">好，我先在電腦上打開測試站。你按「開始示範」後直接操作就可以，不用解說每一步。</div>
+<span style="align-self: center; display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; font-size: 13px; color: #FCFCFCcc"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"></path><path d="M22 10v6"></path><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"></path></svg>你開始示範 · 上午 11:05</span>
+<div style="align-self: flex-start; max-width: 85%; background: #262626; border-radius: 20px; padding: 10px 16px; font-size: 15px; line-height: 1.6">我在旁邊看著，每一步都會記下來。做完按「完成，請它學起來」，我會整理成技能，再自己試做一次給你看。</div>
+<div style="align-self: flex-end; max-width: 85%; background: #5A5A5A; border-radius: 20px; padding: 10px 16px; font-size: 15px; line-height: 1.6">補充：運費應該是 NT$60，滿 NT$990 才免運。</div>
+<div style="align-self: flex-start; max-width: 85%; background: #262626; border-radius: 20px; padding: 10px 16px; font-size: 15px; line-height: 1.6">了解。我會把「未滿 NT$990 時運費要是 NT$60」當成檢查條件，記成第 4 步。</div>
+<span style="align-self: center; display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; font-size: 13px; color: #FCFCFCcc"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>已記下第 1–4 步</span>
+</div>
+<div style="box-sizing: border-box; padding: 0 20px 20px">
+<div style="display: flex; align-items: center; gap: 6px; height: 52px; box-sizing: border-box; padding: 0 9px 0 8px; border-radius: 999px; background: #2F2F2F">
+<button type="button" aria-label="附加" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+<label style="flex: 1; min-width: 0; display: flex"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">訊息</span><input type="text" placeholder="補充說明給抓蟲…" style="flex: 1; min-width: 0; height: 40px; border: 0; background: transparent; color: #FCFCFC; font-size: 15px; outline: none"></label>
+<button type="button" aria-label="語音輸入" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 19v3"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><path d="M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z"></path></svg></button>
+<button type="button" aria-label="送出" style="width: 34px; height: 34px; flex: none; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+</div>
+</div>
+</main>
+
+<aside aria-label="抓蟲的電腦" style="flex: 1 1 680px; min-width: 0; max-width: 100%; height: 960px; box-sizing: border-box; background: #111111; border-left: 1px solid #262626; display: flex; flex-direction: column; gap: 12px; padding: 0 20px 20px">
+<div style="height: 56px; flex: none; display: flex; align-items: center; gap: 8px">
+<button type="button" aria-label="電腦設定" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"></path></svg></button>
+<h2 style="flex: 1; text-align: center; font-size: 16px">抓蟲的電腦</h2>
+<button type="button" aria-label="關閉電腦面板" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</div>
+
+<section aria-label="教學" style="flex: none; background: #191919; border: 1px solid rgba(255,86,103,.35); border-radius: 14px; padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 10px; margin-top: -8px">
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+<span style="display: inline-flex; align-items: center; gap: 8px; font-size: 15px"><span style="width: 9px; height: 9px; border-radius: 9px; background: #FF5667"></span>{{barTitle}}</span>
+<span style="font-size: 13.5px; color: #FCFCFC99">目的：重現結帳運費歸零的問題</span>
+<span style="flex: 1"></span>
+<button type="button" onClick="{{togglePause}}" style="height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; text-decoration: none">{{pauseLabel}}</button>
+<button type="button" style="height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; text-decoration: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>完成，請它學起來</button>
+</div>
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px">
+<li style="display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 6px; border-radius: 10px; ">
+<span style="position: relative; width: 72px; height: 45px; flex: none; border-radius: 6px; overflow: hidden; background: #FFFFFF"><span style="position: absolute; left: 0; right: 0; top: 0; height: 6px; background: #DEE1E6"></span><span style="position: absolute; left: 6px; top: 11px; width: 40%; height: 3px; border-radius: 2px; background: #C9CDD3"></span><span style="position: absolute; left: 6px; top: 18px; width: 55%; height: 3px; border-radius: 2px; background: #E1E3E6"></span><span style="position: absolute; left: 6px; top: 25px; width: 30%; height: 3px; border-radius: 2px; background: #E1E3E6"></span><span style="position: absolute; right: 6px; top: 12px; width: 26%; height: 22px; border-radius: 2px; background: #F1F1EF"></span><span style="position: absolute; left: 8%; top: 30%; width: 40%; height: 40%; border: 1.5px solid #FF3B30; border-radius: 2px; box-sizing: border-box"></span></span>
+<span style="width: 18px; flex: none; text-align: center; font-size: 13px; color: #FCFCFC90">1</span>
+<span style="flex: none; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12px; display: inline-flex; align-items: center; background: #2F2F2F; color: #FCFCFC99">瀏覽器</span>
+<span style="flex: 1; min-width: 0; font-size: 14px; line-height: 1.45">打開測試站的「經典帆布托特包」商品頁</span>
+<button type="button" aria-label="刪除第 1 步" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; width: 30px; height: 30px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+</li>
+<li style="display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 6px; border-radius: 10px; ">
+<span style="position: relative; width: 72px; height: 45px; flex: none; border-radius: 6px; overflow: hidden; background: #FFFFFF"><span style="position: absolute; left: 0; right: 0; top: 0; height: 6px; background: #DEE1E6"></span><span style="position: absolute; left: 6px; top: 11px; width: 40%; height: 3px; border-radius: 2px; background: #C9CDD3"></span><span style="position: absolute; left: 6px; top: 18px; width: 55%; height: 3px; border-radius: 2px; background: #E1E3E6"></span><span style="position: absolute; left: 6px; top: 25px; width: 30%; height: 3px; border-radius: 2px; background: #E1E3E6"></span><span style="position: absolute; right: 6px; top: 12px; width: 26%; height: 22px; border-radius: 2px; background: #F1F1EF"></span><span style="position: absolute; left: 62%; top: 60%; width: 30%; height: 22%; border: 1.5px solid #FF3B30; border-radius: 2px; box-sizing: border-box"></span></span>
+<span style="width: 18px; flex: none; text-align: center; font-size: 13px; color: #FCFCFC90">2</span>
+<span style="flex: none; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12px; display: inline-flex; align-items: center; background: #2F2F2F; color: #FCFCFC99">瀏覽器</span>
+<span style="flex: 1; min-width: 0; font-size: 14px; line-height: 1.45">點「加入購物車」，數量 1</span>
+<button type="button" aria-label="刪除第 2 步" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; width: 30px; height: 30px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+</li>
+<li style="display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 6px; border-radius: 10px; ">
+<span style="position: relative; width: 72px; height: 45px; flex: none; border-radius: 6px; overflow: hidden; background: #FFFFFF"><span style="position: absolute; left: 0; right: 0; top: 0; height: 6px; background: #DEE1E6"></span><span style="position: absolute; left: 6px; top: 11px; width: 40%; height: 3px; border-radius: 2px; background: #C9CDD3"></span><span style="position: absolute; left: 6px; top: 18px; width: 55%; height: 3px; border-radius: 2px; background: #E1E3E6"></span><span style="position: absolute; left: 6px; top: 25px; width: 30%; height: 3px; border-radius: 2px; background: #E1E3E6"></span><span style="position: absolute; right: 6px; top: 12px; width: 26%; height: 22px; border-radius: 2px; background: #F1F1EF"></span><span style="position: absolute; left: 6%; top: 50%; width: 44%; height: 22%; border: 1.5px solid #FF3B30; border-radius: 2px; box-sizing: border-box"></span></span>
+<span style="width: 18px; flex: none; text-align: center; font-size: 13px; color: #FCFCFC90">3</span>
+<span style="flex: none; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12px; display: inline-flex; align-items: center; background: #2F2F2F; color: #FCFCFC99">瀏覽器</span>
+<span style="flex: 1; min-width: 0; font-size: 14px; line-height: 1.45">在結帳頁輸入折扣碼 FALL10，按「套用」</span>
+<button type="button" aria-label="刪除第 3 步" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; width: 30px; height: 30px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+</li>
+<li style="display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 6px; border-radius: 10px; ">
+<span style="width: 72px; height: 45px; flex: none; border-radius: 6px; background: #262626; display: flex; align-items: center; justify-content: center; color: #FCFCFC99"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"></path><path d="M7 11h10"></path><path d="M7 15h6"></path><path d="M7 7h8"></path></svg></span>
+<span style="width: 18px; flex: none; text-align: center; font-size: 13px; color: #FCFCFC90">4</span>
+<span style="flex: none; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12px; display: inline-flex; align-items: center; background: rgba(16,132,254,.2); color: #7FC0FF">說明</span>
+<span style="flex: 1; min-width: 0; font-size: 14px; line-height: 1.45">「運費應該是 NT$60，滿 NT$990 才免運；這裡變成 NT$0 就是 Bug」</span>
+<button type="button" aria-label="刪除第 4 步" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; width: 30px; height: 30px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+</li>
+<li style="display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 6px; border-radius: 10px; background: #262626;">
+<span style="position: relative; width: 72px; height: 45px; flex: none; border-radius: 6px; overflow: hidden; background: #FFFFFF"><span style="position: absolute; left: 0; right: 0; top: 0; height: 6px; background: #DEE1E6"></span><span style="position: absolute; left: 6px; top: 11px; width: 40%; height: 3px; border-radius: 2px; background: #C9CDD3"></span><span style="position: absolute; left: 6px; top: 18px; width: 55%; height: 3px; border-radius: 2px; background: #E1E3E6"></span><span style="position: absolute; left: 6px; top: 25px; width: 30%; height: 3px; border-radius: 2px; background: #E1E3E6"></span><span style="position: absolute; right: 6px; top: 12px; width: 26%; height: 22px; border-radius: 2px; background: #F1F1EF"></span><span style="position: absolute; left: 62%; top: 44%; width: 32%; height: 18%; border: 1.5px solid #FF3B30; border-radius: 2px; box-sizing: border-box"></span></span>
+<span style="width: 18px; flex: none; text-align: center; font-size: 13px; color: #FCFCFC90">5</span>
+<span style="flex: none; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12px; display: inline-flex; align-items: center; background: #2F2F2F; color: #FCFCFC99">瀏覽器</span>
+<span style="flex: 1; min-width: 0; font-size: 14px; line-height: 1.45">框出訂單摘要的「運費 NT$0」</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #FF8A95; white-space: nowrap"><span style="width: 7px; height: 7px; border-radius: 9px; background: #FF5667"></span>記錄中</span>
+</li>
+</ol>
+<div style="display: flex; gap: 8px">
+<label style="flex: 1; display: flex; min-width: 0"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">補充說明</span><input type="text" placeholder="補充說明，例如：每次都先清空購物車" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14.5px; outline: none; min-width: 0; flex: 1; background: #111111"></label>
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none; height: 40px">加入</button>
+</div>
+</section>
+
+<div style="flex: 1; min-height: 0; position: relative; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 2px rgba(255,86,103,.6)">
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; background: #24476B; font-family: 'Noto Sans TC', 'PingFang TC', sans-serif; color: #1F1F1F; overflow: hidden">
+<div style="height: 16px; flex: none; background: #1D1D1F; color: #E8E8E8; display: flex; align-items: center; gap: 6px; padding: 0 6px; font-size: 7.5px">
+<span style="display: inline-flex; align-items: center; gap: 3px"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#E8E8E8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M4 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1Z"></path><path d="M15 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1Z"></path><path d="M15 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1Z"></path><path d="M4 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1Z"></path></svg>應用程式</span>
+<span style="width: 1px; height: 60%; background: #444444"></span>
+<span style="display: inline-flex; align-items: center; gap: 3px; padding: 0 6px; height: 80%; background: #3A3A3C; border-radius: 3px; max-width: 45%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="width: 7px; height: 7px; border-radius: 50%; background: #4C8BF5; flex: none"></span>結帳 | 晨光選物 測試站 - Chromium</span>
+<span style="flex: 1"></span>
+<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#E8E8E8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 20h.01"></path><path d="M2 8.82a15 15 0 0 1 20 0"></path><path d="M5 12.859a10 10 0 0 1 14 0"></path><path d="M8.5 16.429a5 5 0 0 1 7 0"></path></svg>
+<span>上午 11:08</span>
+</div>
+<div style="flex: 1; position: relative; background: linear-gradient(170deg, #2E5A86 0%, #1F3F63 60%, #17304D 100%)">
+<div style="position: absolute; left: 6px; top: 8px; display: flex; flex-direction: column; gap: 8px; width: 34px; align-items: center; color: #FFFFFF; font-size: 6.5px; text-align: center">
+<span style="display: flex; flex-direction: column; align-items: center; gap: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9CC3F0" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>家目錄</span>
+<span style="display: flex; flex-direction: column; align-items: center; gap: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D5D5D5" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 16h.01"></path><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path><path d="M21.946 12.013H2.054"></path><path d="M6 16h.01"></path></svg>檔案系統</span>
+<span style="display: flex; flex-direction: column; align-items: center; gap: 1px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D5D5D5" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>垃圾桶</span>
+</div>
+<div style="position: absolute; left: 48px; right: 6px; top: 6px; bottom: 6px; background: #FFFFFF; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 18px rgba(0,0,0,.45)">
+<div style="height: 18px; flex: none; background: #DEE1E6; display: flex; align-items: flex-end; padding: 0 6px; gap: 4px">
+<span style="height: 82%; max-width: 46%; min-width: 0; background: #FFFFFF; border-radius: 4px 4px 0 0; display: flex; align-items: center; gap: 3px; padding: 0 6px; font-size: 7.5px; white-space: nowrap; overflow: hidden"><span style="width: 7px; height: 8px; border-radius: 1px; background: #F2B705; flex: none"></span><span style="overflow: hidden; text-overflow: ellipsis">結帳 | 晨光選物 測試站</span></span>
+<span style="height: 82%; display: flex; align-items: center; padding: 0 4px; color: #5F6368; font-size: 7.5px">＋</span>
+</div>
+<div style="height: 19px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 6px; border-bottom: 1px solid #E3E3E3; color: #5F6368">
+<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#BDC1C6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>
+<span style="flex: 1; min-width: 0; height: 72%; border-radius: 999px; background: #F1F3F4; display: flex; align-items: center; gap: 4px; padding: 0 8px; font-size: 7.5px; color: #3C4043; white-space: nowrap; overflow: hidden"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2Z"></path><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span style="overflow: hidden; text-overflow: ellipsis">staging.chenguang-shop.tw/checkout</span></span>
+</div>
+<div style="flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column">
+<div style="flex: 1; display: flex; flex-direction: column; background: #F7F7F5; font-family: 'Noto Sans TC', sans-serif; color: #222222"><div style="height: 28px; flex: none; background: #FFFFFF; border-bottom: 1px solid #E6E6E6; display: flex; align-items: center; gap: 8px; padding: 0 14px; font-size: 8.5px"><span style="font-size: 11px">晨光選物</span><span style="background: #FFE7A3; color: #7A4F00; border-radius: 4px; padding: 0 4px; font-size: 7px">測試站</span><span style="flex: 1"></span><span style="color: #666666">購物車（1）</span></div><div style="padding: 14px; display: flex; gap: 14px; flex: 1; min-height: 0"><div style="flex: 1.5; display: flex; flex-direction: column; gap: 8px; font-size: 8.5px"><span style="font-size: 12px">結帳</span><span style="background: #FFFFFF; border-radius: 4px; padding: 8px; display: flex; align-items: center; gap: 8px"><span style="width: 30px; height: 30px; border-radius: 4px; background: #EADBC4; flex: none"></span><span style="flex: 1; display: flex; flex-direction: column"><span>經典帆布托特包</span><span style="color: #888888; font-size: 7px">米白 · 數量 1</span></span><span>NT$690</span></span><span style="background: #FFFFFF; border-radius: 4px; padding: 8px; display: flex; flex-direction: column; gap: 4px"><span style="color: #666666">折扣碼</span><span style="display: flex; gap: 4px"><span style="flex: 1; border: 1px solid #D0D0D0; border-radius: 4px; padding: 4px 8px">FALL10</span><span style="background: #222222; color: #FFFFFF; border-radius: 4px; padding: 4px 8px">套用</span></span><span style="color: #1E8E3E; font-size: 7px">已套用 FALL10：折抵 NT$69</span></span><span style="background: #FFFFFF; border-radius: 4px; padding: 8px; display: flex; flex-direction: column; gap: 4px"><span style="color: #666666">配送方式</span><span>宅配到府（滿 NT$990 免運）</span></span></div><div style="flex: 1; background: #FFFFFF; border-radius: 4px; padding: 8px; align-self: flex-start; display: flex; flex-direction: column; font-size: 8.5px"><span style="font-size: 10px; padding: 4px">訂單摘要</span><span style="display: flex; justify-content: space-between; padding: 4px 4px; color: #222222"><span>小計</span><span>NT$690</span></span><span style="display: flex; justify-content: space-between; padding: 4px 4px; color: #1E8E3E"><span>折扣</span><span>−NT$69</span></span><span style="display: flex; justify-content: space-between; padding: 4px 4px; color: #222222; outline: 1.6px solid #FF3B30; outline-offset: 1px; border-radius: 3px"><span>運費</span><span>NT$0</span></span><span style="height: 1px; background: #E6E6E6; margin: 4px 0"></span><span style="display: flex; justify-content: space-between; padding: 4px 4px; color: #222222"><span>總計</span><span>NT$621</span></span><span style="margin-top: 8px; background: #222222; color: #FFFFFF; border-radius: 4px; padding: 8px; text-align: center">前往付款</span></div></div></div>
+</div>
+</div>
+<span style="position: absolute; left: 91%; top: 39%; width: 14px; height: 14px; color: #111111; z-index: 2"><svg width="100%" height="100%" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z" fill="#111111" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"></path></svg></span>
+
+</div>
+</div>
+<span style="position: absolute; left: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px 0 10px; border-radius: 999px; background: rgba(17,17,17,.9); color: #FCFCFC; font-size: 13px"><span style="width: 8px; height: 8px; border-radius: 9px; background: {{recDot}}"></span>{{recLabel}}</span>
+</div>
+</aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 1440, "height": 960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const paused = !!(this.state && this.state.paused);
+    return {
+      togglePause: () => this.setState({ paused: !paused }),
+      pauseLabel: paused ? '繼續' : '暫停',
+      barTitle: paused ? '已暫停 · 第 5 步' : '教學中 · 第 5 步',
+      recDot: paused ? '#5A5A5A' : '#FF5667',
+      recLabel: paused ? '已暫停錄製' : '錄製中 · 密碼只會記成 ••••'
+    };
+  }
+}
+</script>
+</body>
+</html>

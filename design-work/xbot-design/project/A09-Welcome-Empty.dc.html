@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>還沒有 Bot</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3,h4,p{font-weight:400;margin:0}
+button,input,textarea{font-family:inherit}
+input::placeholder{color:#FCFCFC90}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+@keyframes xspin{to{transform:rotate(360deg)}}
+@media (max-width: 640px){nav[aria-label="側欄"],main{min-height:0 !important}}
+@keyframes xslide{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
+</style>
+</helmet>
+<div style="min-height: 960px; display: flex; flex-wrap: wrap; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.6">
+<nav aria-label="側欄" style="flex: 1 1 300px; box-sizing: border-box; min-height: 960px; padding: 14px 10px 10px; display: flex; flex-direction: column; gap: 8px; background: #111111; color: #FCFCFC; font-size: 14px; line-height: 1.45"><div style="display: flex; align-items: center; gap: 4px; padding: 0 2px 0 6px; min-height: 36px"><dc-import name="Mochi" size="26" pose="lazy" hint-size="26px,26px"></dc-import><span style="flex: 1; font-size: 17px; padding-left: 6px">XBot</span><button type="button" aria-label="通知" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg></button><button type="button" aria-label="新增 Bot 或群組對話" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><label style="position: relative; display: flex; align-items: center"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">搜尋</span><span style="position: absolute; left: 12px; display: flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC90" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m21 21-4.34-4.34"></path><path d="M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0"></path></svg></span><input type="search" placeholder="搜尋" style="width: 100%; height: 40px; box-sizing: border-box; padding: 0 12px 0 38px; border: 0; border-radius: 10px; background: #2F2F2F; color: #FCFCFC; font-size: 14.5px"></label><div style="display: flex; flex-direction: column; gap: 2px"><a href="Main.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 12px; border-radius: 12px; text-decoration: none; color: #FCFCFC; background: transparent"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M22 12L16 12L14 15L10 15L8 12L2 12"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg><span style="flex: 1">待我處理</span><span style="font-size: 12.5px; color: #FCFCFC90">沒有事</span></a><a href="E03-Office.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 12px; border-radius: 12px; text-decoration: none; color: #FCFCFC"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M8 21L16 21"></path><path d="M12 17L12 21"></path></svg><span style="flex: 1">辦公室</span><span style="font-size: 12.5px; color: #FCFCFC90">0 台</span></a></div><div style="flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px 12px"><span style="font-size: 13px; color: #FCFCFC90">還沒有 Bot</span><span style="font-size: 13.5px; color: #FCFCFC99; line-height: 1.6">建立第一個 Bot 之後，它會出現在這裡，旁邊會顯示它正在做什麼。</span><a href="G01-New.dc.html" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: 999px; border: 1px solid #333333; color: #FCFCFC; font-size: 13.5px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>建立 Bot</a></div><div style="display: flex; flex-direction: column; padding-top: 4px"><a href="H01-Calendar.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 38px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #FCFCFC; font-size: 14.5px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M8 2v3"></path><path d="M16 2v3"></path><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z"></path><path d="M3 9h18"></path><path d="M8 13h.01"></path><path d="M12 13h.01"></path><path d="M16 13h.01"></path><path d="M8 17h.01"></path><path d="M12 17h.01"></path><path d="M16 17h.01"></path></svg>定時任務與行事曆</a><a href="I01-Apps.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 38px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #FCFCFC; font-size: 14.5px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"></path></svg>連接應用程式</a><a href="F01-Org.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 38px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #FCFCFC; font-size: 14.5px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M17 16h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1Z"></path><path d="M3 16h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1Z"></path><path d="M10 2h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1Z"></path><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"></path><path d="M12 12V8"></path></svg>組織架構</a><div style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 6px 0 10px"><span style="width: 30px; height: 30px; border-radius: 999px; background: #2F2F2F; color: #FCFCFC99; font-size: 12.5px; display: flex; align-items: center; justify-content: center">王</span><span style="flex: 1; font-size: 14.5px">你</span><a href="J01-General.dc.html" aria-label="設定" style="width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #FCFCFC99"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"></path></svg></a></div></div></nav>
+<main style="flex: 999 1 560px; min-width: 0; min-height: 960px; box-sizing: border-box; padding: 48px 24px 32px; display: flex; flex-direction: column; align-items: center; gap: 28px">
+
+<div style="width: 100%; max-width: 720px; display: flex; flex-direction: column; align-items: center; gap: 16px">
+<dc-import name="Mochi" size="80" pose="wave" hint-size="80px,80px"></dc-import>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center">
+<h1 style="font-size: 28px; line-height: 1.3">建立第一個 Bot</h1>
+<p style="font-size: 15px; color: #FCFCFC99">一句話說你要它做什麼，名字、職稱、技能我們幫你填好。</p>
+</div>
+<form onSubmit="{{suggest}}" style="width: 100%; margin: 0; box-sizing: border-box; min-height: 56px; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 22px">
+<label for="ask" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">你要它做什麼</label>
+<input id="ask" type="text" value="{{ask}}" onInput="{{typeAsk}}" placeholder="例如：每天幫我找蝦皮上熱賣的居家小物" style="flex: 1; min-width: 0; height: 44px; border: 0; outline: 0; background: transparent; color: #FCFCFC; font-size: 15.5px">
+<button type="submit" aria-label="給我建議" style="width: 38px; height: 38px; flex: none; border: 0; border-radius: 999px; background: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#070707" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+</form>
+
+<sc-if value="{{suggested}}" hint-placeholder-val="{{ true }}">
+<section aria-label="系統建議" style="width: 100%; box-sizing: border-box; border-radius: 18px; background: #262626; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+<dc-import name="Avatar" color="orange" body="blob" state="happy" dot="none" ring="#262626" size="48" hint-size="48px,48px"></dc-import>
+<div style="flex: 1; min-width: 160px; display: flex; flex-direction: column">
+<span style="font-size: 17px">阿哲</span>
+<span style="font-size: 13.5px; color: #FCFCFC99">選品研究員 · 熱賣居家小物</span>
+</div>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: #2F2F2F; color: #FCFCFC99; font-size: 12.5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7FC0FF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg>系統建議 · 都可以改</span>
+</div>
+<div style="display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px 12px; font-size: 14px; align-items: baseline">
+<span style="color: #FCFCFC90; font-size: 13px">它會做</span>
+<span style="color: #FCFCFCdd">每天早上看蝦皮熱賣榜，挑出居家小物，比價後整理成表格，附上來源網址。</span>
+<span style="color: #FCFCFC90; font-size: 13px">技能</span>
+<span style="display: flex; flex-wrap: wrap; gap: 6px"><span style="height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid #333333; font-size: 13px; display: inline-flex; align-items: center">蝦皮比價</span><span style="height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid #333333; font-size: 13px; display: inline-flex; align-items: center">網路搜尋</span><span style="height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid #333333; font-size: 13px; display: inline-flex; align-items: center">整理表格</span></span>
+<span style="color: #FCFCFC90; font-size: 13px">要連的</span>
+<span style="display: flex; flex-wrap: wrap; gap: 6px"><span style="height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid #333333; font-size: 13px; display: inline-flex; align-items: center; gap: 6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z"></path><path d="M3 9L21 9"></path><path d="M3 15L21 15"></path><path d="M9 9L9 21"></path><path d="M15 9L15 21"></path></svg>Google 試算表</span><span style="height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid #333333; font-size: 13px; display: inline-flex; align-items: center; gap: 6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M8 2v3"></path><path d="M16 2v3"></path><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z"></path><path d="M3 9h18"></path><path d="M8 13h.01"></path><path d="M12 13h.01"></path><path d="M16 13h.01"></path><path d="M8 17h.01"></path><path d="M12 17h.01"></path><path d="M16 17h.01"></path></svg>每天早上 9 點</span></span>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-top: 1px solid #333333; padding-top: 14px">
+<span style="flex: 1; min-width: 180px; font-size: 12.5px; color: #FCFCFC90">權限預設「先問我」。今天還可以建立 3 個 Bot。</span>
+<button type="button" onClick="{{retry}}" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14px; cursor: pointer">換一個建議</button>
+<a href="C03-Chat-Empty.dc.html" style="height: 36px; padding: 0 18px; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14px; display: inline-flex; align-items: center">建立阿哲</a>
+</div>
+</section>
+</sc-if>
+</div>
+
+<section aria-labelledby="tpl-title" style="width: 100%; max-width: 1040px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: baseline; gap: 10px">
+<h2 id="tpl-title" style="font-size: 15px">或從範本開始</h2>
+<span style="font-size: 13px; color: #FCFCFC90">點一下就建立，之後都能改</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(188px, 1fr)); gap: 10px">
+<sc-for list="{{tpls}}" as="t" hint-placeholder-count="10">
+<a href="G01-New.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 12px; box-sizing: border-box; border-radius: 14px; background: #111111; border: 1px solid #262626; color: #FCFCFC">
+<dc-import name="Avatar" color="{{t.color}}" body="{{t.body}}" state="idle" dot="none" ring="#111111" size="38" hint-size="38px,38px"></dc-import>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<span style="font-size: 14.5px">{{t.name}}</span>
+<span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{t.title}}</span>
+</span>
+</a>
+</sc-for>
+</div>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { ask: '每天幫我找蝦皮上熱賣的居家小物，整理成表格', suggested: true };
+}
+renderVals() {
+const s = this.state;
+const T = (name, title, color, body) => ({ name, title, color, body });
+return {
+ask: s.ask,
+suggested: s.suggested,
+typeAsk: (e) => this.setState({ ask: e.target.value, suggested: false }),
+suggest: (e) => { if (e && e.preventDefault) e.preventDefault(); this.setState({ suggested: true }); },
+retry: () => this.setState({ suggested: true }),
+tpls: [
+T('幕僚長', '每日重點與協調', 'blue', 'cursor'),
+T('選品研究員', '電商選品與市場調查', 'orange', 'blob'),
+T('社群小編', '貼文企劃與文案', 'pink', 'circle'),
+T('業務開發', '潛在客戶與開發信', 'green', 'squircle'),
+T('人才搜尋', '職缺與候選人研究', 'teal', 'capsule'),
+T('費用管理', '收據整理與對帳', 'yellow', 'hexagon'),
+T('廣告成效分析', '投放監控與預算建議', 'coral', 'drop'),
+T('數據分析師', '找出數字變化的原因', 'purple', 'diamond'),
+T('Bug 重現', '把回報變成重現步驟', 'red', 'shield'),
+T('收件匣管家', '整理信件與回覆草稿', 'cyan', 'star')
+]
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>Grok 風格對照</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=Noto+Sans+TC:wght@400;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3,strong,b{font-weight:400}
+</style>
+</helmet>
+<div style="width: 1440px; height: 3260px; box-sizing: border-box; padding: 48px 56px; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; display: flex; flex-direction: column; gap: 36px">
+
+<header style="display: flex; align-items: flex-end; gap: 24px">
+<dc-import name="Mochi" size="72" pose="happy" hint-size="72px,72px"></dc-import>
+<div style="display: flex; flex-direction: column; gap: 6px; flex: 1">
+<span style="font-size: 13px; color: #FCFCFC90; letter-spacing: 0.08em">風格確認 · 請使用者確認後套用到全部畫板</span>
+<h1 style="margin: 0; font-size: 34px">XBot 採用 Grok Bot 的外觀</h1>
+<p style="margin: 0; font-size: 15px; line-height: 1.6; color: #FCFCFC99; max-width: 980px">左邊是 OpenMausBot（開源的 Grok Bot 介面，Apache-2.0）的真實截圖，右邊是 XBot 照著重畫的同一個畫面。吉祥物與 Bot 頭像跟 Grok Bot 的頭像一樣：一個平面實色剪影＋兩顆眼睛，沒有嘴巴；只是形狀更多：游標是品牌與預設，另有 9 種形狀可挑。</p>
+</div>
+</header>
+
+<sc-for list="{{pairs}}" as="p" hint-placeholder-count="5">
+<section style="display: grid; grid-template-columns: 640px 1fr; gap: 28px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; color: #FCFCFC90">Grok Bot（OpenMausBot 截圖）· {{p.file}}</span>
+<img src="{{p.src}}" alt="{{p.alt}}" style="width: 640px; height: 400px; object-fit: cover; object-position: {{p.pos}}; border-radius: 14px; border: 1px solid #333333; background: #111111">
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; color: #FCFCFC90">XBot 重畫 · {{p.title}}</span>
+<sc-if value="{{p.chat}}" hint-placeholder-val="{{ false }}">
+<div style="height: 400px; border-radius: 14px; border: 1px solid #333333; overflow: hidden; display: flex">
+<div style="width: 200px; background: #111111; padding: 12px 8px; display: flex; flex-direction: column; gap: 6px; box-sizing: border-box">
+<span style="height: 34px; border-radius: 10px; background: #2F2F2F; display: flex; align-items: center; padding: 0 10px; font-size: 13px; color: #FCFCFC90">搜尋</span>
+<sc-for list="{{miniBots}}" as="b" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 12px; background: {{b.bg}}">
+<dc-import name="Avatar" color="{{b.c}}" body="{{b.body}}" state="{{b.st}}" dot="{{b.dot}}" ring="{{b.ring}}" size="32" hint-size="32px,32px"></dc-import>
+<span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 14px">{{b.n}}</span><span style="font-size: 12px; color: {{b.sc}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{b.s}}</span></span>
+</div>
+</sc-for>
+</div>
+<div style="flex: 1; background: #070707; display: flex; flex-direction: column; padding: 12px 16px; gap: 12px; box-sizing: border-box">
+<div style="display: flex; align-items: center; gap: 8px"><dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" size="24" hint-size="24px,24px"></dc-import><span style="font-size: 15px; flex: 1">小秘</span><span style="font-size: 12px; border: 1px solid #333333; border-radius: 999px; padding: 3px 10px; color: #FCFCFC99">＋ 對話串</span><span style="font-size: 12px; background: #262626; border-radius: 999px; padding: 3px 10px">Claude Sonnet 5.5</span></div>
+<span style="align-self: center; font-size: 12px; color: #FCFCFC90">今天 下午 3:02</span>
+<div style="align-self: flex-end; max-width: 75%; background: #5A5A5A; border-radius: 18px; padding: 8px 14px; font-size: 13.5px; line-height: 1.5">幫我比較蝦皮三家競品的定價</div>
+<div style="align-self: flex-start; max-width: 80%; background: #262626; border-radius: 18px; padding: 8px 14px; font-size: 13.5px; line-height: 1.5">收到，我先請阿哲抓價格，好了整理成表格給你。</div>
+<div style="background: #262626; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 14px">要不要也比較日本賣場？</span>
+<span style="font-size: 12px; color: #FCFCFC99">選最接近的，之後都能改。</span>
+<div style="border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; gap: 1px; background: #333333">
+<span style="background: #2B2B2B; padding: 7px 10px; font-size: 13px; display: flex; gap: 10px"><span style="width: 18px; height: 18px; border-radius: 5px; background: #333333; font-size: 11px; display: flex; align-items: center; justify-content: center; color: #FCFCFC99">A</span>要，一起比較</span>
+<span style="background: #2B2B2B; padding: 7px 10px; font-size: 13px; display: flex; gap: 10px"><span style="width: 18px; height: 18px; border-radius: 5px; background: #333333; font-size: 11px; display: flex; align-items: center; justify-content: center; color: #FCFCFC99">B</span>不用，台灣就好</span>
+</div>
+</div>
+<div style="margin-top: auto; height: 40px; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; padding: 0 14px; gap: 10px; font-size: 13.5px; color: #FCFCFC90"><span style="font-size: 18px; color: #FCFCFC99">＋</span>交代小秘…</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{p.approve}}" hint-placeholder-val="{{ false }}">
+<div style="height: 400px; border-radius: 14px; border: 1px solid #333333; background: #070707; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; justify-content: center">
+<div style="background: #262626; border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px"><dc-import name="Avatar" color="yellow" body="hexagon" state="notifying" dot="waiting" ring="#262626" size="32" hint-size="32px,32px"></dc-import><span style="display: flex; flex-direction: column; flex: 1"><span style="font-size: 15px">帳房想付款</span><span style="font-size: 12.5px; color: #FCFCFC99">小秘交辦的工作 · 第 2/6 棒</span></span></div>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; background: #191919; border-radius: 10px; padding: 10px 12px; color: #FCFCFCcc">付款 NT,280 給 晨光廣告（10 月廣告費）</span>
+<div style="display: flex; gap: 8px"><span style="height: 36px; padding: 0 16px; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14px; display: flex; align-items: center">允許這次</span><span style="height: 36px; padding: 0 16px; border-radius: 999px; background: #2F2F2F; font-size: 14px; display: flex; align-items: center">一律允許</span><span style="height: 36px; padding: 0 16px; border-radius: 999px; font-size: 14px; color: #FCFCFC99; display: flex; align-items: center">拒絕</span></div>
+</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap"><span style="display: flex; align-items: center; gap: 6px; border: 1px solid #333333; border-radius: 999px; padding: 4px 12px; font-size: 12.5px; font-family: 'JetBrains Mono', monospace; color: #FCFCFCcc"><span style="color: #38D591">✓</span> browser_open</span><span style="display: flex; align-items: center; gap: 6px; border: 1px solid #333333; border-radius: 999px; padding: 4px 12px; font-size: 12.5px; color: #FCFCFCcc">來自阿哲的回覆 · 第 1/6 棒</span></div>
+</div>
+</sc-if>
+<sc-if value="{{p.menu}}" hint-placeholder-val="{{ false }}">
+<div style="height: 400px; border-radius: 14px; border: 1px solid #333333; background: #070707; padding: 24px; box-sizing: border-box; display: flex; gap: 20px; align-items: flex-start">
+<div style="width: 250px; background: #262626; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; box-shadow: 0 12px 32px rgba(0,0,0,.5)">
+<sc-for list="{{menu}}" as="m" hint-placeholder-count="8">
+<sc-if value="{{m.sep}}" hint-placeholder-val="{{ false }}"><span style="height: 1px; background: #333333; margin: 4px 6px"></span></sc-if>
+<sc-if value="{{m.item}}" hint-placeholder-val="{{ true }}"><span style="display: flex; align-items: center; gap: 12px; height: 34px; padding: 0 10px; border-radius: 8px; font-size: 14px; color: {{m.c}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{m.icon}}"></path></svg>{{m.t}}</span></sc-if>
+</sc-for>
+</div>
+<div style="flex: 1; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #FCFCFC99; line-height: 1.6"><span style="color: #FCFCFC">XBot 加的項目</span><span>設為幕僚長（取代 Chief of Staff）</span><span>分享登入給其他 Bot、教它一件事、打開它的電腦</span><span>刪除前一律要你核定</span></div>
+</div>
+</sc-if>
+<sc-if value="{{p.computer}}" hint-placeholder-val="{{ false }}">
+<div style="height: 400px; border-radius: 14px; border: 1px solid #333333; background: #070707; display: flex; overflow: hidden">
+<div style="flex: 1; background: #070707; padding: 16px; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box"><div style="align-self: flex-end; max-width: 80%; background: #5A5A5A; border-radius: 18px; padding: 8px 14px; font-size: 13px; line-height: 1.5">發佈新品貼文</div><div style="align-self: flex-start; display: flex; align-items: center; gap: 6px; border: 1px solid #333333; border-radius: 999px; padding: 4px 12px; font-size: 12px; color: #FCFCFCcc">工作了 2 分鐘 · 6 個步驟</div><div style="align-self: flex-start; max-width: 85%; background: #262626; border-radius: 18px; padding: 8px 14px; font-size: 13px; line-height: 1.5">登入時跳出簡訊驗證碼，請你接手輸入，好了交還給我。</div></div>
+<div style="width: 340px; background: #0B0B0B; border-left: 1px solid #262626; padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center"><span style="flex: 1; text-align: center; font-size: 15px">小秘的電腦</span><span style="color: #FCFCFC99">✕</span></div>
+<span style="font-size: 12px; color: #FCFCFC90">即時畫面 · 這台主機</span>
+<div style="height: 130px; border-radius: 10px; background: #1D2733; padding: 8px; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px"><span style="height: 12px; border-radius: 4px; background: #E9EDF2"></span><span style="flex: 1; border-radius: 4px; background: #F6F7F9; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 6px"><span style="background: #FFE3CF; border-radius: 3px"></span><span style="background: #DCE7F7; border-radius: 3px"></span><span style="background: #E2F4E9; border-radius: 3px"></span></span></div>
+<div style="display: flex; gap: 8px"><span style="flex: 1; height: 34px; border-radius: 10px; background: #262626; display: flex; align-items: center; justify-content: center; font-size: 13.5px">接手操作</span><span style="height: 34px; padding: 0 14px; border-radius: 10px; background: #262626; display: flex; align-items: center; font-size: 13.5px">休眠</span></div>
+<div style="background: #191919; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 14px">在哪裡跑</span><span style="font-size: 12px; color: #FCFCFC99">這個 Bot 的電腦放在哪裡。</span><div style="display: flex; border-radius: 10px; background: #111111; padding: 3px; gap: 2px; font-size: 12.5px"><span style="flex: 1; text-align: center; background: #2F2F2F; border-radius: 8px; padding: 5px 0">這台主機</span><span style="flex: 1.7; text-align: center; padding: 5px 0; color: #FCFCFC99; white-space: nowrap">cloud-01（雲端）</span><span style="flex: 1; text-align: center; padding: 5px 0; color: #FCFCFC99">關閉</span></div></div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{p.avatars}}" hint-placeholder-val="{{ false }}">
+<div style="height: 400px; border-radius: 14px; border: 1px solid #333333; background: #111111; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px">
+<div style="display: grid; grid-template-columns: 70px repeat(10, minmax(0, 1fr)); gap: 4px; align-items: center; font-size: 11.5px; color: #FCFCFC90">
+<span></span><sc-for list="{{colorHeads}}" as="b" hint-placeholder-count="10"><span style="text-align: center">{{b.t}}</span></sc-for>
+</div>
+<sc-for list="{{stateRows}}" as="r" hint-placeholder-count="4">
+<div style="display: grid; grid-template-columns: 70px repeat(10, minmax(0, 1fr)); gap: 4px; align-items: center">
+<span style="font-size: 12.5px; color: #FCFCFC99">{{r.t}}</span>
+<sc-for list="{{r.cells}}" as="c" hint-placeholder-count="10"><span style="display: flex; justify-content: center"><dc-import name="Avatar" color="{{c.c}}" state="{{c.s}}" dot="{{c.d}}" ring="#111111" size="40" hint-size="40px,40px"></dc-import></span></sc-for>
+</div>
+</sc-for>
+<div style="display: flex; align-items: center; gap: 14px; border-top: 1px solid #262626; padding-top: 10px; font-size: 12.5px; color: #FCFCFC99">
+<span>16 px：</span>
+<sc-for list="{{tiny}}" as="c" hint-placeholder-count="4"><span style="display: flex; align-items: center; gap: 6px"><dc-import name="Avatar" color="blue" body="cursor" state="{{c.s}}" dot="{{c.d}}" ring="#111111" size="16" hint-size="16px,16px"></dc-import>{{c.t}}</span></sc-for>
+</div>
+</div>
+</sc-if>
+</div>
+</section>
+</sc-for>
+
+<section style="display: grid; grid-template-columns: 1fr 1fr; gap: 28px">
+<div style="background: #111111; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 17px">圖示 · Lucide · 線寬 1.75 · 20 px · 灰 #FCFCFC99</h2>
+<div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px 6px; color: #FCFCFC99">
+<sc-for list="{{icons}}" as="i" hint-placeholder-count="24">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><sc-for list="{{i.d}}" as="d" hint-placeholder-count="2"><path d="{{d}}" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path></sc-for></svg>
+<span style="font-size: 11px; color: #FCFCFC90">{{i.t}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="background: #111111; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 17px">按鈕、輸入框、泡泡、色票</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+<span style="height: 36px; padding: 0 16px; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14px; display: flex; align-items: center">主要</span>
+<span style="height: 36px; padding: 0 16px; border-radius: 999px; background: #2F2F2F; font-size: 14px; display: flex; align-items: center">次要</span>
+<span style="height: 36px; padding: 0 16px; border-radius: 999px; background: #1084FE; color: #FFFFFF; font-size: 14px; display: flex; align-items: center">強調</span>
+<span style="height: 36px; padding: 0 16px; border-radius: 999px; border: 1px solid #333333; font-size: 14px; display: flex; align-items: center; color: #FCFCFC99">＋ 對話串</span>
+<span style="height: 36px; padding: 0 16px; border-radius: 999px; background: #2F2F2F; color: #FF5667; font-size: 14px; display: flex; align-items: center">刪除</span>
+</div>
+<span style="height: 40px; border-radius: 10px; background: #191919; display: flex; align-items: center; padding: 0 12px; font-size: 14px; color: #FCFCFC90">輸入你的回答</span>
+<div style="display: flex; gap: 8px"><span style="background: #262626; border-radius: 18px; padding: 8px 14px; font-size: 14px">Bot 的泡泡 #262626</span><span style="background: #5A5A5A; border-radius: 18px; padding: 8px 14px; font-size: 14px">你的泡泡 #5A5A5A</span></div>
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px">
+<sc-for list="{{swatches}}" as="w" hint-placeholder-count="12"><span style="display: flex; flex-direction: column; gap: 3px; font-size: 10.5px; color: #FCFCFC90"><span style="height: 26px; border-radius: 8px; background: {{w.h}}; border: 1px solid #333333"></span>{{w.n}} {{w.h}}</span></sc-for>
+</div>
+</div>
+</section>
+
+<section style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px">
+<div style="background: #111111; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.65; color: #FCFCFCcc">
+<h2 style="margin: 0 0 4px; font-size: 17px; color: #FCFCFC">照搬了什麼</h2>
+<span>· Midnight 色票：#070707 底、#111111 側欄、#262626 卡片與 Bot 泡泡、#2F2F2F 控制項、#5A5A5A 你的泡泡、強調 #1084FE</span>
+<span>· Bot 頭像跟 Grok Bot 一樣平面、只有眼睛，10 種形狀（游標是預設）＋10 色分人，眼睛跟著狀態變；也可以改用上傳或 AI 產生的圖片，形狀就是裁切框</span>
+<span>· 10 個顏色：綠、藍、紅、橘、紫、青、粉、黃、藍綠、珊瑚，平面實色（Grok 的 5 色＋5 色）</span>
+<span>· 側欄大頭像列表、膠囊輸入框、A/B/C 選項卡、工具膠囊、右鍵選單、右側電腦面板</span>
+<span>· Lucide 線條圖示</span>
+</div>
+<div style="background: #111111; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.65; color: #FCFCFCcc">
+<h2 style="margin: 0 0 4px; font-size: 17px; color: #FCFCFC">為 XBot 改了什麼</h2>
+<span>· 側欄最上面多了「待我處理」（橘色數字）和「辦公室」（所有 Bot 的電腦）</span>
+<span>· 頭像右下角小點只有兩種：橘＝等你、紅＝出錯；其他狀態看眼睛和灰字</span>
+<span>· Bot 互聊：事件膠囊寫「來自阿哲的回覆 · 第 1/6 棒」；群組顯示第幾輪</span>
+<span>· 電腦面板的「在哪裡跑」：這台主機／cloud-01（雲端）／關閉（Grok 是 Cloud box／This Mac）</span>
+<span>· 核定卡顯示是誰交辦、第幾棒，按鈕是「允許這次／一律允許／拒絕」</span>
+<span>· 全部台灣正體中文</span>
+</div>
+<div style="background: #111111; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.65; color: #FCFCFCcc">
+<h2 style="margin: 0 0 4px; font-size: 17px; color: #FCFCFC">字型：請你決定</h2>
+<span>Grok Bot 用 Inter，靠「粗體」做層次（名字、標題都是半粗）。粉圓只有一種字重，放在 Grok 的深色介面上會比較軟、層次比較平。</span>
+<span style="font-family: 'Huninn', sans-serif; font-size: 16px; color: #FCFCFC">粉圓：小秘 · 幫我比較競品定價</span>
+<span style="font-family: 'Noto Sans TC', sans-serif; font-size: 16px; font-weight: 600; color: #FCFCFC">思源黑體半粗：小秘 · 幫我比較競品定價</span>
+<span>已決定：維持粉圓（親切感）。思源黑體只留作對照，不採用。</span>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"":{"width":1440,"height":3260}}'>
+class Component extends DCLogic {
+renderVals() {
+const ICONS = [{"n":"inbox","d":["M22 12L16 12L14 15L10 15L8 12L2 12","M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"]},{"n":"monitor","d":["M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z","M8 21L16 21","M12 17L12 21"]},{"n":"message-circle","d":["M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"]},{"n":"users","d":["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2","M16 3.128a4 4 0 0 1 0 7.744","M22 21v-2a4 4 0 0 0-3-3.87","M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"]},{"n":"calendar","d":["M8 2v3","M16 2v3","M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z","M3 9h18"]},{"n":"settings","d":["M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915","M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"]},{"n":"search","d":["m21 21-4.34-4.34","M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0"]},{"n":"plus","d":["M5 12h14","M12 5v14"]},{"n":"send","d":["M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z","m21.854 2.147-10.94 10.939"]},{"n":"square","d":["M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z"]},{"n":"mic","d":["M12 19v3","M19 10v2a7 7 0 0 1-14 0v-2","M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z"]},{"n":"paperclip","d":["m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"]},{"n":"check","d":["M20 6 9 17l-5-5"]},{"n":"x","d":["M18 6 6 18","m6 6 12 12"]},{"n":"bell","d":["M10.268 21a2 2 0 0 0 3.464 0","M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"]},{"n":"file-text","d":["M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z","M14 2v5a1 1 0 0 0 1 1h5","M10 9H8","M16 13H8","M16 17H8"]},{"n":"folder","d":["M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"]},{"n":"shield-check","d":["M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z","m9 12 2 2 4-4"]},{"n":"key-round","d":["M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z","M16 7.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0"]},{"n":"globe","d":["M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0","M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20","M2 12h20"]},{"n":"play","d":["M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"]},{"n":"pause","d":["M15 3h3a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1Z","M6 3h3a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-16a1 1 0 0 1 1 -1Z"]},{"n":"sparkles","d":["M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z","M20 2v4","M22 4h-4","M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"]},{"n":"hand","d":["M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2","M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2","M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8","M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"]}]
+;
+const LABEL = { inbox: '待我處理', monitor: '電腦', 'message-circle': '對話', users: '群組', calendar: '行事曆', settings: '設定', search: '搜尋', plus: '新增', send: '送出', square: '停止', mic: '語音', paperclip: '附件', check: '允許', x: '關閉', bell: '通知', 'file-text': '檔案', folder: '資料夾', 'shield-check': '權限', 'key-round': '密碼', globe: '瀏覽器', play: '執行', pause: '暫停', sparkles: '技能', hand: '接手' };
+const base = { chat: false, approve: false, menu: false, computer: false, avatars: false };
+const P = (file, src, alt, pos, title, k) => Object.assign({}, base, { file, src, alt, pos, title, [k]: true });
+const colors = ['green', 'blue', 'red', 'orange', 'purple', 'cyan', 'pink', 'yellow', 'teal', 'coral'];
+const rows = [['工作中', 'working', 'none'], ['等你', 'notifying', 'waiting'], ['待命', 'idle', 'none'], ['出錯', 'alerting', 'error'], ['休息', 'sleeping', 'none'], ['完成', 'happy', 'none']];
+const colorNames = ['綠', '藍', '紅', '橘', '紫', '青', '粉紅', '黃', '藍綠', '珊瑚'];
+const ic = (d) => d;
+return {
+pairs: [
+P('docs-fresh-bot.png', '/_blob/ded04d97cd23a98174a468b0899daff3', 'Grok Bot 新 Bot 對話畫面', 'left top', 'Bot 清單＋對話＋提問卡', 'chat'),
+P('approval-card.png', '/_blob/7f996b6edd08f345f49d41fe73283d83', 'Grok Bot 對話與卡片', 'left top', '核定卡與工具膠囊', 'approve'),
+P('context-menu.png', '/_blob/472a466b13f6da7f73f0cfea16fd02ea', 'Grok Bot 右鍵選單', 'left center', '右鍵選單', 'menu'),
+P('computer-panel.png', '/_blob/682a2b185089287a3450fbb6896a24f4', 'Grok Bot 電腦面板', 'right top', '電腦面板', 'computer'),
+P('agent-profile-desktop.png', '/_blob/d6a4fd500afd50b03532b82cd8bd35e2', 'Grok Bot 頭像設定', 'right top', '頭像：吉祥物 · 10 形狀 × 10 色 × 狀態', 'avatars')
+],
+miniBots: [
+{ n: '小秘', c: 'blue', body: 'cursor', st: 'working', dot: 'none', s: '工作中…', sc: '#FCFCFC99', bg: '#2F2F2F', ring: '#2F2F2F' },
+{ n: '小編', c: 'pink', body: 'circle', st: 'notifying', dot: 'waiting', s: '等你回覆', sc: '#FFB547', bg: 'transparent', ring: '#111111' },
+{ n: '阿凱', c: 'green', body: 'squircle', st: 'idle', dot: 'none', s: '3 封草稿完成', sc: '#FCFCFC99', bg: 'transparent', ring: '#111111' },
+{ n: '帳房', c: 'yellow', body: 'hexagon', st: 'notifying', dot: 'waiting', s: '等你允許', sc: '#FFB547', bg: 'transparent', ring: '#111111' }
+],
+menu: [
+{ t: '釘選', icon: 'M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z', c: '#FCFCFC', item: true, sep: false },
+{ t: '設為幕僚長', icon: 'M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294zM5 21h14', c: '#FCFCFC', item: true, sep: false },
+{ t: '標為未讀', icon: 'M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326', c: '#FCFCFC', item: true, sep: false },
+{ sep: true, item: false },
+{ t: '編輯設定', icon: 'M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z', c: '#FCFCFC', item: true, sep: false },
+{ t: '分享登入給其他 Bot', icon: 'M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z', c: '#FCFCFC', item: true, sep: false },
+{ t: '教它一件事', icon: 'M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15', c: '#FCFCFC', item: true, sep: false },
+{ sep: true, item: false },
+{ t: '刪除（需要你核定）', icon: 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2', c: '#FF5667', item: true, sep: false }
+],
+colorHeads: colorNames.map((t) => ({ t })),
+stateRows: rows.map(([t, s, d]) => ({ t, cells: colors.map((c) => ({ s, d, c })) })),
+tiny: [{ s: 'working', d: 'none', t: '工作中' }, { s: 'notifying', d: 'waiting', t: '等你' }, { s: 'idle', d: 'none', t: '待命' }, { s: 'alerting', d: 'error', t: '出錯' }],
+icons: ICONS.map((i) => ({ t: LABEL[i.n], d: i.d.map(ic) })),
+swatches: [['底', '#070707'], ['側欄', '#111111'], ['內嵌', '#191919'], ['卡片', '#262626'], ['控制', '#2F2F2F'], ['細線', '#333333'], ['你的泡泡', '#5A5A5A'], ['文字', '#FCFCFC'], ['強調', '#1084FE'], ['完成', '#38D591'], ['危險', '#FF5667'], ['等你', '#FF9800']].map(([n, h]) => ({ n, h }))
+};
+}
+}
+</script>
+</body>
+</html>

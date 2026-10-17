@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>匯入 Bot</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3,strong,b{font-weight:400}
+a{color:#7FC0FF;text-decoration:none}
+button{font-synthesis:none}
+</style>
+</helmet>
+<div style="width: 640px; height: 880px; box-sizing: border-box; background: #070707; padding: 24px; display: flex; flex-direction: column; gap: 10px; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; color: #FCFCFC; font-size: 14.5px; line-height: 1.5">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #FCFCFC90"><span style="width: 20px; height: 20px; border-radius: 5px; background: #262626; color: #FCFCFC99; font-size: 12px; display: flex; align-items: center; justify-content: center">1</span>選擇檔案或貼上連結</div>
+<section role="dialog" aria-label="匯入 Bot：選擇檔案" style="background: #111111; border: 1px solid #262626; border-radius: 18px; display: flex; flex-direction: column; overflow: hidden">
+<header style="height: 56px; flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 20px"><h2 style="margin: 0; font-size: 16px; font-weight: 400; flex: 1">匯入 Bot</h2><button type="button" aria-label="關閉" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></header>
+<div style="padding: 0 20px 16px; display: flex; flex-direction: column; gap: 12px">
+<label style="position: relative; height: 96px; border: 1.5px dashed #3D3D3D; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer">
+<input type="file" accept=".xbot" style="position: absolute; opacity: 0; width: 1px; height: 1px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 3v12"></path><path d="m17 8-5-5-5 5"></path><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path></svg>
+<span style="font-size: 14.5px">把 .xbot 檔拖到這裡</span>
+<span style="font-size: 13px; color: #FCFCFC99">或 <span style="color: #7FC0FF">選擇檔案</span></span>
+</label>
+<div style="display: flex; gap: 8px">
+<label style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 40px; box-sizing: border-box; border: 1px solid #333333; border-radius: 10px; background: #191919; padding: 0 12px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg><input type="text" placeholder="或貼上分享連結" aria-label="分享連結" style="flex: 1; min-width: 0; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 14px; outline: none; padding: 0"></label>
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; flex: none; box-sizing: border-box; white-space: nowrap; text-decoration: none; height: 40px">讀取</button>
+</div>
+</div>
+<footer style="height: 60px; box-sizing: border-box; border-top: 1px solid #262626; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 0 16px">
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: transparent; color: #FCFCFC99; font: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; flex: none; box-sizing: border-box; white-space: nowrap; text-decoration: none">取消</button><button type="button" disabled style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #262626; color: #FCFCFC59; font: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; flex: none; box-sizing: border-box; white-space: nowrap; text-decoration: none">下一步</button>
+</footer>
+</section>
+<div style="height: 8px"></div>
+<div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #FCFCFC90"><span style="width: 20px; height: 20px; border-radius: 5px; background: #262626; color: #FCFCFC99; font-size: 12px; display: flex; align-items: center; justify-content: center">2</span>檢查內容後匯入</div>
+<section role="dialog" aria-label="匯入 Bot：檢查內容" style="background: #111111; border: 1px solid #262626; border-radius: 18px; display: flex; flex-direction: column; overflow: hidden">
+<header style="height: 56px; flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 20px"><h2 style="margin: 0; font-size: 16px; font-weight: 400; flex: 1">匯入 Bot</h2><button type="button" aria-label="關閉" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></header>
+<div style="padding: 0 20px 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 12px">
+<dc-import name="Avatar" color="blue" body="cursor" state="surprised" dot="none" ring="#111111" size="40" hint-size="40px,40px"></dc-import>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<span style="font-size: 15.5px">小秘 <span style="font-size: 13px; color: #FCFCFC99">幕僚長 · 每日重點與協調</span></span>
+<span style="font-size: 12.5px; color: #FCFCFC99">林佩君（晨光行銷）10 月 17 日分享 · 3.2 MB</span>
+</div>
+</div>
+<div style="background: #191919; border-radius: 14px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 46px; box-sizing: border-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="m16 9-5.5 5.5L8 12"></path></svg><span style="flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14.5px; flex: none">人設與回覆風格</span><span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">照原樣帶入</span></span></div>
+<div style="border-top: 1px solid #262626; display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 46px; box-sizing: border-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="m16 9-5.5 5.5L8 12"></path></svg><span style="flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14.5px; flex: none">技能 7 個</span><span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">「會議記錄」和你現有的重複，會合併</span></span></div>
+<div style="border-top: 1px solid #262626; display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 46px; box-sizing: border-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFB547" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg><span style="flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14.5px; flex: none">應用程式 3 個</span><span style="font-size: 12.5px; color: #FFB547; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Gmail、Google 日曆要你登入</span></span></div>
+<div style="border-top: 1px solid #262626; display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 46px; box-sizing: border-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg><span style="flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14.5px; flex: none">權限</span><span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">一律從「先問我」開始</span></span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; color: #FCFCFC99">名字</span>
+<input type="text" value="小秘 2" aria-label="匯入後的名字" style="height: 40px; box-sizing: border-box; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14.5px; padding: 0 12px; outline: none">
+<span style="font-size: 12.5px; color: #FCFCFC99">你已經有一個「小秘」，先改叫「小秘 2」，可以改。</span>
+</div>
+</div>
+<footer style="height: 60px; box-sizing: border-box; border-top: 1px solid #262626; display: flex; align-items: center; gap: 8px; padding: 0 16px">
+<span style="flex: 1; font-size: 12.5px; color: #FCFCFC90">今天還可以建立 2 個 Bot</span>
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: transparent; color: #FCFCFC99; font: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; flex: none; box-sizing: border-box; white-space: nowrap; text-decoration: none">返回</button><button type="button" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; font: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; flex: none; box-sizing: border-box; white-space: nowrap; text-decoration: none">匯入</button>
+</footer>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":640,"height":880}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

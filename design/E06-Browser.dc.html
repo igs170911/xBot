@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>電腦面板：瀏覽器</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}
+button{font:inherit}
+</style>
+</helmet>
+<div style="min-height: 960px; display: flex; flex-wrap: wrap; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.6">
+
+<div style="flex: 1 1 300px; max-width: 300px; background: #111111">
+<dc-import name="Sidebar" active="xiaobian" theme="dark" hint-size="100%,960px"></dc-import>
+</div>
+
+<main style="flex: 999 1 420px; min-width: 0; height: 960px; display: flex; flex-direction: column">
+<header style="height: 56px; flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 20px">
+<dc-import name="Avatar" color="pink" body="circle" state="notifying" dot="waiting" ring="#070707" size="26" hint-size="26px,26px"></dc-import>
+<span style="font-size: 16px; margin-left: 2px; white-space: nowrap">小編</span>
+<span style="font-size: 13px; color: #FFB547; white-space: nowrap">等你回覆</span>
+<span style="flex: 1"></span>
+<button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; background: transparent; color: #FCFCFC; font-size: 13.5px; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.plus}}"></path></svg>對話串</button>
+<button type="button" aria-haspopup="listbox" style="height: 32px; padding: 0 10px 0 12px; border: 0; border-radius: 999px; background: #262626; color: #FCFCFC; font-size: 13.5px; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap">Claude Sonnet 5.5<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronDown}}"></path></svg></button>
+<button type="button" aria-label="電腦（開啟中）" aria-pressed="true" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: #2F2F2F; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.monitor}}"></path></svg></button>
+<button type="button" aria-label="更多" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.ellipsis}}"></path></svg></button>
+</header>
+
+<div style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 12px; padding: 12px 24px 0">
+<span style="align-self: center; font-size: 12.5px; color: #FCFCFC90">今天 下午 2:14</span>
+<div style="align-self: flex-end; max-width: 75%; background: #5A5A5A; border-radius: 20px; padding: 10px 16px; font-size: 14.5px; line-height: 1.6">托特包的新品貼文好了，直接上架到蝦皮賣場吧</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #FCFCFCcc"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg>browser_open</span>
+<span style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #FCFCFCcc"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg>browser_type</span>
+</div>
+<div style="align-self: flex-start; max-width: 85%; background: #262626; border-radius: 20px; padding: 10px 16px; font-size: 14.5px; line-height: 1.6">商品頁都填好了，送出前要登入賣家中心。登入時跳出簡訊驗證碼，簡訊傳到你的手機，我收不到。</div>
+<div style="align-self: stretch; background: #262626; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="width: 34px; height: 34px; border-radius: 999px; background: rgba(255,152,0,.16); color: #FFB547; display: flex; align-items: center; justify-content: center; flex: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.hand}}"></path></svg></span>
+<span style="display: flex; flex-direction: column; line-height: 1.4; min-width: 0"><span style="font-size: 15px">需要你接手電腦</span><span style="font-size: 13px; color: #FCFCFC99">你正在操作 · 已 1 分鐘</span></span>
+</div>
+<span style="font-size: 14px; color: #FCFCFCcc; line-height: 1.6">在右邊的瀏覽器輸入驗證碼，登入後按「交還給小編」。</span>
+</div>
+</div>
+
+<div style="flex: none; padding: 12px 24px 20px">
+<div style="height: 52px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 6px; padding: 0 9px 0 8px">
+<button type="button" aria-label="加入檔案" style="width: 36px; height: 36px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.plus}}"></path></svg></button>
+<label style="flex: 1; min-width: 0; display: flex"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">訊息</span><input type="text" placeholder="交代小編…" style="flex: 1; min-width: 0; height: 40px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none"></label>
+<button type="button" aria-label="語音輸入" style="width: 36px; height: 36px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.mic}}"></path></svg></button>
+<button type="button" aria-label="送出" style="width: 34px; height: 34px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.arrowUp}}"></path></svg></button>
+</div>
+</div>
+</main>
+
+<aside aria-label="小編的電腦" style="flex: 0 1 600px; min-width: 0; height: 960px; box-sizing: border-box; background: #111111; border-left: 1px solid #262626; display: flex; flex-direction: column">
+<div style="height: 56px; flex: none; display: flex; align-items: center; padding: 0 10px">
+<button type="button" aria-label="電腦設定" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.settings}}"></path></svg></button>
+<span style="flex: 1; text-align: center; font-size: 16px">小編的電腦</span>
+<button type="button" aria-label="關閉電腦面板" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.x}}"></path></svg></button>
+</div>
+
+<div role="tablist" aria-label="電腦面板" style="margin: 0 16px; flex: none; display: flex; padding: 3px; gap: 2px; border-radius: 10px; background: #191919">
+<a href="E01-Computer.dc.html" role="tab" aria-selected="false" style="flex: 1; height: 32px; border-radius: 8px; color: #FCFCFC99; font-size: 13.5px; display: flex; align-items: center; justify-content: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.monitor}}"></path></svg>畫面</a>
+<span role="tab" aria-selected="true" style="flex: 1; height: 32px; border-radius: 8px; background: #2F2F2F; color: #FCFCFC; font-size: 13.5px; display: flex; align-items: center; justify-content: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.globe}}"></path></svg>瀏覽器<span style="width: 6px; height: 6px; border-radius: 9px; background: #FF9800"></span></span>
+<a href="E07-Files.dc.html" role="tab" aria-selected="false" style="flex: 1; height: 32px; border-radius: 8px; color: #FCFCFC99; font-size: 13.5px; display: flex; align-items: center; justify-content: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.folder}}"></path></svg>檔案</a>
+<a href="E08-Data.dc.html" role="tab" aria-selected="false" style="flex: 1; height: 32px; border-radius: 8px; color: #FCFCFC99; font-size: 13.5px; display: flex; align-items: center; justify-content: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.database}}"></path></svg>資料</a>
+</div>
+
+<div style="margin: 12px 16px 0; flex: none; display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 14px; border-radius: 14px; background: rgba(255,152,0,.12)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFB547" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.hand}}"></path></svg>
+<span style="flex: 1; min-width: 0; font-size: 13.5px; color: #FFB547; line-height: 1.4">你正在操作瀏覽器 · 小編等你交還再繼續</span>
+<button type="button" style="height: 32px; padding: 0 14px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 13.5px; cursor: pointer; white-space: nowrap">交還給小編</button>
+</div>
+
+<div style="margin: 12px 16px 0; flex: none; border-radius: 12px; overflow: hidden; background: #191919; border: 1px solid #262626; display: flex; flex-direction: column; position: relative">
+<div role="tablist" aria-label="瀏覽器分頁" style="display: flex; align-items: flex-end; gap: 2px; padding: 6px 8px 0; background: #191919">
+<span role="tab" aria-selected="true" style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px 0 12px; width: 200px; box-sizing: border-box; border-radius: 10px 10px 0 0; background: #262626; font-size: 12.5px"><span style="width: 16px; height: 16px; border-radius: 99px; background: #F2662E; color: #FFFFFF; font-size: 9.5px; display: flex; align-items: center; justify-content: center; flex: none">S</span><span style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">登入 · 蝦皮賣家中心</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="{{I.x}}"></path></svg></span>
+<span role="tab" aria-selected="false" style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px 0 12px; width: 180px; box-sizing: border-box; border-radius: 10px 10px 0 0; color: #FCFCFC99; font-size: 12.5px"><span style="width: 16px; height: 16px; border-radius: 99px; background: #4A4A4A; color: #FFFFFF; font-size: 9.5px; display: flex; align-items: center; justify-content: center; flex: none">@</span><span style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">晨光選物 · Threads</span></span>
+<button type="button" aria-label="新分頁" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="{{I.plus}}"></path></svg></button>
+</div>
+<div style="display: flex; align-items: center; gap: 2px; padding: 6px 8px; background: #262626">
+<button type="button" aria-label="上一頁" style="width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronLeft}}"></path></svg></button>
+<button type="button" aria-label="下一頁" disabled style="width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC40; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronRight}}"></path></svg></button>
+<button type="button" aria-label="重新整理" style="width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.rotateCw}}"></path></svg></button>
+<label style="flex: 1; min-width: 0; height: 32px; margin: 0 4px; border-radius: 999px; background: #191919; display: flex; align-items: center; gap: 8px; padding: 0 12px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.lock}}"></path></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">網址</span>
+<input type="text" value="seller.shopee.tw/verify" style="flex: 1; min-width: 0; border: 0; background: transparent; color: #FCFCFC; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; outline: none">
+</label>
+<button type="button" aria-haspopup="dialog" style="height: 32px; padding: 0 8px 0 6px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 12.5px; display: flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap"><dc-import name="Avatar" color="pink" body="circle" state="notifying" dot="none" size="20" hint-size="20px,20px"></dc-import>小編自己的<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronDown}}"></path></svg></button>
+<button type="button" aria-label="瀏覽器選單" aria-expanded="true" style="width: 32px; height: 32px; margin-left: 2px; border: 0; border-radius: 8px; background: #3D3D3D; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.ellipsis}}"></path></svg></button>
+</div>
+
+<div style="height: 384px; background: #F4F5F7; display: flex; flex-wrap: wrap; align-content: space-between; color: #1F2329; font-size: 13.5px; line-height: 1.5">
+<div style="width: 314px; flex: none; padding: 30px 0 0 24px; box-sizing: border-box">
+<div style="background: #FFFFFF; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 20px 22px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 12px; color: #6B7280">賣家中心 · 登入驗證</span>
+<span style="font-size: 18px; color: #111827">輸入簡訊驗證碼</span>
+<span style="font-size: 12.5px; color: #4B5563">驗證碼已傳送到 0912-•••-318</span>
+<div style="display: flex; gap: 6px; margin-top: 2px">
+<sc-for list="{{otp}}" as="d" hint-placeholder-count="6">
+<span style="width: 36px; height: 42px; box-sizing: border-box; border-radius: 6px; border: {{d.border}}; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #111827; background: #FFFFFF">{{d.v}}</span>
+</sc-for>
+</div>
+<span style="height: 38px; border-radius: 6px; background: #F2662E; color: #FFFFFF; font-size: 14px; display: flex; align-items: center; justify-content: center; margin-top: 4px">驗證並登入</span>
+<span style="font-size: 12px; color: #6B7280; text-align: center">沒收到簡訊？52 秒後可重新傳送</span>
+</div>
+</div>
+<div style="flex: 1; min-width: 0; padding: 26px 28px 0 20px; display: flex; flex-direction: column; gap: 10px; color: #4B5563; font-size: 12.5px">
+<span style="height: 10px; width: 70%; border-radius: 4px; background: #E3E6EA"></span>
+<span style="height: 10px; width: 52%; border-radius: 4px; background: #E3E6EA"></span>
+<span style="height: 10px; width: 62%; border-radius: 4px; background: #E3E6EA"></span>
+</div>
+<div style="flex: 1 1 100%; height: 40px; border-top: 1px solid #E3E6EA; display: flex; align-items: center; gap: 18px; padding: 0 24px; font-size: 11.5px; color: #8A9099"><span>說明中心</span><span>隱私權政策</span><span>服務條款</span><span style="flex: 1"></span><span>繁體中文</span></div>
+</div>
+
+<div role="menu" aria-label="瀏覽器選單" style="position: absolute; right: 8px; top: 86px; width: 236px; background: #262626; border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.5); padding: 6px; display: flex; flex-direction: column">
+<sc-for list="{{menu}}" as="m" hint-placeholder-count="6">
+<sc-if value="{{m.sep}}" hint-placeholder-val="{{ false }}"><span role="separator" style="height: 1px; background: #333333; margin: 4px 6px"></span></sc-if>
+<sc-if value="{{m.item}}" hint-placeholder-val="{{ true }}"><button type="button" role="menuitem" style="height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: {{m.bg}}; color: {{m.c}}; font-size: 14px; display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{m.icon}}"></path></svg>{{m.t}}</button></sc-if>
+</sc-for>
+</div>
+</div>
+
+<div style="margin: 12px 16px 16px; flex: 1; min-height: 0; display: flex; gap: 12px">
+<section aria-label="瀏覽器設定檔" style="flex: 1 1 0; min-width: 0; background: #262626; border-radius: 18px; box-shadow: 0 12px 32px rgba(0,0,0,.35); padding: 8px 14px 14px; display: flex; flex-direction: column; gap: 8px">
+<span aria-hidden="true" style="align-self: center; width: 36px; height: 4px; border-radius: 9px; background: #4A4A4A"></span>
+<span style="display: flex; flex-direction: column; line-height: 1.4"><span style="font-size: 15px">瀏覽器設定檔</span><span style="font-size: 13px; color: #FCFCFC99">登入資料存在哪一份</span></span>
+<div style="border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; gap: 1px; background: #333333">
+<sc-for list="{{profiles}}" as="p" hint-placeholder-count="3">
+<button type="button" aria-pressed="{{p.pressed}}" onClick="{{p.pick}}" style="min-height: 56px; border: 0; padding: 8px 12px; background: {{p.bg}}; color: #FCFCFC; display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer">
+<span style="width: 20px; height: 20px; border-radius: 5px; background: #333333; color: #FCFCFC99; font-size: 11.5px; display: flex; align-items: center; justify-content: center; flex: none">{{p.k}}</span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.4"><span style="font-size: 14px">{{p.t}}</span><span style="font-size: 12.5px; color: #FCFCFC99">{{p.s}}</span></span>
+<sc-if value="{{p.on}}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7FC0FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="使用中" role="img"><path d="{{I.check}}"></path></svg></sc-if>
+</button>
+</sc-for>
+</div>
+<span style="margin-top: auto; font-size: 12.5px; color: #FCFCFC90">換設定檔後，下次打開瀏覽器時生效。</span>
+</section>
+
+<section aria-label="已登入的網站" style="flex: 1 1 0; min-width: 0; background: #191919; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px"><span style="font-size: 15px">已登入的網站 · 4</span><button type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FF5667; font-size: 13px; cursor: pointer">全部登出</button></div>
+<sc-for list="{{sites}}" as="s" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 10px; min-height: 44px; border-top: {{s.line}}">
+<span aria-hidden="true" style="width: 26px; height: 26px; border-radius: 99px; background: {{s.c}}; color: #FFFFFF; font-size: 12px; display: flex; align-items: center; justify-content: center; flex: none">{{s.m}}</span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35"><span style="font-size: 13.5px; font-family: 'JetBrains Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{s.host}}</span><span style="font-size: 12px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{s.meta}}</span></span>
+<button type="button" onClick="{{s.out}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 13px; cursor: pointer; white-space: nowrap; flex: none">{{s.btn}}</button>
+</div>
+</sc-for>
+<a href="E09-LoginShare.dc.html" style="margin-top: auto; height: 36px; border-radius: 999px; border: 1px solid #333333; color: #FCFCFC; font-size: 13.5px; display: flex; align-items: center; justify-content: center; gap: 8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.share2}}"></path></svg>分享登入給其他 Bot</a>
+</section>
+</div>
+</aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+renderVals() {
+// ICONS: settings x monitor globe folder database phone ellipsis plus mic arrow-up chevron-down chevron-left chevron-right rotate-cw lock log-out check share-2 hand keyboard refresh-cw rotate-ccw trash-2 app-window
+const I = {"settings":"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915 M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0","x":"M18 6 6 18 M6 6 l12 12","monitor":"M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z M8 21L16 21 M12 17L12 21","globe":"M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20 M2 12h20","folder":"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z","database":"M3 5a9 3 0 1 0 18 0a9 3 0 1 0 -18 0 M3 5V19A9 3 0 0 0 21 19V5 M3 12A9 3 0 0 0 21 12","phone":"M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384","ellipsis":"M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0 M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0 M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0","plus":"M5 12h14 M12 5v14","mic":"M12 19v3 M19 10v2a7 7 0 0 1-14 0v-2 M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z","arrowUp":"M5 12 l7-7 7 7 M12 19V5","chevronDown":"M6 9 l6 6 6-6","chevronLeft":"M15 18 l-6-6 6-6","chevronRight":"M9 18 l6-6-6-6","rotateCw":"M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8 M21 3v5h-5","lock":"M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2Z M7 11V7a5 5 0 0 1 10 0v4","logOut":"M16 17 l5-5-5-5 M21 12H9 M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4","check":"M20 6 9 17l-5-5","share2":"M15 5a3 3 0 1 0 6 0a3 3 0 1 0 -6 0 M3 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0 M15 19a3 3 0 1 0 6 0a3 3 0 1 0 -6 0 M8.59 13.51L15.42 17.49 M15.41 6.51L8.59 10.49","hand":"M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2 M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2 M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8 M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15","keyboard":"M10 8h.01 M12 12h.01 M14 8h.01 M16 12h.01 M18 8h.01 M6 8h.01 M7 16h10 M8 12h.01 M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2Z","refreshCw":"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8 M21 3v5h-5 M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16 M8 16H3v5","rotateCcw":"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8 M3 3v5h5","trash2":"M10 11v6 M14 11v6 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6 M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2","appWindow":"M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2Z M10 4v4 M2 8h20 M6 4v4"};
+const st = this.state || {};
+const prof = st.prof || 'own';
+const out = st.out || {};
+const digits = ['4', '8', '2', '9', '', ''];
+const otp = digits.map((v, i) => ({ v, border: i === 4 ? '2px solid #2F6FEB' : '1px solid #D1D5DB' }));
+const P = (id, k, t, s) => ({ k, t, s, on: prof === id, pressed: prof === id ? 'true' : 'false', bg: prof === id ? '#2F2F2F' : '#262626', pick: () => this.setState({ prof: id }) });
+const S = (id, host, meta, m, c, i) => ({ host, m, c, meta: out[id] ? '已登出 · 下次要重新登入' : meta, btn: out[id] ? '已登出' : '登出', line: i ? '1px solid #262626' : '0', out: () => this.setState({ out: Object.assign({}, out, { [id]: true }) }) });
+const M = (t, icon, extra) => Object.assign({ t, icon, item: true, sep: false, c: '#FCFCFC', bg: 'transparent' }, extra || {});
+return {
+I, otp,
+menu: [
+M('輸入密碼或驗證碼…', I.keyboard, { bg: '#2F2F2F' }),
+M('在新分頁打開網址…', I.appWindow),
+M('重新連線畫面', I.refreshCw),
+{ sep: true, item: false },
+M('登出這個網站', I.logOut),
+M('重新啟動瀏覽器…', I.rotateCcw, { c: '#FF5667' })
+],
+profiles: [
+P('own', 'A', '小編自己的', '登入會保留 · 只有小編用'),
+P('temp', 'B', '暫時的', '關掉就清空，不留登入'),
+P('shared', 'C', '共用：營運部', '阿哲、阿凱也在用 · 一次一個 Bot')
+],
+sites: [
+S('shopee', 'seller.shopee.tw', '你接手時登入 · 今天', 'S', '#F2662E', 0),
+S('threads', 'threads.net', '晨光選物 · 3 天前用過', '@', '#4A4A4A', 1),
+S('google', 'accounts.google.com', '雲端硬碟 · 昨天用過', 'G', '#1084FE', 2),
+S('canva', 'canva.com', '新品主圖 · 週三用過', 'C', '#00A3A3', 3)
+]
+};
+}
+}
+</script>
+</body>
+</html>

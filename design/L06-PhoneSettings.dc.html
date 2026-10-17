@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>手機：設定</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A8D4FF}
+button{font:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.45; display: flex; flex-direction: column">
+<div aria-hidden="true" style="height: 47px; flex: none"></div>
+
+<header style="flex: none; height: 56px; padding: 0 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px">
+<a href="L01-PhoneList.dc.html" aria-label="返回" style="width: 44px; height: 44px; box-sizing: border-box; border-radius: 999px; background: #191919; border: 1px solid #333333; color: #FCFCFC; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m15 18-6-6 6-6"></path></svg></a>
+<h1 style="margin: 0; font-size: 17px; font-weight: 400">設定</h1>
+<span style="justify-self: end; height: 24px; display: inline-flex; align-items: center; gap: 4px; padding: 0 9px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12px; white-space: nowrap"><span style="display: flex"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg></span>簡化：15 → 5 區塊</span>
+</header>
+
+<div style="flex: 1; min-height: 0; overflow-y: auto; padding: 8px 16px 12px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px">
+
+<a href="J08-People.dc.html" style="flex: none; height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 14px; border-radius: 14px; background: #262626; color: #FCFCFC">
+<span aria-hidden="true" style="width: 40px; height: 40px; border-radius: 999px; background: #3D3D3D; display: flex; align-items: center; justify-content: center; font-size: 16px">王</span>
+<span style="flex: 1; min-width: 0"><span style="display: block; font-size: 15.5px">王小明</span><span style="display: block; font-size: 13px; color: #FCFCFC99">擁有者 · 辦公室的 Mac mini</span></span>
+<span style="color: #FCFCFC90; display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m9 18 6-6-6-6"></path></svg></span>
+</a>
+
+<section aria-labelledby="s-general" style="flex: none; display: flex; flex-direction: column; gap: 6px; position: relative">
+<h2 id="s-general" style="margin: 0; padding-left: 14px; font-size: 13px; font-weight: 400; color: #FCFCFC90; line-height: 18px">一般</h2>
+<div style="background: #262626; border-radius: 14px">
+<button type="button" aria-haspopup="listbox" aria-expanded="{{themeOpen}}" onClick="{{toggleTheme}}" style="width: 100%; height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 14px; border: 0; background: transparent; color: #FCFCFC; font-size: 15px; text-align: left; cursor: pointer">
+<span style="flex: 1">主題</span>
+<span style="height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 12px; border-radius: 10px; background: #191919; border: 1px solid {{themeLine}}; font-size: 14.5px">{{theme}}<span style="color: #FCFCFC99; display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m6 9 6 6 6-6"></path></svg></span></span></button>
+<div style="height: 1px; background: #333333; margin-left: 14px"></div>
+<button type="button" aria-haspopup="listbox" style="width: 100%; height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 14px; border: 0; background: transparent; color: #FCFCFC; font-size: 15px; text-align: left; cursor: pointer">
+<span style="flex: 1">語言</span>
+<span style="height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 12px; border-radius: 10px; background: #191919; border: 1px solid #333333; font-size: 14.5px">繁體中文<span style="color: #FCFCFC99; display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m6 9 6 6 6-6"></path></svg></span></span></button>
+<sc-for list="{{switches}}" as="w" hint-placeholder-count="2">
+<div style="height: 1px; background: #333333; margin-left: 14px"></div>
+<div style="height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 14px">
+<span style="flex: 1; min-width: 0"><span style="display: block; font-size: 15px">{{w.label}}</span></span>
+<button type="button" role="switch" aria-checked="{{w.on}}" aria-label="{{w.label}}" onClick="{{w.flip}}" style="width: 52px; height: 44px; border: 0; padding: 0; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer"><span style="width: 40px; height: 24px; border-radius: 999px; background: {{w.track}}; position: relative; display: block"><span style="position: absolute; top: 2px; left: {{w.knob}}; width: 20px; height: 20px; border-radius: 999px; background: #FFFFFF"></span></span></button>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{themeOpen}}" hint-placeholder-val="{{ false }}">
+<div role="listbox" aria-label="主題" style="position: absolute; right: 6px; top: 72px; z-index: 5; width: 176px; padding: 4px; background: #2F2F2F; border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.5)">
+<sc-for list="{{themes}}" as="t" hint-placeholder-count="3">
+<button type="button" role="option" aria-selected="{{t.on}}" onClick="{{t.pick}}" style="width: 100%; height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border: 0; border-radius: 8px; background: {{t.bg}}; color: #FCFCFC; font-size: 15px; text-align: left; cursor: pointer"><span style="width: 18px; display: flex; color: #FCFCFC"><sc-if value="{{t.on}}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span>{{t.label}}</button>
+</sc-for>
+</div>
+</sc-if>
+</section>
+
+<section aria-labelledby="s-ai" style="flex: none; display: flex; flex-direction: column; gap: 6px">
+<h2 id="s-ai" style="margin: 0; padding-left: 14px; font-size: 13px; font-weight: 400; color: #FCFCFC90; line-height: 18px">AI 模型</h2>
+<div style="background: #262626; border-radius: 14px">
+<button type="button" aria-haspopup="listbox" style="width: 100%; height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 14px; border: 0; background: transparent; color: #FCFCFC; font-size: 15px; text-align: left; cursor: pointer">
+<span style="flex: 1">主要模型</span>
+<span style="height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 12px; border-radius: 10px; background: #191919; border: 1px solid #333333; font-size: 14.5px">Claude Sonnet 5.5<span style="color: #FCFCFC99; display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m6 9 6 6 6-6"></path></svg></span></span></button>
+</div>
+</section>
+
+<section aria-labelledby="s-dev" style="flex: none; display: flex; flex-direction: column; gap: 6px">
+<h2 id="s-dev" style="margin: 0; padding-left: 14px; font-size: 13px; font-weight: 400; color: #FCFCFC90; line-height: 18px">電腦與裝置</h2>
+<div style="background: #262626; border-radius: 14px">
+<button type="button" aria-haspopup="listbox" style="width: 100%; height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 14px; border: 0; background: transparent; color: #FCFCFC; font-size: 15px; text-align: left; cursor: pointer">
+<span style="flex: 1">閒置多久休眠</span>
+<span style="height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 12px; border-radius: 10px; background: #191919; border: 1px solid #333333; font-size: 14.5px">30 分鐘<span style="color: #FCFCFC99; display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m6 9 6 6 6-6"></path></svg></span></span></button>
+<div style="height: 1px; background: #333333; margin-left: 14px"></div>
+<a href="J05-Devices.dc.html" style="height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 14px; color: #FCFCFC; font-size: 15px">
+<span style="flex: 1">這支手機</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #FCFCFC99"><span style="width: 7px; height: 7px; border-radius: 9px; background: #38D591"></span>已連線 · Tailscale</span>
+<span style="color: #FCFCFC90; display: flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m9 18 6-6-6-6"></path></svg></span>
+</a>
+</div>
+</section>
+
+<section aria-labelledby="s-spend" style="flex: none; display: flex; flex-direction: column; gap: 6px">
+<h2 id="s-spend" style="margin: 0; padding-left: 14px; font-size: 13px; font-weight: 400; color: #FCFCFC90; line-height: 18px">用量與花費</h2>
+<a href="J04-Usage.dc.html" style="min-height: 64px; display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 0 14px; border-radius: 14px; background: #262626; color: #FCFCFC">
+<span style="display: flex; align-items: baseline; gap: 8px"><span style="flex: 1; font-size: 15px">本月花費</span><span style="font-size: 14px">NT$4,600</span><span style="font-size: 13px; color: #FCFCFC99">／上限 NT$8,000</span></span>
+<span role="img" aria-label="已用 58%" style="height: 4px; border-radius: 9px; background: #333333; display: block; overflow: hidden"><span style="display: block; width: 58%; height: 4px; background: #1084FE"></span></span>
+</a>
+</section>
+
+<a href="J07-Backup.dc.html" style="flex: none; height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 14px; border-radius: 14px; background: #262626; color: #FCFCFC; font-size: 15px">
+<span style="flex: 1">進階</span><span style="font-size: 13.5px; color: #FCFCFC99">備份、成員、技能庫</span><span style="color: #FCFCFC90; display: flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m9 18 6-6-6-6"></path></svg></span>
+</a>
+</div>
+<div aria-hidden="true" style="height: 34px; flex: none"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const st = this.state || {};
+const theme = st.theme || '深色';
+const open = !!st.open;
+const sw = Object.assign({ wait: true, done: false }, st.sw || {});
+const switches = [
+{ id: 'wait', label: '等你的事推播到這支手機' },
+{ id: 'done', label: '工作完成也通知' }
+].map((w) => {
+const on = !!sw[w.id];
+return Object.assign({}, w, { on, track: on ? '#1084FE' : '#3D3D3D', knob: on ? '18px' : '2px', flip: () => this.setState({ sw: Object.assign({}, sw, { [w.id]: !on }) }) });
+});
+const themes = ['深色', '淺色', '跟隨系統'].map((label) => ({ label, on: label === theme, bg: label === theme ? '#3D3D3D' : 'transparent', pick: () => this.setState({ theme: label, open: false }) }));
+return { theme, themeOpen: open, themeLine: open ? '#459FFE' : '#333333', toggleTheme: () => this.setState({ open: !open }), themes, switches };
+}
+}
+</script>
+</body>
+</html>

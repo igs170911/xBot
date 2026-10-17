@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>新增群組對話</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3,strong,b{font-weight:400}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+input::placeholder,textarea::placeholder{color:#FCFCFC90}
+</style>
+</helmet>
+<div role="dialog" aria-label="新增群組對話" style="width: 640px; box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; box-shadow: 0 24px 64px rgba(0,0,0,.6); color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.6; display: flex; flex-direction: column; overflow: hidden">
+<header style="height: 64px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 24px">
+<h1 style="margin: 0; font-size: 18px; flex: 1">新增群組對話</h1>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12.5px; white-space: nowrap; flex: none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg>簡化：5 個欄位 → 2 步</span>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</header>
+<div style="padding: 0 24px 4px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #FCFCFC99">
+<span style="display: flex; align-items: center; gap: 6px; color: #FCFCFC"><span style="width: 22px; height: 22px; border-radius: 99px; background: #FCFCFC; color: #070707; font-size: 12px; display: flex; align-items: center; justify-content: center">1</span>勾成員</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC90" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 22px; height: 22px; border-radius: 99px; background: #2F2F2F; font-size: 12px; display: flex; align-items: center; justify-content: center">2</span>建立</span>
+<span style="margin-left: auto">已選 {{count}} 位 · 2–10 位</span>
+</div>
+<div role="group" aria-label="成員" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{bots}}" as="b" hint-placeholder-count="8">
+<label style="position: relative; display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 14px; box-sizing: border-box; border-radius: 12px; background: {{b.bg}}; border: 1px solid {{b.bd}}; cursor: pointer">
+<input type="checkbox" checked="{{b.on}}" onChange="{{b.pick}}" style="position: absolute; opacity: 0; width: 1px; height: 1px">
+<sc-if value="{{b.on}}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="width: 18px; height: 18px; flex: none; border-radius: 5px; background: #1084FE; display: flex; align-items: center; justify-content: center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span></sc-if>
+<sc-if value="{{b.off}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 18px; height: 18px; flex: none; box-sizing: border-box; border-radius: 5px; border: 1.5px solid #5A5A5A"></span></sc-if>
+<dc-import name="Avatar" color="{{b.c}}" body="{{b.body}}" state="{{b.s}}" dot="{{b.d}}" ring="{{b.bg}}" size="32" hint-size="32px,32px"></dc-import>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35"><span style="font-size: 15px">{{b.n}}</span><span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{b.t}}</span></span>
+</label>
+</sc-for>
+</div>
+<div style="background: #191919; border-radius: 14px; padding: 4px 16px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 48px; border-bottom: 1px solid #262626">
+<span style="width: 72px; flex: none; font-size: 13.5px; color: #FCFCFC99">名稱</span>
+<span style="flex: 1; min-width: 0; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{autoName}}</span>
+<span style="font-size: 12.5px; color: #FCFCFC90">自動命名</span>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; min-height: 48px">
+<span style="width: 72px; flex: none; font-size: 13.5px; color: #FCFCFC99">回應規則</span>
+<span style="flex: 1; min-width: 0; font-size: 14.5px">{{ruleName}}<span style="color: #FCFCFC90; font-size: 13px">　{{ruleDesc}}</span></span>
+</div>
+</div>
+<button type="button" aria-expanded="{{advExpanded}}" onClick="{{toggleAdv}}" style="display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 4px; border: 0; background: transparent; color: #FCFCFC; font: inherit; text-align: left; cursor: pointer">
+<span style="display: flex; transform: rotate({{advRot}}); transition: transform .15s"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></span>
+<span style="font-size: 14.5px">進階設定</span><span style="font-size: 13px; color: #FCFCFC90">改名稱、回應規則、群組指示、工作資料夾</span>
+</button>
+<sc-if value="{{adv}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 0 4px 6px 32px">
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13.5px; color: #FCFCFC99">名稱</span><label style="display: flex; position: relative"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">名稱</span><input type="text" placeholder="留白就用成員名字" style="flex: 1; min-width: 0; height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; border: 1px solid #333333; background: #191919; color: #FCFCFC; font: inherit; font-size: 14.5px; outline: none"></label></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13.5px; color: #FCFCFC99">沒被 @ 時誰回答</span>
+<div role="radiogroup" style="display: flex; padding: 3px; gap: 2px; border-radius: 10px; background: #191919">
+<sc-for list="{{rules}}" as="r" hint-placeholder-count="4">
+<button type="button" role="radio" aria-checked="{{r.sel}}" onClick="{{r.pick}}" style="flex: 1; height: 32px; border: 0; border-radius: 8px; background: {{r.bg}}; color: {{r.fg}}; font: inherit; font-size: 13.5px; cursor: pointer; white-space: nowrap">{{r.t}}</button>
+</sc-for>
+</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13.5px; color: #FCFCFC99">群組指示（選填）</span><label style="display: flex; position: relative"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">群組指示</span><input type="text" placeholder="例：對外文案先給小秘看過" style="flex: 1; min-width: 0; height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; border: 1px solid #333333; background: #191919; color: #FCFCFC; font: inherit; font-size: 14.5px; outline: none"></label></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13.5px; color: #FCFCFC99">工作資料夾</span><button type="button" aria-haspopup="listbox" aria-label="工作資料夾" style="height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; border: 1px solid #333333; background: #191919; color: #FCFCFC; font: inherit; font-size: 14.5px; display: flex; align-items: center; gap: 10px; cursor: pointer; text-align: left"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg><span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">自動建立：群組專用資料夾</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+</div>
+</sc-if>
+</div>
+<footer style="flex: none; display: flex; align-items: center; gap: 8px; padding: 12px 24px 20px">
+<span style="flex: 1; font-size: 13px; color: {{hintColor}}">{{hint}}</span>
+<button type="button" style="height: 36px; padding: 0 16px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; border: 0; font: inherit; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; cursor: pointer; text-decoration: none; flex: none">取消</button>
+<button type="button" disabled="{{tooFew}}" style="height: 36px; padding: 0 18px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font: inherit; font-size: 14.5px; cursor: pointer; opacity: {{btnOpacity}}; white-space: nowrap">建立群組（{{count}} 位）</button>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 640, "height": 604}}'>
+class Component extends DCLogic {
+renderVals() {
+const s = this.state || {};
+const sel = s.sel || { xiaomi: true, azhe: true, xiaobian: true };
+const rule = s.rule ?? 0;
+const all = [['xiaomi', '小秘', '幕僚長', 'blue', 'cursor', 'working', 'none'], ['azhe', '阿哲', '選品研究員', 'orange', 'blob', 'working', 'none'], ['xiaobian', '小編', '社群小編', 'pink', 'circle', 'notifying', 'waiting'], ['akai', '阿凱', '業務開發', 'green', 'squircle', 'idle', 'none'], ['zhangfang', '帳房', '費用管理', 'yellow', 'hexagon', 'notifying', 'waiting'], ['miao', '數據喵', '數據分析師', 'purple', 'diamond', 'idle', 'queued'], ['xinchai', '信差', '收件匣管家', 'cyan', 'star', 'sleeping', 'none'], ['zhuachong', '抓蟲', 'Bug 重現', 'red', 'shield', 'idle', 'none']];
+const count = all.filter(([k]) => sel[k]).length;
+const bots = all.map(([k, n, t, c, body, st, d]) => { const on = !!sel[k]; return { n, t, c, body, s: st, d, on, off: !on, bg: on ? '#262626' : '#191919', bd: on ? '#1084FE' : '#262626', pick: () => { if (!on && count >= 10) return; this.setState({ sel: Object.assign({}, sel, { [k]: !on }) }); } }; });
+const names = all.filter(([k]) => sel[k]).map((x) => x[1]);
+const autoName = names.length === 0 ? '（還沒選成員）' : names.length <= 3 ? names.join('、') : names.slice(0, 3).join('、') + ' 等 ' + names.length + ' 位';
+const RULES = ['自動挑一位', '主責：小秘', '被 @ 才回', '所有成員'];
+const tooFew = count < 2;
+const adv = !!s.adv;
+return {
+bots, count, autoName, ruleName: RULES[rule], ruleDesc: ['沒被 @ 時，系統挑最適合的一位回答', '沒被 @ 時一律由小秘回答', '沒有 @ 就沒有人回', '每則訊息叫醒全部成員，比較花錢'][rule],
+rules: RULES.map((t, i) => ({ t, sel: i === rule ? 'true' : 'false', bg: i === rule ? '#2F2F2F' : 'transparent', fg: i === rule ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ rule: i }) })),
+adv, advExpanded: adv ? 'true' : 'false', advRot: adv ? '90deg' : '0deg', toggleAdv: () => this.setState({ adv: !adv }),
+tooFew, btnOpacity: tooFew ? 0.4 : 1,
+hint: tooFew ? '至少要 2 個 Bot 才能開群組' : '名稱、成員、規則之後都能在群組設定改',
+hintColor: tooFew ? '#FFB547' : '#FCFCFC90'
+};
+}
+}
+</script>
+</body>
+</html>

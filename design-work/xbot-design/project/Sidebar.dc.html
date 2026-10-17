@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>XBot 側欄</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none}
+</style>
+</helmet>
+<nav aria-label="側欄" style="width: 100%; box-sizing: border-box; height: 960px; overflow: hidden; padding: 14px 10px 10px; display: flex; flex-direction: column; gap: 8px; background: {{t.panel}}; color: {{t.ink}}; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14px; line-height: 1.45">
+
+<div style="display: flex; align-items: center; gap: 4px; padding: 0 2px 0 6px; min-height: 36px">
+<dc-import name="Mochi" size="26" pose="lazy" hint-size="26px,26px"></dc-import>
+<span style="flex: 1; font-size: 17px; padding-left: 6px">XBot</span>
+<button type="button" aria-label="通知" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: {{t.ink2}}; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg></button>
+<button type="button" aria-label="新增 Bot 或群組對話" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: {{t.ink2}}; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+</div>
+
+<label style="position: relative; display: flex; align-items: center">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">搜尋</span>
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{t.ink3}}" stroke-width="1.75" stroke-linecap="round" aria-hidden="true" style="position: absolute; left: 12px"><path d="m21 21-4.34-4.34"></path><path d="M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0"></path></svg>
+<input type="search" placeholder="搜尋" style="width: 100%; height: 40px; box-sizing: border-box; padding: 0 12px 0 38px; border: 0; border-radius: 10px; background: {{t.raised}}; color: {{t.ink}}; font: inherit; font-size: 14.5px">
+</label>
+
+<div style="display: flex; flex-direction: column; gap: 2px">
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 12px; border-radius: 12px; text-decoration: none; color: {{t.ink}}; background: {{bgHome}}">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12L16 12L14 15L10 15L8 12L2 12"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+<span style="flex: 1">待我處理</span><span style="min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; background: {{t.warning}}; color: #1A1100; font-size: 12px; display: flex; align-items: center; justify-content: center">5</span></a>
+<a href="E03-Office.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 12px; border-radius: 12px; text-decoration: none; color: {{t.ink}}; background: {{bgOffice}}">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M8 21L16 21"></path><path d="M12 17L12 21"></path></svg>
+<span style="flex: 1">辦公室</span><span style="font-size: 12.5px; color: {{t.ink3}}">4 台開機</span></a>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 1px; flex: 1; min-height: 0; overflow: hidden">
+<sc-for list="{{sections}}" as="sec" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 6px; min-height: 24px; padding: 4px 8px 0 12px; color: {{t.ink3}}; font-size: 13px">
+<span>{{sec.title}}</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+</div>
+<sc-for list="{{sec.rows}}" as="b" hint-placeholder-count="3">
+<a href="{{b.href}}" style="display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 3px 10px; border-radius: 12px; text-decoration: none; color: {{t.ink}}; background: {{b.bg}}">
+<sc-if value="{{b.solo}}" hint-placeholder-val="{{ true }}">
+<dc-import name="Avatar" color="{{b.color}}" body="{{b.body}}" state="{{b.state}}" dot="{{b.dot}}" ring="{{b.ring}}" size="34" hint-size="34px,34px"></dc-import>
+</sc-if>
+<sc-if value="{{b.room}}" hint-placeholder-val="{{ false }}">
+<span style="width: 34px; height: 34px; flex: none; position: relative">
+<span style="position: absolute; left: 0; top: 4px"><dc-import name="Avatar" color="{{b.m1}}" body="cursor" state="idle" dot="none" size="22" hint-size="22px,22px"></dc-import></span>
+<span style="position: absolute; left: 12px; top: 4px"><dc-import name="Avatar" color="{{b.m2}}" body="cursor" state="idle" dot="none" size="22" hint-size="22px,22px"></dc-import></span>
+<span style="position: absolute; left: 18px; top: 18px; height: 18px; min-width: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: {{t.raised}}; color: {{t.ink2}}; font-size: 10.5px; display: flex; align-items: center; justify-content: center">{{b.more}}</span>
+</span>
+</sc-if>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<span style="display: flex; align-items: baseline; gap: 6px">
+<span style="font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{b.label}}</span>
+<sc-if value="{{b.star}}" hint-placeholder-val="{{ false }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="{{t.ink3}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="幕僚長"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"></path><path d="M5 21h14"></path></svg></sc-if>
+<span style="margin-left: auto; flex: none; font-size: 12.5px; color: {{t.ink3}}">{{b.time}}</span>
+</span>
+<span style="display: flex; align-items: center; gap: 6px">
+<span style="flex: 1; min-width: 0; font-size: 13.5px; color: {{b.subColor}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{b.sub}}</span>
+<sc-if value="{{b.unread}}" hint-placeholder-val="{{ false }}"><span aria-label="有新訊息" style="width: 8px; height: 8px; border-radius: 9px; background: {{t.accent}}; flex: none"></span></sc-if>
+</span>
+</span>
+</a>
+</sc-for>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 0; padding-top: 4px">
+<sc-for list="{{foot}}" as="f" hint-placeholder-count="3">
+<a href="{{f.href}}" style="display: flex; align-items: center; gap: 12px; min-height: 38px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: {{t.ink}}; font-size: 14.5px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{f.icon}}"></path></svg>{{f.label}}</a>
+</sc-for>
+<div style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 6px 0 10px">
+<span style="width: 30px; height: 30px; border-radius: 999px; background: {{t.raised}}; color: {{t.ink2}}; font-size: 12.5px; display: flex; align-items: center; justify-content: center">王</span>
+<span style="flex: 1; font-size: 14.5px">你</span>
+<a href="J01-General.dc.html" aria-label="設定" style="width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: {{t.ink2}}">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"></path></svg></a>
+</div>
+</div>
+</nav>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","default":"home","options":["home","office","xiaomi","azhe","room","none"]},"theme":{"editor":"enum","default":"dark","options":["dark","light"]},"$preview":{"width":300,"height":960}}'>
+class Component extends DCLogic {
+renderVals() {
+const light = this.props.theme === 'light';
+const t = light
+? { panel: '#F4F4F2', raised: '#E8E8E5', ink: '#0B0B0B', ink2: '#0B0B0Bb3', ink3: '#5E5E5E', accent: '#1084FE', warning: '#FF9800', sel: '#E8E8E5' }
+: { panel: '#111111', raised: '#2F2F2F', ink: '#FCFCFC', ink2: '#FCFCFC99', ink3: '#FCFCFC90', accent: '#1084FE', warning: '#FF9800', sel: '#2F2F2F' };
+const a = this.props.active ?? 'home';
+const B = (id, label, color, body, state, dot, time, sub, extra) => Object.assign({ id, label, color, body, state, dot, time, sub, solo: true, room: false, star: false, unread: false, href: 'C01-Chat-Working.dc.html', bg: a === id ? t.sel : 'transparent', ring: a === id ? t.sel : t.panel, subColor: dot === 'waiting' ? (light ? '#9A5200' : '#FFB547') : t.ink2 }, extra || {});
+const R = (id, label, m1, m2, more, time, sub) => ({ id, label, m1, m2, more, time, sub, solo: false, room: true, star: false, unread: false, href: 'D01-Room.dc.html', bg: a === id ? t.sel : 'transparent', subColor: t.ink2 });
+const sections = [
+{ title: '已釘選', rows: [B('xiaomi', '小秘', 'blue', 'cursor', 'working', 'none', '', '工作中…彙整三家競品定價', { star: true })] },
+{ title: '群組對話', rows: [R('room', '新品上架專案', 'blue', 'orange', '+1', '', '阿哲 正在回覆…'), R('room2', '每週一早會', 'blue', 'purple', '+4', '週一', '數據喵：週報資料已備好')] },
+{ title: '營運部', rows: [
+B('azhe', '阿哲', 'orange', 'blob', 'searching', 'none', '', '工作中…在蝦皮比價第 3 家'),
+B('xiaobian', '小編', 'pink', 'circle', 'notifying', 'waiting', '', '等你回覆：需要你輸入驗證碼'),
+B('akai', '阿凱', 'green', 'squircle', 'idle', 'none', '10:42', '3 封開發信草稿已完成', { unread: true })
+] },
+{ title: '後勤', rows: [
+B('zhangfang', '帳房', 'yellow', 'hexagon', 'notifying', 'waiting', '', '等你允許：付款 NT$1,280'),
+B('shujumiao', '數據喵', 'purple', 'diamond', 'idle', 'queued', '', '排隊中：週報資料處理'),
+B('xinchai', '信差', 'cyan', 'star', 'sleeping', 'none', '昨天', '整理了 24 封信')
+] },
+{ title: '工程 · 1', rows: [] }
+];
+const foot = [
+{ label: '定時任務與行事曆', href: 'H01-Calendar.dc.html', icon: 'M8 2v4M16 2v4M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01' },
+{ label: '連接應用程式', href: 'I01-Apps.dc.html', icon: 'M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z' },
+{ label: '組織架構', href: 'F01-Org.dc.html', icon: 'M10 2h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1ZM3 16h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1ZM17 16h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1ZM5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8' }
+];
+return { t, sections, foot, bgHome: a === 'home' ? t.sel : 'transparent', bgOffice: a === 'office' ? t.sel : 'transparent' };
+}
+}
+</script>
+</body>
+</html>

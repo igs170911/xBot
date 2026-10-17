@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>手機：先判斷與外部代理核准</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A8D4FF}
+button{font:inherit}
+input::placeholder{color:#FCFCFC90}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.5; display: flex; flex-direction: column">
+<div aria-hidden="true" style="height: 47px; flex: none"></div>
+
+<header style="flex: none; padding: 4px 16px 0; display: flex; flex-direction: column; align-items: center; gap: 6px">
+<div style="width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px">
+<div style="display: flex; align-items: center; gap: 8px">
+<a href="L01-PhoneList.dc.html" aria-label="返回對話清單，2 則未讀" style="height: 44px; padding: 0 8px; box-sizing: border-box; border-radius: 999px; background: #191919; border: 1px solid #333333; color: #FCFCFC; display: flex; align-items: center; gap: 4px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m15 18-6-6 6-6"></path></svg><span style="min-width: 22px; height: 22px; border-radius: 999px; background: #2F2F2F; font-size: 12.5px; line-height: 22px; text-align: center">2</span></a>
+<a href="L18-PhoneCall.dc.html" aria-label="和小秘通話" style="width: 44px; height: 44px; box-sizing: border-box; border-radius: 999px; background: #191919; border: 1px solid #333333; color: #FCFCFC; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="{{I.phone}}"></path></svg></a>
+</div>
+<span role="img" aria-label="小秘，工作中" style="display: flex"><dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#070707" size="44" hint-size="44px,44px"></dc-import></span>
+<div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px">
+<button type="button" style="height: 44px; padding: 0 12px; box-sizing: border-box; border-radius: 999px; background: #191919; border: 1px solid #333333; color: #FCFCFC; display: flex; align-items: center; gap: 6px; font-size: 14.5px; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="{{I.threads}}"></path></svg>對話串</button>
+<a href="L04-PhoneComputer.dc.html" aria-label="打開小秘的電腦" style="width: 44px; height: 44px; box-sizing: border-box; border-radius: 999px; background: #191919; border: 1px solid #333333; color: #FCFCFC; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="{{I.monitor}}"></path></svg></a>
+</div>
+</div>
+<button type="button" aria-label="小秘，對話串：新品文案，切換對話串" style="height: 44px; padding: 0 14px 0 16px; box-sizing: border-box; border-radius: 999px; background: #191919; border: 1px solid #333333; color: #FCFCFC; display: flex; align-items: center; gap: 6px; cursor: pointer">
+<span style="font-size: 15.5px">小秘</span><span style="font-size: 13.5px; color: #FCFCFC99">新品文案</span><span style="color: #FCFCFC99; display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m6 9 6 6 6-6"></path></svg></span></button>
+</header>
+
+<main style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; padding: 8px 16px 10px">
+<div style="align-self: flex-end; max-width: 75%; background: #5A5A5A; border-radius: 20px; padding: 10px 16px">幫新品帆布包寫 150 字介紹。</div>
+
+<section aria-label="先判斷" style="align-self: flex-end; width: 300px; background: #111111; border: 1px solid #262626; border-radius: 14px; padding: 6px 4px 2px 12px; box-sizing: border-box">
+<div style="height: 24px; display: flex; align-items: center; gap: 6px; padding-right: 8px; font-size: 12.5px; color: #7FC0FF">
+<span style="display: flex"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.sparkles}}"></path></svg></span>先判斷<span style="margin-left: auto; color: #FCFCFC90">0.4 秒 · 免費</span>
+</div>
+<sc-for list="{{judge}}" as="j" hint-placeholder-count="4">
+<div style="height: 44px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #1E1E1E">
+<span style="color: {{j.ink}}; display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{j.icon}}"></path></svg></span>
+<span style="flex: 1; min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: {{j.labelInk}}">{{j.label}}</span>
+<span style="font-size: 12.5px; color: #FCFCFC90; white-space: nowrap">{{j.score}}</span>
+<button type="button" onClick="{{j.fix}}" aria-label="{{j.aria}}" style="height: 44px; min-width: 52px; padding: 0 8px; border: 0; border-radius: 10px; background: transparent; color: {{j.fixInk}}; font-size: 13px; cursor: pointer; white-space: nowrap">{{j.fixText}}</button>
+</div>
+</sc-for>
+</section>
+
+<div style="align-self: flex-start; max-width: 75%; background: #262626; border-radius: 20px; padding: 10px 16px">好，不用開電腦，寫好就貼上來。</div>
+
+<div aria-label="修改紀錄" style="display: flex; align-items: center; gap: 10px; padding: 4px 4px 4px 14px; border: 1px solid #333333; border-radius: 14px">
+<span style="color: #FCFCFC99; display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.plug}}"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35"><span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">由 Claude Code（MCP）修改 · 下午 3:04</span><span style="font-size: 14px">{{receiptText}}</span></span>
+<sc-if value="{{canUndo}}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{undoReceipt}}" style="height: 44px; flex: none; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: #7FC0FF; font-size: 14px; cursor: pointer; white-space: nowrap">復原</button></sc-if>
+<sc-if value="{{undone}}" hint-placeholder-val="{{ false }}"><span style="flex: none; height: 44px; display: flex; align-items: center; padding: 0 12px; font-size: 14px; color: #38D591; white-space: nowrap">已復原</span></sc-if>
+</div>
+
+<section aria-label="Claude Code（MCP）需要你核准" style="background: #262626; border-radius: 18px; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: flex-start; gap: 10px">
+<span aria-hidden="true" style="width: 34px; height: 34px; flex: none; border-radius: 10px; background: #2F2F2F; color: #FCFCFC; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.plug}}"></path></svg></span>
+<div style="flex: 1; min-width: 0">
+<div style="font-size: 15.5px; line-height: 1.4">Claude Code（MCP）<br>想刪除 Bot「舊客服」</div>
+<div style="display: flex; align-items: center; gap: 8px; margin-top: 2px"><span style="font-size: 12px; line-height: 20px; padding: 0 8px; border-radius: 999px; background: {{tagBg}}; color: {{tagInk}}">{{tag}}</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #FCFCFC90">xbot.bots.delete</span></div>
+</div>
+</div>
+<sc-if value="{{open}}" hint-placeholder-val="{{ true }}">
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<button type="button" onClick="{{allow}}" style="height: 44px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FF5667; font-size: 15px; cursor: pointer">允許這次</button>
+<button type="button" onClick="{{deny}}" style="height: 44px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 15px; cursor: pointer">拒絕</button>
+</div>
+</sc-if>
+<sc-if value="{{closed}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="height: 44px; display: flex; align-items: center; gap: 8px; font-size: 14px; color: {{doneInk}}"><span style="display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.circleCheck}}"></path></svg></span><span style="flex: 1">{{doneText}}</span></div>
+</sc-if>
+</section>
+</main>
+
+<div style="flex: none; height: 52px; margin-bottom: 34px; padding: 0 12px; display: flex; align-items: center; gap: 8px">
+<button type="button" aria-label="附加檔案或工具" style="width: 52px; height: 52px; flex: none; border-radius: 999px; background: #191919; border: 1px solid #333333; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+<label style="flex: 1; min-width: 0; height: 52px; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; padding: 0 4px 0 18px; box-sizing: border-box">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">訊息</span>
+<input type="text" placeholder="這輪做完才會送出" style="flex: 1; min-width: 0; height: 44px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none; padding: 0">
+<button type="button" aria-label="停止小秘" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer"><span style="width: 34px; height: 34px; border-radius: 999px; background: #3D3D3D; display: flex; align-items: center; justify-content: center"><span style="width: 11px; height: 11px; border-radius: 2px; background: #FCFCFC"></span></span></button>
+<button type="button" aria-label="語音輸入" style="width: 44px; height: 44px; border: 0; background: transparent; color: #FCFCFC; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="{{I.mic}}"></path></svg></button>
+<button type="button" aria-label="送出" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer"><span style="width: 34px; height: 34px; border-radius: 999px; background: #3D3D3D; color: #FCFCFC90; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></span></button>
+</label>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const J = (a) => a.map((d) => (d[0] === 'm' ? 'M0 0' + d : d)).join(' ');
+const I = {
+phone: 'M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384',
+threads: J(['M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z', 'M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1']),
+monitor: J(['M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z', 'M8 21L16 21', 'M12 17L12 21']),
+monitorOff: J(['M12 17v4', 'M17 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 1.184-1.826', 'm2 2 20 20', 'M8 21h8', 'M8.656 3H20a2 2 0 0 1 2 2v10a2 2 0 0 1-.293 1.042']),
+mic: J(['M12 19v3', 'M19 10v2a7 7 0 0 1-14 0v-2', 'M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z']),
+sparkles: J(['M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z', 'M20 2v4', 'M22 4h-4', 'M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0']),
+circleCheck: J(['M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0', 'm16 9-5.5 5.5L8 12']),
+route: J(['M3 19a3 3 0 1 0 6 0a3 3 0 1 0 -6 0', 'M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15', 'M15 5a3 3 0 1 0 6 0a3 3 0 1 0 -6 0']),
+gauge: J(['m12 14 4-4', 'M3.34 19a10 10 0 1 1 17.32 0']),
+plug: J(['M12 22v-5', 'M15 8V2', 'M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z', 'M9 8V2'])
+};
+const st = this.state || {};
+const fixed = st.fixed || {};
+const rows = [
+['clear', '夠清楚', 'Jev · 93%', I.circleCheck, '#38D591'],
+['nobox', '不用開電腦', 'Jev · 88%', I.monitorOff, '#FCFCFC99'],
+['engine', '交給 Hermes', 'Jev · 81%', I.route, '#FCFCFC99'],
+['cost', '預估約 8k token', 'Jev · 90%', I.gauge, '#FCFCFC99']
+];
+const judge = rows.map(([k, label, score, icon, ink]) => {
+const f = !!fixed[k];
+return {
+label: f ? '已記下，會用來校正' : label,
+labelInk: f ? '#FCFCFC99' : '#FCFCFC',
+score: f ? '' : score, icon, ink,
+fixText: f ? '還原' : '不對？',
+fixInk: f ? '#FCFCFC99' : '#7FC0FF',
+aria: (f ? '還原：' : '不對？改正：') + label,
+fix: () => this.setState({ fixed: Object.assign({}, fixed, { [k]: !f }) })
+};
+});
+const d = st.d || '';
+const undone = !!st.undone;
+return {
+I, judge,
+receiptText: undone ? '「每日重點」改回上午 9:00' : '「每日重點」改到上午 8:30',
+canUndo: !undone, undone,
+undoReceipt: () => this.setState({ undone: true }),
+open: !d, closed: !!d,
+tag: d ? '已處理' : '需要你核准',
+tagBg: d ? '#2F2F2F' : 'rgba(255,152,0,.16)',
+tagInk: d ? '#FCFCFC99' : '#FFB547',
+doneText: d === 'ok' ? '已允許這次 · 正在刪除「舊客服」' : '已拒絕 · 已告訴 Claude Code',
+doneInk: d === 'ok' ? '#FCFCFC99' : '#38D591',
+allow: () => this.setState({ d: 'ok' }),
+deny: () => this.setState({ d: 'no' })
+};
+}
+}
+</script>
+</body>
+</html>

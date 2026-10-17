@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>代理修改的標註</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=Noto+Sans+TC:wght@400;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+</style>
+</helmet>
+<div data-fit="content" style="width: 900px; height: 704px; box-sizing: border-box; padding: 20px 24px; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.5; display: flex; flex-direction: column; gap: 8px">
+<p style="margin: 0; font-size: 12.5px; color: #FCFCFC90">代理用 MCP 改過的地方都標出來，可以一鍵復原</p>
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: stretch">
+<section aria-label="在對話裡" style="background: #111111; border: 1px solid #262626; border-radius: 18px; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; gap: 8px"><dc-import name="Avatar" color="blue" body="cursor" state="working" dot="auto" ring="#111111" size="22" hint-size="22px,22px"></dc-import><span style="font-size: 14.5px">小秘</span><span style="font-size: 12.5px; color: #FCFCFC90">· 對話</span></div>
+<span style="align-self: center; font-size: 12px; color: #FCFCFC90">今天 09:42</span>
+<div style="align-self: flex-start; max-width: 85%; background: #262626; border-radius: 18px; padding: 8px 14px; font-size: 14px; line-height: 1.5">競品價格整理好了：三家今天都沒有變動。</div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px 6px 8px 12px; border: 1px solid #333333; border-radius: 14px; opacity: {{r0.op}}">
+<span style="width: 26px; height: 26px; flex: none; border-radius: 7px; background: #2F2F2F; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m7 11 2-2-2-2"></path><path d="M11 13h4"></path><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 14px; line-height: 1.45; text-decoration: {{r0.strike}}">小秘的回覆長度改成「精簡」</span>
+<span><sc-if value="{{r0.live}}" hint-placeholder-val="{{ true }}"><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #FCFCFC99; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m7 11 2-2-2-2"></path><path d="M11 13h4"></path><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect></svg>由 Claude Code（MCP）修改 · 2 分鐘前 ·<button type="button" onClick="{{r0.undo}}" style="height: 26px; padding: 0 8px; border: 0; border-radius: 999px; background: transparent; color: #7FC0FF; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; flex: none; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"></path></svg>復原</button></span></sc-if>
+<sc-if value="{{r0.done}}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; font-size: 12.5px; color: #FCFCFC90; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>已復原 · 你 剛剛</span></sc-if></span>
+</span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px 6px 8px 12px; border: 1px solid #333333; border-radius: 14px; opacity: {{r1.op}}">
+<span style="width: 26px; height: 26px; flex: none; border-radius: 7px; background: #2F2F2F; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m7 11 2-2-2-2"></path><path d="M11 13h4"></path><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 14px; line-height: 1.45; text-decoration: {{r1.strike}}">新增定時任務：每天上午 9:00 檢查競品價格</span>
+<span><sc-if value="{{r1.live}}" hint-placeholder-val="{{ true }}"><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #FCFCFC99; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m7 11 2-2-2-2"></path><path d="M11 13h4"></path><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect></svg>由 Claude Code（MCP）修改 · 5 分鐘前 ·<button type="button" onClick="{{r1.undo}}" style="height: 26px; padding: 0 8px; border: 0; border-radius: 999px; background: transparent; color: #7FC0FF; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; flex: none; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"></path></svg>復原</button></span></sc-if>
+<sc-if value="{{r1.done}}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; font-size: 12.5px; color: #FCFCFC90; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>已復原 · 你 剛剛</span></sc-if></span>
+</span>
+</div>
+</section>
+<section aria-label="在 Bot 設定裡" style="background: #111111; border: 1px solid #262626; border-radius: 18px; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; gap: 8px"><dc-import name="Avatar" color="blue" body="cursor" state="working" dot="auto" ring="#111111" size="22" hint-size="22px,22px"></dc-import><span style="font-size: 14.5px">小秘的設定</span><span style="font-size: 12.5px; color: #FCFCFC90">· 基本</span></div>
+<div style="background: #262626; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden">
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 14px">
+<div style="display: flex; align-items: center; gap: 12px"><span style="flex: 1; font-size: 14px">回覆長度</span>
+<div role="group" aria-label="回覆長度" style="display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: #191919">
+<sc-for list="{{lens}}" as="l" hint-placeholder-count="3"><button type="button" aria-pressed="{{l.sel}}" style="height: 28px; padding: 0 12px; border: 0; border-radius: 8px; background: {{l.bg}}; color: {{l.fg}}; font: inherit; font-size: 13px; cursor: pointer">{{l.label}}</button></sc-for>
+</div></div>
+<span><sc-if value="{{r0.live}}" hint-placeholder-val="{{ true }}"><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #FCFCFC99; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m7 11 2-2-2-2"></path><path d="M11 13h4"></path><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect></svg>由 Claude Code（MCP）修改 · 2 分鐘前 ·<button type="button" onClick="{{r0.undo}}" style="height: 26px; padding: 0 8px; border: 0; border-radius: 999px; background: transparent; color: #7FC0FF; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; flex: none; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"></path></svg>復原</button></span></sc-if>
+<sc-if value="{{r0.done}}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; font-size: 12.5px; color: #FCFCFC90; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>已復原 · 你 剛剛</span></sc-if></span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; border-top: 1px solid #333333">
+<span style="font-size: 14px">人設</span>
+<div style="background: #191919; border: 1px solid {{r2.bd}}; border-radius: 10px; padding: 8px 12px; font-size: 13.5px; line-height: 1.55; color: #FCFCFCdd">{{r2.text}}</div>
+<span><sc-if value="{{r2.live}}" hint-placeholder-val="{{ true }}"><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #FCFCFC99; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m7 11 2-2-2-2"></path><path d="M11 13h4"></path><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect></svg>由 Claude Code（MCP）修改 · 2 分鐘前 ·<button type="button" onClick="{{r2.undo}}" style="height: 26px; padding: 0 8px; border: 0; border-radius: 999px; background: transparent; color: #7FC0FF; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; flex: none; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"></path></svg>復原</button></span></sc-if>
+<sc-if value="{{r2.done}}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; font-size: 12.5px; color: #FCFCFC90; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>已復原 · 你 剛剛</span></sc-if></span>
+</div>
+</div>
+</section>
+</div>
+<p style="margin: 8px 0 0; font-size: 12.5px; color: #FCFCFC90">待我處理 · 由 MCP 呼叫建立的核准卡</p>
+<section aria-label="待我處理" style="background: #262626; border-radius: 18px; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="width: 34px; height: 34px; flex: none; border-radius: 7px; background: #2F2F2F; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m7 11 2-2-2-2"></path><path d="M11 13h4"></path><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect></svg></span>
+<span style="flex: 1; min-width: 0"><span style="display: block; font-size: 16px">Claude Code 想要刪除 Bot「舊客服」· 需要你核准</span>
+<span style="display: block; font-size: 13px; color: #FCFCFC99">透過 MCP · 工作筆電 · 09:41 · 刪除永遠要你本人，不能代為核准</span></span>
+<sc-if value="{{pending}}" hint-placeholder-val="{{ true }}"><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; background: rgba(255,152,0,.14); color: #FFB547; font-size: 12px; white-space: nowrap; flex: none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"></path><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"></path><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>等你核准</span></sc-if>
+</div>
+<sc-if value="{{pending}}" hint-placeholder-val="{{ true }}">
+<div style="background: #191919; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 14px; line-height: 1.55">刪除後，舊客服的對話、記憶、技能和它的電腦都會一起移除。</span>
+<code style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #FCFCFC99">xbot.bots.delete {"bot": "舊客服", "request_id": "cc-7f3a"}</code>
+</div>
+<div style="display: flex; align-items: center; gap: 8px">
+<button type="button" onClick="{{allow}}" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font: inherit; font-size: 14px; cursor: pointer; white-space: nowrap">允許這次</button>
+<button type="button" onClick="{{deny}}" style="height: 36px; padding: 0 16px; border: 1px solid #333333; border-radius: 999px; background: transparent; color: #FCFCFC; font: inherit; font-size: 14px; cursor: pointer; white-space: nowrap">拒絕</button>
+<span style="margin-left: auto; font-size: 12.5px; color: #FCFCFC90; display: inline-flex; align-items: center; gap: 6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC90" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 22h14"></path><path d="M5 2h14"></path><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"></path><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"></path></svg>Claude Code 正在用 <span style="font-family: 'JetBrains Mono', monospace">xbot.approvals.wait</span> 等結果</span>
+</div>
+</sc-if>
+<sc-if value="{{settled}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 8px 0 14px; border: 1px solid #333333; border-radius: 14px; font-size: 14px">
+<sc-if value="{{isAllow}}" hint-placeholder-val="{{ true }}"><span style="display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><circle cx="12" cy="12" r="10"></circle><path d="m16 9-5.5 5.5L8 12"></path></svg></span></sc-if><sc-if value="{{isDeny}}" hint-placeholder-val="{{ false }}"><span style="display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF5667" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg></span></sc-if>
+<span style="flex: 1">{{resText}}</span>
+<span style="font-size: 12.5px; color: #FCFCFC90">你 · 剛剛</span>
+<button type="button" onClick="{{reset}}" style="height: 30px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; font: inherit; font-size: 13px; cursor: pointer">重看</button>
+</div>
+</sc-if>
+</section>
+<p style="margin: 8px 0 0; font-size: 12.5px; color: #FCFCFC90">待我處理 · 代為核准的紀錄</p>
+<section aria-label="代為核准的紀錄" style="background: #262626; border-radius: 14px; padding: 10px 12px 10px 16px; display: flex; align-items: center; gap: 12px; opacity: {{dg.op}}">
+<span style="width: 34px; height: 34px; flex: none; border-radius: 10px; background: rgba(16,132,254,.2); display: flex; align-items: center; justify-content: center"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#7FC0FF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: {{dg.strike}}">已由 Claude Code（MCP）代為核准 · 對外發送</span><span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">小編 發佈「秋季新品」貼文到 Threads · 09:44 · 今天第 1／5 次</span></span>
+<sc-if value="{{dg.live}}" hint-placeholder-val="{{ true }}"><span style="font-size: 12.5px; color: #FCFCFC90; white-space: nowrap">還能復原 9 分鐘</span><button type="button" onClick="{{dg.undo}}" style="height: 32px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; background: transparent; color: #FCFCFC; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; flex: none; white-space: nowrap; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"></path></svg>復原</button></sc-if>
+<sc-if value="{{dg.done}}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #FCFCFC99; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>已復原，貼文已收回</span></sc-if>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 900, "height": 704}}'>
+class Component extends DCLogic {
+renderVals() {
+
+const st = this.state || {};
+const und = st.undone || {};
+const mk = (k) => ({
+  live: !und[k], done: !!und[k], op: und[k] ? 0.7 : 1, strike: und[k] ? 'line-through' : 'none',
+  undo: () => this.setState({ undone: Object.assign({}, und, { [k]: true }) })
+});
+const r0 = mk('r0'), r1 = mk('r1'), r2 = mk('r2'), dg = mk('dg');
+const len = und.r0 ? '標準' : '精簡';
+const lens = ['精簡', '標準', '詳細'].map((label) => ({ label, sel: len === label ? 'true' : 'false', bg: len === label ? '#2F2F2F' : 'transparent', fg: len === label ? '#FCFCFC' : '#FCFCFC99' }));
+r2.text = und.r2 ? '你是老闆的幕僚長，負責每天的重點整理與協調。' : '你是老闆的幕僚長。回覆先講結論，再列三點以內的重點；不確定就先問。';
+r2.bd = und.r2 ? '#333333' : '#1084FE88';
+const d = st.decision || '';
+return {
+  r0, r1, r2, dg, lens,
+  pending: !d, settled: !!d,
+  allow: () => this.setState({ decision: 'allow' }),
+  deny: () => this.setState({ decision: 'deny' }),
+  reset: () => this.setState({ decision: '' }),
+  resText: d === 'allow' ? '已允許：舊客服已刪除，Claude Code 收到「完成」' : '已拒絕：舊客服保留，Claude Code 收到「被拒」',
+  isAllow: d === 'allow', isDeny: d === 'deny'
+};
+
+}
+}
+</script>
+</body>
+</html>

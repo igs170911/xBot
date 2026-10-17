@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>鍵盤快速鍵</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3{font-weight:400}
+input::placeholder{color:#FCFCFC90}
+</style>
+</helmet>
+<div role="dialog" aria-label="鍵盤快速鍵" style="width: 760px; height: 760px; box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.45; box-shadow: 0 24px 64px rgba(0,0,0,.6)">
+
+<div style="height: 64px; flex: none; display: flex; align-items: center; padding: 0 14px 0 24px">
+<h2 style="margin: 0; font-size: 18px; flex: 1">鍵盤快速鍵</h2>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; border-radius: 10px; border: 0; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.x}}"></path></svg></button>
+</div>
+
+<label style="position: relative; display: flex; align-items: center; margin: 0 24px 8px">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">搜尋快速鍵</span>
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC90" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; left: 12px"><path d="{{I.search}}"></path></svg>
+<input type="text" placeholder="搜尋快速鍵" style="width: 100%; height: 40px; box-sizing: border-box; padding: 0 12px 0 38px; border-radius: 10px; border: 1px solid #333333; background: #191919; color: #FCFCFC; font: inherit; font-size: 14.5px; outline: none">
+</label>
+
+<div style="flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px; padding: 4px 24px 0">
+<sc-for list="{{cols}}" as="col" hint-placeholder-count="2">
+<div style="display: flex; flex-direction: column; gap: 14px">
+<sc-for list="{{col.groups}}" as="g" hint-placeholder-count="2">
+<section style="display: flex; flex-direction: column">
+<h3 style="margin: 0 0 2px; font-size: 13px; color: #FCFCFC90; padding: 6px 0">{{g.title}}</h3>
+<sc-for list="{{g.rows}}" as="r" hint-placeholder-count="6">
+<div style="display: flex; align-items: center; gap: 8px; min-height: 34px; border-bottom: 1px solid #1F1F1F">
+<span style="flex: 1; font-size: 14px">{{r.t}}</span>
+<span style="display: flex; gap: 4px">
+<sc-for list="{{r.keys}}" as="k" hint-placeholder-count="2">
+<kbd style="min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 6px; border: 1px solid #333333; background: #262626; color: #FCFCFCcc; font-family: 'JetBrains Mono', monospace; font-size: 12px; display: flex; align-items: center; justify-content: center">{{k}}</kbd>
+</sc-for>
+</span>
+</div>
+</sc-for>
+</section>
+</sc-for>
+</div>
+</sc-for>
+</div>
+
+<div style="height: 64px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 24px; border-top: 1px solid #262626">
+<span style="flex: 1; font-size: 13px; color: #FCFCFC90; display: flex; align-items: center; gap: 6px">隨時按<kbd style="min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 6px; border: 1px solid #333333; background: #262626; color: #FCFCFCcc; font-family: 'JetBrains Mono', monospace; font-size: 12px; display: inline-flex; align-items: center; justify-content: center">⌘</kbd><kbd style="min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 6px; border: 1px solid #333333; background: #262626; color: #FCFCFCcc; font-family: 'JetBrains Mono', monospace; font-size: 12px; display: inline-flex; align-items: center; justify-content: center">/</kbd>打開這裡</span>
+<button type="button" style="height: 36px; padding: 0 18px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; font: inherit; font-size: 14px; cursor: pointer">完成</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":760,"height":760}}'>
+class Component extends DCLogic {
+renderVals() {
+const I = {"search": "M0 0m21 21-4.34-4.34 M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0", "x": "M18 6 6 18 M0 0m6 6 12 12"};
+const R = (t, ...keys) => ({ t, keys });
+return {
+I,
+cols: [
+{ groups: [
+{ title: '前往', rows: [R('搜尋面板', '⌘', 'K'), R('側欄搜尋', '⌘', '⇧', 'F'), R('對話內尋找', '⌘', 'F'), R('上一個／下一個 Bot', '⌥', '↑', '↓'), R('側欄第 1 到 9 個', '⌥', '1–9'), R('待我處理', '⌘', '⇧', 'I')] },
+{ title: '輸入框', rows: [R('送出', '↵'), R('換行', '⇧', '↵'), R('技能與指令', '/'), R('提到 Bot、群組、應用程式', '@'), R('編輯上一則', '↑'), R('停止工作', '⌘', '.'), R('關閉選單或對話框', 'esc')] }
+] },
+{ groups: [
+{ title: '動作', rows: [R('新增 Bot', '⌘', '⌥', 'N'), R('新對話串', '⌘', '⇧', 'N'), R('回到輸入框', '⌘', 'I'), R('精簡側欄', '⌘', 'B'), R('打開電腦面板', '⌘', 'E'), R('設定', '⌘', ','), R('目前 Bot 的設定', '⌘', '⇧', ',')] },
+{ title: '語音', rows: [R('語音輸入', '⌘', 'D'), R('通話中靜音', '⌘', '⇧', 'M'), R('結束通話', '⌘', '⇧', 'H')] }
+] }
+]
+};
+}
+}
+</script>
+</body>
+</html>

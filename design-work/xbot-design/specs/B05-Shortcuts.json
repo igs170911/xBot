@@ -1,0 +1,25 @@
+{
+ "file": "B05-Shortcuts.dc.html",
+ "title": "鍵盤快速鍵",
+ "prd": [
+  "§11 UI"
+ ],
+ "what": "快速鍵一覽，分前往、輸入框、動作、語音四組，只用 Mac 寫法。",
+ "goal": "讓常用操作都能用鍵盤完成。",
+ "accept": [
+  "只出現 ⌘ ⌥ ⇧ 等 Mac 符號，不寫 Ctrl",
+  "每組依常用程度排序",
+  "可搜尋快速鍵",
+  "⌘/ 隨時打開此對話框"
+ ],
+ "states": [
+  "預設",
+  "搜尋中"
+ ],
+ "edge": [
+  "Windows／Linux 版自動把 ⌘ 換成 Ctrl（畫面不另外畫）"
+ ],
+ "limits": [],
+ "simplified": null,
+ "status": "已畫"
+}

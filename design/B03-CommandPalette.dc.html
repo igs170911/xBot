@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>搜尋面板</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3{font-weight:400}
+</style>
+</helmet>
+<div role="dialog" aria-label="搜尋面板" style="width: 640px; height: 680px; box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.45; box-shadow: 0 24px 64px rgba(0,0,0,.6)">
+
+<label style="display: flex; align-items: center; gap: 12px; height: 60px; flex: none; padding: 0 16px 0 20px; border-bottom: 1px solid #262626">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.search}}"></path></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">搜尋 Bot、對話、動作</span>
+<input type="text" value="定價" style="flex: 1; min-width: 0; height: 40px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 17px; outline: none; caret-color: #1084FE">
+<span style="height: 22px; padding: 0 7px; border-radius: 6px; border: 1px solid #333333; color: #FCFCFC99; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; display: flex; align-items: center">esc</span>
+</label>
+
+<div role="listbox" aria-label="搜尋結果" style="flex: 1; min-height: 0; overflow: hidden; padding: 6px 8px; display: flex; flex-direction: column">
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="5">
+<div style="font-size: 12.5px; color: #FCFCFC90; padding: 10px 12px 4px">{{g.title}}</div>
+<sc-for list="{{g.rows}}" as="r" hint-placeholder-count="2">
+<button type="button" role="option" aria-selected="{{r.selA}}" onClick="{{r.pick}}" style="display: flex; align-items: center; gap: 12px; min-height: 50px; padding: 4px 12px; border: 0; border-radius: 12px; background: {{r.bg}}; color: #FCFCFC; font: inherit; text-align: left; cursor: pointer">
+<sc-if value="{{r.bot}}" hint-placeholder-val="{{ false }}"><dc-import name="Avatar" color="{{r.color}}" body="{{r.body}}" state="{{r.state}}" dot="none" size="30" hint-size="30px,30px"></dc-import></sc-if>
+<sc-if value="{{r.room}}" hint-placeholder-val="{{ false }}">
+<span style="width: 30px; height: 30px; flex: none; position: relative">
+<span style="position: absolute; left: 0; top: 4px"><dc-import name="Avatar" color="blue" body="cursor" state="idle" dot="none" size="20" hint-size="20px,20px"></dc-import></span>
+<span style="position: absolute; left: 10px; top: 4px"><dc-import name="Avatar" color="orange" body="blob" state="idle" dot="none" size="20" hint-size="20px,20px"></dc-import></span>
+<span style="position: absolute; left: 14px; top: 15px; height: 15px; min-width: 15px; padding: 0 3px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; color: #FCFCFC99; font-size: 9.5px; display: flex; align-items: center; justify-content: center">+1</span>
+</span>
+</sc-if>
+<sc-if value="{{r.ico}}" hint-placeholder-val="{{ true }}">
+<span style="width: 30px; height: 30px; flex: none; border-radius: 9px; background: #262626; display: flex; align-items: center; justify-content: center; color: #FCFCFC99"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.icon}}"></path></svg></span>
+</sc-if>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<span style="font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><sc-for list="{{r.parts}}" as="p" hint-placeholder-count="2"><span style="background: {{p.bg}}; color: {{p.c}}; border-radius: 3px">{{p.t}}</span></sc-for></span>
+<span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.sub}}</span>
+</span>
+<span style="font-size: 12.5px; color: #FCFCFC90; font-family: {{r.rf}}; flex: none">{{r.right}}</span>
+</button>
+</sc-for>
+</sc-for>
+</div>
+
+<div style="height: 44px; flex: none; border-top: 1px solid #262626; padding: 0 16px; display: flex; align-items: center; gap: 14px; font-size: 12.5px; color: #FCFCFC90">
+<span style="display: flex; align-items: center; gap: 4px"><span style="height: 20px; min-width: 20px; padding: 0 4px; box-sizing: border-box; border-radius: 5px; border: 1px solid #333333; font-family: 'JetBrains Mono', monospace; font-size: 11px; display: flex; align-items: center; justify-content: center">↑</span><span style="height: 20px; min-width: 20px; padding: 0 4px; box-sizing: border-box; border-radius: 5px; border: 1px solid #333333; font-family: 'JetBrains Mono', monospace; font-size: 11px; display: flex; align-items: center; justify-content: center">↓</span>選擇</span>
+<span style="display: flex; align-items: center; gap: 4px"><span style="height: 20px; min-width: 20px; padding: 0 4px; box-sizing: border-box; border-radius: 5px; border: 1px solid #333333; font-family: 'JetBrains Mono', monospace; font-size: 11px; display: flex; align-items: center; justify-content: center">↵</span>開啟</span>
+<span style="display: flex; align-items: center; gap: 4px"><span style="height: 20px; min-width: 20px; padding: 0 4px; box-sizing: border-box; border-radius: 5px; border: 1px solid #333333; font-family: 'JetBrains Mono', monospace; font-size: 11px; display: flex; align-items: center; justify-content: center">⌘↵</span>在新對話串開啟</span>
+<span style="margin-left: auto; display: flex; align-items: center; gap: 4px">開頭打<span style="height: 20px; min-width: 20px; padding: 0 4px; box-sizing: border-box; border-radius: 5px; border: 1px solid #333333; font-family: 'JetBrains Mono', monospace; font-size: 11px; display: flex; align-items: center; justify-content: center">&gt;</span>只找動作</span>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":640,"height":680}}'>
+class Component extends DCLogic {
+renderVals() {
+const I = {"calendarClock": "M16 14v2.2l1.6 1 M16 2v3 M21 7.338V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h2.338 M3 9h5.859 M8 2v3 M10 16a6 6 0 1 0 12 0a6 6 0 1 0 -12 0", "hand": "M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2 M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2 M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8 M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15", "messageSquare": "M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z", "search": "M0 0m21 21-4.34-4.34 M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0"};
+const sel = (this.state && this.state.sel) || 'r1';
+const Q = '定價';
+const parts = (s) => s.split(Q).flatMap((x, i, a) => i < a.length - 1 ? [{ t: x, bg: 'transparent', c: 'inherit' }, { t: Q, bg: 'rgba(16,132,254,.28)', c: '#FCFCFC' }] : [{ t: x, bg: 'transparent', c: 'inherit' }]).filter((p) => p.t);
+const R = (id, title, sub, o) => Object.assign({ id, parts: parts(title), sub, bot: false, room: false, ico: false, icon: '', right: '', rf: 'inherit', color: 'blue', body: 'cursor', state: 'idle' }, o, { bg: sel === id ? '#2F2F2F' : 'transparent', selA: sel === id ? 'true' : 'false', pick: () => this.setState({ sel: id }) });
+const mono = "'JetBrains Mono', monospace";
+return {
+I,
+groups: [
+{ title: '最近', rows: [R('r1', '小秘 · 競品定價', '對話串 · 工作中…彙整三家競品定價', { bot: true, color: 'blue', body: 'cursor', state: 'working', right: '剛剛' })] },
+{ title: 'Bot', rows: [R('r2', '阿哲', '選品研究員 · 工作中…在蝦皮比價第 3 家', { bot: true, color: 'orange', body: 'blob', state: 'searching', right: '⌥4', rf: mono })] },
+{ title: '群組對話', rows: [R('r3', '新品上架專案', '小秘、阿哲、小編 · 討論新品定價', { room: true })] },
+{ title: '動作', rows: [
+R('r4', '把「競品定價」設成每週定時任務', '小秘每週一上午 9:00 重跑一次', { ico: true, icon: I.calendarClock }),
+R('r5', '教小秘更新定價表', '你示範一次，它就學會', { ico: true, icon: I.hand })
+] },
+{ title: '訊息', rows: [
+R('r6', '三家競品的定價都比我們低一些，帆布包差最多…', '阿哲 → 小秘 · 10:12', { ico: true, icon: I.messageSquare }),
+R('r7', '提案：依競品定價調整 5 項商品售價', '小秘 · 等你的事 · 09:58', { ico: true, icon: I.messageSquare })
+] }
+]
+};
+}
+}
+</script>
+</body>
+</html>

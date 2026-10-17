@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>團隊記憶</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3,strong,b{font-weight:400}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+input::placeholder,textarea::placeholder{color:#FCFCFC90}
+</style>
+</helmet>
+<div role="dialog" aria-label="營運部 團隊記憶" style="width: 760px; min-height: 898px; box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; box-shadow: 0 24px 64px rgba(0,0,0,.6); color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.6; display: flex; flex-direction: column; overflow: hidden">
+<header style="height: 64px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 24px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path></svg><h1 style="margin: 0; font-size: 18px; flex: 1">營運部 團隊記憶</h1>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</header>
+<div style="padding: 0 24px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<p style="margin: 0; font-size: 14px; color: #FCFCFCcc">營運部的 4 個 Bot 都會參考這些事實。Bot 可以提議新增，要你按「記住」才會生效。</p>
+<span style="font-size: 12.5px; color: #FCFCFC90">一直載入 2 條（約 140 token）· 另外 13 條需要時才搜尋</span>
+</div>
+<section style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: baseline; gap: 8px"><h2 style="margin: 0; font-size: 15px; color: #FFB547">等你確認 · {{openCount}}</h2><span style="font-size: 12.5px; color: #FCFCFC90">按「不要」的提議，14 天內不會再提</span></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px"><sc-for list="{{props}}" as="p" hint-placeholder-count="2">
+<div style="background: #262626; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; gap: 8px"><dc-import name="Avatar" color="{{p.c}}" body="{{p.b}}" state="curious" dot="none" ring="#262626" size="24" hint-size="24px,24px"></dc-import><span style="font-size: 13px; color: #FCFCFC99; flex: 1">{{p.who}} 提議 · {{p.kind}}</span>
+<sc-if value="{{p.done}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12.5px; color: {{p.doneColor}}">{{p.doneLabel}}</span></sc-if></div>
+<span style="font-size: 15px; line-height: 1.55">{{p.fact}}</span>
+<span style="font-size: 13px; color: #FCFCFC99; line-height: 1.55">「{{p.quote}}」</span>
+<sc-if value="{{p.open}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; gap: 8px; padding-top: 2px">
+<button type="button" onClick="{{p.keep}}" style="height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font: inherit; font-size: 13.5px; cursor: pointer">記住</button>
+<button type="button" onClick="{{p.drop}}" style="height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 13.5px; cursor: pointer">不要</button>
+<button type="button" style="height: 30px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; font: inherit; font-size: 13.5px; cursor: pointer">改一下再記</button>
+</div>
+</sc-if>
+</div>
+</sc-for></div>
+</section>
+<section style="display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 15px">已記住</h2>
+<div role="tablist" aria-label="種類" style="display: flex; padding: 3px; gap: 2px; border-radius: 10px; background: #191919">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+<button type="button" role="tab" aria-selected="{{t.sel}}" onClick="{{t.pick}}" style="flex: 1; height: 32px; border: 0; border-radius: 8px; background: {{t.bg}}; color: {{t.fg}}; font: inherit; font-size: 13.5px; cursor: pointer; white-space: nowrap">{{t.label}}</button>
+</sc-for>
+</div>
+<div style="background: #191919; border-radius: 14px; display: flex; flex-direction: column">
+<sc-for list="{{entries}}" as="e" hint-placeholder-count="5">
+<div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 10px 12px 16px; border-bottom: 1px solid #262626">
+<span style="width: 30px; height: 30px; flex: none; border-radius: 9px; background: #262626; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; margin-top: 2px"><sc-if value="{{e.k0}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><path d="M8 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path></svg></sc-if><sc-if value="{{e.k1}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path><path d="M9 10a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"></path></svg></sc-if><sc-if value="{{e.k2}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"></path><path d="m19 8 3 8a5 5 0 0 1-6 0zV7"></path><path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1"></path><path d="m5 8 3 8a5 5 0 0 1-6 0zV7"></path><path d="M7 21h10"></path></svg></sc-if><sc-if value="{{e.k3}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"></path><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"></path></svg></sc-if></span>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"><span style="font-size: 14.5px">{{e.name}}</span>
+<span style="height: 20px; padding: 0 8px; border-radius: 999px; background: {{e.loadBg}}; color: {{e.loadFg}}; font-size: 12px; display: flex; align-items: center">{{e.load}}</span>
+<sc-if value="{{e.pinned}}" hint-placeholder-val="{{ false }}"><span style="display: flex; color: #FCFCFC90"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5"></path><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"></path></svg></span></sc-if></span>
+<span style="font-size: 13.5px; color: #FCFCFCcc; line-height: 1.55">{{e.detail}}</span>
+<span style="font-size: 12px; color: #FCFCFC90; display: flex; gap: 10px; align-items: center">{{e.meta}}<sc-if value="{{e.hasV}}" hint-placeholder-val="{{ false }}"><button type="button" style="height: 20px; padding: 0; border: 0; background: transparent; color: #7FC0FF; font: inherit; font-size: 12px; display: flex; align-items: center; gap: 4px; cursor: pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg>{{e.versions}}</button></sc-if></span>
+</div>
+<div style="display: flex; align-items: center; flex: none">
+<button type="button" aria-label="修改" style="width: 32px; height: 32px; border: 0; border-radius: 9px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></svg></button>
+<button type="button" aria-label="{{e.pinLabel}}" style="width: 32px; height: 32px; border: 0; border-radius: 9px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5"></path><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"></path></svg></button>
+<button type="button" aria-label="移除" style="width: 32px; height: 32px; border: 0; border-radius: 9px; background: transparent; color: #FF5667; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+</div>
+</div>
+</sc-for>
+<a href="#" style="height: 44px; display: flex; align-items: center; justify-content: center; font-size: 13.5px">{{moreLabel}}</a>
+</div>
+</section>
+</div>
+<footer style="flex: none; margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 14px 24px 20px">
+<button type="button" style="height: 36px; padding: 0 16px; box-sizing: border-box; border-radius: 999px; background: transparent; color: #FCFCFC; border: 1px solid #333333; font: inherit; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; cursor: pointer; text-decoration: none; flex: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>新增一筆</button>
+<span style="flex: 1; font-size: 12.5px; color: #FCFCFC90; text-align: right">變更會自動儲存</span>
+<button type="button" style="height: 36px; padding: 0 16px; box-sizing: border-box; border-radius: 999px; background: #FCFCFC; color: #070707; border: 0; font: inherit; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; cursor: pointer; text-decoration: none; flex: none">完成</button>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 760, "height": 898}}'>
+class Component extends DCLogic {
+renderVals() {
+const s = this.state || {};
+const kind = s.kind || '全部';
+const res = s.res || {};
+const IC = {"人物": ["M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2", "M8 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"], "地點": ["M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0", "M9 10a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"], "決策": ["M12 3v18", "m19 8 3 8a5 5 0 0 1-6 0zV7", "M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1", "m5 8 3 8a5 5 0 0 1-6 0zV7", "M7 21h10"], "名詞": ["M12 5v16", "M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"]};
+const P = [
+{ id: 'a', who: '阿哲', c: 'orange', b: 'blob', kind: '決策', fact: '蝦皮比價只看官方旗艦店和蝦皮商城。', quote: '你說過個人賣場的價格不算數。' },
+{ id: 'b', who: '小編', c: 'pink', b: 'circle', kind: '名詞', fact: '「主打款」＝這季首頁輪播的 3 項商品。', quote: '小秘說主打款時都是指這 3 項。' }
+];
+const props = P.map((p) => { const r = res[p.id]; return Object.assign({}, p, { open: !r, done: !!r, doneLabel: r === 'keep' ? '已記住' : '已略過', doneColor: r === 'keep' ? '#38D591' : '#FCFCFC90', keep: () => this.setState({ res: Object.assign({}, res, { [p.id]: 'keep' }) }), drop: () => this.setState({ res: Object.assign({}, res, { [p.id]: 'drop' }) }) }); });
+const E = [
+['決策', '定價底線', '主打款毛利不低於 35%；促銷期間可到 25%，要先問你。', true, '你修改 · 10/09', 2],
+['決策', '對外發佈流程', '所有對外文案先給小秘看過，再由你核准才發。', true, '小秘提議 · 你確認 · 09/28', 0],
+['人物', '晨光廣告 林經理', '廣告代理商窗口，每月 5 號寄帳單，只收匯款。', false, '帳房提議 · 你確認 · 09/20', 1],
+['地點', '新竹倉', '出貨倉庫，週末不出貨；下午 3 點前的訂單當天寄出。', false, '你新增 · 09/12', 0],
+['名詞', '比價三平台', '指蝦皮、momo、PChome，其他平台不列入比價。', false, '你新增 · 09/03', 0]
+];
+const counts = { '全部': 15, '人物': 4, '地點': 3, '決策': 5, '名詞': 3 };
+const list = E.filter((e) => kind === '全部' || e[0] === kind).slice(0, 4);
+return {
+props, openCount: props.filter((p) => p.open).length,
+tabs: Object.keys(counts).map((k) => ({ label: k + ' ' + counts[k], sel: k === kind ? 'true' : 'false', bg: k === kind ? '#2F2F2F' : 'transparent', fg: k === kind ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ kind: k }) })),
+entries: list.map(([k, name, detail, pinned, meta, v]) => ({ k0: k === '人物', k1: k === '地點', k2: k === '決策', k3: k === '名詞', name, detail, pinned, meta: k + ' · ' + meta, pinLabel: pinned ? '取消釘選' : '釘選', versions: '舊版本 ' + v, hasV: v > 0, load: pinned ? '一直載入' : '需要時搜尋', loadBg: pinned ? 'rgba(16,132,254,.18)' : '#262626', loadFg: pinned ? '#7FC0FF' : '#FCFCFC99' })),
+moreLabel: '顯示全部 ' + counts[kind] + ' 條'
+};
+}
+}
+</script>
+</body>
+</html>

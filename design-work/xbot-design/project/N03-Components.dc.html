@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>Grok 風格元件</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A8D4FF}
+button{font:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1200px; box-sizing: border-box; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.5; padding: 32px 48px; display: flex; flex-direction: column; gap: 20px">
+
+<header style="display: flex; align-items: flex-end; gap: 24px">
+<div style="flex: 1">
+<p style="margin: 0 0 4px; font-size: 13px; color: #FCFCFC90">XBot 設計系統 · N03</p>
+<h1 style="margin: 0; font-size: 28px; font-weight: 400; line-height: 1.2">元件（Grok 風格 · Midnight）</h1>
+</div>
+<p style="margin: 0; max-width: 720px; font-size: 13.5px; color: #FCFCFC99; text-align: right">全部是自畫控制項，不用瀏覽器原生外觀。圖示一律 Lucide，線寬 1.75。<br>可點的東西：桌面 ≥ 36，手機 ≥ 44。</p>
+</header>
+
+<div style="flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: stretch">
+
+<div style="display: flex; flex-direction: column; gap: 20px; min-width: 0">
+
+<section style="background: #111111; border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 400">按鈕（膠囊）</h2>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14.5px; cursor: pointer">允許這次</button>
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14.5px; cursor: pointer">一律允許</button>
+<button type="button" style="height: 36px; padding: 0 14px 0 12px; border: 1px solid #333333; border-radius: 999px; background: transparent; color: #FCFCFC; font-size: 14.5px; display: flex; align-items: center; gap: 6px; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>對話串</button>
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FF5667; font-size: 14.5px; cursor: pointer">停止</button>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<button type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 13.5px; cursor: pointer">小 · 主要</button>
+<button type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 13.5px; cursor: pointer">小 · 次要</button>
+<button type="button" aria-label="通話" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"></path></svg></button>
+<button type="button" aria-label="電腦（hover）" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: #2F2F2F; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M8 21L16 21"></path><path d="M12 17L12 21"></path></svg></button>
+<button type="button" aria-label="更多" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path><path d="M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path><path d="M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path></svg></button>
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FF5667; color: #FFFFFF; font-size: 14.5px; cursor: pointer">刪除</button>
+</div>
+<p style="margin: 0; font-size: 12.5px; color: #FCFCFC90">主要 · 次要 · 外框 · 危險（#2F2F2F 底紅字）· 小 30 · 圖示 36。實心紅只在確認對話框。</p>
+</section>
+
+<section style="background: #111111; border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 400">輸入框與下拉選單</h2>
+<label style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12.5px; color: #FCFCFC90">預設</span><input type="text" placeholder="輸入你的回答" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14.5px; outline: none"></label>
+<label style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12.5px; color: #FCFCFC90">聚焦</span><input type="text" value="晨光選物" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #459FFE; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14.5px; outline: none; box-shadow: 0 0 0 3px rgba(69,159,254,.18)"></label>
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12.5px; color: #FCFCFC90">下拉選單 · 日期與時間</span>
+<button type="button" aria-haspopup="listbox" style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14.5px; text-align: left; cursor: pointer"><span style="flex: 1">Claude Sonnet 5.5</span><span style="color: #FCFCFC99; display: flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m6 9 6 6 6-6"></path></svg></span></button>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<button type="button" aria-haspopup="dialog" style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14.5px; text-align: left; cursor: pointer"><span style="flex: 1">10 月 20 日（一）</span><span style="color: #FCFCFC99; display: flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m6 9 6 6 6-6"></path></svg></span></button>
+<button type="button" aria-haspopup="listbox" style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14.5px; text-align: left; cursor: pointer"><span style="flex: 1">上午 9:00</span><span style="color: #FCFCFC99; display: flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m6 9 6 6 6-6"></path></svg></span></button>
+</div>
+</section>
+
+<section style="flex: 1; background: #111111; border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 400">開關 · 勾選 · 分段 · 滑桿</h2>
+<div style="display: flex; align-items: center; gap: 22px">
+<sc-for list="{{switches}}" as="w" hint-placeholder-count="2">
+<span style="display: flex; align-items: center; gap: 10px">
+<button type="button" role="switch" aria-checked="{{w.on}}" aria-label="{{w.label}}" onClick="{{w.flip}}" style="width: 40px; height: 24px; border: 0; border-radius: 999px; padding: 0; background: {{w.track}}; position: relative; cursor: pointer"><span style="position: absolute; top: 2px; left: {{w.knob}}; width: 20px; height: 20px; border-radius: 999px; background: #FFFFFF"></span></button>
+<span style="font-size: 14px">{{w.label}}</span>
+</span>
+</sc-for>
+</div>
+<div style="display: flex; align-items: center; gap: 22px">
+<sc-for list="{{checks}}" as="c" hint-placeholder-count="2">
+<label style="position: relative; display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer">
+<input type="checkbox" checked="{{c.on}}" onChange="{{c.flip}}" style="position: absolute; opacity: 0; width: 1px; height: 1px">
+<span style="width: 18px; height: 18px; box-sizing: border-box; border-radius: 5px; background: {{c.bg}}; border: {{c.line}}; display: flex; align-items: center; justify-content: center; color: #FFFFFF">
+<sc-if value="{{c.on}}" hint-placeholder-val="{{ true }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span>{{c.label}}</label>
+</sc-for>
+</div>
+<div role="radiogroup" aria-label="在哪裡跑" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding: 3px; border-radius: 10px; background: #191919">
+<sc-for list="{{segs}}" as="g" hint-placeholder-count="3">
+<button type="button" role="radio" aria-checked="{{g.on}}" onClick="{{g.pick}}" style="height: 32px; border: 0; border-radius: 8px; background: {{g.bg}}; color: {{g.ink}}; font-size: 14px; cursor: pointer">{{g.label}}</button>
+</sc-for>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; font-size: 13.5px"><span style="flex: 1">每月花費上限</span><span style="color: #FCFCFC99">NT$8,000</span></div>
+<div role="slider" aria-label="每月花費上限" aria-valuenow="8000" aria-valuemin="0" aria-valuemax="20000" tabindex="0" style="position: relative; height: 16px; display: flex; align-items: center">
+<span style="position: absolute; left: 0; right: 0; height: 4px; border-radius: 9px; background: #333333"></span>
+<span style="position: absolute; left: 0; width: 40%; height: 4px; border-radius: 9px; background: #1084FE"></span>
+<span style="position: absolute; left: calc(40% - 8px); width: 16px; height: 16px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 1px 4px rgba(0,0,0,.4)"></span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">勾選清單 · 這些事先問我</span>
+<div style="background: #191919; border-radius: 12px">
+<sc-for list="{{asks}}" as="a" hint-placeholder-count="3">
+<label style="position: relative; height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-top: {{a.top}}; font-size: 14px; cursor: pointer">
+<input type="checkbox" checked="{{a.on}}" onChange="{{a.flip}}" style="position: absolute; opacity: 0; width: 1px; height: 1px">
+<span style="width: 18px; height: 18px; box-sizing: border-box; border-radius: 5px; background: {{a.bg}}; border: {{a.line}}; display: flex; align-items: center; justify-content: center; flex: none"><sc-if value="{{a.on}}" hint-placeholder-val="{{ true }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span>
+<span style="flex: 1">{{a.label}}</span><span style="font-size: 12.5px; color: #FCFCFC90">{{a.note}}</span></label>
+</sc-for>
+</div>
+</div>
+<button type="button" aria-expanded="false" style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 4px; border: 0; border-top: 1px solid #262626; background: transparent; color: #FCFCFC; font-size: 14px; text-align: left; cursor: pointer"><span style="color: #FCFCFC99; display: flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m9 18 6-6-6-6"></path></svg></span><span style="flex: 1">進階設定</span><span style="font-size: 12.5px; color: #FCFCFC90">展開／收合 · 一般人不用動</span></button>
+</section>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 20px; min-width: 0">
+
+<section style="background: #111111; border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 400">A/B/C 選項卡</h2>
+<div style="background: #262626; border-radius: 18px; padding: 16px 18px 14px; display: flex; flex-direction: column">
+<div style="font-size: 16px">要不要也比較日本賣場？</div>
+<div style="font-size: 13px; color: #FCFCFC99; margin-bottom: 8px">選接近的，之後都能改。</div>
+<sc-for list="{{opts}}" as="o" hint-placeholder-count="3">
+<button type="button" aria-pressed="{{o.on}}" onClick="{{o.pick}}" style="height: 40px; display: flex; align-items: center; gap: 12px; padding: 0 8px; margin: 0 -8px; border: 0; border-top: 1px solid #333333; border-radius: 0; background: {{o.bg}}; color: #FCFCFC; font-size: 14.5px; text-align: left; cursor: pointer">
+<span style="width: 20px; height: 20px; border-radius: 5px; background: {{o.keyBg}}; color: {{o.keyInk}}; font-size: 12px; line-height: 20px; text-align: center; flex: none">{{o.k}}</span>{{o.label}}</button>
+</sc-for>
+<label style="margin-top: 10px; display: block"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">或輸入你的回答</span><input type="text" placeholder="或輸入你的回答" style="width: 100%; height: 44px; box-sizing: border-box; padding: 0 12px; border: 0; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14.5px; outline: none"></label>
+</div>
+</section>
+
+<section style="background: #111111; border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 400">工具膠囊 · 事件膠囊 · 工作列</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span style="height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid #333333; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #FCFCFC99"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M20 6 9 17l-5-5"></path></svg>browser_open</span>
+<span style="height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid #333333; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #FCFCFC99"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M20 6 9 17l-5-5"></path></svg>read_page</span>
+<span style="height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid #333333; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #FCFCFC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7FC0FF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>sheet_write</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span style="height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; font-size: 13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M20 6 9 17l-5-5"></path></svg>來自阿哲的回覆 · 第 1/6 棒</span>
+<span style="height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; font-size: 13px; color: #FCFCFC99"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"></path><path d="m21.854 2.147-10.94 10.939"></path></svg>已傳請求給數據喵 · 第 2/6 棒</span>
+<span style="height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; font-size: 13px; color: #FCFCFC99"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path></svg>群組第 2/4 輪</span>
+</div>
+<button type="button" aria-expanded="false" style="align-self: flex-start; height: 34px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; background: transparent; color: #FCFCFC; font-size: 13.5px; cursor: pointer">工作了 2 分鐘 · 6 個步驟<span style="color: #FCFCFC90; display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m6 9 6 6 6-6"></path></svg></span></button>
+</section>
+
+<section style="flex: 1; background: #111111; border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0 0 4px; font-size: 16px; font-weight: 400">泡泡與 Composer</h2>
+<p style="margin: 0; text-align: center; font-size: 12.5px; color: #FCFCFC90">今天 下午 3:02</p>
+<div style="align-self: flex-end; max-width: 75%; background: #5A5A5A; border-radius: 20px; padding: 10px 16px; font-size: 15px">幫我比較蝦皮三家競品的定價</div>
+<div style="align-self: flex-start; max-width: 75%; background: #262626; border-radius: 20px; padding: 10px 16px; font-size: 15px">收到，我先請阿哲抓價格。</div>
+<div style="align-self: flex-start; max-width: 75%; display: flex; flex-direction: column; gap: 4px; margin-top: 4px">
+<span style="display: flex; align-items: center; gap: 6px; padding-left: 4px; font-size: 12.5px; color: #FCFCFC99"><dc-import name="Avatar" color="orange" body="blob" state="happy" dot="none" ring="#111111" size="20" hint-size="20px,20px"></dc-import>阿哲 · 群組裡 Bot 訊息帶頭像和名字</span>
+<div style="background: #262626; border-radius: 20px; padding: 10px 16px; font-size: 15px">三家是 NT$990、NT$1,080、NT$1,150。</div>
+</div>
+<span aria-label="正在輸入" style="align-self: flex-start; height: 26px; padding: 0 12px; border-radius: 999px; background: #191919; display: inline-flex; align-items: center; gap: 5px"><span style="width: 6px; height: 6px; border-radius: 9px; background: #FF6700"></span><span style="width: 6px; height: 6px; border-radius: 9px; background: #FF6700; opacity: .65"></span><span style="width: 6px; height: 6px; border-radius: 9px; background: #FF6700; opacity: .35"></span></span>
+<div style="margin-top: auto; height: 52px; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 6px; padding: 0 9px 0 8px">
+<button type="button" aria-label="附加" style="width: 36px; height: 36px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC; display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+<span style="flex: 1; font-size: 14.5px; color: #FCFCFC90">交代小秘…</span>
+<button type="button" aria-label="語音輸入" style="width: 36px; height: 36px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M12 19v3"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><path d="M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z"></path></svg></button>
+<button type="button" aria-label="送出" style="width: 34px; height: 34px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+</div>
+</section>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 20px; min-width: 0">
+
+<section style="background: #111111; border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 400">選單</h2>
+<div role="menu" aria-label="小秘" style="width: 280px; padding: 6px; background: #262626; border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.5)">
+<sc-for list="{{menu}}" as="m" hint-placeholder-count="7">
+<sc-if value="{{m.sep}}" hint-placeholder-val="{{ false }}"><div role="separator" style="height: 1px; background: #333333; margin: 5px 8px"></div></sc-if>
+<button type="button" role="menuitem" style="width: 100%; height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border: 0; border-radius: 8px; background: {{m.bg}}; color: {{m.ink}}; font-size: 14.5px; text-align: left; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><sc-for list="{{m.d}}" as="d" hint-placeholder-count="2"><path d="{{d}}"></path></sc-for></svg>{{m.label}}</button>
+</sc-for>
+</div>
+</section>
+
+<section style="background: #111111; border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 400">Toast</h2>
+<div role="status" style="height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 14px; border-radius: 14px; background: #262626; box-shadow: 0 12px 32px rgba(0,0,0,.5); font-size: 14.5px"><span style="color: #38D591; display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="m16 9-5.5 5.5L8 12"></path></svg></span><span style="flex: 1">已允許這次 · 帳房繼續付款</span><button type="button" style="height: 32px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: #7FC0FF; font-size: 14px; cursor: pointer">復原</button></div>
+<div role="alert" style="height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 14px; border-radius: 14px; background: #262626; box-shadow: 0 12px 32px rgba(0,0,0,.5); font-size: 14.5px"><span style="color: #FF5667; display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="M12 8L12 12"></path><path d="M12 16L12.01 16"></path></svg></span><span style="flex: 1">連線逾時，2 分鐘後自動重試</span><button type="button" style="height: 32px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: #7FC0FF; font-size: 14px; cursor: pointer">現在重試</button></div>
+</section>
+
+<section style="background: #111111; border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 400">設定列群組</h2>
+<div style="background: #191919; border-radius: 14px">
+<div style="height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 14px"><span style="flex: 1; font-size: 14.5px">主題</span><button type="button" aria-haspopup="listbox" style="height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 12px; border: 1px solid #333333; border-radius: 10px; background: #262626; color: #FCFCFC; font-size: 14px; cursor: pointer">深色<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+<div style="height: 1px; background: #333333; margin-left: 14px"></div>
+<div style="height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 14px"><span style="flex: 1; min-width: 0"><span style="display: block; font-size: 14.5px; line-height: 1.3">等你的事要通知</span><span style="display: block; font-size: 12.5px; color: #FCFCFC90; line-height: 1.3">核定、提問、接手電腦</span></span><button type="button" role="switch" aria-checked="true" aria-label="等你的事要通知" style="width: 40px; height: 24px; border: 0; border-radius: 999px; padding: 0; background: #1084FE; position: relative; cursor: pointer"><span style="position: absolute; top: 2px; left: 18px; width: 20px; height: 20px; border-radius: 999px; background: #FFFFFF"></span></button></div>
+<div style="height: 1px; background: #333333; margin-left: 14px"></div>
+<a href="J07-Backup.dc.html" style="height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 14px; color: #FCFCFC"><span style="flex: 1; font-size: 14.5px">進階</span><span style="font-size: 13px; color: #FCFCFC99">一般人不用動</span><span style="color: #FCFCFC90; display: flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m9 18 6-6-6-6"></path></svg></span></a>
+</div>
+</section>
+
+<section style="flex: 1; background: #111111; border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 400">標註：簡化 · 快判 · 狀態</h2>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<span style="height: 26px; display: inline-flex; align-items: center; gap: 5px; padding: 0 10px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12.5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg>簡化：6 步 → 2 步</span>
+<span style="font-size: 12.5px; color: #FCFCFC90">放在被簡化畫板的右上角</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<span style="height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 0 4px 0 10px; border: 1px solid #333333; border-radius: 999px; font-size: 12.5px; color: #FCFCFC99"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"></path><path d="m16 9-5.5 5.5L8 12"></path></svg>系統判斷：已完成 · 92% ·<button type="button" style="height: 26px; padding: 0 6px; border: 0; border-radius: 999px; background: transparent; color: #7FC0FF; font-size: 12.5px; cursor: pointer">不對？</button></span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px">
+<span style="height: 24px; padding: 0 10px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12.5px; line-height: 24px">工作中</span>
+<span style="height: 24px; padding: 0 10px; border-radius: 999px; background: rgba(255,152,0,.16); color: #FFB547; font-size: 12.5px; line-height: 24px">等你回覆</span>
+<span style="height: 24px; padding: 0 10px; border-radius: 999px; background: #2F2F2F; color: #FCFCFC99; font-size: 12.5px; line-height: 24px">排隊中</span>
+<span style="font-size: 12.5px; color: #FCFCFC90">待命 · 上午 10:42</span>
+<span style="margin-left: auto; display: inline-flex; gap: 4px"><kbd style="height: 22px; padding: 0 6px; border: 1px solid #333333; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 22px; color: #FCFCFC99">⌘K</kbd><kbd style="height: 22px; padding: 0 6px; border: 1px solid #333333; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 22px; color: #FCFCFC99">⌘⇧F</kbd></span>
+</div>
+<p style="margin: 0; font-size: 12.5px; color: #FCFCFC90; line-height: 1.6">快判模型判斷過的結果都帶這個小標註；按「不對？」一鍵改正，改正紀錄用來校正規則。快判只能多攔，不能放行。</p>
+</section>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1200}}'>
+class Component extends DCLogic {
+renderVals() {
+const st = this.state || {};
+const sw = Object.assign({ a: true, b: false }, st.sw || {});
+const ck = Object.assign({ a: true, b: false }, st.ck || {});
+const seg = st.seg || '地端電腦';
+const opt = st.opt || 'A';
+const switches = [{ id: 'a', label: '開' }, { id: 'b', label: '關' }].map((w) => {
+const on = !!sw[w.id];
+return { label: on ? '開' : '關', on, track: on ? '#1084FE' : '#3D3D3D', knob: on ? '18px' : '2px', flip: () => this.setState({ sw: Object.assign({}, sw, { [w.id]: !on }) }) };
+});
+const checks = [{ id: 'a', label: '已勾選' }, { id: 'b', label: '未勾選' }].map((c) => {
+const on = !!ck[c.id];
+return { label: c.label, on, bg: on ? '#1084FE' : 'transparent', line: on ? '0' : '1.5px solid #5A5A5A', flip: () => this.setState({ ck: Object.assign({}, ck, { [c.id]: !on }) }) };
+});
+const segs = ['地端電腦', '雲端電腦', '關閉'].map((label) => ({ label, on: label === seg, bg: label === seg ? '#2F2F2F' : 'transparent', ink: label === seg ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ seg: label }) }));
+const opts = [{ k: 'A', label: '要，一起比較' }, { k: 'B', label: '不用，台灣就好' }, { k: 'C', label: '只比日本前三名' }].map((o) => ({ k: o.k, label: o.label, on: o.k === opt, bg: o.k === opt ? '#2F2F2F' : 'transparent', keyBg: o.k === opt ? '#FCFCFC' : '#333333', keyInk: o.k === opt ? '#070707' : '#FCFCFC99', pick: () => this.setState({ opt: o.k }) }));
+const I = {
+pin: ['M12 17v5', 'M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z'],
+crown: ['M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z', 'M5 21h14'],
+bell: ['M10.268 21a2 2 0 0 0 3.464 0', 'M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326'],
+pencil: ['M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z', 'm15 5 4 4'],
+key: ['M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z', 'M16 7.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0'],
+hand: ['M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2', 'M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2', 'M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8', 'M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15'],
+trash: ['M10 11v6', 'M14 11v6', 'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6', 'M3 6h18', 'M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2']
+};
+const M = (label, d, extra) => Object.assign({ label, d, sep: false, bg: 'transparent', ink: '#FCFCFC' }, extra || {});
+const menu = [
+M('釘選', I.pin), M('設為幕僚長', I.crown, { bg: '#3D3D3D' }), M('標為未讀', I.bell),
+M('編輯設定', I.pencil, { sep: true }), M('分享登入給其他 Bot', I.key), M('教它一件事', I.hand),
+M('刪除（需要你核定）', I.trash, { sep: true, ink: '#FF5667' })
+];
+const ak = Object.assign({ pay: true, send: true, del: false }, st.ak || {});
+const asks = [{ id: 'pay', label: '花錢、付款', note: '預設' }, { id: 'send', label: '對外發送訊息', note: '預設' }, { id: 'del', label: '刪除檔案', note: '' }].map((a, i) => {
+const on = !!ak[a.id];
+return { label: a.label, note: a.note, on, top: i ? '1px solid #333333' : '0', bg: on ? '#1084FE' : 'transparent', line: on ? '0' : '1.5px solid #5A5A5A', flip: () => this.setState({ ak: Object.assign({}, ak, { [a.id]: !on }) }) };
+});
+return { switches, checks, segs, opts, menu, asks };
+}
+}
+</script>
+</body>
+</html>

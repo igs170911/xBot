@@ -1,0 +1,45 @@
+{
+ "file": "J10-FastJudge.dc.html",
+ "title": "設定 · AI 模型 · 快判模型（用 OpenCode）",
+ "prd": [
+  "§20",
+  "§20.1",
+  "§20.2"
+ ],
+ "what": "設定快判模型：「用 OpenCode」卡片顯示 OpenCode 已登入、Zen 免費、Go 訂閱；第一層選擇題模型 opencode/jev-1.13-free（免費），第二層短文字模型 opencode-go/qwen3.8-flash（Go 額度、每日上限 100 次）；退路順序 OpenCode Jev → OpenCode Go flash → 本機小模型 → 規則；其他供應商（TypeSafe 直連／OpenRouter）收合。15 個用途逐項標層級（Jev／Go）並切換 關／影子／生效。",
+ "goal": "使用者直接用已登入的 OpenCode：選擇題全用免費的 Jev，要寫字的才省著用 Go，並在影子模式確認夠準後才讓每個用途生效。",
+ "accept": [
+  "「用 OpenCode」卡片顯示三個狀態：OpenCode 已登入、Zen 免費、Go 訂閱，以及今天 Jev 次數與 Go 23／100 次",
+  "第一層下拉預設 opencode/jev-1.13-free（免費 · 選擇題），可改本機小模型或不用快判；第二層下拉預設 opencode-go/qwen3.8-flash（Go 額度 · 每日上限 100 次），可改 deepseek-v4-flash、glm-5.3-flash、本機小模型",
+  "退路順序以膠囊顯示：OpenCode Jev → OpenCode Go flash → 本機小模型 → 規則",
+  "「其他供應商：TypeSafe 直連／OpenRouter」預設收合，點開才看到",
+  "15 個用途各有層級標籤（Jev／Go／Jev＋Go）與 關／影子／生效 分段控制，點了立即切換；11–15 是新的「先判斷」用途，預設影子模式",
+  "第一層設成「不用快判」時，所有 Jev 用途顯示「只用規則」",
+  "內容高度在 900 內（15 列全部看得到）"
+ ],
+ "states": [
+  "預設（Jev＋qwen3.8-flash）",
+  "第二層換成 deepseek-v4-flash／glm-5.3-flash",
+  "第一層改本機小模型",
+  "不用快判（只用規則）",
+  "Go 達每日上限 100 次（自動退回本機小模型並通知一次）",
+  "其他供應商展開",
+  "某用途影子模式準確率 ≥ 95%（可以生效）"
+ ],
+ "edge": [
+  "OpenCode 沒登入：卡片狀態改成「OpenCode 未登入」，全部退回規則",
+  "Zen／Go 的 HTTP 端點不可用（待驗證）：背景用途改用 opencode run -m 慢速呼叫，即時用途退回規則",
+  "Jev 機率 < 0.6、逾時、401／429／5xx、格式不合：該次退回規則",
+  "要不要找你核定：快判只能多攔、不能放行",
+  "快判永遠不能自己做不可逆的事（刪除、花錢、對外發送、核准）"
+ ],
+ "limits": [
+  "Jev 機率門檻 0.6",
+  "每日呼叫上限預設 300 次；Go 第二層每日上限 100 次",
+  "等待上限 0.3–2 秒（依用途）",
+  "影子模式與人工改正一致 ≥ 95% 才建議生效",
+  "輸出固定 JSON：label、p、why"
+ ],
+ "simplified": null,
+ "status": "已畫"
+}

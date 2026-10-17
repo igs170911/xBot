@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>吉祥物與 Bot 頭像</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A8D4FF}
+button{font:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1100px; box-sizing: border-box; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.5; padding: 32px 48px; display: flex; flex-direction: column; gap: 20px">
+
+<header style="display: flex; align-items: flex-end; gap: 24px">
+<div style="flex: 1">
+<p style="margin: 0 0 4px; font-size: 13px; color: #FCFCFC90">XBot 設計系統 · N02</p>
+<h1 style="margin: 0; font-size: 28px; font-weight: 400; line-height: 1.2">Maus：品牌吉祥物與 Bot 頭像</h1>
+</div>
+<p style="margin: 0; max-width: 760px; font-size: 13.5px; color: #FCFCFC99; text-align: right">幾何與表情直接用 OpenMausBot 的 Maus（10 種身體 × 表情資料）。<br>表情就是狀態；右下角圓點只在需要你或出錯、排隊時出現。</p>
+</header>
+
+<div style="display: flex; gap: 20px">
+<section style="width: 360px; flex: none; background: #111111; border-radius: 18px; padding: 22px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+<div><h2 style="margin: 0; font-size: 17px; font-weight: 400">品牌吉祥物 Mochi</h2><p style="margin: 2px 0 0; font-size: 13px; color: #FCFCFC99">綠色游標 Maus。只用在品牌列、登入、首次設定、空狀態、出錯、關於、載入中。</p></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{poses}}" as="p" hint-placeholder-count="4">
+<div style="background: #191919; border-radius: 14px; padding: 12px 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+<dc-import name="Mochi" size="80" pose="{{p.pose}}" hint-size="80px,80px"></dc-import>
+<span style="font-size: 14px">{{p.label}}</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #FCFCFC90">pose="{{p.pose}}"</span>
+</div>
+</sc-for>
+</div>
+<p style="margin: 0; padding: 10px 12px; border-radius: 10px; background: #191919; font-size: 12.5px; color: #FCFCFC99; line-height: 1.6">Bot 永遠用頭像；Mochi 不帶狀態點。</p>
+</section>
+
+<section style="flex: 1; min-width: 0; background: #111111; border-radius: 18px; padding: 22px 24px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: baseline; gap: 12px"><h2 style="margin: 0; font-size: 17px; font-weight: 400">Bot 頭像：10 種身體 × 狀態</h2><span style="font-size: 13px; color: #FCFCFC99">每欄用一個顏色示範；身體、顏色、狀態可任意組合</span></div>
+<div role="table" aria-label="頭像身體與狀態" style="display: grid; grid-template-columns: 72px repeat(10, minmax(0, 1fr)); row-gap: 4px">
+<span role="columnheader"></span>
+<sc-for list="{{bodies}}" as="b" hint-placeholder-count="10">
+<span role="columnheader" style="display: flex; flex-direction: column; align-items: center; line-height: 1.3; padding-bottom: 4px"><span style="font-size: 13.5px">{{b.zh}}</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #FCFCFC90">{{b.id}}</span></span>
+</sc-for>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+<span role="rowheader" style="display: flex; flex-direction: column; justify-content: center; line-height: 1.3; border-top: 1px solid #262626"><span style="font-size: 13.5px">{{r.zh}}</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #FCFCFC90">{{r.id}}</span></span>
+<sc-for list="{{r.cells}}" as="c" hint-placeholder-count="10">
+<span role="cell" style="height: 58px; display: flex; align-items: center; justify-content: center; border-top: 1px solid #262626"><dc-import name="Avatar" color="{{c.color}}" body="{{c.body}}" state="{{c.state}}" dot="auto" ring="#111111" size="46" hint-size="46px,46px"></dc-import></span>
+</sc-for>
+</sc-for>
+</div>
+</section>
+</div>
+
+<section style="background: #111111; border-radius: 18px; padding: 16px 24px 18px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: baseline; gap: 12px"><h2 style="margin: 0; font-size: 17px; font-weight: 400">示範角色（全站一致）</h2><span style="font-size: 13px; color: #FCFCFC99">標題列、側欄、卡片都說同一個狀態</span></div>
+<div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{cast}}" as="m" hint-placeholder-count="8">
+<div style="background: #191919; border-radius: 14px; padding: 12px; display: flex; align-items: center; gap: 10px; min-width: 0">
+<dc-import name="Avatar" color="{{m.color}}" body="{{m.body}}" state="{{m.state}}" dot="{{m.dot}}" ring="#191919" size="40" hint-size="40px,40px"></dc-import>
+<span style="min-width: 0; display: flex; flex-direction: column; line-height: 1.35">
+<span style="font-size: 15px; white-space: nowrap">{{m.name}}</span>
+<span style="font-size: 12px; color: #FCFCFC90; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{m.role}}</span>
+<span style="font-size: 12.5px; color: {{m.ink}}; white-space: nowrap">{{m.status}}</span>
+</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 20px">
+<section style="background: #111111; border-radius: 18px; padding: 18px 24px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 17px; font-weight: 400">10 個顏色</h2>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px 8px">
+<sc-for list="{{colors}}" as="k" hint-placeholder-count="10">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 2px">
+<dc-import name="Avatar" color="{{k.id}}" body="cursor" state="idle" dot="none" ring="#111111" size="40" hint-size="40px,40px"></dc-import>
+<span style="font-size: 13px">{{k.zh}}</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #FCFCFC90">{{k.id}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section style="background: #111111; border-radius: 18px; padding: 18px 24px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 17px; font-weight: 400">尺寸</h2>
+<div style="flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: end; gap: 8px">
+<sc-for list="{{sizes}}" as="z" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+<span style="height: 52px; display: flex; align-items: flex-end"><dc-import name="Avatar" color="blue" body="cursor" state="notifying" dot="auto" ring="#111111" size="{{z.n}}" hint-size="{{z.n}}px,{{z.n}}px"></dc-import></span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">{{z.n}} px</span>
+<span style="font-size: 12px; color: #FCFCFC90; text-align: center; white-space: nowrap">{{z.use}}</span>
+</div>
+</sc-for>
+</div>
+<p style="margin: 0; font-size: 12.5px; color: #FCFCFC99">16 px 也看得出表情和狀態點；點的外框填所在底色。</p>
+</section>
+
+<section style="background: #111111; border-radius: 18px; padding: 18px 24px; display: flex; flex-direction: column; gap: 2px">
+<h2 style="margin: 0 0 6px; font-size: 17px; font-weight: 400">狀態點</h2>
+<sc-for list="{{dots}}" as="d" hint-placeholder-count="5">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 38px">
+<dc-import name="Avatar" color="{{d.color}}" body="{{d.body}}" state="{{d.state}}" dot="{{d.dot}}" ring="#111111" size="32" hint-size="32px,32px"></dc-import>
+<span style="width: 10px; height: 10px; border-radius: 9px; background: {{d.hex}}; flex: none"></span>
+<span style="flex: 1; font-size: 14px">{{d.zh}}</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #FCFCFC90">{{d.dot}}</span>
+</div>
+</sc-for>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() {
+const poses = [
+{ pose: 'lazy', label: '懶洋洋（預設）' }, { pose: 'sleep', label: '睡著' },
+{ pose: 'happy', label: '開心' }, { pose: 'wave', label: '打招呼' }
+];
+const bodies = [
+{ id: 'cursor', zh: '游標', color: 'blue' }, { id: 'blob', zh: '圓團', color: 'orange' }, { id: 'circle', zh: '圓', color: 'pink' },
+{ id: 'squircle', zh: '方圓', color: 'green' }, { id: 'capsule', zh: '膠囊', color: 'teal' }, { id: 'drop', zh: '水滴', color: 'coral' },
+{ id: 'shield', zh: '盾', color: 'red' }, { id: 'hexagon', zh: '六角', color: 'yellow' }, { id: 'diamond', zh: '菱形', color: 'purple' },
+{ id: 'star', zh: '星', color: 'cyan' }
+];
+const states = [
+{ id: 'working', zh: '工作中' }, { id: 'notifying', zh: '等你' }, { id: 'idle', zh: '待命' },
+{ id: 'alerting', zh: '出錯' }, { id: 'sleeping', zh: '休息' }, { id: 'happy', zh: '完成' }
+];
+const rows = states.map((s) => ({ id: s.id, zh: s.zh, cells: bodies.map((b) => ({ color: b.color, body: b.id, state: s.id })) }));
+const cast = [
+{ name: '小秘', role: '幕僚長', color: 'blue', body: 'cursor', state: 'working', dot: 'none', status: '工作中', ink: '#FCFCFC99' },
+{ name: '阿哲', role: '選品研究員', color: 'orange', body: 'blob', state: 'working', dot: 'none', status: '工作中', ink: '#FCFCFC99' },
+{ name: '小編', role: '社群小編', color: 'pink', body: 'circle', state: 'notifying', dot: 'waiting', status: '等你回覆', ink: '#FFB547' },
+{ name: '阿凱', role: '業務開發', color: 'green', body: 'squircle', state: 'idle', dot: 'none', status: '待命', ink: '#FCFCFC99' },
+{ name: '帳房', role: '費用管理', color: 'yellow', body: 'hexagon', state: 'notifying', dot: 'waiting', status: '等你允許', ink: '#FFB547' },
+{ name: '數據喵', role: '數據分析師', color: 'purple', body: 'diamond', state: 'idle', dot: 'queued', status: '排隊中', ink: '#FCFCFC99' },
+{ name: '信差', role: '收件匣管家', color: 'cyan', body: 'star', state: 'sleeping', dot: 'none', status: '休息', ink: '#FCFCFC99' },
+{ name: '抓蟲', role: 'Bug 重現', color: 'red', body: 'shield', state: 'idle', dot: 'none', status: '待命', ink: '#FCFCFC99' }
+];
+const colors = [
+{ id: 'green', zh: '綠' }, { id: 'blue', zh: '藍' }, { id: 'red', zh: '紅' }, { id: 'orange', zh: '橘' }, { id: 'purple', zh: '紫' },
+{ id: 'cyan', zh: '青' }, { id: 'pink', zh: '粉' }, { id: 'yellow', zh: '黃' }, { id: 'teal', zh: '藍綠' }, { id: 'coral', zh: '珊瑚' }
+];
+const sizes = [
+{ n: '16', use: '行內提及' }, { n: '24', use: '群組疊放' },
+{ n: '34', use: '側欄列' }, { n: '48', use: '卡片、設定' }
+];
+const dots = [
+{ dot: 'waiting', zh: '等你（回覆、允許、接手）', hex: '#FF9800', color: 'pink', body: 'circle', state: 'notifying' },
+{ dot: 'error', zh: '出錯', hex: '#FF5667', color: 'red', body: 'shield', state: 'alerting' },
+{ dot: 'queued', zh: '排隊中', hex: '#777777', color: 'purple', body: 'diamond', state: 'idle' },
+{ dot: 'teammate', zh: '在等隊友回覆', hex: '#1084FE', color: 'orange', body: 'blob', state: 'thinking' },
+{ dot: 'none', zh: '沒有點：表情就是狀態', hex: 'transparent', color: 'blue', body: 'cursor', state: 'working' }
+];
+return { poses, bodies, rows, cast, colors, sizes, dots };
+}
+}
+</script>
+</body>
+</html>

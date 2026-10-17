@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>側欄與選單</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3{font-weight:400}
+a{color:#7FC0FF;text-decoration:none}
+</style>
+</helmet>
+<div style="position: relative; min-height: 960px; display: flex; flex-wrap: wrap; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.5">
+
+<div style="flex: 1 1 300px; max-width: 100%; border-right: 1px solid #1C1C1C; background: #111111">
+<dc-import name="Sidebar" active="azhe" hint-size="100%,960px"></dc-import>
+</div>
+
+<div role="menu" aria-label="阿哲的選單" style="position: absolute; left: 150px; top: 500px; width: 272px; box-sizing: border-box; background: #262626; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; box-shadow: 0 12px 32px rgba(0,0,0,.5); z-index: 2">
+<sc-for list="{{botMenu}}" as="m" hint-placeholder-count="12">
+<sc-if value="{{m.sep}}" hint-placeholder-val="{{ false }}"><span style="height: 1px; background: #333333; margin: 4px 6px"></span></sc-if>
+<sc-if value="{{m.item}}" hint-placeholder-val="{{ true }}">
+<button type="button" role="menuitem" style="display: flex; align-items: center; gap: 12px; min-height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: {{m.bg}}; color: {{m.c}}; font: inherit; font-size: 14px; text-align: left; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; opacity: {{m.io}}"><path d="{{m.icon}}"></path></svg>
+<span style="flex: 1">{{m.t}}</span>
+<sc-if value="{{m.more}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronRight}}"></path></svg></sc-if>
+</button>
+</sc-if>
+</sc-for>
+</div>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 32px 24px 180px; display: flex; flex-wrap: wrap; gap: 32px; align-content: flex-start">
+
+<div style="flex: 1 1 260px; max-width: 300px; display: flex; flex-direction: column; gap: 28px">
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; color: #FCFCFC90">按側欄上方的「＋」</span>
+<div style="display: flex; justify-content: flex-end; padding-right: 8px">
+<span style="width: 36px; height: 36px; border-radius: 10px; background: #2F2F2F; display: flex; align-items: center; justify-content: center; color: #FCFCFC"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.plus}}"></path></svg></span>
+</div>
+<div role="menu" aria-label="新增" style="background: #262626; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; box-shadow: 0 12px 32px rgba(0,0,0,.5)">
+<sc-for list="{{plusMenu}}" as="m" hint-placeholder-count="8">
+<sc-if value="{{m.sep}}" hint-placeholder-val="{{ false }}"><span style="height: 1px; background: #333333; margin: 4px 6px"></span></sc-if>
+<sc-if value="{{m.item}}" hint-placeholder-val="{{ true }}">
+<button type="button" role="menuitem" style="display: flex; align-items: center; gap: 12px; min-height: 34px; padding: 4px 10px; border: 0; border-radius: 8px; background: {{m.bg}}; color: {{m.c}}; font: inherit; font-size: 14px; text-align: left; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="{{m.icon}}"></path></svg>
+<span style="flex: 1; display: flex; flex-direction: column; line-height: 1.35"><span>{{m.t}}</span><sc-if value="{{m.hasSub}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12.5px; color: #FCFCFC90">{{m.sub}}</span></sc-if></span>
+<span style="font-size: 12.5px; color: #FCFCFC90; font-family: {{m.rf}}">{{m.r}}</span>
+</button>
+</sc-if>
+</sc-for>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; color: #FCFCFC90">分區標題上的「⋯」</span>
+<div style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 6px 0 12px; border-radius: 8px; background: #191919; color: #FCFCFC90; font-size: 13px">
+<span>營運部</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronDown}}"></path></svg>
+<span style="margin-left: auto; width: 26px; height: 26px; border-radius: 8px; background: #2F2F2F; color: #FCFCFC; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.ellipsis}}"></path></svg></span>
+</div>
+<div role="menu" aria-label="營運部" style="background: #262626; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; box-shadow: 0 12px 32px rgba(0,0,0,.5)">
+<sc-for list="{{secMenu}}" as="m" hint-placeholder-count="6">
+<sc-if value="{{m.sep}}" hint-placeholder-val="{{ false }}"><span style="height: 1px; background: #333333; margin: 4px 6px"></span></sc-if>
+<sc-if value="{{m.item}}" hint-placeholder-val="{{ true }}">
+<button type="button" role="menuitem" style="display: flex; align-items: center; gap: 12px; min-height: 34px; padding: 4px 10px; border: 0; border-radius: 8px; background: transparent; color: {{m.c}}; font: inherit; font-size: 14px; text-align: left; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="{{m.icon}}"></path></svg>
+<span style="flex: 1; display: flex; flex-direction: column; line-height: 1.35"><span>{{m.t}}</span><sc-if value="{{m.hasSub}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12.5px; color: #FCFCFC90">{{m.sub}}</span></sc-if></span>
+</button>
+</sc-if>
+</sc-for>
+</div>
+</section>
+</div>
+
+<section style="flex: 1 1 440px; max-width: 520px; display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; color: #FCFCFC90">對話串上按右鍵 · 子選單從那一列旁邊展開</span>
+<div style="position: relative; height: 470px">
+<div style="width: 270px; background: #111111; border-radius: 14px; padding: 8px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 8px; border-radius: 12px">
+<dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#111111" size="30" hint-size="30px,30px"></dc-import>
+<span style="flex: 1; font-size: 15px">小秘</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC90" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronDown}}"></path></svg>
+</div>
+<sc-for list="{{threads}}" as="t" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 10px 0 48px; border-radius: 10px; background: {{t.bg}}; font-size: 14px; color: {{t.c}}">
+<span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{t.t}}</span><span style="font-size: 12px; color: #FCFCFC90">{{t.time}}</span>
+</div>
+</sc-for>
+</div>
+
+<div role="menu" aria-label="對話串「競品定價」" style="position: absolute; left: 120px; top: 92px; width: 220px; box-sizing: border-box; background: #262626; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; box-shadow: 0 12px 32px rgba(0,0,0,.5)">
+<sc-for list="{{threadMenu}}" as="m" hint-placeholder-count="8">
+<sc-if value="{{m.sep}}" hint-placeholder-val="{{ false }}"><span style="height: 1px; background: #333333; margin: 4px 6px"></span></sc-if>
+<sc-if value="{{m.item}}" hint-placeholder-val="{{ true }}">
+<button type="button" role="menuitem" aria-haspopup="{{m.pop}}" style="display: flex; align-items: center; gap: 12px; min-height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: {{m.bg}}; color: {{m.c}}; font: inherit; font-size: 14px; text-align: left; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="{{m.icon}}"></path></svg>
+<span style="flex: 1">{{m.t}}</span>
+<sc-if value="{{m.more}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronRight}}"></path></svg></sc-if>
+</button>
+</sc-if>
+</sc-for>
+</div>
+
+<div role="menu" aria-label="延後提醒" style="position: absolute; left: 344px; top: 160px; width: 196px; box-sizing: border-box; background: #262626; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; box-shadow: 0 12px 32px rgba(0,0,0,.5)">
+<sc-for list="{{snooze}}" as="m" hint-placeholder-count="5">
+<sc-if value="{{m.sep}}" hint-placeholder-val="{{ false }}"><span style="height: 1px; background: #333333; margin: 4px 6px"></span></sc-if>
+<sc-if value="{{m.item}}" hint-placeholder-val="{{ true }}">
+<button type="button" role="menuitem" style="display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC; font: inherit; font-size: 14px; text-align: left; cursor: pointer">
+<span style="flex: 1">{{m.t}}</span><span style="font-size: 12.5px; color: #FCFCFC90">{{m.r}}</span>
+</button>
+</sc-if>
+</sc-for>
+</div>
+</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+renderVals() {
+const I = {"alarmClock": "M4 13a8 8 0 1 0 16 0a8 8 0 1 0 -16 0 M12 9v4l2 2 M5 3 2 6 M0 0m22 6-3-3 M6.38 18.7 4 21 M17.64 18.67 20 21", "archive": "M3 3h18a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-18a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1Z M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8 M10 12h4", "bellDot": "M10.268 21a2 2 0 0 0 3.464 0 M11.68 2.009A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673c-.824-.85-1.678-1.731-2.21-3.348 M15 5a3 3 0 1 0 6 0a3 3 0 1 0 -6 0", "chevronDown": "M0 0m6 9 6 6 6-6", "chevronRight": "M0 0m9 18 6-6-6-6", "chevronUp": "M0 0m18 15-6-6-6 6", "copy": "M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2", "crown": "M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z M5 21h14", "download": "M12 15V3 M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M0 0m7 10 5 5 5-5", "ellipsis": "M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0 M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0 M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0", "eyeOff": "M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49 M14.084 14.158a3 3 0 0 1-4.242-4.242 M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143 M0 0m2 2 20 20", "folderPlus": "M12 10v6 M9 13h6 M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z", "hand": "M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2 M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2 M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8 M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15", "keyRound": "M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z M16 7.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0", "link": "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71 M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71", "monitor": "M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z M8 21L16 21 M12 17L12 21", "network": "M17 16h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1Z M3 16h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1Z M10 2h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1Z M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3 M12 12V8", "pencil": "M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z M0 0m15 5 4 4", "pin": "M12 17v5 M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z", "plus": "M5 12h14 M12 5v14", "trash": "M10 11v6 M14 11v6 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6 M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", "userPlus": "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0 M19 8L19 14 M22 11L16 11", "users": "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M16 3.128a4 4 0 0 1 0 7.744 M22 21v-2a4 4 0 0 0-3-3.87 M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"};
+const M = (t, icon, o) => Object.assign({ t, icon, item: true, sep: false, c: '#FCFCFC', bg: 'transparent', r: '', rf: 'inherit', io: 1, hasSub: false, sub: '', more: false, pop: 'false' }, o || {});
+const S = { sep: true, item: false };
+const mono = "'JetBrains Mono', monospace";
+return {
+I,
+botMenu: [
+M('釘選', I.pin), M('設為幕僚長', I.crown, { bg: '#2F2F2F' }), M('移到分區', I.folderPlus, { more: true }), M('標為未讀', I.bellDot), S,
+M('編輯設定', I.pencil), M('打開它的電腦', I.monitor), M('分享登入給其他 Bot', I.keyRound), M('教它一件事', I.hand), M('複製一個', I.copy), S,
+M('從側欄隱藏', I.eyeOff), S,
+M('刪除（需要你核定）', I.trash, { c: '#FF5667' })
+],
+plusMenu: [
+M('新增 Bot', I.plus, { hasSub: true, sub: '一句話說它要做什麼', bg: '#2F2F2F' }),
+M('新增群組對話', I.users, { hasSub: true, sub: '勾選成員就建立' }),
+M('建立團隊', I.network, { hasSub: true, sub: '選範本，一步完成' }), S,
+M('匯入 Bot', I.download), M('新增分區', I.folderPlus), S,
+M('已封存的 Bot', I.archive, { r: '4' })
+],
+secMenu: [
+M('重新命名', I.pencil), M('加入或移除 Bot', I.userPlus), M('和整個分區開群組對話', I.users), M('收合分區', I.chevronUp), S,
+M('刪除分區', I.trash, { c: '#FF5667', hasSub: true, sub: 'Bot 不會被刪除，會移回未分區' })
+],
+threads: [
+{ t: '主要對話', time: '', bg: 'transparent', c: '#FCFCFC99' },
+{ t: '競品定價', time: '10:12', bg: '#2F2F2F', c: '#FCFCFC' },
+{ t: '週報格式', time: '昨天', bg: 'transparent', c: '#FCFCFC99' },
+{ t: '新品貼文排程', time: '週三', bg: 'transparent', c: '#FCFCFC99' }
+],
+threadMenu: [
+M('釘選', I.pin), M('重新命名', I.pencil), M('延後提醒', I.alarmClock, { more: true, bg: '#2F2F2F', pop: 'menu' }), M('複製連結', I.link), S,
+M('封存', I.archive), M('刪除對話串', I.trash, { c: '#FF5667' })
+],
+snooze: [
+{ t: '1 小時後', r: '11:30', item: true, sep: false },
+{ t: '今天下午', r: '6:00', item: true, sep: false },
+{ t: '明天上午', r: '9:00', item: true, sep: false },
+{ t: '下週一上午', r: '9:00', item: true, sep: false },
+{ sep: true, item: false },
+{ t: '選擇日期和時間…', r: '', item: true, sep: false }
+]
+};
+}
+}
+</script>
+</body>
+</html>

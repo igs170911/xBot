@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>設定：已連線的代理（MCP）</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=Noto+Sans+TC:wght@400;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+input::placeholder{color:#FCFCFC90}
+input:focus{outline:none;border-color:#459FFE}
+main > *{flex-shrink:0}
+</style>
+</helmet>
+<div role="dialog" aria-label="設定" style="position: relative; width: 1100px; height: 1000px; box-sizing: border-box; display: flex; flex-direction: column; border-radius: 18px; background: #111111; border: 1px solid #262626; overflow: hidden; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; color: #FCFCFC; font-size: 14.5px; line-height: 1.5">
+<header style="height: 64px; flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 0 14px 0 22px; border-bottom: 1px solid #262626">
+<h1 style="margin: 0; font-size: 17px; font-weight: 400; flex: 1">設定</h1>
+
+<button type="button" aria-label="關閉設定" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</header>
+<div style="flex: 1; min-height: 0; display: flex">
+<nav aria-label="設定分類" style="width: 220px; flex: none; box-sizing: border-box; padding: 12px; border-right: 1px solid #262626; display: flex; flex-direction: column; gap: 2px"><a href="J01-General.dc.html" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; background: transparent; color: #FCFCFCcc; text-decoration: none; font-size: 14.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M14 17H5"></path><path d="M19 7h-9"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg>一般</a><a href="J02-Models.dc.html" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; background: transparent; color: #FCFCFCcc; text-decoration: none; font-size: 14.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path><path d="M9 13a4.5 4.5 0 0 0 3-4"></path><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"></path><path d="M3.477 10.896a4 4 0 0 1 .585-.396"></path><path d="M6 18a4 4 0 0 1-1.967-.516"></path><path d="M12 13h4"></path><path d="M12 18h6a2 2 0 0 1 2 2v1"></path><path d="M12 8h8"></path><path d="M16 8V5a2 2 0 0 1 2-2"></path><circle cx="16" cy="13" r=".5"></circle><circle cx="18" cy="3" r=".5"></circle><circle cx="20" cy="21" r=".5"></circle><circle cx="20" cy="8" r=".5"></circle></svg>AI 模型</a><a href="J06-Computers.dc.html" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; background: transparent; color: #FCFCFCcc; text-decoration: none; font-size: 14.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><rect width="20" height="14" x="2" y="3" rx="2"></rect><line x1="8" x2="16" y1="21" y2="21"></line><line x1="12" x2="12" y1="17" y2="21"></line></svg>電腦與裝置</a><a href="J04-Usage.dc.html" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; background: transparent; color: #FCFCFCcc; text-decoration: none; font-size: 14.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg>用量與花費</a><a href="J07-Backup.dc.html" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; background: transparent; color: #FCFCFC; text-decoration: none; font-size: 14.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 5H3"></path><path d="M12 19H3"></path><path d="M14 3v4"></path><path d="M16 17v4"></path><path d="M21 12h-9"></path><path d="M21 19h-5"></path><path d="M21 5h-7"></path><path d="M8 10v4"></path><path d="M8 12H3"></path></svg>進階</a><a href="J07-Backup.dc.html" style="display: flex; align-items: center; height: 32px; padding: 0 10px 0 38px; border-radius: 10px; background: transparent; color: #FCFCFC99; text-decoration: none; font-size: 13.5px">備份與更新</a><a href="J08-People.dc.html" style="display: flex; align-items: center; height: 32px; padding: 0 10px 0 38px; border-radius: 10px; background: transparent; color: #FCFCFC99; text-decoration: none; font-size: 13.5px">成員與紀錄</a><a href="J09-SkillsLab.dc.html" style="display: flex; align-items: center; height: 32px; padding: 0 10px 0 38px; border-radius: 10px; background: transparent; color: #FCFCFC99; text-decoration: none; font-size: 13.5px">技能庫與實驗</a><a href="J12-MCPAccess.dc.html" aria-current="page" style="display: flex; align-items: center; height: 32px; padding: 0 10px 0 38px; border-radius: 10px; background: #2F2F2F; color: #FCFCFC; text-decoration: none; font-size: 13.5px">已連線的代理（MCP）</a><span style="margin-top: auto; padding: 0 10px; font-size: 12px; color: #FCFCFC90">XBot 0.3.2 · 變更會自動儲存</span></nav>
+<main data-fit="content" style="flex: 1; min-width: 0; overflow-y: auto; box-sizing: border-box; padding: 22px 28px 24px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: flex-start; gap: 16px"><div style="flex: 1; min-width: 0"><h2 style="margin: 0; font-size: 18px; font-weight: 400; color: #FCFCFC">已連線的代理（MCP）</h2><p style="margin: 2px 0 0; font-size: 13.5px; color: #FCFCFC99; line-height: 1.5">Claude Code、Codex、Cursor 或另一台 XBot 用 MCP 操作這台 XBot，只在你給的權限內。</p></div><button type="button" onClick="{{openNew}}" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font: inherit; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; flex: none; white-space: nowrap; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>連接新的代理</button></div>
+<div style="background: #262626; border-radius: 14px; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px"><span style="width: 32px; height: 32px; flex: none; border-radius: 10px; background: #1084FE33; display: flex; align-items: center; justify-content: center"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#7FC0FF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 22v-5"></path><path d="M15 8V2"></path><path d="M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z"></path><path d="M9 8V2"></path></svg></span>
+<span style="flex: 1; min-width: 0"><span style="display: block; font-size: 14.5px; color: #FCFCFC; line-height: 1.45">XBot MCP</span><span style="display: block; font-size: 13px; color: #FCFCFC99; line-height: 1.5; margin-top: 2px">一個伺服器：tailnet、本機，可另開外部入口；工具名稱 <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #FCFCFC99; white-space: nowrap">xbot.領域.動作</span>，這一版是 <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #FCFCFC99; white-space: nowrap">xbot.v1</span></span></span>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; background: rgba(56,213,145,.14); color: #38D591; font-size: 12px; white-space: nowrap; flex: none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><circle cx="12" cy="12" r="10"></circle><path d="m16 9-5.5 5.5L8 12"></path></svg>運作中</span></div>
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 372px; gap: 16px; align-items: stretch">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px"><div style="display: flex; align-items: center; gap: 8px; white-space: nowrap"><span style="font-size: 14px">Streamable HTTP</span><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12px; white-space: nowrap; flex: none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M15.686 15A14.5 14.5 0 0 1 12 22a14.5 14.5 0 0 1 0-20 10 10 0 1 0 9.542 13"></path><path d="M2 12h8.5"></path><path d="M20 6V4a2 2 0 1 0-4 0v2"></path><rect width="8" height="5" x="14" y="6" rx="1"></rect></svg>tailnet 內</span><span style="font-size: 12.5px; color: #FCFCFC99; overflow: hidden; text-overflow: ellipsis">其他電腦上的代理</span></div><div style="display: flex; align-items: center; gap: 8px; height: 38px; box-sizing: border-box; padding: 0 4px 0 12px; border-radius: 10px; background: #191919; border: 1px solid #333333"><span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #FCFCFC; white-space: nowrap">https://xbot.tail4e2a.ts.net/mcp</span></span><button type="button" onClick="{{copyHttp}}" aria-label="複製 Streamable HTTP" style="height: 30px; padding: 0 10px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 12.5px; display: inline-flex; align-items: center; gap: 5px; flex: none; white-space: nowrap; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>{{cpHttp}}</button></div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div style="display: flex; align-items: center; gap: 8px; white-space: nowrap"><span style="font-size: 14px">stdio（這台電腦）</span><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; background: #2F2F2F; color: #FCFCFC99; font-size: 12px; white-space: nowrap; flex: none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z"></path><path d="M20.054 15.987H3.946"></path></svg>本機</span><span style="font-size: 12.5px; color: #FCFCFC99; overflow: hidden; text-overflow: ellipsis">裝在這台電腦的代理</span></div><div style="display: flex; align-items: center; gap: 8px; height: 38px; box-sizing: border-box; padding: 0 4px 0 12px; border-radius: 10px; background: #191919; border: 1px solid #333333"><span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #FCFCFC; white-space: nowrap">xbot mcp</span></span><button type="button" onClick="{{copyStdio}}" aria-label="複製 stdio（這台電腦）" style="height: 30px; padding: 0 10px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 12.5px; display: inline-flex; align-items: center; gap: 5px; flex: none; white-space: nowrap; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>{{cpStdio}}</button></div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div style="display: flex; align-items: center; gap: 8px; white-space: nowrap"><span style="font-size: 14px">外部入口</span><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; background: {{ext.pillBg}}; color: {{ext.pillFg}}; font-size: 12px; white-space: nowrap; flex: none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>{{ext.pill}}</span><span style="flex: 1; min-width: 0; font-size: 12.5px; color: #FCFCFC99; overflow: hidden; text-overflow: ellipsis">tailnet 外的代理</span><button type="button" role="switch" aria-checked="{{ext.aria}}" aria-label="開啟外部入口" onClick="{{ext.flip}}" style="width: 40px; height: 24px; flex: none; border: 0; border-radius: 999px; background: {{ext.trk}}; padding: 2px; box-sizing: border-box; display: flex; justify-content: {{ext.jc}}; align-items: center; cursor: pointer"><span style="width: 20px; height: 20px; border-radius: 999px; background: #FFFFFF"></span></button></div>
+<div style="display: flex; gap: 8px; opacity: {{ext.op}}; pointer-events: {{ext.pe}}"><div role="group" aria-label="外部入口方式" style="display: inline-flex; flex: none; gap: 2px; padding: 3px; height: 38px; box-sizing: border-box; border-radius: 10px; background: #191919; border: 1px solid #333333">
+<sc-for list="{{extTabs}}" as="t" hint-placeholder-count="2">
+<button type="button" aria-pressed="{{t.sel}}" onClick="{{t.pick}}" style="height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: {{t.bg}}; color: {{t.fg}}; font: inherit; font-size: 12.5px; white-space: nowrap; cursor: pointer">{{t.label}}</button>
+</sc-for>
+</div><label style="flex: 1; min-width: 0; display: flex; align-items: center; height: 38px; box-sizing: border-box; border: 1px solid #333333; border-radius: 10px; background: #191919; padding: 0 0 0 12px"><span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap">IP 白名單</span><input type="text" value="{{allow}}" placeholder="留空＝不限" aria-label="IP 白名單" style="flex: 1; min-width: 0; width: 40px; height: 36px; border: 0; background: transparent; color: #FCFCFC; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 0 10px 0 8px; outline: none"></label></div>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #FCFCFC99; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFB547" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path><path d="M16 7.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0"></path></svg>一律要權杖；速率上限比 tailnet 內嚴</span></div>
+</div>
+<div style="background: #191919; border-radius: 12px; display: flex; flex-direction: column; min-width: 0">
+<div style="display: flex; align-items: center; gap: 8px; padding: 8px 8px 0 12px"><span style="flex: 1; font-size: 12.5px; color: #FCFCFC99; white-space: nowrap">貼進 MCP 用戶端</span><div role="group" aria-label="設定檔格式" style="display: inline-flex; flex: none; gap: 2px; padding: 3px; border-radius: 9px; background: #262626">
+<sc-for list="{{snipTabs}}" as="t" hint-placeholder-count="2">
+<button type="button" aria-pressed="{{t.sel}}" onClick="{{t.pick}}" style="height: 24px; padding: 0 10px; border: 0; border-radius: 7px; background: {{t.bg}}; color: {{t.fg}}; font: inherit; font-size: 12.5px; cursor: pointer">{{t.label}}</button>
+</sc-for>
+</div><button type="button" onClick="{{copyJson}}" aria-label="複製設定" style="height: 30px; padding: 0 10px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 12.5px; display: inline-flex; align-items: center; gap: 5px; flex: none; white-space: nowrap; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>{{cpJson}}</button></div>
+<pre style="margin: 0; flex: 1; padding: 6px 12px 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.55; color: #FCFCFCdd; white-space: pre; overflow: hidden">{{snippet}}</pre>
+</div>
+</div>
+</div>
+<section style="display: flex; flex-direction: column; gap: 8px"><div style="display: flex; align-items: center; gap: 12px; min-height: 22px"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0; font-size: 15px; font-weight: 400; color: #FCFCFC">已連線的代理 · 3</h3></span><span style="font-size: 12.5px; color: #FCFCFC90">Bot 電腦裡的 Bot 也走同一個 MCP，身分就是那個 Bot</span></div><div style="background: #262626; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden"><div style="display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-top: 0; opacity: {{a0.op}}">
+<span style="width: 34px; height: 34px; flex: none; border-radius: 10px; background: #2F2F2F; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m7 11 2-2-2-2"></path><path d="M11 13h4"></path><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+<span style="display: flex; align-items: center; gap: 6px; min-width: 0"><span style="font-size: 14.5px; white-space: nowrap">Claude Code（工作筆電）</span>
+<sc-for list="{{a0.pills}}" as="p" hint-placeholder-count="2"><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 999px; background: #2F2F2F; color: #FCFCFCcc; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; flex: none">{{p}}</span></sc-for>
+<sc-if value="{{a0.dgOn}}" hint-placeholder-val="{{ true }}"><span title="代為核准" style="display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 7px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 11.5px; white-space: nowrap; flex: none"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>代為核准</span></sc-if>
+</span>
+<span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{a0.meta}}</span>
+</span>
+<sc-if value="{{a0.live}}" hint-placeholder-val="{{ true }}">
+<span style="width: 112px; flex: none; display: flex; flex-direction: column; gap: 5px" title="每日上限">
+<span style="font-size: 12px; color: #FCFCFC99; white-space: nowrap">今天 <span style="color: #FCFCFC">42</span> / 500 次</span>
+<span style="height: 5px; border-radius: 3px; background: #333333; display: flex; overflow: hidden"><span style="width: 8%; background: #1084FE"></span></span>
+</span>
+<button type="button" onClick="{{a0.edit}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; flex: none; white-space: nowrap; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></svg>權限</button>
+<button type="button" onClick="{{a0.revoke}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FF5667; font: inherit; font-size: 13px; flex: none; white-space: nowrap; cursor: pointer">撤銷</button>
+</sc-if>
+<sc-if value="{{a0.gone}}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap">已撤銷，權杖立即失效</span>
+<button type="button" onClick="{{a0.undo}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC; border: 1px solid #333333; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; flex: none; white-space: nowrap; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"></path></svg>復原</button>
+</sc-if>
+</div><div style="display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-top: 1px solid #333333; opacity: {{a1.op}}">
+<span style="width: 34px; height: 34px; flex: none; border-radius: 10px; background: #2F2F2F; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m18 16 4-4-4-4"></path><path d="m6 8-4 4 4 4"></path><path d="m14.5 4-5 16"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+<span style="display: flex; align-items: center; gap: 6px; min-width: 0"><span style="font-size: 14.5px; white-space: nowrap">Codex（CI）</span>
+<sc-for list="{{a1.pills}}" as="p" hint-placeholder-count="2"><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 999px; background: #2F2F2F; color: #FCFCFCcc; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; flex: none">{{p}}</span></sc-for>
+<sc-if value="{{a1.dgOn}}" hint-placeholder-val="{{ false }}"><span title="代為核准" style="display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 7px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 11.5px; white-space: nowrap; flex: none"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>代為核准</span></sc-if>
+</span>
+<span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{a1.meta}}</span>
+</span>
+<sc-if value="{{a1.live}}" hint-placeholder-val="{{ true }}">
+<span style="width: 112px; flex: none; display: flex; flex-direction: column; gap: 5px" title="每日上限">
+<span style="font-size: 12px; color: #FCFCFC99; white-space: nowrap">今天 <span style="color: #FCFCFC">118</span> / 300 次</span>
+<span style="height: 5px; border-radius: 3px; background: #333333; display: flex; overflow: hidden"><span style="width: 39%; background: #1084FE"></span></span>
+</span>
+<button type="button" onClick="{{a1.edit}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; flex: none; white-space: nowrap; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></svg>權限</button>
+<button type="button" onClick="{{a1.revoke}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FF5667; font: inherit; font-size: 13px; flex: none; white-space: nowrap; cursor: pointer">撤銷</button>
+</sc-if>
+<sc-if value="{{a1.gone}}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap">已撤銷，權杖立即失效</span>
+<button type="button" onClick="{{a1.undo}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC; border: 1px solid #333333; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; flex: none; white-space: nowrap; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"></path></svg>復原</button>
+</sc-if>
+</div><div style="display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-top: 1px solid #333333; opacity: {{a2.op}}">
+<span style="width: 34px; height: 34px; flex: none; border-radius: 10px; background: #2F2F2F; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"></rect><rect width="20" height="8" x="2" y="14" rx="2" ry="2"></rect><line x1="6" x2="6.01" y1="6" y2="6"></line><line x1="6" x2="6.01" y1="18" y2="18"></line></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+<span style="display: flex; align-items: center; gap: 6px; min-width: 0"><span style="font-size: 14.5px; white-space: nowrap">另一台 XBot（公司）</span>
+<sc-for list="{{a2.pills}}" as="p" hint-placeholder-count="2"><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 999px; background: #2F2F2F; color: #FCFCFCcc; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; flex: none">{{p}}</span></sc-for>
+<sc-if value="{{a2.dgOn}}" hint-placeholder-val="{{ false }}"><span title="代為核准" style="display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 7px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 11.5px; white-space: nowrap; flex: none"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>代為核准</span></sc-if>
+</span>
+<span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{a2.meta}}</span>
+</span>
+<sc-if value="{{a2.live}}" hint-placeholder-val="{{ true }}">
+<span style="width: 112px; flex: none; display: flex; flex-direction: column; gap: 5px" title="每日上限">
+<span style="font-size: 12px; color: #FCFCFC99; white-space: nowrap">今天 <span style="color: #FCFCFC">0</span> / 200 次</span>
+<span style="height: 5px; border-radius: 3px; background: #333333; display: flex; overflow: hidden"><span style="width: 2%; background: #1084FE"></span></span>
+</span>
+<button type="button" onClick="{{a2.edit}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; flex: none; white-space: nowrap; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></svg>權限</button>
+<button type="button" onClick="{{a2.revoke}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FF5667; font: inherit; font-size: 13px; flex: none; white-space: nowrap; cursor: pointer">撤銷</button>
+</sc-if>
+<sc-if value="{{a2.gone}}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap">已撤銷，權杖立即失效</span>
+<button type="button" onClick="{{a2.undo}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC; border: 1px solid #333333; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; flex: none; white-space: nowrap; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"></path></svg>復原</button>
+</sc-if>
+</div></div></section>
+<div style="display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-radius: 14px; background: rgba(255,152,0,.08); border: 1px solid rgba(255,152,0,.25)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFB547" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"></path><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"></path><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>
+<span style="flex: 1; min-width: 0; font-size: 13.5px; color: #FCFCFCdd; line-height: 1.5">需要核准的動作一律送到待我處理。只有你授權「代為核准」的代理能代你按，刪除、移除主機等永遠要你本人。</span>
+<a href="F08-Approvals.dc.html" style="font-size: 13px; white-space: nowrap; flex: none">待我處理 · 1 件</a>
+</div>
+<section style="display: flex; flex-direction: column; gap: 8px"><div style="display: flex; align-items: center; gap: 12px; min-height: 22px"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0; font-size: 15px; font-weight: 400; color: #FCFCFC">最近的呼叫</h3></span><span style="font-size: 12.5px; color: #FCFCFC99; display: inline-flex; align-items: center; gap: 6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>參數裡的密鑰一律遮蔽</span><a href="J08-People.dc.html" style="font-size: 13px; margin-left: 12px">全部紀錄</a></div><div style="background: #262626; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden"><div style="display: grid; grid-template-columns: 52px 168px minmax(0, 1fr) 150px; gap: 12px; align-items: center; height: 32px; padding: 0 16px; font-size: 12.5px; color: #FCFCFC99"><span>時間</span><span>代理</span><span>工具與對象</span><span>結果</span></div><div style="display: grid; grid-template-columns: 52px 168px minmax(0, 1fr) 150px; gap: 12px; align-items: center; height: 36px; padding: 0 16px; border-top: 1px solid #333333; font-size: 13px"><span style="color: #FCFCFC99; font-size: 12.5px">09:42</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Claude Code</span><span style="display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; overflow: hidden"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #7FC0FF; white-space: nowrap">xbot.bots.update</span><span style="font-size: 12.5px; color: #FCFCFC90; overflow: hidden; text-overflow: ellipsis">小秘 · 回覆長度改成精簡</span></span><span><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; background: rgba(56,213,145,.14); color: #38D591; font-size: 12px; white-space: nowrap; flex: none">完成</span></span></div><div style="display: grid; grid-template-columns: 52px 168px minmax(0, 1fr) 150px; gap: 12px; align-items: center; height: 36px; padding: 0 16px; border-top: 1px solid #333333; font-size: 13px"><span style="color: #FCFCFC99; font-size: 12.5px">09:41</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Claude Code</span><span style="display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; overflow: hidden"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #7FC0FF; white-space: nowrap">xbot.bots.delete</span><span style="font-size: 12.5px; color: #FCFCFC90; overflow: hidden; text-overflow: ellipsis">舊客服</span></span><span><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; background: rgba(255,152,0,.14); color: #FFB547; font-size: 12px; white-space: nowrap; flex: none">等你核准</span></span></div><div style="display: grid; grid-template-columns: 52px 168px minmax(0, 1fr) 150px; gap: 12px; align-items: center; height: 36px; padding: 0 16px; border-top: 1px solid #333333; font-size: 13px"><span style="color: #FCFCFC99; font-size: 12.5px">09:12</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Codex</span><span style="display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; overflow: hidden"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #7FC0FF; white-space: nowrap">xbot.settings.set</span><span style="font-size: 12.5px; color: #FCFCFC90; overflow: hidden; text-overflow: ellipsis">models.api_key = ••••</span></span><span><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; background: rgba(255,86,103,.14); color: #FF5667; font-size: 12px; white-space: nowrap; flex: none">被拒：權限不足</span></span></div></div></section>
+</main>
+</div>
+<sc-if value="{{dlgOpen}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 5">
+<section role="dialog" aria-label="{{dlgTitle}}" style="width: 1000px; box-sizing: border-box; background: #262626; border-radius: 18px; box-shadow: 0 12px 32px rgba(0,0,0,.5); padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; font-size: 14.5px">
+<div style="display: flex; align-items: flex-start; gap: 12px">
+<span style="flex: 1; min-width: 0"><h2 style="margin: 0; font-size: 17px; font-weight: 400">{{dlgTitle}}</h2><span style="display: block; font-size: 13px; color: #FCFCFC99; margin-top: 2px">{{dlgSub}}</span></span>
+<button type="button" onClick="{{close}}" aria-label="關閉" style="width: 32px; height: 32px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</div>
+<sc-if value="{{isNew}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-radius: 14px; background: #191919">
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 12.5px; color: #FCFCFC99">配對碼</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 26px; letter-spacing: 0.08em; color: #FCFCFC; line-height: 1.2">{{code}}</span>
+<span style="font-size: 12.5px; color: #FCFCFC99">在代理裡輸入，或執行 <span style="font-family: 'JetBrains Mono', monospace; color: #FCFCFCdd">xbot mcp pair {{code}}</span></span>
+</span>
+<span style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none">
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; background: rgba(255,152,0,.14); color: #FFB547; font-size: 12px; white-space: nowrap; flex: none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>4:52 後失效 · 只能用一次</span>
+<button type="button" onClick="{{copyCode}}" aria-label="複製配對碼" style="height: 30px; padding: 0 10px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 12.5px; display: inline-flex; align-items: center; gap: 5px; flex: none; white-space: nowrap; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>{{cpCode}}</button>
+</span>
+</div>
+</sc-if>
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 14px; min-width: 0">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14.5px">可以做什麼</span><span style="font-size: 12.5px; color: #FCFCFC99">可以疊加；之後隨時改</span></span>
+<div style="display: flex; flex-direction: column; background: #191919; border-radius: 12px; overflow: hidden">
+<sc-for list="{{scopes}}" as="s" hint-placeholder-count="4">
+<label style="position: relative; display: flex; align-items: center; gap: 12px; padding: 9px 14px; border-top: {{s.bt}}; cursor: pointer">
+<input type="checkbox" checked="{{s.checked}}" onChange="{{s.toggle}}" style="position: absolute; opacity: 0; width: 1px; height: 1px">
+<span style="width: 18px; height: 18px; flex: none; box-sizing: border-box; border-radius: 5px; background: {{s.boxBg}}; border: {{s.boxBd}}; display: flex; align-items: center; justify-content: center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="opacity: {{s.op}}"><path d="M20 6 9 17l-5-5"></path></svg></span>
+<span style="width: 72px; flex: none; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #FCFCFC">{{s.key}}</span>
+<span style="flex: 1; min-width: 0"><span style="display: block; font-size: 14px">{{s.name}}</span><span style="display: block; font-size: 12.5px; color: #FCFCFC99; line-height: 1.45">{{s.desc}}</span></span>
+</label>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; gap: 12px"><span style="flex: 1; font-size: 14.5px">可以碰哪些 Bot</span><div role="group" aria-label="資源範圍" style="display: inline-flex; flex: none; gap: 2px; padding: 3px; border-radius: 10px; background: #191919">
+<sc-for list="{{resTabs}}" as="r" hint-placeholder-count="2">
+<button type="button" aria-pressed="{{r.sel}}" onClick="{{r.pick}}" style="height: 30px; padding: 0 14px; border: 0; border-radius: 8px; background: {{r.bg}}; color: {{r.fg}}; font: inherit; font-size: 13.5px; white-space: nowrap; cursor: pointer">{{r.label}}</button>
+</sc-for>
+</div></div>
+<sc-if value="{{resSome}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-wrap: wrap; gap: 5px"><button type="button" aria-pressed="{{bc0.on}}" onClick="{{bc0.toggle}}" style="height: 32px; padding: 0 10px 0 4px; border-radius: 999px; background: {{bc0.bg}}; border: 1px solid {{bc0.bd}}; color: #FCFCFC; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; flex: none; cursor: pointer"><dc-import name="Avatar" color="blue" body="cursor" state="working" dot="auto" ring="#191919" size="22" hint-size="22px,22px"></dc-import>小秘</button><button type="button" aria-pressed="{{bc1.on}}" onClick="{{bc1.toggle}}" style="height: 32px; padding: 0 10px 0 4px; border-radius: 999px; background: {{bc1.bg}}; border: 1px solid {{bc1.bd}}; color: #FCFCFC; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; flex: none; cursor: pointer"><dc-import name="Avatar" color="orange" body="blob" state="working" dot="auto" ring="#191919" size="22" hint-size="22px,22px"></dc-import>阿哲</button><button type="button" aria-pressed="{{bc2.on}}" onClick="{{bc2.toggle}}" style="height: 32px; padding: 0 10px 0 4px; border-radius: 999px; background: {{bc2.bg}}; border: 1px solid {{bc2.bd}}; color: #FCFCFC; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; flex: none; cursor: pointer"><dc-import name="Avatar" color="pink" body="circle" state="notifying" dot="auto" ring="#191919" size="22" hint-size="22px,22px"></dc-import>小編</button><button type="button" aria-pressed="{{bc3.on}}" onClick="{{bc3.toggle}}" style="height: 32px; padding: 0 10px 0 4px; border-radius: 999px; background: {{bc3.bg}}; border: 1px solid {{bc3.bd}}; color: #FCFCFC; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; flex: none; cursor: pointer"><dc-import name="Avatar" color="green" body="squircle" state="idle" dot="auto" ring="#191919" size="22" hint-size="22px,22px"></dc-import>阿凱</button><button type="button" aria-pressed="{{bc4.on}}" onClick="{{bc4.toggle}}" style="height: 32px; padding: 0 10px 0 4px; border-radius: 999px; background: {{bc4.bg}}; border: 1px solid {{bc4.bd}}; color: #FCFCFC; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; flex: none; cursor: pointer"><dc-import name="Avatar" color="yellow" body="hexagon" state="notifying" dot="auto" ring="#191919" size="22" hint-size="22px,22px"></dc-import>帳房</button><button type="button" aria-pressed="{{bc5.on}}" onClick="{{bc5.toggle}}" style="height: 32px; padding: 0 10px 0 4px; border-radius: 999px; background: {{bc5.bg}}; border: 1px solid {{bc5.bd}}; color: #FCFCFC; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; flex: none; cursor: pointer"><dc-import name="Avatar" color="purple" body="diamond" state="idle" dot="queued" ring="#191919" size="22" hint-size="22px,22px"></dc-import>數據喵</button></div>
+</sc-if>
+<span style="font-size: 12.5px; color: #FCFCFC99">它自己建立的 Bot 一定可以碰；團隊和主機照同樣的範圍</span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="flex: 1; font-size: 14.5px">每日上限</span>
+<label style="display: flex; align-items: center; height: 40px; box-sizing: border-box; border: 1px solid #333333; border-radius: 10px; background: #191919; padding: 0 12px 0 0"><input type="text" value="{{limCalls}}" aria-label="每日呼叫上限" style="width: 52px; height: 38px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 14px; padding: 0 4px 0 12px; outline: none"><span style="font-size: 13px; color: #FCFCFC99; white-space: nowrap">次呼叫</span></label>
+<label style="display: flex; align-items: center; height: 40px; box-sizing: border-box; border: 1px solid #333333; border-radius: 10px; background: #191919; padding: 0 12px 0 0"><span style="font-size: 13px; color: #FCFCFC99; padding-left: 12px">NT$</span><input type="text" value="{{limNt}}" aria-label="每日花費上限" style="width: 52px; height: 38px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 14px; padding: 0 4px 0 4px; outline: none"><span style="font-size: 13px; color: #FCFCFC99; white-space: nowrap">／天</span></label>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px; min-width: 0; padding-left: 24px; border-left: 1px solid #333333">
+<div style="display: flex; align-items: center; gap: 12px"><span style="flex: 1; min-width: 0"><span style="display: block; font-size: 14.5px">代為核准</span><span style="display: block; font-size: 12.5px; color: #FCFCFC99; line-height: 1.45">讓它代你按「允許」，預設關閉</span></span><button type="button" role="switch" aria-checked="{{dg.aria}}" aria-label="允許代為核准" onClick="{{dg.flip}}" style="width: 40px; height: 24px; flex: none; border: 0; border-radius: 999px; background: {{dg.trk}}; padding: 2px; box-sizing: border-box; display: flex; justify-content: {{dg.jc}}; align-items: center; cursor: pointer"><span style="width: 20px; height: 20px; border-radius: 999px; background: #FFFFFF"></span></button></div>
+<div style="display: flex; flex-direction: column; gap: 12px; opacity: {{dg.op}}; pointer-events: {{dg.pe}}">
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13px; color: #FCFCFC99">哪些類別</span>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px">
+<sc-for list="{{dgCats}}" as="c" hint-placeholder-count="4">
+<label style="position: relative; display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: 10px; background: #191919; cursor: pointer">
+<input type="checkbox" checked="{{c.checked}}" onChange="{{c.toggle}}" style="position: absolute; opacity: 0; width: 1px; height: 1px">
+<span style="width: 18px; height: 18px; flex: none; box-sizing: border-box; border-radius: 5px; background: {{c.boxBg}}; border: {{c.boxBd}}; display: flex; align-items: center; justify-content: center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="opacity: {{c.op}}"><path d="M20 6 9 17l-5-5"></path></svg></span>
+<span style="font-size: 13.5px; white-space: nowrap">{{c.name}}</span>
+</label>
+</sc-for>
+</div></div>
+<div style="display: flex; align-items: center; gap: 8px"><span style="flex: 1; font-size: 13px; color: #FCFCFC99">每日上限</span><label style="display: flex; align-items: center; height: 36px; box-sizing: border-box; border: 1px solid #333333; border-radius: 10px; background: #191919; padding: 0 12px 0 0"><input type="text" value="{{dgN}}" aria-label="每日代為核准次數" style="width: 36px; height: 34px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 14px; padding: 0 4px 0 12px; outline: none"><span style="font-size: 13px; color: #FCFCFC99; white-space: nowrap">次</span></label><label style="display: flex; align-items: center; height: 36px; box-sizing: border-box; border: 1px solid #333333; border-radius: 10px; background: #191919; padding: 0 12px 0 0"><span style="font-size: 13px; color: #FCFCFC99; padding-left: 12px">NT$</span><input type="text" value="{{dgNt}}" aria-label="每日代為核准金額" style="width: 44px; height: 34px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 14px; padding: 0 4px; outline: none"><span style="font-size: 13px; color: #FCFCFC99; white-space: nowrap">／天</span></label></div>
+<div style="display: flex; align-items: center; gap: 8px"><span style="flex: 1; font-size: 13px; color: #FCFCFC99">有效期限</span><span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap">到 {{dgUntil}}</span><div role="group" aria-label="有效期限" style="display: inline-flex; flex: none; gap: 2px; padding: 3px; border-radius: 10px; background: #191919">
+<sc-for list="{{expTabs}}" as="e" hint-placeholder-count="3">
+<button type="button" aria-pressed="{{e.sel}}" onClick="{{e.pick}}" style="height: 28px; padding: 0 12px; border: 0; border-radius: 8px; background: {{e.bg}}; color: {{e.fg}}; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer">{{e.label}}</button>
+</sc-for>
+</div></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 12px; background: rgba(255,86,103,.06); border: 1px solid rgba(255,86,103,.22)">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 13.5px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FF5667" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>永遠要你本人核准</span>
+<span style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; font-size: 12.5px; color: #FCFCFCcc; line-height: 1.5"><span>· 刪除 Bot 或資料</span><span>· 移除主機</span><span>· 提高花費上限</span><span>· 改代為核准授權</span></span>
+</div>
+<span style="display: flex; align-items: flex-start; gap: 6px; font-size: 12.5px; color: #FCFCFC99; line-height: 1.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 3px"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"></path></svg>每次代為核准都在待我處理留一張紀錄，可復原的 10 分鐘內能復原</span>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid #333333">
+<sc-if value="{{isNew}}" hint-placeholder-val="{{ true }}">
+<span style="flex: 1; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #FCFCFC99"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7FC0FF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>等代理輸入配對碼，連上就會出現在清單</span>
+<button type="button" onClick="{{regen}}" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>重新產生</button>
+<button type="button" onClick="{{close}}" style="height: 36px; padding: 0 16px; border: 1px solid #333333; border-radius: 999px; background: transparent; color: #FCFCFC; font: inherit; font-size: 14px; cursor: pointer">取消</button>
+</sc-if>
+<sc-if value="{{isEdit}}" hint-placeholder-val="{{ false }}">
+<span style="flex: 1; font-size: 12.5px; color: #FCFCFC90">變更會自動儲存，下一次呼叫就生效</span>
+<button type="button" onClick="{{close}}" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font: inherit; font-size: 14px; cursor: pointer">完成</button>
+</sc-if>
+</div>
+</section>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 1100, "height": 1000}, "pairing": {"editor": "boolean", "default": false}, "external": {"editor": "boolean", "default": false}}'>
+class Component extends DCLogic {
+renderVals() {
+
+const st = this.state || {};
+const dlg = st.dlg === undefined ? (this.props.pairing ? 'new' : '') : st.dlg;
+const copied = st.copied || '';
+const mk = (k, base) => copied === k ? '已複製' : base;
+const cp = (k) => () => this.setState({ copied: k });
+const snip = st.snip || 'http';
+const SNIP = {
+  http: '{ "mcpServers": { "xbot": {\n    "type": "http",\n    "url": "https://xbot.tail4e2a.ts.net/mcp"\n} } }',
+  stdio: '{\n  "mcpServers": {\n    "xbot": {\n      "command": "xbot",\n      "args": ["mcp"]\n    }\n  }\n}'
+};
+const snipTabs = [['http', 'HTTP'], ['stdio', 'stdio']].map(([k, label]) => ({ label, sel: snip === k ? 'true' : 'false', bg: snip === k ? '#3D3D3D' : 'transparent', fg: snip === k ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ snip: k }) }));
+const DG_OFF = { on: false, cats: ['send'], exp: '7' };
+const AG = [
+  { name: 'Claude Code（工作筆電）', sc: ['operate', 'manage'], res: 'some', bots: [0, 1, 2], dg: { on: true, cats: ['send'], exp: '7' }, meta: '最近 3 分鐘前 · 今天 42 次呼叫' },
+  { name: 'Codex（CI）', sc: ['read', 'operate'], res: 'all', bots: [], dg: DG_OFF, meta: '最近 1 小時前 · 今天 118 次呼叫' },
+  { name: '另一台 XBot（公司）', sc: ['read'], res: 'all', bots: [], dg: DG_OFF, meta: '最近昨天 22:10 · 今天沒有呼叫' }
+];
+const ext = st.ext === undefined ? !!this.props.external : st.ext;
+const via = st.via || 'funnel';
+const extTabs = [['funnel', 'Funnel'], ['proxy', '反向代理']].map(([k, label]) => ({ label, sel: via === k ? 'true' : 'false', bg: via === k ? '#3D3D3D' : 'transparent', fg: via === k ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ via: k }) }));
+const BN = ['小秘', '阿哲', '小編', '阿凱', '帳房', '數據喵'];
+const ORDER = ['read', 'operate', 'manage', 'admin'];
+const ov = st.ov || {};
+const revoked = st.revoked || {};
+const cur = (i) => Object.assign({}, AG[i], ov[i] || {});
+const resText = (a) => a.res === 'all' ? '全部 Bot' : '只有這些 Bot：' + a.bots.map((b) => BN[b]).join('、');
+const out = {};
+AG.forEach((_, i) => {
+  const a = cur(i);
+  const gone = !!revoked[i];
+  out['a' + i] = {
+    pills: ORDER.filter((k) => a.sc.indexOf(k) >= 0),
+    meta: resText(a) + ' · ' + a.meta,
+    live: !gone, gone, op: gone ? 0.55 : 1, dgOn: !!a.dg.on,
+    edit: () => this.setState({ dlg: 'edit', idx: i, draft: { sc: a.sc.slice(), res: a.res, bots: a.bots.slice(), dg: Object.assign({}, a.dg) } }),
+    revoke: () => this.setState({ revoked: Object.assign({}, revoked, { [i]: true }) }),
+    undo: () => this.setState({ revoked: Object.assign({}, revoked, { [i]: false }) })
+  };
+});
+const NEWDRAFT = { sc: ['read', 'operate'], res: 'some', bots: [0], dg: DG_OFF };
+const draft = st.draft || NEWDRAFT;
+const setDraft = (d) => {
+  const nd = Object.assign({}, draft, d);
+  const patch = { draft: nd };
+  if (dlg === 'edit') patch.ov = Object.assign({}, ov, { [st.idx]: { sc: nd.sc, res: nd.res, bots: nd.bots, dg: nd.dg } });
+  this.setState(patch);
+};
+const SC = [
+  ['read', '看', '看 Bot、對話、進度、用量與紀錄'],
+  ['operate', '交辦', '交辦工作、開對話串、定時任務、檔案'],
+  ['manage', '管理', '建立／修改 Bot、團隊、群組、技能、記憶'],
+  ['admin', '系統', '主機、連接應用程式、模型金鑰、成員']
+];
+const scopes = SC.map(([key, name, desc], j) => {
+  const on = draft.sc.indexOf(key) >= 0;
+  return {
+    key, name, desc, checked: on, bt: j === 0 ? '0' : '1px solid #2F2F2F',
+    boxBg: on ? '#1084FE' : 'transparent', boxBd: on ? '0' : '1.5px solid #5A5A5A', op: on ? 1 : 0,
+    toggle: () => setDraft({ sc: on ? draft.sc.filter((k) => k !== key) : draft.sc.concat([key]) })
+  };
+});
+const resTabs = [['all', '全部 Bot'], ['some', '只有這些 Bot']].map(([k, label]) => ({ label, sel: draft.res === k ? 'true' : 'false', bg: draft.res === k ? '#2F2F2F' : 'transparent', fg: draft.res === k ? '#FCFCFC' : '#FCFCFC99', pick: () => setDraft({ res: k }) }));
+BN.forEach((_, i) => {
+  const on = draft.bots.indexOf(i) >= 0;
+  out['bc' + i] = { on: on ? 'true' : 'false', bg: on ? 'rgba(16,132,254,.2)' : '#191919', bd: on ? '#1084FE' : '#333333', toggle: () => setDraft({ bots: on ? draft.bots.filter((b) => b !== i) : draft.bots.concat([i]) }) };
+});
+const dg = draft.dg || DG_OFF;
+const setDg = (d) => setDraft({ dg: Object.assign({}, dg, d) });
+const dgCats = [['send', '對外發送'], ['spend', '小額花費'], ['list', '上架'], ['sign', '簽約']].map(([k, name]) => {
+  const on = dg.cats.indexOf(k) >= 0;
+  return { name, checked: on, boxBg: on ? '#1084FE' : 'transparent', boxBd: on ? '0' : '1.5px solid #5A5A5A', op: on ? 1 : 0, toggle: () => setDg({ cats: on ? dg.cats.filter((c) => c !== k) : dg.cats.concat([k]) }) };
+});
+const expTabs = [['1', '1 天'], ['7', '7 天'], ['30', '30 天']].map(([k, label]) => ({ label, sel: dg.exp === k ? 'true' : 'false', bg: dg.exp === k ? '#2F2F2F' : 'transparent', fg: dg.exp === k ? '#FCFCFC' : '#FCFCFC99', pick: () => setDg({ exp: k }) }));
+const sw = (on) => ({ aria: on ? 'true' : 'false', trk: on ? '#1084FE' : '#3D3D3D', jc: on ? 'flex-end' : 'flex-start', op: on ? 1 : 0.4, pe: on ? 'auto' : 'none' });
+const codes = ['XB7-K4P-92Q', 'M3T-8WQ-D5R', 'H9C-2LV-7NE'];
+const code = codes[(st.gen || 0) % codes.length];
+return Object.assign(out, {
+  cpHttp: mk('http', '複製'), copyHttp: cp('http'),
+  cpStdio: mk('stdio', '複製'), copyStdio: cp('stdio'),
+  cpJson: mk('json', '複製'), copyJson: cp('json'),
+  cpCode: mk('code', '複製'), copyCode: cp('code'),
+  snippet: SNIP[snip], snipTabs,
+  openNew: () => this.setState({ dlg: 'new', draft: NEWDRAFT, gen: (st.gen || 0) + 1 }),
+  close: () => this.setState({ dlg: '' }),
+  regen: () => this.setState({ gen: (st.gen || 0) + 1, copied: '' }),
+  dlgOpen: dlg !== '', isNew: dlg === 'new', isEdit: dlg === 'edit',
+  dlgTitle: dlg === 'edit' ? AG[st.idx].name + ' 的權限' : '連接新的代理',
+  dlgSub: dlg === 'edit' ? '改了下一次呼叫就生效；要讓它停用請按撤銷' : '配對碼 5 分鐘內有效、只能用一次；換到的權杖可以隨時撤銷',
+  limCalls: dlg === 'edit' ? ['500', '300', '200'][st.idx] : '500', limNt: dlg === 'edit' ? ['50', '30', '20'][st.idx] : '50',
+  code, scopes, resTabs, resSome: draft.res === 'some',
+  dg: Object.assign(sw(!!dg.on), { flip: () => setDg({ on: !dg.on }) }),
+  dgCats, expTabs, dgN: '5', dgNt: '500', dgUntil: { '1': '10/19', '7': '10/25', '30': '11/17' }[dg.exp],
+  ext: Object.assign(sw(ext), { flip: () => this.setState({ ext: !ext }), pill: ext ? '對外開放' : '關閉', pillBg: ext ? 'rgba(255,152,0,.14)' : '#2F2F2F', pillFg: ext ? '#FFB547' : '#FCFCFC99' }),
+  extTabs, allow: ext ? '203.0.113.0/24' : ''
+});
+
+}
+}
+</script>
+</body>
+</html>

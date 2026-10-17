@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>分享團隊</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3,h4,p{font-weight:400;margin:0}
+button,input,textarea{font:inherit;color:inherit}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+input::placeholder,textarea::placeholder{color:#FCFCFC90}
+</style>
+</helmet>
+<div role="dialog" aria-label="分享營運部" style="width: 760px; height: 884px; box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; display: flex; flex-direction: column; overflow: hidden">
+<div style="display: flex; align-items: flex-start; gap: 12px; padding: 20px 16px 0 24px">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding-top: 4px">
+<h2 style="font-size: 20px; line-height: 1.3">分享「營運部」</h2>
+<p style="font-size: 13.5px; color: #FCFCFC99; line-height: 1.55">存成一個 .xbot.json 檔。對方匯入後會得到一樣的團隊，在他自己的電腦上開始工作。</p>
+</div>
+
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</div>
+<sc-if value="{{editing}}" hint-placeholder-val="{{ true }}">
+<div style="flex: 1; padding: 16px 24px 0; display: flex; flex-direction: column; gap: 14px">
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 12px">
+<label style="grid-column: span 3; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13.5px; color: #FCFCFC99">名稱</span><input type="text" value="電商營運小隊" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14.5px; outline: none; min-width: 0"></label>
+<label style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13.5px; color: #FCFCFC99">版本</span><input type="text" value="1.2.0" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14.5px; outline: none; min-width: 0"></label>
+<label style="grid-column: span 4; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13.5px; color: #FCFCFC99">一句話介紹</span><input type="text" value="幕僚長帶選品、社群、業務，一起經營蝦皮賣場。" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14.5px; outline: none; min-width: 0"></label>
+<label style="grid-column: span 4; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13.5px; color: #FCFCFC99">這一版改了什麼</span><input type="text" value="加入 momo 比價技能；開發信改成先存草稿" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14.5px; outline: none; min-width: 0"></label>
+</div>
+
+<div style="display: flex; align-items: baseline; gap: 8px; margin-top: 2px"><h3 style="font-size: 15px">檔案裡有什麼</h3><span style="font-size: 13px; color: #FCFCFC90">可關掉的項目右邊有開關</span></div>
+<ul style="margin: 0; padding: 0; list-style: none; background: #191919; border-radius: 14px; overflow: hidden">
+<sc-for list="{{items}}" as="it" hint-placeholder-count="8">
+<li style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 14px; border-top: {{it.line}}">
+<span style="display: inline-flex; color: #FCFCFC99"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><sc-for list="{{it.icon}}" as="d" hint-placeholder-count="2"><path d="{{d}}"></path></sc-for></svg></span>
+<span style="font-size: 14.5px; color: {{it.fg}}">{{it.label}}</span>
+<span style="flex: 1; min-width: 0; font-size: 13px; color: #FCFCFC90; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{it.note}}</span>
+<span style="font-size: 14px; color: {{it.fg}}">{{it.count}}</span>
+<sc-if value="{{it.toggle}}" hint-placeholder-val="{{ false }}">
+<button type="button" role="switch" aria-checked="{{it.on}}" aria-label="包含{{it.label}}" onClick="{{it.flip}}" style="width: 40px; height: 24px; flex: none; border: 0; border-radius: 999px; background: {{it.trk}}; padding: 0; position: relative; cursor: pointer"><span style="position: absolute; top: 3px; left: {{it.knob}}; width: 18px; height: 18px; border-radius: 999px; background: #FFFFFF"></span></button>
+</sc-if>
+<sc-if value="{{it.fixed}}" hint-placeholder-val="{{ true }}"><span style="width: 40px; flex: none"></span></sc-if>
+</li>
+</sc-for>
+</ul>
+
+<div style="background: #191919; border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2Z"></path><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><h3 style="font-size: 15px">一定不會放進檔案</h3></div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span style="height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #333333; font-size: 13px; color: #FCFCFCcc; display: inline-flex; align-items: center">API 金鑰與登入憑證</span>
+<span style="height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #333333; font-size: 13px; color: #FCFCFCcc; display: inline-flex; align-items: center">網站登入（cookies）</span>
+<span style="height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #333333; font-size: 13px; color: #FCFCFCcc; display: inline-flex; align-items: center">對話紀錄</span>
+<span style="height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #333333; font-size: 13px; color: #FCFCFCcc; display: inline-flex; align-items: center">記憶</span>
+<span style="height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #333333; font-size: 13px; color: #FCFCFCcc; display: inline-flex; align-items: center">電腦裡的檔案</span>
+<span style="height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #333333; font-size: 13px; color: #FCFCFCcc; display: inline-flex; align-items: center">用量與花費紀錄</span>
+</div>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 20px 24px">
+<span style="flex: 1; font-size: 13px; color: #FCFCFC90">約 {{size}} · 對方匯入前會先看到確認畫面</span>
+<button type="button" style="height: 36px; padding: 0 16px; border: 1px solid #333333; border-radius: 999px; background: transparent; color: #FCFCFC; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none">取消</button>
+<button type="button" onClick="{{save}}" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 15V3"></path><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="m7 10 5 5 5-5"></path></svg>存成檔案</button>
+</div>
+</sc-if>
+
+<sc-if value="{{done}}" hint-placeholder-val="{{ false }}">
+<div style="flex: 1; padding: 24px; display: flex; flex-direction: column; justify-content: center; gap: 20px">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center">
+<span style="width: 56px; height: 56px; border-radius: 999px; background: rgba(56,213,145,.16); display: flex; align-items: center; justify-content: center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></span>
+<h3 style="font-size: 18px">已存成檔案</h3>
+<p style="font-size: 14px; color: #FCFCFC99">把這個檔案傳給對方；他在範本庫按「匯入」就能加入整個團隊。</p>
+</div>
+<div style="display: flex; align-items: center; gap: 14px; background: #191919; border-radius: 14px; padding: 14px 16px">
+<span style="width: 44px; height: 44px; border-radius: 10px; background: #262626; display: flex; align-items: center; justify-content: center; color: #7FC0FF"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"></path><path d="M14 2v5a1 1 0 0 0 1 1h5"></path><path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1"></path><path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1"></path></svg></span>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 15px">電商營運小隊-1.2.0.xbot.json</span>
+<span style="font-size: 13px; color: #FCFCFC99">{{size}} · 4 個 Bot · {{summary}} · 存在「下載」資料夾</span>
+</div>
+<button type="button" style="height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; text-decoration: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"></path></svg>在資料夾中顯示</button>
+</div>
+<div style="background: #191919; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<h4 style="font-size: 15px">對方匯入時</h4>
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: #FCFCFCcc">
+<li style="display: flex; gap: 10px"><span style="width: 20px; height: 20px; flex: none; border-radius: 5px; background: #333333; color: #FCFCFC99; font-size: 12px; display: flex; align-items: center; justify-content: center">1</span>在範本庫按「匯入」，選這個檔案</li>
+<li style="display: flex; gap: 10px"><span style="width: 20px; height: 20px; flex: none; border-radius: 5px; background: #333333; color: #FCFCFC99; font-size: 12px; display: flex; align-items: center; justify-content: center">2</span>先看到確認畫面：成員、共同指示、要補的登入</li>
+<li style="display: flex; gap: 10px"><span style="width: 20px; height: 20px; flex: none; border-radius: 5px; background: #333333; color: #FCFCFC99; font-size: 12px; display: flex; align-items: center; justify-content: center">3</span>加入後技能先關閉、定時任務先暫停，由對方決定何時開始</li>
+</ol>
+<a href="F10-ImportReview.dc.html" style="font-size: 14px">看看對方會看到的確認畫面</a>
+</div>
+<div style="display: flex; gap: 8px; justify-content: flex-end">
+<button type="button" onClick="{{back}}" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none">再改一下</button>
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none">完成</button>
+</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 760, "height": 884}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const inc = Object.assign({ skills: true, avatars: true, notes: true }, s.inc || {});
+    const I = {"users": ["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2", "M16 3.128a4 4 0 0 1 0 7.744", "M22 21v-2a4 4 0 0 0-3-3.87", "M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"], "sparkles": ["M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z", "M20 2v4", "M22 4h-4", "M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"], "msg": ["M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"], "cal": ["M8 2v3", "M16 2v3", "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z", "M3 9h18"], "file": ["M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z", "M14 2v5a1 1 0 0 0 1 1h5", "M10 9H8", "M16 13H8", "M16 17H8"], "plug": ["M12 22v-5", "M15 8V2", "M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z", "M9 8V2"], "image": ["M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z", "M7 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0", "m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"], "book": ["M12 5v16", "M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"]};
+    const ROWS = [
+      ['bots', 'Bot', '含人設、職稱、權限等級、模型', '4', I.users, null],
+      ['skills', '技能', '匯入後先關閉，由對方逐一開啟', '11', I.sparkles, 'skills'],
+      ['room', '群組對話', '「新品上架專案」的成員與規則，不含對話內容', '1', I.msg, null],
+      ['routines', '定時任務', '匯入後先暫停', '3', I.cal, null],
+      ['rules', '共同指示', '團隊每個 Bot 都遵守的規則', '1', I.file, null],
+      ['apps', '連接應用程式', '只有名稱，登入要對方自己完成', '2', I.plug, null],
+      ['avatars', '頭像', '', '4', I.image, 'avatars'],
+      ['notes', '起手筆記', '放在幕僚長的第一則訊息', '1', I.book, 'notes']
+    ];
+    const items = ROWS.map(([id, label, note, count, icon, key], i) => {
+      const on = key ? inc[key] : true;
+      return { label, note, count: on ? count : '不含', icon, line: i ? '1px solid #262626' : '0', fg: on ? '#FCFCFC' : '#FCFCFC90',
+        toggle: !!key, fixed: !key, on: on ? 'true' : 'false', trk: on ? '#1084FE' : '#3D3D3D', knob: on ? '19px' : '3px',
+        flip: () => this.setState({ inc: Object.assign({}, inc, { [key]: !inc[key] }) }) };
+    });
+    const kb = 12 + (inc.skills ? 22 : 0) + (inc.avatars ? 10 : 0) + (inc.notes ? 4 : 0);
+    const parts = []; if (inc.skills) parts.push('11 個技能'); if (inc.avatars) parts.push('頭像'); if (inc.notes) parts.push('起手筆記');
+    return { items, editing: !s.done, done: !!s.done, size: kb + ' KB', summary: parts.join('、') || '不含技能',
+      save: () => this.setState({ done: true }), back: () => this.setState({ done: false }) };
+  }
+}
+</script>
+</body>
+</html>

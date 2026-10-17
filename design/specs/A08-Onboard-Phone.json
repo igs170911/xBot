@@ -1,0 +1,43 @@
+{
+ "file": "A08-Onboard-Phone.dc.html",
+ "title": "連手機（一個 Tailscale QR）",
+ "prd": [
+  "§6.14 MB",
+  "§17",
+  "§21"
+ ],
+ "what": "手機裝 Tailscale 登入同一帳號後，用相機掃一個 QR 就開啟正式憑證的 https 網址並登入；沒有 Tailscale 才切到區網兩步（裝憑證＋掃登入 QR）。",
+ "goal": "用一個 QR 讓手機連上 XBot。",
+ "accept": [
+  "主畫面只有一個 QR、兩步說明與可複製的 https://xbot.<tailnet>.ts.net 網址",
+  "顯示「等手機掃描 · 5 分鐘內有效、只能用一次」",
+  "連上後 QR 蓋上綠勾，顯示裝置名稱與「會記住 30 天」，完成按鈕變主要",
+  "底部「沒有 Tailscale？改用區網（兩步）」切換到兩個 QR",
+  "區網第二個 QR 標明含登入碼",
+  "右上角有「簡化：6 步 → 2 步」標籤"
+ ],
+ "states": [
+  "等手機掃描",
+  "已連上",
+  "區網兩步",
+  "QR 過期"
+ ],
+ "edge": [
+  "手機沒登入同一個 Tailscale 帳號：掃了打不開，提示檢查帳號",
+  "QR 過期：自動換新",
+  "Tailscale 沒開 MagicDNS／HTTPS：直接顯示區網兩步"
+ ],
+ "limits": [
+  "配對碼 5 分鐘、只能用一次",
+  "登入後記住 30 天（最多續到 180 天）",
+  "主機只綁 127.0.0.1，經 tailscale serve 提供 HTTPS 443",
+  "區網：CA 有效 3650 天、HTTPS 埠 8791"
+ ],
+ "simplified": {
+  "flow": "連手機",
+  "before": "2 個 QR＋裝憑證",
+  "after": "1 個 QR",
+  "how": "用 Tailscale 的正式憑證網址，掃一次就登入；沒有 Tailscale 才走舊的兩步"
+ },
+ "status": "簡化過"
+}

@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>設定：快判模型</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=Noto+Sans+TC:wght@400;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+input::placeholder{color:#FCFCFC90}
+input:focus{outline:none;border-color:#459FFE}
+main > *{flex-shrink:0}
+</style>
+</helmet>
+<div role="dialog" aria-label="設定" style="width: 1100px; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; border-radius: 18px; background: #111111; border: 1px solid #262626; overflow: hidden; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; color: #FCFCFC; font-size: 14.5px; line-height: 1.5">
+<header style="height: 64px; flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 0 14px 0 22px; border-bottom: 1px solid #262626">
+<h1 style="margin: 0; font-size: 17px; font-weight: 400; flex: 1">設定</h1>
+
+<button type="button" aria-label="關閉設定" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</header>
+<div style="flex: 1; min-height: 0; display: flex">
+<nav aria-label="設定分類" style="width: 220px; flex: none; box-sizing: border-box; padding: 12px; border-right: 1px solid #262626; display: flex; flex-direction: column; gap: 2px"><a href="J01-General.dc.html" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; background: transparent; color: #FCFCFCcc; text-decoration: none; font-size: 14.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M14 17H5"></path><path d="M19 7h-9"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg>一般</a><a href="J02-Models.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; background: #2F2F2F; color: #FCFCFC; text-decoration: none; font-size: 14.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path><path d="M9 13a4.5 4.5 0 0 0 3-4"></path><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"></path><path d="M3.477 10.896a4 4 0 0 1 .585-.396"></path><path d="M6 18a4 4 0 0 1-1.967-.516"></path><path d="M12 13h4"></path><path d="M12 18h6a2 2 0 0 1 2 2v1"></path><path d="M12 8h8"></path><path d="M16 8V5a2 2 0 0 1 2-2"></path><circle cx="16" cy="13" r=".5"></circle><circle cx="18" cy="3" r=".5"></circle><circle cx="20" cy="21" r=".5"></circle><circle cx="20" cy="8" r=".5"></circle></svg>AI 模型</a><a href="J06-Computers.dc.html" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; background: transparent; color: #FCFCFCcc; text-decoration: none; font-size: 14.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><rect width="20" height="14" x="2" y="3" rx="2"></rect><line x1="8" x2="16" y1="21" y2="21"></line><line x1="12" x2="12" y1="17" y2="21"></line></svg>電腦與裝置</a><a href="J04-Usage.dc.html" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; background: transparent; color: #FCFCFCcc; text-decoration: none; font-size: 14.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg>用量與花費</a><a href="J07-Backup.dc.html" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; background: transparent; color: #FCFCFCcc; text-decoration: none; font-size: 14.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 5H3"></path><path d="M12 19H3"></path><path d="M14 3v4"></path><path d="M16 17v4"></path><path d="M21 12h-9"></path><path d="M21 19h-5"></path><path d="M21 5h-7"></path><path d="M8 10v4"></path><path d="M8 12H3"></path></svg>進階</a><a href="J07-Backup.dc.html" style="display: flex; align-items: center; height: 32px; padding: 0 10px 0 38px; border-radius: 10px; background: transparent; color: #FCFCFC99; text-decoration: none; font-size: 13.5px">備份與更新</a><a href="J08-People.dc.html" style="display: flex; align-items: center; height: 32px; padding: 0 10px 0 38px; border-radius: 10px; background: transparent; color: #FCFCFC99; text-decoration: none; font-size: 13.5px">成員與紀錄</a><a href="J09-SkillsLab.dc.html" style="display: flex; align-items: center; height: 32px; padding: 0 10px 0 38px; border-radius: 10px; background: transparent; color: #FCFCFC99; text-decoration: none; font-size: 13.5px">技能庫與實驗</a><span style="margin-top: auto; padding: 0 10px; font-size: 12px; color: #FCFCFC90">XBot 0.3.2 · 變更會自動儲存</span></nav>
+<main data-fit="content" style="flex: 1; min-width: 0; overflow-y: auto; box-sizing: border-box; padding: 22px 28px 24px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: flex-start; gap: 16px"><div style="flex: 1; min-width: 0"><h2 style="margin: 0; font-size: 18px; font-weight: 400; color: #FCFCFC">AI 模型</h2><p style="margin: 2px 0 0; font-size: 13.5px; color: #FCFCFC99; line-height: 1.5">快判先用 OpenCode 的 Jev 做選擇題，只判斷、給建議；永遠不能自己刪除、花錢、對外發送或核准。</p></div></div>
+<nav aria-label="AI 模型分頁" style="display: inline-flex; align-self: flex-start; gap: 2px; padding: 3px; border-radius: 10px; background: #191919"><a href="J02-Models.dc.html" style="height: 30px; padding: 0 14px; border-radius: 8px; background: transparent; color: #FCFCFC99; text-decoration: none; font-size: 13.5px; display: inline-flex; align-items: center; white-space: nowrap">主要模型</a><a href="J10-FastJudge.dc.html" aria-current="page" style="height: 30px; padding: 0 14px; border-radius: 8px; background: #2F2F2F; color: #FCFCFC; text-decoration: none; font-size: 13.5px; display: inline-flex; align-items: center; white-space: nowrap">快判模型</a><a href="J03-Routing.dc.html" style="height: 30px; padding: 0 14px; border-radius: 8px; background: transparent; color: #FCFCFC99; text-decoration: none; font-size: 13.5px; display: inline-flex; align-items: center; white-space: nowrap">進階：分流與搜尋</a></nav>
+<div style="background: #262626; border-radius: 14px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 10px; padding: 9px 16px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m7 11 2-2-2-2"></path><path d="M11 13h4"></path><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect></svg>
+<span style="font-size: 15px">用 OpenCode</span>
+<span style="display: flex; gap: 6px; flex: 1; min-width: 0"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; background: #2F2F2F; font-size: 12.5px; color: #FCFCFCcc; white-space: nowrap"><span style="width: 8px; height: 8px; border-radius: 999px; background: #38D591; flex: none"></span>OpenCode 已登入</span><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; background: #2F2F2F; font-size: 12.5px; color: #FCFCFCcc; white-space: nowrap"><span style="width: 8px; height: 8px; border-radius: 999px; background: #38D591; flex: none"></span>Zen 免費</span><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; background: #2F2F2F; font-size: 12.5px; color: #FCFCFCcc; white-space: nowrap"><span style="width: 8px; height: 8px; border-radius: 999px; background: #7FC0FF; flex: none"></span>Go 訂閱</span></span>
+<span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap">今天 Jev <span style="color: #FCFCFC">128</span> 次 · Go <span style="color: #FCFCFC">23</span>／100 次</span>
+</div>
+<div style="display: flex; align-items: center; gap: 14px; padding: 6px 16px; border-top: 1px solid #333333; position: relative">
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+<span style="display: flex; align-items: center; gap: 8px; font-size: 14.5px">第一層 · 選擇題<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; background: rgba(56,213,145,.14); color: #38D591; font-size: 12px; white-space: nowrap; flex: none">免費 · 選擇題</span></span>
+<span style="font-size: 12.5px; color: #FCFCFC99">所有「從幾個選項挑一個」的判斷；回傳機率，低於 0.6 就照規則</span>
+</span>
+<span style="position: relative; flex: none">
+<button type="button" aria-haspopup="listbox" aria-expanded="{{t1Open}}" aria-label="第一層 · 選擇題模型" onClick="{{t1Toggle}}" style="width: 300px; height: 36px; box-sizing: border-box; padding: 0 10px 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-family: 'JetBrains Mono', monospace; font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: 10px; white-space: nowrap; cursor: pointer"><span style="overflow: hidden; text-overflow: ellipsis">{{t1Model}}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></button>
+<sc-if value="{{t1Open}}" hint-placeholder-val="{{ false }}">
+<div role="listbox" aria-label="第一層 · 選擇題模型" style="position: absolute; z-index: 5; right: 0; top: 40px; width: 300px; box-sizing: border-box; padding: 4px; border-radius: 12px; background: #262626; box-shadow: 0 12px 32px rgba(0,0,0,.5); display: flex; flex-direction: column">
+<sc-for list="{{t1Opts}}" as="o" hint-placeholder-count="3">
+<button type="button" role="option" aria-selected="{{o.sel}}" onClick="{{o.pick}}" style="height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: {{o.bg}}; color: #FCFCFC; font: inherit; font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left"><span style="font-family: {{o.ff}}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{o.label}}</span><span style="font-size: 12px; color: #FCFCFC90; white-space: nowrap">{{o.note}}</span></button>
+</sc-for>
+</div>
+</sc-if>
+</span>
+</div>
+<div style="display: flex; align-items: center; gap: 14px; padding: 6px 16px; border-top: 1px solid #333333; position: relative">
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+<span style="display: flex; align-items: center; gap: 8px; font-size: 14.5px">第二層 · 短文字<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; background: rgba(255,152,0,.14); color: #FFB547; font-size: 12px; white-space: nowrap; flex: none">Go 額度 · 每日上限 100 次</span></span>
+<span style="font-size: 12.5px; color: #FCFCFC99">只用在摘要、命名、建 Bot 建議；到上限就退回本機小模型</span>
+</span>
+<span style="position: relative; flex: none">
+<button type="button" aria-haspopup="listbox" aria-expanded="{{t2Open}}" aria-label="第二層 · 短文字模型" onClick="{{t2Toggle}}" style="width: 300px; height: 36px; box-sizing: border-box; padding: 0 10px 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-family: 'JetBrains Mono', monospace; font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: 10px; white-space: nowrap; cursor: pointer"><span style="overflow: hidden; text-overflow: ellipsis">{{t2Model}}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></button>
+<sc-if value="{{t2Open}}" hint-placeholder-val="{{ false }}">
+<div role="listbox" aria-label="第二層 · 短文字模型" style="position: absolute; z-index: 5; right: 0; top: 40px; width: 300px; box-sizing: border-box; padding: 4px; border-radius: 12px; background: #262626; box-shadow: 0 12px 32px rgba(0,0,0,.5); display: flex; flex-direction: column">
+<sc-for list="{{t2Opts}}" as="o" hint-placeholder-count="3">
+<button type="button" role="option" aria-selected="{{o.sel}}" onClick="{{o.pick}}" style="height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: {{o.bg}}; color: #FCFCFC; font: inherit; font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left"><span style="font-family: {{o.ff}}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{o.label}}</span><span style="font-size: 12px; color: #FCFCFC90; white-space: nowrap">{{o.note}}</span></button>
+</sc-for>
+</div>
+</sc-if>
+</span>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; padding: 6px 16px; border-top: 1px solid #333333">
+<span style="font-size: 13.5px; color: #FCFCFC99; white-space: nowrap">退路順序</span>
+<span style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0"><span style="display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid #333333; font-size: 12.5px; color: #FCFCFCdd; white-space: nowrap">OpenCode Jev</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC90" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg><span style="display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid #333333; font-size: 12.5px; color: #FCFCFCdd; white-space: nowrap">OpenCode Go flash</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC90" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg><span style="display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid #333333; font-size: 12.5px; color: #FCFCFCdd; white-space: nowrap">本機小模型</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC90" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg><span style="display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid #333333; font-size: 12.5px; color: #FCFCFCdd; white-space: nowrap">規則</span></span>
+<span style="font-size: 12px; color: #FCFCFC90; white-space: nowrap">逾時、出錯、額度用完都往下一個</span>
+</div>
+<button type="button" aria-expanded="{{otherOpen}}" onClick="{{otherToggle}}" style="display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 32px; border: 0; border-top: 1px solid #333333; border-radius: 0 0 14px 14px; background: transparent; color: #FCFCFC99; font: inherit; font-size: 13px; cursor: pointer; text-align: left">
+<span style="display: inline-flex; transform: {{otherRot}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m9 18 6-6-6-6"></path></svg></span>其他供應商：TypeSafe 直連／OpenRouter<span style="margin-left: auto; font-size: 12px; color: #FCFCFC90">直連 Zen／Go 端點待驗證</span>
+</button>
+<sc-if value="{{otherOpen}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 16px 12px; font-size: 13px; color: #FCFCFC99">
+<span style="flex: 1">TypeSafe 直連 <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #FCFCFCcc">jev-latest</span> · OpenRouter <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #FCFCFCcc">typesafe/jev-1.13</span>（要自己的金鑰）</span>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; border: 0; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex: none; cursor: pointer">貼上金鑰</button>
+</div>
+</sc-if>
+</div>
+<div style="background: #262626; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden">
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 52px 52px 132px 150px; gap: 10px; align-items: center; padding: 6px 16px; font-size: 12px; color: #FCFCFC99">
+<span>用途 · 11–15 是工作開始前的「先判斷」，先用影子模式試</span><span>層級</span><span>等待</span><span>準確率 快判／規則</span><span>關 · 影子 · 生效</span>
+</div>
+<sc-for list="{{uses}}" as="u" hint-placeholder-count="15">
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 52px 52px 132px 150px; gap: 10px; align-items: center; padding: 0 16px; height: 26px; border-top: 1px solid #333333; background: {{u.rowBg}}">
+<span style="display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; overflow: hidden">
+<span style="width: 16px; flex: none; font-size: 11.5px; color: #FCFCFC90; text-align: right">{{u.n}}</span>
+<span style="font-size: 13.5px; flex: none">{{u.name}}</span>
+<span style="font-size: 12px; color: #FCFCFC90; overflow: hidden; text-overflow: ellipsis">{{u.desc}}</span>
+</span>
+<span style="display: inline-flex; align-items: center; justify-content: center; height: 18px; border-radius: 999px; font-size: 11px; background: {{u.tierBg}}; color: {{u.tierFg}}; white-space: nowrap">{{u.tier}}</span>
+<span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap">{{u.wait}}</span>
+<span style="font-size: 12.5px; color: {{u.accColor}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{u.acc}}</span>
+<div role="group" aria-label="{{u.name}}" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding: 2px; border-radius: 8px; background: #191919">
+<sc-for list="{{u.opts}}" as="o" hint-placeholder-count="3">
+<button type="button" aria-pressed="{{o.sel}}" onClick="{{o.pick}}" style="height: 19px; border: 0; border-radius: 6px; background: {{o.bg}}; color: {{o.fg}}; font: inherit; font-size: 12px; line-height: 19px; padding: 0; cursor: pointer">{{o.label}}</button>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 1100, "height": 900}}'>
+class Component extends DCLogic {
+renderVals() {
+const st = this.state || {};
+const t1 = st.t1 || 'opencode/jev-1.13-free';
+const t2 = st.t2 || 'opencode-go/qwen3.8-flash';
+const open = st.open || '';
+const MONOF = "'JetBrains Mono', monospace";
+const mk = (key, cur, list) => list.map(([v, note, label]) => ({
+  label: label || v, note, ff: label ? 'inherit' : MONOF, sel: cur === v ? 'true' : 'false', bg: cur === v ? '#2F2F2F' : 'transparent',
+  pick: () => this.setState({ [key]: v, open: '' })
+}));
+const t1Opts = mk('t1', t1, [['opencode/jev-1.13-free', '免費'], ['local', '離線用', '本機小模型'], ['off', '', '不用快判（只用規則）']]);
+const t2Opts = mk('t2', t2, [['opencode-go/qwen3.8-flash', '建議'], ['opencode-go/deepseek-v4-flash', ''], ['opencode-go/glm-5.3-flash', ''], ['local', '離線用', '本機小模型'], ['off', '', '不用（截斷文字）']]);
+const nameOf = (v) => v === 'local' ? '本機小模型' : v === 'off' ? '只用規則' : v;
+const toggle = (k) => () => this.setState({ open: open === k ? '' : k });
+const U = [
+  ['對話分流', '閒聊、查進度、要做事', 'J', '0.3 秒', 97, 89, 'on'],
+  ['任務完成了沒', '完成、要你、丟回來、只說不做', 'J', '1 秒', 93, 81, 'shadow'],
+  ['要不要找你核定', '只能多攔，不能放行', 'J', '0.5 秒', 99, 94, 'on'],
+  ['是不是在問進度', '附上該附的事實', 'J', '0.3 秒', 98, 90, 'on'],
+  ['錯誤分類', '暫時性的才重試', 'J', '0.5 秒', 94, 92, 'shadow'],
+  ['重複技能', '建議合併', 'J', '1 秒', 88, 71, 'shadow'],
+  ['交給哪個 Bot', '群組沒 @ 時誰回答', 'J', '1.5 秒', 96, 78, 'on'],
+  ['一行摘要', '進度面板、通知、行事曆', 'G', '2 秒', 95, 70, 'on'],
+  ['一句話建立 Bot', '建議名字、職稱、技能', 'G', '2 秒', 91, 76, 'shadow'],
+  ['命名與寒暄', '對話串命名、不用回的寒暄', 'JG', '1 秒', 90, 62, 'off'],
+  ['選引擎與思考強度', '哪個引擎 × 低／中／高', 'J', '0.5 秒', 0, 0, 'shadow'],
+  ['要不要開電腦', '只要回答、上網查、瀏覽器、桌面', 'J', '0.5 秒', 0, 0, 'shadow'],
+  ['要不要先問清楚', '缺關鍵資訊就先出 A/B/C 卡片', 'J', '0.5 秒', 0, 0, 'shadow'],
+  ['花費預估', '小、中、大、超過工作鏈預算', 'J', '0.5 秒', 0, 0, 'shadow'],
+  ['隊友訊息要不要回', '要處理、只要知道、不用回', 'J', '1 秒', 0, 0, 'shadow']
+];
+const TIER = { J: ['Jev', 'rgba(56,213,145,.14)', '#38D591'], G: ['Go', 'rgba(255,152,0,.16)', '#FFB547'], JG: ['Jev＋Go', 'rgba(16,132,254,.2)', '#7FC0FF'] };
+const modes = st.modes || {};
+const LBL = { off: '關', shadow: '影子', on: '生效' };
+const uses = U.map(([name, desc, tk, wait, q, r, def], i) => {
+  const chosen = modes[i] || def;
+  const tierOff = (tk === 'J' && t1 === 'off') || (tk === 'G' && t2 === 'off') || (tk === 'JG' && t1 === 'off' && t2 === 'off');
+  const m = tierOff ? 'off' : chosen;
+  let acc = '只用規則', accColor = '#FCFCFC90';
+  if (m === 'on') { acc = q ? '生效 · ' + q + '%／' + r + '%' : '生效 · 資料不足'; accColor = q ? '#38D591' : '#FFB547'; }
+  if (m === 'shadow') {
+    if (!q) { acc = '新的 · 收集比對中'; accColor = '#FCFCFC99'; }
+    else { acc = q >= 95 ? q + '%／' + r + '% · 夠準了' : q + '%／' + r + '% · 觀察中'; accColor = q >= 95 ? '#7FC0FF' : '#FCFCFC99'; }
+  }
+  const opts = ['off', 'shadow', 'on'].map((k) => ({
+    label: LBL[k], sel: m === k ? 'true' : 'false',
+    bg: m === k ? (k === 'on' ? 'rgba(56,213,145,.18)' : '#2F2F2F') : 'transparent',
+    fg: m === k ? (k === 'on' ? '#38D591' : '#FCFCFC') : '#FCFCFC90',
+    pick: () => this.setState({ modes: Object.assign({}, modes, { [i]: k }) })
+  }));
+  const [tier, tierBg, tierFg] = TIER[tk];
+  return { n: i + 1, name, desc, wait, acc, accColor, opts, tier, tierBg, tierFg, rowBg: i >= 10 ? 'rgba(16,132,254,.06)' : 'transparent' };
+});
+return {
+  uses, t1Model: nameOf(t1), t2Model: nameOf(t2), t1Opts, t2Opts,
+  t1Open: open === 't1', t2Open: open === 't2', t1Toggle: toggle('t1'), t2Toggle: toggle('t2'),
+  otherOpen: !!st.other, otherToggle: () => this.setState({ other: !st.other }), otherRot: st.other ? 'rotate(90deg)' : 'none'
+};
+}
+}
+</script>
+</body>
+</html>

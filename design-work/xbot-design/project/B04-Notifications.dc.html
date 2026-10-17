@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>通知中心</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3{font-weight:400}
+a{color:#7FC0FF;text-decoration:none}
+</style>
+</helmet>
+<div style="position: relative; min-height: 960px; display: flex; flex-wrap: wrap; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.55; overflow: hidden">
+
+<div style="flex: 1 1 300px; max-width: 100%; border-right: 1px solid #1C1C1C; background: #111111">
+<dc-import name="Sidebar" active="xiaomi" hint-size="100%,960px"></dc-import>
+</div>
+
+<main aria-hidden="true" style="flex: 999 1 560px; min-width: 0; height: 960px; display: flex; flex-direction: column">
+<div style="height: 56px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 20px">
+<dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#070707" size="26" hint-size="26px,26px"></dc-import>
+<span style="font-size: 16px">小秘</span>
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.crown}}"></path></svg>
+<span style="margin-left: auto; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid #333333; font-size: 13px; color: #FCFCFC99; display: flex; align-items: center">＋ 對話串</span>
+<span style="height: 30px; padding: 0 12px; border-radius: 999px; background: #262626; font-size: 13px; display: flex; align-items: center">Claude Sonnet 5.5</span>
+</div>
+<div style="flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 12px 40px; max-width: 780px; width: 100%; box-sizing: border-box; margin: 0 auto">
+<span style="align-self: center; font-size: 12.5px; color: #FCFCFC90">今天 上午 9:40</span>
+<div style="align-self: flex-end; max-width: 75%; background: #5A5A5A; border-radius: 18px; padding: 10px 16px">幫我比較蝦皮三家競品的定價，週一前給建議。</div>
+<div style="align-self: flex-start; max-width: 75%; background: #262626; border-radius: 18px; padding: 10px 16px">收到。我請阿哲去抓三家的價格，數據喵算價差，好了整理成表格給你。</div>
+<span style="align-self: flex-start; display: flex; align-items: center; gap: 6px; border: 1px solid #333333; border-radius: 999px; padding: 3px 12px; font-size: 12.5px; color: #FCFCFCcc">已傳請求給阿哲 · 第 1/6 棒</span>
+</div>
+<div style="height: 52px; margin: 0 40px 24px; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; padding: 0 16px; color: #FCFCFC90">交代小秘…</div>
+</main>
+
+<div style="position: absolute; inset: 0; display: flex">
+<div aria-hidden="true" style="flex: 1; background: rgba(0,0,0,.6)"></div>
+<aside role="dialog" aria-label="通知" style="width: 420px; flex: none; height: 960px; box-sizing: border-box; background: #111111; border-left: 1px solid #262626; display: flex; flex-direction: column; box-shadow: -12px 0 32px rgba(0,0,0,.4)">
+
+<div style="height: 60px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 20px">
+<h2 style="margin: 0; font-size: 17px">通知</h2>
+<span style="font-size: 13px; color: #FCFCFC90">{{unreadText}}</span>
+<button type="button" onClick="{{readAll}}" style="margin-left: auto; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid #333333; background: transparent; color: #FCFCFC; font: inherit; font-size: 13px; cursor: pointer">全部標為已讀</button>
+<button type="button" aria-label="關閉通知" style="width: 36px; height: 36px; border-radius: 10px; border: 0; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.x}}"></path></svg></button>
+</div>
+
+<div style="display: flex; align-items: center; gap: 6px; padding: 0 20px 12px; border-bottom: 1px solid #262626">
+<div role="tablist" aria-label="篩選通知" style="display: flex; gap: 6px; flex: 1; flex-wrap: wrap">
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="5">
+<button type="button" role="tab" aria-selected="{{c.sel}}" onClick="{{c.pick}}" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid {{c.bd}}; background: {{c.bg}}; color: {{c.fg}}; font: inherit; font-size: 13px; cursor: pointer">{{c.t}}</button>
+</sc-for>
+</div>
+<button type="button" aria-haspopup="listbox" aria-label="只看某個 Bot" style="width: 30px; height: 30px; border-radius: 999px; border: 1px solid #333333; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.listFilter}}"></path></svg></button>
+</div>
+
+<div style="flex: 1; min-height: 0; overflow: hidden; padding: 4px 8px; display: flex; flex-direction: column">
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+<sc-if value="{{g.any}}" hint-placeholder-val="{{ true }}"><div style="font-size: 12.5px; color: #FCFCFC90; padding: 10px 12px 4px">{{g.title}}</div></sc-if>
+<sc-for list="{{g.rows}}" as="n" hint-placeholder-count="4">
+<div style="display: flex; gap: 12px; padding: 10px 12px; border-radius: 14px; background: {{n.bg}}">
+<dc-import name="Avatar" color="{{n.color}}" body="{{n.body}}" state="{{n.state}}" dot="{{n.dot}}" ring="{{n.ring}}" size="32" hint-size="32px,32px"></dc-import>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; flex-direction: column; gap: 1px">
+<div style="display: flex; gap: 8px; align-items: center">
+<span style="flex: 1; font-size: 13px; color: {{n.kc}}">{{n.kind}}</span>
+<span style="font-size: 12px; color: #FCFCFC90; flex: none">{{n.time}}</span>
+<span aria-label="{{n.unreadLabel}}" style="width: 8px; height: 8px; border-radius: 9px; background: {{n.dotC}}; flex: none"></span>
+</div>
+<span style="font-size: 14.5px; line-height: 1.5">{{n.text}}</span>
+</div>
+<sc-if value="{{n.hasActs}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; gap: 6px; flex-wrap: wrap">
+<sc-for list="{{n.acts}}" as="a" hint-placeholder-count="2">
+<button type="button" onClick="{{a.go}}" style="height: 30px; padding: 0 12px; border-radius: 999px; border: {{a.bd}}; background: {{a.bg}}; color: {{a.fg}}; font: inherit; font-size: 13px; cursor: pointer">{{a.t}}</button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{n.settled}}" hint-placeholder-val="{{ false }}">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #38D591"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg>{{n.settledText}}</span>
+</sc-if>
+</div>
+</div>
+</sc-for>
+</sc-for>
+</div>
+
+<div style="flex: none; padding: 10px 20px 14px; border-top: 1px solid #262626; font-size: 12.5px; color: #FCFCFC90; display: flex; align-items: center; gap: 8px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.info}}"></path></svg>
+<span style="flex: 1">要你決定的事也都在「待我處理」</span>
+<a href="J01-General.dc.html" style="font-size: 12.5px">通知設定</a>
+</div>
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+renderVals() {
+const I = {"check": "M20 6 9 17l-5-5", "crown": "M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z M5 21h14", "info": "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M12 16v-4 M12 8h.01", "listFilter": "M2 5h20 M6 12h12 M9 19h6", "x": "M18 6 6 18 M0 0m6 6 12 12"};
+const st = this.state || {};
+const f = st.f || 'all';
+const read = st.read || {};
+const allowed = !!st.allowed;
+const P = (t, go) => ({ t, go, bd: '0', bg: '#FCFCFC', fg: '#070707' });
+const S = (t, go) => ({ t, go, bd: '0', bg: '#2F2F2F', fg: '#FCFCFC' });
+const nop = () => {};
+const N = (id, cat, color, body, state, dot, kind, text, time, unread, acts, kc) => ({ id, cat, color, body, state, dot, kind, text, time, unread: unread && !read[id] && !read.all, acts, kc: kc || '#FCFCFC99' });
+const all = [
+N('a', 'decide', 'yellow', 'hexagon', allowed ? 'working' : 'notifying', allowed ? 'none' : 'waiting', allowed ? '已允許' : '帳房 · 等你允許', allowed ? '帳房正在付款 NT$1,280 給晨光廣告' : '付款 NT$1,280 給晨光廣告', '10:21', true, allowed ? [] : [P('允許這次', () => this.setState({ allowed: true })), S('拒絕', nop), S('打開對話', nop)], '#FFB547'),
+N('b', 'decide', 'pink', 'circle', 'notifying', 'waiting', '小編 · 需要你接手電腦', '登入社群後台要簡訊驗證碼', '10:13', true, [P('接手電腦', nop)], '#FFB547'),
+N('c', 'decide', 'orange', 'blob', 'curious', 'none', '阿哲 · 有問題問你', '要不要也比較日本賣場的價格？', '10:05', true, [S('回答', nop)], '#FFB547'),
+N('d', 'error', 'red', 'shield', 'idle', 'none', '抓蟲 · 預算用完，已暫停', '「重現結帳失敗」用完這條工作鏈的 $5 上限', '09:30', true, [S('再給 $5', nop), S('結束並回報', nop)], '#FFB547'),
+N('e', 'done', 'green', 'squircle', 'happy', 'none', '阿凱 · 完成', '3 封開發信草稿寫好了', '09:42', false, [], '#38D591'),
+N('f', 'mention', 'blue', 'cursor', 'working', 'none', '小秘 · 在群組提到你', '「新品上架專案」：上架日期要訂哪天？', '09:12', false, [], '#7FC0FF'),
+N('g', 'error', 'purple', 'diamond', 'sad', 'none', '數據喵 · 定時任務沒有完成', '「每日銷售快報」連不上供應商網站', '昨天 18:00', false, [S('看紀錄', nop), S('重跑一次', nop)], '#FF5667'),
+N('h', 'done', 'cyan', 'star', 'sleeping', 'none', '信差 · 完成', '整理了 24 封信，3 封需要你看', '昨天 08:00', false, [], '#38D591')
+];
+const vis = (n) => f === 'all' || n.cat === f;
+const deco = (n, i) => Object.assign({}, n, { bg: n.unread ? '#191919' : 'transparent', ring: n.unread ? '#191919' : '#111111', dotC: n.unread ? '#1084FE' : 'transparent', unreadLabel: n.unread ? '未讀' : '已讀', hasActs: n.acts.length > 0, settled: n.id === 'a' && allowed, settledText: '已允許這次 · 你 · 剛剛' });
+const unread = all.filter((n) => n.unread).length;
+const defs = [['all', '全部'], ['decide', '要你決定'], ['done', '完成'], ['mention', '提到你'], ['error', '出錯']];
+return {
+I,
+unreadText: unread ? unread + ' 則未讀' : '都看過了',
+readAll: () => this.setState({ read: { all: true } }),
+chips: defs.map(([k, t]) => ({ t, sel: f === k ? 'true' : 'false', bg: f === k ? '#FCFCFC' : 'transparent', fg: f === k ? '#070707' : '#FCFCFC99', bd: f === k ? '#FCFCFC' : '#333333', pick: () => this.setState({ f: k }) })),
+groups: [
+{ title: '今天', rows: all.slice(0, 6).filter(vis).map(deco), any: all.slice(0, 6).some(vis) },
+{ title: '昨天', rows: all.slice(6).filter(vis).map(deco), any: all.slice(6).some(vis) }
+]
+};
+}
+}
+</script>
+</body>
+</html>

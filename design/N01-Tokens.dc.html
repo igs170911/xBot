@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>色彩與字型 Token</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A8D4FF}
+button{font:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; box-sizing: border-box; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.5; padding: 32px 48px; display: flex; flex-direction: column; gap: 20px">
+
+<header style="display: flex; align-items: flex-end; gap: 24px">
+<div style="flex: 1">
+<p style="margin: 0 0 4px; font-size: 13px; color: #FCFCFC90">XBot 設計系統 · N01</p>
+<h1 style="margin: 0; font-size: 28px; font-weight: 400; line-height: 1.2">Midnight 色彩、字型與尺寸</h1>
+</div>
+<p style="margin: 0; max-width: 900px; font-size: 13.5px; color: #FCFCFC99; text-align: right">深色是預設，淺色只在外觀設定示範；黑白為底，Bot 是顏色；警示色只給等你的事。<br>粉圓只有一種字重，階層靠字級和顏色。字型已決定：粉圓；字型只宣告在 helmet 與根元素。</p>
+</header>
+
+<div style="flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto minmax(0, 1fr); gap: 20px">
+
+<section style="grid-column: span 2; background: #111111; border-radius: 18px; padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; align-items: baseline; gap: 12px"><h2 style="margin: 0; font-size: 17px; font-weight: 400">Midnight · 表面</h2><span style="font-size: 13px; color: #FCFCFC99">由深到淺，一層疊一層</span></div>
+<div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{surfaces}}" as="c" hint-placeholder-count="8">
+<div style="display: flex; flex-direction: column; gap: 3px">
+<span style="height: 44px; border-radius: 10px; background: {{c.hex}}; border: 1px solid #333333"></span>
+<span style="font-size: 13.5px">{{c.name}}</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #FCFCFC99">{{c.hex}}</span>
+<span style="font-size: 12px; color: #FCFCFC90; line-height: 1.4; white-space: nowrap">{{c.use}}</span>
+</div>
+</sc-for>
+</div>
+<div style="height: 1px; background: #262626"></div>
+<div style="display: flex; align-items: baseline; gap: 12px"><h2 style="margin: 0; font-size: 17px; font-weight: 400">文字與語意色</h2><span style="font-size: 13px; color: #FCFCFC99">在深色底上，填色和文字用色分開</span></div>
+<div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{semantic}}" as="c" hint-placeholder-count="8">
+<div style="display: flex; flex-direction: column; gap: 3px">
+<span style="height: 44px; border-radius: 10px; background: #191919; border: 1px solid #333333; display: flex; align-items: center; justify-content: center; gap: 8px">
+<span style="width: 22px; height: 22px; border-radius: 999px; background: {{c.hex}}"></span><span style="font-size: 15px; color: {{c.hex}}">Aa</span></span>
+<span style="font-size: 13.5px">{{c.name}}</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #FCFCFC99">{{c.hex}}</span>
+<span style="font-size: 12px; color: #FCFCFC90; line-height: 1.4; white-space: nowrap">{{c.use}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section style="background: #111111; border-radius: 18px; padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: baseline; gap: 12px"><h2 style="margin: 0; font-size: 17px; font-weight: 400">Daylight · 淺色變體</h2><span style="font-size: 13px; color: #FCFCFC99">只在外觀設定示範</span></div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{daylight}}" as="c" hint-placeholder-count="8">
+<div style="display: flex; flex-direction: column; gap: 3px">
+<span style="height: 30px; border-radius: 8px; background: {{c.hex}}; border: 1px solid #333333"></span>
+<span style="font-size: 12.5px">{{c.name}}</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #FCFCFC99">{{c.hex}}</span>
+</div>
+</sc-for>
+</div>
+<div aria-label="Daylight 預覽" style="flex: 1; min-height: 0; border-radius: 14px; background: #FFFFFF; color: #0B0B0B; padding: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px">
+<div style="display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid #DCDCD8"><dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#FFFFFF" size="24" hint-size="24px,24px"></dc-import><span style="font-size: 15px">小秘</span><span style="margin-left: auto; height: 26px; padding: 0 10px; border-radius: 999px; background: #F4F4F2; font-size: 12.5px; line-height: 26px">Claude Sonnet 5.5</span></div>
+<div style="align-self: flex-end; background: #E2E2DE; border-radius: 16px; padding: 6px 12px">幫我比較三家競品的定價</div>
+<div style="display: flex; gap: 6px"><span style="height: 28px; padding: 0 12px; border-radius: 999px; background: #0B0B0B; color: #FFFFFF; font-size: 12.5px; line-height: 28px">允許這次</span><span style="height: 28px; padding: 0 12px; border-radius: 999px; background: #E8E8E5; font-size: 12.5px; line-height: 28px">退回</span><span style="height: 28px; padding: 0 10px; border-radius: 999px; background: rgba(255,152,0,.16); color: #A65F00; font-size: 12.5px; line-height: 28px">等你允許</span></div>
+</div>
+</section>
+
+<section style="background: #111111; border-radius: 18px; padding: 20px 24px 20px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: baseline; gap: 12px"><h2 style="margin: 0 0 4px; font-size: 17px; font-weight: 400">字級 · 粉圓 Huninn 400</h2><span style="margin-left: auto; height: 24px; padding: 0 10px; border-radius: 999px; background: rgba(56,213,145,.16); color: #38D591; font-size: 12.5px; line-height: 24px">已決定：粉圓</span></div>
+<sc-for list="{{type}}" as="t" hint-placeholder-count="9">
+<div style="display: flex; align-items: baseline; gap: 12px; border-top: 1px solid #262626; padding-top: 5px">
+<span style="width: 44px; flex: none; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #FCFCFC90">{{t.size}}</span>
+<span style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: {{t.px}}; color: {{t.ink}}; font-family: {{t.family}}; line-height: 1.3">{{t.sample}}</span>
+<span style="flex: none; font-size: 12px; color: #FCFCFC90">{{t.use}}</span>
+</div>
+</sc-for>
+<p style="margin: auto 0 0; padding: 10px 12px; border-radius: 10px; background: #191919; font-size: 12.5px; color: #FCFCFC99; line-height: 1.6">內文行高 1.5，對話 Markdown 1.75。中英之間空一格；全形標點「」，（）；進行中用「…」結尾。</p>
+
+</section>
+
+<section style="background: #111111; border-radius: 18px; padding: 22px 24px 20px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 17px; font-weight: 400">間距 · 4 的倍數</h2>
+<div style="display: flex; align-items: flex-end; gap: 14px">
+<sc-for list="{{space}}" as="s" hint-placeholder-count="7">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px">
+<span style="width: {{s.px}}; height: {{s.px}}; background: rgba(16,132,254,.35); border: 1px solid #1084FE; box-sizing: border-box; border-radius: 3px"></span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #FCFCFC99">{{s.v}}</span>
+</div>
+</sc-for>
+</div>
+<div style="height: 1px; background: #262626"></div>
+<h2 style="margin: 0; font-size: 17px; font-weight: 400">圓角</h2>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 10px">
+<sc-for list="{{radius}}" as="r" hint-placeholder-count="8">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+<span style="width: 48px; height: 40px; flex: none; background: #2F2F2F; border: 1px solid #3D3D3D; box-sizing: border-box; border-radius: {{r.px}}"></span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px">{{r.v}}</span><span style="font-size: 12px; color: #FCFCFC90; white-space: nowrap">{{r.use}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section style="background: #111111; border-radius: 18px; padding: 22px 24px 20px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 17px; font-weight: 400">尺寸</h2>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px">
+<sc-for list="{{sizes}}" as="z" hint-placeholder-count="14">
+<div style="display: flex; align-items: baseline; gap: 8px; min-height: 30px; border-top: 1px solid #262626; padding-top: 5px; box-sizing: border-box">
+<span style="flex: 1; font-size: 13px; color: #FCFCFC99">{{z.k}}</span><span style="font-size: 13.5px">{{z.v}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+const surfaces = [
+{ name: '頁面', hex: '#070707', use: 'app 與手機底' },
+{ name: '側欄／面板', hex: '#111111', use: '側欄、sheet' },
+{ name: '內嵌', hex: '#191919', use: '輸入框、程式碼' },
+{ name: '卡片', hex: '#262626', use: '卡片、Bot 泡泡' },
+{ name: '控制項', hex: '#2F2F2F', use: '膠囊、選中列' },
+{ name: '懸停', hex: '#3D3D3D', use: 'hover 狀態' },
+{ name: '細線', hex: '#333333', use: '框線、分隔線' },
+{ name: '你的泡泡', hex: '#5A5A5A', use: '一對一與群組' }
+];
+const semantic = [
+{ name: '文字', hex: '#FCFCFC', use: '名字、內文' },
+{ name: '次要文字', hex: '#FCFCFC99', use: '副標、說明' },
+{ name: '淡文字', hex: '#FCFCFC90', use: '時間、提示' },
+{ name: '強調', hex: '#1084FE', use: '開關、勾選' },
+{ name: '強調文字', hex: '#7FC0FF', use: '連結' },
+{ name: '完成', hex: '#38D591', use: '已完成' },
+{ name: '危險', hex: '#FF5667', use: '刪除、中斷' },
+{ name: '等你', hex: '#FF9800', use: '字用 #FFB547' }
+];
+const daylight = [
+{ name: '頁面', hex: '#FFFFFF' }, { name: '側欄', hex: '#F4F4F2' }, { name: '控制項', hex: '#E8E8E5' }, { name: '細線', hex: '#DCDCD8' },
+{ name: '你的泡泡', hex: '#E2E2DE' }, { name: '文字', hex: '#0B0B0B' }, { name: '次要文字', hex: '#5E5E5E' }, { name: '等你文字', hex: '#A65F00' }
+];
+const F = "'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif";
+const M = "'JetBrains Mono', monospace";
+const type = [
+{ size: '30', px: '30px', sample: '早安，5 件等你', use: '頁面主標', ink: '#FCFCFC', family: F },
+{ size: '22', px: '22px', sample: '待我處理', use: '手機頁標題', ink: '#FCFCFC', family: F },
+{ size: '17', px: '17px', sample: '帳房想付款', use: '對話框、卡片標題', ink: '#FCFCFC', family: F },
+{ size: '15.5', px: '15.5px', sample: '小秘 · 幕僚長', use: '名字、列標題', ink: '#FCFCFC', family: F },
+{ size: '15', px: '15px', sample: '收到，我先請阿哲抓價格。', use: '內文、泡泡', ink: '#FCFCFC', family: F },
+{ size: '13.5', px: '13.5px', sample: '工作中…彙整三家競品定價', use: '次要文字', ink: '#FCFCFC99', family: F },
+{ size: '12.5', px: '12.5px', sample: '今天 下午 2:58 · 第 2/6 棒', use: '時間、提示', ink: '#FCFCFC90', family: F },
+{ size: '11.5', px: '11.5px', sample: '待我處理　對話　辦公室　行事曆', use: '分頁、徽章', ink: '#FCFCFC99', family: F },
+{ size: 'mono', px: '12.5px', sample: '/workspace · ⌘K', use: '路徑、指令、快捷鍵', ink: '#FCFCFC99', family: M }
+];
+const space = [4, 8, 12, 16, 20, 24, 32].map((v) => ({ v: String(v), px: v + 'px' }));
+const radius = [
+{ v: '5', px: '5px', use: '勾選、A/B/C' }, { v: '8', px: '8px', use: '分段內鈕' }, { v: '10', px: '10px', use: '輸入框' }, { v: '12', px: '12px', use: '選單' },
+{ v: '14', px: '14px', use: '設定群組' }, { v: '18', px: '18px', use: '卡片' }, { v: '20', px: '20px', use: '泡泡、sheet' }, { v: '999', px: '999px', use: '膠囊' }
+];
+const sizes = [
+{ k: '標題列', v: '56' }, { k: '側欄', v: '300' },
+{ k: '對話欄', v: '960（內容 780）' }, { k: '右側面板', v: '400–560' },
+{ k: '按鈕', v: '36（小 30）' }, { k: '輸入框', v: '40' },
+{ k: 'Composer', v: '52' }, { k: '送出鈕', v: '34 圓' },
+{ k: '圖示', v: '20／選單 18' }, { k: '開關', v: '40×24' },
+{ k: '勾選框', v: '18' }, { k: '頭像', v: '16／24／34／48' },
+{ k: '選單項目', v: '34' }, { k: '分段控制', v: '外 10／內 8' },
+{ k: 'Bot 設定框', v: '1100×900' }, { k: '對話框', v: '480–980' },
+{ k: '手機', v: '390×844' }, { k: '手機分頁列', v: '52＋34' },
+{ k: '手機觸控', v: '≥ 44' }, { k: '手機安全區', v: '上 47／下 34' }
+];
+return { surfaces, semantic, daylight, type, space, radius, sizes };
+}
+}
+</script>
+</body>
+</html>

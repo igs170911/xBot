@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>設定 Bot 的聲音</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3{font-weight:400}
+a{color:#7FC0FF;text-decoration:none}
+</style>
+</helmet>
+<div role="dialog" aria-label="給小秘一個聲音" style="width: 640px; height: {{h}}px; box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.5; box-shadow: 0 24px 64px rgba(0,0,0,.6)">
+
+<div style="display: flex; align-items: flex-start; gap: 14px; padding: 20px 14px 14px 24px; flex: none">
+<dc-import name="Avatar" color="blue" body="cursor" state="happy" dot="none" ring="#111111" size="40" hint-size="40px,40px"></dc-import>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<h2 style="margin: 0; font-size: 18px">給小秘一個聲音</h2>
+<span style="font-size: 13.5px; color: #FCFCFC99">選好就能講電話，也能讓它把回覆念給你聽。</span>
+</div>
+<span style="display: flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12.5px; white-space: nowrap; flex: none; margin-top: 6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.sparkles}}"></path></svg>簡化：5 個欄位 → 1 個</span>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; border-radius: 10px; border: 0; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.x}}"></path></svg></button>
+</div>
+
+<div style="flex: 1; min-height: 0; overflow-y: auto; padding: 0 24px 16px; display: flex; flex-direction: column; gap: 16px">
+<div role="radiogroup" aria-label="聲音" style="flex: none; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; gap: 1px; background: #262626; border: 1px solid #262626">
+<sc-for list="{{voices}}" as="v" hint-placeholder-count="6">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 0 10px 0 14px; background: {{v.bg}}">
+<button type="button" role="radio" aria-checked="{{v.selA}}" onClick="{{v.pick}}" style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; height: 56px; border: 0; padding: 0; background: transparent; color: #FCFCFC; font: inherit; text-align: left; cursor: pointer">
+<span style="width: 20px; height: 20px; flex: none; border-radius: 5px; background: {{v.ringBg}}; color: #FCFCFC99; font-size: 12px; display: flex; align-items: center; justify-content: center"><sc-if value="{{v.sel}}" hint-placeholder-val="{{ false }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg></sc-if><sc-if value="{{v.unsel}}" hint-placeholder-val="{{ true }}">{{v.k}}</sc-if></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<span style="font-size: 15px">{{v.name}}</span>
+<span style="font-size: 13px; color: #FCFCFC99">{{v.desc}}</span>
+</span>
+</button>
+<sc-if value="{{v.playing}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="display: flex; align-items: center; gap: 3px; height: 20px"><sc-for list="{{wave}}" as="w" hint-placeholder-count="8"><span style="width: 3px; height: {{w}}px; border-radius: 3px; background: #7FC0FF"></span></sc-for></span>
+</sc-if>
+<button type="button" onClick="{{v.play}}" aria-label="{{v.playLabel}}" style="height: 32px; padding: 0 12px 0 10px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer; flex: none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{v.playIcon}}"></path></svg>{{v.playText}}</button>
+</div>
+</sc-for>
+</div>
+
+<div style="flex: none; border-radius: 14px; background: #191919; display: flex; flex-direction: column">
+<button type="button" onClick="{{toggleAdv}}" aria-expanded="{{advA}}" style="display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 14px; border: 0; background: transparent; color: #FCFCFC; font: inherit; text-align: left; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: rotate({{advRot}}deg); flex: none"><path d="{{I.chevronRight}}"></path></svg>
+<span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 14.5px">進階</span><span style="font-size: 12.5px; color: #FCFCFC90">語音引擎 ElevenLabs · 金鑰已設定 · 5 分鐘沒說話就掛斷</span></span>
+</button>
+<sc-if value="{{adv}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 14px; padding: 4px 16px 16px 42px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13.5px; color: #FCFCFC99">語音引擎</span>
+<button type="button" aria-haspopup="listbox" style="height: 40px; padding: 0 10px 0 12px; border-radius: 10px; border: 1px solid #333333; background: #191919; color: #FCFCFC; font: inherit; font-size: 14.5px; display: flex; align-items: center; cursor: pointer">
+<span style="flex: 1; text-align: left">ElevenLabs · 最自然，中文可用</span>
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronDown}}"></path></svg></button>
+</div>
+<label style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13.5px; color: #FCFCFC99">ElevenLabs 金鑰</span>
+<span style="display: flex; gap: 8px">
+<input type="password" value="sk_live_example_key" style="flex: 1; min-width: 0; height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; border: 1px solid #333333; background: #191919; color: #FCFCFC; font: inherit; font-size: 14.5px; outline: none">
+<span style="height: 40px; display: flex; align-items: center; gap: 6px; font-size: 13px; color: #38D591; flex: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg>已連上</span>
+</span>
+<span style="font-size: 12.5px; color: #FCFCFC90">金鑰只存在這台主機，不會放進 Bot 的電腦。</span>
+</label>
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 14.5px">隨時插話</span><span style="font-size: 12.5px; color: #FCFCFC90">不用等它說完就能開口；用 OpenAI 即時語音，另外計費</span></span>
+<button type="button" role="switch" aria-checked="{{rtA}}" onClick="{{toggleRt}}" aria-label="隨時插話" style="width: 40px; height: 24px; border-radius: 999px; border: 0; padding: 2px; background: {{rtBg}}; display: flex; justify-content: {{rtJust}}; cursor: pointer; flex: none"><span style="width: 20px; height: 20px; border-radius: 999px; background: #FFFFFF"></span></button>
+</div>
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="flex: 1; font-size: 14.5px">沒人說話多久就掛斷</span>
+<button type="button" aria-haspopup="listbox" style="height: 40px; width: 140px; padding: 0 10px 0 12px; border-radius: 10px; border: 1px solid #333333; background: #191919; color: #FCFCFC; font: inherit; font-size: 14.5px; display: flex; align-items: center; cursor: pointer">
+<span style="flex: 1; text-align: left">5 分鐘</span>
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronDown}}"></path></svg></button>
+</div>
+</div>
+</sc-if>
+</div>
+</div>
+
+<div style="height: 68px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 24px; border-top: 1px solid #262626">
+<span style="flex: 1; display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: #38D591"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg>已選「{{selName}}」· 自動儲存</span>
+<a href="K01-VoiceCall.dc.html" style="height: 36px; padding: 0 18px; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14px; display: flex; align-items: center; gap: 8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.phone}}"></path></svg>開始通話</a>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":640,"height":608}}'>
+class Component extends DCLogic {
+renderVals() {
+const I = {"check": "M20 6 9 17l-5-5", "chevronDown": "M0 0m6 9 6 6 6-6", "chevronRight": "M0 0m9 18 6-6-6-6", "phone": "M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384", "play": "M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z", "sparkles": "M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z M20 2v4 M22 4h-4 M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0", "square": "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z", "x": "M18 6 6 18 M0 0m6 6 12 12"};
+const st = this.state || {};
+const sel = st.sel || 'qing';
+const playing = st.playing === undefined ? 'qing' : st.playing;
+const adv = !!st.adv;
+const rt = !!st.rt;
+const list = [
+['qing', '晴', '溫和的女聲 · 推薦給幕僚長'],
+['an', '安', '沉穩的男聲'],
+['kui', '小葵', '活潑的女聲'],
+['jie', '阿杰', '爽朗的男聲'],
+['ya', '雅', '像新聞主播，咬字清楚'],
+['sys', '系統內建', '免費，聽起來比較機械']
+];
+const name = (list.find((x) => x[0] === sel) || list[0])[1];
+return {
+I,
+h: 608,
+selName: name,
+wave: [6, 12, 18, 10, 16, 8, 14, 6],
+voices: list.map(([id, n, desc], i) => ({
+k: 'ABCDEF'[i],
+name: n, desc, sel: sel === id, selA: sel === id ? 'true' : 'false',
+bg: sel === id ? '#2F2F2F' : '#1C1C1C',
+unsel: sel !== id, ringBg: sel === id ? '#1084FE' : '#333333',
+playing: playing === id,
+playText: playing === id ? '停止' : '試聽', playLabel: (playing === id ? '停止試聽 ' : '試聽 ') + n,
+playIcon: playing === id ? I.square : I.play,
+pick: () => this.setState({ sel: id }),
+play: () => this.setState({ playing: playing === id ? null : id })
+})),
+adv, advA: adv ? 'true' : 'false', advRot: adv ? 90 : 0,
+toggleAdv: () => this.setState({ adv: !adv }),
+rtA: rt ? 'true' : 'false', rtBg: rt ? '#1084FE' : '#3D3D3D', rtJust: rt ? 'flex-end' : 'flex-start',
+toggleRt: () => this.setState({ rt: !rt })
+};
+}
+}
+</script>
+</body>
+</html>

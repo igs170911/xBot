@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>在 Bot 的電腦登入</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}
+</style>
+</helmet>
+<div role="dialog" aria-label="登入 Notion" style="width: 900px; height: 780px; box-sizing: border-box; display: flex; flex-direction: column; background: #111111; border: 1px solid #262626; border-radius: 18px; overflow: hidden; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.5">
+
+<header style="flex: none; display: flex; align-items: center; gap: 14px; padding: 18px 16px 14px 24px">
+<span style="width: 40px; height: 40px; border-radius: 50%; background: #2F2F2F; display: flex; align-items: center; justify-content: center; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 6h4"></path><path d="M2 10h4"></path><path d="M2 14h4"></path><path d="M2 18h4"></path><path d="M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-16a2 2 0 0 1 2 -2Z"></path><path d="M16 2v20"></path></svg></span>
+<div style="flex: 1; min-width: 0">
+<h2 style="margin: 0; font-size: 18px; font-weight: 400">登入 Notion</h2>
+<div style="font-size: 13px; color: #FCFCFC99">登入頁已經在小秘的電腦上開好了，直接在畫面上登入、按「允許存取」就完成。</div>
+</div>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</header>
+
+<div style="flex: 1 1 0; min-height: 0; display: flex; gap: 16px; padding: 4px 24px 20px">
+
+<section aria-label="小秘的電腦" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #FCFCFC99"><dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#111111" size="20" hint-size="20px,20px"></dc-import>小秘的電腦 · 即時畫面<span style="flex: 1"></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M8 21L16 21"></path><path d="M12 17L12 21"></path></svg><span>你可以直接點、直接打字</span></div>
+
+<div style="flex: 1 1 0; min-height: 0; border-radius: 10px; overflow: hidden; background: #E9EBEF; display: flex; flex-direction: column; position: relative">
+<div style="flex: none; height: 34px; background: #DADDE3; display: flex; align-items: center; gap: 8px; padding: 0 10px">
+<span style="display: flex; gap: 5px"><span style="width: 9px; height: 9px; border-radius: 50%; background: #B9BDC6"></span><span style="width: 9px; height: 9px; border-radius: 50%; background: #B9BDC6"></span><span style="width: 9px; height: 9px; border-radius: 50%; background: #B9BDC6"></span></span>
+<span style="height: 24px; padding: 0 10px; border-radius: 6px 6px 0 0; background: #F6F7F9; align-self: flex-end; display: flex; align-items: center; font-size: 11.5px; color: #3C3D47">Notion – 授權存取</span>
+</div>
+<div style="flex: none; height: 32px; background: #F6F7F9; border-bottom: 1px solid #D0D3DA; display: flex; align-items: center; gap: 8px; padding: 0 10px; color: #5C5E69">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2Z"></path><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #3C3D47; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">https://api.notion.com/v1/oauth/authorize?client_id=1f4d…&amp;response_type=code&amp;owner=user</span>
+</div>
+
+<div style="flex: 1; display: flex; align-items: center; justify-content: center; background: #FFFFFF; color: #1F1F22; padding: 16px">
+<div style="width: 340px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; justify-content: center; gap: 10px">
+<span style="width: 40px; height: 40px; border-radius: 10px; background: #F1F1EF; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#37352F" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 8V4H8"></path><path d="M6 8h12a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2Z"></path><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg></span>
+<span style="display: flex; color: #9B9A97"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span>
+<span style="width: 40px; height: 40px; border-radius: 10px; background: #F1F1EF; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#37352F" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 6h4"></path><path d="M2 10h4"></path><path d="M2 14h4"></path><path d="M2 18h4"></path><path d="M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-16a2 2 0 0 1 2 -2Z"></path><path d="M16 2v20"></path></svg></span>
+</div>
+<div style="text-align: center; font-size: 17px; color: #37352F">XBot 想要存取你的 Notion 工作區</div>
+<div style="display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 10px; border: 1px solid #E3E2E0; border-radius: 6px; font-size: 13px; color: #37352F">
+<span style="width: 22px; height: 22px; border-radius: 4px; background: #E9E5DC; display: flex; align-items: center; justify-content: center; font-size: 11.5px">陳</span>
+<span style="flex: 1">陳家選物</span>
+<span style="font-size: 12px; color: #9B9A97">yuting.chen.tw@gmail.com</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9B9A97" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg>
+</div>
+<div style="font-size: 12.5px; color: #787774">XBot 將可以：</div>
+<div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #37352F; margin-top: -6px">
+<span style="display: flex; align-items: center; gap: 8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2F7D57" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>讀取你選擇分享的頁面與資料庫</span>
+<span style="display: flex; align-items: center; gap: 8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2F7D57" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>在這些頁面裡建立和編輯內容</span>
+<span style="display: flex; align-items: center; gap: 8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2F7D57" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>讀取和新增留言</span>
+</div>
+<div style="display: flex; gap: 8px; margin-top: 4px">
+<span style="flex: 1; height: 34px; border: 1px solid #E3E2E0; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #37352F">取消</span>
+<span style="flex: 1; height: 34px; border-radius: 6px; background: #2383E2; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #FFFFFF; position: relative">允許存取
+<span style="position: absolute; right: 26px; bottom: -14px; display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F1F22" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M14 4.1 12 6"></path><path d="m5.1 8-2.9-.8"></path><path d="m6 12-1.9 2"></path><path d="M7.2 2.2 8 5.1"></path><path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1-.074.949l-4.349 1.041a1 1 0 0 0-.74.739l-1.04 4.35a.5.5 0 0 1-.95.074z"></path></svg></span>
+</span>
+</div>
+<div style="font-size: 11.5px; color: #9B9A97; text-align: center">之後可以在 Notion 的「設定 › 連線」移除存取權。</div>
+</div>
+</div>
+</div>
+
+<div style="flex: none; display: flex; align-items: center; gap: 10px; height: 40px">
+<span style="width: 8px; height: 8px; border-radius: 50%; background: #FF9800; box-shadow: 0 0 0 4px rgba(255,152,0,.2)"></span>
+<span style="flex: 1; font-size: 13.5px; color: #FFB547">等你登入…完成後會自動繼續</span>
+<button type="button" style="height: 30px; padding: 0 12px; font-size: 13px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #2F2F2F; color: #FCFCFC">取消登入</button>
+</div>
+</section>
+
+<aside aria-label="改用這台裝置登入" style="flex: 0 0 300px; background: #191919; border-radius: 14px; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+<div>
+<div style="font-size: 15px">畫面上登入不了？</div>
+<div style="font-size: 12.5px; color: #FCFCFC99; margin-top: 2px">例如公司帳號只允許你自己的裝置。改在這台裝置登入，3 步：</div>
+</div>
+<ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px">
+<li style="display: flex; gap: 10px">
+<span style="width: 22px; height: 22px; flex: none; border-radius: 50%; background: #2F2F2F; display: inline-flex; align-items: center; justify-content: center; font-size: 12px">1</span>
+<div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-start"><span style="font-size: 13.5px">在這台裝置打開登入頁，登入後按「允許存取」。</span>
+<a href="#" style="height: 30px; padding: 0 12px; font-size: 13px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 1px solid #333333; background: transparent; color: #FCFCFC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M15 3h6v6"></path><path d="M10 14 21 3"></path><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>開啟登入頁</a></div>
+</li>
+<li style="display: flex; gap: 10px">
+<span style="width: 22px; height: 22px; flex: none; border-radius: 50%; background: #2F2F2F; display: inline-flex; align-items: center; justify-content: center; font-size: 12px">2</span>
+<span style="font-size: 13.5px">最後會停在打不開的頁面（正常），把網址列整串網址複製下來。</span>
+</li>
+<li style="display: flex; gap: 10px">
+<span style="width: 22px; height: 22px; flex: none; border-radius: 50%; background: #2F2F2F; display: inline-flex; align-items: center; justify-content: center; font-size: 12px">3</span>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px"><label for="i03-url" style="font-size: 13.5px">貼到這裡：</label>
+<input id="i03-url" type="text" placeholder="http://localhost:8791/callback?code=…" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; outline: none; width: 100%; font-family: 'JetBrains Mono', monospace; font-size: 12px"></div>
+</li>
+</ol>
+<button type="button" style="height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #FCFCFC; color: #070707; width: 100%">完成登入</button>
+<span style="flex: 1"></span>
+<div style="display: flex; gap: 8px; font-size: 12.5px; color: #FCFCFC90; border-top: 1px solid #262626; padding-top: 12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg><span>登入資料加密存在這台主機，Bot 和模型都看不到你的密碼。</span></div>
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":900,"height":780}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

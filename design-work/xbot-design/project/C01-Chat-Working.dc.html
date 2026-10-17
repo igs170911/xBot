@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>對話：工作中＋電腦</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+input::placeholder{color:#FCFCFC90}
+button{font:inherit;cursor:pointer}
+@keyframes xspin{to{transform:rotate(360deg)}}
+@keyframes xpulse{0%,100%{opacity:1}50%{opacity:.35}}
+</style>
+</helmet>
+<div style="min-height: 960px; display: flex; flex-wrap: wrap; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.6">
+
+<div style="flex: 1 1 300px; max-width: 300px; background: #111111">
+<dc-import name="Sidebar" active="xiaomi" theme="dark" hint-size="100%,960px"></dc-import>
+</div>
+
+<main style="flex: 999 1 560px; min-width: 0; height: 960px; display: flex; flex-direction: column; background: #070707">
+
+<header style="height: 56px; flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 20px">
+<dc-import name="Avatar" color="blue" body="cursor" state="{{avState}}" dot="none" ring="#070707" size="26" hint-size="26px,26px"></dc-import>
+<span style="font-size: 16px">小秘</span>
+<span style="display: flex; color: #FCFCFC99" title="幕僚長"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"></path><path d="M5 21h14"></path></svg></span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #FCFCFC90; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: {{dotColor}}; animation: xpulse 1.6s ease-in-out infinite"></span>{{statusText}}</span>
+<span style="flex: 1"></span>
+<button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; background: transparent; color: #FCFCFC99; font-size: 13.5px; display: flex; align-items: center; gap: 4px; white-space: nowrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>對話串</button>
+<button type="button" aria-haspopup="listbox" style="height: 32px; padding: 0 10px 0 14px; border: 0; border-radius: 999px; background: #262626; color: #FCFCFC; font-size: 13.5px; display: flex; align-items: center; gap: 6px; white-space: nowrap">Claude Sonnet 5.5<span style="display: flex; color: #FCFCFC99"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></span></button>
+<button type="button" aria-label="語音通話" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"></path></svg></button>
+<button type="button" aria-label="小秘的電腦（已開啟）" aria-pressed="true" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #1084FE; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M8 21L16 21"></path><path d="M12 17L12 21"></path></svg></button>
+<button type="button" aria-label="更多" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path><path d="M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path><path d="M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path></svg></button>
+</header>
+
+<div style="flex: 1; min-height: 0; overflow-y: auto">
+<div style="max-width: 780px; min-height: 100%; margin: 0 auto; box-sizing: border-box; padding: 12px 24px 8px; display: flex; flex-direction: column; justify-content: flex-end; gap: 14px">
+
+<span style="align-self: center; font-size: 12.5px; color: #FCFCFC90">今天 上午 9:00</span>
+<div style="align-self: flex-start; max-width: 85%; background: #262626; border-radius: 20px; padding: 10px 16px">早安。今天有 3 件事等你：帳房要付晨光廣告的 10 月廣告費 NT$1,280、小編發新品貼文需要你輸入簡訊驗證碼、阿凱的 3 封開發信草稿寫好了。</div>
+
+<span style="align-self: center; font-size: 12.5px; color: #FCFCFC90; margin-top: 6px">今天 下午 2:02</span>
+<div style="align-self: flex-end; max-width: 75%; background: #5A5A5A; color: #FFFFFF; border-radius: 20px; padding: 10px 16px">幫我比較蝦皮上三家競品的定價，整理成表格，告訴我哪些該調價。</div>
+<div style="align-self: flex-start; max-width: 85%; background: #262626; border-radius: 20px; padding: 10px 16px">收到。我請阿哲去抓三家的價格，我這邊先對齊我們自己的 12 項主力商品，好了整理成表格給你。</div>
+
+<section aria-label="小秘的工作進度" style="display: flex; flex-direction: column; gap: 6px">
+<button type="button" aria-expanded="{{open}}" onClick="{{toggle}}" style="align-self: flex-start; display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px 0 4px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC">
+<dc-import name="Avatar" color="blue" body="cursor" state="{{avState}}" dot="none" ring="#070707" size="24" hint-size="24px,24px"></dc-import>
+<span style="font-size: 15px; color: {{workColor}}">{{workTitle}}</span>
+<span style="font-size: 13.5px; color: #FCFCFC90">1 分 12 秒 · 6 個步驟</span>
+<span style="display: flex; color: #FCFCFC99; transform: rotate({{chev}}deg); transition: transform .15s"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m9 18 6-6-6-6"></path></svg></span>
+</button>
+<sc-if value="{{open}}" hint-placeholder-val="{{ true }}">
+<ol style="list-style: none; margin: 0 0 0 15px; padding: 2px 0 2px 19px; border-left: 1px solid #333333; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="6">
+<li style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-height: 28px">
+<sc-if value="{{s.done}}" hint-placeholder-val="{{ true }}"><span style="display: flex; color: #38D591"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="m16 9-5.5 5.5L8 12"></path></svg></span></sc-if>
+<sc-if value="{{s.now}}" hint-placeholder-val="{{ false }}"><span style="display: flex; color: #7FC0FF; animation: {{spin}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 2v4"></path><path d="m16.2 7.8 2.9-2.9"></path><path d="M18 12h4"></path><path d="m16.2 16.2 2.9 2.9"></path><path d="M12 18v4"></path><path d="m4.9 19.1 2.9-2.9"></path><path d="M2 12h4"></path><path d="m4.9 4.9 2.9 2.9"></path></svg></span></sc-if>
+<span style="font-size: 14px; color: {{s.fg}}">{{s.t}}</span>
+<sc-if value="{{s.tool}}" hint-placeholder-val="{{ true }}">
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid #333333; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #FCFCFCcc"><span style="display: flex; color: #38D591"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></span>{{s.pill}}</span>
+</sc-if>
+<sc-if value="{{s.ev}}" hint-placeholder-val="{{ false }}">
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 4px; border: 1px solid #333333; border-radius: 999px; font-size: 12.5px; color: #FCFCFCcc">
+<dc-import name="Avatar" color="orange" body="blob" state="{{s.av}}" dot="none" ring="#070707" size="18" hint-size="18px,18px"></dc-import>
+<span style="display: flex; color: #FCFCFC99"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><sc-for list="{{s.icon}}" as="d" hint-placeholder-count="2"><path d="{{d}}"></path></sc-for></svg></span>{{s.pill}}</span>
+</sc-if>
+<sc-if value="{{s.now}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12.5px; color: #FCFCFC90">{{s.when}}</span></sc-if>
+</li>
+</sc-for>
+<li style="display: flex; align-items: center; gap: 10px; min-height: 28px; color: #FCFCFC90; font-size: 14px"><span style="width: 16px; height: 16px; box-sizing: border-box; border: 1.5px dashed #5A5A5A; border-radius: 50%"></span>接下來：整理比較表與調價建議</li>
+</ol>
+</sc-if>
+</section>
+
+</div>
+</div>
+
+<div style="flex: none; padding: 8px 24px 16px">
+<div style="max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px">
+<div style="height: 52px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 2px; padding: 0 9px 0 8px">
+<button type="button" aria-label="加入檔案或更多" style="width: 36px; height: 36px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+<label style="flex: 1; min-width: 0; display: flex"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">補充說明給小秘</span><input type="text" placeholder="{{placeholder}}" style="flex: 1; min-width: 0; height: 36px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none; padding: 0 6px"></label>
+<button type="button" aria-label="語音輸入" style="width: 36px; height: 36px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 19v3"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><path d="M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z"></path></svg></button>
+<sc-if value="{{running}}" hint-placeholder-val="{{ true }}">
+<button type="button" aria-label="停止小秘" onClick="{{stop}}" style="width: 34px; height: 34px; border: 0; border-radius: 999px; background: #FCFCFC; display: flex; align-items: center; justify-content: center"><span style="width: 11px; height: 11px; border-radius: 2px; background: #070707"></span></button>
+</sc-if>
+<sc-if value="{{stopping}}" hint-placeholder-val="{{ false }}">
+<button type="button" aria-label="正在停止" disabled style="width: 34px; height: 34px; border: 0; border-radius: 999px; background: #3D3D3D; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: default"><span style="display: flex; animation: xspin 1s linear infinite"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 2v4"></path><path d="m16.2 7.8 2.9-2.9"></path><path d="M18 12h4"></path><path d="m16.2 16.2 2.9 2.9"></path><path d="M12 18v4"></path><path d="m4.9 19.1 2.9-2.9"></path><path d="M2 12h4"></path><path d="m4.9 4.9 2.9 2.9"></path></svg></span></button>
+</sc-if>
+</div>
+<span style="align-self: center; font-size: 12.5px; color: #FCFCFC90">{{hint}}</span>
+</div>
+</div>
+</main>
+
+<aside aria-label="小秘的電腦" style="flex: 1 1 480px; max-width: 480px; min-width: 0; height: 960px; box-sizing: border-box; background: #111111; border-left: 1px solid #262626; display: flex; flex-direction: column; gap: 14px; padding: 0 20px 20px">
+<div style="height: 56px; flex: none; display: flex; align-items: center; gap: 8px">
+<button type="button" aria-label="電腦設定" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"></path></svg></button>
+<span style="flex: 1; text-align: center; font-size: 16px">小秘的電腦</span>
+<button type="button" aria-label="關閉電腦面板" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</div>
+
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: -6px">
+<span style="font-size: 13.5px; color: #FCFCFC99">即時畫面</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #FCFCFC99"><span style="width: 6px; height: 6px; border-radius: 50%; background: {{dotColor}}; animation: xpulse 1.6s ease-in-out infinite"></span>{{screenNote}}</span>
+</div>
+
+<div role="img" aria-label="小秘的電腦畫面：蝦皮搜尋「保溫瓶」的商品列表，滑鼠停在日日家居的保溫瓶上" style="height: 276px; flex: none; border-radius: 10px; overflow: hidden; background: #F5F5F5; display: flex; flex-direction: column; position: relative; font-family: 'Huninn', 'PingFang TC', sans-serif; color: #222222">
+<div style="height: 22px; flex: none; background: #DEE1E6; display: flex; align-items: flex-end; gap: 6px; padding: 0 8px">
+<span style="display: flex; gap: 4px; align-self: center"><span style="width: 6px; height: 6px; border-radius: 50%; background: #FF5F57"></span><span style="width: 6px; height: 6px; border-radius: 50%; background: #FEBC2E"></span><span style="width: 6px; height: 6px; border-radius: 50%; background: #28C840"></span></span>
+<span style="height: 17px; width: 132px; background: #FFFFFF; border-radius: 6px 6px 0 0; display: flex; align-items: center; gap: 4px; padding: 0 8px; font-size: 8px; color: #3C4043; box-sizing: border-box"><span style="width: 8px; height: 8px; border-radius: 2px; background: #EE4D2D"></span>保溫瓶 | 蝦皮購物</span>
+<span style="height: 17px; width: 96px; display: flex; align-items: center; padding: 0 8px; font-size: 8px; color: #5F6368; box-sizing: border-box">賣家中心</span>
+</div>
+<div style="height: 22px; flex: none; background: #FFFFFF; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-bottom: 1px solid #E3E3E3">
+<span style="font-size: 9px; color: #9AA0A6; letter-spacing: 3px">‹ › ↻</span>
+<span style="flex: 1; height: 15px; border-radius: 8px; background: #F1F3F4; display: flex; align-items: center; padding: 0 8px; font-family: 'JetBrains Mono', monospace; font-size: 7.5px; color: #3C4043">shopee.tw/search?keyword=保溫瓶&amp;sortBy=sales</span>
+</div>
+<div style="height: 36px; flex: none; background: #EE4D2D; display: flex; align-items: center; gap: 10px; padding: 0 12px">
+<span style="font-size: 11px; color: #FFFFFF">蝦皮購物</span>
+<span style="flex: 1; height: 20px; background: #FFFFFF; border-radius: 2px; display: flex; align-items: center; justify-content: space-between; padding: 0 2px 0 8px; font-size: 8.5px; color: #222222">保溫瓶<span style="width: 26px; height: 16px; border-radius: 2px; background: #FB5533"></span></span>
+</div>
+<div style="height: 22px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px; background: #EDEDED; font-size: 7.5px; color: #555555">
+<span>排序</span><span style="background: #FFFFFF; padding: 2px 6px; border-radius: 2px">綜合排名</span><span style="background: #FFFFFF; padding: 2px 6px; border-radius: 2px">最新</span><span style="background: #EE4D2D; color: #FFFFFF; padding: 2px 6px; border-radius: 2px">最熱銷</span><span style="background: #FFFFFF; padding: 2px 6px; border-radius: 2px">價格 ⌄</span>
+</div>
+<div style="flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 6px 12px; align-content: start">
+<sc-for list="{{products}}" as="p" hint-placeholder-count="8">
+<div style="background: #FFFFFF; border-radius: 2px; outline: {{p.ring}}; outline-offset: 1px; display: flex; flex-direction: column; overflow: hidden">
+<div style="height: 58px; background: {{p.bg}}; display: flex; align-items: flex-end; justify-content: center; gap: 4px; padding-bottom: 6px; box-sizing: border-box">
+<span style="display: flex; flex-direction: column; align-items: center"><span style="width: 9px; height: 5px; border-radius: 2px 2px 0 0; background: {{p.cap}}"></span><span style="width: 17px; height: {{p.h}}px; border-radius: 4px 4px 5px 5px; background: {{p.c}}"></span></span>
+<span style="display: flex; flex-direction: column; align-items: center"><span style="width: 7px; height: 4px; border-radius: 2px 2px 0 0; background: {{p.cap}}"></span><span style="width: 12px; height: 26px; border-radius: 3px 3px 4px 4px; background: {{p.c2}}"></span></span>
+</div>
+<span style="font-size: 7.5px; line-height: 1.35; padding: 3px 4px 0; height: 20px; overflow: hidden">{{p.n}}</span>
+<span style="display: flex; justify-content: space-between; align-items: baseline; padding: 2px 4px 4px"><span style="font-size: 9px; color: #EE4D2D">{{p.price}}</span><span style="font-size: 6.5px; color: #888888">{{p.sold}}</span></span>
+</div>
+</sc-for>
+</div>
+<span style="position: absolute; left: 287px; top: 168px; display: flex; color: #000000; filter: drop-shadow(0 1px 1px rgba(255,255,255,.9))"><svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF" stroke="#000000" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"></path></svg></span>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 16px; background: rgba(32,33,36,.92); display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 7.5px; color: #E8EAED"><span>Chromium · 小秘</span><span>下午 2:03</span></div>
+</div>
+
+<div style="display: flex; gap: 8px">
+<button type="button" onClick="{{take}}" style="flex: 1; height: 40px; border: 0; border-radius: 10px; background: #262626; color: #FCFCFC; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"></path><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"></path><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>{{takeLabel}}</button>
+<button type="button" style="height: 40px; padding: 0 16px; border: 0; border-radius: 10px; background: #262626; color: #FCFCFC; font-size: 14px; display: flex; align-items: center; gap: 8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"></path></svg>休眠</button>
+</div>
+
+<section style="background: #191919; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 400">在哪裡跑</h2>
+<span style="font-size: 13px; color: #FCFCFC99">小秘的電腦放在哪裡，隨時可以換。</span>
+</div>
+<div role="radiogroup" aria-label="在哪裡跑" style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #111111">
+<sc-for list="{{wheres}}" as="w" hint-placeholder-count="3">
+<button type="button" role="radio" aria-checked="{{w.on}}" onClick="{{w.pick}}" style="flex: 1; height: 34px; border: 0; border-radius: 8px; background: {{w.bg}}; color: {{w.fg}}; font-size: 13.5px">{{w.t}}</button>
+</sc-for>
+</div>
+<span style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #FCFCFC90"><span style="display: flex"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 20v2"></path><path d="M12 2v2"></path><path d="M17 20v2"></path><path d="M17 2v2"></path><path d="M2 12h2"></path><path d="M2 17h2"></path><path d="M2 7h2"></path><path d="M20 12h2"></path><path d="M20 17h2"></path><path d="M20 7h2"></path><path d="M7 20v2"></path><path d="M7 2v2"></path><path d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2Z"></path><path d="M9 8h6a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1Z"></path></svg></span>{{whereNote}}</span>
+</section>
+
+<section style="background: #191919; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 8px"><span style="display: flex; color: #FCFCFC99"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="M12 6v6l4 2"></path></svg></span><h2 style="margin: 0; font-size: 15px; font-weight: 400">定時任務</h2></div>
+<div style="display: flex; align-items: center; gap: 12px; background: #111111; border-radius: 10px; padding: 10px 12px">
+<span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 14px">競品價格週報</span><span style="font-size: 12.5px; color: #FCFCFC99">每週一 上午 9:00 · 結果貼在這個對話</span></span>
+<button type="button" role="switch" aria-checked="true" aria-label="競品價格週報" style="width: 40px; height: 24px; flex: none; border: 0; border-radius: 999px; background: #1084FE; padding: 0; position: relative"><span style="position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; background: #FFFFFF"></span></button>
+</div>
+<button type="button" style="height: 36px; border: 0; border-radius: 10px; background: #262626; color: #FCFCFC99; font-size: 13.5px; display: flex; align-items: center; justify-content: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>新增定時任務</button>
+</section>
+</aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+renderVals() {
+const s = Object.assign({ stopping: false, open: true, where: 'local', took: false }, this.state || {});
+const IC = {"arrow-right": ["M5 12h14", "m12 5 7 7-7 7"], "reply": ["M20 18v-2a4 4 0 0 0-4-4H4", "m9 17-5-5 5-5"]};
+const st = (t, kind, extra) => Object.assign({ t, done: kind === 'done', now: kind === 'now', fg: kind === 'now' ? '#FCFCFC' : '#FCFCFCcc', tool: false, ev: false, pill: '', icon: [], av: 'idle', when: '' }, extra || {});
+const P = (n, price, sold, bg, c, c2, cap, h, sel) => ({ n, price, sold, bg, c, c2, cap, h, ring: sel ? '2px solid #1084FE' : '0px solid transparent' });
+const W = { local: '在這台主機上跑 · 2 CPU · 3 GB · 閒置 30 分鐘休眠', cloud: '雲端電腦 · 主機關機也能繼續 · 約 2 秒開好', off: '不用電腦 · 小秘只能聊天和查資料' };
+return {
+running: !s.stopping,
+stopping: s.stopping,
+stop: () => this.setState({ stopping: true }),
+open: s.open,
+toggle: () => this.setState({ open: !s.open }),
+chev: s.open ? 90 : 0,
+avState: s.stopping ? 'idle' : 'working',
+workTitle: s.stopping ? '正在停止…' : '思考中',
+workColor: s.stopping ? '#FCFCFC99' : '#FCFCFC',
+statusText: s.stopping ? '正在停止' : '工作中',
+dotColor: s.stopping ? '#5A5A5A' : '#1084FE',
+spin: s.stopping ? 'none' : 'xspin 1.2s linear infinite',
+placeholder: s.stopping ? '正在停止小秘…' : '補充說明給小秘…',
+hint: s.stopping ? '正在停止 · 阿哲那邊的子工作也會一起停，做到一半的檔案會保留' : '小秘工作中 · 送出的話會補充進目前的工作',
+screenNote: s.took ? '你正在操作' : (s.stopping ? '正在停止' : '小秘正在操作'),
+takeLabel: s.took ? '交還給小秘' : '接手操作',
+take: () => this.setState({ took: !s.took }),
+whereNote: W[s.where],
+wheres: [['local', '地端電腦'], ['cloud', '雲端電腦'], ['off', '關閉']].map(([k, t]) => ({ t, on: s.where === k, bg: s.where === k ? '#2F2F2F' : 'transparent', fg: s.where === k ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ where: k }) })),
+steps: [
+st('讀取自家 12 項主力商品現價', 'done', { tool: true, pill: 'read_file' }),
+st('交辦阿哲抓三家競品價格', 'done', { ev: true, pill: '已傳請求給阿哲', icon: IC['arrow-right'], av: 'working' }),
+st('打開蝦皮搜尋「保溫瓶」', 'done', { tool: true, pill: 'browser_open' }),
+st('收到前兩家的價格', 'done', { ev: true, pill: '來自阿哲的回覆 · 第 1/6 棒', icon: IC.reply, av: 'happy' }),
+st('對齊容量規格（500 ml／750 ml）', 'done', { tool: true, pill: 'python' }),
+st('補齊第 3 家「日日家居」的價格', 'now', { tool: true, pill: 'browser_click', when: '12 秒前' })
+],
+products: [
+P('真空保溫瓶 500ml 霧面款', '$499', '已售 2.1萬', '#EEF2EE', '#8FAF9A', '#C9D8CC', '#4E6B57', 34, false),
+P('不鏽鋼保溫杯 附濾茶網', '$520', '已售 8,432', '#F1EEEA', '#C8B8A6', '#E3D6C8', '#7C6650', 30, false),
+P('日系極簡保溫瓶 750ml', '$549', '已售 1.3萬', '#EDF1F6', '#2F4D73', '#9CB3CF', '#1C2F48', 38, true),
+P('兒童吸管保溫瓶 400ml', '$399', '已售 5,210', '#FBEFF1', '#F08FA0', '#F7C7CF', '#C2566A', 28, false),
+P('運動大容量保溫壺 1L', '$680', '已售 3,877', '#EEF0F3', '#3E4650', '#A5ADB8', '#20262D', 40, false),
+P('316 不鏽鋼燜燒罐', '$590', '已售 2,964', '#F6F2E9', '#E4C77C', '#F1E1B5', '#9E8340', 26, false),
+P('隨行咖啡杯 360ml', '$450', '已售 9,105', '#F3EEEB', '#B7745A', '#E2BFAE', '#6E3F2D', 30, false),
+P('陶瓷內膽保溫杯', '$629', '已售 1,488', '#EFF3F1', '#E9ECEA', '#CAD3CE', '#7F8C86', 32, false)
+]
+};
+}
+}
+</script>
+</body>
+</html>

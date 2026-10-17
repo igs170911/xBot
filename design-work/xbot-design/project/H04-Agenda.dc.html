@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>等你的事</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}
+</style>
+</helmet>
+<div style="min-height: 960px; display: flex; flex-wrap: wrap; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.5">
+
+<div style="flex: 1 1 300px; max-width: 300px; border-right: 1px solid #262626; background: #111111">
+<dc-import name="Sidebar" active="none" theme="dark" hint-size="100%,960px"></dc-import>
+</div>
+
+<main style="flex: 999 1 560px; min-width: 0; min-height: 960px; box-sizing: border-box; padding: 18px 24px 20px; display: flex; flex-direction: column; gap: 14px">
+<header style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px">
+<div style="flex: 1 1 280px; min-width: 0">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1084FE" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M22 12L16 12L14 15L10 15L8 12L2 12"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+<h1 style="margin: 0; font-size: 20px; font-weight: 400; line-height: 1.4">等你的事</h1>
+</div>
+<p style="margin: 2px 0 0; font-size: 13px; color: #FCFCFC99">Bot 想請你決定或聊一下的事。提案你沒意見，時間到就自動生效。</p>
+</div>
+<nav aria-label="行事曆分頁" style="display: inline-flex; padding: 3px; gap: 2px; background: #111111; border-radius: 10px; flex: none">
+<a href="H01-Calendar.dc.html" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: transparent; color: #FCFCFC99"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M8 2v3"></path><path d="M16 2v3"></path><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z"></path><path d="M3 9h18"></path><path d="M8 13h.01"></path><path d="M12 13h.01"></path><path d="M16 13h.01"></path><path d="M8 17h.01"></path><path d="M12 17h.01"></path><path d="M16 17h.01"></path></svg>行事曆</a>
+<a href="H03-RoutineList.dc.html" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: transparent; color: #FCFCFC99"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m17 2 4 4-4 4"></path><path d="M3 11v-1a4 4 0 0 1 4-4h14"></path><path d="m7 22-4-4 4-4"></path><path d="M21 13v1a4 4 0 0 1-4 4H3"></path></svg>定時任務</a>
+<span style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: #2F2F2F; color: #FCFCFC"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M22 12L16 12L14 15L10 15L8 12L2 12"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>等你的事 <span style="color: #FFB547">{{count}}</span></span>
+</nav>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+
+<section aria-label="等你的事" style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 8px 6px 14px; box-sizing: border-box; background: #111111; border-radius: 12px; font-size: 13px; color: #FCFCFC99">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+<span style="flex: 1">每個 Bot 的提案＋討論最多 3 件；待你核定另計，每個 Bot 最多 10 件。</span>
+<a href="F08-Approvals.dc.html" style="height: 30px; padding: 0 12px; font-size: 13px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #2F2F2F; color: #FCFCFC; color: #FFB547">2 件待你核定 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m9 18 6-6-6-6"></path></svg></a>
+</div>
+
+<article style="background: #262626; border-radius: 18px; padding: 14px 20px">
+<div style="display: flex; align-items: center; gap: 10px">
+<dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#262626" size="32" hint-size="32px,32px"></dc-import>
+<div style="flex: 1; min-width: 0"><div style="font-size: 15px">小秘 <span style="font-size: 12.5px; color: #FCFCFC99">· 提案 · 2 小時前</span></div></div>
+<sc-if value="{{p1.open}}" hint-placeholder-val="{{ true }}"><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; background: rgba(255,152,0,.16); color: #FFB547"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="M12 6v6l4 2"></path></svg>3 天後生效</span></sc-if>
+</div>
+<h2 style="margin: 12px 0 4px; font-size: 16px; font-weight: 400">每週一上午 9:00 自動產出銷售週報，發到「每週一早會」</h2>
+<p style="margin: 0; font-size: 14px; color: #FCFCFC99">內容：上週營收、退貨率、三家競品價格變化。數據喵整理數字，小秘寫摘要，約 8 行。</p>
+<sc-if value="{{p1.open}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 6px 0 0; font-size: 13px; color: #FCFCFC90">你沒意見的話，10 月 20 日（二）自動生效，第一次在 10 月 26 日（一）跑。</p>
+<div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px">
+<button type="button" onClick="{{p1.reject}}" style="height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #2F2F2F; color: #FCFCFC">否決</button>
+<button type="button" onClick="{{p1.accept}}" style="height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #FCFCFC; color: #070707">現在就同意</button>
+</div>
+</sc-if>
+<sc-if value="{{p1.done}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #333333; font-size: 13.5px">
+<span style="{{p1.resultStyle}}">{{p1.result}}</span>
+<span style="flex: 1"></span>
+<button type="button" onClick="{{p1.undo}}" style="height: 30px; padding: 0 12px; font-size: 13px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 1px solid #333333; background: transparent; color: #FCFCFC">復原</button>
+</div>
+</sc-if>
+</article>
+
+<article style="background: #262626; border-radius: 18px; padding: 14px 20px">
+<div style="display: flex; align-items: center; gap: 10px">
+<dc-import name="Avatar" color="yellow" body="hexagon" state="notifying" dot="none" ring="#262626" size="32" hint-size="32px,32px"></dc-import>
+<div style="flex: 1; min-width: 0"><div style="font-size: 15px">帳房 <span style="font-size: 12.5px; color: #FCFCFC99">· 想找你討論 · 昨天</span></div></div>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; background: #2F2F2F; color: #FCFCFC99"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"></path></svg>今天下午 4:00</span>
+</div>
+<h2 style="margin: 12px 0 4px; font-size: 16px; font-weight: 400">11 月廣告預算要不要加碼</h2>
+<p style="margin: 0; font-size: 14px; color: #FCFCFC99">10 月廣告花了 NT$18,400，帶來 NT$96,000 營收。雙 11 前想問你：維持 NT$18,000，還是加到 NT$25,000？</p>
+<sc-if value="{{d1.open}}" hint-placeholder-val="{{ true }}">
+<label style="display: block; margin-top: 12px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">回覆帳房</span>
+<input type="text" placeholder="有想法直接寫在這裡，不用開會" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; outline: none; width: 100%"></label>
+<div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px">
+<button type="button" onClick="{{d1.close}}" style="height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 1px solid #333333; background: transparent; color: #FCFCFC">不用討論了</button>
+<button type="button" style="height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #2F2F2F; color: #FCFCFC">改時間</button>
+<button type="button" onClick="{{d1.close}}" style="height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #FCFCFC; color: #070707">送出回覆</button>
+</div>
+</sc-if>
+<sc-if value="{{d1.done}}" hint-placeholder-val="{{ false }}">
+<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #333333; font-size: 13.5px; color: #38D591">已回覆，帳房會在對話裡接著處理。</div>
+</sc-if>
+</article>
+
+<article style="background: #262626; border-radius: 18px; padding: 14px 20px">
+<div style="display: flex; align-items: center; gap: 10px">
+<dc-import name="Avatar" color="orange" body="blob" state="working" dot="none" ring="#262626" size="32" hint-size="32px,32px"></dc-import>
+<div style="flex: 1; min-width: 0"><div style="font-size: 15px">阿哲 <span style="font-size: 12.5px; color: #FCFCFC99">· 提案 · 今天上午 10:40</span></div></div>
+<sc-if value="{{p2.open}}" hint-placeholder-val="{{ true }}"><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; background: rgba(255,152,0,.16); color: #FFB547"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="M12 6v6l4 2"></path></svg>1 天後生效</span></sc-if>
+</div>
+<h2 style="margin: 12px 0 4px; font-size: 16px; font-weight: 400">雙 11 前把競品價格巡檢改成每天</h2>
+<p style="margin: 0; font-size: 14px; color: #FCFCFC99">對手這兩週調價 4 次，每週三次會漏掉。到 11 月 12 日為止，之後自動改回。</p>
+<sc-if value="{{p2.open}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px">
+<button type="button" onClick="{{p2.reject}}" style="height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #2F2F2F; color: #FCFCFC">否決</button>
+<button type="button" onClick="{{p2.accept}}" style="height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #FCFCFC; color: #070707">現在就同意</button>
+</div>
+</sc-if>
+<sc-if value="{{p2.done}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #333333; font-size: 13.5px">
+<span style="{{p2.resultStyle}}">{{p2.result}}</span>
+<span style="flex: 1"></span>
+<button type="button" onClick="{{p2.undo}}" style="height: 30px; padding: 0 12px; font-size: 13px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 1px solid #333333; background: transparent; color: #FCFCFC">復原</button>
+</div>
+</sc-if>
+</article>
+
+<section aria-label="最近處理過" style="padding: 4px 4px 0">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #FCFCFC90; padding-bottom: 6px">最近 7 天處理過</div>
+<div style="display: flex; align-items: center; gap: 10px; height: 40px; border-top: 1px solid #1E1E1E; font-size: 13.5px"><dc-import name="Avatar" color="pink" body="circle" state="idle" dot="none" ring="#070707" size="20" hint-size="20px,20px"></dc-import><span style="flex: 1; min-width: 0">週末加發一篇開箱貼文</span><span style="color: #38D591">你同意了</span><span style="color: #FCFCFC90; font-size: 12.5px; width: 64px; text-align: right">10/15</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 40px; border-top: 1px solid #1E1E1E; font-size: 13.5px"><dc-import name="Avatar" color="green" body="squircle" state="idle" dot="none" ring="#070707" size="20" hint-size="20px,20px"></dc-import><span style="flex: 1; min-width: 0">開發信要不要附報價單</span><span style="color: #FCFCFC99">討論完了</span><span style="color: #FCFCFC90; font-size: 12.5px; width: 64px; text-align: right">10/14</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 40px; border-top: 1px solid #1E1E1E; font-size: 13.5px"><dc-import name="Avatar" color="purple" body="diamond" state="idle" dot="none" ring="#070707" size="20" hint-size="20px,20px"></dc-import><span style="flex: 1; min-width: 0">退貨率改用 30 天滾動計算</span><span style="color: #FCFCFC99">你否決了 · 10/27 前不再提</span><span style="color: #FCFCFC90; font-size: 12.5px; width: 64px; text-align: right">10/13</span></div>
+</section>
+</section>
+
+<aside style="flex: 0 1 360px; min-width: 300px; display: flex; flex-direction: column; gap: 12px">
+<section aria-label="接下來一週" style="background: #111111; border-radius: 18px; padding: 14px 16px 8px">
+<h2 style="margin: 0 0 4px; font-size: 15px; font-weight: 400">接下來一週</h2>
+<sc-for list="{{week}}" as="g" hint-placeholder-count="4">
+<div style="font-size: 12.5px; color: #FCFCFC90; padding: 8px 0 2px">{{g.label}}</div>
+<sc-for list="{{g.rows}}" as="r" hint-placeholder-count="2">
+<div style="display: flex; align-items: center; gap: 10px; height: 32px">
+<span style="width: 70px; flex: none; font-size: 12.5px; color: #FCFCFC99">{{r.time}}</span>
+<dc-import name="Avatar" color="{{r.color}}" body="{{r.body}}" state="idle" dot="none" ring="#111111" size="18" hint-size="18px,18px"></dc-import>
+<span style="flex: 1; min-width: 0; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.title}}</span>
+<span style="{{r.tagStyle}}">{{r.tag}}</span>
+</div>
+</sc-for>
+</sc-for>
+</section>
+
+<section aria-label="每週檢討與學習" style="background: #111111; border-radius: 18px; padding: 14px 16px 8px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 400">每週檢討與學習</h2>
+<p style="margin: 2px 0 6px; font-size: 12.5px; color: #FCFCFC99">每週日上午 10:00，Bot 回顧上週的工作和失敗，把學到的寫進自己的技能。</p>
+<sc-for list="{{learn}}" as="b" hint-placeholder-count="5">
+<div style="display: flex; align-items: center; gap: 10px; height: 38px; border-top: 1px solid #1E1E1E">
+<dc-import name="Avatar" color="{{b.color}}" body="{{b.body}}" state="idle" dot="none" ring="#111111" size="20" hint-size="20px,20px"></dc-import>
+<span style="flex: 1; font-size: 14px">{{b.name}}</span>
+<span style="font-size: 12.5px; color: #FCFCFC90">{{b.next}}</span>
+<button type="button" role="switch" aria-checked="{{b.on}}" aria-label="{{b.aria}}" onClick="{{b.toggle}}" style="{{b.trackStyle}}"><span style="{{b.dotStyle}}"></span></button>
+</div>
+</sc-for>
+</section>
+
+<section aria-label="訂閱行事曆" style="background: #111111; border-radius: 18px; padding: 14px 16px 16px">
+<div style="display: flex; align-items: center; gap: 8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><path d="M4 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path></svg><h2 style="margin: 0; font-size: 15px; font-weight: 400">在其他行事曆 App 看</h2></div>
+<p style="margin: 2px 0 10px; font-size: 12.5px; color: #FCFCFC99">Google、Apple 行事曆都能訂閱。只能看、不能改；網址外流就換新的。</p>
+<div style="display: flex; gap: 8px">
+<div style="flex: 1; min-width: 0; height: 34px; display: flex; align-items: center; padding: 0 10px; background: #191919; border: 1px solid #333333; border-radius: 10px; box-sizing: border-box"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">webcal://xbot.tail4c2e.ts.net/cal/k7Q2v9.ics</span></div>
+<button type="button" style="height: 30px; padding: 0 12px; font-size: 13px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #2F2F2F; color: #FCFCFC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>複製</button>
+</div>
+<button type="button" style="height: 30px; padding: 0 12px; font-size: 13px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 1px solid #333333; background: transparent; color: #FCFCFC; margin-top: 8px">換新網址</button>
+</section>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { p1: 'open', p2: 'open', d1: 'open', learn: { '小秘': true, '阿哲': true, '小編': true, '帳房': false, '數據喵': true } }; }
+  renderVals() {
+    const S = this.state;
+    const BOT = { '小秘': ['blue', 'cursor'], '阿哲': ['orange', 'blob'], '小編': ['pink', 'circle'], '帳房': ['yellow', 'hexagon'], '數據喵': ['purple', 'diamond'], '信差': ['cyan', 'star'] };
+    const prop = (k, okText) => ({
+      open: S[k] === 'open', done: S[k] !== 'open',
+      result: S[k] === 'yes' ? okText : '已否決 · 14 天內不會再提同樣的事',
+      resultStyle: 'color: ' + (S[k] === 'yes' ? '#38D591' : '#FCFCFC99'),
+      accept: () => this.setState({ [k]: 'yes' }), reject: () => this.setState({ [k]: 'no' }), undo: () => this.setState({ [k]: 'open' })
+    });
+    const PILL = 'display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; height: 20px; font-size: 11.5px; ';
+    const tags = { '討論': 'background: rgba(255,152,0,.16); color: #FFB547', '提案生效': 'background: rgba(255,152,0,.16); color: #FFB547', '學習': 'background: rgba(16,132,254,.2); color: #7FC0FF', '定時任務': 'background: #262626; color: #FCFCFC99' };
+    const r = (time, bot, title, tag) => ({ time, title, tag, color: BOT[bot][0], body: BOT[bot][1], tagStyle: PILL + tags[tag] });
+    const week = [
+      { label: '今天 · 10/17（六）', rows: [r('下午 4:00', '帳房', '11 月廣告預算', '討論')] },
+      { label: '明天 · 10/18（日）', rows: [r('上午 9:00', '小秘', '每日重點', '定時任務'), r('上午 10:00', '小秘', '每週檢討與學習', '學習')] },
+      { label: '10/19（一）', rows: [r('上午 7:30', '信差', '收件匣整理', '定時任務'), r('上午 10:00', '阿哲', '競品價格巡檢', '定時任務')] },
+      { label: '10/20（二）', rows: [r('全天', '小秘', '週報自動產出', '提案生效')] }
+    ];
+    const learn = Object.keys(S.learn).map(n => {
+      const on = S.learn[n];
+      return {
+        name: n, on, color: BOT[n][0], body: BOT[n][1], next: on ? '下次 10/18' : '關閉', aria: n + '每週檢討',
+        toggle: () => this.setState({ learn: Object.assign({}, S.learn, { [n]: !on }) }),
+        trackStyle: 'width: 40px; height: 24px; flex: none; border: 0; padding: 0; border-radius: 999px; position: relative; cursor: pointer; background: ' + (on ? '#1084FE' : '#3D3D3D'),
+        dotStyle: 'position: absolute; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #FFFFFF; left: ' + (on ? '19px' : '3px')
+      };
+    });
+    const count = [S.p1, S.p2, S.d1].filter(x => x === 'open').length;
+    return {
+      p1: prop('p1', '已同意 · 10 月 26 日（一）上午 9:00 第一次跑'),
+      p2: prop('p2', '已同意 · 從明天起每天巡檢，到 11 月 12 日'),
+      d1: { open: S.d1 === 'open', done: S.d1 !== 'open', close: () => this.setState({ d1: 'done' }) },
+      week, learn, count
+    };
+  }
+}
+</script>
+</body>
+</html>

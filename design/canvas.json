@@ -1,0 +1,2355 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-10-17T10:00:00Z"
+ },
+ "title": "XBot UI/UX",
+ "launch": {
+  "view": "canvas"
+ },
+ "pages": [],
+ "boards": {
+  "X01-Index.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1440,
+   "h": 6639
+  },
+  "Z01-GrokStyle.dc.html": {
+   "x": 1560,
+   "y": 0,
+   "w": 1440,
+   "h": 3260,
+   "title": "Z01 Grok 風格對照（請確認）"
+  },
+  "A01-Login.dc.html": {
+   "x": 0,
+   "y": 7059,
+   "w": 1440,
+   "h": 900,
+   "title": "A01 登入（Tailscale 一個 QR）",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "A02-States.dc.html": {
+   "x": 1980,
+   "y": 7059,
+   "w": 1440,
+   "h": 900,
+   "title": "A02 啟動中／連不到服務／畫面出錯",
+   "expand": "fill"
+  },
+  "A03-Onboard-Hello.dc.html": {
+   "x": 3960,
+   "y": 7059,
+   "w": 1440,
+   "h": 900,
+   "title": "A03 首次設定 1/2：接上 AI",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "A04-Onboard-Engines.dc.html": {
+   "x": 5940,
+   "y": 7059,
+   "w": 1440,
+   "h": 900,
+   "title": "A04 首次設定 2/2：認識小秘",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "A05-Onboard-Import.dc.html": {
+   "x": 7920,
+   "y": 7059,
+   "w": 1440,
+   "h": 900,
+   "title": "A05 首頁：之後再做",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "A06-Onboard-Computer.dc.html": {
+   "x": 9900,
+   "y": 7059,
+   "w": 1440,
+   "h": 900,
+   "title": "A06 電腦在背景準備（對話裡一行進度）",
+   "expand": "fill"
+  },
+  "A07-Onboard-FirstBot.dc.html": {
+   "x": 11880,
+   "y": 7059,
+   "w": 1440,
+   "h": 900,
+   "title": "A07 帶入舊設定（底部 sheet）",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "A08-Onboard-Phone.dc.html": {
+   "x": 13860,
+   "y": 7059,
+   "w": 1440,
+   "h": 900,
+   "title": "A08 連手機（一個 Tailscale QR）",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "A09-Welcome-Empty.dc.html": {
+   "x": 15840,
+   "y": 7059,
+   "w": 1440,
+   "h": 960,
+   "title": "A09 還沒有 Bot",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "A10-Tour.dc.html": {
+   "x": 17820,
+   "y": 7059,
+   "w": 1440,
+   "h": 960,
+   "title": "A10 導覽聚光燈（3 站）",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Main.dc.html": {
+   "x": 0,
+   "y": 8439,
+   "w": 1440,
+   "h": 960,
+   "title": "Main 待我處理（首頁）",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "B02-Sidebar-Menus.dc.html": {
+   "x": 1980,
+   "y": 8439,
+   "w": 1440,
+   "h": 960,
+   "title": "B02 側欄與選單",
+   "expand": "fill"
+  },
+  "B03-CommandPalette.dc.html": {
+   "x": 3960,
+   "y": 8439,
+   "w": 640,
+   "h": 680,
+   "title": "B03 搜尋面板 ⌘K",
+   "is_interactive": true
+  },
+  "B04-Notifications.dc.html": {
+   "x": 5140,
+   "y": 8439,
+   "w": 1440,
+   "h": 960,
+   "title": "B04 通知中心",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "B05-Shortcuts.dc.html": {
+   "x": 7120,
+   "y": 8439,
+   "w": 760,
+   "h": 760,
+   "title": "B05 鍵盤快速鍵"
+  },
+  "B06-Archived.dc.html": {
+   "x": 8420,
+   "y": 8439,
+   "w": 560,
+   "h": 536,
+   "title": "B06 已封存的 Bot",
+   "is_interactive": true
+  },
+  "B07-Sidebar-Search.dc.html": {
+   "x": 9520,
+   "y": 8439,
+   "w": 320,
+   "h": 960,
+   "title": "B07 側欄搜尋與精簡側欄"
+  },
+  "B08-Toasts-Confirm.dc.html": {
+   "x": 10380,
+   "y": 8439,
+   "w": 1200,
+   "h": 676,
+   "title": "B08 提示與確認對話框"
+  },
+  "K01-VoiceCall.dc.html": {
+   "x": 12120,
+   "y": 8439,
+   "w": 1440,
+   "h": 960,
+   "title": "K01 和小秘語音對話",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "K02-VoiceSetup.dc.html": {
+   "x": 14100,
+   "y": 8439,
+   "w": 640,
+   "h": 608,
+   "title": "K02 設定 Bot 的聲音",
+   "is_interactive": true
+  },
+  "C01-Chat-Working.dc.html": {
+   "x": 0,
+   "y": 9819,
+   "w": 1440,
+   "h": 960,
+   "title": "C01 對話：工作中＋電腦",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "C02-Chat-Answer.dc.html": {
+   "x": 1980,
+   "y": 9819,
+   "w": 1440,
+   "h": 960,
+   "title": "C02 對話：一輪完成的結構",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "C03-Chat-Empty.dc.html": {
+   "x": 3960,
+   "y": 9819,
+   "w": 1440,
+   "h": 960,
+   "title": "C03 對話：新 Bot 空狀態與對話串",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "C04-Chat-Dark.dc.html": {
+   "x": 5940,
+   "y": 9819,
+   "w": 1440,
+   "h": 960,
+   "title": "C04 對話：淺色主題（Daylight）",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "C05-Composer.dc.html": {
+   "x": 7920,
+   "y": 9819,
+   "w": 900,
+   "h": 1400,
+   "title": "C05 輸入框所有狀態"
+  },
+  "C06-ModelPicker.dc.html": {
+   "x": 9360,
+   "y": 9819,
+   "w": 760,
+   "h": 780,
+   "title": "C06 模型選擇器",
+   "is_interactive": true
+  },
+  "C07-Markdown.dc.html": {
+   "x": 10660,
+   "y": 9819,
+   "w": 900,
+   "h": 1400,
+   "title": "C07 回覆內容排版",
+   "is_interactive": true
+  },
+  "C08-Cards-Approval.dc.html": {
+   "x": 12100,
+   "y": 9819,
+   "w": 900,
+   "h": 1400,
+   "title": "C08 卡片：核准、提案與收據",
+   "is_interactive": true
+  },
+  "C09-Cards-Questions.dc.html": {
+   "x": 13540,
+   "y": 9819,
+   "w": 900,
+   "h": 1400,
+   "title": "C09 卡片：提問與選項",
+   "is_interactive": true
+  },
+  "C10-Cards-Credentials.dc.html": {
+   "x": 14980,
+   "y": 9819,
+   "w": 900,
+   "h": 1400,
+   "title": "C10 卡片：密碼、登入、連接",
+   "is_interactive": true
+  },
+  "C11-Cards-Runs.dc.html": {
+   "x": 16420,
+   "y": 9819,
+   "w": 900,
+   "h": 1400,
+   "title": "C11 卡片：執行、目標、失敗"
+  },
+  "C12-Progress-Context.dc.html": {
+   "x": 17860,
+   "y": 9819,
+   "w": 1200,
+   "h": 780,
+   "title": "C12 目前進度與 Context 用量"
+  },
+  "C13-PeerDialog.dc.html": {
+   "x": 19600,
+   "y": 9819,
+   "w": 640,
+   "h": 780,
+   "title": "C13 兩個 Bot 的往來"
+  },
+  "C14-Events.dc.html": {
+   "x": 20780,
+   "y": 9819,
+   "w": 900,
+   "h": 970,
+   "title": "C14 事件列、背景工作、語音列"
+  },
+  "C15-PreCheck.dc.html": {
+   "x": 22220,
+   "y": 9819,
+   "w": 900,
+   "h": 700,
+   "title": "C15 對話 · 先判斷列（快判用途 11–14）"
+  },
+  "C16-MCPAttribution.dc.html": {
+   "x": 23660,
+   "y": 9819,
+   "w": 900,
+   "h": 704,
+   "is_interactive": true,
+   "title": "C16 代理（MCP）修改的標註與核准卡"
+  },
+  "D01-Room.dc.html": {
+   "x": 0,
+   "y": 11639,
+   "w": 1440,
+   "h": 960,
+   "title": "D01 群組對話：新品上架專案",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "D02-Room-Goal.dc.html": {
+   "x": 1980,
+   "y": 11639,
+   "w": 1440,
+   "h": 960,
+   "title": "D02 群組：目標模式（接力到完成）",
+   "expand": "fill"
+  },
+  "D03-RoomDialog.dc.html": {
+   "x": 3960,
+   "y": 11639,
+   "w": 640,
+   "h": 604,
+   "title": "D03 新增群組對話（勾成員 → 建立）",
+   "is_interactive": true
+  },
+  "D04-RoomSetup.dc.html": {
+   "x": 5140,
+   "y": 11639,
+   "w": 1440,
+   "h": 960,
+   "title": "D04 群組第一則訊息（開場建議）",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "D05-GroupCall.dc.html": {
+   "x": 7120,
+   "y": 11639,
+   "w": 1440,
+   "h": 960,
+   "title": "D05 群組語音通話",
+   "expand": "fill"
+  },
+  "P01-CloudVsLocal.dc.html": {
+   "x": 0,
+   "y": 13019,
+   "w": 1440,
+   "h": 2120,
+   "title": "P01 說明：地端主機 vs 你自己的雲端 Docker 主機"
+  },
+  "P02-Tailscale.dc.html": {
+   "x": 1980,
+   "y": 13019,
+   "w": 1440,
+   "h": 2220,
+   "title": "P02 說明：用 Tailscale 安全連線"
+  },
+  "P03-BotTalkLimits.dc.html": {
+   "x": 3960,
+   "y": 13019,
+   "w": 1440,
+   "h": 2200,
+   "title": "P03 說明：Bot 之間交談的限制"
+  },
+  "P04-TaskDone.dc.html": {
+   "x": 5940,
+   "y": 13019,
+   "w": 1440,
+   "h": 2300,
+   "title": "P04 說明：怎麼判定任務完成"
+  },
+  "P05-JudgeMap.dc.html": {
+   "x": 7920,
+   "y": 13019,
+   "w": 1440,
+   "h": 2712,
+   "title": "P05 說明：哪些判斷用規則、哪些用快判、哪些一定要人"
+  },
+  "P06-JudgeUses.dc.html": {
+   "x": 9900,
+   "y": 13019,
+   "w": 1440,
+   "h": 3886,
+   "title": "P06 說明：快判模型的 15 個用途"
+  },
+  "P07-MCPArchitecture.dc.html": {
+   "x": 11880,
+   "y": 13019,
+   "w": 1440,
+   "h": 2200,
+   "title": "P07 說明：XBot MCP 優先的後端"
+  },
+  "E01-Computer.dc.html": {
+   "x": 0,
+   "y": 17325,
+   "w": 1440,
+   "h": 960,
+   "title": "E01 電腦面板：Bot 正在使用電腦",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "E02-Takeover.dc.html": {
+   "x": 1980,
+   "y": 17325,
+   "w": 1440,
+   "h": 960,
+   "title": "E02 接手操作（全視窗）",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "E03-Office.dc.html": {
+   "x": 3960,
+   "y": 17325,
+   "w": 1440,
+   "h": 960,
+   "title": "E03 辦公室：所有 Bot 的電腦牆",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "E04-Teaching.dc.html": {
+   "x": 5940,
+   "y": 17325,
+   "w": 1440,
+   "h": 960,
+   "title": "E04 教它一件事：示範中",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "E05-TeachStart.dc.html": {
+   "x": 7920,
+   "y": 17325,
+   "w": 560,
+   "h": 400,
+   "title": "E05 教它一件事：開始示範"
+  },
+  "E06-Browser.dc.html": {
+   "x": 9020,
+   "y": 17325,
+   "w": 1440,
+   "h": 960,
+   "title": "E06 電腦面板 · 瀏覽器（接手登入）",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "E07-Files.dc.html": {
+   "x": 11000,
+   "y": 17325,
+   "w": 1440,
+   "h": 960,
+   "title": "E07 電腦面板 · 檔案與預覽",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "E08-Data.dc.html": {
+   "x": 12980,
+   "y": 17325,
+   "w": 1440,
+   "h": 960,
+   "title": "E08 電腦面板 · 資料",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "E09-LoginShare.dc.html": {
+   "x": 14960,
+   "y": 17325,
+   "w": 560,
+   "h": 740,
+   "title": "E09 分享登入給其他 Bot",
+   "is_interactive": true
+  },
+  "E10-Computer-States.dc.html": {
+   "x": 16060,
+   "y": 17325,
+   "w": 1200,
+   "h": 900,
+   "title": "E10 電腦狀態與確認（卡片集）",
+   "is_interactive": true
+  },
+  "M01-FilesPage.dc.html": {
+   "x": 17800,
+   "y": 17325,
+   "w": 1440,
+   "h": 960,
+   "title": "M01 全部檔案",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "F01-Org.dc.html": {
+   "x": 0,
+   "y": 18705,
+   "w": 1440,
+   "h": 960,
+   "title": "F01 組織架構",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "F02-TeamBuilder-1.dc.html": {
+   "x": 1980,
+   "y": 18705,
+   "w": 760,
+   "h": 744,
+   "title": "F02 建立團隊（選範本 → 建立）",
+   "is_interactive": true
+  },
+  "F03-TeamBuilder-2.dc.html": {
+   "x": 3280,
+   "y": 18705,
+   "w": 760,
+   "h": 1088,
+   "title": "F03 建立團隊：進階設定（展開）"
+  },
+  "F04-TeamMap.dc.html": {
+   "x": 4580,
+   "y": 18705,
+   "w": 1440,
+   "h": 960,
+   "title": "F04 團隊地圖",
+   "expand": "fill"
+  },
+  "F05-TeamMemory.dc.html": {
+   "x": 6560,
+   "y": 18705,
+   "w": 760,
+   "h": 898,
+   "title": "F05 團隊記憶",
+   "is_interactive": true
+  },
+  "F06-TeamApply.dc.html": {
+   "x": 7860,
+   "y": 18705,
+   "w": 760,
+   "h": 724,
+   "title": "F06 套用到營運部所有 Bot",
+   "is_interactive": true
+  },
+  "F07-ShareTeam.dc.html": {
+   "x": 9160,
+   "y": 18705,
+   "w": 760,
+   "h": 884,
+   "title": "F07 分享團隊",
+   "is_interactive": true
+  },
+  "F08-Approvals.dc.html": {
+   "x": 10460,
+   "y": 18705,
+   "w": 640,
+   "h": 920,
+   "title": "F08 待你核定",
+   "is_interactive": true
+  },
+  "F09-Library.dc.html": {
+   "x": 11640,
+   "y": 18705,
+   "w": 1100,
+   "h": 712,
+   "title": "F09 範本庫"
+  },
+  "F10-ImportReview.dc.html": {
+   "x": 13280,
+   "y": 18705,
+   "w": 1100,
+   "h": 720,
+   "title": "F10 加入團隊前確認"
+  },
+  "G01-New.dc.html": {
+   "x": 0,
+   "y": 20213,
+   "w": 760,
+   "h": 850,
+   "title": "G01 新增 Bot：一句話建立",
+   "is_interactive": true
+  },
+  "G02-Overview.dc.html": {
+   "x": 1300,
+   "y": 20213,
+   "w": 1100,
+   "h": 900,
+   "title": "G02 Bot 設定 · 基本",
+   "is_interactive": true
+  },
+  "G03-Identity.dc.html": {
+   "x": 2940,
+   "y": 20213,
+   "w": 1100,
+   "h": 900,
+   "title": "G03 Bot 設定 · 外觀（頭像）",
+   "is_interactive": true
+  },
+  "G04-AvatarUpload.dc.html": {
+   "x": 4580,
+   "y": 20213,
+   "w": 1100,
+   "h": 900,
+   "title": "G04 頭像 · 上傳裁切／AI 產生",
+   "is_interactive": true
+  },
+  "G05-Soul.dc.html": {
+   "x": 6220,
+   "y": 20213,
+   "w": 1100,
+   "h": 900,
+   "title": "G05 Bot 設定 · 能力 · 技能",
+   "is_interactive": true
+  },
+  "G06-Skills.dc.html": {
+   "x": 7860,
+   "y": 20213,
+   "w": 1100,
+   "h": 900,
+   "title": "G06 Bot 設定 · 能力 · 記憶"
+  },
+  "G07-Memory.dc.html": {
+   "x": 9500,
+   "y": 20213,
+   "w": 1100,
+   "h": 900,
+   "title": "G07 Bot 設定 · 能力 · 應用程式與電腦"
+  },
+  "G08-Access.dc.html": {
+   "x": 11140,
+   "y": 20213,
+   "w": 1100,
+   "h": 900,
+   "title": "G08 Bot 設定 · 權限與花費",
+   "is_interactive": true
+  },
+  "G09-Model.dc.html": {
+   "x": 12780,
+   "y": 20213,
+   "w": 1100,
+   "h": 900,
+   "title": "G09 Bot 設定 · 進階 · 模型"
+  },
+  "G10-Permissions.dc.html": {
+   "x": 14420,
+   "y": 20213,
+   "w": 1100,
+   "h": 900,
+   "title": "G10 Bot 設定 · 進階 · 聲音、通知、誰看得到"
+  },
+  "G11-Voice.dc.html": {
+   "x": 16060,
+   "y": 20213,
+   "w": 1100,
+   "h": 900,
+   "title": "G11 Bot 設定 · 進階 · 歷史、用量、儲存空間"
+  },
+  "G12-History.dc.html": {
+   "x": 17700,
+   "y": 20213,
+   "w": 1100,
+   "h": 900,
+   "title": "G12 用聊天設定（/setup）"
+  },
+  "G13-ShareBot.dc.html": {
+   "x": 19340,
+   "y": 20213,
+   "w": 640,
+   "h": 834,
+   "title": "G13 分享 Bot"
+  },
+  "G14-ImportBot.dc.html": {
+   "x": 20520,
+   "y": 20213,
+   "w": 640,
+   "h": 880,
+   "title": "G14 匯入 Bot（兩個狀態）"
+  },
+  "H01-Calendar.dc.html": {
+   "x": 0,
+   "y": 21533,
+   "w": 1440,
+   "h": 960,
+   "title": "H01 行事曆（週）",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "H02-RoutineEditor.dc.html": {
+   "x": 1980,
+   "y": 21533,
+   "w": 760,
+   "h": 720,
+   "title": "H02 新增定時任務（一句話＋確認）",
+   "is_interactive": true
+  },
+  "H03-RoutineList.dc.html": {
+   "x": 3280,
+   "y": 21533,
+   "w": 1440,
+   "h": 960,
+   "title": "H03 定時任務清單與執行紀錄",
+   "expand": "fill"
+  },
+  "H04-Agenda.dc.html": {
+   "x": 5260,
+   "y": 21533,
+   "w": 1440,
+   "h": 960,
+   "title": "H04 等你的事：提案與討論",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "H05-Triggers.dc.html": {
+   "x": 7240,
+   "y": 21533,
+   "w": 1100,
+   "h": 900,
+   "title": "H05 觸發條件",
+   "is_interactive": true
+  },
+  "H06-Webhook.dc.html": {
+   "x": 8880,
+   "y": 21533,
+   "w": 1100,
+   "h": 900,
+   "title": "H06 觸發條件 · 網址詳細",
+   "is_interactive": true
+  },
+  "I01-Apps.dc.html": {
+   "x": 0,
+   "y": 22913,
+   "w": 1100,
+   "h": 840,
+   "title": "I01 連接應用程式",
+   "is_interactive": true
+  },
+  "I02-AppSheet.dc.html": {
+   "x": 1640,
+   "y": 22913,
+   "w": 640,
+   "h": 710,
+   "title": "I02 應用程式詳細（Gmail）"
+  },
+  "I03-SignIn.dc.html": {
+   "x": 2820,
+   "y": 22913,
+   "w": 900,
+   "h": 780,
+   "title": "I03 在 Bot 的電腦登入"
+  },
+  "I04-MCP.dc.html": {
+   "x": 4260,
+   "y": 22913,
+   "w": 1100,
+   "h": 820,
+   "title": "I04 自訂連接（MCP）"
+  },
+  "I05-Logins.dc.html": {
+   "x": 5900,
+   "y": 22913,
+   "w": 1100,
+   "h": 826,
+   "title": "I05 登入保險庫"
+  },
+  "J01-General.dc.html": {
+   "x": 0,
+   "y": 24173,
+   "w": 1100,
+   "h": 900,
+   "title": "J01 設定 · 一般（外觀、語言、通知）",
+   "is_interactive": true
+  },
+  "J02-Models.dc.html": {
+   "x": 1640,
+   "y": 24173,
+   "w": 1100,
+   "h": 900,
+   "title": "J02 設定 · AI 模型 · 主要模型",
+   "is_interactive": true
+  },
+  "J03-Routing.dc.html": {
+   "x": 3280,
+   "y": 24173,
+   "w": 1100,
+   "h": 900,
+   "title": "J03 設定 · AI 模型 · 進階：分流與搜尋"
+  },
+  "J04-Usage.dc.html": {
+   "x": 4920,
+   "y": 24173,
+   "w": 1100,
+   "h": 900,
+   "title": "J04 設定 · 用量與花費"
+  },
+  "J05-Devices.dc.html": {
+   "x": 6560,
+   "y": 24173,
+   "w": 1100,
+   "h": 900,
+   "title": "J05 設定 · 電腦與裝置 · 手機與其他裝置",
+   "is_interactive": true
+  },
+  "J06-Computers.dc.html": {
+   "x": 8200,
+   "y": 24173,
+   "w": 1100,
+   "h": 900,
+   "title": "J06 設定 · 電腦與裝置 · 電腦",
+   "is_interactive": true
+  },
+  "J07-Backup.dc.html": {
+   "x": 9840,
+   "y": 24173,
+   "w": 1100,
+   "h": 900,
+   "title": "J07 設定 · 進階 · 備份、更新、關於"
+  },
+  "J08-People.dc.html": {
+   "x": 11480,
+   "y": 24173,
+   "w": 1100,
+   "h": 900,
+   "title": "J08 設定 · 進階 · 成員與活動紀錄"
+  },
+  "J09-SkillsLab.dc.html": {
+   "x": 13120,
+   "y": 24173,
+   "w": 1100,
+   "h": 900,
+   "title": "J09 設定 · 進階 · 技能庫與實驗功能"
+  },
+  "J10-FastJudge.dc.html": {
+   "x": 14760,
+   "y": 24173,
+   "w": 1100,
+   "h": 900,
+   "is_interactive": true,
+   "title": "J10 設定 · AI 模型 · 快判模型（用 OpenCode）"
+  },
+  "J11-AddHost.dc.html": {
+   "x": 16400,
+   "y": 24173,
+   "w": 1100,
+   "h": 900,
+   "is_interactive": true,
+   "title": "J11 設定 · 電腦與裝置 · 新增主機"
+  },
+  "J12-MCPAccess.dc.html": {
+   "x": 18040,
+   "y": 24173,
+   "w": 1100,
+   "h": 1000,
+   "is_interactive": true,
+   "title": "J12 設定 · 進階 · 已連線的代理（MCP）"
+  },
+  "L01-PhoneList.dc.html": {
+   "x": 0,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "title": "L01 手機：Bot 清單",
+   "is_interactive": true
+  },
+  "L02-PhoneInbox.dc.html": {
+   "x": 930,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "title": "L02 手機：待我處理",
+   "is_interactive": true
+  },
+  "L03-PhoneChat.dc.html": {
+   "x": 1860,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "title": "L03 手機：對話",
+   "is_interactive": true
+  },
+  "L04-PhoneComputer.dc.html": {
+   "x": 2790,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "title": "L04 手機：操作電腦",
+   "is_interactive": true
+  },
+  "L05-PhoneRoom.dc.html": {
+   "x": 3720,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "title": "L05 手機：群組",
+   "is_interactive": true
+  },
+  "L06-PhoneSettings.dc.html": {
+   "x": 4650,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "title": "L06 手機：設定",
+   "is_interactive": true
+  },
+  "L07-PhoneSheet.dc.html": {
+   "x": 5580,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "title": "L07 手機：底部 sheet 核定",
+   "is_interactive": true
+  },
+  "L08-PhoneOnboard.dc.html": {
+   "x": 6510,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "is_interactive": true,
+   "title": "L08 手機：首次設定（接上 AI → 認識小秘）"
+  },
+  "L09-PhonePair.dc.html": {
+   "x": 7440,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "is_interactive": true,
+   "title": "L09 手機：連接這支手機（Tailscale）"
+  },
+  "L10-PhoneBotProfile.dc.html": {
+   "x": 8370,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "is_interactive": true,
+   "title": "L10 手機：Bot 資料（小秘）"
+  },
+  "L11-PhoneAvatarSheet.dc.html": {
+   "x": 9300,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "is_interactive": true,
+   "title": "L11 手機：換頭像（底部 sheet）"
+  },
+  "L12-PhoneNewBot.dc.html": {
+   "x": 10230,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "is_interactive": true,
+   "title": "L12 手機：新增 Bot（一句話）"
+  },
+  "L13-PhoneNewRoom.dc.html": {
+   "x": 11160,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "is_interactive": true,
+   "title": "L13 手機：新增群組（勾成員 → 建立）"
+  },
+  "L14-PhoneNotifications.dc.html": {
+   "x": 12090,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "is_interactive": true,
+   "title": "L14 手機：通知"
+  },
+  "L15-PhoneOffice.dc.html": {
+   "x": 13020,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "is_interactive": true,
+   "title": "L15 手機：辦公室"
+  },
+  "L16-PhoneCalendar.dc.html": {
+   "x": 13950,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "is_interactive": true,
+   "title": "L16 手機：行事曆（日）"
+  },
+  "L17-PhoneRoutine.dc.html": {
+   "x": 14880,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "is_interactive": true,
+   "title": "L17 手機：一句話建立定時任務"
+  },
+  "L18-PhoneCall.dc.html": {
+   "x": 15810,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "is_interactive": true,
+   "title": "L18 手機：和小秘通話"
+  },
+  "L19-PhoneFiles.dc.html": {
+   "x": 16740,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "is_interactive": true,
+   "title": "L19 手機：Bot 的檔案"
+  },
+  "L20-PhoneMentionStop.dc.html": {
+   "x": 17670,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "is_interactive": true,
+   "title": "L20 手機：@ 提到與停止"
+  },
+  "L21-PhonePreCheck.dc.html": {
+   "x": 18600,
+   "y": 25593,
+   "w": 390,
+   "h": 844,
+   "is_interactive": true,
+   "title": "L21 手機：先判斷與外部代理核准"
+  },
+  "N01-Tokens.dc.html": {
+   "x": 0,
+   "y": 26857,
+   "w": 1440,
+   "h": 1000,
+   "title": "N01 設計系統：色彩、字型、尺寸"
+  },
+  "N02-Mascot.dc.html": {
+   "x": 1980,
+   "y": 26857,
+   "w": 1440,
+   "h": 1100,
+   "title": "N02 設計系統：Bot 頭像（Grok 平面吉祥物 · 10 種形狀）"
+  },
+  "N03-Components.dc.html": {
+   "x": 3960,
+   "y": 26857,
+   "w": 1440,
+   "h": 1200,
+   "title": "N03 設計系統：元件",
+   "is_interactive": true
+  },
+  "Avatar.dc.html": {
+   "x": 5940,
+   "y": 26857,
+   "w": 120,
+   "h": 120,
+   "title": "元件：Avatar"
+  },
+  "Mochi.dc.html": {
+   "x": 6180,
+   "y": 26857,
+   "w": 200,
+   "h": 200,
+   "title": "元件：Mochi"
+  },
+  "Sidebar.dc.html": {
+   "x": 6500,
+   "y": 26857,
+   "w": 300,
+   "h": 960,
+   "title": "元件：Sidebar"
+  }
+ },
+ "order": [
+  "X01-Index.dc.html",
+  "Z01-GrokStyle.dc.html",
+  "A01-Login.dc.html",
+  "A02-States.dc.html",
+  "A03-Onboard-Hello.dc.html",
+  "A04-Onboard-Engines.dc.html",
+  "A05-Onboard-Import.dc.html",
+  "A06-Onboard-Computer.dc.html",
+  "A07-Onboard-FirstBot.dc.html",
+  "A08-Onboard-Phone.dc.html",
+  "A09-Welcome-Empty.dc.html",
+  "A10-Tour.dc.html",
+  "Main.dc.html",
+  "B02-Sidebar-Menus.dc.html",
+  "B03-CommandPalette.dc.html",
+  "B04-Notifications.dc.html",
+  "B05-Shortcuts.dc.html",
+  "B06-Archived.dc.html",
+  "B07-Sidebar-Search.dc.html",
+  "B08-Toasts-Confirm.dc.html",
+  "K01-VoiceCall.dc.html",
+  "K02-VoiceSetup.dc.html",
+  "C01-Chat-Working.dc.html",
+  "C02-Chat-Answer.dc.html",
+  "C03-Chat-Empty.dc.html",
+  "C04-Chat-Dark.dc.html",
+  "C05-Composer.dc.html",
+  "C06-ModelPicker.dc.html",
+  "C07-Markdown.dc.html",
+  "C08-Cards-Approval.dc.html",
+  "C09-Cards-Questions.dc.html",
+  "C10-Cards-Credentials.dc.html",
+  "C11-Cards-Runs.dc.html",
+  "C12-Progress-Context.dc.html",
+  "C13-PeerDialog.dc.html",
+  "C14-Events.dc.html",
+  "C15-PreCheck.dc.html",
+  "C16-MCPAttribution.dc.html",
+  "D01-Room.dc.html",
+  "D02-Room-Goal.dc.html",
+  "D03-RoomDialog.dc.html",
+  "D04-RoomSetup.dc.html",
+  "D05-GroupCall.dc.html",
+  "P01-CloudVsLocal.dc.html",
+  "P02-Tailscale.dc.html",
+  "P03-BotTalkLimits.dc.html",
+  "P04-TaskDone.dc.html",
+  "P05-JudgeMap.dc.html",
+  "P06-JudgeUses.dc.html",
+  "P07-MCPArchitecture.dc.html",
+  "E01-Computer.dc.html",
+  "E02-Takeover.dc.html",
+  "E03-Office.dc.html",
+  "E04-Teaching.dc.html",
+  "E05-TeachStart.dc.html",
+  "E06-Browser.dc.html",
+  "E07-Files.dc.html",
+  "E08-Data.dc.html",
+  "E09-LoginShare.dc.html",
+  "E10-Computer-States.dc.html",
+  "M01-FilesPage.dc.html",
+  "F01-Org.dc.html",
+  "F02-TeamBuilder-1.dc.html",
+  "F03-TeamBuilder-2.dc.html",
+  "F04-TeamMap.dc.html",
+  "F05-TeamMemory.dc.html",
+  "F06-TeamApply.dc.html",
+  "F07-ShareTeam.dc.html",
+  "F08-Approvals.dc.html",
+  "F09-Library.dc.html",
+  "F10-ImportReview.dc.html",
+  "G01-New.dc.html",
+  "G02-Overview.dc.html",
+  "G03-Identity.dc.html",
+  "G04-AvatarUpload.dc.html",
+  "G05-Soul.dc.html",
+  "G06-Skills.dc.html",
+  "G07-Memory.dc.html",
+  "G08-Access.dc.html",
+  "G09-Model.dc.html",
+  "G10-Permissions.dc.html",
+  "G11-Voice.dc.html",
+  "G12-History.dc.html",
+  "G13-ShareBot.dc.html",
+  "G14-ImportBot.dc.html",
+  "H01-Calendar.dc.html",
+  "H02-RoutineEditor.dc.html",
+  "H03-RoutineList.dc.html",
+  "H04-Agenda.dc.html",
+  "H05-Triggers.dc.html",
+  "H06-Webhook.dc.html",
+  "I01-Apps.dc.html",
+  "I02-AppSheet.dc.html",
+  "I03-SignIn.dc.html",
+  "I04-MCP.dc.html",
+  "I05-Logins.dc.html",
+  "J01-General.dc.html",
+  "J02-Models.dc.html",
+  "J03-Routing.dc.html",
+  "J04-Usage.dc.html",
+  "J05-Devices.dc.html",
+  "J06-Computers.dc.html",
+  "J07-Backup.dc.html",
+  "J08-People.dc.html",
+  "J09-SkillsLab.dc.html",
+  "J10-FastJudge.dc.html",
+  "J11-AddHost.dc.html",
+  "J12-MCPAccess.dc.html",
+  "L01-PhoneList.dc.html",
+  "L02-PhoneInbox.dc.html",
+  "L03-PhoneChat.dc.html",
+  "L04-PhoneComputer.dc.html",
+  "L05-PhoneRoom.dc.html",
+  "L06-PhoneSettings.dc.html",
+  "L07-PhoneSheet.dc.html",
+  "L08-PhoneOnboard.dc.html",
+  "L09-PhonePair.dc.html",
+  "L10-PhoneBotProfile.dc.html",
+  "L11-PhoneAvatarSheet.dc.html",
+  "L12-PhoneNewBot.dc.html",
+  "L13-PhoneNewRoom.dc.html",
+  "L14-PhoneNotifications.dc.html",
+  "L15-PhoneOffice.dc.html",
+  "L16-PhoneCalendar.dc.html",
+  "L17-PhoneRoutine.dc.html",
+  "L18-PhoneCall.dc.html",
+  "L19-PhoneFiles.dc.html",
+  "L20-PhoneMentionStop.dc.html",
+  "L21-PhonePreCheck.dc.html",
+  "N01-Tokens.dc.html",
+  "N02-Mascot.dc.html",
+  "N03-Components.dc.html",
+  "Avatar.dc.html",
+  "Mochi.dc.html",
+  "Sidebar.dc.html"
+ ],
+ "notes": {
+  "rowX": {
+   "x": 0,
+   "y": -300,
+   "text": "總覽索引與風格確認",
+   "kind": "title1",
+   "maxW": 3000
+  },
+  "rowA": {
+   "x": 0,
+   "y": 6759,
+   "text": "A · 入口與首次使用（6 步 → 2 步）",
+   "kind": "title1",
+   "maxW": 19680
+  },
+  "spec-A01-Login": {
+   "x": 1480,
+   "y": 7059,
+   "text": "【規格】登入（Tailscale 一個 QR）　PRD §6.14 MB、§17、§7 SEC\n\n功能：從其他裝置打開 XBot 時的登入頁。主要方式是用已登入的手機掃這頁的 QR 允許登入；次要是輸入主機上產生的 12 碼登入碼；沒有 Tailscale 時展開區網兩步。\n\n使用者要完成：在新裝置上安全登入，不用記密碼、不用裝憑證。\n\n驗收：\n· 頁面顯示目前連線的 Tailscale 網址與「經 Tailscale 安全連線」\n· QR 顯示「等你掃描 · 5 分鐘內有效」；手機允許後 QR 蓋上綠色勾「已允許，正在登入…」\n· 登入碼欄位 + 登入按鈕；錯誤時欄位框變紅並顯示剩餘次數\n· 「沒有 Tailscale？改用區網（兩步）」預設收起，展開後顯示安裝憑證、打開主機網址兩步\n· 錯誤狀態（QR 過期、試太多次、連不到主機）以一行膠囊呈現，不跳整頁\n\n狀態：等你掃描、已允許、登入碼錯誤、區網兩步展開、QR 過期、試太多次（鎖 60 秒）、連不到主機\n\n例外：\n· QR 過期：自動換一張新的\n· 手機沒登入 XBot：改用登入碼\n· 主機在睡覺：顯示連不到主機\n· 從主機本機打開：自動登入，不會看到這頁\n\n限制：\n· 配對碼 12 碼、5 分鐘、只能用一次\n· 錯誤 10 次鎖 60 秒\n· 登入後裝置記住 30 天（最多續到 180 天）\n· 區網 HTTPS 埠 8791\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-A02-States": {
+   "x": 3460,
+   "y": 7059,
+   "text": "【規格】啟動中／連不到服務／畫面出錯　PRD §11 UI、§17\n\n功能：三個全畫面狀態並排：啟動時的「正在連線…」、連不到主機上的 XBot、前端畫面出錯（錯誤邊界）。都用品牌吉祥物的眼睛表達狀態（平面、只有眼睛）。\n\n使用者要完成：出問題時讓使用者知道 Bot 和資料沒事，並且知道下一步按什麼。\n\n驗收：\n· 啟動畫面只有 Maus、XBot、「正在連線…」與細進度條\n· 連不到服務列出三個可自己檢查的項目，主要按鈕「立即重試」，並說明會自己重新連線\n· 這台裝置沒網路時改顯示「網路已離線，恢復後會自動重新連線」\n· 出錯畫面說明 Bot 還在工作、對話檔案保留；按鈕「重新載入」「回到首頁」\n· 錯誤詳情可收合，可一鍵複製\n\n狀態：啟動中、連不到服務（自動重試中）、這台裝置離線、畫面出錯、錯誤詳情展開\n\n例外：\n· 連線恢復：自動回到原本的畫面\n· 重新載入後還是出錯：保留「回到首頁」\n\n限制：\n· 連線保持：每 10 秒 keepalive，回來用 since 接續\n· 手機網頁版沒有離線聊天\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-A03-Onboard-Hello": {
+   "x": 5440,
+   "y": 7059,
+   "text": "【規格】首次設定 1/2：接上 AI　PRD §6.15 ON、§6.12 EN、§21\n\n功能：自動偵測這台電腦上已登入的 Claude Code、Codex、Grok 與本機模型，列出來，每列一個「用這個」，按了就進下一步；都沒找到才顯示貼 API 金鑰。\n\n使用者要完成：一鍵選好 Bot 要用的 AI。\n\n驗收：\n· 偵測中顯示骨架列與「正在找這台電腦上的 AI 工具…」\n· 偵測到時每列顯示名稱、登入狀態，建議的那列有「建議」標與主要按鈕\n· 按「用這個」直接進入步驟 2\n· 偵測到時「改用 API 金鑰」預設收起\n· 沒偵測到時直接顯示金鑰欄位，貼上後自動認出供應商與建議模型\n· 右上角有「簡化：6 步 → 2 步」標籤\n\n狀態：偵測中、偵測到 4 個、改用 API 金鑰（展開）、沒偵測到、金鑰認出供應商\n\n例外：\n· 偵測到但登入過期：該列改顯示「重新登入」\n· 金鑰無效：欄位下方紅字說明，不進下一步\n· 只有本機模型：仍可選，提示速度看電腦\n\n限制：\n· 金鑰只存在主機，Bot 的電腦只拿到自己的連線憑證\n\n簡化：首次設定 6 步 → 2 步（偵測到就一鍵「用這個」，沒偵測到才問金鑰；帶入舊設定、連手機、導覽移到首頁的「之後再做」）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-A04-Onboard-Engines": {
+   "x": 7420,
+   "y": 7059,
+   "text": "【規格】首次設定 2/2：認識小秘　PRD §6.15 ON、§6.2 BT、§21\n\n功能：介紹主要 Bot 小秘；名字、權限（先問我）都預設好，外觀收在「換個樣子」，按大大的「開始」就完成設定。\n\n使用者要完成：不用填任何東西就能開始用小秘。\n\n驗收：\n· 頭像用 Avatar 元件（藍色游標、開心眼睛）\n· 名字欄預設「小秘」，改名後標題與說明即時更新\n· 權限顯示「先問我」摘要，標「之後可改」\n· 「換個樣子」預設收起；展開後只選顏色（10 色）與眼睛（6 種），形狀預設游標（之後可在外觀換 10 種形狀），即時更新\n· 「開始」按鈕高 48、整行寬，按下進到首頁\n· 右上角有「簡化：6 步 → 2 步」標籤\n\n狀態：預設、換個樣子展開、改了名字\n\n例外：\n· 名字清空：用「小秘」\n· 回上一步：保留已選的 AI\n\n限制：\n· 新 Bot 預設權限「先問我」\n\n簡化：首次設定 6 步 → 2 步（名字、顏色、權限全部預設好，只要按「開始」；外觀收起）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-A05-Onboard-Import": {
+   "x": 9400,
+   "y": 7059,
+   "text": "【規格】首頁：之後再做　PRD §6.15 ON、§21\n\n功能：首次設定完成後的首頁。小秘打招呼，下面三張「之後再做」卡片：帶入舊設定、連手機、看導覽，都可以跳過。\n\n使用者要完成：把非必要的設定移出首次流程，讓使用者想做時再做。\n\n驗收：\n· 側欄只有小秘一個 Bot\n· 三張卡片同樣式（#262626、圓角 18），各有一個動作與關閉 X\n· 按 X 卡片消失；全部關掉後顯示去哪裡找\n· 帶入舊設定只在偵測到舊資料時出現\n· 輸入框上方有三個建議句子\n· 右上角有「簡化：6 步 → 2 步」標籤\n\n狀態：三張都在、關掉部分、全部關掉、沒偵測到舊資料（只剩兩張）\n\n例外：\n· 使用者直接開始交代事情：卡片留著，對話往上推\n· 已經連過手機：連手機卡不出現\n\n簡化：首次設定 6 步 → 2 步（帶入舊設定、連手機、導覽改成首頁卡片，不擋在首次流程裡）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-A06-Onboard-Computer": {
+   "x": 11380,
+   "y": 7059,
+   "text": "【規格】電腦在背景準備（對話裡一行進度）　PRD §6.3 BX、§16、§21\n\n功能：第一次交代工作時才開機；準備電腦只在對話裡顯示一行進度，Bot 先用網路查資料，不讓人等。\n\n使用者要完成：使用者不用等電腦開好就能開始工作。\n\n驗收：\n· 準備中：一行膠囊含轉圈、細進度條與「第一次最多約 75 秒，先用網路查資料」\n· 準備好：同一行改成綠勾「小秘的電腦準備好了 · 用了 48 秒」＋「看畫面」\n· 失敗：紅色「電腦開不起來」＋「重試」，Bot 繼續用不需要電腦的方式\n· 標題列電腦圖示右上角有狀態點（藍＝準備中、綠＝好了、紅＝失敗）\n· 右上角有「簡化：6 步 → 2 步」標籤\n\n狀態：準備中、準備好了、開不起來\n\n例外：\n· 準備中使用者打開電腦面板：顯示開機畫面與同樣的進度\n· 超過 75 秒：視為失敗並提供重試\n\n限制：\n· 第一次收到工作才開機\n· 桌面就緒上限 75 秒\n· 每台 2 CPU／3 GB／shm 512 MB\n· 閒置 30 分鐘休眠\n\n簡化：首次設定 6 步 → 2 步（電腦不再是首次設定的一步，改成第一次工作時在背景準備）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-A07-Onboard-FirstBot": {
+   "x": 13360,
+   "y": 7059,
+   "text": "【規格】帶入舊設定（底部 sheet）　PRD §6.15 ON、§21\n\n功能：偵測到 LazyBoy 舊資料時才出現的底部 sheet：勾選要帶入的 Bot、金鑰、定時任務、網站登入，原本的資料不會被改動。\n\n使用者要完成：一次把舊環境搬過來，不用重新設定。\n\n驗收：\n· 預設全部勾選，按鈕顯示「帶入 4 項」並隨勾選數更新\n· 勾選框是自畫方塊（藍底白勾／灰框）\n· Bot 那列顯示三個 Maus 頭像\n· 說明定時任務帶入後先暫停\n· 全部取消時按鈕變淡「沒有選任何項目」\n· 右上角有「簡化：6 步 → 2 步」標籤\n\n狀態：全選、部分勾選、全不選、帶入中、完成\n\n例外：\n· Bot 名字和現有 Bot 重複：自動加「（舊）」\n· 金鑰已存在：略過不重複\n· 沒偵測到任何舊資料：不出現這張 sheet\n\n限制：\n· 全部最多 50 個 Bot\n· 團隊含主管最多 10 個 Bot\n\n簡化：首次設定 6 步 → 2 步（只在偵測到舊資料時從首頁卡片打開，預設全選、一鍵帶入）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-A08-Onboard-Phone": {
+   "x": 15340,
+   "y": 7059,
+   "text": "【規格】連手機（一個 Tailscale QR）　PRD §6.14 MB、§17、§21\n\n功能：手機裝 Tailscale 登入同一帳號後，用相機掃一個 QR 就開啟正式憑證的 https 網址並登入；沒有 Tailscale 才切到區網兩步（裝憑證＋掃登入 QR）。\n\n使用者要完成：用一個 QR 讓手機連上 XBot。\n\n驗收：\n· 主畫面只有一個 QR、兩步說明與可複製的 https://xbot.<tailnet>.ts.net 網址\n· 顯示「等手機掃描 · 5 分鐘內有效、只能用一次」\n· 連上後 QR 蓋上綠勾，顯示裝置名稱與「會記住 30 天」，完成按鈕變主要\n· 底部「沒有 Tailscale？改用區網（兩步）」切換到兩個 QR\n· 區網第二個 QR 標明含登入碼\n· 右上角有「簡化：6 步 → 2 步」標籤\n\n狀態：等手機掃描、已連上、區網兩步、QR 過期\n\n例外：\n· 手機沒登入同一個 Tailscale 帳號：掃了打不開，提示檢查帳號\n· QR 過期：自動換新\n· Tailscale 沒開 MagicDNS／HTTPS：直接顯示區網兩步\n\n限制：\n· 配對碼 5 分鐘、只能用一次\n· 登入後記住 30 天（最多續到 180 天）\n· 主機只綁 127.0.0.1，經 tailscale serve 提供 HTTPS 443\n· 區網：CA 有效 3650 天、HTTPS 埠 8791\n\n簡化：連手機 2 個 QR＋裝憑證 → 1 個 QR（用 Tailscale 的正式憑證網址，掃一次就登入；沒有 Tailscale 才走舊的兩步）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-A09-Welcome-Empty": {
+   "x": 17320,
+   "y": 7059,
+   "text": "【規格】還沒有 Bot　PRD §6.2 BT、§6.15 ON、§21\n\n功能：一個 Bot 都沒有時的工作區：側欄空狀態；主畫面請你用一句話描述要它做什麼，系統建議名字、職稱、技能、要連的應用程式；下方 10 個範本。\n\n使用者要完成：用一句話或一個範本建立第一個 Bot。\n\n驗收：\n· 側欄顯示「還沒有 Bot」與「建立 Bot」\n· 輸入一句話按送出，出現建議卡（標「系統建議 · 都可以改」）\n· 建議卡有「建立阿哲」主要按鈕與「換一個建議」\n· 說明權限預設「先問我」與今天還能建立幾個\n· 10 個範本各用一組不同的形狀＋顏色吉祥物頭像\n\n狀態：空白、輸入中、有建議、建議中（等待）、已達今天上限\n\n例外：\n· 一句話太模糊：建議最接近的範本\n· 快判模型逾時：用最接近的內建範本\n· 今天已建 3 個：建立按鈕變淡並說明明天再試\n\n限制：\n· 一般 Bot 每 24 小時 3 個、有團隊管理權限 20 個\n· 全部最多 50 個\n· 一句話建立 Bot 快判等待上限 2 秒\n\n簡化：建立 Bot 2 個畫面 10 個欄位 → 1 個欄位＋確認（一句話 → 系統建議其他欄位 → 建立）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-A10-Tour": {
+   "x": 19300,
+   "y": 7059,
+   "text": "【規格】導覽聚光燈（3 站）　PRD §6.15 ON、§11 UI\n\n功能：三站導覽：輸入框、電腦按鈕、待我處理。聚光燈是目標元素本身的外框光圈＋提高層級，提示框放在目標旁邊的正常排版裡，任何寬度都對得準；手機寬度時提示框變成底部 sheet。\n\n使用者要完成：1 分鐘認識三個最重要的地方。\n\n驗收：\n· 其他區域被暗化，只有目標元素亮著並有藍色光圈\n· 提示框顯示「N / 3」、標題、一句說明、「跳過導覽」與「下一步」\n· 按下一步依序到電腦按鈕、待我處理；最後一站按鈕是「完成」\n· 完成或跳過後移除暗化，顯示「導覽看完了 · 再看一次」\n· 視窗寬度 ≤ 640 時提示框固定在底部成為 sheet，箭頭隱藏\n· 不使用任何絕對的頁面座標定位提示框\n\n狀態：第 1 站：輸入框、第 2 站：電腦、第 3 站：待我處理、完成、手機寬度（底部 sheet）\n\n例外：\n· 目標不在畫面上（側欄收起）：先展開側欄再顯示\n· 使用者在導覽中直接點目標：視為下一步\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "rowB": {
+   "x": 0,
+   "y": 8139,
+   "text": "B · 工作區、待我處理、通知　K · 語音",
+   "kind": "title1",
+   "maxW": 15160
+  },
+  "spec-Main": {
+   "x": 1480,
+   "y": 8439,
+   "text": "【規格】待我處理（首頁）　PRD §6.11 IN、§18、§21\n\n功能：首頁列出所有等你的事，每張卡片都能就地處理；右欄是 Bot 電腦縮圖、Bot 之間的往來與今天完成的事。\n\n使用者要完成：不用打開對話，就在首頁把等你的事一件件處理掉。\n\n驗收：\n· 標題的件數＝側欄「待我處理」數字＝等你的卡片數（5）\n· 帳房核定卡按「允許這次／一律允許／拒絕」後就地變成已處理狀態，可復原，標題件數減 1\n· 阿哲的提問卡點 A/B/C 任一列即送出，卡片顯示已回答\n· 小編的卡片按「接手電腦」進入接手畫面（E02）\n· 提案卡標示「不用你處理」，不算進件數\n· 整頁在 1440×960 內，不需捲動\n\n狀態：預設（5 件）、核定已允許、核定一律允許、核定已拒絕、提問已回答、全部處理完\n\n例外：\n· Bot 交辦的提問 10 分鐘沒回答就過期，卡片顯示剩餘時間\n· 同一 Bot 已有 10 件待核定時不再新增\n· 預算用完的工作鏈停在原步驟，等你選「再給」或「結束並回報」\n· 沒有任何事時標題改為「事情都處理完了」\n\n限制：\n· 待你核定：每個 Bot 最多 10 件、不會過期、重複主題不再送\n· 等你的事（提案＋討論）：每個 Bot 合計最多 3 件\n· 被否決的提案 14 天內不能再提\n· 無人在場的提問 10 分鐘沒回就過期、核准自動拒絕\n· Bot 之間同一條往來最多 6 次（第 N/6 棒）\n\n簡化：核定 3 步 → 1 步（在待我處理就地按「允許這次」，不用先打開對話找卡片）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-B02-Sidebar-Menus": {
+   "x": 3460,
+   "y": 8439,
+   "text": "【規格】側欄與選單　PRD §11 UI、§6.2 BT\n\n功能：側欄上的四種選單：Bot 右鍵選單、＋新增選單、分區選單、對話串選單（含往旁邊展開的延後提醒子選單）。\n\n使用者要完成：在側欄就能管理 Bot、分區和對話串，不用進設定頁。\n\n驗收：\n· Bot 右鍵選單含：釘選、設為幕僚長、移到分區、標為未讀、編輯設定、打開它的電腦、分享登入給其他 Bot、教它一件事、複製一個、從側欄隱藏、刪除（需要你核定）\n· 刪除類項目一律紅字，且與其他項目以分隔線隔開\n· 子選單在觸發的那一列右側展開，頂端與該列對齊\n· 選單底 #262626、圓角 12、項目高 34、Lucide 圖示 18px\n· 所有選單都在 960 高度內完整顯示\n\n狀態：Bot 選單、新增選單、分區選單、對話串選單＋延後提醒子選單\n\n例外：\n· 選單靠近視窗底部時往上開\n· 對已是幕僚長的 Bot 顯示「取消幕僚長」\n· 刪除 Bot 只送出申請，要你核定後才刪\n\n限制：\n· 一般 Bot 每 24 小時最多建 3 個、有團隊管理權限的 20 個、全部最多 50 個\n· 群組 2–10 個 Bot\n· 刪除 Bot 只能申請\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-B03-CommandPalette": {
+   "x": 4640,
+   "y": 8439,
+   "text": "【規格】搜尋面板 ⌘K　PRD §11 UI\n\n功能：⌘K 打開的全域搜尋：同時找最近的對話串、Bot、群組、動作和訊息，關鍵字高亮。\n\n使用者要完成：用鍵盤快速跳到任何 Bot、對話或動作。\n\n驗收：\n· 輸入後結果依 最近／Bot／群組對話／動作／訊息 分組\n· 符合的字以藍色底標出\n· ↑↓ 移動選取、↵ 開啟、⌘↵ 在新對話串開啟、esc 關閉\n· 開頭打 > 只顯示動作\n· 點任一列會變成選取狀態\n\n狀態：有結果（定價）、選取不同列\n\n例外：\n· 沒有結果時提供「建立 Bot」與「搜尋所有訊息」\n· 結果太多時每組只顯示前幾筆\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 680,
+   "fill": "blue"
+  },
+  "spec-B04-Notifications": {
+   "x": 6620,
+   "y": 8439,
+   "text": "【規格】通知中心　PRD §6.11 IN、§11 UI\n\n功能：右側通知面板蓋在頁面上（背景加暗），用篩選膠囊分類，要你決定的通知可以就地處理。\n\n使用者要完成：看一眼就知道發生了什麼，要你決定的事在通知裡就能處理。\n\n驗收：\n· 篩選膠囊：全部／要你決定／完成／提到你／出錯，點了立即篩選\n· 未讀顯示藍點與較亮底色，標題列顯示未讀數\n· 帳房通知按「允許這次」後就地顯示已允許\n· 「全部標為已讀」後未讀數歸零\n· 面板後方內容以半透明黑色遮住\n\n狀態：全部、篩選後、核定已允許、全部已讀\n\n例外：\n· 要你決定的通知同時出現在待我處理\n· 某分類沒有通知時不顯示該日期標題\n\n限制：\n· 通知目前只在 XBot 開著時跳出（沒有推播）\n· 暫時性錯誤自動重試 3 次，間隔 2／10／30 分鐘\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-B05-Shortcuts": {
+   "x": 7920,
+   "y": 8439,
+   "text": "【規格】鍵盤快速鍵　PRD §11 UI\n\n功能：快速鍵一覽，分前往、輸入框、動作、語音四組，只用 Mac 寫法。\n\n使用者要完成：讓常用操作都能用鍵盤完成。\n\n驗收：\n· 只出現 ⌘ ⌥ ⇧ 等 Mac 符號，不寫 Ctrl\n· 每組依常用程度排序\n· 可搜尋快速鍵\n· ⌘/ 隨時打開此對話框\n\n狀態：預設、搜尋中\n\n例外：\n· Windows／Linux 版自動把 ⌘ 換成 Ctrl（畫面不另外畫）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 760,
+   "fill": "blue"
+  },
+  "spec-B06-Archived": {
+   "x": 9020,
+   "y": 8439,
+   "text": "【規格】已封存的 Bot　PRD §6.2 BT\n\n功能：列出封存的 Bot，可以還原或永久刪除；刪除前在該列就地確認。\n\n使用者要完成：把不用的 Bot 收起來，需要時再還原。\n\n驗收：\n· 每列顯示名稱、職稱、封存日期與保留的資料\n· 按「還原」後該列顯示「已還原到側欄」，封存數減 1\n· 按垃圾桶圖示，該列展開確認區，說明會刪除哪些東西\n· 只有確認區的「永久刪除」用實心紅色\n\n狀態：列表、確認刪除、已還原\n\n例外：\n· 封存的 Bot 不執行定時任務\n· 全部還原後顯示空狀態\n\n限制：\n· 全部 Bot 最多 50 個\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 600,
+   "fill": "blue"
+  },
+  "spec-B07-Sidebar-Search": {
+   "x": 9880,
+   "y": 8439,
+   "text": "【規格】側欄搜尋與精簡側欄　PRD §11 UI\n\n功能：側欄搜尋模式（Bot、對話串、訊息分組）、沒有符合時的建議，以及只顯示頭像的精簡側欄與滑過提示。\n\n使用者要完成：在側欄快速找到 Bot；空間不夠時用精簡側欄。\n\n驗收：\n· 搜尋框聚焦時藍框，可一鍵清除\n· 符合字元以藍色底標出\n· 沒有符合時提供「建立 Bot」與「到所有訊息裡找」\n· 精簡側欄只顯示頭像，眼睛與小點就是狀態\n· 滑過頭像顯示名字、職稱與狀態\n\n狀態：搜尋中、沒有符合、精簡側欄、滑過提示\n\n例外：\n· 搜尋字很短時只比對名字開頭\n· 精簡側欄的群組用兩個疊放頭像＋人數膠囊\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-B08-Toasts-Confirm": {
+   "x": 11620,
+   "y": 8439,
+   "text": "【規格】提示與確認對話框　PRD §11 UI、§7 SEC\n\n功能：各種提示（完成、要你決定、學到技能、可復原、出錯、新版本）與危險動作的確認對話框。\n\n使用者要完成：讓使用者知道發生了什麼，並在做無法復原的事之前確認。\n\n驗收：\n· 提示底 #262626、圓角 14，右邊一個動作按鈕與關閉\n· 要你決定的提示不會自己消失\n· 確認對話框說清楚什麼會保留、能不能復原\n· 只有確認對話框裡的危險按鈕用實心紅色\n· 按下後顯示「處理中…」並停用取消\n\n狀態：完成、要你決定、學到新東西、可復原、出錯、新版本、確認：清除對話／刪除 Bot／停止群組／處理中\n\n例外：\n· 同時最多顯示 3 則提示，多的排隊\n· 刪除 Bot 提供「改成封存」\n\n限制：\n· 停止一個 Bot 會一路停掉它派出去的子工作（停止連鎖）\n· 刪除 Bot 只能申請，要你核定\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 676,
+   "fill": "blue"
+  },
+  "spec-K01-VoiceCall": {
+   "x": 13600,
+   "y": 8439,
+   "text": "【規格】和小秘語音對話　PRD §6.10 VC、§6.4\n\n功能：和小秘通話：大頭像隨狀態變眼睛（聆聽→思考→工作中→說話），即時字幕，右側是這通電話的逐字紀錄與就地核定卡。\n\n使用者要完成：用講的交代工作，並在通話中完成核定。\n\n驗收：\n· 頭像狀態與文字一致：正在聽…／想一下…／去做了／正在說…\n· 字幕顯示你或小秘正在說的話\n· 靜音、打斷、結束通話三個控制，打斷後回到聆聽\n· 通話中交辦別的 Bot 時顯示事件膠囊（第 N/6 棒）\n· 需要核定的事在右側卡片就地允許\n· 掛斷後對話裡留下一列通話紀錄\n\n狀態：聆聽、思考、工作中、說話、靜音、核定已允許\n\n例外：\n· 5 分鐘沒人說話自動掛斷（可在進階改）\n· 通話中斷線時保留已說的內容\n\n限制：\n· Bot 之間同一條往來最多 6 次\n· 待你核定不會過期\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-K02-VoiceSetup": {
+   "x": 14780,
+   "y": 8439,
+   "text": "【規格】設定 Bot 的聲音　PRD §6.10 VC、§21\n\n功能：幫 Bot 挑聲音：選一個、按試聽、開始通話；語音引擎、金鑰、隨時插話、掛斷時間都收進「進階」。\n\n使用者要完成：一步選好聲音就能開始講電話。\n\n驗收：\n· 聲音以 A–F 選項列呈現，選中的變藍色勾\n· 每列都能試聽，播放中顯示波形與「停止」\n· 選了就自動儲存，底部顯示目前選擇\n· 「進階」預設收起，摘要列出目前引擎與金鑰狀態\n· 進階裡用下拉按鈕、開關，沒有原生控制項\n\n狀態：預設（晴）、試聽中、選其他聲音、進階展開\n\n例外：\n· 沒有設定語音引擎金鑰時預設用系統內建聲音\n· 金鑰只存在主機，不放進 Bot 的電腦\n\n簡化：語音設定 5 個欄位 → 1 個欄位（只選聲音；引擎、金鑰、即時通話、掛斷時間收進進階）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 608,
+   "fill": "blue"
+  },
+  "rowC": {
+   "x": 0,
+   "y": 9519,
+   "text": "C · 和 Bot 對話",
+   "kind": "title1",
+   "maxW": 24980
+  },
+  "spec-C01-Chat-Working": {
+   "x": 1480,
+   "y": 9819,
+   "text": "【規格】對話：工作中＋電腦　PRD §6.1 CH、§6.3 BX、§6.4 AA、§16、§19、§11\n\n功能：小秘正在比價時的一對一對話：可展開的工作列（思考中 · 經過時間 · 步驟數）列出每一步、工具膠囊與 Bot 互聊事件膠囊；右側是小秘的電腦面板，即時畫面、接手操作／休眠、在哪裡跑。\n\n使用者要完成：一眼看出小秘正在做什麼、做到哪，需要時補充、停止或接手電腦。\n\n驗收：\n· 工作列顯示「思考中 · 1 分 12 秒 · 6 個步驟」，點一下可收合／展開步驟\n· 每個步驟有狀態圖示；工具用等寬字膠囊，Bot 互聊用事件膠囊（已傳請求給阿哲、來自阿哲的回覆 · 第 1/6 棒）\n· 工作中時輸入框提示「補充說明給小秘…」，右側是停止鈕；按停止後標題列、工作列、輸入框都變成「正在停止…」，阿哲的子工作一起停\n· 電腦面板的即時畫面填滿框（看得出瀏覽器與商品列表），下方有接手操作與休眠\n· 「在哪裡跑」分段控制可切換這台主機／cloud-01（雲端）／關閉，下方說明跟著變\n· 整頁在 1440×960 內，輸入框完整可見\n\n狀態：工作中（步驟展開）、步驟收合、正在停止、你接手電腦（按鈕變「交還給小秘」）、在哪裡跑：地端／雲端／關閉\n\n例外：\n· 停止會一路停掉派出去的子工作（停止連鎖），檔案保留\n· 工作中送出的話是補充，不是新工作\n· Bot 之間同一條往來最多 6 棒，事件膠囊顯示第幾棒\n· 電腦閒置 30 分鐘自動休眠；第一次收到工作才開機（桌面就緒上限 75 秒）\n· 你在別的對話串說話時，這邊的訊息會排隊\n\n限制：\n· 同一條 Bot 往來最多 6 次（MAX_HOPS）\n· 看門狗：15 分鐘沒動靜停止（工具執行中 40 分鐘）\n· 每台電腦 2 CPU／3 GB／shm 512 MB\n· 閒置 30 分鐘休眠（XBot 新增）\n· 你自己一則訊息上限 64,000 字元\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-C02-Chat-Answer": {
+   "x": 3460,
+   "y": 9819,
+   "text": "【規格】對話：一輪完成的結構　PRD §6.1 CH、§6.9 FL、§19、§20\n\n功能：一輪工作完成後的樣子：已思考膠囊（可展開 9 個步驟）、先結論的回答、比較小表格、檔案卡、來源、訊息動作列，以及快判模型的「系統判斷：已完成 · 92% · 不對？」標註；上方示範另外兩種結果：工作未完成、已中斷，未自動重播。\n\n使用者要完成：看完一則回覆就知道結果、檔案在哪、要不要你處理，判斷錯了一鍵改正。\n\n驗收：\n· 回答先講結論，表格用真實樣子的價格（NT$590、1,280…），估計值有標註\n· 檔案卡顯示檔名、類型、大小與可辨識的縮圖\n· 來源膠囊顯示 6 個來源與網站縮寫\n· 訊息動作列：更多、複製（按了變已複製）、原始內容、唸出來、回覆、釘選、時間\n· 快判標註顯示判斷與機率；按「不對？」可選只做了一半／卡住了／要我處理，改正後顯示「已改成…」並可復原\n· 工作未完成與已中斷各有明確的下一步按鈕（接手登入、繼續做）\n\n狀態：已完成（快判標註）、快判改正中、快判已改正、步驟展開、工作未完成、已中斷，未自動重播、已複製\n\n例外：\n· 系統目前只知道這一輪結束，不知道目標是否真的達成，所以快判結果要能改正\n· 快判逾時或錯誤時不顯示標註，退回規則判斷\n· 需要真人（登入、驗證碼、付款）時不會自動續做\n· 暫時性錯誤會自動重試，你中間說話就不重試\n\n限制：\n· 快判任務完成判斷等待上限 1 秒，輸入截前 800 字\n· 自動續做最多 2 次（AUTO_CONTINUE）\n· 暫時性錯誤自動重試 3 次，間隔 2／10／30 分鐘\n· 快判每日呼叫上限預設 300 次\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-C03-Chat-Empty": {
+   "x": 5440,
+   "y": 9819,
+   "text": "【規格】對話：新 Bot 空狀態與對話串　PRD §6.1 CH、§6.2 BT、§6.15 ON、§20\n\n功能：剛建立的抓蟲第一次打開：頭像、職稱、預設值膠囊（先問我、這台主機、3 個技能）、打招呼與一張提問卡；標題列旁是對話串切換，一次只開一個浮層（選單或重新命名對話框）。\n\n使用者要完成：新 Bot 不用設定就能開始交代；需要時切換或整理對話串。\n\n驗收：\n· 空狀態看得到 Bot 是誰、預設權限與電腦\n· 提問卡用 A/B/C/D 選項加自由輸入\n· 對話串選單列出目前對話串（打勾）與新對話串、重新命名、釘選、刪除\n· 選單裡按重新命名會關掉選單、打開對話框，不會兩層疊在一起\n· 畫面在 1440×960 內，輸入框完整可見\n\n狀態：空狀態、對話串選單打開、重新命名對話框、無浮層（overlay tweak：menu／rename／none）\n\n例外：\n· 新 Bot 的電腦第一次收到工作才開機\n· 沒改名時用第一則訊息自動命名（快判 #10，退回前 20 字）\n· 只有一個對話串時刪除仍可用，刪掉會建立新的空白對話串\n· 略過提問卡不影響之後交代\n\n限制：\n· 一般 Bot 每 24 小時可建 3 個，全部最多 50 個\n· 對話串名稱建議 ≤ 16 字（快判命名輸出）\n· 新 Bot 預設權限「先問我」\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-C04-Chat-Dark": {
+   "x": 7420,
+   "y": 9819,
+   "text": "【規格】對話：淺色主題（Daylight）　PRD §6.1 CH、§11\n\n功能：C01 同一個畫面套用淺色主題：頁面 #F7F7F5、面板 #FFFFFF、Bot 泡泡 #EFEFEC、你的泡泡 #2F2F2F 白字；結構與互動與 C01 相同。\n\n使用者要完成：確認所有元件在淺色主題下層次與對比都成立。\n\n驗收：\n· 色彩只換 token，版面與 C01 完全一致\n· 你的泡泡 #2F2F2F 配白字，Bot 泡泡 #EFEFEC 配深字\n· 主要按鈕反轉為深底淺字\n· 電腦畫面內容（網頁本身）不跟主題變色\n· 停止、接手、在哪裡跑互動與 C01 相同\n\n狀態：工作中、正在停止、你接手電腦、在哪裡跑三種\n\n例外：\n· 側欄用 Sidebar 元件的淺色版本\n· 狀態點與警示色在淺色底改用較深的文字色（#A35F00、#D23345）\n\n限制：\n· 同 C01\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-C05-Composer": {
+   "x": 8860,
+   "y": 9819,
+   "text": "【規格】輸入框所有狀態　PRD §6.1 CH、§6.6 SK、§6.4 AA、§6.10 VC、§7 SEC、§16\n\n功能：Grok 膠囊樣式的輸入框 15 種狀態：空白、輸入中、工作中補充、別處忙排隊、回答卡片、被卡片擋住、回覆、附件、聽寫、排隊清單、＋選單、/ 技能、@ 隊友、權限膠囊、在哪裡跑膠囊。\n\n使用者要完成：任何時候都知道送出的話會去哪、會怎麼被處理。\n\n驗收：\n· 空白時右側是麥克風與語音通話，有字才出現送出鈕\n· 工作中右側是停止鈕，提示「補充說明給小秘…」\n· 別處忙時送出鈕寫「排隊」，並說明在哪個對話串忙\n· 被核准卡片擋住時輸入框變暗並給「跳到卡片」\n· 附件顯示真的縮圖（照片、試算表、PDF）與可移除的 X\n· 權限膠囊預設「先問我」；在哪裡跑只改這個對話串\n\n狀態：空白、輸入中、工作中、排隊、回答卡片、被擋住、回覆、附件、聽寫、排隊清單、＋選單、/ 技能、@ 隊友、權限、在哪裡跑\n\n例外：\n· 排隊中的訊息可以改、刪或「現在送」（變成補充）\n· 權限選「放手做」時，付款、簽約、上架仍一定問你\n· 在哪裡跑選「關閉」時 Bot 只能聊天和查資料\n· 聽寫可隨時取消，不會送出\n\n限制：\n· 你自己一則訊息上限 64,000 字元\n· 一次帶檔最多 10 個、合計 50 MB\n· 預設只有你能決定：新商品定價、新增支出、簽約、上架、重要對客承諾\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 1400,
+   "fill": "blue"
+  },
+  "spec-C06-ModelPicker": {
+   "x": 10160,
+   "y": 9819,
+   "text": "【規格】模型選擇器　PRD §6.12 EN、§6.13 US\n\n功能：從標題列的模型膠囊打開：上方分頁 訂閱／API 金鑰／本機，左側供應商縮寫列，右側模型清單（建議、其他、預設標記）與推理強度。\n\n使用者要完成：兩下點完換小秘用的模型，知道哪些要另外花錢。\n\n驗收：\n· 分頁可切換，供應商列跟著換\n· 選中的模型打勾，標題列膠囊同步顯示\n· 需要登入或沒執行的供應商有橘點，右側顯示一個動作按鈕（登入 Grok、重新偵測）\n· 推理強度分段控制可切換：低／中／高／最高\n· 每個供應商說明是否另外計費\n· 底部可到「管理 AI 模型與金鑰」\n\n狀態：訂閱 · Claude Code、訂閱 · 未登入（Grok）、API 金鑰 · OpenRouter、本機 · LM Studio、本機 · 沒有執行（Ollama）\n\n例外：\n· 只影響這個 Bot\n· API 金鑰用量算進花費上限\n· OpenCode Go 額度用完先停，不自動加購\n· 新增金鑰只要貼上，自動認出供應商（見 J02）\n\n限制：\n· 花費上限三層：全部／每個 Bot／每條工作鏈；80% 警示、100% 暫停\n\n簡化：模型設定 5 個欄位 → 1 個欄位（這裡只選模型與強度；網址、介面等都在 J02 進階）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 780,
+   "fill": "blue"
+  },
+  "spec-C07-Markdown": {
+   "x": 11600,
+   "y": 9819,
+   "text": "【規格】回覆內容排版　PRD §6.1 CH、§6.9 FL、§11\n\n功能：長回覆的排版樣張：標題、段落、行內程式碼、引用編號、提示與警示框、可搜尋並下載 CSV 的表格、數學式、程式碼區塊與複製、流程圖、圖片格、引言、來源清單。\n\n使用者要完成：長報告也能快速掃到結論、數字與出處。\n\n驗收：\n· 標題 20／18 px，內文 15 px 行高 1.75\n· 表格有搜尋、列數、下載 CSV、放大，排序欄有標示\n· 程式碼區塊有語言標籤與複製（按了變已複製）\n· 流程圖用分開的方塊與箭頭，可切換原始碼\n· 圖片格每張都有可辨識內容\n· 引用編號連到下方來源清單\n\n狀態：預設、程式碼已複製\n\n例外：\n· 表格超過 5 列先收起，「顯示全部」展開\n· 寬表格在框內橫向捲動\n· 估計值要標註（估計值）\n\n限制：\n· Bot 之間單則訊息 12,000 字元，超過存成檔案並帶前 3,000 字預覽\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 1400,
+   "fill": "blue"
+  },
+  "spec-C08-Cards-Approval": {
+   "x": 13040,
+   "y": 9819,
+   "text": "【規格】卡片：核准、提案與收據　PRD §6.1 CH、§6.11 IN、§7 SEC、§18、§21\n\n功能：對話裡所有「要你允許」的卡片：核准卡、精簡核准列、對外發送卡、四種提案卡、輸入框上方的等待核准面板、處理後的一行結果與可復原的自我設定收據。\n\n使用者要完成：不離開對話，一次點擊就允許或拒絕 Bot 要做的事。\n\n驗收：\n· 核准卡顯示誰、誰交辦、第幾棒、白話說明與實際指令，按「允許這次／一律允許／拒絕」後原地變成一行結果\n· 無人在場的工作在核准卡右上顯示「10 分鐘內沒回覆會過期」，你自己發起的工作不顯示\n· 提案卡可切換定時任務／技能／人設／模型四種，建立或先不要後變成一行結果，並註明被否決 14 天內不再提\n· 等待核准面板在輸入框正上方顯示 1 / 3，可前後切換，更多選單有「以後都允許」與危險項「取消這輪工作」\n· 自我設定收據有「復原」，已復原的顯示刪除線，之後改過的註明不能復原\n\n狀態：等待中、已允許、一律允許、已拒絕、已過期（自動拒絕）、提案：待決定／已建立／先不要、面板：1/3、2/3、3/3、全部處理完\n\n例外：\n· 無人在場 10 分鐘沒回覆自動拒絕\n· Bot 或主管的訊息不能當成你的同意\n· 同一主題不重複送核定\n· 一律允許之後可在權限設定改回\n\n限制：\n· 無人在場的提問 10 分鐘過期、核准自動拒絕\n· 被否決的提案 14 天內不能再提\n· 提案＋討論每個 Bot 合計最多 3 件\n· 待你核定每個 Bot 最多 10 件、不會過期\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 1400,
+   "fill": "blue"
+  },
+  "spec-C09-Cards-Questions": {
+   "x": 14480,
+   "y": 9819,
+   "text": "【規格】卡片：提問與選項　PRD §6.1 CH、§6.3 BX、§6.12 EN、§18\n\n功能：Bot 問你問題的卡片：Grok 式 A/B/C 單題卡、有進度的多題卡、額度用完換模型、需要你在電腦上協助的交接卡、沒有固定格式的一般提問，以及回答後的一行結果。\n\n使用者要完成：點一個選項或打一句話就回答 Bot，回答後卡片收成一行。\n\n驗收：\n· 單題卡照 Grok：標題、副標、A/B/C 選項列、「或輸入你自己的答案」輸入框，點選項即送出並收成一行\n· 多題卡顯示「第 N / 2 題」與進度條，可複選，選中項的字母變成藍底勾，可上一題／下一題／送出回答\n· 額度用完卡列出已登入的其他模型與「等額度重置」，註明只影響這段對話\n· 交接卡「需要你在電腦上協助」附電腦畫面縮圖，按鈕為打開電腦、完成交還、停止這件工作\n· 最後一張卡完整顯示在畫板內，沒有被裁掉\n\n狀態：等待回答、多題：第 1 題／第 2 題、已回答、已過期、已略過、交接：等你／已交還\n\n例外：\n· 無人在場的提問 10 分鐘沒回覆就過期，Bot 不猜答案，先回報交辦者\n· 需要真人（登入、驗證碼）時自動續做會停下來等你\n· 換模型不改 Bot 的預設模型\n\n限制：\n· 無人在場的提問 10 分鐘過期（QUESTION_TTL=600）\n· 自動續做最多 2 次，遇到需要真人時停下\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 1400,
+   "fill": "blue"
+  },
+  "spec-C10-Cards-Credentials": {
+   "x": 15920,
+   "y": 9819,
+   "text": "【規格】卡片：密碼、登入、連接　PRD §6.3 BX、§6.12 EN、§7 SEC、§21\n\n功能：Bot 需要機密資料時的卡片：帳號＋密碼主卡，以及秘密輸入、sudo、驗證碼、解鎖密碼四種變化；登入網站要你自己在 Bot 電腦上操作的卡；Bot 提出連接應用程式的卡；處理後的一行結果。\n\n使用者要完成：安全地把密碼交給 Bot 的電腦，或自己登入一次，不讓機密進到對話紀錄。\n\n驗收：\n· 每張輸入卡都寫「直接交給 Bot 的電腦使用，不會寫進對話紀錄。」\n· 輸入框是 #191919 底、1px #333333 框、圓角 10，聚焦時 #459FFE 框，看起來可以輸入而不是停用\n· 密碼欄可切換顯示，驗證碼用 6 格輸入\n· 登入卡說明密碼由你自己在頁面上輸入、Bot 看不到，附登入頁縮圖\n· 連接卡顯示三步：打開登入頁 → 登入並同意 → 已連接，所有 Bot 可用\n· 送出後原地變成一行結果（只寫「已提供」，不顯示內容）\n\n狀態：等待輸入、輸入中（聚焦）、已提供、不提供、已登入、已連接、已過期\n\n例外：\n· 不想在網頁輸入時可改成自己在電腦上輸入\n· 防機器人網站（蝦皮、Threads）只收真鍵盤輸入，要你接手\n· 不同 Bot 的瀏覽器登入彼此獨立\n\n限制：\n· 無人在場的提問 10 分鐘過期\n\n簡化：連接應用程式 4 步 → 2 步（點安全連接 → 登入；工具預設全開、所有 Bot 可用，進階收起）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 1400,
+   "fill": "blue"
+  },
+  "spec-C11-Cards-Runs": {
+   "x": 17360,
+   "y": 9819,
+   "text": "【規格】卡片：執行、目標、失敗　PRD §6.1 CH、§6.8 RT、§6.13 US、§19\n\n功能：一輪工作的結果卡：定時任務執行卡、目標型任務卡、每次執行的狀態、摘要／壓縮／資料結果／通話紀錄膠囊、六種沒做完的一輪、已停止、已中斷、對話錯誤橫幅、Bot 做的小表單與圖表、Bot 電腦畫面截圖。\n\n使用者要完成：一眼看出這輪做完沒有，沒做完時知道下一步按什麼。\n\n驗收：\n· 目標型任務顯示「小秘協調中 · 第 3 / 10 輪」與 10 格進度，註明最多 50 輪與進度檔路徑\n· 每種失敗都有一個主要動作按鈕（登入、更新、現在重試、再試一次、換模型、提高上限）\n· 暫時性錯誤顯示第幾次自動重試與下次間隔\n· 小表單的日期、時間、選單都是自畫的下拉按鈕，不用瀏覽器原生控制項\n· 電腦畫面截圖畫出可辨識的 Threads 發文頁內容，不是空框\n\n狀態：排隊中、執行中、等你、已完成、失敗、已停止、已中斷、隨機延後、錯過後補做\n\n例外：\n· 你在重試間隔中說話就不重試\n· 服務重啟時進行中的工作標記已中斷、不自動重播\n· 停止會連帶停掉它派出去的工作\n\n限制：\n· 目標型定時任務預設 10 輪、最多 50 輪\n· 暫時性錯誤自動重試 3 次，間隔 2／10／30 分鐘\n· 看門狗 15 分鐘沒動靜停止（工具執行中 40 分鐘）\n· 隨機延後選項 15／30／60／90／120 分鐘\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 1400,
+   "fill": "blue"
+  },
+  "spec-C12-Progress-Context": {
+   "x": 19100,
+   "y": 9819,
+   "text": "【規格】目前進度與 Context 用量　PRD §6.1 CH、§6.13 US、§19\n\n功能：兩個對話框：目前進度（有工作正在進行、正在做、排隊、卡在等你、背景工作、在等隊友與做完要回報給誰、隊友狀態、最近完成，每 4 秒更新；另附沒有人在工作時的精簡狀態），以及 Context 用量（用量條、五個組成、開新對話／壓縮舊對話）。\n\n使用者要完成：問「做到哪了」時直接看到事實，而不是只聽 Bot 說在等。\n\n驗收：\n· 進度框標頭顯示「每 4 秒更新」\n· 「卡在等你」用橘色並有「去回答」按鈕\n· 在等隊友列寫出隊友、第幾棒、經過時間與「做完要回報給 小秘」\n· 沒有人在工作時寫「目前沒有任何人在工作」，並提示交辦的事還沒回來代表卡住\n· Context 用量的「壓縮舊對話」停用時仍清楚可讀，並說明原因（小秘工作中，做完才能壓縮）\n\n狀態：有工作正在進行、目前沒有任何人在工作、壓縮：可用／工作中不可用\n\n例外：\n· 隊友回合被停止時不會回傳結果\n· 進度資料每 4 秒輪詢，斷線時沿用上次資料\n\n限制：\n· 進度每 4 秒更新\n· 同一條往來最多 6 次（第 N/6 棒）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 780,
+   "fill": "blue"
+  },
+  "spec-C13-PeerDialog": {
+   "x": 20280,
+   "y": 9819,
+   "text": "【規格】兩個 Bot 的往來　PRD §6.4 AA、§18\n\n功能：小秘 ⇄ 阿哲的往來紀錄對話框：每則訊息標示意圖（請求／提問／回覆／通知）、第 N/6 棒、時間；含帶檔膠囊、延後回覆說明、超長回覆存成檔案的提示，底部可停止這條往來。\n\n使用者要完成：看懂兩個 Bot 之間說了什麼、走到第幾棒，必要時停下來。\n\n驗收：\n· 標頭顯示「這條往來 3 / 6 次，到 6 次會先停下來回報你」\n· 回覆標示「回覆不算次數」\n· 帶檔膠囊顯示檔案數、大小與檔名\n· 延後回覆以虛線說明列呈現（轉給數據喵、等它回來才一起回覆）\n· 超長回覆顯示「完整回覆共 18,240 字，太長放不進訊息，已存成檔案」、檔案路徑與只放前 3,000 字\n· 對話框高度剛好容納內容（640×780）\n\n狀態：進行中、延後回覆中、達到 6 次上限、已停止\n\n例外：\n· 同一個請求不重複傳送\n· 刪除的 Bot 會回覆等它的人\n· Bot 的訊息不能當成你的同意\n\n限制：\n· 同一條往來最多 6 次（MAX_HOPS）\n· 單則訊息 12,000 字元，超過存成檔案並帶前 3,000 字預覽\n· 一次帶檔最多 10 個、合計 50 MB\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 780,
+   "fill": "blue"
+  },
+  "spec-C14-Events": {
+   "x": 21720,
+   "y": 9819,
+   "text": "【規格】事件列、背景工作、語音列　PRD §6.1 CH、§6.4 AA/RM、§6.10 VC、§6.8 RT、§6.6 SK、§18\n\n功能：Grok 工具膠囊樣式的 Bot 事件（請求、提問、回覆、轉交、帶檔、建立群組／Bot／團隊、第 N/4 輪、4 輪上限、核定、提案、討論、停止連鎖、6 次上限、去重）與展開狀態；背景工作卡（進行中／已結束）、在別處工作列、三種語音列、定時任務送出的訊息、示範教學卡。\n\n使用者要完成：在對話裡安靜但清楚地看到 Bot 之間發生了什麼，需要你的事用橘色凸顯。\n\n驗收：\n· 事件膠囊 1px #333333 框、圓角 999、左邊 Lucide 圖示，等你的事（核定、提案、討論、6 次上限）用橘色\n· 包含「達到 6 次往來上限，已回報你」與「群組已來回 4 輪，不再互相喚醒」\n· 展開的膠囊顯示回覆內容與「查看和阿哲的所有往來」連結\n· 背景工作卡有「全部停止」與完成後自動回報說明；結束後收合為一行並顯示完成／未完成數\n· 語音列三種狀態：正在聽、等回覆、正在說，都有結束按鈕\n\n狀態：事件：一般／等你、展開、背景工作：進行中／已結束、語音：聆聽／等待／說話\n\n例外：\n· 群組超過 4 輪訊息照發但不再喚醒別人\n· 停止一個 Bot 會連帶停掉它派出去的工作\n· 重複的請求不會再送\n\n限制：\n· 同一條往來最多 6 次\n· 群組每次你發言後最多 4 輪\n· 團隊含主管最多 10 個 Bot\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 970,
+   "fill": "blue"
+  },
+  "spec-C15-PreCheck": {
+   "x": 23160,
+   "y": 9819,
+   "text": "【規格】對話 · 先判斷列（快判用途 11–14）　PRD §20、§20.1 FJ-7、§6.1 CH\n\n功能：你送出工作後、主力引擎開始之前，訊息下方出現一條小小的「先判斷」列：Jev 判斷夠不夠清楚、要不要開電腦、交給哪個引擎與思考強度、預估花費，每顆膠囊都有機率與「不對？」。三個例子：全部通過直接開工；缺資訊先出 A/B/C 卡片「要比較哪個平台？」；預估超過工作鏈預算 NT$200 先問你要不要繼續。\n\n使用者要完成：使用者看得到系統在開工前替他判斷了什麼，錯了能一鍵改正；缺資訊或會超預算時在開始前就被問，不會做到一半才停。\n\n驗收：\n· 例 1：你的訊息下方有 4 顆膠囊：「夠清楚」「不用開電腦 · 先查網路」「交給 Hermes · 中」「預估 小（約 8k token）」，每顆都有「Jev · 機率」與「不對？」\n· 例 2：13 判斷缺資訊時，先出現 A/B/C 卡片「要比較哪個平台？」，選好才開始，還沒開電腦、沒呼叫主力引擎\n· 例 3：14 預估超過時，出現「這件事預估會超過這條工作鏈預算 NT$200，要繼續嗎？」與 繼續做／先做一部分／取消\n· 按「不對？」可改正該項判斷（改引擎、改成要開電腦…），改正紀錄用來校正門檻\n· 先判斷列只在 Jev 機率 ≥ 0.6 時顯示該項結果；不確定或逾時就不顯示、照規則走\n· 內容在 900×700 內\n\n狀態：全部通過（直接開工）、缺資訊（A/B/C 先問）、超過工作鏈預算（先問要不要繼續）、某項逾時或機率 < 0.6（該膠囊不出現，照規則）、影子模式（不顯示，只記錄）、按「不對？」後的改正選單\n\n例外：\n· 快判整個不可用（未登入 OpenCode、離線、達每日上限）：不顯示先判斷列，照規則直接開工\n· 13 要問清楚與 14 超預算同時成立：先問清楚，回答後再預估花費\n· 使用者把引擎改掉：這次照使用者選的，並記錄改正\n· 花費問題只能多問、不能放行：超過花費上限一定要你決定\n\n限制：\n· Jev 機率門檻 0.6\n· 先判斷每項等待上限 0.5 秒（XBot 建議值）\n· 14 小 = < 2 萬 token\n· 電腦桌面就緒上限 75 秒（不用開電腦就省下）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 700,
+   "fill": "blue"
+  },
+  "spec-C16-MCPAttribution": {
+   "x": 24600,
+   "y": 9819,
+   "text": "【規格】代理（MCP）修改的標註與核准卡　PRD §22\n\n功能：外部代理透過 MCP 改過的東西，在對話（收據列）和 Bot 設定（欄位下方）都標「由 Claude Code（MCP）修改 · 時間 · 復原」；代理要做需要核准的事時，待我處理出現一張核准卡，由你按允許或拒絕；有代為核准授權的代理代按時，待我處理留一張「已由 ○○ 代為核准」紀錄卡，可復原。\n\n使用者要完成：使用者一眼看出哪些變更是代理做的，能一鍵復原，並親自決定需要核准的動作。\n\n驗收：\n· 對話裡每筆代理變更是一列收據：變更內容＋「由 Claude Code（MCP）修改 · 2 分鐘前 · 復原」\n· Bot 設定被改過的欄位下方有同樣的標註，按復原後欄位回到原值並顯示「已復原」\n· 對話和設定的標註指向同一筆變更，任一處復原，兩處一起更新\n· 核准卡標題寫出哪個代理要做什麼（Claude Code 想要刪除 Bot「舊客服」），附工具名稱與 request_id\n· 只有「允許這次」「拒絕」兩個按鈕；處理後變成一行結果，並告訴你代理收到什麼\n· 待我處理有一張「已由 Claude Code（MCP）代為核准 · 對外發送」紀錄卡，寫出做了什麼與今天第幾次，10 分鐘內可按「復原」，復原後顯示「已復原，貼文已收回」\n\n狀態：有代理修改（預設）、已復原、核准卡等待中、已允許、已拒絕、代為核准紀錄（可復原／已復原）\n\n例外：\n· 之後又被人或其他代理改過 → 這筆不能復原，標註改成「之後又改過」\n· 代理被撤銷後，它建立的核准卡仍在，照常由你決定\n· 同一個 request_id 重送不會出第二張卡\n· 代理只有拿到代為核准授權時才能呼叫 xbot.approvals.decide（限指定類別、每日上限、有效期限）；刪除 Bot 或資料、移除主機、提高花費上限永遠要你本人核准\n\n限制：\n· confirm 類動作：對外發送、花錢、刪除、上架、簽約、超預算、移除主機要人核准；可授權代理代為核准部分類別，但刪除、移除主機、提高花費上限永遠要你本人\n· 每次呼叫都記入稽核（誰、哪個工具、參數遮蔽密鑰、結果）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 704,
+   "fill": "blue"
+  },
+  "rowD": {
+   "x": 0,
+   "y": 11339,
+   "text": "D · 群組對話：Bot 互聊",
+   "kind": "title1",
+   "maxW": 8980
+  },
+  "spec-D01-Room": {
+   "x": 1480,
+   "y": 11639,
+   "text": "【規格】群組對話：新品上架專案　PRD §6.4 RM、§18、§20、§11\n\n功能：你和小秘、阿哲、小編在同一個群組對話；看得到誰被叫醒、第幾輪、系統挑了誰回答，右側是交棒軌跡和成員狀態。\n\n使用者要完成：用 @ 把工作分給對的 Bot，並隨時看懂、停下 Bot 之間的接力。\n\n驗收：\n· 標題列一行內有：群組頭像、名稱、「阿哲 正在回覆…」、回應規則膠囊、停止所有成員、⋯\n· 你的泡泡 #5A5A5A、Bot 泡泡 #262626，Bot 訊息上方有小頭像與名字\n· 每次 Bot 互相叫醒顯示分隔線「第 N/4 輪 · A → B」，你發言後重新從第 1 輪算\n· 沒點名時，被挑中的訊息旁有「系統挑選：小秘 · 86%」與「不對？改給別人」\n· 輸入框在 960 高度內完整可見；點 @ 或點名膠囊會把 @名字 填進輸入框\n· 回應規則可切換四種，預設「自動挑一位」\n\n狀態：有人回覆中、全部待命、有成員等你回覆、第 4/4 輪已到上限、@ 選單開啟、回應規則選單開啟、已停止所有成員\n\n例外：\n· 快判逾時（1.5 秒）或機率低於 0.6：改由主責 Bot 回答，不顯示百分比\n· 第 4 輪後訊息照發但不再叫醒別人，顯示「這段群組討論已經來回 4 輪了」\n· 成員在自己的對話等你：群組只顯示一行「前往」，不在群組裡打擾\n· 你在 Bot 接力中途發言：你的訊息優先，輪數重算\n\n限制：\n· 群組 2–10 個 Bot\n· 你每發言一次，Bot 互相叫醒最多 4 輪（ROOM_ROUNDS）\n· 單則 Bot 訊息 12,000 字元，超過存成檔案附前 3,000 字預覽\n· 一次帶檔最多 10 個／50 MB\n· 快判挑人：門檻 0.6、等待上限 1.5 秒\n· 無人在場的群組接力：提問 10 分鐘沒回就過期\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-D02-Room-Goal": {
+   "x": 3460,
+   "y": 11639,
+   "text": "【規格】群組：目標模式（接力到完成）　PRD §6.4 RM、§19、§6.13 US、§18\n\n功能：群組設了目標後，成員會一輪一輪接力直到完成；畫面顯示第幾輪、每一步的狀態、排隊中的訊息、花費與個別暫停。\n\n使用者要完成：放手讓群組把一件事做完，同時隨時看得到進度、花費，並能停下任何一位。\n\n驗收：\n· 目標卡顯示「第 5/10 輪」與 10 格進度，每一步有完成／進行中／等你／未開始四種圖示\n· 等你核定的步驟有「去核定」按鈕，連到待你核定\n· 被你暫停的成員有橫幅與「恢復」按鈕，其他成員照常接力\n· 輸入框上方每位成員各有「停下」膠囊；輸入框內有「目標 · 開」開關\n· 排隊清單裡你的訊息永遠排第一\n· 花費到 80% 變橘色提醒，100% 暫停並發卡\n\n狀態：進行中、等你核定、有成員暫停、花費 80% 提醒、花費 100% 暫停、達成目標（收據）、輪數用完收尾、連續兩輪沒進展收尾\n\n例外：\n· 目標進行中你直接發言：你的訊息優先，排在佇列第一\n· 連續兩輪沒有新進展：自動收尾並寫報告，不會用完 10 輪\n· 最後一輪不管有沒有完成都要寫報告\n· 成員被暫停時有人 @它：提示「阿哲已暫停，要恢復嗎？」不自動恢復\n\n限制：\n· 目標預設 10 輪、最多 50 輪\n· 進度檔 /workspace/goals/<id>.md\n· 花費上限：全部／每個 Bot／每條工作鏈；80% 提醒、100% 暫停\n· 看門狗：15 分鐘沒動靜停止（工具執行中 40 分鐘）\n· 無人在場：提問 10 分鐘沒回就過期、核准自動拒絕\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-D03-RoomDialog": {
+   "x": 4640,
+   "y": 11639,
+   "text": "【規格】新增群組對話（勾成員 → 建立）　PRD §6.4 RM、§21、§20\n\n功能：開新群組只要勾成員再按建立；名稱用成員名字自動命名，回應規則預設「自動挑一位」，其他都收在進階設定。\n\n使用者要完成：用最少的動作把 2–10 個 Bot 拉進同一個群組對話。\n\n驗收：\n· 預設已勾小秘、阿哲、小編，按鈕顯示「建立群組（3 位）」\n· 少於 2 位時建立按鈕變淡、提示「至少要 2 個 Bot 才能開群組」\n· 勾滿 10 位後再勾不會加入\n· 名稱隨勾選即時更新（超過 3 位顯示「… 等 N 位」）\n· 進階設定預設收起；展開後可改名稱、回應規則（四選一）、群組指示、工作資料夾\n· 勾選框是自畫方塊、回應規則是分段控制，沒有原生控制項外觀\n\n狀態：預設（3 位）、少於 2 位、已滿 10 位、進階設定展開、建立中\n\n例外：\n· 成員裡有人正在工作：照樣加入，第一則訊息排隊\n· 同名群組已存在：自動加「（2）」\n· 有 Bot 已刪除：不出現在清單\n\n限制：\n· 群組 2–10 個 Bot（ROOM_MIN/MAX）\n· 回應規則預設「自動挑一位」（快判門檻 0.6、等待上限 1.5 秒，失敗交給主責）\n· 你每發言一次 Bot 互相叫醒最多 4 輪\n\n簡化：新增群組 5 個欄位 → 2 步（只勾成員就能建立；名稱自動、回應規則預設「自動挑一位」，其他收進進階設定）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 604,
+   "fill": "blue"
+  },
+  "spec-D04-RoomSetup": {
+   "x": 6620,
+   "y": 11639,
+   "text": "【規格】群組第一則訊息（開場建議）　PRD §6.4 RM、§21、§11\n\n功能：新群組建好後的空白對話：介紹成員與規則，給三句可以直接送出的開場白。\n\n使用者要完成：讓你不用想怎麼開口，一鍵帶入第一則訊息就能讓成員開始接力。\n\n驗收：\n· 三位成員頭像等大並排置中，不重疊、不歪斜\n· 說明三條規則：@ 指定、沒點名系統挑一位、最多來回 4 輪\n· 開場建議用 A/B/C 選項卡，點了會把文字帶進輸入框，不直接送出\n· 輸入框在 960 高度內完整可見\n· 群組指示未設定時，輸入框上方提示「新增」\n\n狀態：空白（剛建立）、已帶入建議、已關閉建議、送出後（進入 D01）\n\n例外：\n· 成員只有 2 位：建議句改成兩人版\n· 成員都在忙：送出後第一輪排隊，顯示「排隊中」\n· 群組名稱很長：標題列截斷加…\n\n限制：\n· 群組 2–10 個 Bot\n· 你每發言一次 Bot 互相叫醒最多 4 輪\n· 你的一則訊息上限 64,000 字元\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-D05-GroupCall": {
+   "x": 8600,
+   "y": 11639,
+   "text": "【規格】群組語音通話　PRD §6.10 VC、§6.4 RM、§7\n\n功能：和群組成員語音通話：看到誰在說話、誰排在後面，右側有即時字幕。\n\n使用者要完成：用說的跟整個群組對話，並能隨時打斷或掛斷。\n\n驗收：\n· 正在說話的成員方塊有綠框與音量圖示，其他成員顯示「查資料中」「等一下輪到」\n· 底部控制：靜音、打斷、字幕、掛斷；掛斷是深紅底白字（對比 ≥ 4.5:1）\n· 回應依序播放，不會多人同時說話\n· 字幕面板最新一句在最下面、顏色最亮\n· 只有你能決定的事不能只靠語音，要在螢幕上再確認一次\n\n狀態：連線中、你在說話、Bot 說話中、打斷、靜音、字幕關閉、已掛斷\n\n例外：\n· Bot 回應時你開口：自動打斷並先聽你的\n· 網路斷線：顯示「連線中斷，正在重新連線」並保留字幕\n· 成員正在等你接手電腦：通話中提示一次，不會自動接手\n\n限制：\n· 群組 2–10 個 Bot\n· 你每發言一次 Bot 互相叫醒最多 4 輪\n· 只有你能決定的事：新商品定價、新增支出、簽約、上架、重要對客承諾\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "rowP": {
+   "x": 0,
+   "y": 12719,
+   "text": "P · 說明：雲端 vs 地端、Tailscale、Bot 互談限制、任務完成、快判模型、MCP",
+   "kind": "title1",
+   "maxW": 13740
+  },
+  "spec-P01-CloudVsLocal": {
+   "x": 1480,
+   "y": 13019,
+   "text": "【規格】說明：地端主機 vs 你自己的雲端 Docker 主機　PRD §16.1、§16.2、§16.3、§16 CL-1、CL-4、CL-5、CL-7、CL-8、CL-10、§17 TS-5、§6.3 BX\n\n功能：說明 XBot 的「雲端」是使用者自己的 Docker 主機：架構圖（手機／筆電 → tailnet → XBot 服務 → 經 SSH 控制 cloud-01 與本機 Docker、product.sock 反向轉發、沒有公開埠）、地端與雲端主機逐項比較、放哪台的選擇流程、每個 Bot 混用的例子。\n\n使用者要完成：使用者看完知道每個 Bot 該放哪台主機，並放心知道雲端主機不開公開埠、金鑰不離開 XBot 服務。\n\n驗收：\n· 架構圖：你的手機／筆電 → tailnet → XBot 服務（控制中心）→ SSH over tailnet → cloud-01（小編、數據喵容器）；本機 Docker → 這台主機（小秘、阿哲容器）\n· 虛線表示 product.sock 經 SSH 反向轉發，標「金鑰留在 XBot 服務」；紅色標「沒有公開埠」擋住公開網際網路\n· 比較表 7 項＋適合誰，內容與 PRD §16.3 一致\n· 選擇流程：要用已登入的蝦皮／Threads → 這台主機或雲端＋從家裡出去；家裡關機也要跑 → 雲端主機並把 XBot 服務放那裡；這台滿了 → 雲端主機；都否＝這台主機\n· 混用面板每個 Bot 用分段控制選 這台主機／cloud-01／只用瀏覽器／關閉；小編、數據喵＝cloud-01\n· 畫面上沒有任何第三方代管雲端服務的名稱或數字\n\n狀態：說明畫板（靜態）\n\n例外：\n· 雲端主機機房 IP 容易被蝦皮、Threads 要求驗證：開「從家裡出去」（exit node 指向家裡）或改放這台主機；仍遇到驗證就請使用者在電腦面板接手\n· 家裡關機：放在這台主機的 Bot 不會跑；XBot 服務若也在家裡，雲端主機上的 Bot 也停\n· 搬家：停止 → 經 SSH 打包 home／workspace／hermes → 新主機還原，登入狀態跟著走\n· docker 群組＝等同 root：建議整台主機專給 XBot\n\n限制：\n· 每台 Bot 電腦 2 CPU／3 GB／shm 512 MB\n· 桌面就緒上限 75 秒\n· 後端準備 <100 ms（實測約 51 ms）\n· noVNC 6080、Hermes 8642 在遠端只綁 127.0.0.1\n· 閒置 30 分鐘休眠，每台主機都適用\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 2120,
+   "fill": "blue"
+  },
+  "spec-P02-Tailscale": {
+   "x": 3460,
+   "y": 13019,
+   "text": "【規格】說明：用 Tailscale 安全連線　PRD §17、§16.2、§6.14 MB、§7 SEC\n\n功能：說明手機、筆電與你自己的雲端主機如何經 tailnet 與只綁 127.0.0.1 的 XBot 服務相連（XBot 經 SSH 控制雲端主機），配對步驟、MagicDNS／HTTPS 設定、ACL 範例、斷線行為與區網兩步 QR 備用方案。\n\n使用者要完成：使用者照四步把手機接上 XBot，且知道主機沒有開任何公開埠。\n\n驗收：\n· 連線圖：手機／筆電／你的雲端主機（cloud-01）→ tailnet（WireGuard）→ tailscale serve → XBot 只綁 127.0.0.1；網際網路連不到（沒有公開埠）\n· 配對四步：裝 Tailscale App 登入同帳號 → 主機開 tailscale serve → 掃一個 QR → 配對成功\n· 設定卡顯示 MagicDNS 與 HTTPS 憑證兩個開關與 https://xbot.<tailnet>.ts.net 網址\n· ACL 範例只允許自己的裝置連 tag:xbot 的 443，只有 tag:xbot 能連 tag:xbot-host 的 22\n· 斷線行為的時間與提示文字和 RESEARCH §B 一致\n· 沒有 Tailscale 時顯示區網兩步 QR（CA＋登入網址）\n\n狀態：說明畫板（靜態）\n\n例外：\n· MagicDNS 或 HTTPS 憑證沒開：tailscale serve 拿不到 *.ts.net 正式憑證\n· 配對碼過期（5 分鐘）或已用過：重新產生 QR\n· 配對碼錯 10 次：鎖 60 秒\n· 手機網路斷：沒有離線聊天、沒有推播；主機工作不中斷\n· 電腦畫面自動重試 2 次仍失敗：顯示「畫面連不上，請按重新連線」\n· Bot 連線中斷：工作標記「已中斷」，未完成的操作不自動重播\n\n限制：\n· 配對碼 12 碼、5 分鐘、單次使用（OpenMausBot）\n· session 30 天、最多續到 180 天\n· 錯誤 10 次鎖 60 秒\n· SSE keepalive 10 秒；側欄輪詢 5 秒、進度 4 秒\n· 電腦畫面：8 秒重試、冷卻 15 秒、穩定 30 秒、20 秒失敗、最多自動 2 次、背景 15 秒暫停\n· 區網：HTTP 8790、HTTPS 8791；CA 3650 天；伺服器憑證 397 天、到期前 30 天更新；登入 cookie 30 天\n· 登入次數限制：規劃 5 次鎖 10 分鐘\n\n簡化：連手機 2 個 QR＋裝憑證 → 1 個 QR（用 Tailscale Serve 的正式 HTTPS 網址，掃一次就開網址並配對；沒有 Tailscale 才走區網兩步。）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 2220,
+   "fill": "blue"
+  },
+  "spec-P03-BotTalkLimits": {
+   "x": 5440,
+   "y": 13019,
+   "text": "【規格】說明：Bot 之間交談的限制　PRD §18、§6.4 AA/RM/LP、§6.11 IN\n\n功能：列出 Bot 之間交談的所有上限數字，用小秘→阿哲→數據喵的時序圖說明往來計數與延遲回覆，並說明只有你能核准的事、你的訊息優先、無人在場過期與停止連鎖。\n\n使用者要完成：使用者知道 Bot 互聊何時會自動停下、哪些事一定回到自己手上。\n\n驗收：\n· 12 張數字卡的值與 RESEARCH §C 完全一致\n· 時序圖：交辦算棒次（第 1/6、第 2/6 棒），結果回傳標示「不算次數」，小秘有延遲回覆區段\n· 顯示第 6 次往來與第 4 輪群組的系統訊息原文\n· 只有你能核准：新商品定價、新增支出、簽約、上架、重要對客承諾；隊友或主管說可以不算數\n· 你的新訊息排在所有低優先工作前面\n· 停止一個 Bot 會連帶停止它派出去的子工作\n\n狀態：說明畫板（靜態）\n\n例外：\n· 訊息超過 12,000 字元：存檔＋3,000 字預覽\n· 群組超過 4 輪：訊息照發但不再喚醒別人；失敗的回合也中止接力\n· 無人在場的提問 10 分鐘過期、核准自動拒絕\n· 同一個 request_id 不重送\n· 隊友回合被停止時不會回傳（缺口）\n· 「這些事先問我」與「要使用者同意才建 Bot」目前只是提示層級\n\n限制：\n· 單則 12,000 字元／預覽 3,000 字\n· 你一則 64,000 字元\n· 往來 6 次（MAX_HOPS）\n· 群組 4 輪（ROOM_ROUNDS）\n· 群組 2–10 個 Bot\n· 團隊含主管 10 個\n· 帶檔 10 個／50 MB\n· 建 Bot 每 24 小時 3 個／管理者 20 個／總數 50\n· 無人在場 10 分鐘過期\n· 待你核定每 Bot 10 件、不會過期\n· 提案＋討論每 Bot 3 件\n· 否決後 14 天不能再提\n· 只有你能決定清單最多 20 項、每項 40 字\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 2200,
+   "fill": "blue"
+  },
+  "spec-P04-TaskDone": {
+   "x": 7420,
+   "y": 13019,
+   "text": "【規格】說明：怎麼判定任務完成　PRD §19、§6.1 CH、§6.8 RT\n\n功能：列出任務完成判定的規則與層級（程式強制／提示層級／規劃中／缺口），畫出 Bot 回完一輪後走向 完成／繼續／等你／停止 的流程，並說明使用者在哪裡看得到工作有沒有在跑。\n\n使用者要完成：使用者知道 Bot 何時會自己繼續、何時停下等他、何時算完成，以及去哪裡確認。\n\n驗收：\n· 規則表 9 列，每列都標出程式強制／提示層級／規劃中／缺口\n· 明寫「目前系統不會判斷目標真的達成」\n· 流程從「Bot 回完一輪」出發，每條路都終止在 完成、繼續、等你 或 停止\n· 重試 3 次 2／10／30 分鐘、叫回去最多 2 次、看門狗 15／40 分鐘、輪數 10／50 都與 RESEARCH §D 一致\n· 隊友沒回來：延遲回覆＝程式、計時叫醒＝缺口、20／30 分鐘＝規劃中\n· 進度面板含目前進度對話框、側欄狀態、工作卡、背景工作卡\n\n狀態：說明畫板（靜態）\n\n例外：\n· 你在重試等待期間說話：不再重試\n· Bot 交辦、群組、教學、背景工作回合：不重試、不自動續做\n· 需要真人（登入、驗證碼、付款、核准、對外發送前）或有待核准：擋下自動續做\n· 隊友回合被停止：不會回傳（缺口）\n· 目標型任務最後一輪：不管有沒有達成都要寫報告並 complete\n· 通知只在網頁開著時（沒有推播）\n\n限制：\n· 自動重試 3 次，2／10／30 分鐘\n· 定時任務啟動失敗退避 1／5／15／60 分鐘\n· 自動續做最多 2 次（AUTO_CONTINUE）\n· 只說要做：70 字以內、沒用工具\n· 目標型任務預設 10 輪、最多 50 輪\n· 看門狗 15 分鐘（工具執行中 40 分鐘）\n· Hermes 單輪最多 200 次工具\n· 目前進度每 4 秒更新\n· 規劃：20 分鐘沒動靜回報主管、30 分鐘沒回覆提醒\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 2300,
+   "fill": "blue"
+  },
+  "spec-P05-JudgeMap": {
+   "x": 9400,
+   "y": 13019,
+   "text": "【規格】說明：哪些判斷用規則、哪些用快判、哪些一定要人　PRD §20、§20.1、§20.2、§20.3\n\n功能：把所有判斷分成三欄：只用規則、快判輔助（規則兜底，15 個用途並標 Jev／Go 層級）、一定要人；畫出「收到工作 → Jev 先判斷（13 要問清楚？12 要開電腦？11 交給哪個引擎？14 會不會超預算？）→ 主力引擎」的流程、兩層快判（Jev 選擇題／Go 短文字）與退路，以及五條共通規則和一次快判的流程。\n\n使用者要完成：讓使用者與工程師都知道快判模型能碰什麼、不能碰什麼、用哪一層模型，以及失敗時一定回到規則。\n\n驗收：\n· 三欄內容與 PRD §20.3 一致；快判欄列出 1–10 與「先判斷」11–15，每列有等待上限或時機與層級標籤（Jev／Go／Jev＋Go）\n· 先判斷流程：收到工作 → 13 → 12 → 11 → 14 → 主力引擎；13 缺資訊與 14 會超過都先問你\n· 兩層圖：要寫字 → 第二層 Go flash，否則第一層 Jev；Jev 機率 ≥ 0.6 才採用；退路 Jev → Go flash → 本機小模型 → 規則\n· 圖用分開的卡片與箭頭（diagrams.md 做法），每個元素可單獨拖動\n· 標示 Zen／Go 直連端點待驗證，替代：opencode run -m（背景）、TypeSafe 直連、OpenRouter\n· 一定要人欄註明快判只能建議「要問人」\n\n狀態：說明畫板（靜態）\n\n例外：\n· 逾時、錯誤、401／429／5xx、格式不合：往下一層退，最後一定是規則\n· Go 達每日上限 100 次：第二層退回本機小模型並通知一次\n· 關鍵字規則命中「要你核定」：一律不降級\n· 完全離線：用本機小模型；沒有就用規則\n\n限制：\n· Jev 機率門檻 0.6\n· 等待上限 0.3–2 秒（依用途）\n· 每日呼叫上限預設 300 次；Go 第二層每日上限 100 次\n· 影子模式切換門檻：與人工改正一致 ≥ 95%\n· 電腦桌面就緒上限 75 秒\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 2712,
+   "fill": "blue"
+  },
+  "spec-P06-JudgeUses": {
+   "x": 11380,
+   "y": 13019,
+   "text": "【規格】說明：快判模型的 15 個用途　PRD §20、§20.1、§20.2\n\n功能：15 張規格卡：1–10 列出現況、輸入、輸出、等待上限、退回規則、上限／影子模式狀態；11–15 是 XBot 新增的「先判斷」用途（選引擎與思考強度、要不要開電腦、要不要先問清楚、花費預估、隊友訊息要不要回），列出時機、輸入、輸出選項、等待上限、退回規則。每張卡標層級（Jev／Go／Jev＋Go），並附介面上「系統判斷：… · 不對？」的小例子。\n\n使用者要完成：工程師照卡實作每個快判用途並知道用哪一層模型；使用者知道標註出現在哪裡、怎麼改正。\n\n驗收：\n· 1–10 的輸入、輸出、等待上限、退回規則與 PRD §20.2 一致\n· 每張卡右上有層級標籤：1–7 與 11–15 Jev、8–9 Go、10 Jev＋Go；Go 卡標示每日上限 100 次\n· 11–15 各有：時機、輸入、輸出選項、等待上限、退回規則、例子（13 是 A/B/C 卡片「要比較哪個平台？」、14 是超過 NT$200 工作鏈預算的提醒）\n· 每張卡都有「系統判斷：… · 不對？」的介面例子\n· 第 3 張標示只能多攔、不能放行；第 7 張標示 OpenMausBot 的 Jev 已生效（門檻 0.6、1.5 秒）\n\n狀態：說明畫板（靜態）\n\n例外：\n· 逾時、錯誤、401／429／5xx、格式不合、Jev 機率 < 0.6：退回該卡的規則\n· 錯誤分類不確定：當成永久錯誤，不亂重試\n· 11 選引擎不確定：用 Bot 預設引擎；12 不確定：照舊開電腦；13 不確定：照常開始做\n· 14 預估超過工作鏈預算：先問你，不是做到一半才停\n· 達每日上限：全部退回規則並通知一次；Go 到 100 次：第二層退回本機小模型\n\n限制：\n· 等待上限：0.3／1／0.5／0.3／0.5／1（背景）／1.5／2（背景）／2／1 秒；11–14 為 0.5 秒、15 為 1 秒（XBot 建議值，PRD 未定）\n· 輸入：≤ 500 字＋最近 2 則；前 800 字；≤ 300 字；≤ 400 字；≤ 1,500 字\n· 輸出：摘要 ≤ 30 字；標題 ≤ 16 字；14 小 = < 2 萬 token\n· 每日呼叫上限預設 300 次；Go 每日上限 100 次\n· Jev 機率門檻 0.6\n· 影子模式切換門檻 ≥ 95%\n· 同一條往來最多 6 次、群組每次最多 4 輪（§18）\n· 電腦桌面就緒上限 75 秒\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 3886,
+   "fill": "blue"
+  },
+  "spec-P07-MCPArchitecture": {
+   "x": 13360,
+   "y": 13019,
+   "text": "【規格】說明：XBot MCP 優先的後端　PRD §22\n\n功能：說明所有入口（介面、外部代理、Bot 電腦裡的 Bot）都呼叫同一個 XBot MCP：權限檢查 → 風險分級 → safe 直接做／confirm 送待我處理（你按，或有代為核准授權的代理代按） → 執行 → 稽核；附一個操作只定義一次、命名與版本、工具目錄 v1、錯誤格式、request_id 與 dry_run、以及 Claude Code 等核准的完整例子。\n\n使用者要完成：讓工程與設計理解：介面能做的事 MCP 都能做，任何代理都要過同樣的權限與人工核准。\n\n驗收：\n· 流程圖從三種呼叫者匯入 XBot MCP（外部代理那條標出選用的外部入口：Funnel／反向代理、要權杖），經權限檢查、風險分級，confirm 一定經過待我處理才執行\n· 被拒（權限、限制、預算）與你按拒絕都回固定格式的錯誤\n· 列出工具命名 xbot.領域.動作 與版本 xbot.v1，以及 PRD §22.3 全部 15 個領域\n· approvals 領域寫 list、request、wait、decide；decide 只限有代為核准授權的代理，重大動作除外\n· 錯誤格式含 code、message、retryable、needs_approval_id\n· 有 xbot.bots.create 的 dry_run 呼叫與回覆兩段 JSON\n· 例子依序：chat.send → chat.wait_until_settled → needs_approval → approvals.wait → 你在待我處理允許（刪除只能你本人） → 完成\n\n狀態：說明畫板（靜態）\n\n例外：\n· approvals.decide 只給拿到代為核准授權的代理，且刪除 Bot 或資料、移除主機、提高花費上限、改代為核准授權除外\n· 密鑰只能寫不能讀；任何工具都不回傳金鑰、登入資料、權杖\n· 同一個 request_id 重送回第一次的結果\n· 不相容改動出 v2，舊版至少保留一個大版本\n\n限制：\n· 配對碼一次性、5 分鐘\n· 權限範圍 read／operate／manage／admin\n· confirm：對外發送、花錢、刪除、上架、簽約、超預算、移除主機\n· 建立 Bot：一般 Bot 每 24 小時 3 個\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 2200,
+   "fill": "blue"
+  },
+  "rowE": {
+   "x": 0,
+   "y": 17025,
+   "text": "E · Bot 的電腦（這台主機與你的雲端主機）　M · 檔案",
+   "kind": "title1",
+   "maxW": 19660
+  },
+  "spec-E01-Computer": {
+   "x": 1480,
+   "y": 17325,
+   "text": "【規格】電腦面板：Bot 正在使用電腦　PRD §6.3 BX、§16 CL-1、§16 CL-5、§11\n\n功能：對話旁的右側電腦面板（Grok 版面）：看 Bot 的即時桌面、一鍵接手或休眠，設定電腦放在哪台主機（這台主機或你自己的雲端主機）。\n\n使用者要完成：看到小秘正在電腦上做什麼，需要時接手，做完交還。\n\n驗收：\n· 即時畫面填滿面板寬度（16:10），看得出 XFCE 桌面與 Chromium 試算表\n· 畫面左下角小膠囊「小秘 正在使用電腦 · 接手操作」，不遮住畫面\n· 按「接手操作」→ 面板顯示「你正在操作 · 小秘已暫停」與「完成，交還給 Bot」；工作卡顯示已暫停\n· 按「完成，交還給 Bot」→ 回到 Bot 使用中，對話出現「已交還給小秘」事件\n· 「在哪裡跑」分段控制可切換 這台主機／cloud-01（雲端）／關閉，下方一行說明跟著換\n· 選 cloud-01 時說明「登入狀態跟著搬過去」：切換＝搬家（CL-5），不是重新建立\n· 電腦資訊顯示 2 CPU · 3 GB、閒置 30 分鐘休眠\n\n狀態：Bot 使用中、你正在操作、已交還、休眠中\n\n例外：\n· 畫面連不上：8 秒後重試，最多自動 2 次後顯示「畫面連不上，請按重新連線」\n· 切到「關閉」時 Bot 只能用對話，不會刪除檔案\n· 休眠中收到新工作會自動喚醒\n· 主機離線時面板顯示「主機離線」，工作排隊、恢復後自動重連（CL-6）\n· 雲端主機的畫面經 SSH over Tailscale 轉送，noVNC 只綁 127.0.0.1\n\n限制：\n· 每台電腦 2 CPU／3 GB／shm 512 MB\n· 第一次收到工作才開機，桌面就緒上限 75 秒\n· 閒置 30 分鐘休眠（XBot 新增）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-E02-Takeover": {
+   "x": 3460,
+   "y": 17325,
+   "text": "【規格】接手操作（全視窗）　PRD §6.3 BX、§21、§7 SEC\n\n功能：Bot 遇到驗證碼等需要真人的步驟時，你在全視窗直接操作它的電腦，做完一鍵交還。\n\n使用者要完成：輸入驗證碼後把電腦交還給小編，讓它繼續發文。\n\n驗收：\n· 進入畫面時已是「你正在操作」（接手＝第 1 步），頂端只有一顆主要按鈕「完成，交還給小編」\n· 說明欄選填；不填時交還送出預設「我剛剛在電腦上操作過，請從目前畫面繼續。」\n· 按「完成，交還給小編」後畫面顯示已交還、小編回到工作中，並顯示送出的說明\n· 電腦畫面填滿可用高度（無下方空白），驗證頁的按鈕都有文字標籤\n· 右上角有「簡化：3 步 → 2 步」標籤\n\n狀態：你正在操作、已交還\n\n例外：\n· 畫面斷線：8 秒後自動重試，最多 2 次，之後顯示「畫面連不上，請按重新連線」\n· 你接手時 Bot 暫停，不會同時操作\n· 你關掉視窗沒交還：Bot 維持等你回覆\n\n限制：\n· 需要登入或驗證碼一定停下來等你（NEEDS_PERSON）\n· 無人在場的工作提問 10 分鐘沒回就過期\n\n簡化：接手電腦 3 步 → 2 步（接手 → 完成交還；說明改成選填並有預設訊息，不用另外按送出）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-E03-Office": {
+   "x": 5440,
+   "y": 17325,
+   "text": "【規格】辦公室：所有 Bot 的電腦牆　PRD §6.3 BX、§16 CL-3、§16 CL-4、§16 CL-6、§11\n\n功能：依主機分組看所有 Bot 的電腦：這台主機（家裡）5 台、cloud-01（你自己的雲端主機）2 台，各組顯示開機數／上限；可篩選、接手、喚醒。\n\n使用者要完成：一眼知道誰在用電腦、誰在等你，並直接去處理。\n\n驗收：\n· 電腦卡依主機分兩組：「這台主機 · 家裡 · 控制中心」（小秘、阿哲、帳房、阿凱、抓蟲）與「cloud-01 · 雲端」（小編、數據喵）\n· 每組標題列顯示開機數／上限與容量條：這台主機 3 / 4、cloud-01 2 / 3，cloud-01 有「在線」標記\n· 工作中與等你的卡片顯示真實的縮小畫面；等你的卡片有橘色框與「等你」標記，按鈕直接到接手（E02）或核定（F08）\n· 小編卡片註明「從家裡出去」（雲端主機的瀏覽器經家裡的網路連外）\n· 篩選：全部 7 · 工作中 2 · 等你 2 · 排隊中 1 · 休眠中 2，沒有符合的主機組整組隱藏\n· 喚醒第一台休眠電腦＝這台主機變 4 / 4；再喚醒一台就排隊「這台主機滿了，空出來就開機」\n· cloud-01 組旁的虛線卡：office-pc 離線、信差不用電腦、「新增主機」到 J11、「把 Bot 搬到別台」到 J06\n\n狀態：全部、篩選：工作中／等你／排隊中／休眠中、喚醒後開機、喚醒後排隊（主機滿）、篩選結果為空\n\n例外：\n· 主機滿了新工作排隊，不擠掉正在工作的電腦；不會自動跨主機搬家\n· 主機離線：該組卡片標「主機離線」、工作排隊、恢復後自動重連（CL-6）\n· 縮圖斷線時顯示最後一張畫面並標「重新連線中」\n· 雲端主機的畫面經 SSH over Tailscale 轉送，不開公開埠\n\n限制：\n· 每台電腦 2 CPU／3 GB／shm 512 MB\n· 每台主機各自的同時開機上限（範例：這台主機 4、cloud-01 3）\n· 閒置 30 分鐘休眠（XBot 新增，每台主機都適用）\n· 第一次收到工作才開機，桌面就緒上限 75 秒\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-E04-Teaching": {
+   "x": 7420,
+   "y": 17325,
+   "text": "【規格】教它一件事：示範中　PRD §6.6 SK、§6.3 BX、§21\n\n功能：你在 Bot 的電腦上示範一次，電腦上方的教學列即時列出每一步（含截圖縮圖），可補充說明、暫停、刪掉做錯的步驟。\n\n使用者要完成：把「重現結帳運費歸零」的做法示範給抓蟲，讓它學成技能。\n\n驗收：\n· 教學列在電腦畫面上方，標題「教學中 · 第 5 步」\n· 5 個步驟全部看得到，每步有截圖縮圖（紅框標出點擊位置）、類型、說明、刪除\n· 可輸入補充說明並加入成一步\n· 「暫停」切換成「繼續」，錄製標示同步變成已暫停\n· 「完成，請它學起來」是唯一主要按鈕\n· 錄製標示寫明密碼只會記成 ••••\n\n狀態：教學中、已暫停、整理技能中（完成後）\n\n例外：\n· 輸入密碼欄位時只記成 ••••\n· 刪掉某一步後編號自動重排\n· 教學回合不自動重試、不自動續做\n\n限制：\n· 教學、Bot 交辦、群組回合不做暫時性錯誤重試\n· 自動續做不套用在教學回合\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-E05-TeachStart": {
+   "x": 8520,
+   "y": 17325,
+   "text": "【規格】教它一件事：開始示範　PRD §6.6 SK、§21\n\n功能：從 Bot 的選單開「教它一件事」，只有一顆「開始示範」按鈕；目的、要不要試做都不用先填。\n\n使用者要完成：一按就開始示範，不用先填表。\n\n驗收：\n· 對話框只有一個主要動作「開始示範」（大按鈕），按下直接進入 E04 教學中\n· 沒有必填欄位；「要教什麼」改成做完再補\n· 寫明密碼欄位只記成 ••••\n· 學完預設會自己試做一次（不用勾選）\n· 右上角有「簡化：3 個欄位 → 1 步」標籤\n\n狀態：預設、電腦開機中（按下後先開機再開始）\n\n例外：\n· 電腦休眠中：按下後先喚醒，桌面就緒上限 75 秒\n· 在手機上開啟：提示用電腦教比較方便，但仍可開始\n· Bot 正在工作：先排隊，等目前的工作做完\n\n限制：\n· 第一次收到工作才開機，桌面就緒上限 75 秒\n· 教學回合不自動重試、不自動續做\n\n簡化：教它一件事 3 個欄位 → 1 步（按「開始示範」直接開始；目的做完再補，試做預設開）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 600,
+   "fill": "blue"
+  },
+  "spec-E06-Browser": {
+   "x": 10500,
+   "y": 17325,
+   "text": "【規格】電腦面板 · 瀏覽器（接手登入）　PRD §6.3 BX、§7 SEC、§11 UI\n\n功能：小編上架時遇到簡訊驗證碼，你在電腦面板的「瀏覽器」分頁接手：分頁列、網址列、真實的登入頁、接手橫幅、⋯選單、瀏覽器設定檔與已登入的網站。\n\n使用者要完成：自己輸入驗證碼完成登入，再一鍵交還給小編。\n\n驗收：\n· 瀏覽器分頁顯示分頁列、上一頁／下一頁／重新整理、網址與目前設定檔\n· 接手時頂端有橘色橫幅與「交還給小編」主要按鈕\n· ⋯選單含輸入密碼或驗證碼、重新連線畫面、登出這個網站、重新啟動瀏覽器（紅字）\n· 設定檔三選一（自己的／暫時的／共用）並標示使用中\n· 已登入的網站每列可登出，有「全部登出」與「分享登入給其他 Bot」\n· 對話欄看得到等你回覆卡片與輸入框\n\n狀態：Bot 在用瀏覽器、你接手中（本畫面）、⋯選單打開、網站已登出、設定檔切換\n\n例外：\n· 網站只收真鍵盤輸入（蝦皮、Threads）：一律請你接手，不繞過防機器人\n· 驗證碼過期：頁面上重新傳送，Bot 不代填\n· 共用設定檔一次只能一個 Bot 打開\n\n限制：\n· 瀏覽器設定檔在 /home/box/chrome-profile，重建電腦仍保留\n· 不同 Bot 的登入彼此獨立\n· 每台電腦 2 CPU／3 GB／shm 512 MB\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-E07-Files": {
+   "x": 12480,
+   "y": 17325,
+   "text": "【規格】電腦面板 · 檔案與預覽　PRD §6.9 FL、§6.4 AA、§6.3 BX\n\n功能：小秘電腦上的檔案依「成果／你上傳的／示範教學／從隊友來的」分組，點檔案在右側預覽：CSV 表格、PDF 頁面、Office 轉檔中、圖片、示範步驟、檔案不在這台電腦。\n\n使用者要完成：不離開對話就能看懂 Bot 做出的檔案，必要時下載或打開來源。\n\n驗收：\n· 四個分組都完整顯示、檔名過長以省略號結尾\n· 點檔案切換預覽（CSV、PDF、Office 載入中、圖片、示範、找不到）\n· CSV 可切換「表格／原始內容」，差距 ≥10% 以橘字標出\n· 找不到的檔案說明在哪台電腦並提供「打開阿哲那份／請阿哲傳過來」\n· 對話中的檔案卡片點了直接打開預覽\n\n狀態：CSV 表格、CSV 原始內容、PDF、Office 轉檔中、圖片、示範教學步驟、檔案不在這台電腦\n\n例外：\n· Office 第一次轉 PDF 需要十幾秒\n· 隊友只傳連結時檔案仍在對方電腦\n· 大檔只預覽前 1,000 列（示意）\n\n限制：\n· Bot 之間一次帶檔最多 10 個、合計 50 MB，放在 /workspace/from/<寄件者>/\n· 單則訊息超過 12,000 字元會存成檔案，訊息帶前 3,000 字預覽\n· 附件超過 30 天每天自動清理\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-E08-Data": {
+   "x": 14460,
+   "y": 17325,
+   "text": "【規格】電腦面板 · 資料　PRD §6.9 FL、§6.3 BX\n\n功能：數據喵的資料分頁：資料來源、SQL 編輯器、結果表格（內嵌比例條）與長條圖、匯出選單。\n\n使用者要完成：自己改條件重跑 Bot 給的查詢，並把結果匯出。\n\n驗收：\n· 資料來源列出表名與列數，並可「載入資料」\n· SQL 有行號與語法上色，「執行 ⌘↵」在編輯器右上\n· 結果顯示列數、耗時與資料範圍\n· 匯出選單往上開，不遮住結果表格（CSV、Excel、圖表圖片、複製成 Markdown、存到檔案分頁）\n· 長條圖用 div 畫，數值與商品名都看得到\n· 對話欄有輸入框，標題列顯示數據喵排隊中\n\n狀態：有結果（本畫面）、執行中、SQL 錯誤、沒有資料（請 Bot 載入檔案或寫 SQL）、匯出選單打開\n\n例外：\n· Bot 排隊中時你仍可自己跑查詢\n· 查詢太久可以停止\n· 結果太多只顯示前面幾列（示意）\n\n限制：\n· 每台電腦 2 CPU／3 GB\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-E09-LoginShare": {
+   "x": 15560,
+   "y": 17325,
+   "text": "【規格】分享登入給其他 Bot　PRD §6.3 BX、§7 SEC\n\n功能：把小編瀏覽器裡選定網站的登入狀態複製給其他 Bot。\n\n使用者要完成：讓阿哲、阿凱不用再登入同一個網站。\n\n驗收：\n· 網站清單用自畫勾選框與網站字母圓圈\n· Bot 清單兩欄，頭像狀態與全站一致\n· 底部即時顯示「N 個網站 → N 個 Bot」，沒選時「分享登入」停用\n· 分享後提示在對話框內顯示，有「復原」\n· 說明密碼不會被看到、對方原本的登入會被取代\n\n狀態：選擇中、沒選網站或 Bot（按鈕停用）、已分享（提示）、已復原\n\n例外：\n· 對方同網站已有登入：會被取代\n· 對方 Bot 正在用瀏覽器：下次打開時生效（示意）\n\n限制：\n· 不同 Bot 的登入彼此獨立；分享＝複製登入狀態（cookies）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 740,
+   "fill": "blue"
+  },
+  "spec-E10-Computer-States": {
+   "x": 17300,
+   "y": 17325,
+   "text": "【規格】電腦狀態與確認（卡片集）　PRD §6.3 BX、§16 CL-1、§16 CL-5、§16 CL-6、§17\n\n功能：電腦面板的各種狀態：還沒開機、開機中、畫面連線自動恢復、主機忙碌、主機滿了排隊、主機離線、搬家中、重新開機確認、Android 手機、放在哪台主機的設定卡。\n\n使用者要完成：任何時候都知道電腦在做什麼、要不要你動手。\n\n驗收：\n· 開機中寫明最長等 75 秒\n· 連線恢復依序：離線 → 8 秒後重試 → 冷卻 15 秒再試 → 「畫面連不上，請按重新連線」\n· 主機滿了（這台主機 4 / 4）顯示排第幾位，可讓閒著的 Bot 先休眠或搬到有空位的 cloud-01\n· 主機離線卡（CL-6）：cloud-01 離線、上面的小編與數據喵排隊、主機回來自動重連、結果不明的操作不自動重做；按鈕「重新連線」「搬到這台主機」\n· 搬家中卡（CL-5）：阿凱 這台主機 → cloud-01，4 步（停止電腦 ✓ → 打包資料 → 傳到 cloud-01 → 還原並開機）＋進度條，標明「登入狀態跟著走」\n· 設定卡分段控制：這台主機／cloud-01（雲端）／只用瀏覽器／關閉，說明跟著切換；cloud-01 寫「切換就是搬家」\n· Android 卡片顯示真實手機畫面與返回／主畫面／最近使用\n\n狀態：還沒開機、開機中、離線、自動重試、冷卻、連不上、主機忙碌、排隊等電腦（主機滿）、主機離線、搬家中、確認重新開機、Android 已連線、這台主機／cloud-01／只用瀏覽器／關閉\n\n例外：\n· 分頁在背景 15 秒暫停畫面串流\n· Bot 連線中斷：工作標記已中斷，沒有自動重播\n· 主機離線期間不自動搬家；使用者可手動「搬到這台主機」（離線主機上的資料要等它回來才能打包，否則從最近一次加密備份還原）\n· 搬家途中失敗：留在原主機、原資料不刪除，可重試\n· 雲端主機的瀏覽器用機房 IP，可能被要求驗證 → 可設定「從家裡出去」\n\n限制：\n· 第一次收到工作才開機，桌面就緒上限 75 秒\n· 畫面斷線 8 秒後重試、冷卻 15 秒、最多自動 2 次；連上 30 秒才算穩定、20 秒沒連上算失敗\n· 每台電腦 2 CPU／3 GB／shm 512 MB；閒置 30 分鐘休眠（每台主機都適用）\n· 每台主機各自的同時開機上限（範例：這台主機 4、cloud-01 3）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-M01-FilesPage": {
+   "x": 19280,
+   "y": 17325,
+   "text": "【規格】全部檔案　PRD §6.9 FL\n\n功能：所有 Bot 的檔案依 Bot 與對話分組，縮圖看得出內容；右側有同步到這台電腦、各 Bot 儲存空間與可清理項目。\n\n使用者要完成：一個地方找到任何 Bot 做過的檔案，並控制同步與空間。\n\n驗收：\n· 分組標題有 Bot 頭像、對話名、數量與「打開對話」\n· 縮圖依類型畫出試算表格線、PDF 文字行、圖片山景、Markdown 文字、示範步驟、長條圖\n· 種類篩選（全部／成果／你上傳的／示範教學）與格狀／清單切換可用\n· 同步開關可切換並顯示同步狀態與路徑\n· 儲存空間總量與各 Bot 用量，說明自動清理規則\n\n狀態：格狀（本畫面）、清單、篩選後、同步關閉、沒有檔案\n\n例外：\n· 檔名過長以省略號結尾\n· 某個 Bot 已刪除：檔案保留到你清掉（待定）\n\n限制：\n· 成果不自動刪除；附件超過 30 天、瀏覽器快取超過 200 MB 每天自動清理\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "rowF": {
+   "x": 0,
+   "y": 18405,
+   "text": "F · 團隊與組織",
+   "kind": "title1",
+   "maxW": 14800
+  },
+  "spec-F01-Org": {
+   "x": 1480,
+   "y": 18705,
+   "text": "【規格】組織架構　PRD §6.5 TM、§6.4 AA、§7、§18\n\n功能：以你（董事長）為頂端的組織圖：小秘帶 6 位、抓蟲直接向你報告；點任一 Bot 在右側改報告對象、團隊管理權限與可以找誰；下方列出只有你能決定的事。\n\n使用者要完成：一眼看懂誰向誰報告，並在一個畫面調整 Bot 之間的權限與界線。\n\n驗收：\n· 組織圖連線照一對多畫法：父卡片出一條線到間隙中間、一條直線串起所有子卡片、再各一條線接到子卡片邊緣\n· 每張卡片的狀態膠囊與側欄一致（小秘、阿哲工作中；小編等你回覆；帳房等你允許；數據喵排隊中；阿凱、抓蟲待命；信差休息）\n· 點卡片會選取（藍框）並更新右側面板\n· 「向誰報告」是自畫下拉選單，只列出你與有團隊管理權限的 Bot\n· 團隊管理權限用開關、可以找誰用分段控制，改了立即生效（自動儲存）\n· 只有你能決定的事預設 5 項，可刪除、可新增，最多 20 項、每項 40 字\n\n狀態：選取小秘（預設）、選取一般成員、選取等你的 Bot、向誰報告選單開啟、決定事項已滿 20 項\n\n例外：\n· 把主管改成向自己的下屬報告：不允許，選單不列出\n· 關掉小秘的團隊管理權限：它的 6 位直屬保留，但不能再新增 Bot\n· 刪除所有決定事項：提示「至少保留付款類」不擋但警告\n\n限制：\n· 團隊含主管最多 10 個 Bot\n· 一般 Bot 每 24 小時可建 3 個、有團隊管理權限 20 個，全部最多 50 個\n· 同一條 Bot 往來最多 6 次\n· 只有你能決定的事：最多 20 項、每項 40 字\n· 待你核定：每個 Bot 最多 10 件、不會過期\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-F02-TeamBuilder-1": {
+   "x": 2780,
+   "y": 18705,
+   "text": "【規格】建立團隊（選範本 → 建立）　PRD §6.5 TM、§21、§6.2 BT\n\n功能：點一個團隊範本就看到會建立哪些 Bot、誰向誰報告，一個按鈕建立；名稱、成員、回報時間都收進進階設定。\n\n使用者要完成：一步建立一整個有主管的 Bot 團隊。\n\n驗收：\n· 四張範本卡同樣式（框線），成員頭像完整放在卡片內不溢出\n· 點範本即時更新下方成員預覽與按鈕文字「建立 N 個 Bot」\n· 預設選「行銷團隊」，按鈕為「建立 5 個 Bot」\n· 提示「名字、成員、回報時間之後都能改」\n· 進階設定預設收起，點了打開 F03 的展開狀態\n· 底部顯示建立後的 Bot 總數與上限 50\n\n狀態：預設（行銷團隊）、工程團隊、公司組織、自訂團隊、超過 50 個上限、建立中\n\n例外：\n· 建立後超過 50 個 Bot：按鈕停用並說明可以先封存不用的 Bot\n· 團隊含主管超過 10 個：範本最多 8 個，自訂時擋下\n· 同名分區已存在：自動加「（2）」\n\n限制：\n· 團隊含主管最多 10 個 Bot\n· 全部最多 50 個 Bot\n· 有團隊管理權限的 Bot 每 24 小時最多建 20 個、一般 Bot 3 個\n· 電腦：第一次收到工作才開機，閒置 30 分鐘休眠\n\n簡化：建立團隊 2 步 12 個欄位 → 1 步（點範本就看到成員預覽，按「建立」；名字、成員、回報時間之後可改（進階收起））\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 744,
+   "fill": "blue"
+  },
+  "spec-F03-TeamBuilder-2": {
+   "x": 4080,
+   "y": 18705,
+   "text": "【規格】建立團隊：進階設定（展開）　PRD §6.5 TM、§21、§6.8 RT\n\n功能：建立團隊時「進階設定」展開的樣子：列出所有已預設好、之後也能改的項目——團隊名稱、主管向誰報告、成員、回報時間與習慣。\n\n使用者要完成：想調整的人在建立前就能改；不想管的人完全不用打開。\n\n驗收：\n· 所有欄位都有預設值，不填也能直接建立\n· 每個區塊右上角寫出「之後在哪裡改」\n· 成員列可改名、移除；「加一位成員」是整列寬的按鈕，顯示還能加幾位\n· 單一設定一律用開關；時間用像下拉選單的按鈕「下午 6:00」\n· 底部「收起進階設定」回到 F02，「建立 5 個 Bot」直接建立\n\n狀態：展開（預設值）、成員已滿 10 位、名稱重複、關閉每日回報\n\n例外：\n· 團隊名稱空白：用範本名稱\n· 把主管設為主要 Bot：提示原本的主要 Bot（小秘）會改成一般成員\n· 成員加到 10 位：加一位成員按鈕停用\n\n限制：\n· 團隊含主管最多 10 個 Bot\n· 有團隊管理權限的 Bot 每 24 小時最多建 20 個\n· 全部最多 50 個 Bot\n· 群組回應規則預設「自動挑一位」\n\n簡化：建立團隊 2 步 12 個欄位 → 1 步（進階收起）（這些欄位全部有預設值並收進進階設定，建立後在組織架構與 Bot 設定裡改）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 1088,
+   "fill": "blue"
+  },
+  "spec-F04-TeamMap": {
+   "x": 6060,
+   "y": 18705,
+   "text": "【規格】團隊地圖　PRD §6.5 TM、§6.4 AA、§6.3 BX、§18\n\n功能：把所有 Bot 依分區畫在一張地圖上，右側列出 Bot 之間的交棒，下方是每個 Bot 的電腦。\n\n使用者要完成：一眼看出每個團隊誰在忙、誰在等你、工作怎麼在 Bot 之間流動。\n\n驗收：\n· 分區用框線區塊，Bot 節點有 Maus 頭像、職稱、狀態膠囊、模型名稱\n· 狀態與側欄一致；等你的用橘色\n· 縮放控制在畫布上方工具列，不蓋住任何選單或節點\n· 交棒清單顯示 A → B、第幾棒（最多 6）、目前狀態\n· 電腦列每台都有可辨識的畫面縮圖（試算表、商品頁、驗證碼視窗、付款頁、休眠）\n· 高度在 960 內，沒有裁切\n\n狀態：預設、拖曳 Bot 換分區、加到地圖選單開啟、縮放 50–200%、交棒清單空白\n\n例外：\n· 拖到已滿 10 位的團隊：擋下並提示\n· 交棒到第 6 次：清單顯示「已到上限，先回報給你」\n· 電腦全部休眠：電腦列只顯示一張合併卡\n\n限制：\n· 團隊含主管最多 10 個 Bot\n· 同一條 Bot 往來最多 6 次（MAX_HOPS）\n· 群組每次你發言 Bot 互相叫醒最多 4 輪\n· 電腦每台 2 CPU／3 GB，閒置 30 分鐘休眠\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-F05-TeamMemory": {
+   "x": 7360,
+   "y": 18705,
+   "text": "【規格】團隊記憶　PRD §6.7 MM、§6.5 TM\n\n功能：一個團隊共用的事實清單：Bot 提議的新記憶要你確認，已記住的依人物／地點／決策／名詞分類，可以改、釘選、看舊版本、移除。\n\n使用者要完成：讓整個團隊記得同一套事實，而且只有你點頭的才算數。\n\n驗收：\n· 提議卡有「記住」「不要」「改一下再記」；按了會顯示「已記住／已略過」\n· 分類用分段控制，數字正確，切換會篩選清單\n· 每筆記憶顯示種類圖示、名稱、內容、來源與日期、載入方式（一直載入／需要時搜尋）\n· 操作按鈕：修改、釘選、舊版本、移除（紅色），都是 Lucide 圖示\n· 沒有任何 [object Object] 或方括號占位字，內容不被裁切\n· 高度在 920 以內\n\n狀態：有 2 則提議、提議已處理、分類：人物／地點／決策／名詞、修改中、舊版本展開、空白（還沒有記憶）\n\n例外：\n· 被你按「不要」的提議 14 天內不再提\n· 一直載入的條目太多：提示「會占用每次對話的 token」並建議改成需要時搜尋\n· 兩個 Bot 提議互相矛盾：並排顯示讓你選一個\n\n限制：\n· 等你的事（提案＋討論）每個 Bot 合計最多 3 件\n· 被否決的提案 14 天內不能再提\n· 團隊含主管最多 10 個 Bot\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 898,
+   "fill": "blue"
+  },
+  "spec-F06-TeamApply": {
+   "x": 8660,
+   "y": 18705,
+   "text": "【規格】套用到營運部所有 Bot　PRD §6.5 TM、§6.13 US、§7 SEC\n\n功能：一次把同一項設定（權限等級、模型與思考強度、花費上限）套到團隊裡每個 Bot，套用前逐一預覽誰會變。\n\n使用者要完成：不用一個個打開設定，就把整個團隊調成同一個標準。\n\n驗收：\n· 三個分頁：權限等級／模型與思考強度／花費上限，切換時預覽表跟著更新\n· 預覽表每列顯示「現在 → 之後」與「會變更／已是這樣」\n· 主要按鈕顯示實際會變更的數量（例：套用到 3 個 Bot）\n· 按下套用後顯示完成畫面，可「復原」\n· 權限頁註明危險指令任何等級都不會自動允許\n· 對話框沒有大片空白（高度依內容縮小）\n\n狀態：權限等級、模型與思考強度、花費上限、已套用\n\n例外：\n· 全部 Bot 都已是目標值：按鈕變成不可按「沒有要變更的」\n· 進行中的工作做完這一輪才換設定\n· 團隊含主管最多 10 個 Bot，預覽表超過 6 列時內部捲動\n\n限制：\n· 團隊含主管最多 10 個 Bot\n· 花費上限：80% 提醒、100% 暫停並發卡\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 724,
+   "fill": "blue"
+  },
+  "spec-F07-ShareTeam": {
+   "x": 9960,
+   "y": 18705,
+   "text": "【規格】分享團隊　PRD §6.5 TM、§7 SEC\n\n功能：把一個團隊存成 .xbot.json 檔：清楚列出檔案裡有什麼、哪些可以不放，並保證金鑰、登入、對話與記憶一定不會放進去。\n\n使用者要完成：安心把整個團隊的做法分享給別人。\n\n驗收：\n· 「檔案裡有什麼」逐項列出數量與說明；技能、頭像、起手筆記可用開關排除\n· 「一定不會放進檔案」列出金鑰與憑證、網站登入、對話紀錄、記憶、電腦裡的檔案、用量紀錄\n· 按「存成檔案」後顯示完成狀態：檔名、大小、內容摘要、在資料夾中顯示\n· 所有內容都在按鈕列上方，不被底部按鈕蓋住\n· 關掉開關時數量變成「不含」，檔案大小跟著變\n\n狀態：編輯中、部分項目排除、已存成檔案\n\n例外：\n· 名稱空白時用團隊名稱\n· 版本號不合格式（例如 1.2）時自動補成 1.2.0\n· 技能裡若寫死了金鑰或密碼，存檔前會警告並遮蔽\n\n限制：\n· 團隊含主管最多 10 個 Bot\n· 匯入後技能預設關閉、定時任務預設暫停\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 884,
+   "fill": "blue"
+  },
+  "spec-F08-Approvals": {
+   "x": 11140,
+   "y": 18705,
+   "text": "【規格】待你核定　PRD §6.11 IN、§6.5 TM、§7 SEC、§21、§22\n\n功能：只有你能決定的事（付款、定價、刪除 Bot…）集中成卡片，每張都能就地按「允許這次」或「退回」，可附備註。\n\n使用者要完成：不打開對話，一下就核定或退回 Bot 送來的事。\n\n驗收：\n· 每張卡片直接有「允許這次」與「退回」，按一下就完成（不用開對話、不用再確認）\n· 每張卡片有選填的備註欄，備註會跟著決定送回給 Bot\n· 刪除 Bot 的卡片顯示紅色警示，按鈕是危險樣式「允許刪除」\n· 決定後卡片移到「最近的決定」，標「剛剛」並可「復原」\n· 全部處理完顯示「都處理完了」\n· 右上角有「簡化：3 步 → 1 步」標籤\n· 最近的決定裡有一列「已由 Claude Code（MCP）代為核准 · 對外發送」，第二行寫做了什麼與「10 分鐘內可復原」，按「復原」後變成「已復原 · 貼文已收回」\n\n狀態：3 件待核定、部分已決定、全部處理完、有備註的決定\n\n例外：\n· 同一主題重複送來不會再出現第二張\n· Bot 或主管說可以不算數，只有你的決定有效\n· 無人在場的工作提問 10 分鐘過期，但待你核定不會過期\n· 代理代為核准只限你授權的類別與上限；刪除 Bot 一定要你本人核定\n\n限制：\n· 每個 Bot 最多 10 件待核定、不會過期、重複主題不再送\n· 預設只有你能決定：新商品定價、新增支出、簽約、上架、重要對客承諾（可編輯，最多 20 項、每項 40 字）\n· 刪除 Bot 只能申請，一定要你核定\n\n簡化：核定 3 步 → 1 步（在待我處理、通知或手機上直接按「允許這次」，不用打開對話找卡片）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 920,
+   "fill": "blue"
+  },
+  "spec-F09-Library": {
+   "x": 12780,
+   "y": 18705,
+   "text": "【規格】範本庫　PRD §6.5 TM、§6.6 SK\n\n功能：瀏覽整套團隊範本（每張卡用 Maus 頭像群組呈現成員），或帶入自己的團隊檔案／網址。\n\n使用者要完成：挑一個最接近的團隊範本，或匯入別人分享的團隊。\n\n驗收：\n· 範本卡片顯示成員頭像群組（Maus 頭像，不用字母方塊）、名稱、一句話介紹、Bot／技能／群組／定時任務數\n· 「加入」進入匯入前確認（F10），「詳細」看完整說明\n· 可搜尋範本；分頁：探索／我的團隊／我分享的\n· 「帶入你自己的團隊」支援拖放或選擇 .xbot.json、.lazyboy.json、.mausteam.json，也可貼網址\n· 畫面沒有大片空白（高度依內容）\n\n狀態：探索、我的團隊、我分享的、搜尋無結果、拖放檔案中\n\n例外：\n· 檔案格式不支援：顯示支援的格式\n· 網址抓不到：顯示「載不到這個檔案，請確認網址可公開讀取」\n· 加入後 Bot 總數會超過 50 個：先提示\n\n限制：\n· 團隊含主管最多 10 個 Bot\n· 全部最多 50 個 Bot\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 712,
+   "fill": "blue"
+  },
+  "spec-F10-ImportReview": {
+   "x": 14420,
+   "y": 18705,
+   "text": "【規格】加入團隊前確認　PRD §6.5 TM、§6.6 SK、§6.8 RT、§7 SEC\n\n功能：加入範本或別人分享的團隊前，一頁看清楚：成員與技能、共同指示、預設關閉的技能、要補的登入、暫停的定時任務。\n\n使用者要完成：確認沒有意外後，一鍵加入整個團隊。\n\n驗收：\n· 左欄列出 4 位成員（Maus 頭像、職稱、一句話、技能小標籤）\n· 右欄 5 項注意事項；只有「要補的登入」用橘色「要你處理」標記\n· 寫明所有 Bot 權限都是「先問我」\n· 「把小秘設為幕僚長」用開關，預設開\n· 底部說明會建立幾個 Bot 與電腦開機時機；主要按鈕「加入團隊」\n· 畫面沒有大片空白（高度依內容）\n\n狀態：預設、同名 Bot（自動加 2）、加入中、超過 Bot 上限\n\n例外：\n· 加入後 Bot 總數超過 50：只能挑部分成員加入\n· 24 小時內建立 Bot 超過上限：提示明天再加入或請有團隊管理權限的 Bot 建立\n· 檔案裡技能含可疑指令：該技能標「需要檢查」並保持關閉\n\n限制：\n· 團隊含主管最多 10 個 Bot\n· 一般 Bot 每 24 小時 3 個、有團隊管理權限的 20 個；全部最多 50 個\n· 第一次收到工作才開機\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 720,
+   "fill": "blue"
+  },
+  "rowG": {
+   "x": 0,
+   "y": 19913,
+   "text": "G · 建立與設定 Bot（12 分頁 → 4 分頁）",
+   "kind": "title1",
+   "maxW": 21580
+  },
+  "spec-G01-New": {
+   "x": 800,
+   "y": 20213,
+   "text": "【規格】新增 Bot：一句話建立　PRD §6.2 BT、§20 #9、§21\n\n功能：新增 Bot 只剩一個欄位：一句話說要它做什麼，系統建議名字、職稱、頭像、人設、技能、應用程式與定時任務，看過按「建立」；範本、匯入、建立團隊、開群組對話放在下方當次要入口。\n\n使用者要完成：十秒內建好一個能直接開始工作的 Bot。\n\n驗收：\n· 只有一個必填欄位；按 Enter 或「產生建議」後顯示思考中，再換成建議卡\n· 建議卡標「系統建議 · 都可以改」；名字、職稱、人設可就地改（鉛筆→輸入框→勾），技能、應用程式、定時任務有鉛筆\n· 點頭像打開外觀（G03）\n· 「建立」按鈕帶上名字；「換一個建議」重新產生\n· 範本 6 個、匯入 Bot（G14）、建立團隊（F02）、開群組對話（D03）都在建議卡下方\n· 顯示今天還能建立幾個（每 24 小時 3 個）\n\n狀態：建議（預設）、輸入中（建議卡換成提示）、思考中（骨架）、名字／職稱／人設修改中、快判逾時 → 用最接近的範本、今天的額度用完（建立鈕停用並說明何時恢復）\n\n例外：\n· 快判模型 2 秒內沒回或格式不對：用最接近的內建範本當建議\n· 建議要連的應用程式還沒連接：該膠囊顯示「連接」，建立後再登入\n· 已達 50 個上限：建立鈕停用，提示先封存不用的 Bot\n\n限制：\n· 一般 Bot 每 24 小時建立 3 個（有團隊管理權限 20 個）；全部最多 50 個\n· 一句話建 Bot 快判等待上限 2 秒（§20 #9）\n\n簡化：建立 Bot 2 個畫面 10 個欄位 → 1 個欄位＋確認（一句話 → 系統建議名稱、職稱、人設、技能、應用程式（可改）→ 建立；其他全部預設，之後再改。）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 850,
+   "fill": "blue"
+  },
+  "spec-G02-Overview": {
+   "x": 2440,
+   "y": 20213,
+   "text": "【規格】Bot 設定 · 基本　PRD §6.2 BT、§11、§21\n\n功能：Bot 設定的第一個分頁：頭像、名字、它做什麼、人設、回覆長度與語氣，全部自動儲存。\n\n使用者要完成：一眼看到並改好這個 Bot 是誰、怎麼說話。\n\n驗收：\n· 上方只有 4 個分頁：基本 · 能力 · 權限與花費 · 進階，點了切換畫板\n· 點頭像或「換外觀」開 G03，「上傳圖片」開 G04\n· 人設預設收合成三行預覽，按「展開」變成可編輯的文字框，再按「收起」收回\n· 回覆長度是分段控制：精簡／標準／詳細，預設標準\n· 沒有儲存按鈕；底部只有「變更會自動儲存」和「完成」\n· 內容不被底部列蓋住\n\n狀態：人設收合（預設）、人設展開編輯中\n\n例外：\n· 名字留白：恢復上一個名字並提示「名字不能空白」\n· 人設超過上限：計數變橘色，超過的部分不會帶進對話\n· SOUL.md 在電腦裡被改過：顯示「電腦裡的版本比較新」讓你選\n\n簡化：Bot 設定 12 個分頁 → 4 個分頁（總覽、外觀、人設合成「基本」；技能、記憶、應用程式合成「能力」；其他收進「進階」；改了就自動儲存。）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-G03-Identity": {
+   "x": 4080,
+   "y": 20213,
+   "text": "【規格】Bot 設定 · 外觀（頭像）　PRD §6.2 BT、§11\n\n功能：從「基本」點頭像打開的右側 sheet，照 Grok Bot 的頭像面板：大預覽、來源（吉祥物／圖片）、上傳圖片、形狀（10 種）、眼睛（6 種）、顏色、用 AI 產生；點了立刻套用、自動儲存。頭像是平面、只有眼睛、沒有嘴巴。\n\n使用者要完成：幾下就挑好 Bot 的形狀、顏色與平常的眼睛，或換成自己的圖片。\n\n驗收：\n· 點任何形狀、眼睛或顏色，大預覽立刻更新；形狀格子與眼睛格子也跟著換顏色／形狀\n· 形狀 10 格（5×2）：游標、果凍、圓、圓角、膠囊、水滴、盾牌、六角、菱形、星星；選中的有 2px #1084FE 外框；標示「游標＝品牌與預設」\n· 眼睛 6 格（一列）：圓點、看旁邊、開心、睜大、半閉、閉眼；選中的有 2px #1084FE 外框；標示「只有眼睛，沒有嘴巴」\n· 顏色 10 個圓點（Grok 的 5 色＋5 色，平面實色），選中的有外圈\n· 來源切到「圖片」時，預覽與形狀格子都顯示裁成該形狀的圖片（不疊眼睛），眼睛格子變淡；點眼睛會切回吉祥物\n· 「上傳圖片」與「用 AI 產生」的「產生」都打開 G04\n· 「還原吉祥物」回到游標、圓點眼睛、吉祥物（保留顏色）\n\n狀態：預設（藍 · 游標 · 圓點眼睛）、換了形狀、換了顏色、換了眼睛、來源＝圖片（形狀＝裁切框）\n\n例外：\n· 用圖片時不疊眼睛，狀態只看灰字與小點（等你＝橘點、出錯＝紅點）\n· 挑的眼睛只是平常的樣子；對話中仍會跟著狀態變\n· 沒有設定圖片模型時，「產生」改成「先設定圖片模型」並連到 J02\n\n限制：\n· 上傳圖片 PNG、JPEG、GIF、WebP，最大 10 MB（OpenMausBot）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-G04-AvatarUpload": {
+   "x": 5720,
+   "y": 20213,
+   "text": "【規格】頭像 · 上傳裁切／AI 產生　PRD §6.2 BT、§11\n\n功能：從外觀 sheet 打開的對話框：左邊上傳照片並裁切（10 種形狀、縮放、拖曳），右邊用一句話讓 AI 產生 3 張頭像候選。\n\n使用者要完成：把 Bot 頭像換成自己的圖片或 AI 畫的圖。\n\n驗收：\n· 裁切框外變暗，框內有三分線；裁切形狀和 G03／L11 一樣 10 種（游標、果凍、圓、圓角、膠囊、水滴、盾牌、六角、菱形、星星），每格顯示照片裁成該形狀的樣子，選中的有 2px #1084FE 外框；裁切框照選中的形狀顯示（用 Avatar 的 img 裁切，不是圓角方框）\n· 裁好的圖片直接當頭像，不疊眼睛；狀態只看灰字與小點\n· 縮放用自畫滑桿（100%–200%），按放大／縮小鈕每次 25%\n· AI 區有描述框、「再產生 3 張」、3 張看得出內容的候選圖，點一張出現藍框與勾\n· 「用這張」／「用選中的這張」套用後回到外觀 sheet，自動儲存\n· 沒有空白圖框\n\n狀態：已選照片（預設）、產生中（3 格骨架）、已產生 3 張、已選一張候選、沒有圖片金鑰（顯示貼金鑰欄位）\n\n例外：\n· 檔案超過 10 MB 或格式不支援：留在原畫面並說明\n· 產生失敗或逾時：保留描述、顯示「再試一次」\n· 沒有設定圖片金鑰：AI 區換成貼金鑰說明，金鑰只存在本機\n\n限制：\n· 圖片 PNG、JPEG、GIF、WebP，最大 10 MB（OpenMausBot）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-G05-Soul": {
+   "x": 7360,
+   "y": 20213,
+   "text": "【規格】Bot 設定 · 能力 · 技能　PRD §6.6 SK、§20 #6、§21\n\n功能：「能力」分頁的技能頁：技能清單／技能庫／已停用三組，就地編輯一個技能，系統提示可合併的相似技能，旁邊可寫一個斜線指令。\n\n使用者要完成：知道 Bot 會哪些做法，改錯的、合併重複的。\n\n驗收：\n· 能力分頁下有 技能 · 記憶 · 應用程式與電腦 三個小分頁\n· 分段控制切換技能清單（5）／技能庫（2）／已停用（1），列表跟著換\n· 編輯中的技能展開成名稱、什麼時候使用、怎麼做三欄，有「儲存技能」「取消」\n· 相似技能標「可合併」，右側卡片顯示系統判斷與信心，可「請小秘合併」或「保持分開」，旁邊有「不對」\n· 寫一個指令：指令名稱（等寬字）＋要做什麼，儲存後在輸入框打 / 可用\n· 內容不被底部列蓋住\n\n狀態：技能清單（預設，含一個編輯中）、技能庫、已停用、合併中（卡片顯示進度）、沒有技能（空狀態：教它一件事）\n\n例外：\n· 快判模型逾時或沒設定：改用名稱字詞重疊判斷相似\n· 合併後保留舊技能在已停用，可以還原\n· 指令名稱和內建指令重複：提示換一個\n\n限制：\n· 相似技能判斷等待上限 1 秒（背景，快判 #6）\n\n簡化：Bot 設定 技能、記憶、應用程式、電腦各一個分頁 → 合成「能力」一個分頁（三個小分頁放在同一處；新增技能收成一顆按鈕；不用存檔。）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-G06-Skills": {
+   "x": 9000,
+   "y": 20213,
+   "text": "【規格】Bot 設定 · 能力 · 記憶　PRD §6.7 MM、§21\n\n功能：「能力」分頁的記憶頁：關於你／Bot 記住的事兩組，各有用量條、逐條修改刪除、新增；右側記憶整理開關與最近變更。\n\n使用者要完成：看到 Bot 記得什麼，改掉錯的或過時的。\n\n驗收：\n· 兩組各顯示「已用 N / 上限 字」與用量條\n· 每一條右邊有修改、刪除；修改中的那條變成輸入框＋取消／儲存\n· 每組底部有「新增一條」\n· 記憶整理與從群組對話學習都用開關；整理有「立即整理」與上次時間\n· 最近的變更可以復原（已被改過的不能復原就不顯示按鈕）\n· 主題檔案、每日日誌收在「進階」列\n\n狀態：預設（一條修改中）、記憶關閉（列表變灰，說明不會帶進對話）、用量超過 80%（用量條變橘並建議整理）、整理中\n\n例外：\n· 寫入前自動遮蔽密碼與金鑰\n· 超過上限的部分不會自動帶進對話，要用時才查\n· 電腦裡的記憶檔被改過：以檔案為準並列進最近的變更\n\n限制：\n· 關於你上限 1,375 字、Bot 記住的事上限 2,200 字（LazyBoyHermes 記憶設定）\n\n簡化：Bot 設定 記憶獨立分頁＋檔案細節全展開 → 能力 · 記憶，檔案細節收進進階（只留兩組清單和兩個開關；主題檔案與日誌收起；自動儲存。）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-G07-Memory": {
+   "x": 10640,
+   "y": 20213,
+   "text": "【規格】Bot 設定 · 能力 · 應用程式與電腦　PRD §6.3 BX、§16、§6.2 BT、§21\n\n功能：「能力」分頁的第三頁：小秘能用哪些已連接的應用程式（每個唯讀／讀寫＋開關）、MCP 串接、瀏覽器、自己的電腦；電腦資源收在進階列。\n\n使用者要完成：一頁決定小秘能碰哪些工具、能做到什麼程度。\n\n驗收：\n· 每個應用程式一列：圖示、名稱、帳號、唯讀／讀寫分段控制、開關；關掉時分段控制變淡\n· 「連接更多」開 I01；說明讀寫動作照「權限與花費」先問你（連到 G08）\n· MCP 每列有開關，需要登入的顯示「登入」按鈕\n· 瀏覽器與錄下步驟都用開關\n· 電腦卡有即時畫面縮圖、狀態、在哪裡跑（這台主機／cloud-01（雲端）／關閉）、打開電腦面板\n· 電腦資源（CPU、記憶體、休眠、網路）收在「進階：電腦資源」列，預設收合\n\n狀態：預設、應用程式關閉、MCP 需要登入、電腦休眠中（縮圖變暗，顯示「收到工作會自動開機」）、進階：電腦資源展開\n\n例外：\n· 應用程式在別處被中斷連線：該列顯示「需要重新登入」\n· 改電腦資源會在下次工作前重建電腦，檔案與登入保留\n· 還沒加入雲端主機：引導到「設定 › 電腦與裝置 › 新增主機」（J11）\n\n限制：\n· 每台電腦 2 CPU／3 GB／shm 512 MB\n· 第一次收到工作才開機，桌面就緒上限 75 秒\n· 閒置 30 分鐘休眠\n\n簡化：Bot 設定 電腦與工具獨立分頁，資源、網路、工具範圍全展開 → 能力 · 應用程式與電腦，電腦資源收進進階（應用程式只問唯讀或讀寫；工具範圍、內網、資源預設好並收起來。）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-G08-Access": {
+   "x": 12280,
+   "y": 20213,
+   "text": "【規格】Bot 設定 · 權限與花費　PRD §6.2 BT、§6.13 US、§7 SEC、§18、§21\n\n功能：小秘的設定對話框「權限與花費」分頁：選一種權限等級、哪些事先問你、花費上限、可以聯絡哪些 Bot，全部在一頁，自動儲存。\n\n使用者要完成：一眼看懂小秘能自己做到哪裡、最多能花多少錢，並在一處改好。\n\n驗收：\n· 權限四選一卡片，新 Bot 預設「先問我」並有勾選徽章；選「完全存取」時標示風險較高\n· 安全底線說明一直顯示，且不受權限等級影響\n· 「這些事先問我」四個開關預設全開，可單獨切換\n· 花費上限有每日、每月、每條工作鏈三層，各有用量條；過 80% 的那一層用警示色並寫「提醒過你了」\n· 「到上限就暫停並問我」開啟時，到上限會在待我處理出現卡片\n· 可以找誰：全部／同團隊／名單三選一，下方顯示對應的 Bot 頭像；「聯絡其他 Bot 前先問我」預設關\n\n狀態：預設（先問我、同團隊）、每月用量過 80%（橘色）、到上限（暫停、待我處理卡片）、完全存取（紅字風險）、名單模式\n\n例外：\n· 上限設成比已用金額還低：立即暫停並提示\n· 每條工作鏈上限大於每日上限：以較低者為準並提示\n· 名單模式但名單是空的：小秘不能交辦任何 Bot，顯示提醒\n· 其他 Bot 或主管說「可以」不能取代你的核定\n\n限制：\n· Bot 之間同一條往來最多 6 次（MAX_HOPS）\n· 待你核定每個 Bot 最多 10 件、不會過期\n· 預設只有你能決定：新商品定價、新增支出、簽約、上架、重要對客承諾（最多 20 項、每項 40 字）\n· 花費上限：80% 警示、100% 暫停並發卡（XBot 新增）\n· 無人在場時核准 10 分鐘沒回就自動拒絕\n\n簡化：Bot 設定 12 個分頁 → 4 個分頁（權限、先問我、預算、可以找誰合成一頁；權限從細項勾選改成四選一卡片）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-G09-Model": {
+   "x": 13920,
+   "y": 20213,
+   "text": "【規格】Bot 設定 · 進階 · 模型　PRD §6.2 BT、§6.12 EN、§6.13 US、§20、§21\n\n功能：小秘用哪個供應商和模型、推理強度、出錯時的備援模型順序，以及提示快取保溫。\n\n使用者要完成：確認小秘跑在對的模型上，主要模型掛掉時有備援，不用懂 API 細節。\n\n驗收：\n· 供應商與模型是自畫下拉選單，已登入／金鑰有效時顯示綠色勾勾徽章，建議的模型標「建議」\n· 推理強度是分段控制（自動／低／中／高／最高），預設自動\n· 備援模型可新增、移除、依序排列；每一列顯示供應商與計費方式\n· 說明暫時性錯誤先重試 3 次（2／10／30 分鐘）才換備援\n· 提示快取保溫可開關，可選閒置多久後停止，顯示最近 7 天命中率與省下／花掉的錢\n· 連線細節（API 網址、介面、逾時）收在可展開列，預設收起\n\n狀態：預設（訂閱登入、自動強度）、供應商未登入（徽章變橘色「要登入」）、金鑰失效、沒有備援、保溫關閉\n\n例外：\n· 主要模型與備援是同一個：不允許，提示換一個\n· 備援是按用量計費的 API：花費算進花費上限\n· 訂閱額度用完：視同暫時性錯誤，直接換備援並通知一次\n· 保溫只在有快取時有效；模型不支援快取時整個區塊變灰並說明\n\n限制：\n· 暫時性錯誤自動重試 3 次，間隔 2／10／30 分鐘；你中間有說話就不重試\n· 看門狗：15 分鐘沒動靜停止（工具執行中 40 分鐘）\n\n簡化：Bot 設定 12 個分頁 → 4 個分頁（模型相關設定收進「進階」，一般人只看到主要模型；連線細節再收一層）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-G10-Permissions": {
+   "x": 15560,
+   "y": 20213,
+   "text": "【規格】Bot 設定 · 進階 · 聲音、通知、誰看得到　PRD §6.2 BT、§6.10 VC、§6.11 IN、§6.16 EP、§21\n\n功能：小秘的聲音與語速、什麼時候通知你、組織裡哪些人能找它說話。\n\n使用者要完成：調好聽起來舒服的聲音，只在需要時被打擾，並決定誰能用小秘。\n\n驗收：\n· 聲音是自畫下拉選單＋試聽按鈕；語速是自畫滑桿（0.5–2 倍，目前 1.1 倍）\n· 通知預設：需要你的時候開、工作完成開、每一則回覆關\n· 安靜時段用像下拉選單的時間按鈕，不出現 AM/PM；安靜時段仍會通知需要你允許的事\n· 通知送到：桌面和手機／只有桌面／只有手機 三選一\n· 誰看得到：只有我／指定成員／整個組織；指定成員時列出成員與權限（可以對話／只能看）\n· 成員預設看不到你和小秘的對話\n\n狀態：只有我（成員清單隱藏）、指定成員、整個組織、試聽播放中、沒有手機（只剩桌面）\n\n例外：\n· 邀請的人不在組織裡：先送組織邀請\n· 關掉「需要你的時候」：提示核准會卡在待我處理，無人在場的核准 10 分鐘後自動拒絕\n· 放進 Bot 庫時不帶記憶、登入與對話紀錄\n\n限制：\n· 無人在場的工作：提問 10 分鐘沒回就過期、核准自動拒絕\n· 待你核定：每個 Bot 最多 10 件、不會過期\n\n簡化：Bot 設定 12 個分頁 → 4 個分頁（原本的聲音、通知、分享三頁合成一頁，放進「進階」）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-G11-Voice": {
+   "x": 17200,
+   "y": 20213,
+   "text": "【規格】Bot 設定 · 進階 · 歷史、用量、儲存空間　PRD §6.2 BT、§6.3 BX、§6.9 FL、§6.13 US、§21\n\n功能：小秘自己的用量（今天、本月、最近 7 天表格）、對話紀錄保留與匯出、電腦儲存空間組成與清理快取。\n\n使用者要完成：知道小秘花了多少、佔了多少空間，必要時清掉快取或舊紀錄。\n\n驗收：\n· 上方三個數字：今天、本月花費（附上限）、本月 token（附快取比例），與「權限與花費」一致\n· 7 天表格欄位對齊：日期靠左，對話、工作鏈、token、花費靠右且等寬數字，最後一列合計\n· 保留對話紀錄是自畫下拉選單；匯出是次要按鈕；清除是危險樣式（灰底紅字），按下才開確認對話框\n· 儲存空間是分段長條（2px 間隔），每段有圖例與數值，不只靠顏色辨識\n· 「立即清理快取」標示可釋放的大小，清理後數字更新\n\n狀態：7 天、30 天、清理中、清理完成（快取 0 GB）、沒有任何用量（空表格說明）\n\n例外：\n· 電腦休眠中：儲存空間顯示上次的數字並註明時間\n· 清除對話紀錄：要在確認對話框輸入 Bot 名字\n· 匯出很大時在背景進行，完成後通知\n\n限制：\n· 電腦：每台 2 CPU／3 GB／shm 512 MB；閒置 30 分鐘休眠\n· 一次帶檔最多 10 個／50 MB\n\n簡化：Bot 設定 12 個分頁 → 4 個分頁（歷史、用量、儲存空間三頁合成一頁，放進「進階」）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-G12-History": {
+   "x": 18840,
+   "y": 20213,
+   "text": "【規格】用聊天設定（/setup）　PRD §6.1 CH、§6.2 BT、§6.13 US、§21\n\n功能：在對話裡輸入 /setup，小秘一題一題用 A/B/C 問題卡問你，答完立刻寫進設定並顯示一張可復原的小收據。給不想看設定頁的人。\n\n使用者要完成：不打開任何設定頁，回答 4 題就把小秘設定好。\n\n驗收：\n· 輸入 /setup 後小秘說明會問 4 題、每題可跳過，並給「打開設定頁」連結\n· 一次只出現一張問題卡（Grok 樣式：標題、說明、A/B/C 選項、自己輸入），標示第幾題\n· 回答後出現收據：綠勾＋題目＋改了什麼（例：回覆長度 標準 → 精簡）＋「復原」\n· 按「復原」把該項改回原值，收據改成「已復原」\n· 建議選項標「建議」並附理由（例：最近 7 天平均一天 NT$248）\n· 4 題：回覆長度、權限、每日花費上限、誰看得到；答完顯示總結和「打開設定頁」\n\n狀態：剛輸入 /setup、第 1–4 題進行中、某題已復原、跳過某題、全部完成（總結）、中途離開（下次 /setup 從沒答的開始）\n\n例外：\n· 自己輸入的答案看不懂：小秘再問一次並給例子，不猜\n· 答案超出限制（例：上限低於今天已用）：說明並請你確認\n· 設定頁同時被改：以最後一次為準，收據顯示「已被設定頁更新」\n· /setup 不會改到只有你能決定的安全底線\n\n限制：\n· 你的一則訊息上限 64,000 字元\n· 花費上限：80% 提醒、100% 暫停並發卡\n· 預設只有你能決定：新商品定價、新增支出、簽約、上架、重要對客承諾\n\n簡化：Bot 設定 打開設定頁、找 4 個分頁 → 回答 4 個問題（小秘在對話裡一題一題問，答完就自動寫進設定，可以單項復原）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-G13-ShareBot": {
+   "x": 20020,
+   "y": 20213,
+   "text": "【規格】分享 Bot　PRD §6.2 BT、§6.6 SK、§6.7 MM、§6.16 EP、§7 SEC\n\n功能：把小秘做成一份可以給別人的副本：勾選要包含的內容，用連結、檔案或組織的 Bot 庫分享。\n\n使用者要完成：安心地把設定好的 Bot 分享給同事，不會外洩登入和私人資料。\n\n驗收：\n· 上方預覽卡顯示頭像、名字、職稱與技能／應用程式／權限摘要\n· 包含項目用自畫勾選框：人設、技能、應用程式、權限預設勾；記憶預設不勾並用警示色說明原因\n· 明寫登入資料、密碼、API 金鑰、對話紀錄、電腦檔案一律不分享\n· 分享方式三選一：連結／檔案／組織的 Bot 庫；連結可複製、可設期限與誰能打開\n· 底部：下載 .xbot 檔（外框）、取消、複製連結（主要）\n\n狀態：連結（預設）、已複製（按鈕變「已複製」）、檔案（只顯示下載）、組織的 Bot 庫（填一句介紹）、連結已失效\n\n例外：\n· 勾選記憶時再確認一次，並列出可能含私人資料的筆數\n· 技能用到你私人的應用程式：只帶要連哪些，不帶登入\n· 組織關閉了對外分享：連結選項只剩「只有我組織的人」\n\n限制：\n· 建立 Bot：一般 Bot 每 24 小時 3 個、全部最多 50 個（對方匯入時套用）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 834,
+   "fill": "blue"
+  },
+  "spec-G14-ImportBot": {
+   "x": 21200,
+   "y": 20213,
+   "text": "【規格】匯入 Bot（兩個狀態）　PRD §6.2 BT、§6.6 SK、§7 SEC、§18\n\n功能：從 .xbot 檔或分享連結匯入別人分享的 Bot：先選檔案，再檢查要帶入的內容、處理重名和需要登入的應用程式，然後匯入。\n\n使用者要完成：兩步把同事分享的 Bot 加進來，清楚知道帶入了什麼、還要做什麼。\n\n驗收：\n· 狀態 1：拖放區＋「選擇檔案」，或貼上分享連結按「讀取」；沒有檔案時「下一步」不能按\n· 狀態 2：顯示 Bot 預覽、分享者與日期、檔案大小\n· 內容清單每列有狀態圖示：綠勾＝直接帶入、橘色警示＝需要你處理（例：要登入 Gmail）\n· 重複的技能會合併並說明；匯入的權限一律從「先問我」開始\n· 重名時自動改名（小秘 2）且可編輯\n· 顯示今天還能建立幾個 Bot；達上限時「匯入」不能按並說明\n\n狀態：選擇檔案（空）、讀取中、檢查內容、檔案損壞或版本太新、已達建立上限、匯入完成（跳到新 Bot 的對話）\n\n例外：\n· 連結已失效：顯示「連結已失效，請對方重新分享」\n· 檔案含記憶：另外列出並預設不匯入\n· 需要登入的應用程式可以之後再登入，Bot 先建立\n\n限制：\n· 建立 Bot：一般 Bot 每 24 小時 3 個、有團隊管理權限的 20 個；全部最多 50 個\n· 新 Bot 預設權限「先問我」\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 880,
+   "fill": "blue"
+  },
+  "rowH": {
+   "x": 0,
+   "y": 21233,
+   "text": "H · 行事曆、定時任務、觸發",
+   "kind": "title1",
+   "maxW": 10400
+  },
+  "spec-H01-Calendar": {
+   "x": 1480,
+   "y": 21533,
+   "text": "【規格】行事曆（週）　PRD §6.8 RT、§11\n\n功能：一週行事曆，07:00–21:00 填滿整頁高度；每個定時任務依 Bot 的 Maus 顏色著色，點空格跳出快速建立；可切換週／清單。\n\n使用者要完成：一眼看到這週每個 Bot 什麼時候做什麼、哪次失敗、哪件在等你，並能在空檔直接排新任務。\n\n驗收：\n· 時間軸從 07:00 到 21:00，格線填滿頁面高度，不需捲動\n· 事件底色＝該 Bot 的 Maus 顏色；過去的事件標「已完成」，失敗紅框、等你討論橘框\n· 事件文字完整顯示（不被截斷），30 分鐘的事件只顯示標題一行\n· 今天欄位高亮、紅色現在時間線\n· 點空格出現快速建立：要做什麼、日期時間（上午／下午寫法）、重複、誰做；「建立」與「更多選項」（開 H02）\n· 週／清單切換可用；清單依日期分組，顯示時間、Bot、狀態\n· 底部「保持開機」列在畫框內，說明休眠時錯過的會合併補跑一次\n\n狀態：週檢視、清單檢視、快速建立打開、快速建立關閉、本週有失敗\n\n例外：\n· 主機休眠錯過排程：恢復後合併補跑一次\n· 同一時段多個事件：並排縮窄（本稿未示範）\n· 隨機延後的任務以排定時間顯示\n\n限制：\n· 定時任務隨機延後選項 15／30／60／90／120 分鐘\n· 暫時性錯誤自動重試 3 次（2／10／30 分鐘）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-H02-RoutineEditor": {
+   "x": 2780,
+   "y": 21533,
+   "text": "【規格】新增定時任務（一句話＋確認）　PRD §6.8 RT、§19、§21\n\n功能：用一句話建立定時任務：輸入「每天早上 9 點整理新聞給我」，系統解析成確認卡（誰做、做什麼、什麼時候、結果貼到、下次執行），其他收進進階設定。\n\n使用者要完成：不填表單，一句話就排好一個定時任務。\n\n驗收：\n· 輸入框打字即時更新確認卡\n· 時間一律顯示「上午 9:00」這種寫法，不出現 AM/PM\n· 句子裡提到 Bot 名字就指派給它，沒提到預設小秘\n· 沒寫時間時，什麼時候欄顯示「沒看到時間，要幾點做？」且「建立」不可按\n· 進階設定預設收合；展開後有時間飄移（不飄移／15／30／60／90／120 分鐘）、完成條件＋最多幾輪（預設 10、上限 50）、時區、在哪裡跑、網址觸發\n· 右上角顯示簡化標籤\n\n狀態：解析成功、缺時間、進階收合、進階展開\n\n例外：\n· 每隔一段時間的隨機延後必須小於間隔\n· 最多幾輪超過 50 無法再加\n· 建立後可在定時任務清單修改\n\n限制：\n· 隨機延後畫面選項 15／30／60／90／120 分鐘（後端 0–240）\n· 每隔一段時間最短 5 分鐘\n· 目標型預設 10 輪、最多 50 輪；進度檔 /workspace/goals/<id>.md；連續兩輪沒進展就收尾，最後一輪一定寫報告\n\n簡化：定時任務 15 個欄位 → 1 句話＋確認（系統從一句話解析出誰做、什麼時候、結果貼哪，其他欄位給預設值並收進進階設定）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 720,
+   "fill": "blue"
+  },
+  "spec-H03-RoutineList": {
+   "x": 4760,
+   "y": 21533,
+   "text": "【規格】定時任務清單與執行紀錄　PRD §6.8 RT、§19\n\n功能：所有定時任務的清單（狀態、排程文字、目標進度、網址觸發）＋右側選中任務的執行紀錄抽屜。\n\n使用者要完成：知道每個定時任務有沒有在跑、跑得好不好，出問題能馬上重跑或暫停。\n\n驗收：\n· 每張卡片顯示 Bot、排程（含隨機延後）、上次結果與下次時間\n· 狀態膠囊：啟用中、第 N 輪執行中…、有問題、已暫停\n· 目標型任務顯示完成條件、已跑 n / 10 輪進度條、進度檔路徑 /workspace/goals/…\n· 網址觸發的任務顯示網址列、複製、換新網址\n· 失敗任務顯示原因與已自動重試 3 次，並有「重跑一次」\n· 執行紀錄依時間排列，含觸發方式（排程／手動／補跑）、耗時與一句結果\n\n狀態：啟用中、執行中（目標型）、有問題、已暫停、執行紀錄：已完成／要你處理／補跑\n\n例外：\n· 需要驗證碼時等你 10 分鐘沒回就過期，該次紀錄標未完成\n· 主機休眠時錯過的排程合併補跑一次\n· 目標型用完輪數自動停用\n\n限制：\n· 目標型預設 10 輪、最多 50 輪\n· 暫時性錯誤重試 3 次，間隔 2／10／30 分鐘\n· 無人在場的提問 10 分鐘沒回就過期\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-H04-Agenda": {
+   "x": 6740,
+   "y": 21533,
+   "text": "【規格】等你的事：提案與討論　PRD §6.8 RT、§6.11 IN、§18\n\n功能：Bot 送來的提案（N 天後生效，可否決或現在就同意）與想找你討論的事；右側是接下來一週、每週檢討與學習開關、行事曆訂閱網址。\n\n使用者要完成：幾秒內處理完 Bot 等你的事，不必打開對話。\n\n驗收：\n· 提案卡顯示「N 天後生效」，按否決或現在就同意後就地變成結果並可復原\n· 否決後顯示「14 天內不會再提同樣的事」\n· 討論卡可直接寫回覆、不用討論了、改時間\n· 上方說明：每個 Bot 提案＋討論最多 3 件，待你核定另計最多 10 件，並連到待你核定\n· 每週檢討與學習每個 Bot 一個開關，關閉顯示「關閉」\n· 訂閱網址可複製、換新網址\n\n狀態：待處理、已同意、已否決、討論已回覆、學習開／關\n\n例外：\n· 同一 Bot 已有 3 件時新提案不會送出\n· 被否決的提案 14 天內不能再提\n· 提案時間到自動生效\n\n限制：\n· 等你的事（提案＋討論）每個 Bot 合計最多 3 件\n· 待你核定每個 Bot 最多 10 件、不會過期\n· 被否決的提案 14 天內不能再提\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 960,
+   "fill": "blue"
+  },
+  "spec-H05-Triggers": {
+   "x": 8380,
+   "y": 21533,
+   "text": "【規格】觸發條件　PRD §6.8 RT\n\n功能：用一句話「當［來源］時，［Bot］要［做什麼］」建立觸發；右側是你的觸發清單、測試請求流程與最近收到。\n\n使用者要完成：讓外部事件一發生就自動交給對的 Bot。\n\n驗收：\n· 來源用中性圖示圓圈（Lucide），不用字母方塊\n· Bot 下拉、做什麼、結果貼到、Bot 會收到的欄位都在同一張卡\n· 進階設定用自畫 chevron 收合\n· 新觸發先過測試請求才能開啟：複製網址 → 送測試 → 開啟，可按「幫我送一個」\n· 清單每列有開關與進入詳細頁\n· 說明 XBot 要開著、同網址至少隔 60 秒\n\n狀態：來源選單展開、進階展開、等待測試、測試通過、觸發關閉\n\n例外：\n· 太密的請求略過（不到 60 秒）\n· Bot 失敗時在最近收到標紅並寫原因\n· XBot 關閉時收不到\n\n限制：\n· 網址觸發至少間隔 60 秒\n· 無人在場的工作：提問 10 分鐘沒回就過期、核准自動拒絕\n· 伺服器埠 HTTP 8790\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-H06-Webhook": {
+   "x": 10020,
+   "y": 21533,
+   "text": "【規格】觸發條件 · 網址詳細　PRD §6.8 RT、§7 SEC\n\n功能：一個網址觸發的詳細：開關、那句話、網址與 Bearer 金鑰、curl 測試指令、進階摘要、最近收到表格。\n\n使用者要完成：把網址接到外部服務、測試、並看每次收到的結果。\n\n驗收：\n· 網址與 curl 都用 192.168.1.20:8790、Authorization: Bearer\n· 金鑰預設遮住，可顯示／隱藏、換新金鑰\n· 複製網址後按鈕變「已複製」\n· 最近收到表格 5 列完整可見，狀態用膠囊（等你看、已完成、已略過、失敗、測試）\n· 刪除是 #2F2F2F 膠囊紅字，不是實心紅\n· 左側清單用中性圖示圓圈\n\n狀態：使用中、已暫停、金鑰顯示、進階展開、已複製\n\n例外：\n· 不到 60 秒的重複請求：已略過\n· 測試請求（ping）不開始工作\n· 外部服務要能連到這台主機的網址（見未決）\n\n限制：\n· 網址觸發至少間隔 60 秒\n· 伺服器埠 HTTP 8790\n· 金鑰留在服務端，Bot 電腦只拿自己的連線憑證\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "rowI": {
+   "x": 0,
+   "y": 22613,
+   "text": "I · 連接應用程式與登入",
+   "kind": "title1",
+   "maxW": 7420
+  },
+  "spec-I01-Apps": {
+   "x": 1140,
+   "y": 22913,
+   "text": "【規格】連接應用程式　PRD §6.6 SK、§21\n\n功能：應用程式目錄：已連接的放上面（含需要重新登入、授權過期），常用應用程式一鍵「連接」；只有一個篩選控制（全部／已連接）。\n\n使用者要完成：點應用程式、登入，兩步就讓 Bot 能用。\n\n驗收：\n· 步驟列寫明 1 點應用程式 → 2 在 Bot 的電腦上登入 → 完成\n· 每個應用程式用中性圓形 Lucide 圖示，不放品牌標誌\n· 篩選只有一組分段控制（全部／已連接 4），沒有重複的「全部」\n· 搜尋即時篩選；找不到時引導到自訂連接（MCP）\n· 已連接列顯示狀態（可以使用／需要重新登入／授權已過期）與誰能用，點進去開 I02\n· 進階設定預設收合：新連接給所有 Bot、寄出刪除付款先問你\n\n狀態：全部、已連接、搜尋無結果、進階展開\n\n例外：\n· 授權過期顯示重新連接\n· 需要登入的應用程式顯示登入按鈕\n· 清單外的服務走自訂連接（MCP）\n\n限制：\n· 工具預設全開、所有 Bot 可用（XBot 預設）\n\n簡化：連接應用程式 4 步 → 2 步（點應用程式直接進登入，工具全開、所有 Bot 可用，選工具與選 Bot 收進進階）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 840,
+   "fill": "blue"
+  },
+  "spec-I02-AppSheet": {
+   "x": 2320,
+   "y": 22913,
+   "text": "【規格】應用程式詳細（Gmail）　PRD §6.6 SK、§7 SEC\n\n功能：已連接應用程式的詳細頁：帳號列表（重新連接／中斷）、誰能用、最近使用、進階設定收合。\n\n使用者要完成：管理一個應用程式的帳號與使用範圍。\n\n驗收：\n· 每個帳號列有相同樣式的「重新連接」（次要）與「中斷」（危險膠囊）\n· 授權過期的帳號以橘色說明\n· 誰能用用分段控制：所有 Bot／只有指定的 Bot\n· 最近使用列出哪個 Bot 做了什麼\n· 工具清單收在進階設定（預設全開）\n· 變更自動儲存，底部只有移除與完成\n\n狀態：帳號正常、授權已過期、進階收合\n\n例外：\n· 中斷最後一個帳號等於移除應用程式（需確認對話框）\n· 寄出、刪除仍依 Bot 權限先問你\n\n限制：\n· 單次結果上限 25,000 字（進階）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 710,
+   "fill": "blue"
+  },
+  "spec-I03-SignIn": {
+   "x": 3760,
+   "y": 22913,
+   "text": "【規格】在 Bot 的電腦登入　PRD §6.3 BX、§6.6 SK、§7 SEC\n\n功能：登入頁直接開在小秘的電腦上，你在即時畫面上登入並允許；右側是改用自己裝置登入的 3 步備案。\n\n使用者要完成：不離開 XBot 完成應用程式授權。\n\n驗收：\n· 即時畫面顯示可辨識的授權頁（網址列、工作區選擇、權限清單、允許存取）\n· 底部顯示「等你登入…完成後會自動繼續」與取消登入\n· 備案 3 步：開啟登入頁 → 複製停住頁面的網址 → 貼上並完成登入\n· 說明登入資料加密存在主機、Bot 和模型看不到密碼\n\n狀態：等你登入、改用這台裝置\n\n例外：\n· 公司帳號限制只能本人裝置時走備案\n· 回呼頁打不開是正常的\n\n限制：\n· 無人在場時需要登入的提問 10 分鐘沒回就過期\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 780,
+   "fill": "blue"
+  },
+  "spec-I04-MCP": {
+   "x": 5400,
+   "y": 22913,
+   "text": "【規格】自訂連接（MCP）　PRD §6.6 SK、§7 SEC\n\n功能：自訂 MCP 服務清單＋右側編輯器（名稱、給誰用、連線方式、網址、驗證、標頭、工具、進階）。\n\n使用者要完成：把清單外的服務接給 Bot 用。\n\n驗收：\n· 清單顯示每個服務的狀態：連線成功、需要登入、已停用（缺什麼）\n· 選中項目有藍框，右側編輯它\n· 所有下拉選單是自畫按鈕，連線方式用分段控制\n· 工具以綠勾工具膠囊列出\n· 測試連線結果就地顯示\n· Claude Code MCP／技能匯入用開關，附安全提醒\n\n狀態：連線成功、需要登入、已停用、編輯中\n\n例外：\n· Token 已存時只顯示末四碼\n· 缺環境變數時停用並標出缺哪個\n\n限制：\n· 單次結果上限 25,000 字（建議值）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 820,
+   "fill": "blue"
+  },
+  "spec-I05-Logins": {
+   "x": 7040,
+   "y": 22913,
+   "text": "【規格】登入保險庫　PRD §6.3 BX、§7 SEC\n\n功能：存好的網站登入（誰能用、最近使用、修改／移除）、新增登入表單，以及已連接的 1Password 保管庫權限。\n\n使用者要完成：讓 Bot 遇到登入頁能自己填，而密碼不外流。\n\n驗收：\n· 表格每列：網站＋網域或來源、帳號、誰能用、最近使用、修改／移除（同樣式）\n· 兩步驟登入有標記\n· 新增登入表單：網址、帳號、密碼、兩步驟金鑰、誰能用、只用在這個網址（開關）\n· 1Password 只畫已連接狀態：每個保管庫可選誰能用，重新整理／中斷連接\n· 說明驗證碼仍會問你、紀錄只顯示已填入\n\n狀態：已連接 1Password、新增登入\n\n例外：\n· 網址不完全相符不填\n· 驗證碼 10 分鐘沒回就跳過\n\n限制：\n· 無人在場的提問 10 分鐘沒回就過期\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 826,
+   "fill": "blue"
+  },
+  "rowJ": {
+   "x": 0,
+   "y": 23873,
+   "text": "J · 設定（15 區塊 → 5 個）＋快判模型、MCP",
+   "kind": "title1",
+   "maxW": 19560
+  },
+  "spec-J01-General": {
+   "x": 1140,
+   "y": 24173,
+   "text": "【規格】設定 · 一般（外觀、語言、通知）　PRD §11 UI、§21\n\n功能：設定對話框的第一頁：主題（Midnight／Daylight／跟隨系統，附小預覽）、字型（粉圓，已決定；不提供切換）、語言與送出鍵、通知開關。設定從 15 個區塊整併成 5 個（一般 · AI 模型 · 電腦與裝置 · 用量與花費 · 進階）。\n\n使用者要完成：使用者一眼找到外觀與通知，點一下就換主題，不用按儲存。\n\n驗收：\n· 點主題卡立刻切換選取框與勾勾，預設 Midnight\n· 跟隨系統的預覽同時看得到深色與淺色\n· 字型列只寫「粉圓」，不提供切換\n· 所有開關是 role=switch，沒有勾選框\n· 左側導覽 5 項＋進階 3 個子項，連到對應畫板\n· 內容高度在 900 內，不需要捲動\n\n狀態：Midnight（預設）、Daylight、跟隨系統、字型：粉圓\n\n例外：\n· 瀏覽器封鎖通知：通知列顯示「請在網址列的網站設定允許」\n· 手機網頁版沒有推播：顯示說明，不給開關\n· 注音選字時按 Enter 不送出\n\n簡化：設定 15 個區塊 → 5 個（一般 · AI 模型 · 電腦與裝置 · 用量與花費 · 進階；少用的收進進階的三個子頁）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-J02-Models": {
+   "x": 2780,
+   "y": 24173,
+   "text": "【規格】設定 · AI 模型 · 主要模型　PRD §6.12 EN、§21\n\n功能：列出這台電腦已偵測到、已登入的引擎（Claude Code、Codex、Grok、Hermes、本機 LM Studio），一鍵設為預設；沒有訂閱的人只要貼一把 API 金鑰，系統自動認出供應商、載入模型、選建議模型。網址、介面、推理強度、讀圖、生圖收進「進階」。\n\n使用者要完成：使用者不用懂供應商與介面，貼一把金鑰或點「用這個」就能讓 Bot 開始工作。\n\n驗收：\n· 偵測到的引擎以卡片列出，預設引擎有「預設」標籤，其他卡片有「設為預設」或「用這個」\n· 貼上金鑰後顯示認出的供應商、載入的模型數，並自動選好建議模型\n· API 網址、介面、推理強度、讀圖、生圖預設收起；點「進階」展開、再點收起\n· 金鑰欄位只顯示遮罩後的值，說明金鑰不會進 Bot 的電腦\n· 右上角有「簡化：5 個欄位 → 1 個」標籤\n· 預設狀態內容高度在 900 內\n\n狀態：偵測中、偵測到引擎、沒偵測到任何引擎（只顯示貼金鑰）、金鑰認出供應商、金鑰無效或認不出（提示選供應商）、進階展開\n\n例外：\n· 金鑰認不出供應商：展開進階，請使用者選供應商或填 API 網址\n· 模型不支援讀圖：讀取圖片開關停用並說明\n· 本機 LM Studio 沒開：卡片顯示「沒偵測到」與重新偵測\n· 訂閱額度用完：卡片顯示額度狀態並建議換引擎\n\n限制：\n· 金鑰只存在服務端 settings.json，Bot 電腦只拿到自己的連線憑證\n\n簡化：模型設定 5 個欄位 → 1 個欄位（貼上 API 金鑰 → 自動認出供應商、載入模型、選建議的；網址、介面、推理強度收進進階）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-J03-Routing": {
+   "x": 4420,
+   "y": 24173,
+   "text": "【規格】設定 · AI 模型 · 進階：分流與搜尋　PRD §6.12 EN、§20\n\n功能：AI 模型的進階頁：網路搜尋服務與金鑰、聊天／工作模型分流、備援模型順序。頁首標明「一般人不用動」，沒設定就沿用主要模型。\n\n使用者要完成：進階使用者能調整搜尋服務、分流與備援；一般使用者看到提示就知道可以略過。\n\n驗收：\n· 頁首有說明「一般人不用動」與「全部還原預設」\n· 自動分流開關控制聊天模型／工作模型兩列\n· 分流判斷說明連到快判模型頁（J10）\n· 備援模型以順序顯示，說明已開始送出的回覆不會重播\n· 內容高度在 900 內\n\n狀態：預設（全部沿用主要模型）、自動分流開、自動分流關（隱藏兩個模型欄）、搜尋服務需要金鑰（Brave）\n\n例外：\n· 選了 Brave 卻沒填金鑰：搜尋服務列顯示「需要金鑰」\n· 備援模型也失敗：照暫時性錯誤規則重試 3 次（2／10／30 分鐘）\n· Bot 自己指定模型時分流不覆蓋\n\n限制：\n· 暫時性錯誤自動重試 3 次，間隔 2／10／30 分鐘；你這中間有說話就不重試\n· 對話分流快判等待上限 0.3 秒，逾時退回關鍵字\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-J04-Usage": {
+   "x": 6060,
+   "y": 24173,
+   "text": "【規格】設定 · 用量與花費　PRD §6.13 US、§18\n\n功能：今天、本月花費與訂閱額度；三層花費上限（全部 Bot／每個 Bot／每條工作鏈），到 80% 提醒、到上限暫停並問我；各 Bot 本月用量；同一把金鑰的限流保護。\n\n使用者要完成：使用者一眼看到花了多少，並放心設好上限，不會被某個 Bot 或某條工作鏈燒光預算。\n\n驗收：\n· 顯示今天、本月花費與訂閱額度百分比\n· 三層上限各有金額欄位，說明各自的範圍\n· 80% 提醒、到上限暫停並問我都是開關，預設開\n· 超過 80% 的 Bot 在表格裡標「接近上限」並用橘色進度條\n· Bot 表格預設只顯示前 4 個，可以展開全部 8 個\n· 內容高度在 900 內\n\n狀態：在上限內、接近上限（≥80%）、已達上限（Bot 暫停、待我處理出現卡片）、表格展開\n\n例外：\n· 到上限時正在進行的工作停在原地，不重播；追加預算後接著做\n· 訂閱方案沒有金額，只顯示額度百分比\n· 工作鏈上限用完：只停那一條，其他工作照常\n\n限制：\n· 暫時性錯誤（含 429 限流）自動重試 3 次，間隔 2／10／30 分鐘\n· 你的訊息永遠先處理；Bot 交辦、定時任務是低優先\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-J05-Devices": {
+   "x": 7700,
+   "y": 24173,
+   "text": "【規格】設定 · 電腦與裝置 · 手機與其他裝置　PRD §6.14 MB、§17、§21\n\n功能：手機連線改以 Tailscale Serve 為主：主機只綁 127.0.0.1，https://xbot.<tailnet>.ts.net 有正式憑證，手機裝 Tailscale App 登入同帳號後掃一個 QR 就開網址並配對。已配對裝置可移除。沒有 Tailscale 時才展開「同一個 Wi-Fi」兩步（信任憑證＋登入 QR）。\n\n使用者要完成：使用者掃一次 QR 就能在手機上用 XBot，在外面也能連，不用裝憑證、不用開埠。\n\n驗收：\n· 主卡顯示 Tailscale 狀態「已連上 tailnet」與 https://xbot.tail3a9e.ts.net 網址（可複製）\n· 只有一個 QR，標示 5 分鐘內有效、只能用一次，可以產生新的\n· 已配對裝置列出名稱、誰、權限、最後使用，各有「移除」\n· 區網兩步預設收起，點開才看到兩個 QR\n· 右上角有「簡化：2 個 QR＋裝憑證 → 1 個 QR」\n· 預設狀態內容高度在 900 內\n\n狀態：Tailscale 已連上（預設）、主機沒裝 Tailscale（主卡變成安裝說明，區網展開）、MagicDNS 或 HTTPS 憑證沒開（提示到 Tailscale 後台開啟）、QR 過期、區網兩步展開\n\n例外：\n· 配對碼錯 10 次鎖 60 秒\n· 手機沒登入同一個 tailnet：網址打不開，提示先登入 Tailscale\n· 區網模式 *.ts.net 名稱不在自簽憑證內，只能用 IP\n· 手機網頁版沒有離線聊天與推播\n\n限制：\n· 配對碼 12 碼、5 分鐘、單次使用\n· 登入維持 30 天、最多續到 180 天\n· 錯誤 10 次鎖 60 秒\n· 區網：HTTP 8790、HTTPS 8791；CA 有效 3650 天、伺服器憑證 397 天\n\n簡化：連手機 2 個 QR＋裝憑證 → 1 個 QR（用 Tailscale 的 HTTPS 網址（正式憑證）掃一次就登入；沒有 Tailscale 時才走舊的兩步）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-J06-Computers": {
+   "x": 9340,
+   "y": 24173,
+   "text": "【規格】設定 · 電腦與裝置 · 電腦　PRD §16 CL-1、CL-3、CL-5、CL-6、CL-8、CL-9、§17 TS-5、§6.3 BX、§7 SEC\n\n功能：最上面是主機清單（這台主機＝控制中心、cloud-01 雲端主機、離線的 office-pc）：狀態、資源、上面有哪些 Bot、開機台數／上限、搬家／移除，以及「新增主機」；下面是新 Bot 預設放哪台主機、每台電腦資源與閒置休眠、網路權限與 Docker 權限提醒。\n\n使用者要完成：使用者一眼看到有哪些主機、每台跑了誰、還有多少空間，並決定新 Bot 放哪裡。\n\n驗收：\n· 主機清單 3 列：這台主機（控制中心 · 家裡 · 8 核 16 GB · 開機 3/4）、cloud-01（雲端 · 4 核 8 GB · 開機 2/3 · 在線）、office-pc（離線）\n· 每列有狀態、資源、上面的 Bot 頭像、開機台數條、搬家與移除；控制中心所在主機的「移除」停用\n· 「新增主機」主要按鈕連到 J11\n· 新 Bot 預設的分段控制用主機名稱：這台主機／cloud-01（雲端）／只用瀏覽器／關閉，切換時說明跟著換\n· 標題列右側顯示「控制中心在：這台主機」（CL-8）\n· 整頁在 1100×900 內（各 Bot 列表收成主機清單底部的展開列）\n\n狀態：主機都在線、某台主機離線（CL-6：顯示離線、重新連線）、主機滿了（新工作排隊，Bot 顯示「等電腦空出來」）、預設：這台主機／cloud-01／只用瀏覽器／關閉、各 Bot 列表展開\n\n例外：\n· 控制中心所在主機不能移除；要換控制中心請把 XBot 服務裝到另一台（CL-8）\n· 移除主機前要先把上面的 Bot 搬走\n· 主機離線時上面 Bot 的工作排隊，恢復後自動重連，不自動重做結果不明的操作\n· Bot 正在工作時改資源：下次開機才生效\n· docker 群組＝等同 root，建議整台主機專給 XBot\n\n限制：\n· 每台電腦 2 CPU／3 GB／shm 512 MB（每台主機相同）\n· 第一次收到工作才開機，桌面就緒上限 75 秒\n· 閒置 30 分鐘休眠，每台主機都適用（CL-9）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-J07-Backup": {
+   "x": 10980,
+   "y": 24173,
+   "text": "【規格】設定 · 進階 · 備份、更新、關於　PRD §11 UI、§16\n\n功能：每天自動備份、匯出加密備份、從備份還原；檢查與套用更新（提醒正在工作的 Bot 會被中斷、不會自動重做）；關於 XBot 與診斷資料。\n\n使用者要完成：使用者確定資料有備份，並在不打斷 Bot 的時機更新。\n\n驗收：\n· 自動備份開關，顯示時間、保留份數、上次備份大小\n· 匯出與還原各一顆按鈕；還原說明會取代現有資料並先自動備份\n· 列出備份不包含的項目（金鑰、網站登入、已配對裝置）\n· 有新版本時顯示版本、新功能與「重新啟動並更新」；有 Bot 在工作時提醒\n· 關於區塊有版本資訊、複製按鈕與說明連結\n· 內容高度在 900 內\n\n狀態：已是最新版本、有新版本、下載更新中、還原確認（輸入確認字樣）、備份失敗（磁碟不足）\n\n例外：\n· 更新時有 Bot 在工作：工作標記「已中斷，未自動重播」\n· 備份密碼忘記：無法開啟，只能用其他備份\n· 服務停止時定時任務不會跑；恢復後錯過的任務補做一次\n\n限制：\n· 每天自動清理：瀏覽器快取 >200 MB、附件 >30 天（工作成果與登入資料不清）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-J08-People": {
+   "x": 12620,
+   "y": 24173,
+   "text": "【規格】設定 · 進階 · 成員與活動紀錄　PRD §6.16 EP、§7 SEC、§6.11 IN\n\n功能：邀請同事用自己的 Email 登入、設定角色（管理員／成員）與移除；活動紀錄列出誰（你、成員、Bot、裝置）核准、交辦、改設定、配對裝置，可篩選與匯出，紀錄不能修改。\n\n使用者要完成：使用者能讓同事一起用，並隨時查到每一個核定與設定變更是誰做的。\n\n驗收：\n· 邀請列有 Email 欄、角色下拉與「邀請」主要按鈕\n· 成員列顯示角色、最近使用，擁有者不能被移除\n· 活動紀錄每列有時間、誰（Bot 用頭像）、做了什麼、種類標籤\n· 可以依誰、種類、時間篩選並匯出 CSV\n· 標明紀錄不能修改或刪除\n· 內容高度在 900 內\n\n狀態：只有你一個人、有成員、邀請已送出（待接受）、篩選後沒有紀錄\n\n例外：\n· 成員只看得到分享給他的 Bot\n· Bot 的訊息不能當成使用者的授權；紀錄裡的核定一定是人\n· 隊友或主管說可以不算數，核定只認你（或管理員）\n\n限制：\n· 待你核定每個 Bot 最多 10 件、不會過期\n· 預設只有你能決定：新商品定價、新增支出、簽約、上架、重要對客承諾\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-J09-SkillsLab": {
+   "x": 14260,
+   "y": 24173,
+   "text": "【規格】設定 · 進階 · 技能庫與實驗功能　PRD §6.6 SK、§7 SEC\n\n功能：所有 Bot 共用的技能清單（名稱、用途、指派給誰、開關），從外面匯入的技能預設停用並提示先檢視內容；實驗功能開關（Bot 自己寫技能、多步驟後提議技能、分享給隊友、語音通話 Beta）。\n\n使用者要完成：使用者能管理技能、安全地匯入外部技能，並決定要不要打開還在測試的功能。\n\n驗收：\n· 每個技能顯示 /名稱、一行用途、已指派 Bot 的頭像與開關\n· 外部匯入的技能標「剛匯入 · 已停用」，並有警示列說明會執行的指令與「檢視內容」\n· 可以搜尋技能與匯入技能\n· 實驗功能用開關或分段控制，不用勾選框\n· 內容高度在 900 內\n\n狀態：技能清單、沒有技能（空狀態）、匯入檢視中、搜尋沒有結果\n\n例外：\n· SKILL.md 格式不對：拒絕匯入並說明哪裡有問題\n· 重複技能：快判模型提示「和 /蝦皮比價 很像」，建議合併（只建議，不自動合併）\n· 分享到隊友身上的技能預設停用\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-J10-FastJudge": {
+   "x": 15900,
+   "y": 24173,
+   "text": "【規格】設定 · AI 模型 · 快判模型（用 OpenCode）　PRD §20、§20.1、§20.2\n\n功能：設定快判模型：「用 OpenCode」卡片顯示 OpenCode 已登入、Zen 免費、Go 訂閱；第一層選擇題模型 opencode/jev-1.13-free（免費），第二層短文字模型 opencode-go/qwen3.8-flash（Go 額度、每日上限 100 次）；退路順序 OpenCode Jev → OpenCode Go flash → 本機小模型 → 規則；其他供應商（TypeSafe 直連／OpenRouter）收合。15 個用途逐項標層級（Jev／Go）並切換 關／影子／生效。\n\n使用者要完成：使用者直接用已登入的 OpenCode：選擇題全用免費的 Jev，要寫字的才省著用 Go，並在影子模式確認夠準後才讓每個用途生效。\n\n驗收：\n· 「用 OpenCode」卡片顯示三個狀態：OpenCode 已登入、Zen 免費、Go 訂閱，以及今天 Jev 次數與 Go 23／100 次\n· 第一層下拉預設 opencode/jev-1.13-free（免費 · 選擇題），可改本機小模型或不用快判；第二層下拉預設 opencode-go/qwen3.8-flash（Go 額度 · 每日上限 100 次），可改 deepseek-v4-flash、glm-5.3-flash、本機小模型\n· 退路順序以膠囊顯示：OpenCode Jev → OpenCode Go flash → 本機小模型 → 規則\n· 「其他供應商：TypeSafe 直連／OpenRouter」預設收合，點開才看到\n· 15 個用途各有層級標籤（Jev／Go／Jev＋Go）與 關／影子／生效 分段控制，點了立即切換；11–15 是新的「先判斷」用途，預設影子模式\n· 第一層設成「不用快判」時，所有 Jev 用途顯示「只用規則」\n· 內容高度在 900 內（15 列全部看得到）\n\n狀態：預設（Jev＋qwen3.8-flash）、第二層換成 deepseek-v4-flash／glm-5.3-flash、第一層改本機小模型、不用快判（只用規則）、Go 達每日上限 100 次（自動退回本機小模型並通知一次）、其他供應商展開、某用途影子模式準確率 ≥ 95%（可以生效）\n\n例外：\n· OpenCode 沒登入：卡片狀態改成「OpenCode 未登入」，全部退回規則\n· Zen／Go 的 HTTP 端點不可用（待驗證）：背景用途改用 opencode run -m 慢速呼叫，即時用途退回規則\n· Jev 機率 < 0.6、逾時、401／429／5xx、格式不合：該次退回規則\n· 要不要找你核定：快判只能多攔、不能放行\n· 快判永遠不能自己做不可逆的事（刪除、花錢、對外發送、核准）\n\n限制：\n· Jev 機率門檻 0.6\n· 每日呼叫上限預設 300 次；Go 第二層每日上限 100 次\n· 等待上限 0.3–2 秒（依用途）\n· 影子模式與人工改正一致 ≥ 95% 才建議生效\n· 輸出固定 JSON：label、p、why\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-J11-AddHost": {
+   "x": 17540,
+   "y": 24173,
+   "text": "【規格】設定 · 電腦與裝置 · 新增主機　PRD §16 CL-2、CL-1、CL-7、CL-8、§17 TS-5、§7 SEC\n\n功能：把使用者自己的 Docker 主機（VPS、公司伺服器、另一台家用電腦）加進 XBot 的 3 步流程：①在主機上貼一行安裝指令 ②XBot 自動檢查 SSH、Docker、資源、架構、映像、公網埠 ③取名、設同時開機上限、要不要從家裡出去 → 完成。\n\n使用者要完成：使用者不用懂 Docker、SSH、防火牆，貼一行指令就多一台可以放 Bot 電腦的主機。\n\n驗收：\n· 步驟列 3 步可點；目前步驟反白、完成的步驟顯示藍色勾\n· 步驟 1 顯示一行安裝指令（程式碼區塊、一次性代碼遮住大部分）、複製按鈕按下變「已複製」、可重新產生代碼\n· 步驟 1 說明：安裝 Docker 與 Tailscale、建 xbot 帳號只放 XBot 的 SSH 公鑰、不開公開埠、建議整台主機專給 XBot\n· 步驟 2 列出 6 項自動檢查：SSH 經 Tailscale、Docker 版本、CPU／記憶體／磁碟、架構、拉取電腦映像（進度條）、公網埠檢查：沒有開放\n· 步驟 3：主機名稱（預設 cloud-01）、同時開機上限（−／＋，預設 3）、從家裡出去開關（預設關）、控制中心位置說明；按「完成」顯示已加入畫面\n· 右上角簡化標籤「簡化：手動設定 Docker／SSH／防火牆 → 貼一行指令」；整頁在 1100×900 內\n\n狀態：步驟 1：等待主機連上、已複製、步驟 2：檢查中（映像 63%）、步驟 3：取名與設定、從家裡出去 開／關、完成：cloud-01 已加入\n\n例外：\n· 代碼已用過或重新產生過：舊指令失效，畫面請使用者複製新的\n· SSH 經 Tailscale 連不上：指出主機還沒加入 tailnet 或 Tailscale ACL 沒允許 XBot 節點連 22\n· 發現公網有開放 22 或 XBot 的埠：標紅並說明怎麼關，不讓主機上線\n· 架構不是 amd64／arm64、Docker 不能用、磁碟不夠：該項標紅並說明，不能完成\n· 映像還在下載：可以先取名，下載完自動完成\n· 同名主機已存在：要求換名字\n\n限制：\n· 每台 Bot 電腦 2 CPU／3 GB／shm 512 MB\n· 閒置 30 分鐘休眠（每台主機都適用）\n· 電腦映像 amd64／arm64\n· noVNC 6080、Hermes 8642 在遠端只綁 127.0.0.1\n\n簡化：新增雲端主機 手動設定 Docker、SSH、防火牆 → 貼一行指令＋3 步（安裝指令一次裝好 Docker、Tailscale、xbot 帳號與 SSH 公鑰並拉映像；XBot 自動檢查連線、資源、架構與公網埠；最後只問名字、開機上限、要不要從家裡出去）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 900,
+   "fill": "blue"
+  },
+  "spec-J12-MCPAccess": {
+   "x": 19180,
+   "y": 24173,
+   "text": "【規格】設定 · 進階 · 已連線的代理（MCP）　PRD §22\n\n功能：顯示 XBot MCP 的入口（tailnet 內 Streamable HTTP、本機 stdio，以及預設關閉的「外部入口」：Tailscale Funnel 或自己的反向代理＋HTTPS，一律要權杖、可設 IP 白名單）與可複製的 MCP 用戶端設定；用一次性配對碼連接新的代理並設定權限範圍、資源範圍、每日上限與「代為核准」；列出已連線的代理（可改權限、撤銷）與最近的呼叫紀錄。\n\n使用者要完成：使用者能安全地讓 Claude Code、Codex 等外部代理操作 XBot，並隨時看到、限制或撤銷它們。\n\n驗收：\n· 入口列出 tailnet HTTP、本機 stdio 與外部入口；前兩個有複製按鈕，按下後顯示「已複製」；設定片段可切換 HTTP／stdio\n· 外部入口有開關（預設關閉），可選 Funnel／反向代理、填 IP 白名單，並註明一律要權杖、速率上限比 tailnet 內嚴；關閉時這些欄位變淡不能按\n· 按「連接新的代理」出現配對碼，標明 5 分鐘內有效、只能用一次，可重新產生\n· 權限範圍 read／operate／manage／admin 可疊加勾選；資源範圍可選全部 Bot 或指定 Bot\n· 權限編輯分兩欄：右欄「代為核准」有開關（預設關閉）、類別勾選（對外發送、小額花費、上架、簽約）、每日次數與金額上限、有效期限（1／7／30 天）；下方列出「永遠要你本人核准」：刪除 Bot 或資料、移除主機、提高花費上限、改代為核准授權\n· 有代為核准授權的代理在清單上多一個「代為核准」標籤\n· 每個已連線的代理顯示權限、資源範圍、最近使用、今天呼叫數與每日上限，可改權限、可撤銷（可復原）\n· 明寫需要核准的動作一律送到待我處理；只有你授權「代為核准」的代理能代你按，刪除、移除主機等永遠要你本人\n· 最近的呼叫列出時間、代理、工具名稱（xbot.領域.動作）與結果：完成／等你核准／被拒：權限不足；畫板高 1000，內容不需捲動\n\n狀態：沒有任何代理、有代理（預設）、配對中（顯示配對碼）、配對碼過期、改權限、已撤銷、外部入口開啟、代為核准開啟\n\n例外：\n· 配對碼過期或用過 → 代理收到明確錯誤，畫面自動換新碼\n· 外部入口預設關閉；開啟後一律要權杖，可設 IP 白名單，速率上限比 tailnet 內嚴\n· 代理只有拿到代為核准授權時才能呼叫 xbot.approvals.decide（限指定類別、每日上限、有效期限）；刪除 Bot 或資料、移除主機、提高花費上限永遠要你本人核准\n· 設定金鑰的工具只回「已設定」，紀錄裡參數的密鑰一律遮蔽\n· 撤銷後權杖立即失效，進行中的呼叫回權限錯誤\n\n限制：\n· 配對碼一次性、5 分鐘（§17 配對）\n· 權限範圍 read／operate／manage／admin，可疊加\n· 資源範圍預設只能碰自己建立的東西\n· 每個代理有呼叫速率與每日花費上限（計入 §6.13）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 1000,
+   "fill": "blue"
+  },
+  "rowL": {
+   "x": 0,
+   "y": 25293,
+   "text": "L · 手機",
+   "kind": "title1",
+   "maxW": 19410
+  },
+  "spec-L01-PhoneList": {
+   "x": 430,
+   "y": 25593,
+   "text": "【規格】手機：Bot 清單　PRD §6.14 MB-1、§11\n\n功能：手機上的 Bot 與群組清單，每個 Bot 的臉就是狀態。\n\n使用者要完成：一眼看到誰在工作、誰在等我，點進去對話。\n\n驗收：\n· 每列顯示頭像（含狀態點）、名字、時間、一行預覽\n· 等你的 Bot 預覽字為橘色\n· 底部分頁：待我處理（數字）、對話、辦公室、行事曆\n· 所有可點區域 ≥ 44×44；上 47、下 34 安全區不放內容\n\n狀態：一般、有未讀、有人等你、搜尋中\n\n例外：\n· 沒有 Bot：顯示建立第一個 Bot\n· 離線：顯示「網路已離線，恢復後會自動重新連線」\n\n限制：\n· 全部 Bot 最多 50 個\n· 群組 2–10 個 Bot\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L02-PhoneInbox": {
+   "x": 1360,
+   "y": 25593,
+   "text": "【規格】手機：待我處理　PRD §6.11 IN-1、§6.11 IN-2、§21\n\n功能：手機首頁，需要你處理的事都能就地完成。\n\n使用者要完成：不打開對話就把核定、接手、提問處理完。\n\n驗收：\n· 核定卡可直接按「允許這次／退回」\n· 需要你的手的卡片可直接「接手電腦」\n· 提問卡用 A/B 選項一點就回\n· 處理完的卡片收起，數字同步減少\n\n狀態：有待辦、全部處理完、處理中\n\n例外：\n· 無人在場的提問 10 分鐘後過期，卡片顯示已過期\n· 核定不會過期\n\n限制：\n· 待你核定每個 Bot 最多 10 件\n· 提案＋討論每個 Bot 最多 3 件\n\n簡化：核定 3 步 → 1 步（在手機首頁就地允許）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L03-PhoneChat": {
+   "x": 2290,
+   "y": 25593,
+   "text": "【規格】手機：對話　PRD §6.1 CH-1、§6.4 AA、§11\n\n功能：手機上和小秘對話，看得到它在做什麼與 Bot 之間的往來。\n\n使用者要完成：交代工作、看進度、處理卡片、隨時看電腦。\n\n驗收：\n· 你的泡泡 #5A5A5A、Bot 泡泡 #262626\n· 工作列顯示步驟數，可展開\n· 事件膠囊顯示第 N/6 次往來\n· 右下浮動視窗即時顯示 Bot 的電腦，點了全螢幕\n· 輸入框在 home indicator 上方\n\n狀態：工作中、等你、完成、停止中\n\n例外：\n· Bot 在其他對話串工作：訊息排隊\n· 連線中斷：工作標記已中斷\n\n限制：\n· 你的一則訊息上限 64,000 字\n· Bot 之間單則 12,000 字\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L04-PhoneComputer": {
+   "x": 3220,
+   "y": 25593,
+   "text": "【規格】手機：操作電腦　PRD §6.3 BX-7、§6.3 BX-8、§21\n\n功能：手機全螢幕看 Bot 的電腦並接手輸入。\n\n使用者要完成：幫 Bot 輸入驗證碼後交還。\n\n驗收：\n· 顯示 Bot 電腦即時畫面\n· 操控列：鍵盤、貼上、更多（特殊鍵、方向鍵、全螢幕、重新連線）\n· 「完成，交還給小編」一鍵交還，說明選填並有預設內容\n\n狀態：Bot 使用中、你正在操作、重新連線中\n\n例外：\n· 斷線 8 秒後自動重試、最多 2 次，之後請你按重新連線\n· 背景 15 秒暫停串流\n\n限制：\n· 桌面就緒上限 75 秒\n\n簡化：接手電腦 3 步 → 2 步（接手 → 完成交還，說明選填）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L05-PhoneRoom": {
+   "x": 4150,
+   "y": 25593,
+   "text": "【規格】手機：群組　PRD §6.4.2 RM、§18\n\n功能：手機上的群組對話，看得到 Bot 互相交棒。\n\n使用者要完成：在群組點名 Bot 分工，看每一輪誰接手。\n\n驗收：\n· @ 晶片一點就點名（≥44）\n· 輪次膠囊顯示第 N/4 輪\n· 沒有點名時由系統自動挑一位回答\n\n狀態：回覆中、等你、停止所有成員\n\n例外：\n· 4 輪後不再喚醒，需要你接手\n· 核准與登入問題不在群組顯示\n\n限制：\n· 群組 2–10 個 Bot\n· 每次發言 Bot 互相喚醒最多 4 輪\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L06-PhoneSettings": {
+   "x": 5080,
+   "y": 25593,
+   "text": "【規格】手機：設定　PRD §21、§11\n\n功能：手機上的設定整頁，分成 5 區。\n\n使用者要完成：快速改主題、通知、主要模型、休眠時間與花費上限。\n\n驗收：\n· 5 區：一般、AI 模型、電腦與裝置、用量與花費、進階\n· 單一開關用 switch，選項用自訂下拉\n· 手機連線狀態顯示 Tailscale\n\n狀態：一般、有未存變更（自動儲存）\n\n例外：\n· 沒有 Tailscale：顯示同一個 Wi-Fi 的連法\n\n限制：\n· 電腦閒置 30 分鐘休眠\n\n簡化：設定 15 個區塊 → 5 個（合併成 5 區、自動儲存）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L07-PhoneSheet": {
+   "x": 6010,
+   "y": 25593,
+   "text": "【規格】手機：底部 sheet 核定　PRD §6.11 IN-2、§18、§21\n\n功能：從通知打開的核定 sheet。\n\n使用者要完成：看清楚要付多少、給誰、為什麼，一鍵允許或退回。\n\n驗收：\n· 顯示金額、付給、用途、付款方式、本月花費與上限\n· 允許這次／退回為全寬按鈕\n· 核定結果以你的名義送回 Bot\n\n狀態：待核定、已允許、已退回\n\n例外：\n· 隊友或主管說可以不算數，只有你能核定\n\n限制：\n· 待你核定每個 Bot 最多 10 件、不會過期\n\n簡化：核定 3 步 → 1 步（通知 → sheet → 允許）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L08-PhoneOnboard": {
+   "x": 6940,
+   "y": 25593,
+   "text": "【規格】手機：首次設定（接上 AI → 認識小秘）　PRD §6.15 ON-3、§11、§21\n\n功能：在手機上第一次打開 XBot：步驟 1 列出這台電腦已登入的 AI，一鍵「用這個」；步驟 2 介紹小秘，所有設定預設好，按「開始」。步驟 1 底部預覽下一步。\n\n使用者要完成：兩步內開始用小秘。\n\n驗收：\n· 偵測到的引擎每列都有「用這個」，按了直接進步驟 2\n· 沒有要用的才展開貼 API 金鑰欄位\n· 步驟 2 名字、用的 AI、權限（先問我）都已預設，不必填\n· 「開始」進到待我處理；「換一個 AI」回步驟 1\n· 電腦在背景準備，顯示進度，不擋開始\n· 可點的東西都 ≥ 44×44\n\n狀態：步驟 1：偵測到 3 個、步驟 1：展開貼金鑰、步驟 2：認識小秘、電腦準備中\n\n例外：\n· 一個都沒偵測到：直接展開貼金鑰\n· 金鑰認不出供應商：留在欄位下方提示\n· 帶入舊設定、連手機、導覽延後到首頁「之後再做」卡片\n\n限制：\n· 電腦第一次收到工作才開機，桌面就緒上限 75 秒\n· 新 Bot 預設權限「先問我」\n\n簡化：首次設定 6 步 → 2 步（自動偵測已登入的引擎一鍵選用，小秘的設定全部預設，其他步驟改成之後再做）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L09-PhonePair": {
+   "x": 7870,
+   "y": 25593,
+   "text": "【規格】手機：連接這支手機（Tailscale）　PRD §6.14 MB-2、§6.14 MB-3、§17 TS-1、§17 TS-2、§17 TS-6\n\n功能：手機用相機掃電腦上的一個 QR（Tailscale HTTPS 網址＋一次性配對碼），連上後說明這支手機能做什麼；沒有 Tailscale 時改走同一個 Wi-Fi 的兩步流程。\n\n使用者要完成：掃一次 QR 就讓手機連上自己的 XBot。\n\n驗收：\n· 掃描畫面有取景框與掃描線，對準即自動掃描\n· 成功顯示「已連上 xbot.tail3a9e.ts.net」\n· 列出這支手機可以：聊天、核准、看電腦\n· 「沒有 Tailscale？改用同一個 Wi-Fi」切到兩步流程並標明只在同一個 Wi-Fi 有效\n· 不需要安裝任何憑證（Tailscale 走正式 HTTPS）\n\n狀態：掃描中、已連上、同一個 Wi-Fi（兩步）\n\n例外：\n· 手機沒裝或沒登入 Tailscale：連不上，提示先安裝\n· 配對碼過期或已用過：請電腦重新產生 QR\n· 錯誤太多次：鎖定 60 秒\n\n限制：\n· 配對碼 12 碼、5 分鐘、單次使用\n· 登入 30 天、有在用自動延長，最多 180 天\n· 錯誤 10 次鎖 60 秒\n· 服務只綁 127.0.0.1，經 tailscale serve 提供 HTTPS 443\n\n簡化：連手機 2 個 QR＋裝憑證 → 1 個 QR（用 Tailscale 的正式 HTTPS 網址，不用裝自簽憑證，掃一次就登入）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L10-PhoneBotProfile": {
+   "x": 8800,
+   "y": 25593,
+   "text": "【規格】手機：Bot 資料（小秘）　PRD §6.2 BT-2、§11、§16、§21\n\n功能：手機上的 Bot 資料頁：大頭像、名字、職稱與狀態，快捷按鈕對話／電腦／通話，下方 4 個分頁（基本 · 能力 · 權限與花費 · 進階），變更自動儲存。\n\n使用者要完成：在手機上看懂並調整一個 Bot 的主要設定。\n\n驗收：\n· 點頭像打開換頭像 sheet（L11）\n· 分頁切換：基本、能力、權限與花費、進階\n· 基本：它做什麼、回覆長度（精簡／標準／詳細）、放在哪台主機（這台主機／cloud-01）\n· 權限與花費：5 個「這些事先問我」開關、花費上限與本月用量\n· 沒有儲存按鈕，顯示「變更會自動儲存」\n· 所有可點的東西 ≥ 44×44\n\n狀態：基本、能力、權限與花費、進階、主機切到 cloud-01\n\n例外：\n· 雲端主機離線時不能切過去，顯示原因\n· 關掉某個先問我開關需要擁有者權限\n· 花費到 80% 警示、100% 暫停並發卡\n\n限制：\n· 預設只有你能決定：新商品定價、新增支出、簽約、上架、重要對客承諾（可編輯，最多 20 項、每項 40 字）\n· 電腦每台 2 CPU／3 GB；閒置 30 分鐘休眠\n\n簡化：Bot 設定 12 個分頁 → 4 個分頁（合併成基本 · 能力 · 權限與花費 · 進階，自動儲存）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L11-PhoneAvatarSheet": {
+   "x": 9730,
+   "y": 25593,
+   "text": "【規格】手機：換頭像（底部 sheet）　PRD §6.2 BT-2、§11\n\n功能：從 Bot 資料點頭像打開的底部 sheet：吉祥物預覽、來源（吉祥物／圖片）、形狀 10 種、眼睛 6 種、顏色 10 種、上傳圖片、用 AI 產生。頭像是平面、只有眼睛、沒有嘴巴。\n\n使用者要完成：幾下就換好 Bot 的頭像樣子。\n\n驗收：\n· 點形狀、眼睛、顏色、來源，上方預覽立即更新\n· 形狀 10 格（5×2，每格 ≥ 44×44）：游標、果凍、圓、圓角、膠囊、水滴、盾牌、六角、菱形、星星；標示「游標＝品牌與預設」\n· 眼睛 6 格（3×2，每格 ≥ 44×44）：圓點、看旁邊、開心、睜大、半閉、閉眼；標示「只有眼睛，沒有嘴巴」\n· 來源切到「圖片」時，預覽與形狀格子顯示裁成該形狀的圖片（不疊眼睛），眼睛格子變淡；點眼睛切回吉祥物\n· 顏色 10 個色票，每個觸控區 ≥ 44×44，選中有白圈與勾\n· 上傳圖片、用 AI 產生各一列\n· 「完成」關閉並套用，「取消」不變\n\n狀態：吉祥物 · 游標 · 開心眼 · 藍（預設）、盾牌 · 青 · 圖片裁切、上傳中、AI 產生中\n\n例外：\n· 圖片超過 10 MB 或格式不支援：列上提示\n· AI 產生需要電腦上設好圖片供應商，手機不能加金鑰\n\n限制：\n· 上傳 PNG、JPG，10 MB 內\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L12-PhoneNewBot": {
+   "x": 10660,
+   "y": 25593,
+   "text": "【規格】手機：新增 Bot（一句話）　PRD §6.2 BT-1、§20、§21\n\n功能：只問一句「你要它做什麼」，系統建議名稱、職稱、頭像、技能、要連的應用程式（標「系統建議」），按「建立」。\n\n使用者要完成：一句話建立一個可以用的 Bot。\n\n驗收：\n· 只有一個輸入欄位\n· 按「幫我想好其他的」後出現建議卡：名字、職稱、頭像、技能、應用程式、權限\n· 建議卡標「系統建議」，說明之後都能改\n· 「建立」後顯示已加入，可直接開始對話\n· 「重新建議」回到輸入狀態\n· 顯示今天還能建立幾個\n\n狀態：輸入中、系統建議、已建立\n\n例外：\n· 今天已建立 3 個：建立按鈕停用並說明\n· Bot 總數到 50 個：不能再建立\n· 一句話太模糊：建議卡請你補一句\n\n限制：\n· 一般 Bot 每 24 小時 3 個、有團隊管理權限的 20 個\n· 全部最多 50 個 Bot\n· 新 Bot 預設權限「先問我」\n\n簡化：建立 Bot 2 個畫面 10 個欄位 → 1 個欄位＋確認（一句話交給快判模型建議其他欄位，全部預設、之後可改）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L13-PhoneNewRoom": {
+   "x": 11590,
+   "y": 25593,
+   "text": "【規格】手機：新增群組（勾成員 → 建立）　PRD §6.4 RM、§18、§21\n\n功能：第 1 步勾選 2–10 個 Bot（頭像、職稱、狀態），第 2 步看自動取的名稱與回應規則「自動挑一位」，按「建立」。\n\n使用者要完成：兩步建立一個群組對話。\n\n驗收：\n· 勾選列整列可點，自畫勾選框\n· 少於 2 位時「下一步」停用並提示「至少 2 位」\n· 第 10 位之後不能再勾\n· 名稱自動由成員名組成，標「自動」\n· 回應規則預設「自動挑一位」，之後可改\n· 建立後進入群組（L05）\n\n狀態：勾選（已選 3 位）、只選 1 位（停用）、確認建立\n\n例外：\n· 勾滿 10 位：其餘列不能勾\n· 有 Bot 在等你：列上顯示橘字狀態，不影響加入\n\n限制：\n· 群組 2–10 個 Bot\n· 每次你發言後 Bot 互相喚醒最多 4 輪\n· 群組回應規則預設「自動挑一位」\n\n簡化：新增群組 5 個欄位 → 2 步（只勾成員；名稱自動、回應規則預設，之後在群組裡改）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L14-PhoneNotifications": {
+   "x": 12520,
+   "y": 25593,
+   "text": "【規格】手機：通知　PRD §6.11 IN-2、§6.11 IN-3、§6.11 IN-4、§21\n\n功能：手機上的通知中心：篩選全部／要你決定／完成／提到你／出錯；核准就地按「允許這次」，接手、打開群組、查看錯誤一鍵前往；過期的提問顯示已過期並可請它再問。\n\n使用者要完成：在通知裡直接處理需要你的事。\n\n驗收：\n· 篩選膠囊顯示各類數量，點了只顯示該類\n· 付款類通知就地「允許這次／退回」，處理後可復原\n· 過期提問顯示「已過期」與原因，有「請它再問一次」\n· 「全部標為已讀」清掉所有藍點\n· 等你＝橘點、出錯＝紅點，其他沒有點\n· 每個按鈕 ≥ 44×44\n\n狀態：全部（預設）、已允許這次、要你決定、全部已讀、過期提問已請它再問\n\n例外：\n· 同一件事在電腦上處理過：手機上變成已處理\n· 篩選結果是空的：顯示「這裡沒有通知」\n\n限制：\n· 無人在場的提問 10 分鐘沒回就過期、核准自動拒絕\n· 待你核定不會過期，每個 Bot 最多 10 件\n· 暫時性錯誤自動重試 3 次（2／10／30 分鐘）\n\n簡化：核定 3 步 → 1 步（在通知裡就地按「允許這次」，不必打開對話找卡片）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L15-PhoneOffice": {
+   "x": 13450,
+   "y": 25593,
+   "text": "【規格】手機：辦公室　PRD §6.3 BX、§6.14 MB、§16 CL-3、§16 CL-6、§16 CL-9\n\n功能：手機上的辦公室分頁：所有 Bot 電腦依主機分組，每台一列小螢幕縮圖＋Bot 頭像＋狀態＋接手／叫醒。\n\n使用者要完成：一眼看出哪台電腦在等你、哪台休眠，並直接接手或叫醒。\n\n驗收：\n· 依主機分組：這台主機 · 開機 3/4、cloud-01（雲端）· 開機 2/3、office-pc 離線，各有開機容量條\n· 每列有可辨識的即時畫面縮圖（瀏覽器、試算表、驗證碼視窗、桌面），休眠顯示月亮、離線顯示斷線圖示\n· 狀態只用臉＋灰字；只有等你（小編、帳房）有橘點與橘字\n· 接手連到 L04；等你接手的小編用主要按鈕\n· 按叫醒：該列變開機中、主機開機數 +1，滿載時容量條變橘\n· 底部分頁列「辦公室」為目前分頁，觸控目標 ≥ 44×44\n\n狀態：預設、叫醒阿凱（這台主機 4/4 滿載）、叫醒抓蟲（cloud-01 3/3）、主機離線\n\n例外：\n· 主機滿了：新工作排隊並顯示「等電腦空出來」\n· 主機離線：上面的 Bot 工作排隊、恢復後自動重連，不自動重播未知結果的操作\n· 接手中的電腦，Bot 暫停操作直到你交還\n\n限制：\n· 每台電腦 2 CPU／3 GB／shm 512 MB\n· 桌面就緒上限 75 秒\n· 閒置 30 分鐘休眠，有工作自動叫醒\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L16-PhoneCalendar": {
+   "x": 14380,
+   "y": 25593,
+   "text": "【規格】手機：行事曆（日）　PRD §6.8 RT、§6.14 MB、§19\n\n功能：仿 iOS 日曆的一週日期列＋07:00–21:00 當日時間軸；定時任務用 Bot 顏色，提案生效與討論用橘框標出，藍色現在線。\n\n使用者要完成：知道今天各 Bot 什麼時候會做事，哪些需要你。\n\n驗收：\n· 一週日期列可切換日期，今天以藍字／白圓標示，有排程的日期下方有點（需要你的為橘點）\n· 時間軸 07:00–21:00，每個項目顯示 Bot 頭像、名稱、時間與狀態膠囊（已完成／排程中／失敗／等你討論／提案）\n· 提案生效項目標「你沒意見就生效」；討論項目標「等你討論」，點了到 H04\n· 今天顯示現在線（15:10）\n· 「今天」按鈕回到今天；＋ 連到 L17 一句話建立\n· 底部分頁列「行事曆」為目前分頁\n\n狀態：今天、過去的日子（含失敗）、未來的日子（排程中）、沒有排程的日子\n\n例外：\n· 同時段多個項目時並排縮窄\n· 隨機延後的任務以預計時間顯示\n· 定時任務啟動失敗另外退避 1／5／15／60 分鐘\n\n限制：\n· 提案＋討論每個 Bot 合計最多 3 件\n· 被否決的提案 14 天內不能再提\n· 花錢的事不能用「沒意見就生效」\n· 定時任務隨機延後畫面選項 15／30／60／90／120 分鐘\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L17-PhoneRoutine": {
+   "x": 15310,
+   "y": 25593,
+   "text": "【規格】手機：一句話建立定時任務　PRD §6.8 RT、§20 用途 9、§21\n\n功能：輸入「每天早上 9 點整理新聞給我」，系統解析成確認卡（誰做、什麼時候、做什麼、結果貼到、下次執行），按建立。\n\n使用者要完成：不填表就建好一個定時任務。\n\n驗收：\n· 一個輸入框（可用說的），預先帶入範例句\n· 確認卡列出誰做／什麼時候／做什麼／結果貼到／下次執行，每列可點開修改\n· 進階設定預設收合，展開有隨機延後、做到完成為止（目標型）、沒跑成功時通知我\n· 按建立後顯示「已建立 · 小秘明天上午 9:00 第一次跑」，可看行事曆或復原\n· 右上角標「簡化：15 個欄位 → 1 句話＋確認」\n\n狀態：已解析待確認、進階展開、已建立、解析不出時間（追問）\n\n例外：\n· 句子缺時間：確認卡的「什麼時候」顯示橘色「要你選」\n· 每隔一段時間少於 5 分鐘：改成 5 分鐘並提示\n· 選的 Bot 已有 3 件等你的事時仍可建立定時任務\n\n限制：\n· 隨機延後畫面選項 15／30／60／90／120 分鐘（後端 0–240，間隔型延後必須小於間隔）\n· 每隔一段時間最短 5 分鐘\n· 目標型預設 10 輪、最多 50 輪\n\n簡化：定時任務 15 個欄位 → 1 句話＋確認（快判把一句話解析成確認卡，其他收進進階）\n\n完成狀態：簡化過",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L18-PhoneCall": {
+   "x": 16240,
+   "y": 25593,
+   "text": "【規格】手機：和小秘通話　PRD §6.10 VC、§6.11 IN、§6.14 MB\n\n功能：全螢幕即時通話：大頭像隨說話／聆聽換臉，字幕、靜音／打斷／掛斷，通話中跳出核定卡可以用說的允許或拒絕。\n\n使用者要完成：邊講電話邊交辦，用說的完成核定。\n\n驗收：\n· 大頭像有說話（藍光環）與聆聽兩種狀態，下方狀態文字與聲波\n· 字幕顯示上一句與目前這句，可用右上按鈕關閉\n· 核定卡寫「說『允許』或『拒絕』，也可以直接按」，按了顯示結果與復原\n· 打斷：小秘停止說話、切到聆聽；靜音：按鈕反白並顯示已靜音\n· 掛斷用紅色圓鈕，回到對話；觸控目標 ≥ 44×44\n\n狀態：小秘正在說、正在聽、已靜音、核定已允許／已拒絕、字幕關閉\n\n例外：\n· 語音說的「允許」聽不清楚時再問一次，不猜\n· 通話中網路斷線：自動重連，核定卡留在待我處理\n· 掛斷後對話裡留下一列通話紀錄\n\n限制：\n· 待你核定不會過期\n· 預設只有你能決定新商品定價\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L19-PhoneFiles": {
+   "x": 17170,
+   "y": 25593,
+   "text": "【規格】手機：Bot 的檔案　PRD §6.9 FL、§6.14 MB、§18\n\n功能：小秘的檔案依成果／你上傳的／從隊友來的分組，有可辨識縮圖；點 CSV 從底部 sheet 預覽前 5 列。\n\n使用者要完成：在手機上找到 Bot 做好的檔案並快速看內容。\n\n驗收：\n· 三組：成果、你上傳的、從隊友來的；隊友檔案顯示來源 Bot 頭像\n· 縮圖可辨識：試算表格線、PDF 頁面、商品照片\n· CSV 預覽 sheet：檔名、大小、來源、路徑、前 5 列表格、最低價標示\n· sheet 動作：在對話中提到、下載、傳給其他 Bot；可關閉\n· 底部可上傳檔案給小秘\n\n狀態：CSV 預覽開啟、列表、隊友的 CSV 預覽\n\n例外：\n· 超過 5 列只顯示前 5 列並寫總列數\n· 大檔不預覽，只給下載\n· Bot 之間超過 12,000 字元的回覆會存成檔案出現在「從隊友來的」\n\n限制：\n· 一次帶檔最多 10 個、合計 50 MB\n· 隊友傳來的檔放在 /workspace/from/<寄件者>/，相同內容不重複複製\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L20-PhoneMentionStop": {
+   "x": 18100,
+   "y": 25593,
+   "text": "【規格】手機：@ 提到與停止　PRD §6.1 CH、§6.4 AA、§18\n\n功能：小秘工作中，你輸入「也請 @」叫出提到選單（Bot、群組、應用程式），輸入框同時有停止鈕。\n\n使用者要完成：在 Bot 工作時加點名或隨時停下它。\n\n驗收：\n· 選單分 Bot／群組／應用程式三區，每列 44 高，Bot 顯示職稱與狀態（等你用橘字）\n· 點一列把 @名字 填進輸入框並關閉選單\n· Bot 工作中時輸入框有停止鈕；提示字「這輪做完才會送出」\n· 按停止：顯示「已停止 · 檔案與對話都保留」，停止鈕消失\n· 選單不蓋住輸入框與停止鈕\n\n狀態：提到選單開啟＋工作中、已選擇、已停止\n\n例外：\n· 停止一個 Bot 會一路停掉它派出去的子工作\n· @ 的 Bot 在排隊中時，訊息照送、排在後面\n· 群組 @ 多人時仍受每次發言最多 4 輪限制\n\n限制：\n· 你的訊息永遠先處理\n· 你自己一則訊息上限 64,000 字元\n· 同一條 Bot 往來最多 6 次\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "spec-L21-PhonePreCheck": {
+   "x": 19030,
+   "y": 25593,
+   "text": "【規格】手機：先判斷與外部代理核准　PRD §20、§22\n\n功能：你的訊息下方顯示快判結果（夠清楚、不用開電腦、交給 Hermes、預估約 8k token，各附 Jev 機率與「不對？」）；外部代理 Claude Code 經 MCP 改了設定留下可復原的收據，想刪除 Bot 時出核准卡。\n\n使用者要完成：看得懂系統替你做了什麼判斷、能一鍵改正，且外部代理的危險操作一定由你決定。\n\n驗收：\n· 先判斷列在你的訊息下方，4 項各有圖示、結果、Jev 機率、「不對？」（觸控 ≥ 44）\n· 按「不對？」該列變「已記下，會用來校正」，可還原\n· 收據寫「由 Claude Code（MCP）修改」與改了什麼，按復原後顯示已復原\n· 核准卡：Claude Code（MCP）想刪除 Bot「舊客服」、需要你核准、工具名 xbot.bots.delete；允許這次（危險樣式）／拒絕（主要）\n· 按了顯示結果，標籤變已處理\n\n狀態：快判完成、某項已改正、收據可復原／已復原、核准待處理／已允許／已拒絕\n\n例外：\n· 快判逾時或錯誤：退回規則，不顯示先判斷列\n· 快判只能多攔、不能放行：要你核定的事不會被降級\n· 刪除 Bot 不能代為核准，一定要你本人按；其他類別可授權代理代為核准（PRD MCP-10）\n\n限制：\n· 快判等待上限 0.3–2 秒\n· Jev 機率門檻 0.6\n· 快判每日呼叫上限預設 300\n· 花費預估：小 < 2 萬 token\n· 刪除＝confirm 等級，一律回 pending_approval 並出卡\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 844,
+   "fill": "blue"
+  },
+  "rowN": {
+   "x": 0,
+   "y": 26557,
+   "text": "N · 設計系統：Grok 風格、游標頭像",
+   "kind": "title1",
+   "maxW": 6800
+  },
+  "spec-N01-Tokens": {
+   "x": 1480,
+   "y": 26857,
+   "text": "【規格】設計系統：色彩、字型、尺寸　PRD §11\n\n功能：Grok Midnight 色票、Daylight 淺色、字級與尺寸規則。\n\n使用者要完成：讓每張畫板用同一套顏色與尺寸。\n\n驗收：\n· Midnight 底 #070707、側欄 #111111、卡片 #262626、控制 #2F2F2F、你的泡泡 #5A5A5A、強調 #1084FE\n· 字型：粉圓（已決定）\n· 間距 4 的倍數；觸控 ≥ 44\n\n狀態：深色、淺色\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 1000,
+   "fill": "blue"
+  },
+  "spec-N02-Mascot": {
+   "x": 3460,
+   "y": 26857,
+   "text": "【規格】設計系統：Bot 頭像（Grok 平面吉祥物 · 10 種形狀）　PRD §11\n\n功能：所有 Bot 頭像都跟 Grok Bot 一樣：一個平面實色剪影＋兩顆眼睛，沒有嘴巴；只是形狀更多：10 種形狀（游標＝品牌與預設）× 10 個顏色，一組形狀＋顏色分出是誰；眼睛與灰字分狀態，只有等你、出錯有小點；也可以改用上傳或 AI 產生的圖片，形狀就是圖片的裁切框。\n\n使用者要完成：任何地方的 Bot 頭像都長得一致，一眼看出是誰、在做什麼。\n\n驗收：\n· 平面、只有眼睛、沒有嘴巴、跟 Grok Bot 一樣：44×44 畫布、一個實色剪影、兩顆 #141416 眼睛，沒有外框、陰影或高光\n· 10 種形狀：游標（品牌與預設）、果凍（Grok 的雲朵）、圓（Grok 的近圓）、圓角（Grok 的圓角方）、膠囊、水滴、盾牌、六角、菱形、星星；全部手繪感的軟圓邊，沒有尖角\n· 10 色：Grok 的紅 #e5484d、橘 #f28a30、藍 #3f8cff、綠 #46a758、紫 #8e4ec6，加上同飽和度的青、粉紅、黃、藍綠、珊瑚；任何形狀配任何顏色\n· 眼睛 6 種，25 個狀態都對到其中一種：圓點（待命、聆聽、等你）、看旁邊（工作中、搜尋、思考、好奇、困惑）、開心 ^（完成、興奮、慶祝、大笑、得意、調皮、害羞）、睜大（驚訝、害怕、出錯）、半閉（想睡、無聊、剛醒、懷疑、難過、生氣）、閉眼（休息）\n· 形狀 × 眼睛表：待命、工作、等你（橘點）、出錯（紅點）、完成、無聊、休息；只有等你和出錯有小點，小點外圈填所在底色\n· 示範角色每個 Bot 一組形狀＋顏色，全站一致：小秘＝藍游標、阿哲＝橘果凍、小編＝粉紅圓、阿凱＝綠圓角、帳房＝黃六角、數據喵＝紫菱形、信差＝青星星、抓蟲＝紅盾牌、客服小蝦＝藍綠水滴\n· 尺寸 16／24／32／40／48／96 px，每種形狀 16 px 也看得出兩顆眼睛（小尺寸眼睛略放大）\n· 改用圖片：10 種形狀都能當上傳或 AI 產生圖片的裁切框，圖片上不疊眼睛\n· 品牌吉祥物＝綠色游標，不帶小點\n\n狀態：待命（圓點）、工作中（看旁邊）、等你（圓點＋橘點）、出錯（睜大＋紅點）、完成（開心）、無聊（半閉）、休息（閉眼）\n\n例外：\n· 用圖片的 Bot 不疊眼睛，狀態只看灰字和小點\n· 排隊中、在等隊友等狀態不加點，用灰字說明\n· 待命與工作中可以偶爾眨眼（可省略，靜態也可以）\n\n限制：\n· 上傳圖片 PNG、JPEG、GIF、WebP，最大 10 MB（OpenMausBot）\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 1100,
+   "fill": "blue"
+  },
+  "spec-N03-Components": {
+   "x": 5440,
+   "y": 26857,
+   "text": "【規格】設計系統：元件　PRD §11\n\n功能：Grok 風格的按鈕、輸入、選單、卡片、膠囊、標籤。\n\n使用者要完成：新畫面直接照抄元件，不用重新發明。\n\n驗收：\n· 膠囊按鈕（主要／次要／外框／危險）\n· 自訂下拉、開關、勾選框、分段控制，不用原生控制項\n· A/B/C 選項卡、工具膠囊、事件膠囊\n· 簡化標籤與「系統判斷 · 不對？」標籤\n\n狀態：預設、hover、聚焦、停用\n\n完成狀態：已畫",
+   "w": 380,
+   "maxH": 1200,
+   "fill": "blue"
+  }
+ },
+ "designSystems": []
+}

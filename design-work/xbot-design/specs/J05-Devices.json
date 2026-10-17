@@ -1,0 +1,45 @@
+{
+ "file": "J05-Devices.dc.html",
+ "title": "設定 · 電腦與裝置 · 手機與其他裝置",
+ "prd": [
+  "§6.14 MB",
+  "§17",
+  "§21"
+ ],
+ "what": "手機連線改以 Tailscale Serve 為主：主機只綁 127.0.0.1，https://xbot.<tailnet>.ts.net 有正式憑證，手機裝 Tailscale App 登入同帳號後掃一個 QR 就開網址並配對。已配對裝置可移除。沒有 Tailscale 時才展開「同一個 Wi-Fi」兩步（信任憑證＋登入 QR）。",
+ "goal": "使用者掃一次 QR 就能在手機上用 XBot，在外面也能連，不用裝憑證、不用開埠。",
+ "accept": [
+  "主卡顯示 Tailscale 狀態「已連上 tailnet」與 https://xbot.tail3a9e.ts.net 網址（可複製）",
+  "只有一個 QR，標示 5 分鐘內有效、只能用一次，可以產生新的",
+  "已配對裝置列出名稱、誰、權限、最後使用，各有「移除」",
+  "區網兩步預設收起，點開才看到兩個 QR",
+  "右上角有「簡化：2 個 QR＋裝憑證 → 1 個 QR」",
+  "預設狀態內容高度在 900 內"
+ ],
+ "states": [
+  "Tailscale 已連上（預設）",
+  "主機沒裝 Tailscale（主卡變成安裝說明，區網展開）",
+  "MagicDNS 或 HTTPS 憑證沒開（提示到 Tailscale 後台開啟）",
+  "QR 過期",
+  "區網兩步展開"
+ ],
+ "edge": [
+  "配對碼錯 10 次鎖 60 秒",
+  "手機沒登入同一個 tailnet：網址打不開，提示先登入 Tailscale",
+  "區網模式 *.ts.net 名稱不在自簽憑證內，只能用 IP",
+  "手機網頁版沒有離線聊天與推播"
+ ],
+ "limits": [
+  "配對碼 12 碼、5 分鐘、單次使用",
+  "登入維持 30 天、最多續到 180 天",
+  "錯誤 10 次鎖 60 秒",
+  "區網：HTTP 8790、HTTPS 8791；CA 有效 3650 天、伺服器憑證 397 天"
+ ],
+ "simplified": {
+  "flow": "連手機",
+  "before": "2 個 QR＋裝憑證",
+  "after": "1 個 QR",
+  "how": "用 Tailscale 的 HTTPS 網址（正式憑證）掃一次就登入；沒有 Tailscale 時才走舊的兩步"
+ },
+ "status": "簡化過"
+}

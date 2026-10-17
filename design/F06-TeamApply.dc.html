@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>套用到整個團隊</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3,h4,p{font-weight:400;margin:0}
+button,input,textarea{font:inherit;color:inherit}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+input::placeholder,textarea::placeholder{color:#FCFCFC90}
+</style>
+</helmet>
+<div role="dialog" aria-label="套用到營運部所有 Bot" style="width: 760px; height: 724px; box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; display: flex; flex-direction: column; overflow: hidden">
+<div style="display: flex; align-items: flex-start; gap: 12px; padding: 20px 16px 0 24px">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding-top: 4px">
+<h2 style="font-size: 20px; line-height: 1.3">套用到營運部所有 Bot</h2>
+<p style="font-size: 13.5px; color: #FCFCFC99; line-height: 1.55">一次改 4 個 Bot 的同一項設定。之後每個 Bot 還是可以單獨調整。</p>
+</div>
+
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</div>
+<sc-if value="{{editing}}" hint-placeholder-val="{{ true }}">
+<div style="flex: 1; padding: 16px 24px 0; display: flex; flex-direction: column; gap: 14px">
+<div role="tablist" aria-label="要套用的設定" style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #191919; align-self: flex-start">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+<button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{t.pick}}" style="height: 34px; padding: 0 16px; border: 0; border-radius: 8px; background: {{t.bg}}; color: {{t.fg}}; font-size: 14px; cursor: pointer">{{t.label}}</button>
+</sc-for>
+</div>
+
+<sc-if value="{{tabPerm}}" hint-placeholder-val="{{ true }}">
+<div role="radiogroup" aria-label="權限等級" style="background: #262626; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column">
+<sc-for list="{{perms}}" as="p" hint-placeholder-count="4">
+<button type="button" role="radio" aria-checked="{{p.on}}" onClick="{{p.pick}}" style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 16px; border: 0; border-top: {{p.line}}; background: transparent; color: #FCFCFC; text-align: left; cursor: pointer">
+<span style="width: 20px; height: 20px; flex: none; border-radius: 5px; background: {{p.kbg}}; color: {{p.kfg}}; font-size: 12px; display: flex; align-items: center; justify-content: center">{{p.k}}</span>
+<span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 15px">{{p.label}}</span><span style="font-size: 13px; color: #FCFCFC99">{{p.desc}}</span></span>
+<sc-if value="{{p.sel}}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7FC0FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></sc-if>
+</button>
+</sc-for>
+</div>
+<p style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #FCFCFC99"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>刪除整個磁碟這類危險指令，任何等級都不會自動允許。</p>
+</sc-if>
+
+<sc-if value="{{tabModel}}" hint-placeholder-val="{{ false }}">
+<div style="background: #262626; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; gap: 16px">
+<span style="width: 96px; font-size: 14.5px">模型</span>
+<button type="button" aria-haspopup="listbox" style="flex: 1; height: 40px; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14.5px; display: flex; align-items: center; gap: 8px; cursor: pointer; text-align: left"><span style="flex: 1">Claude Sonnet 5.5</span><span style="font-size: 13px; color: #FCFCFC90">建議</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></button>
+</div>
+<div style="display: flex; align-items: center; gap: 16px">
+<span style="width: 96px; font-size: 14.5px">思考強度</span>
+<div role="radiogroup" aria-label="思考強度" style="flex: 1; display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #191919">
+<sc-for list="{{efforts}}" as="e" hint-placeholder-count="3">
+<button type="button" role="radio" aria-checked="{{e.on}}" onClick="{{e.pick}}" style="flex: 1; height: 32px; border: 0; border-radius: 8px; background: {{e.bg}}; color: {{e.fg}}; font-size: 14px; cursor: pointer">{{e.label}}</button>
+</sc-for>
+</div>
+</div>
+<p style="font-size: 13px; color: #FCFCFC99; line-height: 1.5">思考強度越高，回覆越仔細但越慢、越花錢。日常工作用「中」就夠。</p>
+</div>
+</sc-if>
+
+<sc-if value="{{tabBudget}}" hint-placeholder-val="{{ false }}">
+<div style="background: #262626; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; gap: 16px">
+<label for="budget" style="width: 120px; font-size: 14.5px">每個 Bot 每天</label>
+<div style="position: relative; flex: 1; display: flex; align-items: center"><span style="position: absolute; left: 12px; font-size: 14.5px; color: #FCFCFC99">NT$</span><input id="budget" type="text" value="300" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14.5px; outline: none; min-width: 0; flex: 1; padding-left: 46px"></div>
+</div>
+<p style="font-size: 13px; color: #FCFCFC99; line-height: 1.6">用到 80% 先提醒你；到 100% 這個 Bot 暫停，並在待我處理發一張卡片讓你決定要不要加額度。</p>
+</div>
+</sc-if>
+
+<div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px"><h3 style="font-size: 15px">每個 Bot 會變成</h3><span style="font-size: 13px; color: #FCFCFC90">{{changeText}}</span></div>
+<ul style="margin: 0; padding: 0; list-style: none; background: #191919; border-radius: 14px; overflow: hidden">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+<li style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px; border-top: {{r.line}}">
+<dc-import name="Avatar" color="{{r.color}}" body="{{r.body}}" state="{{r.state}}" dot="{{r.dot}}" ring="#191919" size="30" hint-size="30px,30px"></dc-import>
+<span style="width: 64px; font-size: 15px">{{r.name}}</span>
+<span style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 14px"><span style="color: #FCFCFC99; width: 176px; flex: none">{{r.from}}</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC90" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg><span>{{r.to}}</span></span>
+<span style="height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12.5px; display: inline-flex; align-items: center; background: {{r.chipBg}}; color: {{r.chipFg}}">{{r.chip}}</span>
+</li>
+</sc-for>
+</ul>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 20px 24px 20px">
+<span style="flex: 1; font-size: 13px; color: #FCFCFC90">變更立即生效，正在進行的工作做完這一輪才換。</span>
+<button type="button" style="height: 36px; padding: 0 16px; border: 1px solid #333333; border-radius: 999px; background: transparent; color: #FCFCFC; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none">取消</button>
+<button type="button" onClick="{{apply}}" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none">套用到 {{changeCount}} 個 Bot</button>
+</div>
+</sc-if>
+
+<sc-if value="{{done}}" hint-placeholder-val="{{ false }}">
+<div style="flex: 1; padding: 24px; display: flex; flex-direction: column; justify-content: center; gap: 16px">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center">
+<span style="width: 56px; height: 56px; border-radius: 999px; background: rgba(56,213,145,.16); display: flex; align-items: center; justify-content: center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></span>
+<h3 style="font-size: 18px">已把「{{tabLabel}}」套用到 {{changeCount}} 個 Bot</h3>
+<p style="font-size: 14px; color: #FCFCFC99">之後每個 Bot 還是可以在自己的設定裡單獨調整。</p>
+</div>
+<ul style="margin: 0; padding: 0; list-style: none; background: #191919; border-radius: 14px; overflow: hidden">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+<li style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px; border-top: {{r.line}}">
+<dc-import name="Avatar" color="{{r.color}}" body="{{r.body}}" state="{{r.state}}" dot="{{r.dot}}" ring="#191919" size="30" hint-size="30px,30px"></dc-import>
+<span style="width: 64px; font-size: 15px">{{r.name}}</span>
+<span style="flex: 1; font-size: 14px">{{r.to}}</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: {{r.doneFg}}">{{r.doneText}}</span>
+</li>
+</sc-for>
+</ul>
+<div style="display: flex; gap: 8px; justify-content: flex-end">
+<button type="button" onClick="{{undo}}" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none">復原</button>
+<button type="button" onClick="{{again}}" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap; text-decoration: none">完成</button>
+</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 760, "height": 724}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const tab = s.tab || 'perm', perm = s.perm || 'ask', effort = s.effort || 'mid', done = !!s.done;
+    const PERMS = [['ask', 'A', '先問我（建議）', '花錢、對外發送、刪除之前都先問你'], ['edit', 'B', '自動接受編輯', '改檔案不用問，其他照樣先問你'], ['judge', 'C', '幫我判斷', '讓 Bot 自己判斷哪些事要問你'], ['full', 'D', '完全存取', '不問就做；危險指令仍會擋下']];
+    const PL = {}; PERMS.forEach((p) => { PL[p[0]] = p[2].replace('（建議）', ''); });
+    const EF = { low: '低', mid: '中', high: '高' };
+    const BOTS = [
+      { name: '小秘', color: 'blue', body: 'cursor', state: 'working', dot: 'none', perm: 'full', model: 'Claude Sonnet 5.5 · 高', budget: 'NT$500／天' },
+      { name: '阿哲', color: 'orange', body: 'blob', state: 'searching', dot: 'none', perm: 'edit', model: 'Claude Sonnet 5.5 · 中', budget: 'NT$300／天' },
+      { name: '小編', color: 'pink', body: 'circle', state: 'notifying', dot: 'waiting', perm: 'ask', model: 'Claude Haiku 4.5 · 低', budget: '沒有上限' },
+      { name: '阿凱', color: 'green', body: 'squircle', state: 'idle', dot: 'none', perm: 'judge', model: 'Claude Sonnet 5.5 · 中', budget: 'NT$150／天' }
+    ];
+    const target = tab === 'perm' ? PL[perm] : tab === 'model' ? 'Claude Sonnet 5.5 · ' + EF[effort] : 'NT$300／天';
+    const cur = (b) => tab === 'perm' ? PL[b.perm] : tab === 'model' ? b.model : b.budget;
+    const rows = BOTS.map((b, i) => { const same = cur(b) === target; return Object.assign({}, b, { from: cur(b), to: target, line: i ? '1px solid #262626' : '0', chip: same ? '已是這樣' : '會變更', chipBg: same ? 'transparent' : 'rgba(16,132,254,.2)', chipFg: same ? '#FCFCFC90' : '#7FC0FF', doneText: same ? '原本就是' : '已更新', doneFg: same ? '#FCFCFC90' : '#38D591' }); });
+    const changed = rows.filter((r) => r.chip === '會變更');
+    const TABS = [['perm', '權限等級'], ['model', '模型與思考強度'], ['budget', '花費上限']];
+    return {
+      editing: !done, done,
+      tabs: TABS.map(([id, label]) => ({ label, on: tab === id ? 'true' : 'false', bg: tab === id ? '#2F2F2F' : 'transparent', fg: tab === id ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ tab: id }) })),
+      tabPerm: tab === 'perm', tabModel: tab === 'model', tabBudget: tab === 'budget',
+      tabLabel: TABS.find((t) => t[0] === tab)[1],
+      perms: PERMS.map(([id, k, label, desc], i) => ({ k, label, desc, sel: perm === id, on: perm === id ? 'true' : 'false', kbg: perm === id ? '#1084FE' : '#333333', kfg: perm === id ? '#FFFFFF' : '#FCFCFC99', line: i ? '1px solid #333333' : '0', pick: () => this.setState({ perm: id }) })),
+      efforts: ['low', 'mid', 'high'].map((id) => ({ label: EF[id], on: effort === id ? 'true' : 'false', bg: effort === id ? '#2F2F2F' : 'transparent', fg: effort === id ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ effort: id }) })),
+      rows, target,
+      changeCount: changed.length,
+      changeText: changed.length + ' 個會變更，' + (rows.length - changed.length) + ' 個已經是這樣',
+      doneList: changed.map((r) => r.name).join('、'),
+      apply: () => this.setState({ done: true }),
+      undo: () => this.setState({ done: false }),
+      again: () => this.setState({ done: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

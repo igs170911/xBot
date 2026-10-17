@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>已封存的 Bot</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3{font-weight:400}
+</style>
+</helmet>
+<div role="dialog" aria-label="已封存的 Bot" style="width: 560px; height: {{h}}px; box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.5; box-shadow: 0 24px 64px rgba(0,0,0,.6)">
+
+<div style="display: flex; align-items: flex-start; gap: 12px; padding: 18px 14px 4px 24px">
+<div style="flex: 1; display: flex; flex-direction: column; gap: 4px">
+<h2 style="margin: 0; font-size: 18px; line-height: 1.6">已封存的 Bot</h2>
+<span style="font-size: 13.5px; color: #FCFCFC99">對話、技能、記憶和電腦裡的檔案都留著。封存期間不會執行定時任務，也不會出現在側欄。</span>
+</div>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; border-radius: 10px; border: 0; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.x}}"></path></svg></button>
+</div>
+
+<div style="display: flex; align-items: center; padding: 12px 24px 8px">
+<span style="flex: 1; font-size: 13px; color: #FCFCFC90">{{countText}}</span>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid #333333; background: transparent; color: #FCFCFC; font: inherit; font-size: 13.5px; cursor: pointer">全部還原</button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 0 12px 16px">
+<sc-for list="{{bots}}" as="b" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; border-radius: 14px; background: {{b.bg}}">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 0 8px 0 12px">
+<dc-import name="Avatar" color="{{b.color}}" body="{{b.body}}" state="sleeping" dot="none" ring="{{b.bg}}" size="36" hint-size="36px,36px"></dc-import>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<span style="font-size: 15px">{{b.name}}</span>
+<span style="font-size: 13px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{b.sub}}</span>
+</div>
+<sc-if value="{{b.restored}}" hint-placeholder-val="{{ false }}">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: #38D591"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg>已還原到側欄</span>
+</sc-if>
+<sc-if value="{{b.idle}}" hint-placeholder-val="{{ true }}">
+<button type="button" onClick="{{b.restore}}" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 13.5px; display: flex; align-items: center; gap: 6px; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.archiveRestore}}"></path></svg>還原</button>
+<button type="button" onClick="{{b.ask}}" aria-label="永久刪除 {{b.name}}" style="width: 36px; height: 36px; border-radius: 10px; border: 0; background: transparent; color: #FF5667; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.trash}}"></path></svg></button>
+</sc-if>
+</div>
+<sc-if value="{{b.confirm}}" hint-placeholder-val="{{ false }}">
+<div role="alertdialog" aria-label="永久刪除「{{b.name}}」？" style="display: flex; flex-direction: column; gap: 12px; padding: 0 16px 16px 60px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 15px">永久刪除「{{b.name}}」？</span>
+<span style="font-size: 13.5px; color: #FCFCFC99">它的對話、技能、記憶、檔案和電腦都會刪除，無法復原。</span>
+</div>
+<div style="display: flex; gap: 8px; justify-content: flex-end">
+<button type="button" onClick="{{cancel}}" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 14px; cursor: pointer">取消</button>
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #FF5667; color: #FFFFFF; font: inherit; font-size: 14px; cursor: pointer">永久刪除</button>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":560,"height":536}}'>
+class Component extends DCLogic {
+renderVals() {
+const I = {"archiveRestore": "M3 3h18a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-18a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1Z M4 8v11a2 2 0 0 0 2 2h2 M20 8v11a2 2 0 0 1-2 2h-2 M0 0m9 15 3-3 3 3 M12 12v9", "check": "M20 6 9 17l-5-5", "trash": "M10 11v6 M14 11v6 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6 M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", "x": "M18 6 6 18 M0 0m6 6 12 12"};
+const st = this.state || {};
+const ask = st.ask === undefined ? 'old' : st.ask;
+const restored = st.restored || {};
+const list = [
+['old', '舊客服', 'teal', 'drop', '客服回覆 · 9 月 30 日封存 · 128 則對話'],
+['d11', '雙 11 企劃', 'coral', 'star', '活動企劃 · 去年 11 月 14 日封存 · 3 個技能'],
+['codex', '試用 Codex', 'red', 'capsule', '程式委派 · 8 月 2 日封存'],
+['jp', '翻譯小幫手', 'cyan', 'squircle', '日文翻譯 · 7 月 18 日封存 · 電腦已休眠']
+];
+const left = list.filter(([id]) => !restored[id]).length;
+return {
+I,
+h: 536,
+countText: left + ' 個已封存',
+cancel: () => this.setState({ ask: null }),
+bots: list.map(([id, name, color, body, sub]) => ({ id, name, color, body, sub, restored: !!restored[id], idle: !restored[id], confirm: ask === id && !restored[id], bg: ask === id ? '#191919' : 'transparent', restore: () => this.setState({ restored: Object.assign({}, restored, { [id]: true }) }), ask: () => this.setState({ ask: id }) }))
+};
+}
+}
+</script>
+</body>
+</html>

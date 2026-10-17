@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>全部檔案</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}
+button{font:inherit}
+</style>
+</helmet>
+<div style="min-height: 960px; display: flex; flex-wrap: wrap; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.6">
+
+<div style="flex: 1 1 300px; max-width: 300px; background: #111111">
+<dc-import name="Sidebar" active="none" theme="dark" hint-size="100%,960px"></dc-import>
+</div>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 20px 28px 16px; display: flex; flex-direction: column; gap: 16px">
+
+<header style="display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap">
+<span style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 2px">
+<span style="display: flex; align-items: center; gap: 10px; font-size: 22px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1084FE" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.folder}}"></path></svg>全部檔案</span>
+<span style="font-size: 13.5px; color: #FCFCFC99">Bot 做出來的成果、你上傳的附件、示範教學，照 Bot 和對話分好。</span>
+</span>
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14px; display: flex; align-items: center; gap: 6px; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.upload}}"></path></svg>上傳檔案</button>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<label style="position: relative; display: flex; align-items: center; flex: 0 1 260px">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">搜尋檔案</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC90" stroke-width="1.75" stroke-linecap="round" aria-hidden="true" style="position: absolute; left: 12px"><path d="{{I.search}}"></path></svg>
+<input type="search" placeholder="搜尋檔名或內容" style="width: 100%; height: 40px; box-sizing: border-box; padding: 0 12px 0 36px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; outline: none">
+</label>
+<div role="tablist" aria-label="檔案種類" style="display: flex; padding: 3px; gap: 2px; border-radius: 10px; background: #111111">
+<sc-for list="{{kinds}}" as="k" hint-placeholder-count="4">
+<button type="button" role="tab" aria-selected="{{k.sel}}" onClick="{{k.pick}}" style="height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: {{k.bg}}; color: {{k.fg}}; font-size: 13.5px; cursor: pointer; white-space: nowrap">{{k.label}}</button>
+</sc-for>
+</div>
+<button type="button" aria-haspopup="listbox" style="height: 40px; padding: 0 10px 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14px; display: flex; align-items: center; gap: 8px; cursor: pointer">所有 Bot<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronDown}}"></path></svg></button>
+<span style="flex: 1"></span>
+<div role="tablist" aria-label="顯示方式" style="display: flex; padding: 3px; gap: 2px; border-radius: 10px; background: #111111">
+<button type="button" role="tab" aria-label="格狀" aria-selected="{{gridSel}}" onClick="{{toGrid}}" style="width: 34px; height: 32px; border: 0; border-radius: 8px; background: {{gridBg}}; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.layoutGrid}}"></path></svg></button>
+<button type="button" role="tab" aria-label="清單" aria-selected="{{listSel}}" onClick="{{toList}}" style="width: 34px; height: 32px; border: 0; border-radius: 8px; background: {{listBg}}; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.list}}"></path></svg></button>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+
+<div style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+<section style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 10px; min-height: 28px">
+<dc-import name="Avatar" color="{{g.color}}" body="{{g.body}}" state="{{g.state}}" dot="{{g.dot}}" ring="#070707" size="24" hint-size="24px,24px"></dc-import>
+<span style="font-size: 15px">{{g.bot}}</span>
+<span style="font-size: 13.5px; color: #FCFCFC99">對話「{{g.thread}}」· {{g.count}} 個</span>
+<span style="flex: 1"></span>
+<a href="{{g.href}}" style="font-size: 13px; display: flex; align-items: center; gap: 2px">打開對話<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronRight}}"></path></svg></a>
+</div>
+
+<sc-if value="{{isGrid}}" hint-placeholder-val="{{ true }}">
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{g.files}}" as="f" hint-placeholder-count="4">
+<button type="button" style="border: 0; border-radius: 14px; background: #111111; color: #FCFCFC; padding: 6px 6px 8px; display: flex; flex-direction: column; gap: 6px; text-align: left; cursor: pointer; min-width: 0">
+<span aria-hidden="true" style="height: 92px; border-radius: 10px; overflow: hidden; display: flex; background: {{f.thumbBg}}">
+<sc-if value="{{f.isSheet}}" hint-placeholder-val="{{ false }}"><span style="flex: 1; display: grid; grid-template-columns: 0.9fr repeat(3, minmax(0, 1fr)); gap: 1px; background: #DADDE2; border: 1px solid #DADDE2"><sc-for list="{{sheetCells}}" as="c" hint-placeholder-count="24"><span style="background: {{c.bg}}; display: flex; align-items: center; justify-content: {{c.al}}; padding: 0 4px"><span style="width: {{c.w}}; height: 3px; border-radius: 2px; background: {{c.ink}}"></span></span></sc-for></span></sc-if>
+<sc-if value="{{f.isPdf}}" hint-placeholder-val="{{ false }}"><span style="flex: 1; display: flex; justify-content: center; padding-top: 8px"><span style="width: 62%; background: #FFFFFF; border-radius: 2px 2px 0 0; box-shadow: 0 2px 8px rgba(0,0,0,.35); padding: 8px 7px; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box"><span style="width: 70%; height: 5px; border-radius: 2px; background: #2B2F36"></span><span style="width: 40%; height: 3px; border-radius: 2px; background: #B8BCC4"></span><sc-for list="{{pdfLines}}" as="l" hint-placeholder-count="7"><span style="width: {{l}}; height: 3px; border-radius: 2px; background: #D3D6DB"></span></sc-for></span></span></sc-if>
+<sc-if value="{{f.isImg}}" hint-placeholder-val="{{ false }}"><svg width="100%" height="92" viewBox="0 0 160 92" preserveAspectRatio="xMidYMid slice"><rect width="160" height="92" fill="{{f.sky}}"></rect><circle cx="120" cy="24" r="10" fill="{{f.sun}}"></circle><path d="M0 70 L34 34 L54 54 L84 22 L118 62 L136 48 L160 66 L160 92 L0 92 Z" fill="{{f.mtn}}"></path><path d="M74 33 L84 22 L95 35 L88 32 L82 37 Z" fill="#F4F7FA"></path><path d="M0 80 L44 66 L84 78 L124 68 L160 82 L160 92 L0 92 Z" fill="{{f.ground}}"></path></svg></sc-if>
+<sc-if value="{{f.isMd}}" hint-placeholder-val="{{ false }}"><span style="flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 6px"><span style="width: 55%; height: 4px; border-radius: 2px; background: #7FC0FF"></span><sc-for list="{{mdLines}}" as="l" hint-placeholder-count="6"><span style="width: {{l}}; height: 3px; border-radius: 2px; background: #5A5A5A"></span></sc-for></span></sc-if>
+<sc-if value="{{f.isTeach}}" hint-placeholder-val="{{ false }}"><span style="flex: 1; padding: 9px 10px; display: flex; flex-direction: column; gap: 6px"><sc-for list="{{teachRows}}" as="t" hint-placeholder-count="5"><span style="display: flex; align-items: center; gap: 6px"><span style="width: 11px; height: 11px; border-radius: 3px; background: #333333; color: #FCFCFC99; font-size: 8px; line-height: 11px; text-align: center">{{t.n}}</span><span style="width: {{t.w}}; height: 3px; border-radius: 2px; background: #5A5A5A"></span></span></sc-for></span></sc-if>
+<sc-if value="{{f.isChart}}" hint-placeholder-val="{{ false }}"><span style="flex: 1; padding: 12px 10px 8px; display: flex; align-items: flex-end; gap: 5px; border-bottom: 0"><sc-for list="{{chartBars}}" as="b" hint-placeholder-count="8"><span style="flex: 1; height: {{b.h}}; border-radius: 2px 2px 0 0; background: {{b.c}}"></span></sc-for></span></sc-if>
+</span>
+<span style="display: flex; flex-direction: column; line-height: 1.35; padding: 0 4px; min-width: 0">
+<span style="font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.name}}</span>
+<span style="font-size: 11.5px; color: {{f.metaColor}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.meta}}</span>
+</span>
+</button>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isList}}" hint-placeholder-val="{{ false }}">
+<div style="border-radius: 14px; background: #111111; padding: 0 14px; display: flex; flex-direction: column">
+<sc-for list="{{g.files}}" as="f" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 44px; border-top: {{f.line}}"><span style="flex: 1; min-width: 0; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.name}}</span><span style="font-size: 12.5px; color: {{f.metaColor}}; white-space: nowrap">{{f.meta}}</span></div>
+</sc-for>
+</div>
+</sc-if>
+</section>
+</sc-for>
+</div>
+
+<aside style="flex: 1 1 300px; max-width: 340px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+<section aria-label="同步到這台電腦" style="background: #111111; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: flex-start; gap: 12px">
+<span style="flex: 1; display: flex; flex-direction: column; line-height: 1.4"><span style="font-size: 16px">同步到這台電腦</span><span style="font-size: 13px; color: #FCFCFC99">成果自動複製到你的「文件」資料夾</span></span>
+<button type="button" role="switch" aria-checked="{{syncOn}}" aria-label="同步到這台電腦" onClick="{{toggleSync}}" style="width: 40px; height: 24px; flex: none; border: 0; border-radius: 999px; background: {{syncTrack}}; padding: 0; position: relative; cursor: pointer"><span style="position: absolute; top: 3px; left: {{syncKnob}}; width: 18px; height: 18px; border-radius: 99px; background: #FFFFFF"></span></button>
+</div>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; background: #191919; border-radius: 10px; padding: 8px 10px; color: #FCFCFCcc">~/文件/XBot/&lt;Bot&gt;/&lt;對話&gt;/</span>
+<span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: {{syncColor}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.folderSync}}"></path></svg>{{syncText}}</span>
+<div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #262626; padding-top: 12px">
+<span style="flex: 1; font-size: 13.5px">也同步你上傳的附件</span>
+<button type="button" role="switch" aria-checked="false" aria-label="也同步你上傳的附件" style="width: 40px; height: 24px; flex: none; border: 0; border-radius: 999px; background: #3D3D3D; padding: 0; position: relative; cursor: pointer"><span style="position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 99px; background: #FFFFFF"></span></button>
+</div>
+<button type="button" style="height: 36px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.folderOpen}}"></path></svg>打開資料夾</button>
+</section>
+
+<section aria-label="儲存空間" style="background: #111111; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: baseline; justify-content: space-between"><span style="font-size: 16px">儲存空間</span><span style="font-size: 13px; color: #FCFCFC99">共 4.8 GB</span></div>
+<div aria-hidden="true" style="height: 8px; border-radius: 9px; overflow: hidden; display: flex; gap: 2px; background: #262626">
+<sc-for list="{{storage}}" as="s" hint-placeholder-count="7"><span style="width: {{s.share}}; background: {{s.hex}}"></span></sc-for>
+</div>
+<div style="display: flex; flex-direction: column">
+<sc-for list="{{storage}}" as="s" hint-placeholder-count="7">
+<div style="display: flex; align-items: center; gap: 10px; min-height: 30px">
+<dc-import name="Avatar" color="{{s.color}}" body="{{s.body}}" state="{{s.state}}" dot="none" size="20" hint-size="20px,20px"></dc-import>
+<span style="flex: 1; font-size: 13.5px">{{s.bot}}</span>
+<span style="font-size: 13px; color: #FCFCFC99">{{s.size}}</span>
+</div>
+</sc-for>
+</div>
+<span style="font-size: 12.5px; color: #FCFCFC99; line-height: 1.6; border-top: 1px solid #262626; padding-top: 10px">成果不會自動刪除。你傳的附件 30 天後刪除；瀏覽器快取超過 200 MB 每天自動清理。</span>
+</section>
+
+<section aria-label="可以清掉的" style="background: #111111; border-radius: 18px; padding: 8px 16px; display: flex; flex-direction: column">
+<sc-for list="{{cleanup}}" as="c" hint-placeholder-count="2">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 52px; border-top: {{c.line}}">
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.4"><span style="font-size: 13.5px">{{c.t}}</span><span style="font-size: 12px; color: #FCFCFC99">{{c.s}}</span></span>
+<button type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 13px; cursor: pointer; flex: none">清理</button>
+</div>
+</sc-for>
+</section>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+renderVals() {
+// ICONS: folder upload search chevron-down chevron-right layout-grid list folder-sync folder-open
+const I = {"folder":"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z","upload":"M12 3v12 M17 8 l-5-5-5 5 M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4","search":"M21 21 l-4.34-4.34 M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0","chevronDown":"M6 9 l6 6 6-6","chevronRight":"M9 18 l6-6-6-6","layoutGrid":"M4 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1Z M15 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1Z M15 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1Z M4 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1Z","list":"M3 5h.01 M3 12h.01 M3 19h.01 M8 5h13 M8 12h13 M8 19h13","folderSync":"M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v.5 M12 10v4h4 M12 14 l1.535-1.605a5 5 0 0 1 8 1.5 M22 22v-4h-4 M22 18 l-1.535 1.605a5 5 0 0 1-8-1.5","folderOpen":"M6 14 l1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"};
+const st = this.state || {};
+const view = st.view || 'grid';
+const kind = st.kind || 'all';
+const sync = st.sync !== false;
+const T = { sheet: '#FFFFFF', pdf: '#3A3A3A', img: '#A9CBE8', md: '#191919', teach: '#191919', chart: '#191919' };
+const F = (name, meta, k, tag, extra) => Object.assign({ name, meta, tag, thumbBg: T[k], isSheet: k === 'sheet', isPdf: k === 'pdf', isImg: k === 'img', isMd: k === 'md', isTeach: k === 'teach', isChart: k === 'chart', metaColor: '#FCFCFC99' }, extra || {});
+const sky = (s, sun, mtn, ground) => ({ sky: s, sun, mtn, ground });
+const all = [
+{ bot: '小秘', color: 'blue', body: 'cursor', state: 'working', dot: 'none', thread: '競品定價', href: 'E07-Files.dc.html', files: [
+F('定價比較.csv', 'CSV · 18 KB · 今天', 'sheet', 'result'),
+F('競品報告.pdf', 'PDF · 6 頁 · 今天', 'pdf', 'result'),
+F('上月訂單.xlsx', '你上傳的 · 220 KB', 'sheet', 'upload'),
+F('包款參考.jpg', '你上傳的 · 1.4 MB', 'img', 'upload', sky('#A9CBE8', '#FFE7A3', '#6E8BA6', '#5C7F5A'))
+] },
+{ bot: '小編', color: 'pink', body: 'circle', state: 'notifying', dot: 'waiting', thread: '新品貼文', href: 'E06-Browser.dc.html', files: [
+F('托特包主圖-1.png', 'PNG · 840 KB · 今天', 'img', 'result', sky('#F3C9A8', '#FFF1D6', '#B07A63', '#7C5A48')),
+F('托特包主圖-2.png', 'PNG · 790 KB · 今天', 'img', 'result', sky('#C9D7F0', '#FFFFFF', '#7D8FB8', '#4F6A8F')),
+F('貼文文案三版.md', 'Markdown · 4 KB', 'md', 'result'),
+F('上架頁草稿.pdf', 'PDF · 2 頁 · 今天', 'pdf', 'result')
+] },
+{ bot: '帳房', color: 'yellow', body: 'hexagon', state: 'notifying', dot: 'waiting', thread: '十月對帳', href: 'F08-Approvals.dc.html', files: [
+F('10月對帳.xlsx', 'Excel · 96 KB · 週四', 'sheet', 'result'),
+F('匯出上個月的訂單', '示範教學 · 5 個步驟', 'teach', 'teach'),
+F('9月發票彙整.pdf', 'PDF · 14 頁 · 週三', 'pdf', 'result'),
+F('廣告費收據.jpg', '你上傳的 · 610 KB', 'img', 'upload', sky('#DCE3EA', '#FFFFFF', '#9AA7B4', '#7F8C99'))
+] },
+{ bot: '數據喵', color: 'purple', body: 'diamond', state: 'idle', dot: 'queued', thread: '退貨分析', href: 'E08-Data.dc.html', files: [
+F('退貨率前 8 名.png', 'PNG · 120 KB · 昨天', 'chart', 'result'),
+F('退貨查詢.sql', 'SQL · 1 KB · 昨天', 'md', 'result'),
+F('九月退貨明細.csv', 'CSV · 64 KB · 昨天', 'sheet', 'result'),
+F('退貨原因整理', '示範教學 · 3 個步驟', 'teach', 'teach')
+] }
+];
+const groups = all.map((g) => { const files = (kind === 'all' ? g.files : g.files.filter((f) => f.tag === kind)).map((f, i) => Object.assign({}, f, { line: i ? '1px solid #262626' : '0' })); return Object.assign({}, g, { files, count: files.length }); }).filter((g) => g.files.length);
+const defs = [['all', '全部 16'], ['result', '成果 11'], ['upload', '你上傳的 3'], ['teach', '示範教學 2']];
+const sheetCells = [];
+for (let r = 0; r < 6; r++) for (let c = 0; c < 4; c++) sheetCells.push({ bg: r === 0 ? '#E3F1E8' : c === 0 ? '#F6F7F8' : '#FFFFFF', ink: r === 0 ? '#5E8C6E' : '#AEB4BC', w: c === 0 ? '80%' : ['60%', '45%', '70%', '55%', '50%'][(r + c) % 5], al: c === 0 ? 'flex-start' : 'flex-end' });
+const S = (bot, color, body, state, mb, hex) => ({ bot, color, body, state, size: mb >= 1000 ? (mb / 1000).toFixed(1) + ' GB' : mb + ' MB', share: (mb / 4800 * 100).toFixed(1) + '%', hex });
+return {
+I, groups, sheetCells,
+cleanup: [{ t: '瀏覽器快取 · 640 MB', s: '阿哲和小編的瀏覽器，登入會保留', line: '0' }, { t: '快到期的附件 · 3 個', s: '你上傳的，7 天內自動刪除', line: '1px solid #262626' }],
+pdfLines: ['92%', '86%', '95%', '70%', '88%', '90%', '60%'],
+mdLines: ['90%', '75%', '84%', '40%', '88%', '66%'],
+teachRows: [1, 2, 3, 4, 5].map((n, i) => ({ n, w: ['70%', '55%', '62%', '74%', '48%'][i] })),
+chartBars: [100, 83, 67, 57, 52, 42, 35, 23].map((h, i) => ({ h: h + '%', c: i < 2 ? '#1084FE' : '#3A6EA8' })),
+isGrid: view === 'grid', isList: view === 'list',
+gridSel: view === 'grid' ? 'true' : 'false', listSel: view === 'list' ? 'true' : 'false',
+gridBg: view === 'grid' ? '#2F2F2F' : 'transparent', listBg: view === 'list' ? '#2F2F2F' : 'transparent',
+toGrid: () => this.setState({ view: 'grid' }), toList: () => this.setState({ view: 'list' }),
+kinds: defs.map(([k, label]) => ({ label, sel: kind === k ? 'true' : 'false', bg: kind === k ? '#2F2F2F' : 'transparent', fg: kind === k ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ kind: k }) })),
+syncOn: sync ? 'true' : 'false', syncTrack: sync ? '#1084FE' : '#3D3D3D', syncKnob: sync ? '19px' : '3px',
+syncText: sync ? '已同步 · 2 分鐘前 · 11 個成果' : '已暫停同步，檔案只留在 Bot 的電腦', syncColor: sync ? '#38D591' : '#FCFCFC99',
+toggleSync: () => this.setState({ sync: !sync }),
+storage: [
+S('阿哲', 'orange', 'blob', 'searching', 1600, '#FF8A3D'), S('小秘', 'blue', 'cursor', 'working', 1200, '#1084FE'), S('小編', 'pink', 'circle', 'notifying', 980, '#FF6FB5'),
+S('帳房', 'yellow', 'hexagon', 'notifying', 420, '#FFC233'), S('數據喵', 'purple', 'diamond', 'idle', 380, '#9F7BFF'), S('信差', 'cyan', 'star', 'sleeping', 160, '#2CC9DB'), S('阿凱', 'green', 'squircle', 'idle', 60, '#38D591')
+]
+};
+}
+}
+</script>
+</body>
+</html>

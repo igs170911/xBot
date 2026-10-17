@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>手機：辦公室</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A8D4FF}
+button{font:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.45; display: flex; flex-direction: column">
+<div aria-hidden="true" style="height: 47px; flex: none"></div>
+
+<header style="flex: none; height: 60px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 20px">
+<div style="flex: 1; min-width: 0">
+<h1 style="margin: 0; font-size: 22px; font-weight: 400; line-height: 1.25">辦公室</h1>
+<p style="margin: 2px 0 0; font-size: 13px; color: #FCFCFC99">{{summary}}</p>
+</div>
+<a href="J06-Computers.dc.html" aria-label="主機與電腦設定" style="width: 44px; height: 44px; border-radius: 12px; color: #FCFCFC; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="{{I.server}}"></path></svg></a>
+</header>
+
+<div style="flex: 1; min-height: 0; overflow: hidden; padding: 0 12px; display: flex; flex-direction: column; gap: 6px">
+
+<section aria-label="這台主機" style="display: flex; flex-direction: column; gap: 4px">
+<h2 style="margin: 0; height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 6px; font-size: 13.5px; font-weight: 400; color: #FCFCFC">
+<span style="color: #FCFCFC99; display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.house}}"></path></svg></span>這台主機<span style="color: #FCFCFC99">· 開機 {{homeUsed}}/4</span>
+<span role="img" aria-label="開機 {{homeUsed}} 台，上限 4 台" style="margin-left: auto; display: flex; gap: 3px"><sc-for list="{{homeBar}}" as="s" hint-placeholder-count="4"><span style="width: 14px; height: 6px; border-radius: 3px; background: {{s.c}}"></span></sc-for></span>
+</h2>
+<div style="background: #111111; border-radius: 16px; padding: 2px 0">
+
+<div style="height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 10px">
+<a href="L04-PhoneComputer.dc.html" aria-label="看小秘的電腦" style="width: 88px; height: 50px; flex: none; border-radius: 7px; overflow: hidden; border: 1px solid #262626; background: #FFFFFF; display: flex; flex-direction: column">
+<span aria-hidden="true" style="height: 7px; background: #DEE1E6; display: flex; align-items: center; gap: 2px; padding: 0 3px"><span style="width: 2px; height: 2px; border-radius: 2px; background: #FF5F57"></span><span style="width: 2px; height: 2px; border-radius: 2px; background: #FEBC2E"></span><span style="flex: 1; height: 3px; margin-left: 3px; border-radius: 2px; background: #FFFFFF"></span></span>
+<span aria-hidden="true" style="flex: 1; display: flex; gap: 4px; padding: 4px 5px; background: #F8F9FA">
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px; background: #FFFFFF; padding: 3px 4px; box-shadow: 0 0 0 0.5px #DADCE0"><span style="height: 3px; width: 60%; background: #3C4043; border-radius: 1px"></span><span style="height: 2px; background: #BDC1C6"></span><span style="height: 2px; background: #BDC1C6"></span><span style="height: 2px; width: 80%; background: #BDC1C6"></span><span style="display: flex; gap: 1px; margin-top: 1px"><span style="flex: 1; height: 7px; background: #D2E3FC"></span><span style="flex: 1; height: 7px; background: #E8F0FE"></span><span style="flex: 1; height: 7px; background: #D2E3FC"></span></span></span>
+</span>
+</a>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; align-items: center; gap: 6px"><dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#111111" size="22" hint-size="22px,22px"></dc-import><span style="font-size: 15px">小秘</span></div>
+<div style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">工作中 · 彙整競品定價</div>
+</div>
+<a href="L04-PhoneComputer.dc.html" style="height: 44px; min-width: 60px; padding: 0 14px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14px; display: flex; align-items: center; justify-content: center; flex: none">接手</a>
+</div>
+
+<div style="height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 10px; border-top: 1px solid #1E1E1E">
+<a href="L04-PhoneComputer.dc.html" aria-label="看阿哲的電腦" style="width: 88px; height: 50px; flex: none; border-radius: 7px; overflow: hidden; border: 1px solid #262626; background: #FFFFFF; display: flex; flex-direction: column">
+<span aria-hidden="true" style="height: 7px; background: #DEE1E6; display: flex; align-items: center; gap: 2px; padding: 0 3px"><span style="width: 2px; height: 2px; border-radius: 2px; background: #FF5F57"></span><span style="width: 2px; height: 2px; border-radius: 2px; background: #FEBC2E"></span><span style="flex: 1; height: 3px; margin-left: 3px; border-radius: 2px; background: #FFFFFF"></span></span>
+<span aria-hidden="true" style="height: 8px; background: #F05D23; display: flex; align-items: center; gap: 2px; padding: 0 3px"><span style="width: 8px; height: 3px; background: #FFFFFF; border-radius: 1px"></span><span style="flex: 1; height: 4px; border-radius: 1px; background: #FFFFFF"></span></span>
+<span aria-hidden="true" style="flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; padding: 2px; background: #F5F5F5">
+<span style="background: #FFFFFF; display: flex; flex-direction: column"><span style="flex: 1; background: #E9DCC8"></span><span style="height: 2px; width: 70%; margin: 1px; background: #F05D23"></span></span>
+<span style="background: #FFFFFF; display: flex; flex-direction: column"><span style="flex: 1; background: #CFD8DC"></span><span style="height: 2px; width: 60%; margin: 1px; background: #F05D23"></span></span>
+<span style="background: #FFFFFF; display: flex; flex-direction: column"><span style="flex: 1; background: #D7CCE0"></span><span style="height: 2px; width: 70%; margin: 1px; background: #F05D23"></span></span>
+<span style="background: #FFFFFF; display: flex; flex-direction: column"><span style="flex: 1; background: #C8DCCB"></span><span style="height: 2px; width: 50%; margin: 1px; background: #F05D23"></span></span>
+</span>
+</a>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; align-items: center; gap: 6px"><dc-import name="Avatar" color="orange" body="blob" state="searching" dot="none" ring="#111111" size="22" hint-size="22px,22px"></dc-import><span style="font-size: 15px">阿哲</span></div>
+<div style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">工作中 · 在蝦皮比價</div>
+</div>
+<a href="L04-PhoneComputer.dc.html" style="height: 44px; min-width: 60px; padding: 0 14px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14px; display: flex; align-items: center; justify-content: center; flex: none">接手</a>
+</div>
+
+<div style="height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 10px; border-top: 1px solid #1E1E1E">
+<a href="L07-PhoneSheet.dc.html" aria-label="看帳房的電腦" style="width: 88px; height: 50px; flex: none; border-radius: 7px; overflow: hidden; border: 1px solid #262626; background: #FFFFFF; display: flex; flex-direction: column">
+<span aria-hidden="true" style="height: 7px; background: #1E7145; display: flex; align-items: center; padding: 0 3px"><span style="width: 18px; height: 3px; background: rgba(255,255,255,.8); border-radius: 1px"></span></span>
+<span aria-hidden="true" style="flex: 1; display: grid; grid-template-columns: 10px repeat(4, minmax(0, 1fr)); grid-auto-rows: 1fr; background: #FFFFFF; border-top: 0.5px solid #D0D0D0">
+<span style="background: #F1F3F4; border-right: 0.5px solid #D0D0D0; border-bottom: 0.5px solid #D0D0D0"></span><span style="background: #F1F3F4; border-right: 0.5px solid #D0D0D0; border-bottom: 0.5px solid #D0D0D0"></span><span style="background: #F1F3F4; border-right: 0.5px solid #D0D0D0; border-bottom: 0.5px solid #D0D0D0"></span><span style="background: #F1F3F4; border-right: 0.5px solid #D0D0D0; border-bottom: 0.5px solid #D0D0D0"></span><span style="background: #F1F3F4; border-bottom: 0.5px solid #D0D0D0"></span>
+<span style="background: #F1F3F4; border-right: 0.5px solid #D0D0D0; border-bottom: 0.5px solid #E0E0E0"></span><span style="border-right: 0.5px solid #E0E0E0; border-bottom: 0.5px solid #E0E0E0; padding: 1.5px"><span style="display: block; height: 2px; background: #9AA0A6"></span></span><span style="border-right: 0.5px solid #E0E0E0; border-bottom: 0.5px solid #E0E0E0"></span><span style="border-right: 0.5px solid #E0E0E0; border-bottom: 0.5px solid #E0E0E0; padding: 1.5px"><span style="display: block; height: 2px; background: #9AA0A6"></span></span><span style="border-bottom: 0.5px solid #E0E0E0"></span>
+<span style="background: #F1F3F4; border-right: 0.5px solid #D0D0D0; border-bottom: 0.5px solid #E0E0E0"></span><span style="background: #FFF4D6; border-right: 0.5px solid #E0E0E0; border-bottom: 0.5px solid #E0E0E0; padding: 1.5px"><span style="display: block; height: 2px; background: #B06000"></span></span><span style="background: #FFF4D6; border-right: 0.5px solid #E0E0E0; border-bottom: 0.5px solid #E0E0E0"></span><span style="background: #FFF4D6; border-right: 0.5px solid #E0E0E0; border-bottom: 0.5px solid #E0E0E0; padding: 1.5px"><span style="display: block; height: 2px; background: #B06000"></span></span><span style="background: #FFF4D6; border-bottom: 0.5px solid #E0E0E0"></span>
+<span style="background: #F1F3F4; border-right: 0.5px solid #D0D0D0; border-bottom: 0.5px solid #E0E0E0"></span><span style="border-right: 0.5px solid #E0E0E0; border-bottom: 0.5px solid #E0E0E0; padding: 1.5px"><span style="display: block; height: 2px; background: #9AA0A6"></span></span><span style="border-right: 0.5px solid #E0E0E0; border-bottom: 0.5px solid #E0E0E0"></span><span style="border-right: 0.5px solid #E0E0E0; border-bottom: 0.5px solid #E0E0E0; padding: 1.5px"><span style="display: block; height: 2px; background: #9AA0A6"></span></span><span style="border-bottom: 0.5px solid #E0E0E0"></span>
+</span>
+</a>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; align-items: center; gap: 6px"><dc-import name="Avatar" color="yellow" body="hexagon" state="notifying" dot="waiting" ring="#111111" size="22" hint-size="22px,22px"></dc-import><span style="font-size: 15px">帳房</span></div>
+<div style="font-size: 12.5px; color: #FFB547; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">等你允許 · 付款 NT$1,280</div>
+</div>
+<a href="L07-PhoneSheet.dc.html" style="height: 44px; min-width: 60px; padding: 0 14px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14px; display: flex; align-items: center; justify-content: center; flex: none">接手</a>
+</div>
+
+<div style="height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 10px; border-top: 1px solid #1E1E1E">
+<sc-if value="{{akai.asleep}}" hint-placeholder-val="{{ true }}">
+<span aria-hidden="true" style="width: 88px; height: 50px; flex: none; box-sizing: border-box; border-radius: 7px; border: 1px solid #262626; background: #0B0B0B; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #FCFCFC90"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.moon}}"></path></svg><span style="font-size: 9px; line-height: 1">休眠中</span></span>
+</sc-if>
+<sc-if value="{{akai.booting}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="width: 88px; height: 50px; flex: none; box-sizing: border-box; border-radius: 7px; border: 1px solid #262626; background: #1B2836; display: flex; flex-direction: column; justify-content: flex-end"><span style="flex: 1; display: flex; align-items: center; justify-content: center"><span style="width: 40px; height: 3px; border-radius: 2px; background: #333333; display: flex; overflow: hidden"><span style="width: 45%; background: #7FC0FF"></span></span></span><span style="height: 6px; background: #111111"></span></span>
+</sc-if>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; align-items: center; gap: 6px"><dc-import name="Avatar" color="green" body="squircle" state="{{akai.face}}" dot="none" ring="#111111" size="22" hint-size="22px,22px"></dc-import><span style="font-size: 15px">阿凱</span></div>
+<div style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{akai.status}}</div>
+</div>
+<sc-if value="{{akai.asleep}}" hint-placeholder-val="{{ true }}">
+<button type="button" onClick="{{akai.wake}}" style="height: 44px; min-width: 60px; padding: 0 14px; box-sizing: border-box; border-radius: 999px; background: transparent; border: 1px solid #333333; color: #FCFCFC; font-size: 14px; cursor: pointer; flex: none">叫醒</button>
+</sc-if>
+<sc-if value="{{akai.booting}}" hint-placeholder-val="{{ false }}">
+<span role="status" style="height: 44px; min-width: 60px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #7FC0FF; flex: none">開機中…</span>
+</sc-if>
+</div>
+
+</div>
+</section>
+
+<section aria-label="cloud-01 雲端主機" style="display: flex; flex-direction: column; gap: 4px">
+<h2 style="margin: 0; height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 6px; font-size: 13.5px; font-weight: 400; color: #FCFCFC">
+<span style="color: #FCFCFC99; display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.cloud}}"></path></svg></span>cloud-01（雲端）<span style="color: #FCFCFC99">· 開機 {{cloudUsed}}/3</span>
+<span role="img" aria-label="開機 {{cloudUsed}} 台，上限 3 台" style="margin-left: auto; display: flex; gap: 3px"><sc-for list="{{cloudBar}}" as="s" hint-placeholder-count="3"><span style="width: 14px; height: 6px; border-radius: 3px; background: {{s.c}}"></span></sc-for></span>
+</h2>
+<div style="background: #111111; border-radius: 16px; padding: 2px 0">
+
+<div style="height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 10px">
+<a href="L04-PhoneComputer.dc.html" aria-label="看小編的電腦" style="width: 88px; height: 50px; flex: none; border-radius: 7px; overflow: hidden; border: 1px solid #262626; background: #FFFFFF; display: flex; flex-direction: column; position: relative">
+<span aria-hidden="true" style="height: 7px; background: #DEE1E6; display: flex; align-items: center; gap: 2px; padding: 0 3px"><span style="width: 2px; height: 2px; border-radius: 2px; background: #FF5F57"></span><span style="width: 2px; height: 2px; border-radius: 2px; background: #FEBC2E"></span><span style="flex: 1; height: 3px; margin-left: 3px; border-radius: 2px; background: #FFFFFF"></span></span>
+<span aria-hidden="true" style="flex: 1; background: #F0F2F5; display: flex; align-items: center; justify-content: center">
+<span style="width: 58px; background: #FFFFFF; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,.2); padding: 3px 4px; display: flex; flex-direction: column; gap: 2px; align-items: center">
+<span style="font-size: 5.5px; line-height: 1; color: #111111">輸入簡訊驗證碼</span>
+<span style="display: flex; gap: 1.5px"><span style="width: 6px; height: 7px; border: 0.5px solid #9AA0A6; border-radius: 1px"></span><span style="width: 6px; height: 7px; border: 0.5px solid #9AA0A6; border-radius: 1px"></span><span style="width: 6px; height: 7px; border: 0.5px solid #9AA0A6; border-radius: 1px"></span><span style="width: 6px; height: 7px; border: 0.5px solid #9AA0A6; border-radius: 1px"></span><span style="width: 6px; height: 7px; border: 0.5px solid #9AA0A6; border-radius: 1px"></span><span style="width: 6px; height: 7px; border: 0.5px solid #9AA0A6; border-radius: 1px"></span></span>
+<span style="width: 40px; height: 5px; border-radius: 3px; background: #0095F6"></span>
+</span>
+</span>
+</a>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; align-items: center; gap: 6px"><dc-import name="Avatar" color="pink" body="circle" state="notifying" dot="waiting" ring="#111111" size="22" hint-size="22px,22px"></dc-import><span style="font-size: 15px">小編</span></div>
+<div style="font-size: 12.5px; color: #FFB547; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">等你回覆 · 要驗證碼</div>
+</div>
+<a href="L04-PhoneComputer.dc.html" style="height: 44px; min-width: 60px; padding: 0 14px; box-sizing: border-box; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14px; display: flex; align-items: center; justify-content: center; flex: none">接手</a>
+</div>
+
+<div style="height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 10px; border-top: 1px solid #1E1E1E">
+<a href="L04-PhoneComputer.dc.html" aria-label="看數據喵的電腦" style="width: 88px; height: 50px; flex: none; border-radius: 7px; overflow: hidden; border: 1px solid #262626; background: #2B3A4A; display: flex; flex-direction: column">
+<span aria-hidden="true" style="flex: 1; position: relative; background: #2B3A4A">
+<span style="position: absolute; left: 5px; top: 5px; display: flex; flex-direction: column; gap: 4px"><span style="width: 8px; height: 8px; border-radius: 2px; background: #6FA8DC"></span><span style="width: 8px; height: 8px; border-radius: 2px; background: #93C47D"></span><span style="width: 8px; height: 8px; border-radius: 2px; background: #F6B26B"></span></span>
+<span style="position: absolute; left: 20px; top: 6px; right: 8px; bottom: 5px; background: #FFFFFF; border-radius: 2px; display: flex; flex-direction: column; overflow: hidden"><span style="height: 5px; background: #E8EAED"></span><span style="flex: 1; background-image: linear-gradient(#E0E0E0 0.5px, transparent 0.5px), linear-gradient(90deg, #E0E0E0 0.5px, transparent 0.5px); background-size: 9px 5px"></span></span>
+</span>
+<span aria-hidden="true" style="height: 6px; background: #111111; display: flex; align-items: center; gap: 2px; padding: 0 3px"><span style="width: 3px; height: 3px; border-radius: 1px; background: #7FC0FF"></span><span style="width: 3px; height: 3px; border-radius: 1px; background: #FCFCFC90"></span></span>
+</a>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; align-items: center; gap: 6px"><dc-import name="Avatar" color="purple" body="diamond" state="idle" dot="none" ring="#111111" size="22" hint-size="22px,22px"></dc-import><span style="font-size: 15px">數據喵</span></div>
+<div style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">排隊中 · 週報資料</div>
+</div>
+<a href="L04-PhoneComputer.dc.html" style="height: 44px; min-width: 60px; padding: 0 14px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14px; display: flex; align-items: center; justify-content: center; flex: none">接手</a>
+</div>
+
+<div style="height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 10px; border-top: 1px solid #1E1E1E">
+<sc-if value="{{bug.asleep}}" hint-placeholder-val="{{ true }}">
+<span aria-hidden="true" style="width: 88px; height: 50px; flex: none; box-sizing: border-box; border-radius: 7px; border: 1px solid #262626; background: #0B0B0B; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #FCFCFC90"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.moon}}"></path></svg><span style="font-size: 9px; line-height: 1">休眠中</span></span>
+</sc-if>
+<sc-if value="{{bug.booting}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="width: 88px; height: 50px; flex: none; box-sizing: border-box; border-radius: 7px; border: 1px solid #262626; background: #1B2836; display: flex; flex-direction: column; justify-content: flex-end"><span style="flex: 1; display: flex; align-items: center; justify-content: center"><span style="width: 40px; height: 3px; border-radius: 2px; background: #333333; display: flex; overflow: hidden"><span style="width: 45%; background: #7FC0FF"></span></span></span><span style="height: 6px; background: #111111"></span></span>
+</sc-if>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; align-items: center; gap: 6px"><dc-import name="Avatar" color="red" body="shield" state="{{bug.face}}" dot="none" ring="#111111" size="22" hint-size="22px,22px"></dc-import><span style="font-size: 15px">抓蟲</span></div>
+<div style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{bug.status}}</div>
+</div>
+<sc-if value="{{bug.asleep}}" hint-placeholder-val="{{ true }}">
+<button type="button" onClick="{{bug.wake}}" style="height: 44px; min-width: 60px; padding: 0 14px; box-sizing: border-box; border-radius: 999px; background: transparent; border: 1px solid #333333; color: #FCFCFC; font-size: 14px; cursor: pointer; flex: none">叫醒</button>
+</sc-if>
+<sc-if value="{{bug.booting}}" hint-placeholder-val="{{ false }}">
+<span role="status" style="height: 44px; min-width: 60px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #7FC0FF; flex: none">開機中…</span>
+</sc-if>
+</div>
+
+</div>
+</section>
+
+<section aria-label="office-pc 離線" style="display: flex; flex-direction: column; gap: 4px">
+<h2 style="margin: 0; height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 6px; font-size: 13.5px; font-weight: 400; color: #FCFCFC">
+<span style="color: #FF8A96; display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.wifiOff}}"></path></svg></span>office-pc<span style="color: #FF8A96">· 離線</span>
+<span style="margin-left: auto; font-size: 12.5px; color: #FCFCFC90">最後上線 上午 11:20</span>
+</h2>
+<div style="background: #111111; border-radius: 16px; height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 10px">
+<span aria-hidden="true" style="width: 88px; height: 50px; flex: none; box-sizing: border-box; border-radius: 7px; border: 1px dashed #333333; background: #0B0B0B; display: flex; align-items: center; justify-content: center; color: #FCFCFC90"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.wifiOff}}"></path></svg></span>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; align-items: center; gap: 6px"><dc-import name="Avatar" color="cyan" body="star" state="sleeping" dot="none" ring="#111111" size="22" hint-size="22px,22px"></dc-import><span style="font-size: 15px">信差</span></div>
+<div style="font-size: 12.5px; color: #FCFCFC99; line-height: 1.35">主機離線 · 工作先排隊，主機回來自動重連</div>
+</div>
+</div>
+</section>
+
+</div>
+
+<nav aria-label="主要分頁" style="flex: none; background: #111111; border-top: 1px solid #262626; padding: 0 8px 34px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+<a href="L02-PhoneInbox.dc.html" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC90; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M22 12L16 12L14 15L10 15L8 12L2 12"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg><span aria-label="5 件" style="position: absolute; left: 15px; top: -5px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 999px; background: #FF9800; color: #1A1100; font-size: 11.5px; line-height: 18px; text-align: center; border: 2px solid #111111">5</span></span>待我處理</a>
+<a href="L01-PhoneList.dc.html" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC90; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"></path></svg></span>對話</a>
+<a href="L15-PhoneOffice.dc.html" aria-current="page" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M8 21L16 21"></path><path d="M12 17L12 21"></path></svg></span>辦公室</a>
+<a href="L16-PhoneCalendar.dc.html" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FCFCFC90; font-size: 11.5px; line-height: 1.2"><span style="position: relative; display: flex"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M8 2v3"></path><path d="M16 2v3"></path><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z"></path><path d="M3 9h18"></path></svg></span>行事曆</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const J = (a) => a.map((d) => (d[0] === 'm' ? 'M0 0' + d : d)).join(' ');
+const I = {
+server: J(['M4 2h16a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2Z', 'M4 14h16a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2Z', 'M6 6L6.01 6', 'M6 18L6.01 18']),
+house: J(['M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8', 'M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z']),
+cloud: 'M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z',
+moon: 'M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401',
+wifiOff: J(['M12 20h.01', 'M8.5 16.429a5 5 0 0 1 7 0', 'M5 12.859a10 10 0 0 1 5.17-2.69', 'M19 12.859a10 10 0 0 0-2.007-1.523', 'M2 8.82a15 15 0 0 1 4.177-2.643', 'M22 8.82a15 15 0 0 0-11.288-3.764', 'm2 2 20 20'])
+};
+const st = this.state || {};
+const pc = (on, key, text) => ({
+asleep: !on, booting: on, face: on ? 'waking' : 'idle',
+status: on ? text : '待命 · 電腦休眠中',
+wake: () => this.setState({ [key]: true })
+});
+const homeUsed = 3 + (st.akai ? 1 : 0);
+const cloudUsed = 2 + (st.bug ? 1 : 0);
+const bar = (n, max) => Array.from({ length: max }, (_, i) => ({ c: i < n ? (n === max ? '#FF9800' : '#38D591') : '#333333' }));
+const on = homeUsed + cloudUsed;
+return {
+I,
+akai: pc(!!st.akai, 'akai', '用掉這台主機最後 1 台'),
+bug: pc(!!st.bug, 'bug', '桌面就緒上限 75 秒'),
+homeUsed, cloudUsed,
+homeBar: bar(homeUsed, 4), cloudBar: bar(cloudUsed, 3),
+summary: on + ' 台開機 · 1 台等你接手 · 1 台主機離線'
+};
+}
+}
+</script>
+</body>
+</html>

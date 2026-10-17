@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>電腦狀態與確認</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}
+button{font:inherit}
+</style>
+</helmet>
+<div style="width: 1200px; height: 900px; box-sizing: border-box; padding: 24px; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.6; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start">
+
+<div style="display: flex; flex-direction: column; gap: 16px; min-width: 0">
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">畫面 · 還沒開機</span>
+<div style="background: #111111; border: 1px solid #262626; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 12px">
+<div style="height: 132px; border-radius: 10px; background: #191919; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center">
+<span style="width: 44px; height: 44px; border-radius: 99px; background: #262626; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.monitorOff}}"></path></svg></span>
+<span style="font-size: 14.5px">小秘的電腦還沒開機</span>
+<span style="font-size: 12.5px; color: #FCFCFC99">第一次收到工作時會自己開機</span>
+</div>
+<button type="button" style="height: 36px; border: 0; border-radius: 999px; background: #262626; color: #FCFCFC; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.power}}"></path></svg>現在開機</button>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">畫面 · 開機中</span>
+<div style="background: #111111; border: 1px solid #262626; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-size: 15px">正在開機…</span>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{boot}}" as="b" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: {{b.fg}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{b.ic}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{b.icon}}"></path></svg>{{b.t}}</div>
+</sc-for>
+</div>
+<span aria-hidden="true" style="height: 4px; border-radius: 9px; background: #333333; display: flex"><span style="width: 24%; border-radius: 9px; background: #1084FE"></span></span>
+<span style="font-size: 12.5px; color: #FCFCFC99">已 18 秒 · 通常 20 秒內，最長等 75 秒</span>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">工具列提示 · 主機忙碌</span>
+<div style="background: rgba(255,152,0,.12); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+<span style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: #FFB547"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.gauge}}"></path></svg>主機負載偏高，畫面可能比較慢</span>
+<div style="display: grid; grid-template-columns: 52px minmax(0, 1fr) 44px; gap: 6px 8px; align-items: center; font-size: 12.5px; color: #FCFCFC99">
+<span>CPU</span><span aria-hidden="true" style="height: 6px; border-radius: 9px; background: #333333; display: flex"><span style="width: 92%; border-radius: 9px; background: #FF9800"></span></span><span style="text-align: right; color: #FCFCFC">92%</span>
+<span>記憶體</span><span aria-hidden="true" style="height: 6px; border-radius: 9px; background: #333333; display: flex"><span style="width: 81%; border-radius: 9px; background: #FCFCFC99"></span></span><span style="text-align: right; color: #FCFCFC">81%</span>
+</div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">確認 · 重新開機</span>
+<div role="dialog" aria-label="重新開機小秘的電腦" style="background: #111111; border: 1px solid #262626; border-radius: 18px; padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 12px 32px rgba(0,0,0,.5)">
+<span style="font-size: 16px">重新開機小秘的電腦？</span>
+<span style="font-size: 13.5px; color: #FCFCFC99; line-height: 1.6">正在做的工作會中斷，<br>檔案和瀏覽器登入都會保留。</span>
+<div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px">
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14px; cursor: pointer">取消</button>
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FF5667; color: #FFFFFF; font-size: 14px; cursor: pointer">重新開機</button>
+</div>
+</div>
+</section>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 16px; min-width: 0">
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">畫面連線 · 自動恢復（由上到下）</span>
+<div style="background: #111111; border: 1px solid #262626; border-radius: 18px; padding: 8px 14px; display: flex; flex-direction: column">
+<sc-for list="{{recover}}" as="r" hint-placeholder-count="4">
+<div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-top: {{r.line}}">
+<span style="width: 28px; height: 28px; border-radius: 99px; background: {{r.bg}}; color: {{r.ic}}; display: flex; align-items: center; justify-content: center; flex: none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.icon}}"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.45"><span style="font-size: 13.5px; color: {{r.fg}}">{{r.t}}</span><span style="font-size: 12px; color: #FCFCFC99">{{r.s}}</span></span>
+<sc-if value="{{r.btn}}" hint-placeholder-val="{{ false }}"><button type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 13px; cursor: pointer; flex: none; white-space: nowrap">重新連線</button></sc-if>
+</div>
+</sc-for>
+</div>
+<span style="font-size: 12px; color: #FCFCFC90; line-height: 1.5">連上 30 秒才算穩定；20 秒沒連上算一次失敗。分頁在背景 15 秒就暫停畫面。</span>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">容量已滿 · 排隊等電腦</span>
+<div style="background: #111111; border: 1px solid #262626; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px">
+<dc-import name="Avatar" color="purple" body="diamond" state="idle" dot="queued" ring="#111111" size="34" hint-size="34px,34px"></dc-import>
+<span style="display: flex; flex-direction: column; line-height: 1.4"><span style="font-size: 15px">數據喵在等一台電腦</span><span style="font-size: 12.5px; color: #FCFCFC99">這台主機同時開機 5 / 5 台 · 排第 1 位</span></span>
+</div>
+<div aria-hidden="true" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px">
+<sc-for list="{{slots}}" as="s" hint-placeholder-count="5"><span style="height: 30px; border-radius: 8px; background: #262626; display: flex; align-items: center; justify-content: center"><dc-import name="Avatar" color="{{s.c}}" body="{{s.b}}" state="{{s.st}}" dot="none" size="20" hint-size="20px,20px"></dc-import></span></sc-for>
+</div>
+<span style="font-size: 13px; color: #FCFCFC99; line-height: 1.6">有 Bot 休眠就會輪到它。也可以先讓閒著的阿凱休眠。</span>
+<div style="display: flex; gap: 8px">
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14px; cursor: pointer">讓阿凱先休眠</button>
+<a href="E03-Office.dc.html" style="height: 36px; box-sizing: border-box; padding: 0 16px; border: 1px solid #333333; border-radius: 999px; color: #FCFCFC; font-size: 14px; display: flex; align-items: center">打開辦公室</a>
+</div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">確認 · 更新環境</span>
+<div role="dialog" aria-label="更新小秘的電腦環境" style="background: #111111; border: 1px solid #262626; border-radius: 18px; padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 12px 32px rgba(0,0,0,.5)">
+<span style="font-size: 16px">更新小秘的電腦環境？</span>
+<span style="font-size: 13.5px; color: #FCFCFC99; line-height: 1.6">會下載最新環境並重建電腦，要幾分鐘。檔案和登入都會保留。</span>
+<div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px">
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14px; cursor: pointer">取消</button>
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14px; cursor: pointer">更新</button>
+</div>
+</div>
+</section>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 16px; min-width: 0">
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">Android 手機 · USB 連線</span>
+<div style="background: #111111; border: 1px solid #262626; border-radius: 18px; padding: 14px; display: flex; gap: 14px">
+<div aria-label="手機畫面：訊息 App" role="img" style="width: 196px; height: 404px; flex: none; box-sizing: border-box; border-radius: 28px; background: #000000; padding: 7px; border: 1px solid #333333">
+<div style="width: 100%; height: 100%; border-radius: 22px; overflow: hidden; background: #F3F4F8; color: #1B1C20; display: flex; flex-direction: column; font-size: 11px; line-height: 1.35">
+<div style="height: 22px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; font-size: 10px; color: #1B1C20"><span>14:16</span><span style="width: 8px; height: 8px; border-radius: 99px; background: #1B1C20"></span><span>78%</span></div>
+<div style="padding: 6px 12px 8px; display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 17px">訊息</span>
+<span style="height: 26px; border-radius: 99px; background: #E3E5EC; display: flex; align-items: center; padding: 0 10px; color: #6B6E78; font-size: 10.5px">搜尋對話</span>
+</div>
+<div style="flex: 1; min-height: 0; background: #FFFFFF; border-radius: 16px 16px 0 0; padding: 4px 0; display: flex; flex-direction: column">
+<sc-for list="{{sms}}" as="m" hint-placeholder-count="5">
+<div style="display: flex; gap: 8px; padding: 7px 10px; background: {{m.bg}}">
+<span style="width: 26px; height: 26px; border-radius: 99px; background: {{m.c}}; color: #FFFFFF; font-size: 11px; display: flex; align-items: center; justify-content: center; flex: none">{{m.i}}</span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="display: flex; justify-content: space-between; gap: 4px"><span style="font-size: 11px; color: #1B1C20">{{m.n}}</span><span style="font-size: 9.5px; color: #6B6E78">{{m.t}}</span></span><span style="font-size: 10px; color: {{m.fg}}; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical">{{m.p}}</span></span>
+</div>
+</sc-for>
+</div>
+<div style="height: 30px; flex: none; background: #FFFFFF; display: flex; align-items: center; justify-content: center"><span style="width: 64px; height: 4px; border-radius: 9px; background: #1B1C20"></span></div>
+</div>
+</div>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+<span style="display: flex; flex-direction: column; line-height: 1.4"><span style="font-size: 15px">Pixel 8</span><span style="font-size: 12.5px; color: #38D591">USB 已授權</span></span>
+<span style="font-size: 12.5px; color: #FCFCFC99; line-height: 1.6">小編可以點、滑、輸入；你也能直接在畫面上操作。</span>
+<div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px">
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="4">
+<button type="button" style="height: 36px; border: 0; border-radius: 10px; background: #262626; color: #FCFCFC; font-size: 13.5px; display: flex; align-items: center; gap: 10px; padding: 0 12px; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{n.icon}}"></path></svg>{{n.t}}</button>
+</sc-for>
+</div>
+<span style="flex: 1"></span>
+<button type="button" style="height: 36px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FF5667; font-size: 13.5px; cursor: pointer">中斷連線</button>
+</div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12.5px; color: #FCFCFC90">設定卡 · 地端或雲端</span>
+<div style="background: #191919; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+<span style="display: flex; flex-direction: column; line-height: 1.4"><span style="font-size: 15px">小秘的電腦在哪裡跑</span><span style="font-size: 12.5px; color: #FCFCFC99">每個 Bot 各自選，可以混用</span></span>
+<div role="radiogroup" aria-label="在哪裡跑" style="display: flex; padding: 3px; gap: 2px; border-radius: 10px; background: #111111">
+<sc-for list="{{where}}" as="w" hint-placeholder-count="4">
+<button type="button" role="radio" aria-checked="{{w.checked}}" onClick="{{w.pick}}" style="flex: 1 1 0; min-width: 0; height: 32px; border: 0; border-radius: 8px; background: {{w.bg}}; color: {{w.fg}}; font-size: 12.5px; cursor: pointer; white-space: nowrap; padding: 0 2px">{{w.t}}</button>
+</sc-for>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<sc-for list="{{whyRows}}" as="r" hint-placeholder-count="3">
+<span style="display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; line-height: 1.5; color: #FCFCFCcc"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 3px"><path d="{{I.check}}"></path></svg>{{r}}</span>
+</sc-for>
+</div>
+<span style="display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; line-height: 1.5; color: #FCFCFC99"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 3px"><path d="{{I.info}}"></path></svg>{{whyNote}}</span>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+// ICONS: monitor-off power check loader-circle circle-dashed gauge wifi-off refresh-cw triangle-alert chevron-left circle square camera info
+const I = {"monitorOff":"M12 17v4 M17 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 1.184-1.826 M2 2 l20 20 M8 21h8 M8.656 3H20a2 2 0 0 1 2 2v10a2 2 0 0 1-.293 1.042","power":"M12 2v10 M18.4 6.6a9 9 0 1 1-12.77.04","check":"M20 6 9 17l-5-5","loaderCircle":"M21 12a9 9 0 1 1-6.219-8.56","circleDashed":"M10.1 2.182a10 10 0 0 1 3.8 0 M13.9 21.818a10 10 0 0 1-3.8 0 M17.609 3.721a10 10 0 0 1 2.69 2.7 M2.182 13.9a10 10 0 0 1 0-3.8 M20.279 17.609a10 10 0 0 1-2.7 2.69 M21.818 10.1a10 10 0 0 1 0 3.8 M3.721 6.391a10 10 0 0 1 2.7-2.69 M6.391 20.279a10 10 0 0 1-2.69-2.7","gauge":"M12 14 l4-4 M3.34 19a10 10 0 1 1 17.32 0","wifiOff":"M12 20h.01 M8.5 16.429a5 5 0 0 1 7 0 M5 12.859a10 10 0 0 1 5.17-2.69 M19 12.859a10 10 0 0 0-2.007-1.523 M2 8.82a15 15 0 0 1 4.177-2.643 M22 8.82a15 15 0 0 0-11.288-3.764 M2 2 l20 20","refreshCw":"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8 M21 3v5h-5 M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16 M8 16H3v5","triangleAlert":"M21.73 18 l-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3 M12 9v4 M12 17h.01","chevronLeft":"M15 18 l-6-6 6-6","circle":"M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0","square":"M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z","camera":"M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z M9 13a3 3 0 1 0 6 0a3 3 0 1 0 -6 0","info":"M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M12 16v-4 M12 8h.01"};
+const st = this.state || {};
+const where = st.where || 'local';
+const W = { local: '地端電腦', cloud: '雲端電腦', browser: '只用瀏覽器', off: '關閉' };
+const WHY = {
+local: [['用你這台主機，保留你登入過的網站', '資料不離開這台主機', '第一次開機最長 75 秒'], '主機關機或睡著時，小秘就不能工作。'],
+cloud: [['主機關機也能跑', '約 2 秒就緒，可以很多台一起跑', '閒置 8 小時自動封存，約 8 秒恢復'], '雲端是另一台電腦：網站要重新登入一次。'],
+browser: [['不開整台電腦，只用一個瀏覽器', '比較省資源'], '不能裝軟體、不能跑指令。'],
+off: [['小秘只用對話和連接的應用程式'], '需要上網或操作畫面的工作會先問你。']
+};
+const R = (t, s, icon, ic, bg, fg, btn, i) => ({ t, s, icon, ic, bg, fg, btn, line: i ? '1px solid #262626' : '0' });
+return {
+I,
+boot: [
+{ t: '準備桌面', icon: I.check, ic: '#38D591', fg: '#FCFCFCcc' },
+{ t: '開啟瀏覽器（保留上次的登入）', icon: I.check, ic: '#38D591', fg: '#FCFCFCcc' },
+{ t: '連上 AI 引擎…', icon: I.loaderCircle, ic: '#7FC0FF', fg: '#FCFCFC' }
+],
+recover: [
+R('網路已離線，恢復後會自動重新連線', '你的網路斷了，不是電腦的問題', I.wifiOff, '#FCFCFC99', '#262626', '#FCFCFC', false, 0),
+R('畫面中斷了，8 秒後重新連線…', '自動重試 · 第 1 次', I.refreshCw, '#7FC0FF', 'rgba(16,132,254,.16)', '#FCFCFC', false, 1),
+R('還是連不上，先等 15 秒再試…', '冷卻 15 秒 · 第 2 次（最後一次）', I.refreshCw, '#7FC0FF', 'rgba(16,132,254,.16)', '#FCFCFC', false, 2),
+R('畫面連不上，請按重新連線', '自動試了 2 次都沒成功', I.triangleAlert, '#FFB547', 'rgba(255,152,0,.16)', '#FFB547', true, 3)
+],
+slots: [
+{ c: 'blue', b: 'cursor', st: 'working' }, { c: 'orange', b: 'blob', st: 'searching' }, { c: 'pink', b: 'circle', st: 'notifying' }, { c: 'green', b: 'squircle', st: 'idle' }, { c: 'yellow', b: 'hexagon', st: 'notifying' }
+],
+sms: [
+{ n: '蝦皮購物', t: '14:16', p: '【蝦皮】您的驗證碼為 482913，10 分鐘內有效，請勿告訴他人。', i: '蝦', c: '#F2662E', bg: '#EEF3FF', fg: '#1B1C20' },
+{ n: '中華郵政', t: '13:02', p: '您的包裹已送達晨光選物門市，請於 7 日內領取。', i: '郵', c: '#2E7D4F', bg: '#FFFFFF', fg: '#6B6E78' },
+{ n: '0912 345 678', t: '11:40', p: '老闆，下午三點的樣品會晚半小時到', i: '09', c: '#7A7F8C', bg: '#FFFFFF', fg: '#6B6E78' },
+{ n: 'Google', t: '昨天', p: 'G-207415 是您的 Google 驗證碼。', i: 'G', c: '#1084FE', bg: '#FFFFFF', fg: '#6B6E78' },
+{ n: '台灣大哥大', t: '週三', p: '本月帳單金額 NT$699，已自動扣款。', i: '台', c: '#E8590C', bg: '#FFFFFF', fg: '#6B6E78' }
+],
+nav: [
+{ t: '返回', icon: I.chevronLeft },
+{ t: '主畫面', icon: I.circle },
+{ t: '最近使用', icon: I.square },
+{ t: '截圖給小編', icon: I.camera }
+],
+where: Object.keys(W).map((k) => ({ t: W[k], checked: where === k ? 'true' : 'false', bg: where === k ? '#2F2F2F' : 'transparent', fg: where === k ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ where: k }) })),
+whyRows: WHY[where][0], whyNote: WHY[where][1]
+};
+}
+}
+</script>
+</body>
+</html>

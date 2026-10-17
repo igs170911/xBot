@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>電腦面板：檔案與預覽</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}
+button{font:inherit}
+</style>
+</helmet>
+<div style="min-height: 960px; display: flex; flex-wrap: wrap; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.6">
+
+<div style="flex: 1 1 300px; max-width: 300px; background: #111111">
+<dc-import name="Sidebar" active="xiaomi" theme="dark" hint-size="100%,960px"></dc-import>
+</div>
+
+<main style="flex: 999 1 400px; min-width: 0; height: 960px; display: flex; flex-direction: column">
+<header style="height: 56px; flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 20px">
+<dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#070707" size="26" hint-size="26px,26px"></dc-import>
+<span style="font-size: 16px; margin-left: 2px; white-space: nowrap">小秘</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="幕僚長"><path d="{{I.crown}}"></path></svg>
+<span style="flex: 1"></span>
+<button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; background: transparent; color: #FCFCFC; font-size: 13.5px; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.plus}}"></path></svg>對話串</button>
+<button type="button" aria-haspopup="listbox" style="height: 32px; padding: 0 10px 0 12px; border: 0; border-radius: 999px; background: #262626; color: #FCFCFC; font-size: 13.5px; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap">Sonnet 5.5<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronDown}}"></path></svg></button>
+<button type="button" aria-label="電腦（開啟中）" aria-pressed="true" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: #2F2F2F; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.monitor}}"></path></svg></button>
+<button type="button" aria-label="更多" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.ellipsis}}"></path></svg></button>
+</header>
+
+<div style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 12px; padding: 12px 24px 0">
+<span style="align-self: center; font-size: 12.5px; color: #FCFCFC90">今天 上午 10:02</span>
+<div style="align-self: flex-end; max-width: 80%; background: #5A5A5A; border-radius: 20px; padding: 10px 16px; font-size: 14.5px">三家競品的定價整理成表，附一份報告給我</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; font-size: 12.5px; color: #FCFCFCcc"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg>來自阿哲的回覆 · 第 1/6 棒</span>
+<span style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #FCFCFCcc"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg>write_file</span>
+</div>
+<div style="align-self: flex-start; max-width: 90%; background: #262626; border-radius: 20px; padding: 12px 12px 12px 16px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 14.5px; line-height: 1.65; padding-right: 4px">整理好了。8 項商品裡有 3 項比最便宜的那家貴 10% 以上，差最多的是防水托特包和雙肩後背包。</span>
+<button type="button" onClick="{{openCsv}}" style="border: 0; border-radius: 12px; background: #2F2F2F; color: #FCFCFC; padding: 8px 10px; display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer">
+<span style="width: 32px; height: 32px; border-radius: 8px; background: #191919; color: #38D591; display: flex; align-items: center; justify-content: center; flex: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.fileSpreadsheet}}"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35"><span style="font-size: 14px">定價比較.csv</span><span style="font-size: 12.5px; color: #FCFCFC99">點一下預覽</span></span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronRight}}"></path></svg>
+</button>
+<button type="button" onClick="{{openPdf}}" style="border: 0; border-radius: 12px; background: #2F2F2F; color: #FCFCFC; padding: 8px 10px; display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer">
+<span style="width: 32px; height: 32px; border-radius: 8px; background: #191919; color: #FF8A96; display: flex; align-items: center; justify-content: center; flex: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.fileText}}"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35"><span style="font-size: 14px">競品報告.pdf</span><span style="font-size: 12.5px; color: #FCFCFC99">6 頁 · 點一下預覽</span></span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronRight}}"></path></svg>
+</button>
+</div>
+</div>
+
+<div style="flex: none; padding: 12px 24px 20px">
+<div style="height: 52px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 6px; padding: 0 9px 0 8px">
+<button type="button" aria-label="加入檔案" style="width: 36px; height: 36px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.plus}}"></path></svg></button>
+<label style="flex: 1; min-width: 0; display: flex"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">訊息</span><input type="text" placeholder="交代小秘…" style="flex: 1; min-width: 0; height: 40px; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none"></label>
+<button type="button" aria-label="語音輸入" style="width: 36px; height: 36px; border: 0; border-radius: 999px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.mic}}"></path></svg></button>
+<button type="button" aria-label="送出" style="width: 34px; height: 34px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.arrowUp}}"></path></svg></button>
+</div>
+</div>
+</main>
+
+<aside aria-label="小秘的電腦" style="flex: 0 1 700px; min-width: 0; height: 960px; box-sizing: border-box; background: #111111; border-left: 1px solid #262626; display: flex; flex-direction: column">
+<div style="height: 56px; flex: none; display: flex; align-items: center; padding: 0 10px">
+<button type="button" aria-label="電腦設定" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.settings}}"></path></svg></button>
+<span style="flex: 1; text-align: center; font-size: 16px">小秘的電腦</span>
+<button type="button" aria-label="關閉電腦面板" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.x}}"></path></svg></button>
+</div>
+
+<div role="tablist" aria-label="電腦面板" style="margin: 0 16px; flex: none; display: flex; padding: 3px; gap: 2px; border-radius: 10px; background: #191919">
+<a href="E01-Computer.dc.html" role="tab" aria-selected="false" style="flex: 1; height: 32px; border-radius: 8px; color: #FCFCFC99; font-size: 13.5px; display: flex; align-items: center; justify-content: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.monitor}}"></path></svg>畫面</a>
+<a href="E06-Browser.dc.html" role="tab" aria-selected="false" style="flex: 1; height: 32px; border-radius: 8px; color: #FCFCFC99; font-size: 13.5px; display: flex; align-items: center; justify-content: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.globe}}"></path></svg>瀏覽器</a>
+<span role="tab" aria-selected="true" style="flex: 1; height: 32px; border-radius: 8px; background: #2F2F2F; color: #FCFCFC; font-size: 13.5px; display: flex; align-items: center; justify-content: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.folder}}"></path></svg>檔案</span>
+<a href="E08-Data.dc.html" role="tab" aria-selected="false" style="flex: 1; height: 32px; border-radius: 8px; color: #FCFCFC99; font-size: 13.5px; display: flex; align-items: center; justify-content: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.database}}"></path></svg>資料</a>
+</div>
+
+<div style="flex: 1; min-height: 0; display: flex; gap: 0; margin-top: 12px; border-top: 1px solid #262626">
+
+<nav aria-label="小秘的檔案" style="width: 248px; flex: none; box-sizing: border-box; border-right: 1px solid #262626; padding: 12px 10px; display: flex; flex-direction: column; gap: 6px; overflow: hidden">
+<label style="position: relative; display: flex; align-items: center; margin-bottom: 2px">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">搜尋檔案</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC90" stroke-width="1.75" stroke-linecap="round" aria-hidden="true" style="position: absolute; left: 12px"><path d="{{I.search}}"></path></svg>
+<input type="search" placeholder="搜尋檔案" style="width: 100%; height: 36px; box-sizing: border-box; padding: 0 12px 0 36px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 13.5px; outline: none">
+</label>
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column">
+<span style="display: flex; align-items: center; justify-content: space-between; height: 28px; padding: 0 8px; font-size: 12.5px; color: #FCFCFC90"><span>{{g.title}}</span><span>{{g.count}}</span></span>
+<sc-for list="{{g.rows}}" as="f" hint-placeholder-count="2">
+<button type="button" aria-pressed="{{f.pressed}}" onClick="{{f.open}}" style="min-height: 48px; border: 0; border-radius: 10px; background: {{f.bg}}; color: #FCFCFC; padding: 6px 8px; display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer">
+<span style="width: 30px; height: 30px; border-radius: 8px; background: #262626; color: {{f.tint}}; display: flex; align-items: center; justify-content: center; flex: none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{f.icon}}"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35"><span style="font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.name}}</span><span style="font-size: 12px; color: {{f.metaColor}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.meta}}</span></span>
+</button>
+</sc-for>
+</div>
+</sc-for>
+<a href="M01-FilesPage.dc.html" style="margin-top: auto; height: 36px; border-radius: 999px; border: 1px solid #333333; color: #FCFCFC; font-size: 13.5px; display: flex; align-items: center; justify-content: center">全部檔案</a>
+</nav>
+
+<section aria-label="預覽" style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<div style="height: 56px; flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 16px; border-bottom: 1px solid #262626">
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35"><span style="font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{cur.name}}</span><span style="font-size: 12px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{cur.meta}}</span></span>
+<sc-if value="{{isCsv}}" hint-placeholder-val="{{ true }}">
+<div role="tablist" aria-label="檢視方式" style="display: flex; padding: 3px; gap: 2px; border-radius: 10px; background: #191919; flex: none">
+<button type="button" role="tab" aria-selected="{{tabTable}}" onClick="{{toTable}}" style="height: 28px; padding: 0 10px; border: 0; border-radius: 8px; background: {{bgTable}}; color: #FCFCFC; font-size: 12.5px; cursor: pointer">表格</button>
+<button type="button" role="tab" aria-selected="{{tabRaw}}" onClick="{{toRaw}}" style="height: 28px; padding: 0 10px; border: 0; border-radius: 8px; background: {{bgRaw}}; color: #FCFCFC; font-size: 12.5px; cursor: pointer">原始內容</button>
+</div>
+</sc-if>
+<sc-if value="{{canDownload}}" hint-placeholder-val="{{ true }}"><button type="button" aria-label="下載" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.download}}"></path></svg></button></sc-if>
+<button type="button" aria-label="更多動作" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.ellipsis}}"></path></svg></button>
+</div>
+
+<div style="flex: 1; min-height: 0; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px">
+
+<sc-if value="{{showTable}}" hint-placeholder-val="{{ true }}">
+<div style="border: 1px solid #262626; border-radius: 12px; overflow: hidden">
+<div role="table" aria-label="定價比較" style="display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(0, 1fr)) minmax(0, 0.9fr); font-size: 13px">
+<sc-for list="{{head}}" as="h" hint-placeholder-count="6"><span role="columnheader" style="height: 36px; box-sizing: border-box; padding: 0 10px; display: flex; align-items: center; justify-content: {{h.al}}; background: #191919; color: #FCFCFC99; font-size: 12.5px; white-space: nowrap">{{h.t}}</span></sc-for>
+<sc-for list="{{cells}}" as="c" hint-placeholder-count="48"><span role="cell" style="height: 38px; box-sizing: border-box; padding: 0 10px; display: flex; align-items: center; justify-content: {{c.al}}; border-top: 1px solid #262626; color: {{c.fg}}; white-space: nowrap">{{c.t}}</span></sc-for>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; font-size: 12.5px; color: #FCFCFC99">
+<span style="flex: 1">8 列 · 6 欄 · 價格單位 NT$ · 差距＝和最便宜的那家比</span>
+<a href="E08-Data.dc.html">在資料分頁打開</a>
+</div>
+<div style="background: #191919; border-radius: 14px; padding: 4px 14px; display: flex; flex-direction: column">
+<sc-for list="{{info}}" as="r" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 42px; border-top: {{r.line}}"><span style="width: 64px; flex: none; font-size: 13px; color: #FCFCFC99">{{r.k}}</span><span style="flex: 1; min-width: 0; font-size: 13px; font-family: {{r.ff}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.v}}</span></div>
+</sc-for>
+</div>
+<div style="background: #262626; border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 12px">
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.45"><span style="font-size: 14px">小秘根據這份表提了調價</span><span style="font-size: 12.5px; color: #FCFCFC99">3 項商品各降 5–8% · 等你核定</span></span>
+<a href="F08-Approvals.dc.html" style="height: 30px; padding: 0 12px; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 13px; display: flex; align-items: center; white-space: nowrap">去看提案</a>
+</div>
+</sc-if>
+
+<sc-if value="{{showRaw}}" hint-placeholder-val="{{ false }}">
+<div style="background: #191919; border-radius: 12px; padding: 12px 14px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.8; color: #FCFCFCcc; white-space: pre; overflow-x: auto">{{raw}}</div>
+</sc-if>
+
+<sc-if value="{{isPdf}}" hint-placeholder-val="{{ false }}">
+<div style="flex: 1; min-height: 0; background: #191919; border-radius: 12px; display: flex; flex-direction: column; align-items: center; padding: 18px 0 0; overflow: hidden; gap: 12px">
+<div style="width: 340px; flex: 1; min-height: 0; background: #FFFFFF; border-radius: 4px 4px 0 0; box-shadow: 0 6px 24px rgba(0,0,0,.4); padding: 30px 30px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; color: #1F2329; overflow: hidden">
+<span style="font-size: 11px; color: #6B7280">晨光選物 · 內部資料 · 2026 年 10 月</span>
+<span style="font-size: 17px; line-height: 1.4">帆布包競品定價報告</span>
+<span style="font-size: 11px; color: #6B7280">小秘整理 · 資料來源：阿哲在蝦皮的比價</span>
+<span style="height: 1px; background: #E5E7EB; margin: 4px 0"></span>
+<span style="font-size: 12.5px">一、重點</span>
+<sc-for list="{{pdfLines}}" as="l" hint-placeholder-count="5"><span style="height: 6px; width: {{l.w}}; border-radius: 3px; background: #D9DCE1"></span></sc-for>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: #E5E7EB; border: 1px solid #E5E7EB; margin: 6px 0">
+<sc-for list="{{pdfCells}}" as="c" hint-placeholder-count="12"><span style="height: 16px; background: {{c}}"></span></sc-for>
+</div>
+<span style="font-size: 12.5px">二、建議調價</span>
+<sc-for list="{{pdfLines2}}" as="l" hint-placeholder-count="5"><span style="height: 6px; width: {{l.w}}; border-radius: 3px; background: #D9DCE1"></span></sc-for>
+</div>
+<div style="display: flex; align-items: center; gap: 4px; padding-bottom: 12px; font-size: 12.5px; color: #FCFCFC99">
+<button type="button" aria-label="上一頁" disabled style="width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC40; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronLeft}}"></path></svg></button>
+<span>第 1 / 6 頁</span>
+<button type="button" aria-label="下一頁" style="width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronRight}}"></path></svg></button>
+<span style="margin-left: 12px">100%</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isImg}}" hint-placeholder-val="{{ false }}">
+<div style="flex: 1; min-height: 0; background: #191919; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px">
+<svg width="380" height="285" viewBox="0 0 380 285" role="img" aria-label="包款參考照片：山景" style="border-radius: 8px; max-width: 100%; height: auto">
+<rect width="380" height="285" fill="#A9CBE8"></rect>
+<circle cx="292" cy="70" r="26" fill="#FFE7A3"></circle>
+<path d="M0 205 L70 120 L118 168 L182 82 L262 186 L300 150 L380 214 L380 285 L0 285 Z" fill="#6E8BA6"></path>
+<path d="M162 108 L182 82 L204 110 L190 104 L178 114 Z" fill="#EEF3F8"></path>
+<path d="M0 235 L90 196 L170 226 L260 200 L380 240 L380 285 L0 285 Z" fill="#5C7F5A"></path>
+</svg>
+<span style="font-size: 12.5px; color: #FCFCFC99">1600 × 1200 · 1.4 MB</span>
+</div>
+</sc-if>
+
+<sc-if value="{{isTeach}}" hint-placeholder-val="{{ false }}">
+<div style="background: #191919; border-radius: 12px; padding: 8px 14px; display: flex; flex-direction: column">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="5">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 44px; border-bottom: 1px solid #262626"><span style="width: 22px; height: 22px; border-radius: 6px; background: #333333; color: #FCFCFC99; font-size: 12px; display: flex; align-items: center; justify-content: center; flex: none">{{s.n}}</span><span style="font-size: 14px">{{s.t}}</span></div>
+</sc-for>
+<span style="font-size: 12.5px; color: #FCFCFC99; padding: 10px 0 4px">你在電腦上示範一次，帳房記下了步驟，之後每個月 1 號自己做。</span>
+</div>
+<a href="E04-Teaching.dc.html" style="align-self: flex-start; height: 36px; padding: 0 16px; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14px; display: flex; align-items: center; gap: 8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.play}}"></path></svg>重看示範</a>
+</sc-if>
+
+<sc-if value="{{isOffice}}" hint-placeholder-val="{{ false }}">
+<div style="flex: 1; min-height: 0; background: #191919; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; text-align: center">
+<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#7FC0FF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="轉檔中"><path d="{{I.loaderCircle}}"></path></svg>
+<span style="font-size: 15px">正在用小秘的電腦打開 {{cur.name}}…</span>
+<span style="font-size: 13px; color: #FCFCFC99; max-width: 300px">先轉成 PDF 再預覽，第一次可能要十幾秒。</span>
+<span aria-hidden="true" style="width: 220px; height: 4px; border-radius: 9px; background: #333333; overflow: hidden; display: flex"><span style="width: 40%; background: #1084FE; border-radius: 9px"></span></span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #FCFCFC90">{{cur.ext}} → LibreOffice → PDF</span>
+</div>
+</sc-if>
+
+<sc-if value="{{isMissing}}" hint-placeholder-val="{{ false }}">
+<div style="flex: 1; min-height: 0; background: #191919; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center">
+<span style="width: 52px; height: 52px; border-radius: 99px; background: #262626; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.fileQuestion}}"></path></svg></span>
+<span style="font-size: 15px">這個檔案不在小秘的電腦上</span>
+<span style="font-size: 13px; color: #FCFCFC99; max-width: 320px; line-height: 1.6">阿哲傳來的是連結，檔案還在阿哲的電腦：</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; background: #262626; border-radius: 8px; padding: 4px 10px; color: #FCFCFCcc">/workspace/競品價格.csv</span>
+<div style="display: flex; gap: 8px; margin-top: 4px">
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14px; cursor: pointer">打開阿哲那份</button>
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14px; cursor: pointer">請阿哲傳過來</button>
+</div>
+</div>
+</sc-if>
+
+</div>
+</section>
+</div>
+</aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+renderVals() {
+// ICONS: settings x monitor globe folder database plus mic arrow-up chevron-down chevron-left chevron-right check crown search download ellipsis file-spreadsheet file-text image hand loader-circle file-question link play
+const I = {"settings":"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915 M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0","x":"M18 6 6 18 M6 6 l12 12","monitor":"M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z M8 21L16 21 M12 17L12 21","globe":"M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20 M2 12h20","folder":"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z","database":"M3 5a9 3 0 1 0 18 0a9 3 0 1 0 -18 0 M3 5V19A9 3 0 0 0 21 19V5 M3 12A9 3 0 0 0 21 12","plus":"M5 12h14 M12 5v14","mic":"M12 19v3 M19 10v2a7 7 0 0 1-14 0v-2 M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z","arrowUp":"M5 12 l7-7 7 7 M12 19V5","chevronDown":"M6 9 l6 6 6-6","chevronLeft":"M15 18 l-6-6 6-6","chevronRight":"M9 18 l6-6-6-6","check":"M20 6 9 17l-5-5","crown":"M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z M5 21h14","search":"M21 21 l-4.34-4.34 M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0","download":"M12 15V3 M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10 l5 5 5-5","ellipsis":"M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0 M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0 M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0","fileSpreadsheet":"M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z M14 2v5a1 1 0 0 0 1 1h5 M8 13h2 M14 13h2 M8 17h2 M14 17h2","fileText":"M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z M14 2v5a1 1 0 0 0 1 1h5 M10 9H8 M16 13H8 M16 17H8","image":"M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z M7 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M21 15 l-3.086-3.086a2 2 0 0 0-2.828 0L6 21","hand":"M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2 M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2 M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8 M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15","loaderCircle":"M21 12a9 9 0 1 1-6.219-8.56","fileQuestion":"M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z M12 17h.01 M9.1 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3","link":"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71 M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71","play":"M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"};
+const st = this.state || {};
+const v = st.v || 'csv';
+const raw = !!st.raw;
+const pick = (k) => () => this.setState({ v: k, raw: false });
+const FILES = {
+csv: { name: '定價比較.csv', meta: '18 KB · 小秘 · 10 分鐘前', icon: I.fileSpreadsheet, tint: '#38D591', kind: 'csv' },
+pdf: { name: '競品報告.pdf', meta: '1.2 MB · 6 頁 · 今天 09:40', icon: I.fileText, tint: '#FF8A96', kind: 'pdf' },
+docx: { name: '週報草稿.docx', meta: '36 KB · 昨天', icon: I.fileText, tint: '#7FC0FF', kind: 'office', ext: 'docx' },
+xlsx: { name: '上月訂單.xlsx', meta: '220 KB · 30 天後自動刪除', icon: I.fileSpreadsheet, tint: '#38D591', kind: 'office', ext: 'xlsx' },
+jpg: { name: '包款參考.jpg', meta: '1.4 MB · 週二', icon: I.image, tint: '#FFB547', kind: 'img' },
+teach: { name: '匯出上個月的訂單', meta: '5 個步驟 · 帳房學會了 · 週四', icon: I.hand, tint: '#FCFCFC99', kind: 'teach' },
+azhe: { name: '競品價格.csv', meta: '阿哲 · 只有連結', icon: I.link, tint: '#FFB547', kind: 'missing' },
+miao: { name: '退貨率前 8 名.png', meta: '數據喵 · 昨天', icon: I.image, tint: '#FFB547', kind: 'img' }
+};
+const F = (id) => Object.assign({}, FILES[id], { pressed: v === id ? 'true' : 'false', bg: v === id ? '#2F2F2F' : 'transparent', metaColor: id === 'azhe' ? '#FFB547' : '#FCFCFC99', open: pick(id) });
+const cur = Object.assign({ ext: '' }, FILES[v]);
+const kind = cur.kind;
+const prods = [
+['帆布托特包', 1280, 1190, 1350, 1250], ['防水托特包', 1580, 1390, 1520, 1450], ['迷你斜背包', 890, 920, 880, 950], ['皮革卡夾', 650, 590, 620, 690],
+['旅行收納袋', 420, 450, 399, 430], ['帆布筆袋', 280, 290, 300, 270], ['折疊購物袋', 199, 220, 210, 230], ['雙肩後背包', 1880, 1650, 1790, 1720]
+];
+const fmt = (n) => n.toLocaleString('en-US');
+const cells = [];
+const rawLines = ['商品,我們,好物町,森森選物,小日子,差距'];
+prods.forEach((p) => {
+const low = Math.min(p[2], p[3], p[4]);
+const d = Math.round((p[1] - low) / low * 100);
+const dt = (d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(d) + '%';
+cells.push({ t: p[0], al: 'flex-start', fg: '#FCFCFC' });
+[p[1], p[2], p[3], p[4]].forEach((n, i) => cells.push({ t: fmt(n), al: 'flex-end', fg: i === 0 ? '#FCFCFC' : '#FCFCFCcc' }));
+cells.push({ t: dt, al: 'flex-end', fg: d >= 10 ? '#FFB547' : d < 0 ? '#38D591' : '#FCFCFCcc' });
+rawLines.push([p[0], p[1], p[2], p[3], p[4], dt].join(','));
+});
+return {
+I, cur,
+isCsv: kind === 'csv', showTable: kind === 'csv' && !raw, showRaw: kind === 'csv' && raw,
+info: [['來源', '阿哲 10/17 09:30 在蝦皮抓的售價', 'inherit'], ['不含', '運費、折價券、滿額贈', 'inherit'], ['位置', '/workspace/定價比較.csv', "'JetBrains Mono', monospace"], ['也給了', '數據喵（算差距用）', 'inherit']].map(([k, v, ff], i) => ({ k, v, ff, line: i ? '1px solid #262626' : '0' })),
+canDownload: kind !== 'missing' && kind !== 'teach',
+isPdf: kind === 'pdf', isTeach: kind === 'teach',
+steps: ['打開 seller.shopee.tw 的訂單頁', '日期選「上個月」', '狀態選「已完成」', '按「匯出」並選 CSV', '把檔案存到 /workspace/訂單/'].map((t, i) => ({ n: i + 1, t })), isImg: kind === 'img', isOffice: kind === 'office', isMissing: kind === 'missing',
+tabTable: raw ? 'false' : 'true', tabRaw: raw ? 'true' : 'false', bgTable: raw ? 'transparent' : '#2F2F2F', bgRaw: raw ? '#2F2F2F' : 'transparent',
+toTable: () => this.setState({ raw: false }), toRaw: () => this.setState({ raw: true }),
+openCsv: pick('csv'), openPdf: pick('pdf'),
+head: [['商品', 'flex-start'], ['我們', 'flex-end'], ['好物町', 'flex-end'], ['森森選物', 'flex-end'], ['小日子', 'flex-end'], ['差距', 'flex-end']].map(([t, al]) => ({ t, al })),
+cells, raw: rawLines.join('\n'),
+groups: [
+{ title: '成果', count: '3', rows: [F('csv'), F('pdf'), F('docx')] },
+{ title: '你上傳的', count: '2', rows: [F('xlsx'), F('jpg')] },
+{ title: '示範教學', count: '1', rows: [F('teach')] },
+{ title: '從隊友來的', count: '2', rows: [F('azhe'), F('miao')] }
+],
+pdfLines: ['96%', '90%', '94%', '72%', '86%'].map((w) => ({ w })),
+pdfLines2: ['92%', '88%', '64%', '90%', '40%'].map((w) => ({ w })),
+pdfCells: ['#EEF0F3', '#EEF0F3', '#EEF0F3', '#EEF0F3', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF']
+};
+}
+}
+</script>
+</body>
+</html>

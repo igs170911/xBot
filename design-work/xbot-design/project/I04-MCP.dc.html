@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>自訂連接（MCP）</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}
+</style>
+</helmet>
+<div role="dialog" aria-label="自訂連接（MCP）" style="width: 1100px; height: 820px; box-sizing: border-box; display: flex; flex-direction: column; background: #111111; border: 1px solid #262626; border-radius: 18px; overflow: hidden; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.5">
+
+<header style="flex: none; display: flex; align-items: center; gap: 10px; padding: 18px 16px 14px 14px">
+<a href="I01-Apps.dc.html" aria-label="回到連接應用程式" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m15 18-6-6 6-6"></path></svg></a>
+<div style="flex: 1; min-width: 0">
+<h2 style="margin: 0; font-size: 20px; font-weight: 400">自訂連接（MCP）</h2>
+<p style="margin: 0; font-size: 13.5px; color: #FCFCFC99">不在清單上的服務，只要有 MCP 網址或啟動指令就能加進來。</p>
+</div>
+<button type="button" style="height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 1px solid #333333; background: transparent; color: #FCFCFC"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"></path><path d="M14 2v5a1 1 0 0 0 1 1h5"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg>貼上設定 JSON</button>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</header>
+
+<div style="flex: 1 1 0; min-height: 0; display: flex; gap: 20px; padding: 6px 24px 24px">
+
+<section aria-label="已加入的連接" style="flex: 0 0 380px; display: flex; flex-direction: column; gap: 10px">
+<h3 style="margin: 0; font-size: 13.5px; font-weight: 400; color: #FCFCFC99">已加入 · 4</h3>
+
+<button type="button" aria-pressed="true" style="text-align: left; border: 0; font: inherit; color: inherit; cursor: pointer; background: #2F2F2F; box-shadow: inset 0 0 0 1px #459FFE; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px">
+<span style="display: flex; align-items: center; gap: 8px; width: 100%"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; flex: 1">shop-inventory</span><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; background: #3D3D3D; color: #FCFCFC99">所有 Bot</span></span>
+<span style="font-size: 13px; color: #38D591">連線成功 · 6 個工具 · 5 分鐘前測試</span>
+</button>
+
+<div style="background: #262626; border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 12px">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+<span style="display: flex; align-items: center; gap: 8px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; flex: 1">crm-notes</span><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; background: #3D3D3D; color: #FCFCFC99">只給阿凱</span></span>
+<span style="font-size: 13px; color: #FFB547">需要登入才能用</span>
+</div>
+<a href="I03-SignIn.dc.html" style="height: 30px; padding: 0 12px; font-size: 13px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #2F2F2F; color: #FCFCFC; background: #3D3D3D">登入</a>
+</div>
+
+<div style="background: #262626; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px">
+<span style="display: flex; align-items: center; gap: 8px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; flex: 1; color: #FCFCFC99">report-builder</span><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; background: #3D3D3D; color: #FCFCFC99">已停用</span></span>
+<span style="font-size: 13px; color: #FCFCFC99">還缺 <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #FFB547">REPORT_API_KEY</span>，補上就能啟用</span>
+</div>
+
+<div style="background: #262626; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px">
+<span style="display: flex; align-items: center; gap: 8px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; flex: 1">docs-folder</span><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; background: #3D3D3D; color: #FCFCFC99">只給小秘</span></span>
+<span style="font-size: 13px; color: #38D591">連線成功 · 11 個工具 · 本機程式</span>
+</div>
+
+<button type="button" style="height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 1px solid #333333; background: transparent; color: #FCFCFC; width: 100%"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>新增自訂連接</button>
+
+<div style="background: #191919; border-radius: 14px; padding: 6px 14px">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 44px">
+<span style="flex: 1; font-size: 14px">也使用我電腦上 Claude Code 的 MCP 服務</span>
+<button type="button" role="switch" aria-checked="true" aria-label="也使用我電腦上 Claude Code 的 MCP 服務" style="width: 40px; height: 24px; flex: none; border: 0; padding: 0; border-radius: 999px; background: #1084FE; position: relative; cursor: pointer"><span style="position: absolute; top: 3px; left: 19px; width: 18px; height: 18px; border-radius: 50%; background: #FFFFFF"></span></button>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; min-height: 44px; border-top: 1px solid #262626">
+<span style="flex: 1; font-size: 14px">也使用我電腦上 Claude Code 的技能</span>
+<button type="button" role="switch" aria-checked="false" aria-label="也使用我電腦上 Claude Code 的技能" style="width: 40px; height: 24px; flex: none; border: 0; padding: 0; border-radius: 999px; background: #3D3D3D; position: relative; cursor: pointer"><span style="position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #FFFFFF"></span></button>
+</div>
+<p style="margin: 0; padding: 6px 0 8px; border-top: 1px solid #262626; font-size: 12.5px; color: #FCFCFC90">只加你信任的服務：它們能在 Bot 的電腦上執行程式。</p>
+</div>
+<div style="display: flex; gap: 10px; padding: 4px 4px 0; font-size: 12.5px; color: #FCFCFC90"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg><span>不知道怎麼填？跟提供服務的人要「MCP 網址」或啟動指令，例如 <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #FCFCFC99">npx -y @acme/mcp-server</span></span></div>
+</section>
+
+<section aria-label="編輯 shop-inventory" style="flex: 1 1 0; min-width: 0; background: #262626; border-radius: 18px; padding: 18px 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px">
+<h3 style="margin: 0; font-size: 16px; font-weight: 400; flex: 1">設定 <span style="font-family: 'JetBrains Mono', monospace; font-size: 14.5px">shop-inventory</span></h3>
+<span style="font-size: 13px; color: #FCFCFC99">啟用</span>
+<button type="button" role="switch" aria-checked="true" aria-label="啟用 shop-inventory" style="width: 40px; height: 24px; flex: none; border: 0; padding: 0; border-radius: 999px; background: #1084FE; position: relative; cursor: pointer"><span style="position: absolute; top: 3px; left: 19px; width: 18px; height: 18px; border-radius: 50%; background: #FFFFFF"></span></button>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+<label style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13.5px; color: #FCFCFC99">名稱</span>
+<input type="text" value="shop-inventory" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; outline: none; font-family: 'JetBrains Mono', monospace; font-size: 13.5px"></label>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13.5px; color: #FCFCFC99">給誰用</span>
+<button type="button" aria-haspopup="listbox" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; outline: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left; white-space: nowrap">所有 Bot<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13.5px; color: #FCFCFC99">連線方式</span>
+<div role="radiogroup" aria-label="連線方式" style="display: inline-flex; padding: 3px; gap: 2px; background: #191919; border-radius: 10px; flex: none; display: flex">
+<button type="button" role="radio" aria-checked="true" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: #2F2F2F; color: #FCFCFC; flex: 1; height: 34px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>遠端網址（HTTP）</button>
+<button type="button" role="radio" aria-checked="false" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; background: transparent; color: #FCFCFC99; flex: 1; height: 34px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 19h8"></path><path d="m4 17 6-6-6-6"></path></svg>本機程式（指令）</button>
+</div></div>
+
+<label style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13.5px; color: #FCFCFC99">服務網址</span>
+<input type="text" value="https://mcp.chenhome.tw/inventory" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; outline: none; font-family: 'JetBrains Mono', monospace; font-size: 13.5px"></label>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13.5px; color: #FCFCFC99">驗證方式</span>
+<button type="button" aria-haspopup="listbox" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; outline: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left; white-space: nowrap">Token（放在 Authorization）<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+<label style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13.5px; color: #FCFCFC99">Token</span>
+<span style="position: relative; display: flex"><input type="password" value="sk_live_inventory_7f3a" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; outline: none; width: 100%; padding-right: 72px"><span style="position: absolute; right: 12px; top: 10px; font-size: 12.5px; color: #FCFCFC90">已存 · 7f3a</span></span></label>
+</div>
+
+<label style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13.5px; color: #FCFCFC99">其他標頭（每行一個，選填）</span>
+<textarea rows="2" style="box-sizing: border-box; padding: 10px 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14px; line-height: 1.6; outline: none; resize: none; font-family: 'JetBrains Mono', monospace; font-size: 13px; height: 64px">X-Shop-Id: 88213
+X-Region: tw</textarea></label>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13.5px; color: #FCFCFC99">這個服務提供的工具 · 6 個，全部開啟</span>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; height: 28px; padding: 0 10px; border: 1px solid #333333; font-family: 'JetBrains Mono', monospace; font-size: 12px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>list_products</span>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; height: 28px; padding: 0 10px; border: 1px solid #333333; font-family: 'JetBrains Mono', monospace; font-size: 12px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>get_stock</span>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; height: 28px; padding: 0 10px; border: 1px solid #333333; font-family: 'JetBrains Mono', monospace; font-size: 12px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>update_stock</span>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; height: 28px; padding: 0 10px; border: 1px solid #333333; font-family: 'JetBrains Mono', monospace; font-size: 12px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>list_orders</span>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; height: 28px; padding: 0 10px; border: 1px solid #333333; font-family: 'JetBrains Mono', monospace; font-size: 12px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>get_order</span>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; flex: none; box-sizing: border-box; height: 28px; padding: 0 10px; border: 1px solid #333333; font-family: 'JetBrains Mono', monospace; font-size: 12px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#38D591" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg>search_sku</span>
+</div>
+</div>
+
+<button type="button" aria-expanded="false" style="display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 2px; border: 0; border-top: 1px solid #333333; background: transparent; color: #FCFCFC; font: inherit; cursor: pointer; text-align: left">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m9 18 6-6-6-6"></path></svg><span style="font-size: 14px">進階</span>
+<span style="flex: 1; text-align: right; font-size: 13px; color: #FCFCFC90">單次結果上限 25,000 字 · 等待 60 秒 · Streamable HTTP</span>
+</button>
+
+<span style="flex: 1"></span>
+<div style="display: flex; align-items: center; gap: 10px">
+<button type="button" style="height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #2F2F2F; color: #FCFCFC; background: #3D3D3D"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 22v-5"></path><path d="M15 8V2"></path><path d="M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z"></path><path d="M9 8V2"></path></svg>測試連線</button>
+<span style="flex: 1; font-size: 13px; color: #38D591; display: flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="m16 9-5.5 5.5L8 12"></path></svg>連線成功 · 0.4 秒</span>
+<button type="button" style="height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #2F2F2F; color: #FCFCFC; background: #3D3D3D">取消</button>
+<button type="button" style="height: 36px; padding: 0 16px; font-size: 14px; border-radius: 999px; font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; box-sizing: border-box; text-decoration: none; flex: none; border: 0; background: #FCFCFC; color: #070707">儲存</button>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

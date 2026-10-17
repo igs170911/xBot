@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>分享登入給其他 Bot</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}
+button{font:inherit}
+</style>
+</helmet>
+<div role="dialog" aria-label="分享小編的登入" style="width: 560px; height: 740px; box-sizing: border-box; position: relative; overflow: hidden; border-radius: 18px; background: #111111; border: 1px solid #262626; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.6; display: flex; flex-direction: column">
+
+<div style="height: 64px; flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 24px">
+<dc-import name="Avatar" color="pink" body="circle" state="notifying" dot="waiting" ring="#111111" size="32" hint-size="32px,32px"></dc-import>
+<h2 style="margin: 0; flex: 1; font-size: 17px; font-weight: 400">分享小編的登入</h2>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.x}}"></path></svg></button>
+</div>
+
+<div style="flex: 1; min-height: 0; padding: 0 24px; display: flex; flex-direction: column; gap: 14px">
+<p style="margin: 0; font-size: 13.5px; color: #FCFCFC99; line-height: 1.65">把小編瀏覽器裡的登入複製給其他 Bot，它們打開同一個網站就不用再登入。密碼不會被看到，只會帶走登入狀態；對方原本的登入會被取代。</p>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; color: #FCFCFC99">要分享的網站</span>
+<div style="border-radius: 14px; background: #191919; display: flex; flex-direction: column; padding: 0 14px">
+<sc-for list="{{sites}}" as="s" hint-placeholder-count="4">
+<label style="position: relative; display: flex; align-items: center; gap: 12px; min-height: 48px; border-top: {{s.line}}; cursor: pointer">
+<input type="checkbox" checked="{{s.on}}" onChange="{{s.toggle}}" style="position: absolute; opacity: 0; width: 1px; height: 1px">
+<span aria-hidden="true" style="width: 18px; height: 18px; box-sizing: border-box; border-radius: 5px; background: {{s.boxBg}}; border: {{s.boxBorder}}; display: flex; align-items: center; justify-content: center; flex: none"><sc-if value="{{s.on}}" hint-placeholder-val="{{ true }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span>
+<span aria-hidden="true" style="width: 26px; height: 26px; border-radius: 99px; background: {{s.c}}; color: #FFFFFF; font-size: 12px; display: flex; align-items: center; justify-content: center; flex: none">{{s.m}}</span>
+<span style="flex: 1; min-width: 0; font-family: 'JetBrains Mono', monospace; font-size: 13.5px">{{s.host}}</span>
+<span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap">{{s.meta}}</span>
+</label>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; color: #FCFCFC99">分享給</span>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{bots}}" as="b" hint-placeholder-count="6">
+<label style="position: relative; display: flex; align-items: center; gap: 10px; min-height: 52px; box-sizing: border-box; padding: 0 12px; border-radius: 12px; background: {{b.bg}}; cursor: pointer">
+<input type="checkbox" checked="{{b.on}}" onChange="{{b.toggle}}" style="position: absolute; opacity: 0; width: 1px; height: 1px">
+<span aria-hidden="true" style="width: 18px; height: 18px; box-sizing: border-box; border-radius: 5px; background: {{b.boxBg}}; border: {{b.boxBorder}}; display: flex; align-items: center; justify-content: center; flex: none"><sc-if value="{{b.on}}" hint-placeholder-val="{{ false }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span>
+<dc-import name="Avatar" color="{{b.color}}" body="{{b.body}}" state="{{b.state}}" dot="{{b.dot}}" ring="{{b.bg}}" size="30" hint-size="30px,30px"></dc-import>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35"><span style="font-size: 14px">{{b.label}}</span><span style="font-size: 12px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{b.title}}</span></span>
+</label>
+</sc-for>
+</div>
+</div>
+
+<span style="flex: 1"></span>
+<sc-if value="{{toast}}" hint-placeholder-val="{{ true }}">
+<div role="status" style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px; padding: 10px 8px 10px 14px; border-radius: 14px; background: #262626; box-shadow: 0 12px 32px rgba(0,0,0,.5)">
+<span style="width: 24px; height: 24px; border-radius: 99px; background: rgba(56,213,145,.16); color: #38D591; display: flex; align-items: center; justify-content: center; flex: none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg></span>
+<span style="flex: 1; min-width: 0; font-size: 13.5px; line-height: 1.5">{{toastText}}</span>
+<button type="button" onClick="{{undo}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 13px; cursor: pointer; flex: none">復原</button>
+<button type="button" aria-label="關閉提示" onClick="{{hide}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.x}}"></path></svg></button>
+</div>
+</sc-if>
+</div>
+
+<div style="height: 64px; flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 24px; border-top: 1px solid #262626">
+<span style="flex: 1; font-size: 13px; color: #FCFCFC99">{{summary}}</span>
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 14px; cursor: pointer">取消</button>
+<button type="button" onClick="{{share}}" disabled="{{cannot}}" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: {{shareBg}}; color: #070707; font-size: 14px; cursor: pointer">分享登入</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":560,"height":740}}'>
+class Component extends DCLogic {
+renderVals() {
+// ICONS: x check
+const I = {"x":"M18 6 6 18 M6 6 l12 12","check":"M20 6 9 17l-5-5"};
+const st = this.state || {};
+const siteOn = st.sites || { shopee: true, threads: true, google: false, canva: false };
+const botOn = st.bots || { azhe: true, akai: true };
+const toast = st.toast !== undefined ? st.toast : true;
+const box = (on) => ({ boxBg: on ? '#1084FE' : 'transparent', boxBorder: on ? '0' : '1.5px solid #5A5A5A' });
+const SITES = [['shopee', 'seller.shopee.tw', '今天登入', 'S', '#F2662E'], ['threads', 'threads.net', '3 天前', '@', '#4A4A4A'], ['google', 'accounts.google.com', '昨天', 'G', '#1084FE'], ['canva', 'canva.com', '週三', 'C', '#00A3A3']];
+const BOTS = [['azhe', '阿哲', '選品研究員 · 工作中', 'orange', 'blob', 'searching', 'none'], ['akai', '阿凱', '業務開發 · 待命', 'green', 'squircle', 'idle', 'none'], ['xiaomi', '小秘', '幕僚長 · 工作中', 'blue', 'cursor', 'working', 'none'], ['zhangfang', '帳房', '費用管理 · 等你允許', 'yellow', 'hexagon', 'notifying', 'waiting'], ['miao', '數據喵', '數據分析師 · 排隊中', 'purple', 'diamond', 'idle', 'queued'], ['xinchai', '信差', '收件匣管家 · 休息', 'cyan', 'star', 'sleeping', 'none']];
+const sites = SITES.map(([id, host, meta, m, c], i) => Object.assign({ host, meta, m, c, on: !!siteOn[id], line: i ? '1px solid #262626' : '0', toggle: () => this.setState({ sites: Object.assign({}, siteOn, { [id]: !siteOn[id] }), toast: false }) }, box(!!siteOn[id])));
+const bots = BOTS.map(([id, label, title, color, body, state, dot]) => Object.assign({ label, title, color, body, state, dot, on: !!botOn[id], bg: botOn[id] ? '#2F2F2F' : '#191919', toggle: () => this.setState({ bots: Object.assign({}, botOn, { [id]: !botOn[id] }), toast: false }) }, box(!!botOn[id])));
+const nS = SITES.filter(([id]) => siteOn[id]).length;
+const names = BOTS.filter(([id]) => botOn[id]).map((b) => b[1]);
+const cannot = !nS || !names.length;
+return {
+I, sites, bots, toast,
+toastText: '已把 ' + nS + ' 個網站的登入分享給' + names.join('、'),
+summary: nS + ' 個網站 → ' + names.length + ' 個 Bot',
+cannot, shareBg: cannot ? '#FCFCFC40' : '#FCFCFC',
+share: () => this.setState({ toast: true }),
+undo: () => this.setState({ toast: false }),
+hide: () => this.setState({ toast: false })
+};
+}
+}
+</script>
+</body>
+</html>

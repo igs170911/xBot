@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>目前進度與 Context 用量</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+</style>
+</helmet>
+<div style="width: 1200px; height: 780px; padding: 24px; box-sizing: border-box; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.6; display: flex; gap: 32px; align-items: flex-start">
+
+<section role="dialog" aria-label="小秘的目前進度" style="width: 560px; flex: none; box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,.55); display: flex; flex-direction: column">
+<header style="display: flex; align-items: center; gap: 10px; gap: 10px; height: 60px; padding: 0 12px 0 20px; border-bottom: 1px solid #262626">
+<dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#111111" size="28" hint-size="28px,28px"></dc-import>
+<h2 style="margin: 0; font-size: 17px; font-weight: 400; flex: 1">小秘的目前進度</h2>
+<span style="display: flex; align-items: center; gap: 10px; gap: 6px; font-size: 12.5px; color: #FCFCFC90"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8 M21 3v5h-5 M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16 M8 16H3v5"></path></svg>每 4 秒更新</span>
+<button type="button" aria-label="關閉" style="width: 32px; height: 32px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18 M6 6 l12 12"></path></svg></button>
+</header>
+<div style="padding: 16px 20px 18px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border-radius: 12px; background: rgba(56,213,145,.1)">
+<span style="width: 8px; height: 8px; border-radius: 8px; background: #38D591; box-shadow: 0 0 0 4px rgba(56,213,145,.2)"></span>
+<span style="flex: 1; font-size: 14.5px">有工作正在進行</span>
+<span style="font-size: 12.5px; color: #FCFCFC99">已工作 6 分鐘</span>
+</div>
+
+<div style="display: grid; grid-template-columns: 76px 1fr; gap: 10px 12px; align-items: start; font-size: 14px; line-height: 1.55">
+<span style="color: #FCFCFC99; font-size: 13px; padding-top: 1px">正在做</span>
+<span>比較三家競品定價<span style="color: #FCFCFC90; font-size: 13px"> · 下午 2:02 開始 · 第 6 步</span></span>
+
+<span style="color: #FCFCFC99; font-size: 13px; padding-top: 1px">排隊</span>
+<span>1 件 · 整理週報資料<span style="color: #FCFCFC90; font-size: 13px"> · 你交辦的，接在後面</span></span>
+
+<span style="color: #FFB547; font-size: 13px; padding-top: 9px">卡在等你</span>
+<div style="display: flex; align-items: center; gap: 10px; gap: 8px; padding: 8px 8px 8px 12px; border-radius: 10px; background: rgba(255,152,0,.12)">
+<span style="flex: 1; color: #FFD9A0">調降幅度要跟競品平均，還是一律 10%？</span>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">去回答</button>
+</div>
+
+<span style="color: #FCFCFC99; font-size: 13px; padding-top: 1px">背景工作</span>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; align-items: center; gap: 10px; gap: 8px"><span style="width: 7px; height: 7px; border-radius: 7px; background: #1084FE"></span><span style="flex: 1">讀取競品頁面截圖</span><span style="font-size: 12.5px; color: #FCFCFC90">操作瀏覽器 · 8 秒前</span></div>
+<div style="display: flex; align-items: center; gap: 10px; gap: 8px"><span style="width: 7px; height: 7px; border-radius: 7px; border: 1.5px solid #5A5A5A; box-sizing: border-box"></span><span style="flex: 1; color: #FCFCFCcc">整理規格對照表</span><span style="font-size: 12.5px; color: #FCFCFC90">等待開始</span></div>
+</div>
+
+<span style="color: #FCFCFC99; font-size: 13px; padding-top: 6px">在等隊友</span>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; background: #191919">
+<div style="display: flex; align-items: center; gap: 10px; gap: 8px">
+<dc-import name="Avatar" color="orange" body="blob" state="working" dot="none" ring="#191919" size="22" hint-size="22px,22px"></dc-import>
+<span style="flex: 1">阿哲：抓第 3 家賣場價格</span>
+<span style="font-size: 12.5px; color: #FCFCFC90">第 1/6 棒 · 3 分鐘</span>
+</div>
+<span style="display: flex; align-items: center; gap: 10px; gap: 6px; font-size: 12.5px; color: #FCFCFC99"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 18v-2a4 4 0 0 0-4-4H4 M9 17 l-5-5 5-5"></path></svg>做完要回報給 小秘 · 小秘等它回來才整合</span>
+</div>
+
+<span style="color: #FCFCFC99; font-size: 13px; padding-top: 4px">隊友</span>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px">
+<sc-for list="{{mates}}" as="m" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 10px; gap: 8px; height: 34px; padding: 0 10px 0 6px; border-radius: 10px; background: #191919">
+<dc-import name="Avatar" color="{{m.color}}" body="{{m.body}}" state="{{m.state}}" dot="{{m.dot}}" ring="#191919" size="22" hint-size="22px,22px"></dc-import>
+<span style="flex: 1">{{m.n}}</span><span style="font-size: 12.5px; color: {{m.sc}}">{{m.s}}</span>
+</div>
+</sc-for>
+</div>
+
+<span style="color: #FCFCFC99; font-size: 13px; padding-top: 1px">最近完成</span>
+<span style="display: flex; align-items: center; gap: 10px; gap: 6px"><span style="color: #38D591; display: flex"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></span>每日重點<span style="color: #FCFCFC90; font-size: 13px">· 今天 上午 11:20</span></span>
+</div>
+</div>
+</section>
+
+<div style="display: flex; flex-direction: column; gap: 20px; width: 560px; flex: none">
+<section role="dialog" aria-label="小秘的 Context 用量" style="width: 560px; flex: none; box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,.55); display: flex; flex-direction: column">
+<header style="display: flex; align-items: center; gap: 10px; gap: 10px; height: 60px; padding: 0 12px 0 20px; border-bottom: 1px solid #262626">
+<h2 style="margin: 0; font-size: 17px; font-weight: 400; flex: 1">小秘的 Context 用量</h2>
+<button type="button" aria-label="關閉" style="width: 32px; height: 32px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18 M6 6 l12 12"></path></svg></button>
+</header>
+<div style="padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: baseline; gap: 10px">
+<span style="font-size: 30px; line-height: 1">42%</span>
+<span style="font-size: 13.5px; color: #FCFCFC99">84k / 200k tokens（估計）· Claude Sonnet 5.5</span>
+</div>
+<div role="meter" aria-label="Context 用量" aria-valuenow="42" aria-valuemin="0" aria-valuemax="100" style="display: flex; gap: 2px; height: 10px; border-radius: 5px; overflow: hidden; background: #262626">
+<sc-for list="{{parts}}" as="p" hint-placeholder-count="5"><span style="width: {{p.w}}; background: {{p.c}}"></span></sc-for>
+</div>
+<div style="display: flex; flex-direction: column">
+<sc-for list="{{parts}}" as="p" hint-placeholder-count="5">
+<div style="display: flex; align-items: center; gap: 10px; gap: 10px; height: 34px; font-size: 14px; border-top: 1px solid {{p.line}}">
+<span style="width: 10px; height: 10px; border-radius: 3px; background: {{p.c}}"></span>
+<span style="width: 88px">{{p.n}}</span>
+<span style="flex: 1; height: 4px; border-radius: 2px; background: #262626; display: flex"><span style="width: {{p.rel}}; background: {{p.c}}; border-radius: 2px"></span></span>
+<span style="width: 40px; text-align: right; color: #FCFCFCcc">{{p.v}}</span>
+</div>
+</sc-for>
+</div>
+<p style="margin: 0; font-size: 13.5px; line-height: 1.65; color: #FCFCFC99">用量越高，Bot 越容易忘記前面的細節，每次回覆也越花錢。快滿的時候會提醒你。</p>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; gap: 10px; gap: 12px; padding: 12px 12px 12px 14px; border-radius: 12px; background: #191919">
+<span style="color: #FCFCFC99; display: flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14 M12 5v14"></path></svg></span>
+<div style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 14.5px">開新對話</span><span style="font-size: 12.5px; color: #FCFCFC99">帶著重點摘要重新開始，這段對話會留在對話串裡</span></div>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">開新對話</button>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; gap: 12px; padding: 12px 12px 12px 14px; border-radius: 12px; background: #191919">
+<span style="color: #FCFCFC99; display: flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M14 10 l7-7 M20 10h-6V4 M3 21 l7-7 M4 14h6v6"></path></svg></span>
+<div style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 14.5px">壓縮舊對話</span><span style="display: flex; align-items: center; gap: 10px; gap: 5px; font-size: 12.5px; color: #FFB547"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M12 6v6l4 2"></path></svg>小秘正在工作，做完才能壓縮</span></div>
+<button type="button" disabled aria-disabled="true" title="小秘做完這輪工作後才能壓縮" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 1px dashed #4A4A4A; background: transparent; color: #FCFCFC99; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; cursor: not-allowed; white-space: nowrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2Z M7 11V7a5 5 0 0 1 10 0v4"></path></svg>壓縮舊對話</button>
+</div>
+</div>
+</div>
+</section>
+<p style="margin: 0; font-size: 12.5px; color: #FCFCFC90; margin: 0 0 -12px">目前進度 · 沒有人在工作時（同一個對話框，精簡顯示）</p>
+<section role="dialog" aria-label="目前進度：沒有人在工作" style="box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,.55); padding: 14px 16px 16px 20px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 10px; gap: 10px">
+<dc-import name="Avatar" color="blue" body="cursor" state="idle" dot="none" ring="#111111" size="24" hint-size="24px,24px"></dc-import>
+<span style="flex: 1; font-size: 15px">小秘的目前進度</span>
+<span style="font-size: 12.5px; color: #FCFCFC90">每 4 秒更新</span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 14px; border-radius: 12px; background: #262626">
+<span style="width: 8px; height: 8px; border-radius: 8px; background: #8A8A8A"></span>
+<span style="flex: 1; font-size: 14.5px">目前沒有任何人在工作</span>
+<span style="font-size: 12.5px; color: #FCFCFC99">最近完成：每日重點 · 上午 11:20</span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; gap: 10px">
+<p style="margin: 0; flex: 1; font-size: 13.5px; line-height: 1.55; color: #FCFCFCcc">交辦給阿哲的「抓第 3 家賣場價格」還沒回來，代表卡住了。</p>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font-family: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; cursor: pointer; white-space: nowrap">請小秘追問阿哲</button>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":780}}'>
+class Component extends DCLogic {
+renderVals() {
+const P = [['系統與人設', 9, '#8A8A8A'], ['技能', 6, '#9B7BFF'], ['記憶', 4, '#2EC4B6'], ['對話', 38, '#1084FE'], ['工具結果', 27, '#FF6FAE']];
+return {
+parts: P.map(([n, v, c], i) => ({ n, c, v: v + 'k', w: (v / 200 * 100).toFixed(1) + '%', rel: (v / 38 * 100).toFixed(0) + '%', line: i === 0 ? 'transparent' : '#262626' })),
+mates: [
+{ n: '阿哲', color: 'orange', body: 'blob', state: 'working', dot: 'none', s: '工作中', sc: '#FCFCFC99' },
+{ n: '小編', color: 'pink', body: 'circle', state: 'notifying', dot: 'waiting', s: '等你回覆', sc: '#FFB547' },
+{ n: '數據喵', color: 'purple', body: 'diamond', state: 'idle', dot: 'queued', s: '排隊中', sc: '#FCFCFC99' },
+{ n: '阿凱', color: 'green', body: 'squircle', state: 'idle', dot: 'none', s: '待命', sc: '#FCFCFC99' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

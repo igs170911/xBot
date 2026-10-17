@@ -1,0 +1,35 @@
+{
+ "file": "P07-MCPArchitecture.dc.html",
+ "title": "說明：XBot MCP 優先的後端",
+ "prd": [
+  "§22"
+ ],
+ "what": "說明所有入口（介面、外部代理、Bot 電腦裡的 Bot）都呼叫同一個 XBot MCP：權限檢查 → 風險分級 → safe 直接做／confirm 送待我處理（你按，或有代為核准授權的代理代按） → 執行 → 稽核；附一個操作只定義一次、命名與版本、工具目錄 v1、錯誤格式、request_id 與 dry_run、以及 Claude Code 等核准的完整例子。",
+ "goal": "讓工程與設計理解：介面能做的事 MCP 都能做，任何代理都要過同樣的權限與人工核准。",
+ "accept": [
+  "流程圖從三種呼叫者匯入 XBot MCP（外部代理那條標出選用的外部入口：Funnel／反向代理、要權杖），經權限檢查、風險分級，confirm 一定經過待我處理才執行",
+  "被拒（權限、限制、預算）與你按拒絕都回固定格式的錯誤",
+  "列出工具命名 xbot.領域.動作 與版本 xbot.v1，以及 PRD §22.3 全部 15 個領域",
+  "approvals 領域寫 list、request、wait、decide；decide 只限有代為核准授權的代理，重大動作除外",
+  "錯誤格式含 code、message、retryable、needs_approval_id",
+  "有 xbot.bots.create 的 dry_run 呼叫與回覆兩段 JSON",
+  "例子依序：chat.send → chat.wait_until_settled → needs_approval → approvals.wait → 你在待我處理允許（刪除只能你本人） → 完成"
+ ],
+ "states": [
+  "說明畫板（靜態）"
+ ],
+ "edge": [
+  "approvals.decide 只給拿到代為核准授權的代理，且刪除 Bot 或資料、移除主機、提高花費上限、改代為核准授權除外",
+  "密鑰只能寫不能讀；任何工具都不回傳金鑰、登入資料、權杖",
+  "同一個 request_id 重送回第一次的結果",
+  "不相容改動出 v2，舊版至少保留一個大版本"
+ ],
+ "limits": [
+  "配對碼一次性、5 分鐘",
+  "權限範圍 read／operate／manage／admin",
+  "confirm：對外發送、花錢、刪除、上架、簽約、超預算、移除主機",
+  "建立 Bot：一般 Bot 每 24 小時 3 個"
+ ],
+ "simplified": null,
+ "status": "已畫"
+}

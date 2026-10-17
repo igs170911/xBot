@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>手機：換頭像</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A8D4FF}
+button{font:inherit}
+textarea::placeholder,input::placeholder{color:#FCFCFC90}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.45; display: flex; flex-direction: column">
+
+<div aria-hidden="true" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center">
+<div style="height: 47px; flex: none"></div>
+<div style="align-self: stretch; height: 56px; padding: 0 12px; display: flex; align-items: center; gap: 10px">
+<span style="width: 44px; height: 44px; box-sizing: border-box; border-radius: 999px; background: #191919; border: 1px solid #333333; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m15 18-6-6 6-6"></path></svg></span><span style="font-size: 17px">Bot 資料</span></div>
+<div style="margin-top: 30px"><dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#070707" size="88" hint-size="88px,88px"></dc-import></div>
+<span style="margin-top: 8px; font-size: 22px">小秘</span>
+</div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(0,0,0,.62)"></div>
+<section role="dialog" aria-modal="true" aria-labelledby="av-title" style="position: absolute; left: 0; right: 0; bottom: 0; background: #111111; border-radius: 20px 20px 0 0; border-top: 1px solid #262626; padding: 0 16px 34px; display: flex; flex-direction: column; gap: 14px">
+<div aria-hidden="true" style="height: 14px; display: flex; align-items: flex-end; justify-content: center"><span style="width: 36px; height: 5px; border-radius: 9px; background: #3D3D3D"></span></div>
+<div style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-top: -6px">
+<a href="L10-PhoneBotProfile.dc.html" style="justify-self: start; height: 44px; padding: 0 4px; display: flex; align-items: center; color: #FCFCFC99; font-size: 15px">取消</a>
+<h2 id="av-title" style="margin: 0; font-size: 17px; font-weight: 400">頭像</h2>
+<a href="L10-PhoneBotProfile.dc.html" style="justify-self: end; height: 44px; padding: 0 18px; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14.5px; display: flex; align-items: center; ">完成</a>
+</div>
+
+<div style="display: flex; align-items: center; gap: 14px; height: 96px">
+<span style="width: 96px; height: 96px; flex: none; display: flex; align-items: center; justify-content: center"><dc-import name="Avatar" color="{{color}}" body="{{body}}" state="{{expr}}" img="{{img}}" dot="none" ring="#111111" size="92" hint-size="92px,92px"></dc-import></span>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px">
+<div role="radiogroup" aria-label="頭像來源" style="display: flex; padding: 3px; border-radius: 10px; background: #191919; gap: 2px">
+<sc-for list="{{sources}}" as="s" hint-placeholder-count="2">
+<button type="button" role="radio" aria-checked="{{s.on}}" onClick="{{s.pick}}" style="flex: 1; height: 44px; border: 0; border-radius: 8px; background: {{s.bg}}; color: {{s.ink}}; font-size: 14px; cursor: pointer">{{s.label}}</button>
+</sc-for>
+</div>
+<span style="font-size: 12.5px; line-height: 1.4; color: #FCFCFC90">{{note}}</span>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 2px"><h3 style="margin: 0; font-size: 13px; font-weight: 400; color: #FCFCFC90">形狀</h3><span style="font-size: 12px; color: #FCFCFC90">游標＝品牌與預設</span></div>
+<div role="radiogroup" aria-label="形狀" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px">
+<sc-for list="{{shapes}}" as="s" hint-placeholder-count="10">
+<button type="button" role="radio" aria-checked="{{s.on}}" aria-label="{{s.label}}" onClick="{{s.pick}}" style="height: 56px; border: 1px solid {{s.line}}; border-radius: 12px; background: {{s.bg}}; color: {{s.ink}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; cursor: pointer; padding: 0">
+<dc-import name="Avatar" color="{{color}}" body="{{s.id}}" state="idle" img="{{img}}" dot="none" ring="#191919" size="30" hint-size="30px,30px"></dc-import>
+<span style="font-size: 11px; line-height: 1.2">{{s.label}}</span>
+</button>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 2px"><h3 style="margin: 0; font-size: 13px; font-weight: 400; color: #FCFCFC90">眼睛</h3><span style="font-size: 12px; color: #FCFCFC90">只有眼睛，沒有嘴巴</span></div>
+<div role="radiogroup" aria-label="眼睛" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+<sc-for list="{{exprs}}" as="x" hint-placeholder-count="6">
+<button type="button" role="radio" aria-checked="{{x.on}}" aria-label="{{x.label}}" onClick="{{x.pick}}" style="height: 56px; border: 1px solid {{x.line}}; border-radius: 12px; background: {{x.bg}}; color: #FCFCFC99; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; cursor: pointer; padding: 0; opacity: {{faceOp}}">
+<dc-import name="Avatar" color="{{color}}" body="{{body}}" state="{{x.state}}" dot="none" ring="#191919" size="30" hint-size="30px,30px"></dc-import>
+<span style="font-size: 11.5px; line-height: 1.2">{{x.label}}</span>
+</button>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h3 style="margin: 0; padding-left: 2px; font-size: 13px; font-weight: 400; color: #FCFCFC90">顏色</h3>
+<div role="radiogroup" aria-label="顏色" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr))">
+<sc-for list="{{colors}}" as="c" hint-placeholder-count="10">
+<button type="button" role="radio" aria-checked="{{c.on}}" aria-label="{{c.label}}" onClick="{{c.pick}}" style="height: 44px; border: 0; padding: 0; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<span style="width: 28px; height: 28px; box-sizing: border-box; border-radius: 999px; background: {{c.hex}}; box-shadow: {{c.ring}}; display: flex; align-items: center; justify-content: center; color: #FFFFFF"><sc-if value="{{c.on}}" hint-placeholder-val="{{ false }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span>
+</button>
+</sc-for>
+</div>
+</div>
+
+<div style="background: #262626; border-radius: 14px">
+<a href="G04-AvatarUpload.dc.html" style="height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 14px; color: #7FC0FF; font-size: 15px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M16 5h6"></path><path d="M19 2v6"></path><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"></path><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path><path d="M7 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg><span style="flex: 1">上傳圖片</span><span style="font-size: 12.5px; color: #FCFCFC90">PNG、JPG，10 MB 內</span></a>
+<div style="height: 1px; background: #333333; margin-left: 46px"></div>
+<a href="G04-AvatarUpload.dc.html" style="height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 14px; color: #FCFCFC; font-size: 15px"><span style="color: #7FC0FF; display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"></path><path d="m14 7 3 3"></path><path d="M5 6v4"></path><path d="M19 14v4"></path><path d="M10 2v2"></path><path d="M7 8H3"></path><path d="M21 16h-4"></path><path d="M11 3H9"></path></svg></span><span style="flex: 1">用 AI 產生</span><span style="color: #FCFCFC90; display: flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m9 18 6-6-6-6"></path></svg></span></a>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const st = this.state || {};
+const color = st.color || 'blue';
+const expr = st.expr || 'happy';
+const body = st.body || 'cursor';
+const useImg = !!st.img;
+const HEX = { green: '#46a758', blue: '#3f8cff', red: '#e5484d', orange: '#f28a30', purple: '#8e4ec6', cyan: '#2ab0d4', pink: '#e5579a', yellow: '#f2c230', teal: '#22a68f', coral: '#f0694f' };
+const NAMES = { green: '綠', blue: '藍', red: '紅', orange: '橘', purple: '紫', cyan: '青', pink: '粉紅', yellow: '黃', teal: '藍綠', coral: '珊瑚' };
+const SH = [['cursor', '游標'], ['blob', '果凍'], ['circle', '圓'], ['squircle', '圓角'], ['capsule', '膠囊'], ['drop', '水滴'], ['shield', '盾牌'], ['hexagon', '六角'], ['diamond', '菱形'], ['star', '星星']];
+const exprs = [['idle', '圓點'], ['working', '看旁邊'], ['happy', '開心'], ['surprised', '睜大'], ['drowsy', '半閉'], ['sleeping', '閉眼']].map(([state, label]) => ({
+state, label, on: state === expr && !useImg, bg: state === expr && !useImg ? '#2F2F2F' : '#191919', line: state === expr && !useImg ? '#459FFE' : '#191919',
+pick: () => this.setState({ expr: state, img: false })
+}));
+const colors = Object.keys(HEX).map((k) => ({
+label: NAMES[k], hex: HEX[k], on: k === color,
+ring: k === color ? '0 0 0 2px #111111, 0 0 0 4px #FCFCFC' : 'none',
+pick: () => this.setState({ color: k })
+}));
+const shapes = SH.map(([id, label]) => ({ id, label, on: id === body, bg: id === body ? '#2F2F2F' : '#191919', line: id === body ? '#459FFE' : '#191919', ink: id === body ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ body: id }) }));
+const shName = SH.find((x) => x[0] === body)[1];
+const sources = [['吉祥物', false], ['圖片', true]].map(([label, v]) => ({ label, on: v === useImg, bg: v === useImg ? '#2F2F2F' : 'transparent', ink: v === useImg ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ img: v }) }));
+return {
+color, expr, body, shapes, exprs, colors, sources,
+img: useImg ? 'sample' : '', faceOp: useImg ? '0.45' : '1',
+note: useImg ? '圖片裁成「' + shName + '」；不疊眼睛。' : '「' + shName + '」· 平面，眼睛跟著狀態變。'
+};
+}
+}
+</script>
+</body>
+</html>

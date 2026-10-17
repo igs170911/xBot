@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>群組第一則訊息</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3,strong,b{font-weight:400}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A9D4FF}
+input::placeholder,textarea::placeholder{color:#FCFCFC90}
+</style>
+</helmet>
+<div style="min-height: 960px; display: flex; flex-wrap: wrap; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.6">
+<div style="flex: 1 1 300px; max-width: 300px; min-width: 0; border-right: 1px solid #1F1F1F; background: #111111"><dc-import name="Sidebar" active="room" theme="dark" hint-size="100%,960px"></dc-import></div>
+<main style="flex: 999 1 560px; min-width: 0; height: 960px; display: flex; flex-direction: column">
+<header style="height: 56px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 20px">
+<span style="width: 34px; height: 34px; flex: none; position: relative; display: block"><span style="position: absolute; left: 0; top: 4px"><dc-import name="Avatar" color="blue" body="cursor" state="idle" dot="none" ring="#070707" size="22" hint-size="22px,22px"></dc-import></span><span style="position: absolute; left: 12px; top: 4px"><dc-import name="Avatar" color="orange" body="blob" state="idle" dot="none" ring="#070707" size="22" hint-size="22px,22px"></dc-import></span><span style="position: absolute; left: 18px; top: 18px; height: 18px; min-width: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 10.5px; display: flex; align-items: center; justify-content: center">+1</span></span>
+<span style="font-size: 16px; white-space: nowrap">新品上架專案</span>
+<span style="font-size: 13px; color: #FCFCFC99; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">剛建立 · 3 位成員</span>
+<button type="button" aria-haspopup="listbox" style="height: 32px; padding: 0 10px 0 12px; border-radius: 999px; border: 1px solid #333333; background: transparent; color: #FCFCFC; font: inherit; font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap"><span style="color: #FCFCFC99">回應規則</span>自動挑一位<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+<a href="D05-GroupCall.dc.html" aria-label="群組語音" style="width: 36px; height: 36px; flex: none; border-radius: 10px; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"></path></svg></a>
+<button type="button" aria-label="更多" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path><path d="M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path><path d="M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path></svg></button>
+</header>
+<div style="flex: 1; min-height: 0; overflow: auto; padding: 0 20px">
+<div style="max-width: 780px; margin: 0 auto; min-height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; gap: 28px; padding: 24px 0">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center">
+<div style="display: flex; gap: 20px; justify-content: center"><div style="display: flex; flex-direction: column; align-items: center; gap: 6px; width: 84px"><dc-import name="Avatar" color="blue" body="cursor" state="happy" dot="none" ring="#070707" size="56" hint-size="56px,56px"></dc-import><span style="font-size: 14px">小秘</span><span style="font-size: 12px; color: #FCFCFC90; margin-top: -6px">幕僚長</span></div><div style="display: flex; flex-direction: column; align-items: center; gap: 6px; width: 84px"><dc-import name="Avatar" color="orange" body="blob" state="happy" dot="none" ring="#070707" size="56" hint-size="56px,56px"></dc-import><span style="font-size: 14px">阿哲</span><span style="font-size: 12px; color: #FCFCFC90; margin-top: -6px">選品研究員</span></div><div style="display: flex; flex-direction: column; align-items: center; gap: 6px; width: 84px"><dc-import name="Avatar" color="pink" body="circle" state="happy" dot="none" ring="#070707" size="56" hint-size="56px,56px"></dc-import><span style="font-size: 14px">小編</span><span style="font-size: 12px; color: #FCFCFC90; margin-top: -6px">社群小編</span></div></div>
+<h1 style="margin: 4px 0 0; font-size: 26px">新品上架專案</h1>
+<p style="margin: 0; font-size: 15px; color: #FCFCFC99">你和小秘、阿哲、小編的群組。先說第一件事，大家就會開始。</p>
+<div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-start; margin-top: 4px"><div style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: #FCFCFCcc"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"></path></svg><span>用 @名字 指定這一步誰負責</span></div><div style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: #FCFCFCcc"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg><span>沒點名時，系統挑最適合的一位回答</span></div><div style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: #FCFCFCcc"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path></svg><span>成員會互相點名接力；你每說一次話，最多來回 4 輪</span></div></div>
+</div>
+<section style="background: #262626; border-radius: 18px; padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; align-items: flex-start; gap: 12px">
+<div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><h2 style="margin: 0; font-size: 16px">從哪裡開始？</h2><span style="font-size: 13px; color: #FCFCFC99">點一句帶進輸入框，送出前都可以改。</span></div>
+<button type="button" aria-label="不用建議" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</div>
+<div style="display: flex; flex-direction: column; margin-top: 10px; border-bottom: 1px solid #333333"><button type="button" onClick="{{pick.A}}" style="display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 8px 14px; border: 0; border-top: 1px solid #333333; background: transparent; color: #FCFCFC; font: inherit; font-size: 14.5px; line-height: 1.55; text-align: left; cursor: pointer"><span style="width: 20px; height: 20px; flex: none; border-radius: 5px; background: #333333; color: #FCFCFC99; font-size: 12px; display: flex; align-items: center; justify-content: center">A</span><span><span style="color: #7FC0FF">@阿哲</span> 蒐集三家競品價格並附來源，<span style="color: #7FC0FF">@小編</span> 整理成新品貼文草稿，<span style="color: #7FC0FF">@小秘</span> 最後檢查。</span></button><button type="button" onClick="{{pick.B}}" style="display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 8px 14px; border: 0; border-top: 1px solid #333333; background: transparent; color: #FCFCFC; font: inherit; font-size: 14.5px; line-height: 1.55; text-align: left; cursor: pointer"><span style="width: 20px; height: 20px; flex: none; border-radius: 5px; background: #333333; color: #FCFCFC99; font-size: 12px; display: flex; align-items: center; justify-content: center">B</span><span><span style="color: #7FC0FF">@小秘</span> 幫我把新品上架拆成步驟，分給大家。</span></button><button type="button" onClick="{{pick.C}}" style="display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 8px 14px; border: 0; border-top: 1px solid #333333; background: transparent; color: #FCFCFC; font: inherit; font-size: 14.5px; line-height: 1.55; text-align: left; cursor: pointer"><span style="width: 20px; height: 20px; flex: none; border-radius: 5px; background: #333333; color: #FCFCFC99; font-size: 12px; display: flex; align-items: center; justify-content: center">C</span><span>大家各自用一句話說，你能幫這個專案做什麼。</span></button></div>
+<label style="display: flex; margin-top: 14px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">自己寫</span><input type="text" placeholder="或自己寫第一句…" style="flex: 1; height: 44px; box-sizing: border-box; padding: 0 14px; border: 0; border-radius: 10px; background: #191919; color: #FCFCFC; font: inherit; font-size: 14.5px; outline: none"></label>
+</section>
+</div>
+</div>
+<div style="flex: none; padding: 0 20px 18px">
+<div style="max-width: 828px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; gap: 8px; padding: 0 8px; font-size: 12.5px; color: #FCFCFC90"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5"></path><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"></path></svg><span>群組指示：還沒設定</span><button type="button" style="height: 26px; padding: 0 8px; border: 0; background: transparent; color: #7FC0FF; font: inherit; font-size: 12.5px; cursor: pointer">新增</button><span style="margin-left: auto">沒點名時：自動挑一位</span></div>
+<div style="height: 52px; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 2px; padding: 0 9px 0 8px">
+<button type="button" aria-label="加入檔案" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 999px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button type="button" aria-label="點名成員" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 999px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"></path></svg></button>
+<label style="flex: 1; min-width: 0; display: flex"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">群組訊息</span><input type="text" value="{{text}}" onChange="{{onText}}" placeholder="傳第一則訊息到新品上架專案…" style="flex: 1; min-width: 0; border: 0; background: transparent; color: #FCFCFC; font: inherit; font-size: 15px; outline: none; padding: 0 6px"></label>
+<button type="button" aria-label="語音輸入" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 999px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19v3"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><path d="M12 2h0a3 3 0 0 1 3 3v7a3 3 0 0 1 -3 3h0a3 3 0 0 1 -3 -3v-7a3 3 0 0 1 3 -3Z"></path></svg></button>
+<button type="button" aria-label="送出" style="width: 34px; height: 34px; flex: none; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 1440, "height": 960}}'>
+class Component extends DCLogic {
+renderVals() {
+const s = this.state || {};
+const T = { A: '@阿哲 蒐集三家競品價格並附來源，@小編 整理成新品貼文草稿，@小秘 最後檢查。', B: '@小秘 幫我把新品上架拆成步驟，分給大家。', C: '大家各自用一句話說，你能幫這個專案做什麼。' };
+const set = (k) => () => this.setState({ text: T[k] });
+return { text: s.text ?? '', onText: (e) => this.setState({ text: e.target.value }), pick: { A: set('A'), B: set('B'), C: set('C') } };
+}
+}
+</script>
+</body>
+</html>

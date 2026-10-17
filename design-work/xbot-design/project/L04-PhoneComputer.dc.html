@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>手機：操作小編的電腦</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A8D4FF}
+button{font:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.45; display: flex; flex-direction: column">
+<div aria-hidden="true" style="height: 55px; flex: none"></div>
+
+<section role="dialog" aria-label="小編的電腦" style="flex: 1; min-height: 0; background: #111111; border-radius: 20px 20px 0 0; border-top: 1px solid #262626; padding: 0 16px 34px; display: flex; flex-direction: column">
+<div aria-hidden="true" style="height: 18px; flex: none; display: flex; align-items: center; justify-content: center"><span style="width: 36px; height: 5px; border-radius: 9px; background: #3D3D3D"></span></div>
+
+<div style="flex: none; height: 48px; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center">
+<a href="J06-Computers.dc.html" aria-label="電腦設定" style="width: 44px; height: 44px; border-radius: 12px; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"></path></svg></a>
+<h1 style="margin: 0; text-align: center; font-size: 17px; font-weight: 400; line-height: 1.3">小編的電腦<span style="display: block; font-size: 12.5px; color: #FCFCFC90">地端電腦 · 1280×800</span></h1>
+<a href="L03-PhoneChat.dc.html" aria-label="關閉" style="width: 44px; height: 44px; border-radius: 12px; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></a>
+</div>
+
+<div style="flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 28px; margin-bottom: 8px; font-size: 13px">
+<span style="height: 24px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 999px; background: {{tagBg}}; color: {{tagInk}}"><span style="display: flex"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"></path><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"></path><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg></span>{{tagText}}</span>
+<span style="height: 24px; display: inline-flex; align-items: center; gap: 4px; padding: 0 9px; border-radius: 999px; background: rgba(16,132,254,.2); color: #7FC0FF; font-size: 12px; white-space: nowrap; flex: none"><span style="display: flex"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><path d="M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg></span>簡化：3 步 → 2 步</span>
+</div>
+
+<div role="img" aria-label="小編的電腦畫面：社群後台的簡訊驗證頁" style="flex: none; height: 276px; border-radius: 10px; overflow: hidden; background: #FFFFFF; display: flex; flex-direction: column; position: relative; font-size: 10px; color: #1C1E21">
+<div style="height: 22px; flex: none; background: #DEE1E6; display: flex; align-items: flex-end; gap: 6px; padding: 0 6px">
+<span style="display: flex; gap: 3px; align-self: center"><span style="width: 6px; height: 6px; border-radius: 6px; background: #FF5F57"></span><span style="width: 6px; height: 6px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 6px; height: 6px; border-radius: 6px; background: #28C840"></span></span>
+<span style="height: 17px; padding: 0 10px; border-radius: 6px 6px 0 0; background: #FFFFFF; font-size: 8.5px; line-height: 17px; color: #3C4043">登入驗證 · 社群工作室</span>
+<span style="height: 17px; padding: 0 8px; font-size: 8.5px; line-height: 17px; color: #5F6368">新品貼文草稿</span>
+</div>
+<div style="height: 22px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-bottom: 1px solid #E5E7EB">
+<span style="color: #5F6368; display: flex"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg></span><span style="color: #5F6368; display: flex"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg></span>
+<span style="flex: 1; height: 15px; border-radius: 8px; background: #F1F3F4; display: flex; align-items: center; gap: 4px; padding: 0 6px; font-size: 8.5px; color: #3C4043"><span style="display: flex; color: #5F6368"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2Z"></path><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>studio.socialhub.com/login/verify</span>
+</div>
+<div style="flex: 1; background: #F0F2F5; display: flex; align-items: center; justify-content: center; position: relative">
+<div style="width: 210px; background: #FFFFFF; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 12px 14px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 6px">
+<span style="width: 26px; height: 26px; border-radius: 8px; background: #E7F0FF; color: #1877F2; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-16a2 2 0 0 1 2 -2Z"></path><path d="M12 18h.01"></path></svg></span>
+<div style="font-size: 13px; color: #1C1E21">輸入簡訊驗證碼</div>
+<div style="font-size: 8.5px; color: #65676B; text-align: center; line-height: 1.4">已傳送 6 位數驗證碼到 0912-***-468</div>
+<div style="display: flex; gap: 5px; margin: 2px 0">
+<span style="width: 24px; height: 28px; border: 1px solid #CCD0D5; border-radius: 6px; font-size: 13px; line-height: 28px; text-align: center">4</span>
+<span style="width: 24px; height: 28px; border: 1px solid #CCD0D5; border-radius: 6px; font-size: 13px; line-height: 28px; text-align: center">8</span>
+<span style="width: 24px; height: 28px; border: 1px solid #CCD0D5; border-radius: 6px; font-size: 13px; line-height: 28px; text-align: center">1</span>
+<span style="width: 24px; height: 28px; border: 1.5px solid #1877F2; border-radius: 6px; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><span style="width: 1px; height: 14px; background: #1877F2"></span></span>
+<span style="width: 24px; height: 28px; border: 1px solid #CCD0D5; border-radius: 6px"></span>
+<span style="width: 24px; height: 28px; border: 1px solid #CCD0D5; border-radius: 6px"></span>
+</div>
+<div style="width: 100%; height: 24px; border-radius: 6px; background: #1877F2; color: #FFFFFF; font-size: 10px; line-height: 24px; text-align: center">驗證並繼續</div>
+<div style="font-size: 8.5px; color: #1877F2">重新傳送驗證碼（0:42）</div>
+</div>
+<span style="position: absolute; left: 196px; top: 132px; color: #111111; display: flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"></path></svg></span>
+</div>
+</div>
+
+<div style="flex: none; margin-top: 12px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; background: #191919; border-radius: 14px; padding: 4px">
+<button type="button" aria-pressed="{{kbOn}}" onClick="{{toggleKb}}" style="height: 44px; border: 0; border-radius: 10px; background: {{kbBg}}; color: #FCFCFC; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14.5px; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M10 8h.01"></path><path d="M12 12h.01"></path><path d="M14 8h.01"></path><path d="M16 12h.01"></path><path d="M18 8h.01"></path><path d="M6 8h.01"></path><path d="M7 16h10"></path><path d="M8 12h.01"></path><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2Z"></path></svg>鍵盤</button>
+<button type="button" style="height: 44px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14.5px; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M11 14h10"></path><path d="M16 4h2a2 2 0 0 1 2 2v1.344"></path><path d="m17 18 4-4-4-4"></path><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 1.793-1.113"></path><path d="M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1Z"></path></svg>貼上</button>
+<button type="button" aria-expanded="{{moreOn}}" onClick="{{toggleMore}}" style="height: 44px; border: 0; border-radius: 10px; background: {{moreBg}}; color: #FCFCFC; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14.5px; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path><path d="M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path><path d="M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path></svg>更多</button>
+</div>
+
+<sc-if value="{{moreOn}}" hint-placeholder-val="{{ true }}">
+<div style="flex: none; margin-top: 8px; background: #191919; border-radius: 14px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 12.5px; color: #FCFCFC90">特殊按鍵（按一下送出，Ctrl／Alt 會停住等下一鍵）</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{keys}}" as="k" hint-placeholder-count="8">
+<button type="button" aria-label="{{k.label}}" aria-pressed="{{k.on}}" onClick="{{k.press}}" style="height: 44px; border: 0; border-radius: 10px; background: {{k.bg}}; color: {{k.ink}}; font-family: 'JetBrains Mono', monospace; font-size: {{k.fs}}; cursor: pointer">{{k.t}}</button>
+</sc-for>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<button type="button" style="height: 44px; border: 1px solid #333333; border-radius: 10px; background: transparent; color: #FCFCFC; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M15 3h6v6"></path><path d="m21 3-7 7"></path><path d="m3 21 7-7"></path><path d="M9 21H3v-6"></path></svg>全螢幕</button>
+<button type="button" style="height: 44px; border: 1px solid #333333; border-radius: 10px; background: transparent; color: #FCFCFC; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>重新連線</button>
+</div>
+</div>
+</sc-if>
+
+<div style="flex: 1"></div>
+<sc-if value="{{working}}" hint-placeholder-val="{{ true }}">
+<p style="flex: none; margin: 0 0 10px; font-size: 13px; color: #FCFCFC99; text-align: center; line-height: 1.55">說明選填。不填時會告訴小編：<br>「我剛剛在電腦上操作過，請從目前畫面繼續。」</p>
+<button type="button" onClick="{{giveBack}}" style="flex: none; height: 48px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 15.5px; cursor: pointer">完成，交還給小編</button>
+</sc-if>
+<sc-if value="{{returned}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="flex: none; height: 48px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; color: #38D591"><span style="display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"></path><path d="m16 9-5.5 5.5L8 12"></path></svg></span>已交還 · 小編繼續發文</div>
+</sc-if>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const st = this.state || {};
+const more = st.more !== false;
+const kb = !!st.kb;
+const done = !!st.done;
+const held = st.held || '';
+const keys = [
+{ t: 'Esc', label: 'Esc' }, { t: 'Tab', label: 'Tab' }, { t: 'Ctrl', label: 'Ctrl', sticky: true }, { t: 'Alt', label: 'Alt', sticky: true },
+{ t: '←', label: '左' }, { t: '↑', label: '上' }, { t: '↓', label: '下' }, { t: '→', label: '右' }
+].map((k) => {
+const on = !!k.sticky && held === k.t;
+return Object.assign({}, k, { on, fs: k.t.length === 1 ? '18px' : '14px', bg: on ? '#1084FE' : '#2F2F2F', ink: '#FCFCFC', press: () => this.setState({ held: k.sticky ? (held === k.t ? '' : k.t) : '' }) });
+});
+return {
+keys,
+moreOn: more,
+moreBg: more ? '#2F2F2F' : 'transparent',
+toggleMore: () => this.setState({ more: !more }),
+kbOn: kb,
+kbBg: kb ? '#2F2F2F' : 'transparent',
+toggleKb: () => this.setState({ kb: !kb }),
+working: !done,
+returned: done,
+giveBack: () => this.setState({ done: true }),
+tagText: done ? '已交還給小編' : '你正在操作 · 小編在等你',
+tagBg: done ? 'rgba(56,213,145,.14)' : 'rgba(255,152,0,.16)',
+tagInk: done ? '#38D591' : '#FFB547'
+};
+}
+}
+</script>
+</body>
+</html>

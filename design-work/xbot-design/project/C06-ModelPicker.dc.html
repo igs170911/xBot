@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>模型選擇器</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+input::placeholder{color:#FCFCFC90}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 760px; height: 780px; box-sizing: border-box; position: relative; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 14.5px; line-height: 1.6">
+
+<header style="height: 56px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 20px">
+<dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#070707" size="26" hint-size="26px,26px"></dc-import>
+<span style="font-size: 16px">小秘</span>
+<span style="display: flex; color: #FCFCFC99"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"></path><path d="M5 21h14"></path></svg></span>
+<span style="flex: 1"></span>
+<button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #333333; border-radius: 999px; background: transparent; color: #FCFCFC99; font-size: 13.5px; display: flex; align-items: center; gap: 4px; white-space: nowrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>對話串</button>
+<button type="button" aria-haspopup="listbox" aria-expanded="true" style="height: 32px; padding: 0 10px 0 6px; border: 0; border-radius: 999px; background: #262626; box-shadow: 0 0 0 2px #459FFE; color: #FCFCFC; font-size: 13.5px; display: flex; align-items: center; gap: 6px; white-space: nowrap"><span style="height: 22px; min-width: 22px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #3D3D3D; color: #FCFCFCcc; font-size: 10.5px; display: flex; align-items: center; justify-content: center; letter-spacing: .04em">{{pillIni}}</span>{{pillModel}}<span style="display: flex; color: #FCFCFC99"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m18 15-6-6-6 6"></path></svg></span></button>
+<button type="button" aria-label="語音通話" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"></path></svg></button>
+<button type="button" aria-label="小秘的電腦" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M8 21L16 21"></path><path d="M12 17L12 21"></path></svg></button>
+</header>
+
+<div aria-hidden="true" style="padding: 8px 24px; display: flex; flex-direction: column; gap: 14px; opacity: .55">
+<span style="align-self: center; font-size: 12.5px; color: #FCFCFC90; margin-right: 200px">今天 下午 2:02</span>
+<div style="align-self: flex-start; max-width: 560px; background: #262626; border-radius: 20px; padding: 10px 16px">收到。我請阿哲去抓三家的價格，我這邊先對齊我們自己的 12 項主力商品。</div>
+</div>
+
+<div style="position: absolute; left: 24px; right: 24px; bottom: 20px; height: 52px; box-sizing: border-box; border-radius: 999px; background: #2F2F2F; display: flex; align-items: center; gap: 2px; padding: 0 10px 0 8px; opacity: .55">
+<span style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: #FCFCFC99"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span>
+<span style="flex: 1; font-size: 15px; color: #FCFCFC90; padding: 0 6px">交代小秘…</span>
+</div>
+
+<div role="dialog" aria-label="選擇模型" style="position: absolute; top: 60px; right: 24px; width: 540px; background: #262626; border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,.5); display: flex; flex-direction: column; overflow: hidden">
+<div style="padding: 10px; border-bottom: 1px solid #333333">
+<div role="tablist" aria-label="模型來源" style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #191919">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+<button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{t.pick}}" style="flex: 1; height: 32px; border: 0; border-radius: 8px; background: {{t.bg}}; color: {{t.fg}}; font-size: 13.5px; display: flex; align-items: center; justify-content: center; gap: 6px">{{t.t}}<span style="font-size: 12px; color: #FCFCFC90">{{t.n}}</span></button>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; min-height: 440px">
+<div role="tablist" aria-orientation="vertical" aria-label="供應商" style="width: 64px; flex: none; background: #1F1F1F; padding: 10px 0; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<sc-for list="{{provs}}" as="p" hint-placeholder-count="5">
+<button type="button" role="tab" aria-selected="{{p.on}}" aria-label="{{p.name}}" title="{{p.name}}" onClick="{{p.pick}}" style="width: 42px; height: 42px; border: 0; border-radius: 10px; background: {{p.bg}}; color: {{p.fg}}; font-size: 13px; letter-spacing: .04em; position: relative; display: flex; align-items: center; justify-content: center">{{p.ini}}<sc-if value="{{p.warn}}" hint-placeholder-val="{{ false }}"><span style="position: absolute; right: 5px; bottom: 5px; width: 7px; height: 7px; border-radius: 50%; background: #FF9800; box-shadow: 0 0 0 2px #1F1F1F"></span></sc-if></button>
+</sc-for>
+<sc-if value="{{canAdd}}" hint-placeholder-val="{{ false }}">
+<button type="button" aria-label="新增 API 金鑰" style="width: 42px; height: 42px; border: 1px dashed #3D3D3D; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+</sc-if>
+</div>
+
+<div style="flex: 1; min-width: 0; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: flex-start; gap: 10px">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<span style="font-size: 16px">{{cur.name}}</span>
+<span style="font-size: 13px; color: #FCFCFC99">{{cur.desc}}</span>
+</div>
+<span style="flex: none; height: 24px; padding: 0 10px; border-radius: 999px; background: {{cur.badgeBg}}; color: {{cur.badgeFg}}; font-size: 12px; display: flex; align-items: center">{{cur.badge}}</span>
+</div>
+
+<sc-if value="{{cur.ok}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; color: #FCFCFC90; padding: 4px 10px">建議</span>
+<sc-for list="{{sug}}" as="m" hint-placeholder-count="2">
+<button type="button" role="option" aria-selected="{{m.on}}" onClick="{{m.pick}}" style="display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 10px; border: 0; border-radius: 8px; background: {{m.bg}}; color: #FCFCFC; font-size: 14px; text-align: left"><span>{{m.t}}</span><sc-if value="{{m.isDef}}" hint-placeholder-val="{{ false }}"><span style="height: 20px; padding: 0 6px; border-radius: 5px; background: #191919; color: #FCFCFC99; font-size: 11.5px; display: flex; align-items: center">預設</span></sc-if><span style="flex: 1; font-size: 12px; color: #FCFCFC90; text-align: right">{{m.note}}</span><span style="display: flex; width: 18px; color: #1084FE"><sc-if value="{{m.on}}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span></button>
+</sc-for>
+<sc-if value="{{hasOther}}" hint-placeholder-val="{{ true }}">
+<span style="font-size: 12px; color: #FCFCFC90; padding: 8px 10px 4px">其他</span>
+<sc-for list="{{other}}" as="m" hint-placeholder-count="2">
+<button type="button" role="option" aria-selected="{{m.on}}" onClick="{{m.pick}}" style="display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 10px; border: 0; border-radius: 8px; background: {{m.bg}}; color: #FCFCFC; font-size: 14px; text-align: left"><span>{{m.t}}</span><span style="flex: 1; font-size: 12px; color: #FCFCFC90; text-align: right">{{m.note}}</span><span style="display: flex; width: 18px; color: #1084FE"><sc-if value="{{m.on}}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span></button>
+</sc-for>
+</sc-if>
+</div>
+
+<div style="margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid #333333">
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px"><span style="font-size: 14px">推理強度</span><span style="font-size: 12px; color: #FCFCFC90">越高越仔細，也越慢、越花錢</span></div>
+<div role="radiogroup" aria-label="推理強度" style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: #191919">
+<sc-for list="{{efforts}}" as="e" hint-placeholder-count="4">
+<button type="button" role="radio" aria-checked="{{e.on}}" onClick="{{e.pick}}" style="flex: 1; height: 32px; border: 0; border-radius: 8px; background: {{e.bg}}; color: {{e.fg}}; font-size: 13.5px">{{e.t}}</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{cur.off}}" hint-placeholder-val="{{ false }}">
+<div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px">
+<span style="width: 48px; height: 48px; border-radius: 14px; background: #2F2F2F; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; font-size: 16px; letter-spacing: .04em">{{cur.ini}}</span>
+<span style="font-size: 15px">{{cur.offTitle}}</span>
+<span style="font-size: 13px; color: #FCFCFC99; max-width: 340px">{{cur.offText}}</span>
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14px; margin-top: 4px">{{cur.offBtn}}</button>
+</div>
+</sc-if>
+</div>
+</div>
+
+<a href="J02-Models.dc.html" style="height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-top: 1px solid #333333; color: #FCFCFC; text-decoration: none; font-size: 13.5px"><span style="display: flex; color: #FCFCFC99"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"></path></svg></span><span style="flex: 1">管理 AI 模型與金鑰</span><span style="display: flex; color: #FCFCFC99"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m9 18 6-6-6-6"></path></svg></span></a>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":760,"height":780}}'>
+class Component extends DCLogic {
+renderVals() {
+const s = Object.assign({ tab: 'sub', prov: { sub: 'cc', key: 'an', local: 'lm' }, model: 'Claude Sonnet 5.5', effort: 'mid' }, this.state || {});
+const ok = (id, ini, name, badge, desc, sug, other, notes) => ({ id, ini, name, badge, desc, sug, other, notes: notes || {}, ok: true, off: false, warn: false, badgeBg: 'rgba(56,213,145,.14)', badgeFg: '#38D591' });
+const off = (id, ini, name, badge, offTitle, offText, offBtn) => ({ id, ini, name, badge, desc: '', sug: [], other: [], notes: {}, ok: false, off: true, warn: true, offTitle, offText, offBtn, badgeBg: 'rgba(255,152,0,.16)', badgeFg: '#FFB547' });
+const D = {
+sub: [
+ok('cc', 'CL', 'Claude Code', '已登入 · 2.1.234', '用你的 Claude 訂閱，不另外算錢。', ['Claude Sonnet 5.5', 'Claude Opus 5'], ['Claude Haiku 4.5'], { 'Claude Opus 5': '比較慢', 'Claude Haiku 4.5': '最快' }),
+ok('cx', 'CX', 'Codex', '已登入 · 0.48', '用你的 ChatGPT 訂閱。', ['GPT-5.5'], ['GPT-5.5 mini'], { 'GPT-5.5 mini': '最快' }),
+off('gk', 'GK', 'Grok', '還沒登入', '還沒登入 Grok', '登入一次就好，小秘會用你的 Grok 訂閱。', '登入 Grok'),
+ok('gm', 'GM', 'Gemini CLI', '已登入', '用你的 Google 帳號。', ['Gemini 3.1 Pro'], ['Gemini 3.6 Flash'], { 'Gemini 3.6 Flash': '最快' }),
+ok('oc', 'OC', 'OpenCode Go', '已登入 · 本月剩 38%', '額度用完會先停，不會自動加購。', ['Kimi K2.5'], ['GLM-5', 'DeepSeek V4'], {})
+],
+key: [
+ok('an', 'AN', 'Anthropic API', '金鑰 · …4f2a', '依用量計費，算進小秘的花費上限。', ['Claude Sonnet 5.5', 'Claude Opus 5'], ['Claude Haiku 4.5'], { 'Claude Opus 5': '比較貴' }),
+ok('oa', 'OA', 'OpenAI', '金鑰 · …91c0', '依用量計費。', ['GPT-5.5'], ['GPT-5.5 mini'], {}),
+ok('or', 'OR', 'OpenRouter', '金鑰 · …7d13', '一把金鑰用很多家的模型。', ['anthropic/claude-sonnet-5.5'], ['google/gemini-3.1-pro', 'deepseek/deepseek-v4'], {})
+],
+local: [
+ok('lm', 'LM', 'LM Studio', '執行中', '在這台主機上跑，資料不出門，不花錢。', ['qwen3.5-32b-instruct'], ['gemma-4-27b'], { 'qwen3.5-32b-instruct': '24 GB' }),
+off('ol', 'OL', 'Ollama', '沒有執行', 'Ollama 沒有在執行', '打開 Ollama 後按「重新偵測」，就會列出模型。', '重新偵測')
+]
+};
+const DEF = { cc: 'Claude Sonnet 5.5', cx: 'GPT-5.5', gm: 'Gemini 3.1 Pro', oc: 'Kimi K2.5', an: 'Claude Sonnet 5.5', oa: 'GPT-5.5', or: 'anthropic/claude-sonnet-5.5', lm: 'qwen3.5-32b-instruct' };
+const list = D[s.tab];
+const cur = list.find((p) => p.id === s.prov[s.tab]) || list[0];
+const model = (cur.sug.concat(cur.other).indexOf(s.model) >= 0) ? s.model : (DEF[cur.id] || '');
+const row = (t) => ({ t, on: t === model, isDef: t === DEF[cur.id], note: cur.notes[t] || '', bg: t === model ? '#2F2F2F' : 'transparent', pick: () => this.setState({ model: t }) });
+const TABS = [['sub', '訂閱'], ['key', 'API 金鑰'], ['local', '本機']];
+return {
+tabs: TABS.map(([k, t]) => ({ t, n: D[k].length, on: s.tab === k, bg: s.tab === k ? '#2F2F2F' : 'transparent', fg: s.tab === k ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ tab: k }) })),
+provs: list.map((p) => ({ ini: p.ini, name: p.name, warn: p.warn, on: p.id === cur.id, bg: p.id === cur.id ? '#3D3D3D' : 'transparent', fg: p.id === cur.id ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ prov: Object.assign({}, s.prov, { [s.tab]: p.id }) }) })),
+canAdd: s.tab === 'key',
+cur,
+sug: cur.sug.map(row),
+other: cur.other.map(row),
+hasOther: cur.other.length > 0,
+pillIni: cur.ok ? cur.ini : 'CL',
+pillModel: cur.ok ? model : 'Claude Sonnet 5.5',
+efforts: [['low', '低'], ['mid', '中'], ['high', '高'], ['max', '最高']].map(([k, t]) => ({ t, on: s.effort === k, bg: s.effort === k ? '#2F2F2F' : 'transparent', fg: s.effort === k ? '#FCFCFC' : '#FCFCFC99', pick: () => this.setState({ effort: k }) }))
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>分享小秘</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+h1,h2,h3,strong,b{font-weight:400}
+a{color:#7FC0FF;text-decoration:none}
+button{font-synthesis:none}
+</style>
+</helmet>
+<div role="dialog" aria-label="分享小秘" style="width: 640px; height: 834px; box-sizing: border-box; background: #111111; border: 1px solid #262626; border-radius: 18px; display: flex; flex-direction: column; overflow: hidden; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; color: #FCFCFC; font-size: 14.5px; line-height: 1.5">
+<header style="height: 64px; flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 0 16px 0 24px">
+<div style="flex: 1; display: flex; flex-direction: column">
+<h1 style="margin: 0; font-size: 17px; font-weight: 400; line-height: 1.35">分享小秘</h1>
+<span style="font-size: 13px; color: #FCFCFC99">對方會拿到一份自己的小秘，不會影響你的</span>
+</div>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</header>
+<main style="flex: 1; min-height: 0; overflow: hidden; box-sizing: border-box; padding: 8px 24px 24px; display: flex; flex-direction: column; gap: 14px">
+<div style="background: #191919; border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; gap: 14px">
+<dc-import name="Avatar" color="blue" body="cursor" state="happy" dot="none" ring="#191919" size="48" hint-size="48px,48px"></dc-import>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 16px">小秘</span><span style="font-size: 13px; color: #FCFCFC99">幕僚長 · 每日重點與協調</span></div>
+<div style="display: flex; gap: 6px; flex-wrap: wrap"><span style="font-size: 12.5px; color: #FCFCFCcc; background: #2F2F2F; border-radius: 999px; padding: 2px 10px; white-space: nowrap">7 個技能</span><span style="font-size: 12.5px; color: #FCFCFCcc; background: #2F2F2F; border-radius: 999px; padding: 2px 10px; white-space: nowrap">3 個應用程式</span><span style="font-size: 12.5px; color: #FCFCFCcc; background: #2F2F2F; border-radius: 999px; padding: 2px 10px; white-space: nowrap">權限：先問我</span></div>
+</div>
+</div>
+<div style="height: 2px"></div>
+<div style="display: flex; align-items: flex-end; gap: 12px"><div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0; font-size: 15px; font-weight: 400; color: #FCFCFC">要包含什麼</h3></div></div>
+<div style="background: #191919; border-radius: 14px; display: flex; flex-direction: column"><label style="position: relative; display: flex; align-items: center; gap: 12px; padding: 0 16px; height: 58px; box-sizing: border-box; cursor: pointer"><input type="checkbox" checked style="position: absolute; opacity: 0; width: 1px; height: 1px"><span aria-hidden="true" style="width: 18px; height: 18px; border-radius: 5px; background: #1084FE; display: flex; align-items: center; justify-content: center; flex: none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></span><span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 14.5px">人設與回覆風格</span><span style="font-size: 12.5px; color: #FCFCFC99">名字、頭像、它做什麼、說話方式</span></span></label><label style="border-top: 1px solid #262626; position: relative; display: flex; align-items: center; gap: 12px; padding: 0 16px; height: 58px; box-sizing: border-box; cursor: pointer"><input type="checkbox" checked style="position: absolute; opacity: 0; width: 1px; height: 1px"><span aria-hidden="true" style="width: 18px; height: 18px; border-radius: 5px; background: #1084FE; display: flex; align-items: center; justify-content: center; flex: none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></span><span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 14.5px">技能（7 個）</span><span style="font-size: 12.5px; color: #FCFCFC99">整理每日重點、交辦與追蹤、會議記錄…</span></span></label><label style="border-top: 1px solid #262626; position: relative; display: flex; align-items: center; gap: 12px; padding: 0 16px; height: 58px; box-sizing: border-box; cursor: pointer"><input type="checkbox" style="position: absolute; opacity: 0; width: 1px; height: 1px"><span aria-hidden="true" style="width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid #5A5A5A; box-sizing: border-box; flex: none"></span><span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 14.5px">記憶（128 則）</span><span style="font-size: 12.5px; color: #FFB547">可能有你的私人資料，預設不帶</span></span></label><label style="border-top: 1px solid #262626; position: relative; display: flex; align-items: center; gap: 12px; padding: 0 16px; height: 58px; box-sizing: border-box; cursor: pointer"><input type="checkbox" checked style="position: absolute; opacity: 0; width: 1px; height: 1px"><span aria-hidden="true" style="width: 18px; height: 18px; border-radius: 5px; background: #1084FE; display: flex; align-items: center; justify-content: center; flex: none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></span><span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 14.5px">要連的應用程式（3 個）</span><span style="font-size: 12.5px; color: #FCFCFC99">Gmail、Google 日曆、Slack；對方要自己登入</span></span></label><label style="border-top: 1px solid #262626; position: relative; display: flex; align-items: center; gap: 12px; padding: 0 16px; height: 58px; box-sizing: border-box; cursor: pointer"><input type="checkbox" checked style="position: absolute; opacity: 0; width: 1px; height: 1px"><span aria-hidden="true" style="width: 18px; height: 18px; border-radius: 5px; background: #1084FE; display: flex; align-items: center; justify-content: center; flex: none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M20 6 9 17l-5-5"></path></svg></span><span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 14.5px">權限與花費上限</span><span style="font-size: 12.5px; color: #FCFCFC99">對方可以再改；安全底線一定跟著走</span></span></label></div>
+<div style="display: flex; gap: 10px; align-items: flex-start; padding: 0 2px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 2px"><path d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2Z"></path><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span style="font-size: 12.5px; color: #FCFCFC99; line-height: 1.55">登入資料、密碼、API 金鑰、對話紀錄和電腦裡的檔案一律不會分享。</span></div>
+<div style="height: 2px"></div>
+<div style="display: flex; align-items: flex-end; gap: 12px"><div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0; font-size: 15px; font-weight: 400; color: #FCFCFC">怎麼分享</h3></div></div>
+<div role="radiogroup" aria-label="分享方式" style="display: flex; background: #191919; border-radius: 10px; padding: 3px; gap: 2px"><button type="button" role="radio" aria-checked="true" style="flex: 1; height: 34px; border: 0; border-radius: 8px; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 13.5px; cursor: pointer; white-space: nowrap">連結</button><button type="button" role="radio" aria-checked="false" style="flex: 1; height: 34px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC99; font: inherit; font-size: 13.5px; cursor: pointer; white-space: nowrap">檔案</button><button type="button" role="radio" aria-checked="false" style="flex: 1; height: 34px; border: 0; border-radius: 8px; background: transparent; color: #FCFCFC99; font: inherit; font-size: 13.5px; cursor: pointer; white-space: nowrap">組織的 Bot 庫</button></div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; gap: 8px">
+<label style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 40px; box-sizing: border-box; border: 1px solid #333333; border-radius: 10px; background: #191919; padding: 0 12px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg><input type="text" readonly value="https://xbot.app/b/7KQ2-M9XA" aria-label="分享連結" style="flex: 1; min-width: 0; border: 0; background: transparent; color: #FCFCFC; font-family: 'JetBrains Mono', monospace; font-size: 13px; outline: none; padding: 0"></label>
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #2F2F2F; color: #FCFCFC; font: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; flex: none; box-sizing: border-box; white-space: nowrap; text-decoration: none; height: 40px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>複製</button>
+</div>
+<div style="display: flex; align-items: center; gap: 8px">
+<button type="button" aria-haspopup="listbox" aria-label="連結期限" style="height: 34px; width: 150px; box-sizing: border-box; background: #191919; border: 1px solid #333333; border-radius: 10px; padding: 0 10px 0 12px; display: flex; align-items: center; gap: 8px; color: #FCFCFC; font: inherit; font-size: 13.5px; cursor: pointer; flex: none"><span style="flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">7 天後失效</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></button>
+<button type="button" aria-haspopup="listbox" aria-label="誰能打開" style="height: 34px; width: 170px; box-sizing: border-box; background: #191919; border: 1px solid #333333; border-radius: 10px; padding: 0 10px 0 12px; display: flex; align-items: center; gap: 8px; color: #FCFCFC; font: inherit; font-size: 13.5px; cursor: pointer; flex: none"><span style="flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">只有我組織的人</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></button>
+<span style="flex: 1"></span>
+<span style="font-size: 12.5px; color: #FCFCFC90">已開過 0 次</span>
+</div>
+</div>
+</main>
+<footer style="height: 64px; flex: none; box-sizing: border-box; border-top: 1px solid #262626; display: flex; align-items: center; gap: 8px; padding: 0 16px 0 24px">
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 1px solid #333333; background: transparent; color: #FCFCFC; font: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; flex: none; box-sizing: border-box; white-space: nowrap; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 15V3"></path><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="m7 10 5 5 5-5"></path></svg>下載 .xbot 檔</button>
+<span style="flex: 1"></span>
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: transparent; color: #FCFCFC99; font: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; flex: none; box-sizing: border-box; white-space: nowrap; text-decoration: none">取消</button>
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: #FCFCFC; color: #070707; font: inherit; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; flex: none; box-sizing: border-box; white-space: nowrap; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z"></path><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>複製連結</button>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":640,"height":834}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

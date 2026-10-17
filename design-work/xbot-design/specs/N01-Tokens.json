@@ -1,0 +1,22 @@
+{
+ "file": "N01-Tokens.dc.html",
+ "title": "設計系統：色彩、字型、尺寸",
+ "prd": [
+  "§11"
+ ],
+ "what": "Grok Midnight 色票、Daylight 淺色、字級與尺寸規則。",
+ "goal": "讓每張畫板用同一套顏色與尺寸。",
+ "accept": [
+  "Midnight 底 #070707、側欄 #111111、卡片 #262626、控制 #2F2F2F、你的泡泡 #5A5A5A、強調 #1084FE",
+  "字型目前粉圓，思源黑體待使用者決定",
+  "間距 4 的倍數；觸控 ≥ 44"
+ ],
+ "states": [
+  "深色",
+  "淺色"
+ ],
+ "edge": [],
+ "limits": [],
+ "simplified": null,
+ "status": "待定"
+}

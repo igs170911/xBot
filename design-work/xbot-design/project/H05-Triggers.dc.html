@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>觸發條件</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}
+button{font:inherit}
+textarea{font:inherit}
+</style>
+</helmet>
+<div role="dialog" aria-label="觸發條件" style="width: 1100px; height: 900px; box-sizing: border-box; overflow: hidden; border-radius: 18px; background: #111111; border: 1px solid #262626; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.6; display: flex; flex-direction: column">
+
+<div style="height: 64px; flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 24px; border-bottom: 1px solid #262626">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1084FE" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.webhook}}"></path></svg>
+<span style="display: flex; flex-direction: column; line-height: 1.35; flex: 1"><h2 style="margin: 0; font-size: 17px; font-weight: 400">觸發條件</h2><span style="font-size: 13px; color: #FCFCFC99">某件事一發生，就交給 Bot 去做</span></span>
+<button type="button" aria-label="關閉" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.x}}"></path></svg></button>
+</div>
+
+<div style="flex: 1; min-height: 0; display: flex; gap: 20px; padding: 24px">
+
+<section aria-label="新增觸發" style="flex: 1 1 0; min-width: 0; background: #262626; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+<span style="display: flex; flex-direction: column; line-height: 1.4"><span style="font-size: 16px">新增觸發</span><span style="font-size: 13px; color: #FCFCFC99">用一句話說：什麼事發生時，誰要做什麼</span></span>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 18px">
+<span>當</span>
+<button type="button" aria-haspopup="listbox" aria-expanded="true" style="height: 40px; padding: 0 8px 0 6px; border: 1px solid #459FFE; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 15px; display: flex; align-items: center; gap: 8px; cursor: pointer"><span style="width: 28px; height: 28px; border-radius: 99px; background: #3D3D3D; color: #FCFCFC; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{srcIcon}}"></path></svg></span>{{srcLabel}}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: rotate(180deg)"><path d="{{I.chevronDown}}"></path></svg></button>
+<span>時，</span>
+<button type="button" aria-haspopup="listbox" style="height: 40px; padding: 0 8px 0 6px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 15px; display: flex; align-items: center; gap: 8px; cursor: pointer"><dc-import name="Avatar" color="red" body="shield" state="idle" dot="none" ring="#191919" size="26" hint-size="26px,26px"></dc-import>抓蟲<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronDown}}"></path></svg></button>
+<span>要</span>
+</div>
+
+<div role="listbox" aria-label="來源" style="background: #191919; border-radius: 14px; padding: 6px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px">
+<sc-for list="{{sources}}" as="s" hint-placeholder-count="6">
+<button type="button" role="option" aria-selected="{{s.sel}}" onClick="{{s.pick}}" style="min-height: 48px; border: 0; border-radius: 10px; background: {{s.bg}}; color: #FCFCFC; padding: 6px 10px; display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer">
+<span style="width: 30px; height: 30px; border-radius: 99px; background: #333333; color: #FCFCFC; display: flex; align-items: center; justify-content: center; flex: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{s.icon}}"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35"><span style="font-size: 14px">{{s.label}}</span><span style="font-size: 12px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{s.sub}}</span></span>
+<sc-if value="{{s.on}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7FC0FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg></sc-if>
+</button>
+</sc-for>
+</div>
+
+<label style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; color: #FCFCFC99">做什麼</span>
+<textarea rows="3" style="box-sizing: border-box; width: 100%; resize: none; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14.5px; line-height: 1.6; padding: 10px 12px; outline: none">照 issue 的描述在自己的電腦重現一次，整理重現步驟、截圖和環境資訊，草稿先給我看再回覆。</textarea>
+</label>
+
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="width: 72px; flex: none; font-size: 13px; color: #FCFCFC99">結果貼到</span>
+<button type="button" aria-haspopup="listbox" style="flex: 1; min-width: 0; height: 40px; padding: 0 10px 0 12px; border: 1px solid #333333; border-radius: 10px; background: #191919; color: #FCFCFC; font-size: 14px; display: flex; align-items: center; justify-content: space-between; cursor: pointer">抓蟲的主要對話（會通知你）<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronDown}}"></path></svg></button>
+</div>
+<div style="display: flex; align-items: flex-start; gap: 12px">
+<span style="width: 72px; flex: none; font-size: 13px; color: #FCFCFC99; line-height: 28px">抓蟲會收到</span>
+<div style="flex: 1; display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{payload}}" as="p" hint-placeholder-count="5"><span style="height: 28px; padding: 0 10px; border: 1px solid #333333; border-radius: 999px; font-size: 12.5px; color: #FCFCFCcc; display: flex; align-items: center">{{p}}</span></sc-for>
+</div>
+</div>
+
+<button type="button" aria-expanded="{{advOpen}}" onClick="{{toggleAdv}}" style="border: 0; border-top: 1px solid #333333; background: transparent; color: #FCFCFC; padding: 12px 0 0; display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC99" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: rotate({{advRot}}); transition: transform .15s"><path d="{{I.chevronRight}}"></path></svg>
+<span style="flex: 1; display: flex; flex-direction: column; line-height: 1.4"><span style="font-size: 14px">進階設定</span><span style="font-size: 12.5px; color: #FCFCFC99">只接受哪些事件、同時處理幾件、在哪裡跑</span></span>
+</button>
+<sc-if value="{{adv}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; color: #FCFCFCcc; padding-left: 26px">
+<span>只接受：issues.opened</span>
+<span>同時處理：1 件，其他排隊</span>
+<span>在哪裡跑：抓蟲自己的電腦</span>
+</div>
+</sc-if>
+
+<span style="flex: 1"></span>
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="flex: 1; font-size: 12.5px; color: #FCFCFC99; line-height: 1.5">建立後先送一個測試請求，收得到再開啟。</span>
+<button type="button" style="height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 14px; cursor: pointer; flex: none">建立觸發</button>
+</div>
+</section>
+
+<section aria-label="你的觸發" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: baseline; justify-content: space-between"><span style="font-size: 16px">你的觸發 · 3</span><a href="H03-RoutineList.dc.html" style="font-size: 13px">看定時任務</a></div>
+
+<div style="background: #191919; border-radius: 18px; padding: 0 16px; display: flex; flex-direction: column">
+<sc-for list="{{mine}}" as="t" hint-placeholder-count="2">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 68px; border-top: {{t.line}}">
+<span style="width: 36px; height: 36px; border-radius: 99px; background: #262626; color: #FCFCFC; display: flex; align-items: center; justify-content: center; flex: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.icon}}"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.4">
+<span style="font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{t.title}}</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #FCFCFC99"><dc-import name="Avatar" color="{{t.color}}" body="{{t.body}}" state="{{t.state}}" dot="none" size="18" hint-size="18px,18px"></dc-import>{{t.meta}}</span>
+</span>
+<button type="button" role="switch" aria-checked="{{t.checked}}" aria-label="開啟 {{t.title}}" onClick="{{t.toggle}}" style="width: 40px; height: 24px; flex: none; border: 0; border-radius: 999px; background: {{t.track}}; padding: 0; position: relative; cursor: pointer"><span style="position: absolute; top: 3px; left: {{t.knob}}; width: 18px; height: 18px; border-radius: 99px; background: #FFFFFF"></span></button>
+<a href="H06-Webhook.dc.html" aria-label="打開 {{t.title}}" style="width: 32px; height: 32px; border-radius: 8px; color: #FCFCFC99; display: flex; align-items: center; justify-content: center; flex: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.chevronRight}}"></path></svg></a>
+</div>
+</sc-for>
+</div>
+
+<div style="background: #191919; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="width: 36px; height: 36px; border-radius: 99px; background: #262626; color: #FCFCFC; display: flex; align-items: center; justify-content: center; flex: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.creditCard}}"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.4"><span style="font-size: 14.5px">收到付款 → 帳房記帳</span><span style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #FCFCFC99"><dc-import name="Avatar" color="yellow" body="hexagon" state="notifying" dot="none" size="18" hint-size="18px,18px"></dc-import>{{payMeta}}</span></span>
+<button type="button" role="switch" aria-checked="false" aria-disabled="{{payDisabled}}" aria-label="開啟收到付款觸發" style="width: 40px; height: 24px; flex: none; border: 0; border-radius: 999px; background: #3D3D3D; padding: 0; position: relative; opacity: {{payOpacity}}; cursor: pointer"><span style="position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 99px; background: #FFFFFF"></span></button>
+</div>
+
+<ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="3">
+<li style="display: flex; gap: 12px">
+<span style="display: flex; flex-direction: column; align-items: center; flex: none; width: 24px">
+<span style="width: 24px; height: 24px; border-radius: 99px; background: {{s.dotBg}}; color: {{s.dotFg}}; font-size: 12px; display: flex; align-items: center; justify-content: center"><sc-if value="{{s.done}}" hint-placeholder-val="{{ false }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.check}}"></path></svg></sc-if><sc-if value="{{s.todo}}" hint-placeholder-val="{{ true }}">{{s.n}}</sc-if></span>
+<span style="flex: 1; width: 1px; background: {{s.rail}}; min-height: 10px"></span>
+</span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding-bottom: 14px">
+<span style="font-size: 14px; color: {{s.fg}}; line-height: 24px">{{s.t}}</span>
+<sc-if value="{{s.hasSub}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12.5px; color: #FCFCFC99; line-height: 1.5">{{s.sub}}</span></sc-if>
+<sc-if value="{{s.isWait}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<span style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-radius: 999px; background: {{waitBg}}; color: {{waitFg}}; font-size: 13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{waitIcon}}"></path></svg>{{waitText}}</span>
+<button type="button" onClick="{{sendTest}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{I.send}}"></path></svg>幫我送一個</button>
+</div>
+</sc-if>
+</span>
+</li>
+</sc-for>
+</ol>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 14px">最近收到</span>
+<div style="background: #191919; border-radius: 18px; padding: 4px 16px; display: flex; flex-direction: column">
+<sc-for list="{{recent}}" as="r" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 10px; min-height: 44px; border-top: {{r.line}}">
+<span style="width: 8px; height: 8px; border-radius: 9px; background: {{r.dot}}; flex: none"></span>
+<span style="flex: 1; min-width: 0; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.what}}</span>
+<span style="font-size: 12.5px; color: {{r.fg}}; white-space: nowrap">{{r.res}}</span>
+<span style="width: 72px; text-align: right; font-size: 12.5px; color: #FCFCFC90; white-space: nowrap">{{r.at}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+
+<span style="flex: 1"></span>
+<span style="display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; color: #FCFCFC99; line-height: 1.6"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 3px"><path d="{{I.info}}"></path></svg>XBot 要開著才收得到。同一個網址送來的請求至少隔 60 秒才會再開始一件工作，太密的會略過。</span>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+// ICONS: webhook x chevron-down chevron-right check circle-dot clipboard-list credit-card mail folder-input send loader-circle info circle-check
+const I = {"webhook":"M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2 M6 17 l3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06 M12 6 l3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8","x":"M18 6 6 18 M6 6 l12 12","chevronDown":"M6 9 l6 6 6-6","chevronRight":"M9 18 l6-6-6-6","check":"M20 6 9 17l-5-5","circleDot":"M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0 M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0","clipboardList":"M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1Z M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2 M12 11h4 M12 16h4 M8 11h.01 M8 16h.01","creditCard":"M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z M2 10L22 10 M6 14h2","mail":"M22 7 l-8.991 5.727a2 2 0 0 1-2.009 0L2 7 M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2Z","folderInput":"M2 9V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1 M2 13h10 M9 16 l3-3-3-3","send":"M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z M21.854 2.147 l-10.94 10.939","loaderCircle":"M21 12a9 9 0 1 1-6.219-8.56","info":"M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M12 16v-4 M12 8h.01","circleCheck":"M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M16 9 l-5.5 5.5L8 12"};
+const st = this.state || {};
+const src = st.src || 'gh';
+const adv = !!st.adv;
+const tested = !!st.tested;
+const on = st.on || { gh: true, form: true };
+const SRC = [
+['hook', '其他服務送出請求', '給一個網址，誰都能送', I.webhook],
+['gh', 'GitHub 有新 issue', '需要在 GitHub 貼上網址', I.circleDot],
+['form', '表單有人送出', '官網表單、問卷', I.clipboardList],
+['pay', '收到付款', '金流服務通知', I.creditCard],
+['mail', '收到特定 Email', '寄到指定信箱', I.mail],
+['folder', '檔案放進資料夾', '同步資料夾有新檔', I.folderInput]
+];
+const cur = SRC.find((s) => s[0] === src);
+const T = (id, title, meta, icon, color, body, state, i) => ({ title, meta, icon, color, body, state, checked: on[id] ? 'true' : 'false', track: on[id] ? '#1084FE' : '#3D3D3D', knob: on[id] ? '19px' : '3px', line: i ? '1px solid #262626' : '0', toggle: () => this.setState({ on: Object.assign({}, on, { [id]: !on[id] }) }) });
+const S = (n, t, sub, state, last) => ({ n, t, sub, hasSub: !!sub, done: state === 'done', todo: state !== 'done', isWait: state === 'wait', dotBg: state === 'done' ? '#38D591' : (state === 'wait' || state === 'next') ? '#1084FE' : '#333333', dotFg: state === 'done' ? '#070707' : (state === 'wait' || state === 'next') ? '#FFFFFF' : '#FCFCFC99', fg: state === 'todo' ? '#FCFCFC99' : '#FCFCFC', rail: last ? 'transparent' : '#333333' });
+return {
+I, srcLabel: cur[1], srcIcon: cur[3],
+payload: ['issue 標題', '內容', '連結', '提出的人', '標籤'],
+recent: [
+['GitHub #128 · 登入頁按鈕沒反應', '等你看草稿', '#FFB547', '#FF9800', '11:40'],
+['官網表單 · 王小姐詢價 200 個', '開發信已寫好', '#38D591', '#38D591', '10:02'],
+['官網表單 · 測試資料', '太密，略過', '#FCFCFC99', '#5A5A5A', '10:01'],
+['GitHub #126 · 匯出 CSV 亂碼', '失敗：缺測試帳號', '#FF5667', '#FF5667', '昨天']
+].map(([what, res, fg, dot, at], i) => ({ what, res, fg, dot, at, line: i ? '1px solid #262626' : '0' })),
+sources: SRC.map(([id, label, sub, icon]) => ({ label, sub, icon, on: src === id, sel: src === id ? 'true' : 'false', bg: src === id ? '#2F2F2F' : 'transparent', pick: () => this.setState({ src: id }) })),
+adv, advOpen: adv ? 'true' : 'false', advRot: adv ? '90deg' : '0deg', toggleAdv: () => this.setState({ adv: !adv }),
+mine: [
+T('gh', 'GitHub 新 issue 分類', '抓蟲 · 本週 14 次 · 上次今天上午 11:40', I.circleDot, 'red', 'shield', 'idle', 0),
+T('form', '官網詢價表單 → 開發信草稿', '阿凱 · 本週 38 次 · 上次今天上午 10:02', I.clipboardList, 'green', 'squircle', 'idle', 1)
+],
+steps: [
+S(1, '把網址貼到金流服務的通知設定', '已複製 · 10/17 下午 3:02', 'done', false),
+S(2, tested ? '收到測試請求了' : '送一個測試請求', tested ? '10/17 下午 3:06 · 帳房沒有開始工作，只確認收得到' : '', tested ? 'done' : 'wait', false),
+S(3, '開啟，之後真的收到付款就交給帳房', '', tested ? 'next' : 'todo', true)
+],
+waitBg: 'rgba(16,132,254,.16)', waitFg: '#7FC0FF', waitIcon: I.loaderCircle, waitText: '等待中…還沒收到',
+sendTest: () => this.setState({ tested: true }),
+payMeta: tested ? '帳房 · 測試通過，可以開啟了' : '帳房 · 還沒測試，先不開啟', payDisabled: tested ? 'false' : 'true', payOpacity: tested ? '1' : '.5'
+};
+}
+}
+</script>
+</body>
+</html>

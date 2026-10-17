@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>手機：Bot 的檔案</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;font-synthesis:none;background:#070707}
+a{color:#7FC0FF;text-decoration:none}a:hover{color:#A8D4FF}
+button{font:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #070707; color: #FCFCFC; font-family: 'Huninn', 'PingFang TC', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.45; display: flex; flex-direction: column">
+<div aria-hidden="true" style="height: 47px; flex: none"></div>
+
+<header style="flex: none; height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 12px">
+<a href="L03-PhoneChat.dc.html" aria-label="返回和小秘的對話" style="width: 44px; height: 44px; box-sizing: border-box; border-radius: 999px; background: #191919; border: 1px solid #333333; color: #FCFCFC; display: flex; align-items: center; justify-content: center; flex: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="m15 18-6-6 6-6"></path></svg></a>
+<dc-import name="Avatar" color="blue" body="cursor" state="working" dot="none" ring="#070707" size="28" hint-size="28px,28px"></dc-import>
+<div style="flex: 1; min-width: 0; line-height: 1.3">
+<h1 style="margin: 0; font-size: 17px; font-weight: 400">小秘的檔案</h1>
+<div style="font-size: 12.5px; color: #FCFCFC99">6 個檔案 · 4.8 MB</div>
+</div>
+<button type="button" aria-label="搜尋檔案" style="width: 44px; height: 44px; border: 0; border-radius: 12px; background: transparent; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.search}}"></path></svg></button>
+</header>
+
+<div style="flex: 1; min-height: 0; overflow: hidden; padding: 0 8px">
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+<h2 style="margin: 0; height: 32px; display: flex; align-items: flex-end; gap: 6px; padding: 0 12px 4px; box-sizing: border-box; font-size: 13px; font-weight: 400; color: #FCFCFC90">{{g.title}}<span style="color: #FCFCFC90">· {{g.n}}</span></h2>
+<sc-for list="{{g.rows}}" as="f" hint-placeholder-count="2">
+<button type="button" onClick="{{f.open}}" style="width: 100%; height: 60px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border: 0; border-radius: 12px; background: {{f.bg}}; color: #FCFCFC; text-align: left; cursor: pointer">
+<sc-if value="{{f.isSheet}}" hint-placeholder-val="{{ true }}">
+<span aria-hidden="true" style="width: 44px; height: 44px; flex: none; border-radius: 8px; overflow: hidden; background: #FFFFFF; display: flex; flex-direction: column; position: relative">
+<span style="height: 9px; background: {{f.head}}"></span>
+<span style="flex: 1; background-image: linear-gradient(#D6D6D6 1px, transparent 1px), linear-gradient(90deg, #D6D6D6 1px, transparent 1px); background-size: 11px 7px"></span>
+<span style="position: absolute; right: 2px; bottom: 2px; padding: 0 3px; border-radius: 3px; background: {{f.head}}; color: #FFFFFF; font-size: 8px; line-height: 11px">{{f.ext}}</span>
+</span>
+</sc-if>
+<sc-if value="{{f.isPdf}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="width: 44px; height: 44px; flex: none; border-radius: 8px; overflow: hidden; background: #3A3A3A; display: flex; align-items: center; justify-content: center; position: relative">
+<span style="width: 30px; height: 38px; background: #FFFFFF; border-radius: 2px; padding: 4px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px"><span style="height: 4px; width: 70%; background: #1F3A68"></span><span style="height: 2px; background: #C4C4C4"></span><span style="height: 2px; background: #C4C4C4"></span><span style="height: 8px; background: #DCE6F5"></span><span style="height: 2px; width: 80%; background: #C4C4C4"></span></span>
+<span style="position: absolute; right: 2px; bottom: 2px; padding: 0 3px; border-radius: 3px; background: #E5484D; color: #FFFFFF; font-size: 8px; line-height: 11px">PDF</span>
+</span>
+</sc-if>
+<sc-if value="{{f.isImg}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="width: 44px; height: 44px; flex: none; border-radius: 8px; overflow: hidden; background: #E9DCC8; position: relative">
+<span style="position: absolute; left: 0; right: 0; top: 0; height: 26px; background: #BFD8EA"></span>
+<span style="position: absolute; right: 7px; top: 5px; width: 8px; height: 8px; border-radius: 50%; background: #F6D57A"></span>
+<span style="position: absolute; left: 10px; top: 14px; width: 24px; height: 26px; border-radius: 3px 3px 6px 6px; background: #C9A27A; border-top: 3px solid #8A6A49"></span>
+<span style="position: absolute; left: 15px; top: 8px; width: 14px; height: 10px; border: 2px solid #8A6A49; border-bottom: 0; border-radius: 8px 8px 0 0; box-sizing: border-box"></span>
+</span>
+</sc-if>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3">
+<span style="font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.name}}</span>
+<span style="font-size: 12.5px; color: #FCFCFC99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.sub}}</span>
+</span>
+<sc-if value="{{f.from}}" hint-placeholder-val="{{ false }}"><dc-import name="Avatar" color="{{f.fromColor}}" body="{{f.fromBody}}" state="idle" dot="none" ring="#070707" size="22" hint-size="22px,22px"></dc-import></sc-if>
+</button>
+</sc-for>
+</sc-for>
+</div>
+
+<div style="flex: none; padding: 8px 16px 34px; display: flex; flex-direction: column; gap: 6px">
+<button type="button" style="height: 48px; border: 1px solid #333333; border-radius: 999px; background: transparent; color: #FCFCFC; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.upload}}"></path></svg>上傳檔案給小秘</button>
+<p style="margin: 0; text-align: center; font-size: 12.5px; color: #FCFCFC90">上傳的檔案放在小秘電腦的 <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px">/workspace</span></p>
+</div>
+
+<sc-if value="{{sheet}}" hint-placeholder-val="{{ true }}">
+<button type="button" aria-label="關閉預覽" onClick="{{close}}" style="position: absolute; inset: 0; border: 0; padding: 0; background: rgba(0,0,0,.62); cursor: default"></button>
+<section role="dialog" aria-modal="true" aria-labelledby="pv-title" style="position: absolute; left: 0; right: 0; bottom: 0; background: #111111; border-radius: 20px 20px 0 0; border-top: 1px solid #262626; padding: 0 16px 34px; display: flex; flex-direction: column">
+<div aria-hidden="true" style="height: 20px; display: flex; align-items: center; justify-content: center"><span style="width: 36px; height: 5px; border-radius: 9px; background: #3D3D3D"></span></div>
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 0 12px">
+<span aria-hidden="true" style="width: 40px; height: 40px; flex: none; border-radius: 8px; overflow: hidden; background: #FFFFFF; display: flex; flex-direction: column"><span style="height: 8px; background: #1E7145"></span><span style="flex: 1; background-image: linear-gradient(#D6D6D6 1px, transparent 1px), linear-gradient(90deg, #D6D6D6 1px, transparent 1px); background-size: 10px 7px"></span></span>
+<div style="flex: 1; min-width: 0; line-height: 1.35">
+<h2 id="pv-title" style="margin: 0; font-size: 16px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{pv.name}}</h2>
+<div style="font-size: 12.5px; color: #FCFCFC99">{{pv.meta}}</div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #FCFCFC90; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{pv.path}}</div>
+</div>
+<button type="button" onClick="{{close}}" aria-label="關閉" style="width: 44px; height: 44px; flex: none; border: 0; border-radius: 999px; background: #262626; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.x}}"></path></svg></button>
+</div>
+
+<div style="border: 1px solid #333333; border-radius: 12px; overflow: hidden">
+<table style="width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; table-layout: fixed">
+<thead><tr style="background: #191919; color: #FCFCFC99">
+<sc-for list="{{pv.cols}}" as="c" hint-placeholder-count="5"><th scope="col" style="{{c.style}}">{{c.label}}</th></sc-for>
+</tr></thead>
+<tbody>
+<sc-for list="{{pv.rows}}" as="r" hint-placeholder-count="5">
+<tr>
+<sc-for list="{{r.cells}}" as="c" hint-placeholder-count="5"><td style="{{c.style}}">{{c.v}}</td></sc-for>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<div style="height: 36px; display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #FCFCFC90">
+<span style="flex: 1">{{pv.foot}}</span>
+<sc-if value="{{legend}}" hint-placeholder-val="{{ true }}"><span style="display: inline-flex; align-items: center; gap: 4px; color: #38D591"><span style="width: 8px; height: 8px; border-radius: 2px; background: rgba(56,213,145,.35)"></span>最低價</span></sc-if>
+</div>
+
+<div style="display: flex; gap: 8px; padding-top: 4px">
+<a href="L03-PhoneChat.dc.html" style="flex: 1; height: 48px; border-radius: 999px; background: #FCFCFC; color: #070707; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.at}}"></path></svg>在對話中提到</a>
+<button type="button" aria-label="下載" style="width: 48px; height: 48px; flex: none; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.download}}"></path></svg></button>
+<button type="button" aria-label="傳給其他 Bot" style="width: 48px; height: 48px; flex: none; border: 0; border-radius: 999px; background: #2F2F2F; color: #FCFCFC; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block"><path d="{{I.send}}"></path></svg></button>
+</div>
+</section>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const J = (a) => a.map((d) => (d[0] === 'm' ? 'M0 0' + d : d)).join(' ');
+const I = {
+upload: J(['M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z', 'M14 2v5a1 1 0 0 0 1 1h5', 'M12 12v6', 'm15 15-3-3-3 3']),
+search: J(['m21 21-4.34-4.34', 'M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0']),
+x: J(['M18 6 6 18', 'm6 6 12 12']),
+at: J(['M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0', 'M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8']),
+download: J(['M12 15V3', 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'm7 10 5 5 5-5']),
+send: J(['M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z', 'm21.854 2.147-10.94 10.939'])
+};
+const st = this.state || {};
+const sel = st.sel === undefined ? 'price' : st.sel;
+const P = {
+price: {
+name: '三家競品定價.csv', meta: '12 KB · 小秘整理 · 今天 下午 3:05', path: '/workspace/三家競品定價.csv', foot: '共 18 列 · 這裡只顯示前 5 列',
+head: ['商品', '我們', '帆布家', '包小舖', '選物町'],
+data: [['經典帆布包', '1,080', '990', '1,020', '1,150'], ['托特包 L', '890', '850', '920', '880'], ['束口後背包', '1,280', '1,190', '1,250', '1,320'], ['零錢包', '320', '290', '310', '300'], ['筆袋', '260', '240', '250', '270']]
+},
+snap: {
+name: '蝦皮價格快照.csv', meta: '8 KB · 來自阿哲 · 今天 下午 3:01', path: '/workspace/from/阿哲/蝦皮價格快照.csv', foot: '共 42 列 · 這裡只顯示前 5 列',
+head: ['商品', '賣場', '售價', '已售', '評分'],
+data: [['經典帆布包', '帆布家', '990', '1.2 萬', '4.9'], ['經典帆布包', '包小舖', '1,020', '8,640', '4.8'], ['經典帆布包', '選物町', '1,150', '3,210', '4.9'], ['托特包 L', '帆布家', '850', '6,020', '4.8'], ['托特包 L', '包小舖', '920', '2,400', '4.7']]
+}
+};
+const pvSrc = P[sel] || P.price;
+const W = ['28%', '18%', '18%', '18%', '18%'];
+const TH = 'height: 32px; padding: 0 7px; font-weight: 400; font-size: 12.5px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: ';
+const TD = 'height: 32px; padding: 0 7px; border-top: 1px solid #262626; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; ';
+const pv = {
+name: pvSrc.name, meta: pvSrc.meta, path: pvSrc.path, foot: pvSrc.foot,
+cols: pvSrc.head.map((l, i) => ({ label: l, style: TH + W[i] + (i ? '; text-align: right' : '') })),
+rows: pvSrc.data.map((r) => {
+let min = -1;
+if (sel === 'price') { const nums = r.slice(1).map((v) => +v.replace(',', '')); min = nums.indexOf(Math.min.apply(null, nums)) + 1; }
+return { cells: r.map((v, i) => ({ v, style: TD + (i ? 'text-align: right; ' : '') + (i === min ? 'color: #38D591; background: rgba(56,213,145,.12)' : (i === 1 && sel === 'price' ? 'color: #FCFCFC' : 'color: #FCFCFCD0')) })) };
+})
+};
+const SH = { blue: 'cursor', orange: 'blob', pink: 'circle', green: 'squircle', yellow: 'hexagon', purple: 'diamond', cyan: 'star', red: 'shield', teal: 'drop' };
+const R = (key, name, sub, kind, ext, head, extra) => Object.assign({
+name, sub, isSheet: kind === 'sheet', isPdf: kind === 'pdf', isImg: kind === 'img', ext: ext || '', head: head || '#1E7145', from: false, fromColor: 'blue',
+bg: sel === key && st.open !== false ? '#191919' : 'transparent',
+open: () => this.setState({ sel: key, open: true })
+}, extra || {}, { fromBody: SH[(extra && extra.fromColor) || 'blue'] });
+const groups = [
+{ title: '成果', n: 2, rows: [R('price', '三家競品定價.csv', '12 KB · 今天 下午 3:05', 'sheet', 'CSV'), R('deck', '週一早會簡報.pdf', '2.1 MB · 今天 下午 2:40', 'pdf')] },
+{ title: '你上傳的', n: 2, rows: [R('photo', '帆布包商品照.jpg', '1.6 MB · 昨天', 'img'), R('list', '10 月商品清單.xlsx', '64 KB · 10 月 12 日', 'sheet', 'XLS', '#1E7145')] },
+{ title: '從隊友來的', n: 2, rows: [R('snap', '蝦皮價格快照.csv', '來自阿哲 · 今天 下午 3:01', 'sheet', 'CSV', '#1E7145', { from: true, fromColor: 'orange' }), R('weekly', '週報資料.xlsx', '來自數據喵 · 週一', 'sheet', 'XLS', '#1E7145', { from: true, fromColor: 'purple' })] }
+];
+const isCsv = sel === 'price' || sel === 'snap';
+return {
+I, groups, pv, legend: sel === 'price',
+sheet: st.open !== false && isCsv,
+close: () => this.setState({ open: false })
+};
+}
+}
+</script>
+</body>
+</html>

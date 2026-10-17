@@ -1,0 +1,43 @@
+{
+ "file": "L09-PhonePair.dc.html",
+ "title": "手機：連接這支手機（Tailscale）",
+ "prd": [
+  "§6.14 MB-2",
+  "§6.14 MB-3",
+  "§17 TS-1",
+  "§17 TS-2",
+  "§17 TS-6"
+ ],
+ "what": "手機用相機掃電腦上的一個 QR（Tailscale HTTPS 網址＋一次性配對碼），連上後說明這支手機能做什麼；沒有 Tailscale 時改走同一個 Wi-Fi 的兩步流程。",
+ "goal": "掃一次 QR 就讓手機連上自己的 XBot。",
+ "accept": [
+  "掃描畫面有取景框與掃描線，對準即自動掃描",
+  "成功顯示「已連上 xbot.tail3a9e.ts.net」",
+  "列出這支手機可以：聊天、核准、看電腦",
+  "「沒有 Tailscale？改用同一個 Wi-Fi」切到兩步流程並標明只在同一個 Wi-Fi 有效",
+  "不需要安裝任何憑證（Tailscale 走正式 HTTPS）"
+ ],
+ "states": [
+  "掃描中",
+  "已連上",
+  "同一個 Wi-Fi（兩步）"
+ ],
+ "edge": [
+  "手機沒裝或沒登入 Tailscale：連不上，提示先安裝",
+  "配對碼過期或已用過：請電腦重新產生 QR",
+  "錯誤太多次：鎖定 60 秒"
+ ],
+ "limits": [
+  "配對碼 12 碼、5 分鐘、單次使用",
+  "登入 30 天、有在用自動延長，最多 180 天",
+  "錯誤 10 次鎖 60 秒",
+  "服務只綁 127.0.0.1，經 tailscale serve 提供 HTTPS 443"
+ ],
+ "simplified": {
+  "flow": "連手機",
+  "before": "2 個 QR＋裝憑證",
+  "after": "1 個 QR",
+  "how": "用 Tailscale 的正式 HTTPS 網址，不用裝自簽憑證，掃一次就登入"
+ },
+ "status": "簡化過"
+}
