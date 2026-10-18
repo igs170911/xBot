@@ -19,6 +19,14 @@ export async function loadThread(threadId: string): Promise<void> {
   chatStore.set((s) => applyRead(s, out))
 }
 
+/** 往前多讀一頁（比目前最舊的那則更早的訊息）。 */
+export async function loadOlder(threadId: string): Promise<void> {
+  const first = chatStore.get().threads[threadId]?.messages.find((m) => m.seq !== Number.MAX_SAFE_INTEGER)
+  if (!first) return
+  const out = await chatRead({ thread_id: threadId, before: first.seq, limit: 100 })
+  chatStore.set((s) => applyRead(s, out))
+}
+
 export function resetChat() {
   unsub?.()
   unsub = null

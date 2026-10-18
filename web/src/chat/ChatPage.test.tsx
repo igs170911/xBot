@@ -6,6 +6,7 @@ import { resetBots } from '../data/bots'
 import { dispatchEvent } from '../data/events'
 import { resetInbox } from '../data/inbox'
 import { fakeApi, opError, type FakeApi } from '../test-api'
+import { registerCard } from './cards'
 import { resetChat } from './chatStore'
 
 const BOT = {
@@ -182,4 +183,30 @@ it('Bot 回報錯誤：顯示工作未完成與原因', async () => {
   )
   expect(within(main).getByTestId('msg-bot')).toHaveTextContent('工作未完成：開不了機')
   expect(within(main).getByText('工作未完成')).toBeInTheDocument()
+})
+
+it('卡片登錄表：kind 不是 text 的訊息用登記的元件畫；沒登記的退回文字泡泡', async () => {
+  const off = registerCard('demo_card', ({ msg }) => <section aria-label="示範卡片">{msg.content}</section>)
+  messages = [
+    { id: 'm1', seq: 1, sender: 'bot:b1', kind: 'demo_card', content: '卡片內容', created_at: Date.now(), updated_at: Date.now() },
+    { id: 'm2', seq: 2, sender: 'bot:b1', kind: 'unknown_kind', content: '照樣看得到', status: 'complete', created_at: Date.now(), updated_at: Date.now() },
+  ]
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  expect(await screen.findByRole('region', { name: '示範卡片' })).toHaveTextContent('卡片內容')
+  expect(screen.getByTestId('msg-bot')).toHaveTextContent('照樣看得到')
+  off()
+})
+
+it('Markdown 回覆與重試：工作未完成的最後一則可以再送一次同樣的話', async () => {
+  messages = [
+    { id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '匯出訂單', task_id: 'k1', created_at: Date.now(), updated_at: Date.now() },
+    { id: 'm2', seq: 2, sender: 'bot:b1', kind: 'text', content: '**登入過期**了', task_id: 'k1', status: 'error', created_at: Date.now(), updated_at: Date.now() },
+  ]
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  const bubble = await screen.findByTestId('msg-bot')
+  expect(bubble.querySelector('strong')).toHaveTextContent('登入過期')
+  fireEvent.click(screen.getByRole('button', { name: '再試一次' }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'chat.send')?.input).toEqual({ bot_id: 'b1', text: '匯出訂單', thread_id: 't1' }))
 })

@@ -95,7 +95,15 @@ export class MockServer {
     'chat.list_threads': (i) => ({ threads: this.threads.filter((t) => t.bot_id === i.bot_id) }),
     'chat.read': (i) => {
       const t = this.threads.find((x) => x.id === i.thread_id)
-      return { thread: t, messages: this.messages[i.thread_id as string] ?? [], has_more: false }
+      const all = (this.messages[i.thread_id as string] ?? []).filter((m) => i.before === undefined || m.seq < (i.before as number))
+      const limit = (i.limit as number | undefined) ?? 50
+      const page = all.slice(-limit)
+      return { thread: t, messages: page, has_more: all.length > page.length, next_before: page[0]?.seq }
+    },
+    'bots.update': (i) => {
+      const b = this.bots.find((x) => x.id === i.id)!
+      Object.assign(b, i, { updated_at: Date.now() })
+      return b
     },
     'chat.send': (i) => {
       const t = i.thread_id ? this.threads.find((x) => x.id === i.thread_id)! : this.addThread(i.bot_id as string, String(i.text).slice(0, 40))
