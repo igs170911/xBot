@@ -577,7 +577,7 @@ XBot 服務（Go，單一執行檔）
 ### 17.2 XBot 做法
 | ID | 需求 | 優先 |
 |---|---|---|
-| TS-1 | 主路徑：主機服務**只綁 127.0.0.1**，用 `tailscale serve` 提供 `https://xbot.<tailnet>.ts.net`（正式憑證，不用裝 CA、不開公開埠） | P0 |
+| TS-1 | 主路徑：用內建 Tailscale（C35，tsnet）提供 `https://xbot.<tailnet>.ts.net`（正式憑證，不用裝 CA、不開公開埠）。**服務預設聽 0.0.0.0**（使用者決定 2026-10-18：部署後區網也連得到；非本機連線一律要登入碼）；要限本機設 `XBOT_BIND=127.0.0.1` | P0 |
 | TS-2 | 配對流程：手機裝 Tailscale App 登入同一個帳號 → 主機開好 serve → 在 XBot 掃**一個** QR（網址＋一次性配對碼）→ 完成；之後用裝置權杖，不再輸入登入碼 | P0 |
 | TS-3 | MagicDNS 與 HTTPS 憑證未開時，設定頁直接指出要去 Tailscale 後台開哪個開關 | P0 |
 | TS-4 | 存取權限：建議 Tailscale ACL 只允許自己的裝置（或 `tag:xbot`）連主機 443；XBot 端再加裝置權杖與錯誤次數鎖定（沿用 10 次／60 秒） | P0 |

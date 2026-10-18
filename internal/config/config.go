@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // DefaultPort 是 XBot 服務的預設 HTTP 埠。
@@ -15,7 +16,8 @@ const DefaultPort = 8780
 
 // Config 是服務啟動時需要的設定。
 type Config struct {
-	// Bind 是監聽位址；只想本機使用時設成 127.0.0.1。
+	// Bind 是監聽位址。預設 0.0.0.0（使用者決定 2026-10-18：部署後區網其他裝置也連得到；
+	// 非本機的連線一律要登入碼，見 auth）。只想本機使用時設 XBOT_BIND=127.0.0.1。
 	Bind string
 	// Port 是 HTTP 埠。
 	Port int
@@ -29,6 +31,18 @@ type Config struct {
 	PublicURL string
 	// TrustedProxies 是可以標 X-Forwarded-For 的反向代理位址（XBOT_TRUSTED_PROXIES，逗號分隔的 IP 或 CIDR）；空白是 127.0.0.1、::1。
 	TrustedProxies string
+	// FakeNow 是測試用的假「現在」（XBOT_FAKE_NOW，RFC 3339）：只在 XBOT_DEV=1 時才讀，正式版一律是零值。
+	// 定時任務的時鐘從這個時間開始照常往前走，讓端對端測試能模擬週日深夜、月底等情境。
+	FakeNow time.Time
+}
+
+// Clock 回傳服務排程用的「現在」：沒設 FakeNow 就是 time.Now。
+func (c Config) Clock() func() time.Time {
+	if c.FakeNow.IsZero() {
+		return time.Now
+	}
+	off := time.Until(c.FakeNow)
+	return func() time.Time { return time.Now().Add(off) }
 }
 
 // Addr 回傳 host:port。
@@ -43,10 +57,10 @@ func (c Config) URL() string {
 	return fmt.Sprintf("http://%s:%d", host, c.Port)
 }
 
-// Load 從環境變數讀設定：XBOT_BIND、XBOT_PORT、XBOT_DATA_DIR、XBOT_DEV、XBOT_LOCAL_NOAUTH、XBOT_PUBLIC_URL、XBOT_TRUSTED_PROXIES。
+// Load 從環境變數讀設定：XBOT_BIND、XBOT_PORT、XBOT_DATA_DIR、XBOT_DEV、XBOT_LOCAL_NOAUTH、XBOT_PUBLIC_URL、XBOT_TRUSTED_PROXIES、XBOT_FAKE_NOW（只在 XBOT_DEV=1 時）。
 func Load() (Config, error) {
 	c := Config{
-		Bind:    envOr("XBOT_BIND", "127.0.0.1"),
+		Bind:    envOr("XBOT_BIND", "0.0.0.0"),
 		Port:    DefaultPort,
 		DataDir: os.Getenv("XBOT_DATA_DIR"),
 		Dev:     os.Getenv("XBOT_DEV") == "1",
@@ -74,6 +88,13 @@ func Load() (Config, error) {
 			return c, fmt.Errorf("XBOT_PORT 不是有效的埠號：%q", v)
 		}
 		c.Port = p
+	}
+	if v := os.Getenv("XBOT_FAKE_NOW"); v != "" && c.Dev {
+		t, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			return c, fmt.Errorf("XBOT_FAKE_NOW 要是 RFC 3339 時間（例：2026-10-18T23:30:00+08:00）：%q", v)
+		}
+		c.FakeNow = t
 	}
 	if c.DataDir == "" {
 		c.DataDir = DefaultDataDir()

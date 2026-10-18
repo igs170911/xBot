@@ -39,6 +39,8 @@ as_user './xbot service install --bin ./xbot'
 
 step "2. 狀態"
 as_user '.local/bin/xbot service status'
+# Go 對 0.0.0.0 用雙協定 socket，會出現在 tcp6 的 [::]；兩個檔都看。
+as_user 'grep -qE " (00000000|00000000000000000000000000000000):224C [0-9A-F:]+ 0A " /proc/net/tcp /proc/net/tcp6 && echo "✅ 服務聽所有介面的 8780（區網可連）"' || { echo "❌ 服務沒有聽 0.0.0.0"; exit 1; }
 
 step "3. 備份 → 刪掉資料 → 還原"
 as_user 'echo 測試資料 > .local/share/xbot/note.txt && .local/bin/xbot backup --out backups/t.tar.gz'
