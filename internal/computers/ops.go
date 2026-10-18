@@ -32,6 +32,23 @@ type UpdateIn struct {
 	HostID string `json:"host_id,omitempty" resource:"host" max:"64" desc:"只更新這台主機；不填＝所有主機，一台做完再做下一台"`
 }
 
+// MoveIn 是 xbot.computers.move 的輸入。
+type MoveIn struct {
+	BotID  string `json:"bot_id" required:"true" resource:"bot" max:"64" desc:"Bot id"`
+	HostID string `json:"host_id" required:"true" resource:"host" max:"64" desc:"搬到這台主機"`
+}
+
+// MoveAllIn 是 xbot.computers.move_all 的輸入。
+type MoveAllIn struct {
+	FromHostID string `json:"from_host_id" required:"true" resource:"host" max:"64" desc:"把這台主機上的 Bot"`
+	ToHostID   string `json:"to_host_id" required:"true" resource:"host" max:"64" desc:"全部搬到這台主機"`
+}
+
+// MoveStatusIn 是 xbot.computers.move_status 的輸入。
+type MoveStatusIn struct {
+	BotID string `json:"bot_id,omitempty" resource:"bot" max:"64" desc:"只看這個 Bot；不填＝全部"`
+}
+
 // Register 登錄 xbot.computers.* 操作。svc 是 nil 時只登錄定義（指令列、gen ts）。
 func Register(reg *ops.Registry, svc *Service) {
 	need := func() error {
@@ -158,6 +175,7 @@ func Register(reg *ops.Registry, svc *Service) {
 			return v, opErr(err)
 		},
 	})
+	registerMove(reg, svc, need)
 	ops.Register(reg, ops.Op[UpdateIn, Progress]{
 		Name: "xbot.computers.update", Summary: "更新電腦：把新的電腦映像傳到主機，並重建上面要更新的電腦（資料保留）",
 		Description: "make box 換了映像、或 XBot 更新了電腦的安全設定之後用。一台主機做完再做下一台；正在工作的 Bot 會跳過。" +
@@ -176,6 +194,115 @@ func Register(reg *ops.Registry, svc *Service) {
 				return p, nil // 回目前的進度
 			}
 			return p, opErr(err)
+		},
+	})
+}
+
+func registerMove(reg *ops.Registry, svc *Service, need func() error) {
+	ops.Register(reg, ops.Op[MoveIn, MoveStatus]{
+		Name: "xbot.computers.move", Summary: "搬家：把一個 Bot 的電腦搬到另一台主機，家目錄、工作資料夾、引擎紀錄與瀏覽器登入都跟著走",
+		Description: "停止電腦 → 經 SSH 打包 home／workspace／hermes → 在新主機還原並逐檔驗證 → 切換過去（原本開著的會在新主機開機）。" +
+			"在背景進行，進度看 computers.move 事件或 xbot.computers.move_status；途中失敗或取消時 Bot 留在原主機，原資料不動。" +
+			"原主機上的舊資料保留 24 小時才刪。Bot 正在工作時不能搬（先停止工作）。兩台主機都要在線上。",
+		Scope: ops.ScopeManage, Risk: ops.RiskSafe,
+		Handle: func(ctx context.Context, call *ops.Call, in MoveIn) (MoveStatus, error) {
+			if err := need(); err != nil {
+				return MoveStatus{}, err
+			}
+			if call.DryRun {
+				st, err := svc.PlanMove(ctx, in.BotID, in.HostID)
+				return st, opErr(err)
+			}
+			st, err := svc.Move(ctx, in.BotID, in.HostID)
+			return st, opErr(err)
+		},
+	})
+	ops.Register(reg, ops.Op[MoveAllIn, MoveStatus]{
+		Name: "xbot.computers.move_all", Summary: "把一台主機上的 Bot 全部搬到另一台（一個做完再做下一個）",
+		Description: "從驗證用的主機換到專用主機時用（16.1a）。每個 Bot 的搬法同 xbot.computers.move；輪到時正在工作的 Bot 會跳過（可以之後再搬）。" +
+			"dry_run 只列出會搬哪些。",
+		Scope: ops.ScopeManage, Risk: ops.RiskSafe,
+		Handle: func(ctx context.Context, call *ops.Call, in MoveAllIn) (MoveStatus, error) {
+			if err := need(); err != nil {
+				return MoveStatus{}, err
+			}
+			if call.DryRun {
+				jobs, err := svc.PlanMoveAll(ctx, in.FromHostID, in.ToHostID)
+				if jobs == nil {
+					jobs = []MoveJob{}
+				}
+				return MoveStatus{Jobs: jobs}, opErr(err)
+			}
+			st, err := svc.MoveAll(ctx, in.FromHostID, in.ToHostID)
+			return st, opErr(err)
+		},
+	})
+	ops.Register(reg, ops.Op[MoveStatusIn, MoveStatus]{
+		Name: "xbot.computers.move_status", Summary: "看搬家的進度：進行中、排隊中與最近做完的搬家",
+		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
+		Handle: func(ctx context.Context, _ *ops.Call, in MoveStatusIn) (MoveStatus, error) {
+			if err := need(); err != nil {
+				return MoveStatus{}, err
+			}
+			st, err := svc.MoveStatus(ctx, in.BotID)
+			return st, opErr(err)
+		},
+	})
+	ops.Register(reg, ops.Op[BotIn, MoveStatus]{
+		Name: "xbot.computers.move_cancel", Summary: "取消一個 Bot 排隊中或進行中的搬家（Bot 留在原主機，原資料不動）",
+		Description: "已經切換到新主機的搬家不能取消（要搬回去請再搬一次）。",
+		Scope:       ops.ScopeManage, Risk: ops.RiskSafe,
+		Handle: func(ctx context.Context, call *ops.Call, in BotIn) (MoveStatus, error) {
+			if err := need(); err != nil {
+				return MoveStatus{}, err
+			}
+			if call.DryRun {
+				st, err := svc.MoveStatus(ctx, in.BotID)
+				return st, opErr(err)
+			}
+			st, err := svc.CancelMove(ctx, in.BotID)
+			return st, opErr(err)
+		},
+	})
+	ops.Register(reg, ops.Op[EgressIn, EgressView]{
+		Name: "xbot.computers.set_egress", Summary: "「從家裡出去」：讓一個 Bot 的電腦連外經過家裡那台電腦（Tailscale exit node）",
+		Description: "雲端主機的機房 IP 容易被蝦皮、Threads 要求驗證；開了以後這個 Bot 的瀏覽器與工具經主機上的 Tailscale 小容器、從家裡的網路連外。" +
+			"家裡那台電腦要在 Tailscale 設成 exit node，並在 Tailscale 的存取控制只允許小容器（tag:xbot-egress）連網際網路（autogroup:internet），" +
+			"否則經家裡出去的連線也連得到家裡的區網。只對認得 proxy 設定的程式有效（瀏覽器、Python、curl 等）。" +
+			"電腦開著時會重建（資料保留）。打開要你本人核准、不能代為核准；關掉不用核准。",
+		Scope: ops.ScopeAdmin, Risk: ops.RiskConfirm, NoDelegate: true,
+		RiskOf: func(in EgressIn) ops.Risk {
+			if !in.Home && in.AuthKey == "" && in.ExitNode == "" {
+				return ops.RiskSafe
+			}
+			return ops.RiskConfirm
+		},
+		Handle: func(ctx context.Context, call *ops.Call, in EgressIn) (EgressView, error) {
+			if err := need(); err != nil {
+				return EgressView{}, err
+			}
+			if in.ExitNode != "" {
+				if err := box.ValidExitNode(in.ExitNode); err != nil {
+					return EgressView{}, ops.InvalidInput(ops.FieldError{Field: "exit_node", Message: err.Error()})
+				}
+			}
+			if call.DryRun {
+				v, err := svc.EgressStatus(ctx, "")
+				return v, opErr(err)
+			}
+			v, err := svc.SetEgress(ctx, in)
+			return v, opErr(err)
+		},
+	})
+	ops.Register(reg, ops.Op[EgressStatusIn, EgressView]{
+		Name: "xbot.computers.egress_status", Summary: "看「從家裡出去」的設定與各主機上 Tailscale 小容器的狀態",
+		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
+		Handle: func(ctx context.Context, _ *ops.Call, in EgressStatusIn) (EgressView, error) {
+			if err := need(); err != nil {
+				return EgressView{}, err
+			}
+			v, err := svc.EgressStatus(ctx, in.HostID)
+			return v, opErr(err)
 		},
 	})
 }
@@ -206,8 +333,11 @@ func opErr(err error) error {
 		return nil
 	case errors.Is(err, store.ErrNotFound):
 		return ops.NotFound("找不到這個 Bot 或它的主機")
-	case errors.Is(err, box.ErrBusy), errors.Is(err, ErrUpdateRunning):
+	case errors.Is(err, box.ErrBusy), errors.Is(err, ErrUpdateRunning), errors.Is(err, box.ErrMoving), errors.Is(err, box.ErrSameHost),
+		errors.Is(err, ErrMoveQueued), errors.Is(err, ErrHostOffline), errors.Is(err, ErrNoMove):
 		return ops.Conflict(err.Error())
+	case errors.Is(err, box.ErrEgressNotSet):
+		return ops.InvalidInput(ops.FieldError{Field: "exit_node", Message: err.Error()})
 	case errors.Is(err, hosts.ErrUnknownHost), errors.Is(err, hosts.ErrHostOffline):
 		return ops.Conflict("這個 Bot 的電腦所在的主機連不上：" + err.Error())
 	case errors.As(err, &ne):

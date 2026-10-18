@@ -54,7 +54,9 @@ type Options struct {
 	Notify func(Status)
 	// Release 在電腦連資料一起刪除（purge）前呼叫，用來關掉這個 Bot 在服務這邊的 product.sock；可為 nil。
 	Release func(botID string)
-	Logger  *slog.Logger
+	// Egress 提供「從家裡出去」（CL-7）的設定（exit node 與 Tailscale 登入金鑰）；nil 時不支援。
+	Egress EgressSource
+	Logger *slog.Logger
 }
 
 // PrepareFunc 準備一台電腦開機需要的東西。
@@ -74,9 +76,12 @@ type Manager struct {
 	http    *http.Client
 	guard   netguard
 
-	mu    sync.Mutex
-	locks map[string]*sync.Mutex
-	holds map[string]int // 有人正在看畫面的電腦（B14）：不休眠
+	mu     sync.Mutex
+	locks  map[string]*sync.Mutex
+	holds  map[string]int  // 有人正在看畫面的電腦（B14）：不休眠
+	moving map[string]bool // 正在搬家的電腦（B31）：不能開機、重建或刪除
+
+	egress EgressSource
 }
 
 // New 建立 Manager。
@@ -89,7 +94,7 @@ func New(db *store.DB, hs Hosts, opts Options) *Manager {
 	}
 	return &Manager{db: db, hosts: hs, image: opts.Image, prepare: opts.Prepare, noGuard: opts.NoNetGuard, notify: opts.Notify,
 		release: opts.Release, log: opts.Logger, http: &http.Client{Timeout: limits.BoxProbeTimeout},
-		locks: map[string]*sync.Mutex{}, holds: map[string]int{}}
+		locks: map[string]*sync.Mutex{}, holds: map[string]int{}, moving: map[string]bool{}, egress: opts.Egress}
 }
 
 // Image 回傳 Bot 電腦映像的名稱。
@@ -289,6 +294,9 @@ func (m *Manager) Status(ctx context.Context, botID string) (Status, error) {
 // Create 建立電腦（volume 與容器），但不開機。已經存在就直接回傳狀態。
 func (m *Manager) Create(ctx context.Context, botID string) (Status, error) {
 	defer m.lock(botID)()
+	if m.Moving(botID) {
+		return Status{}, ErrMoving
+	}
 	b, h, err := m.load(ctx, botID)
 	if err != nil {
 		return Status{}, err
@@ -350,6 +358,9 @@ func (m *Manager) create(ctx context.Context, b *store.Box, h hosts.Host) (*cont
 		if sp.Net, err = m.attach(ctx, h, b); err != nil {
 			return nil, err
 		}
+		if sp.Proxy, err = m.boxProxy(ctx, h, b.BotID); err != nil {
+			return nil, fmt.Errorf("從家裡出去：%w", err)
+		}
 	}
 	res, err := api.ContainerCreate(ctx, createOptions(sp))
 	if err != nil {
@@ -408,6 +419,9 @@ func ensureVolume(ctx context.Context, api hosts.DockerAPI, name, botID string) 
 // Start 開機；電腦還不存在時先建立。只等容器開始執行，桌面與 Hermes 就緒請用 WaitReady。
 func (m *Manager) Start(ctx context.Context, botID string) (Status, error) {
 	defer m.lock(botID)()
+	if m.Moving(botID) {
+		return Status{}, ErrMoving
+	}
 	b, h, err := m.load(ctx, botID)
 	if err != nil {
 		return Status{}, err
@@ -420,8 +434,12 @@ func (m *Manager) start(ctx context.Context, b store.Box, h hosts.Host) (Status,
 	if err != nil {
 		return Status{}, err
 	}
-	if c != nil && !running(c) && m.stale(c, b) {
-		// 容器是用舊的強化設定（SEC-3／SEC-4）或舊的資源限制（BX-11）建的：開機前重建，資料區保留。
+	eg, err := m.EgressOn(ctx, b.BotID)
+	if err != nil {
+		return Status{}, err
+	}
+	if c != nil && !running(c) && (m.stale(c, b) || (c.Config != nil && (c.Config.Labels[LabelProxy] != "") != (eg && !m.noGuard))) {
+		// 容器是用舊的強化設定（SEC-3／SEC-4）、舊的資源限制（BX-11）或不同的「從家裡出去」設定（CL-7）建的：開機前重建，資料區保留。
 		if _, err := h.Docker().ContainerRemove(ctx, c.ID, client.ContainerRemoveOptions{Force: true}); err != nil && !cerrdefs.IsNotFound(err) {
 			return Status{}, m.fail(ctx, b, fmt.Errorf("重建 Bot 電腦失敗：%w", dockerErr(err)))
 		}
@@ -495,6 +513,9 @@ func stop(ctx context.Context, h hosts.Host, id string) error {
 // purge 為 true 時連 volume 一起刪除（無法復原，呼叫端要先取得使用者核准）。
 func (m *Manager) Remove(ctx context.Context, botID string, purge bool) (Status, error) {
 	defer m.lock(botID)()
+	if m.Moving(botID) {
+		return Status{}, ErrMoving
+	}
 	b, h, err := m.load(ctx, botID)
 	if err != nil {
 		return Status{}, err
@@ -599,6 +620,9 @@ func (m *Manager) Outdated(ctx context.Context, botID string) (bool, error) {
 // Rebuild 用目前的映像與設定重建容器，保留三個 volume（BX-15）。原本在跑的話重建後會再開機。
 func (m *Manager) Rebuild(ctx context.Context, botID string) (Status, error) {
 	defer m.lock(botID)()
+	if m.Moving(botID) {
+		return Status{}, ErrMoving
+	}
 	b, h, err := m.load(ctx, botID)
 	if err != nil {
 		return Status{}, err

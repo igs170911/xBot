@@ -44,6 +44,8 @@ type DockerAPI interface {
 	NetworkInspect(ctx context.Context, id string, options client.NetworkInspectOptions) (client.NetworkInspectResult, error)
 	NetworkList(ctx context.Context, options client.NetworkListOptions) (client.NetworkListResult, error)
 	ContainerList(ctx context.Context, options client.ContainerListOptions) (client.ContainerListResult, error)
+	// ImagePull 在主機上拉映像（「從家裡出去」的 Tailscale 小容器，B31）。
+	ImagePull(ctx context.Context, ref string, options client.ImagePullOptions) (client.ImagePullResponse, error)
 }
 
 var _ DockerAPI = (*client.Client)(nil)

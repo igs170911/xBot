@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, Cloud, House, Plus, RefreshCw, Server, ShieldCheck, Smartphone, TriangleAlert, WifiOff } from 'lucide-react'
+import { ChevronDown, Cloud, House, Plus, RefreshCw, Server, ShieldCheck, Smartphone, TriangleAlert, Truck, WifiOff } from 'lucide-react'
 import { hostsCheck, hostsSetDefault } from '../api/generated'
 import { linkClick, navigate } from '../router'
 import { Avatar } from '../ui/Avatar'
@@ -16,9 +16,11 @@ import { STATUS_LABEL, hostSub, loadHosts, useHosts, type HostView, type HostsSt
 import { PairPhoneDialog } from '../mobile/PhoneSettings'
 import { connectionKind } from '../mobile/pwa'
 import { useRemoveHost } from './removeHost'
+import { EgressSummary, MoveAllDialog, MovesBlock } from './MoveAll'
+import { moveTargets } from '../computer/moveData'
 
 // 設定 › 電腦與裝置（J06，PRD §16 CL-1、CL-3、CL-6、CL-8）：主機清單（狀態、資源、上面的 Bot、開機台數／上限）、
-// 新增主機（J11）、新 Bot 預設放哪台。搬家（CL-5）與「從家裡出去」（CL-7）之後的卡片做。
+// 新增主機（J11）、新 Bot 預設放哪台、整台搬家（CL-5、16.1a）與「從家裡出去」（CL-7）的狀態。
 
 const TONE: Record<string, Tone> = { online: 'success', offline: 'neutral', updating: 'accent', failed: 'danger', unknown: 'neutral' }
 
@@ -71,7 +73,7 @@ function BotFaces({ h }: { h: HostView }) {
   )
 }
 
-function HostRow({ h, s, onRemove }: { h: HostView; s: HostsState; onRemove: (h: HostView) => void }) {
+function HostRow({ h, s, onRemove, onMove }: { h: HostView; s: HostsState; onRemove: (h: HostView) => void; onMove: (h: HostView) => void }) {
   const toast = useToast()
   const [busy, setBusy] = useState(false)
   const to = `/settings/computers/hosts/${encodeURIComponent(h.id)}`
@@ -111,6 +113,17 @@ function HostRow({ h, s, onRemove }: { h: HostView; s: HostsState; onRemove: (h:
         {offline && (
           <Button size="sm" icon={RefreshCw} onClick={reconnect} loading={busy}>
             重新連線
+          </Button>
+        )}
+        {!offline && (
+          <Button
+            size="sm"
+            icon={Truck}
+            disabled={h.bots.length === 0 || moveTargets(h, s.hosts ?? []).length === 0}
+            title={h.bots.length === 0 ? '這台上面沒有 Bot' : '把這台上的 Bot 全部搬到另一台'}
+            onClick={() => onMove(h)}
+          >
+            搬家
           </Button>
         )}
         <Button size="sm" variant="danger" disabled={h.control_center} className={h.control_center ? 'max-sm:hidden' : undefined} onClick={() => onRemove(h)} title={h.control_center ? '控制中心所在的主機不能移除' : undefined}>
@@ -158,6 +171,7 @@ export function ComputersSection() {
   const [open, setOpen] = useState(false)
   const [pairing, setPairing] = useState(false)
   const remove = useRemoveHost()
+  const [moveFrom, setMoveFrom] = useState<HostView | null>(null)
   const hosts = s.hosts ?? []
   const local = hosts.find((h) => h.control_center)
   const bots = hosts.flatMap((h) => h.bots.map((b) => ({ ...b, host: h })))
@@ -190,7 +204,7 @@ export function ComputersSection() {
         {s.hosts && (
           <Group label="主機清單">
             {hosts.map((h) => (
-              <HostRow key={h.id} h={h} s={s} onRemove={remove.ask} />
+              <HostRow key={h.id} h={h} s={s} onRemove={remove.ask} onMove={setMoveFrom} />
             ))}
             <button
               type="button"
@@ -214,6 +228,7 @@ export function ComputersSection() {
           </Group>
         )}
       </Block>
+      <MovesBlock />
       {s.hosts && hosts.length > 0 && (
         <Block title="預設值" aside={<span className="text-[13px] text-ink-2 max-md:hidden">同一個電腦映像，每台主機都一樣；主機滿了會排隊</span>}>
           <Group>
@@ -222,6 +237,7 @@ export function ComputersSection() {
           </Group>
         </Block>
       )}
+      <EgressSummary />
       <DevicesEntry />
       <Block title="掃 QR 連手機" aside={<Button variant="primary" size="sm" icon={Smartphone} onClick={() => setPairing(true)}>連手機</Button>}>
         <Group>
@@ -234,6 +250,7 @@ export function ComputersSection() {
         XBot 能控制每台主機的 Docker，等於有那台主機的最高權限：建議整台主機專給 XBot。
       </Note>
       {remove.dialog}
+      <MoveAllDialog from={moveFrom} hosts={hosts} onClose={() => setMoveFrom(null)} />
     </>
   )
 }
