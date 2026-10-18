@@ -11,6 +11,7 @@ import { useToast } from '../ui/toast-context'
 import { cx } from '../ui/cx'
 import { errText } from './format'
 import { Block, Group, Note, Row, SectionHeader } from './parts'
+import { DevicesEntry } from './NetworkPage'
 import { STATUS_LABEL, hostSub, loadHosts, useHosts, type HostView, type HostsState } from './hostsData'
 import { useRemoveHost } from './removeHost'
 
@@ -218,6 +219,7 @@ export function ComputersSection() {
           </Group>
         </Block>
       )}
+      <DevicesEntry />
       <Note tone="warning" icon={<Icon icon={TriangleAlert} size={18} />}>
         XBot 能控制每台主機的 Docker，等於有那台主機的最高權限：建議整台主機專給 XBot。
       </Note>

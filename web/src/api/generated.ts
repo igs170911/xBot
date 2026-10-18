@@ -103,6 +103,9 @@ export interface AuthStatus {
   local: boolean
   kind?: 'owner' | 'agent' | 'bot'
   name?: string
+  /** 經內建 Tailscale 的 tailnet 連進來（C35）；tailscale_user 是查到的 Tailscale 帳號（只是提示，一樣要登入）。 */
+  tailnet?: boolean
+  tailscale_user?: string
 }
 
 async function authCall<T>(path: string, init: RequestInit, opts: CallOptions): Promise<T> {
@@ -6671,6 +6674,233 @@ export function modelsUpdateProvider(input: ModelsUpdateProviderInput, opts?: Ca
   return invoke('xbot.models.update_provider', input, opts).then((r) => r.output)
 }
 
+// xbot.network.funnel_set
+
+export interface NetworkFunnelSetInput {
+  /** 開啟或關閉外部入口（Tailscale Funnel） */
+  enabled: boolean
+  /** IP 白名單（IP 或 CIDR，例：203.0.113.7、198.51.100.0/24）；空白表示不限。Funnel 與反向代理都適用 */
+  allow_ips?: string[]
+}
+
+export interface NetworkFunnelSetOutput {
+  local_url: string
+  tailscale: {
+    enabled: boolean
+    state: 'off' | 'starting' | 'needs_login' | 'running' | 'error'
+    /** 給人看的說明（例：要去 Tailscale 後台開什麼） */
+    message?: string
+    /** 互動登入網址（needs_login 時；只給有 admin 的身分） */
+    login_url?: string
+    hostname: string
+    /** tailnet 網址，例：https://xbot.tail3a9e.ts.net */
+    url?: string
+    tailnet?: string
+    /** 這台 XBot 登入的 Tailscale 帳號 */
+    user?: string
+    ips: string[]
+    magic_dns: boolean
+    /** tailnet 有沒有開 HTTPS 憑證 */
+    https: boolean
+    cert: 'none' | 'missing' | 'pending' | 'ready' | 'error'
+    cert_message?: string
+    /** tailnet 上其他裝置數 */
+    devices: number
+    /** 其中在線上的 */
+    online: number
+    /** 有沒有存登入金鑰（不回傳金鑰本身） */
+    has_auth_key: boolean
+    /** tailnet 網址的 QR（每列一個字串，1 是黑點） */
+    qr: string[]
+  }
+  funnel: {
+    /** 設定上有沒有開 */
+    enabled: boolean
+    state: 'off' | 'starting' | 'on' | 'error' | 'unavailable'
+    message?: string
+    /** 網際網路上連得到的網址（開著時） */
+    url?: string
+    /** tailnet 的存取規則有沒有允許這台用 Funnel */
+    allowed: boolean
+    /** IP 白名單；空白表示不限 */
+    allow_ips: string[]
+  }
+  proxy: {
+    enabled: boolean
+    url?: string
+    trusted_proxies: string[]
+  }
+  /** 外部連得到的網址；網址觸發與代理配對說明用它 */
+  public_url: string
+  base_url: string
+  /** 外部入口開放的路徑 */
+  external_paths: string[]
+  /** 外部入口代理每分鐘呼叫上限 */
+  external_rate_per_min: number
+}
+
+/**
+ * 開啟或關閉外部入口（Tailscale Funnel）：讓 tailnet 外的代理與網址觸發連得到 XBot
+ *
+ * 外部入口只開放 /mcp（一律要代理權杖）、/api/v1/agents.pair（配對碼）與 /hooks/<id>（網址觸發的金鑰），其他路徑一律 404；可設 IP 白名單，速率上限比 tailnet 內嚴。要先開啟內建 Tailscale，tailnet 也要允許 Funnel。開啟要你本人核准、不能代為核准；關閉不用。
+ *
+ * `xbot.network.funnel_set`：權限 admin、風險 confirm（依輸入可能需要核准）
+ */
+export function networkFunnelSet(input: NetworkFunnelSetInput, opts?: CallOptions): Promise<NetworkFunnelSetOutput> {
+  return invoke('xbot.network.funnel_set', input, opts).then((r) => r.output)
+}
+
+// xbot.network.status
+
+export type NetworkStatusInput = Record<string, never>
+
+export interface NetworkStatusOutput {
+  local_url: string
+  tailscale: {
+    enabled: boolean
+    state: 'off' | 'starting' | 'needs_login' | 'running' | 'error'
+    /** 給人看的說明（例：要去 Tailscale 後台開什麼） */
+    message?: string
+    /** 互動登入網址（needs_login 時；只給有 admin 的身分） */
+    login_url?: string
+    hostname: string
+    /** tailnet 網址，例：https://xbot.tail3a9e.ts.net */
+    url?: string
+    tailnet?: string
+    /** 這台 XBot 登入的 Tailscale 帳號 */
+    user?: string
+    ips: string[]
+    magic_dns: boolean
+    /** tailnet 有沒有開 HTTPS 憑證 */
+    https: boolean
+    cert: 'none' | 'missing' | 'pending' | 'ready' | 'error'
+    cert_message?: string
+    /** tailnet 上其他裝置數 */
+    devices: number
+    /** 其中在線上的 */
+    online: number
+    /** 有沒有存登入金鑰（不回傳金鑰本身） */
+    has_auth_key: boolean
+    /** tailnet 網址的 QR（每列一個字串，1 是黑點） */
+    qr: string[]
+  }
+  funnel: {
+    /** 設定上有沒有開 */
+    enabled: boolean
+    state: 'off' | 'starting' | 'on' | 'error' | 'unavailable'
+    message?: string
+    /** 網際網路上連得到的網址（開著時） */
+    url?: string
+    /** tailnet 的存取規則有沒有允許這台用 Funnel */
+    allowed: boolean
+    /** IP 白名單；空白表示不限 */
+    allow_ips: string[]
+  }
+  proxy: {
+    enabled: boolean
+    url?: string
+    trusted_proxies: string[]
+  }
+  /** 外部連得到的網址；網址觸發與代理配對說明用它 */
+  public_url: string
+  base_url: string
+  /** 外部入口開放的路徑 */
+  external_paths: string[]
+  /** 外部入口代理每分鐘呼叫上限 */
+  external_rate_per_min: number
+}
+
+/**
+ * 看網路狀態：本機網址、內建 Tailscale（tailnet 網址、憑證、裝置數）、外部入口（Funnel／反向代理）
+ *
+ * 網址觸發與代理配對說明用 public_url（外部連得到的網址）。登入網址只給有 admin 的身分。
+ *
+ * `xbot.network.status`：權限 read、風險 safe
+ */
+export function networkStatus(input: NetworkStatusInput = {}, opts?: CallOptions): Promise<NetworkStatusOutput> {
+  return invoke('xbot.network.status', input, opts).then((r) => r.output)
+}
+
+// xbot.network.tailscale_set
+
+export interface NetworkTailscaleSetInput {
+  /** 開啟或關閉內建 Tailscale */
+  enabled: boolean
+  /** 在 tailnet 上的名字（小寫英數字與 -）；預設 xbot，網址就是 https://<名字>.<tailnet>.ts.net */
+  hostname?: string
+  /** Tailscale 登入金鑰（tskey-auth-…，加密後存在服務端）；空白就用互動登入（狀態會給登入網址）（密鑰：只能寫、不能讀） */
+  auth_key?: string
+  /** 刪掉存著的登入金鑰 */
+  clear_auth_key?: boolean
+}
+
+export interface NetworkTailscaleSetOutput {
+  local_url: string
+  tailscale: {
+    enabled: boolean
+    state: 'off' | 'starting' | 'needs_login' | 'running' | 'error'
+    /** 給人看的說明（例：要去 Tailscale 後台開什麼） */
+    message?: string
+    /** 互動登入網址（needs_login 時；只給有 admin 的身分） */
+    login_url?: string
+    hostname: string
+    /** tailnet 網址，例：https://xbot.tail3a9e.ts.net */
+    url?: string
+    tailnet?: string
+    /** 這台 XBot 登入的 Tailscale 帳號 */
+    user?: string
+    ips: string[]
+    magic_dns: boolean
+    /** tailnet 有沒有開 HTTPS 憑證 */
+    https: boolean
+    cert: 'none' | 'missing' | 'pending' | 'ready' | 'error'
+    cert_message?: string
+    /** tailnet 上其他裝置數 */
+    devices: number
+    /** 其中在線上的 */
+    online: number
+    /** 有沒有存登入金鑰（不回傳金鑰本身） */
+    has_auth_key: boolean
+    /** tailnet 網址的 QR（每列一個字串，1 是黑點） */
+    qr: string[]
+  }
+  funnel: {
+    /** 設定上有沒有開 */
+    enabled: boolean
+    state: 'off' | 'starting' | 'on' | 'error' | 'unavailable'
+    message?: string
+    /** 網際網路上連得到的網址（開著時） */
+    url?: string
+    /** tailnet 的存取規則有沒有允許這台用 Funnel */
+    allowed: boolean
+    /** IP 白名單；空白表示不限 */
+    allow_ips: string[]
+  }
+  proxy: {
+    enabled: boolean
+    url?: string
+    trusted_proxies: string[]
+  }
+  /** 外部連得到的網址；網址觸發與代理配對說明用它 */
+  public_url: string
+  base_url: string
+  /** 外部入口開放的路徑 */
+  external_paths: string[]
+  /** 外部入口代理每分鐘呼叫上限 */
+  external_rate_per_min: number
+}
+
+/**
+ * 開啟或關閉內建 Tailscale（手機、筆電經 tailnet 用正式 HTTPS 連 XBot）
+ *
+ * 開啟後這台 XBot 會成為你 tailnet 上的一台機器（預設名字 xbot），網址 https://xbot.<tailnet>.ts.net。tailnet 來的連線一樣要登入或權杖。可以給登入金鑰（tskey-auth-…），或不給、用狀態裡的登入網址核准。開啟要你本人核准、不能代為核准；關閉不用。
+ *
+ * `xbot.network.tailscale_set`：權限 admin、風險 confirm（依輸入可能需要核准）
+ */
+export function networkTailscaleSet(input: NetworkTailscaleSetInput, opts?: CallOptions): Promise<NetworkTailscaleSetOutput> {
+  return invoke('xbot.network.tailscale_set', input, opts).then((r) => r.output)
+}
+
 // xbot.rooms.create
 
 export interface RoomsCreateInput {
@@ -9888,6 +10118,9 @@ export interface Ops {
   'xbot.models.set_price': { input: ModelsSetPriceInput; output: ModelsSetPriceOutput }
   'xbot.models.set_provider': { input: ModelsSetProviderInput; output: ModelsSetProviderOutput }
   'xbot.models.update_provider': { input: ModelsUpdateProviderInput; output: ModelsUpdateProviderOutput }
+  'xbot.network.funnel_set': { input: NetworkFunnelSetInput; output: NetworkFunnelSetOutput }
+  'xbot.network.status': { input: NetworkStatusInput; output: NetworkStatusOutput }
+  'xbot.network.tailscale_set': { input: NetworkTailscaleSetInput; output: NetworkTailscaleSetOutput }
   'xbot.rooms.create': { input: RoomsCreateInput; output: RoomsCreateOutput }
   'xbot.rooms.delete': { input: RoomsDeleteInput; output: RoomsDeleteOutput }
   'xbot.rooms.list': { input: RoomsListInput; output: RoomsListOutput }
@@ -10071,6 +10304,9 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.models.set_price': { path: '/api/v1/models.set_price', scope: 'admin', risk: 'confirm', mutates: true },
   'xbot.models.set_provider': { path: '/api/v1/models.set_provider', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.models.update_provider': { path: '/api/v1/models.update_provider', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.network.funnel_set': { path: '/api/v1/network.funnel_set', scope: 'admin', risk: 'confirm', mutates: true },
+  'xbot.network.status': { path: '/api/v1/network.status', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.network.tailscale_set': { path: '/api/v1/network.tailscale_set', scope: 'admin', risk: 'confirm', mutates: true },
   'xbot.rooms.create': { path: '/api/v1/rooms.create', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.rooms.delete': { path: '/api/v1/rooms.delete', scope: 'manage', risk: 'confirm', mutates: true },
   'xbot.rooms.list': { path: '/api/v1/rooms.list', scope: 'read', risk: 'safe', mutates: false },

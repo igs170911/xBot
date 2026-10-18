@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react'
-import { ApiError, login } from '../api/generated'
+import { useEffect, useState, type FormEvent } from 'react'
+import { ApiError, authStatus, login } from '../api/generated'
 import { Mascot } from '../ui/Avatar'
 import { Button } from '../ui/Button'
 import { TextInput } from '../ui/Field'
@@ -10,6 +10,13 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
   const [token, setToken] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // 經內建 Tailscale 連進來時，提示是哪個 Tailscale 帳號（只是提示；tailnet 來的一樣要登入碼，C35）。
+  const [tsUser, setTsUser] = useState<string | null>(null)
+  useEffect(() => {
+    authStatus()
+      .then((s) => setTsUser(s.tailnet ? (s.tailscale_user ?? '') : null))
+      .catch(() => undefined)
+  }, [])
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -36,6 +43,11 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
           <Mascot size={48} />
           <h1 className="m-0 text-page">登入 XBot</h1>
           <p className="m-0 text-sub text-ink-2">在主機上執行 make token（或 xbot token）取得登入碼。</p>
+          {tsUser !== null && (
+            <p data-testid="tailnet-hint" className="m-0 rounded-field bg-accent-soft px-3 py-1.5 text-meta text-accent-ink">
+              {tsUser ? `你經 Tailscale 連進來（${tsUser}）` : '你經 Tailscale 連進來'}；第一次在這台裝置用，還是要輸入登入碼。
+            </p>
+          )}
         </div>
         <div className="flex items-start gap-2">
           <TextInput

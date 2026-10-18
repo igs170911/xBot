@@ -11,6 +11,7 @@ export const SETTINGS_NAV: NavItem[] = [
   { to: '/settings/advanced/backup', label: '備份與更新', sub: true },
   { to: '/settings/advanced/people', label: '成員與紀錄', sub: true },
   { to: '/settings/advanced/lab', label: '技能庫與實驗', sub: true },
+  { to: '/settings/advanced/network', label: '網路與 Tailscale', sub: true },
   { to: '/settings/advanced/agents', label: '外部代理與 MCP', sub: true },
 ]
 

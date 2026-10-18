@@ -6,6 +6,9 @@ XBot 的每個功能都是一個操作（`xbot.<領域>.<動作>`），同一份
 |---|---|---|
 | Streamable HTTP | `http://127.0.0.1:8780/mcp`（tailnet 內：`https://xbot.<tailnet>.ts.net/mcp`） | 代理和服務在不同機器，或用戶端支援 HTTP MCP |
 | stdio | `xbot mcp` | 用戶端只支援 stdio；或在服務那台機器上用 |
+| 外部入口（預設關閉） | Funnel：`https://xbot.<tailnet>.ts.net/mcp`；反向代理：`<XBOT_PUBLIC_URL>/mcp` | 代理不在你的 tailnet 裡（見 §8） |
+
+要用哪個網址，看網頁「設定 → 進階 → 網路與 Tailscale」，或 `xbot network status`（`base_url`：給其他電腦用的網址；`public_url`：tailnet 外連得到的網址，沒開外部入口時是空白）。
 
 兩個入口都要**代理權杖**（用配對碼換來，見下）。stdio 只是把 stdin／stdout 接到服務的 `/mcp`，所有呼叫一樣在服務裡執行、記稽核、走核准。
 
@@ -153,3 +156,52 @@ Cursor 的 `~/.cursor/mcp.json`：
 5. **需要核准的動作**：例如代理呼叫 `xbot.bots.delete` 會回 `pending_approval` 和 `needs_approval_id`，並在「待我處理」出一張卡。代理用 `xbot.approvals.wait --approval_id …` 等；你用 `xbot inbox list` 看卡片、`xbot approvals decide --approval_id … --decision allow`（或 `deny`）決定。目前只有你本人能決定（代為核准是之後的功能）；刪除 Bot 永遠不能代為核准。
 
 6. **查紀錄**：`xbot audit list` 列出誰、從哪裡、做了什麼（參數裡的密鑰已遮蔽）；代理只看得到自己的紀錄。
+
+## 8. 從 tailnet 外連：內建 Tailscale 與外部入口（C35、MCP-2）
+
+**內建 Tailscale**（預設關閉）：服務自己就是 tailnet 上的一台機器，不用另外裝 `tailscale serve`。
+
+```sh
+xbot network tailscale_set --enabled                       # 互動登入：xbot network status 會給 login_url，打開核准
+xbot network tailscale_set --enabled --json - <<'JSON'     # 或給登入金鑰（加密存在服務端，之後不會再顯示）
+{"enabled": true, "auth_key": "tskey-auth-…", "hostname": "xbot"}
+JSON
+xbot network status                                         # tailscale.url → https://xbot.<tailnet>.ts.net
+```
+
+- 狀態存在資料目錄的 `tailscale/`，重開服務不用再登入。tailnet 要開 MagicDNS 與 HTTPS Certificates（Tailscale 後台 DNS 頁），否則 `tailscale.cert` 是 `missing`。
+- tailnet 來的請求**一律要登入碼或權杖**，永遠不會當成「這台電腦的你」（即使設了 `XBOT_MCP_LOCAL_OWNER=1`）。
+
+**外部入口：Tailscale Funnel**（預設關閉；開啟要你本人確認，代理不能代為核准）：
+
+```sh
+xbot network funnel_set --enabled --allow_ips 203.0.113.7 --allow_ips 198.51.100.0/24   # 白名單可省略（不限 IP）
+xbot network funnel_set --enabled=false
+```
+
+tailnet 的存取規則要允許這台用 Funnel（ACL 的 `nodeAttrs` 加 `"attr": ["funnel"]`）。開啟後網際網路上連得到同一個網址 `https://xbot.<tailnet>.ts.net`，但**只開放三條路徑**，其他（網頁、對話、`/api/v1/*` 的其他操作、SSE、模型代理）一律 404：
+
+| 路徑 | 驗證 |
+|---|---|
+| `/mcp` | 每個請求都要代理權杖（`Authorization: Bearer xbot_…`）；不收登入碼、不認 cookie |
+| `/api/v1/agents.pair` | 一次性配對碼（錯 10 次鎖 60 秒） |
+| `/hooks/<id>` | 定時任務網址觸發的金鑰或簽章（網頁上的網址會自動換成對外網址） |
+
+速率上限比 tailnet 內嚴：每個來源 IP 每分鐘 120 個請求（驗證前就擋）；每個代理經外部入口每分鐘最多 20 次呼叫（另一個計數，代理自己的上限更低時用它的）。稽核紀錄的來源標成 `mcp-external`。
+
+配對外部代理：照 §1 產生配對碼，代理那台機器用對外網址換權杖：
+
+```sh
+XBOT_URL=https://xbot.<tailnet>.ts.net xbot mcp pair <配對碼>
+claude mcp add --transport http xbot https://xbot.<tailnet>.ts.net/mcp --header "Authorization: Bearer xbot_你的權杖"
+```
+
+**另一種外部入口：你自己的反向代理**（nginx、Caddy、Cloudflare Tunnel…，自己負責 HTTPS）：
+
+```sh
+XBOT_PUBLIC_URL=https://xbot.example.com xbot serve          # 服務仍只綁 127.0.0.1
+# 反向代理不在這台機器上時：XBOT_TRUSTED_PROXIES=10.0.0.5,10.0.1.0/24
+```
+
+從反向代理進來的請求（Host 是 `XBOT_PUBLIC_URL` 的網域，或從信任的代理來、帶 `X-Forwarded-For`）和 Funnel 一樣只開放上面三條路徑、要權杖、套白名單與比較嚴的速率上限；來源 IP 用信任代理標的最後一個 `X-Forwarded-For`。反向代理一定要帶 `X-Forwarded-For`。設了反向代理模式時，經 `tailscale serve`（外部的 Tailscale）進來的請求也會被當成外部；要 tailnet 內完整使用請改用內建 Tailscale。
+

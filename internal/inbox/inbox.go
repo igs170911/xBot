@@ -570,7 +570,9 @@ func delegatedCard(ctx context.Context, q *store.Queries, id ops.Identity, info 
 	}
 	cat := ops.CategoryNames[use.Category]
 	via := "MCP"
-	if id.Via != "" && id.Via != "mcp" {
+	if id.Via == "mcp-external" {
+		via = "MCP（外部入口）"
+	} else if id.Via != "" && id.Via != "mcp" {
 		via = strings.ToUpper(id.Via)
 	}
 	body := fmt.Sprintf("%s · 今天第 %d／%d 次", info.Summary, use.Count, use.Limit)
