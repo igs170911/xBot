@@ -188,7 +188,7 @@ func (c *Computers) fallback(ctx context.Context, b store.Bot) (ModelRef, bool, 
 	return def, true, nil
 }
 
-// Prepare 實作 box.PrepareFunc：開 product.sock（本機主機），把 Hermes 設定與 worker-key 寫進 hermes volume，
+// Prepare 實作 box.PrepareFunc：開本機的 product.sock（遠端主機經 SSH 反向轉發接回來），把 Hermes 設定與 worker-key 寫進 hermes volume，
 // 並依同意紀錄放入（或清掉）訂閱 CLI 的憑證。ACP 引擎的 Bot 沒有設定模型時不寫 Hermes 設定（用不到）。
 func (c *Computers) Prepare(ctx context.Context, h hosts.Host, botID, containerID string) error {
 	b, err := c.DB.GetBot(ctx, botID)
@@ -241,8 +241,8 @@ func (c *Computers) Connect(ctx context.Context, botID string) (hermes.Endpoint,
 }
 
 func (c *Computers) ensureSocket(h hosts.Host, botID string) error {
-	if h.Kind() == "local" && c.Sockets != nil {
-		// 遠端主機的 product.sock 由 SSH 反向轉發提供（B11）。
+	if c.Sockets != nil {
+		// 本機的 product.sock 一律在服務這邊聽；遠端主機上的那個 socket 由 SSH 反向轉發接回這裡（B11）。
 		return c.Sockets.Ensure(botID)
 	}
 	return nil
