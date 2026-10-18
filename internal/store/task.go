@@ -152,3 +152,17 @@ func (q *Queries) PruneEvents(ctx context.Context, botID string, keep int) error
 		(SELECT id FROM event WHERE bot_id = ? ORDER BY id DESC LIMIT 1 OFFSET ?)`, botID, botID, keep-1)
 	return err
 }
+
+// LatestTaskEvent 回傳某個任務最新一筆指定種類的事件（例：chat.needs_approval）；沒有時回 ErrNotFound。
+func (q *Queries) LatestTaskEvent(ctx context.Context, botID, taskID, kind string) (Event, error) {
+	e, err := scanEvent(q.r.QueryRowContext(ctx, `SELECT `+eventCols+` FROM event
+		WHERE bot_id = ? AND task_id = ? AND kind = ? ORDER BY id DESC LIMIT 1`, botID, taskID, kind))
+	return e, notFound(err)
+}
+
+// LatestTaskInThread 回傳對話串裡最新的任務；沒有時回 ErrNotFound。
+func (q *Queries) LatestTaskInThread(ctx context.Context, threadID string) (Task, error) {
+	t, err := scanTask(q.r.QueryRowContext(ctx, `SELECT `+taskCols+` FROM task WHERE thread_id = ?
+		ORDER BY created_at DESC, id DESC LIMIT 1`, threadID))
+	return t, notFound(err)
+}
