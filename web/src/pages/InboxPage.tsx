@@ -1,82 +1,72 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowRight, ArrowUp, Check, Hand, X } from 'lucide-react'
+import { ArrowRight, Check, Clock, RotateCcw, TriangleAlert } from 'lucide-react'
 import { Avatar } from '../ui/Avatar'
-import { Button, IconButton } from '../ui/Button'
-import { Card, OptionList } from '../ui/Card'
+import { Button } from '../ui/Button'
+import { Card } from '../ui/Card'
 import { Icon } from '../ui/Icon'
 import { SimplifiedTag, StatusChip, type Tone } from '../ui/Pill'
+import { useToast } from '../ui/toast-context'
 import { BOTS } from '../shell/sample'
 import { fetchHealth, type Health } from '../health'
-import { approvalsDecide } from '../api/generated'
-import { botsStore } from '../data/bots'
+import { ApiError, approvalsDecide, chatAskAgain, inboxDismiss, inboxUndo } from '../api/generated'
+import { botsStore, type Bot } from '../data/bots'
 import { inboxStore, loadInbox, type InboxItem } from '../data/inbox'
 import { useStore } from '../data/store'
+import { AskCard } from '../chat/AskCard'
+import { askFromItem } from '../chat/ask'
 
-// 待我處理（design/Main.dc.html）。最上面是真的「待我處理」（xbot.inbox.list，核准可以直接允許／退回）；
-// 下面其他卡片還是 W01 的示範內容，真正的提問、接手、提案在 C12 接上。
+// 待我處理（design/Main、F08、C08～C10、L02）：真的卡片來自 xbot.inbox.list。
+//   - Bot 在對話裡的提問（核准指令、補充問題、密碼）：和對話裡同一張 AskCard，回覆走 xbot.chat.respond。
+//   - 操作的核准（MCP-9，例：代理要刪 Bot）：允許這次／退回走 xbot.approvals.decide，退回後 10 分鐘內可以復原。
+//   - 其他（預算暫停…）：知道了＝xbot.inbox.dismiss，也可以復原。
+// 右欄的團隊現況還是 W01 的示範內容（辦公室、Bot 之間在之後的卡接上）。
 
-function RealItem({ item }: { item: InboxItem }) {
-  const bots = useStore(botsStore).bots
-  const bot = bots?.find((b) => b.id === item.bot_id)
-  const [busy, setBusy] = useState<'allow' | 'deny' | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const approval = item.kind === 'approval' && !!item.ref
-  const decide = async (decision: 'allow' | 'deny') => {
-    if (!item.ref) return
-    setBusy(decision)
-    setError(null)
-    try {
-      const out = await approvalsDecide({ approval_id: item.ref, decision })
-      if (out.error) setError(out.error.message)
-      await loadInbox()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setBusy(null)
-    }
-  }
-  return (
-    <Card data-testid="inbox-item">
-      <div className="flex items-center gap-3">
-        <Avatar shape={bot?.shape} color={bot?.color} state="notifying" dot="waiting" ring="#262626" size={32} />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span className="flex items-center gap-2">
-            <span className="text-body">{bot?.name ?? (item.bot_id ? 'Bot' : 'XBot')}</span>
-            <StatusChip size="sm" tone="warning">
-              {approval ? '等你允許' : '等你處理'}
-            </StatusChip>
-          </span>
-          <span className="text-[13px] text-ink-2">{item.title}</span>
-        </div>
-      </div>
-      {item.body && <p className="m-0 whitespace-pre-wrap">{item.body}</p>}
-      {error && (
-        <p role="alert" className="m-0 text-sub text-danger">
-          {error}
-        </p>
-      )}
-      {approval && (
-        <div className="flex flex-wrap gap-2">
-          <Button variant="primary" onClick={() => decide('allow')} loading={busy === 'allow'} disabled={!!busy}>
-            允許這次
-          </Button>
-          <Button variant="outline" onClick={() => decide('deny')} loading={busy === 'deny'} disabled={!!busy}>
-            退回
-          </Button>
-        </div>
-      )}
-    </Card>
-  )
+function errText(err: unknown): string {
+  if (err instanceof ApiError) return err.message
+  return err instanceof Error ? err.message : String(err)
 }
 
-function CardHead({ bot, state, dot, chip, tone, sub, aside }: { bot: string; state?: string; dot?: 'waiting' | 'none' | 'queued'; chip: ReactNode; tone: Tone; sub: ReactNode; aside?: ReactNode }) {
-  const b = BOTS[bot]
+function sinceLabel(ms: number, now = Date.now()): string {
+  const min = Math.round((now - ms) / 60_000)
+  if (min < 1) return '剛剛'
+  if (min < 60) return `${min} 分鐘前`
+  const h = Math.round(min / 60)
+  return h < 24 ? `${h} 小時前` : `${Math.round(h / 24)} 天前`
+}
+
+type CardBot = { name: string; shape?: string; color?: string }
+
+function cardBot(item: InboxItem, bots: Bot[] | null): CardBot {
+  const b = bots?.find((x) => x.id === item.bot_id)
+  const p = (item.payload ?? {}) as { bot_name?: string }
+  return { name: b?.name ?? p.bot_name ?? (item.bot_id ? 'Bot' : 'XBot'), shape: b?.shape, color: b?.color }
+}
+
+function useUndoToast() {
+  const toast = useToast()
+  return (text: string, inboxId: string) =>
+    toast.show({
+      kind: 'undo',
+      text,
+      duration: 10_000,
+      action: {
+        label: '復原',
+        onClick: () => {
+          inboxUndo({ inbox_id: inboxId })
+            .then(() => loadInbox())
+            .catch((err: unknown) => toast.show({ kind: 'error', text: errText(err) }))
+        },
+      },
+    })
+}
+
+function Head({ bot, chip, tone, sub, aside }: { bot: CardBot; chip: ReactNode; tone: Tone; sub: ReactNode; aside?: ReactNode }) {
   return (
     <div className="flex items-center gap-3">
-      <Avatar shape={b.shape} color={b.color} state={state ?? b.state} dot={dot ?? 'none'} ring="#262626" size={32} />
+      <Avatar shape={bot.shape} color={bot.color} state="notifying" dot="waiting" ring="#262626" size={32} />
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="flex items-center gap-2">
-          <span className="text-body">{b.name}</span>
+          <span className="text-body">{bot.name}</span>
           <StatusChip size="sm" tone={tone}>
             {chip}
           </StatusChip>
@@ -88,30 +78,138 @@ function CardHead({ bot, state, dot, chip, tone, sub, aside }: { bot: string; st
   )
 }
 
-type Decision = 'once' | 'always' | 'deny' | null
-
-const DECISION = {
-  once: { text: '已允許這次 · 帳房正在付款', chip: '已允許', tone: 'success' as Tone, ok: true },
-  always: { text: '已一律允許「付款給晨光廣告」· 之後不再問', chip: '一律允許', tone: 'success' as Tone, ok: true },
-  deny: { text: '已拒絕 · 已告訴帳房和小秘', chip: '已拒絕', tone: 'neutral' as Tone, ok: false },
+/** 操作的核准（MCP-9）：允許這次／退回。刪除類用危險樣式（F08）。 */
+function ApprovalItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
+  const [busy, setBusy] = useState<'allow' | 'deny' | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const undoToast = useUndoToast()
+  const op = ((item.payload ?? {}) as { op?: string }).op ?? ''
+  const danger = /\.(delete|remove)$/.test(op)
+  const decide = async (decision: 'allow' | 'deny') => {
+    if (!item.ref) return
+    setBusy(decision)
+    setError(null)
+    try {
+      const out = await approvalsDecide({ approval_id: item.ref, decision })
+      if (out.error) setError(out.error.message)
+      if (decision === 'deny') undoToast(`已退回 · ${item.title}`, item.id)
+      await loadInbox()
+    } catch (err) {
+      setError(errText(err))
+    } finally {
+      setBusy(null)
+    }
+  }
+  return (
+    <Card data-testid="inbox-item" data-kind="approval">
+      <Head bot={bot} chip="等你允許" tone="warning" sub={`${sinceLabel(item.created_at)} · 只有你能決定`} />
+      <p className="m-0 text-body">{item.title}</p>
+      {item.body && <p className="m-0 whitespace-pre-wrap rounded-menu bg-inset px-3.5 py-2.5 text-ui-sm text-ink-2">{item.body}</p>}
+      {danger && (
+        <p className="m-0 flex items-center gap-2 rounded-menu bg-danger/15 px-3.5 py-2.5 text-ui-sm text-danger">
+          <Icon icon={TriangleAlert} size={16} />
+          這個動作做了就無法復原。
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="m-0 text-sub text-danger">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button variant="outline" onClick={() => void decide('deny')} loading={busy === 'deny'} disabled={!!busy}>
+          退回
+        </Button>
+        <Button variant={danger ? 'danger' : 'primary'} icon={danger ? undefined : Check} onClick={() => void decide('allow')} loading={busy === 'allow'} disabled={!!busy}>
+          {danger ? '允許刪除' : '允許這次'}
+        </Button>
+      </div>
+    </Card>
+  )
 }
 
-const OPTIONS = [
-  { key: 'A', label: '要，一起比較日本賣場' },
-  { key: 'B', label: '不用，台灣三家就好' },
-  { key: 'C', label: '只比日本前 3 名的商品' },
-]
-
-function Settled({ ok, text, undo, undoText = '復原' }: { ok: boolean; text: string; undo: () => void; undoText?: string }) {
+/** 不用決定、看過就好的卡（預算暫停、失敗的排程…）。 */
+function InfoItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
+  const [busy, setBusy] = useState(false)
+  const undoToast = useUndoToast()
+  const toast = useToast()
+  const chip = item.kind === 'budget' ? '預算用完，已暫停' : item.kind === 'routine_failed' ? '定時任務沒有完成' : '等你處理'
+  const dismiss = async () => {
+    setBusy(true)
+    try {
+      await inboxDismiss({ inbox_id: item.id })
+      undoToast(`已略過 · ${item.title}`, item.id)
+      await loadInbox()
+    } catch (err) {
+      toast.show({ kind: 'error', text: errText(err) })
+    } finally {
+      setBusy(false)
+    }
+  }
   return (
-    <div className={ok ? 'flex h-9 items-center gap-2 text-ui-sm text-success' : 'flex h-9 items-center gap-2 text-ui-sm text-ink-2'}>
-      <Icon icon={ok ? Check : X} size={18} />
-      <span className="flex-1">{text}</span>
-      <Button size="sm" onClick={undo}>
-        {undoText}
+    <Card data-testid="inbox-item" data-kind={item.kind} layout="flex flex-wrap items-center gap-x-3 gap-y-2.5 py-3 pl-[18px] pr-3.5">
+      <div className="flex min-w-0 flex-[999_1_300px] flex-col gap-1">
+        <Head bot={bot} chip={chip} tone="warning" sub={item.title} />
+        {item.body && <p className="m-0 pl-11 text-sub text-ink-2">{item.body}</p>}
+      </div>
+      <Button onClick={() => void dismiss()} loading={busy}>
+        知道了
       </Button>
-    </div>
+    </Card>
   )
+}
+
+/** 過期的提問（L14）：顯示已過期，可以請它再問一次。 */
+function ExpiredItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const again = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await chatAskAgain({ inbox_id: item.id })
+      await loadInbox()
+    } catch (err) {
+      setError(errText(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Card data-testid="inbox-expired" layout="flex flex-col gap-2 py-3 pl-[18px] pr-3.5">
+      <Head bot={bot} chip="已過期" tone="neutral" sub={`${item.title} · 10 分鐘沒回，${bot.name}先跳過了`} />
+      <div className="flex flex-wrap items-center gap-3 rounded-menu bg-inset px-3.5 py-2.5">
+        <span className="min-w-0 flex-1 text-ui-sm text-ink-2">{item.body}</span>
+        <span className="inline-flex items-center gap-1 text-meta text-ink-3">
+          <Icon icon={Clock} size={14} />
+          已過期
+        </span>
+        <Button size="sm" icon={RotateCcw} onClick={() => void again()} loading={busy}>
+          請它再問一次
+        </Button>
+      </div>
+      {error && (
+        <p role="alert" className="m-0 text-sub text-danger">
+          {error}
+        </p>
+      )}
+    </Card>
+  )
+}
+
+function RealItem({ item, bots }: { item: InboxItem; bots: Bot[] | null }) {
+  const bot = cardBot(item, bots)
+  if (item.task_id && (item.kind === 'approval' || item.kind === 'question' || item.kind === 'secret')) {
+    const p = (item.payload ?? {}) as { thread_title?: string; unattended?: boolean }
+    const sub = [bot.name, p.thread_title, sinceLabel(item.created_at)].filter(Boolean).join(' · ')
+    return (
+      <div data-testid="inbox-item" data-kind={item.kind}>
+        <AskCard ask={askFromItem(item)} bot={bot} sub={sub} onDone={() => void loadInbox()} />
+      </div>
+    )
+  }
+  if (item.kind === 'approval' && item.ref) return <ApprovalItem item={item} bot={bot} />
+  return <InfoItem item={item} bot={bot} />
 }
 
 function ScreenThumb({ label, waiting, children }: { label: string; waiting?: boolean; children?: ReactNode }) {
@@ -126,18 +224,20 @@ function ScreenThumb({ label, waiting, children }: { label: string; waiting?: bo
   )
 }
 
+const WEEK = '日一二三四五六'
+
 export function InboxPage() {
-  const [decision, setDecision] = useState<Decision>(null)
-  const [answer, setAnswer] = useState<string | null>(null)
   const [health, setHealth] = useState<Health | null | undefined>(undefined)
   useEffect(() => {
     fetchHealth().then(setHealth)
   }, [])
 
-  const real = useStore(inboxStore).items ?? []
-  const left = real.length + 5 - (decision ? 1 : 0) - (answer ? 1 : 0)
-  const d = decision ? DECISION[decision] : null
-  const answered = OPTIONS.find((o) => o.key === answer)
+  const { items, expired } = useStore(inboxStore)
+  const bots = useStore(botsStore).bots
+  const real = items ?? []
+  const left = real.length
+  const now = new Date()
+  const today = `${now.getMonth() + 1} 月 ${now.getDate()} 日（${WEEK[now.getDay()]}）`
 
   return (
     <div className="flex flex-1 flex-wrap">
@@ -146,10 +246,10 @@ export function InboxPage() {
           <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-1.5">
             <div className="flex flex-col gap-0.5">
               <div className="flex flex-wrap items-center gap-3">
-                <h1 className="m-0 text-[24px] leading-[1.35]">{left > 0 ? `早安，有 ${left} 件事等你` : '早安，事情都處理完了'}</h1>
+                <h1 className="m-0 text-[24px] leading-[1.35]">{items === null ? '待我處理' : left > 0 ? `早安，有 ${left} 件事等你` : '早安，事情都處理完了'}</h1>
                 <SimplifiedTag>簡化：核定 3 步 → 1 步</SimplifiedTag>
               </div>
-              <span className="text-sub text-ink-2">10 月 17 日（六）· 2 個 Bot 工作中 · 今天完成 4 件 · 其他事 Bot 會自己處理</span>
+              <span className="text-sub text-ink-2">{today} · 要你決定的事都在這裡，其他事 Bot 會自己處理</span>
             </div>
             <a href="/usage" className="flex w-[200px] flex-col gap-1.5 text-ink">
               <span className="flex justify-between text-meta text-ink-2">
@@ -163,137 +263,23 @@ export function InboxPage() {
           </header>
 
           {real.map((it) => (
-            <RealItem key={it.id} item={it} />
+            <RealItem key={it.id} item={it} bots={bots} />
           ))}
-          {real.length > 0 && <p className="m-0 pt-1 text-meta text-ink-3">以下是示範卡片</p>}
-
-          <Card>
-            <CardHead
-              bot="zhangfang"
-              state={d ? (d.ok ? 'working' : 'idle') : 'notifying'}
-              dot={d ? 'none' : 'waiting'}
-              chip={d ? d.chip : '等你允許'}
-              tone={d ? d.tone : 'warning'}
-              sub="小秘交辦的工作 · 第 2/6 棒 · 3 分鐘前"
-              aside={<a href="/bots/zhangfang" className="text-sub">打開對話</a>}
-            />
-            <p className="m-0">付款 NT$1,280 給晨光廣告（10 月廣告費）。帳單和投放紀錄已比對過，金額一致。</p>
-            {d ? (
-              <Settled ok={d.ok} text={d.text} undo={() => setDecision(null)} />
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                <Button variant="primary" onClick={() => setDecision('once')}>
-                  允許這次
-                </Button>
-                <Button onClick={() => setDecision('always')}>
-                  一律允許
-                </Button>
-                <Button variant="outline" onClick={() => setDecision('deny')}>
-                  拒絕
-                </Button>
-              </div>
-            )}
-          </Card>
-
-          <Card layout="flex flex-wrap items-center gap-4 py-3 pl-[18px] pr-3">
-            <div className="flex min-w-0 flex-[999_1_320px] flex-col gap-2.5">
-              <CardHead bot="xiaobian" dot="waiting" chip="需要你接手電腦" tone="warning" sub="發佈新品貼文 · 已暫停 8 分鐘" />
-              <p className="m-0">登入社群後台要簡訊驗證碼，碼傳到你的手機。請接手電腦輸入，好了按「完成，交還」。</p>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="primary" icon={Hand}>
-                  接手電腦
-                </Button>
-                <Button variant="danger">
-                  停止這件工作
-                </Button>
-              </div>
+          {items !== null && left === 0 && (
+            <div className="flex flex-col items-center gap-2 rounded-card bg-card px-6 py-8 text-center" data-testid="inbox-empty">
+              <Icon icon={Check} size={28} color="var(--color-success)" />
+              <span className="text-body">都處理完了</span>
+              <span className="text-sub text-ink-2">Bot 有事要你決定時，會出現在這裡。</span>
             </div>
-            <span className="max-w-[216px] flex-[1_1_190px]">
-              <ScreenThumb label="小編的電腦畫面" waiting>
-                <span className="flex w-[132px] flex-col items-center gap-1 rounded-[6px] bg-white p-2 text-[8px] text-[#111827] shadow-sm">
-                  輸入簡訊驗證碼
-                  <span className="flex gap-[3px]">
-                    {[0, 1, 2, 3, 4, 5].map((i) => (
-                      <span key={i} className="h-4 w-[13px] rounded-[3px] border" style={{ borderColor: i ? '#D1D5DB' : '#FF9800' }} />
-                    ))}
-                  </span>
-                  <span className="h-3 w-full rounded-[3px] bg-accent" />
-                </span>
-              </ScreenThumb>
-            </span>
-          </Card>
-
-          <Card>
-            <CardHead
-              bot="azhe"
-              state={answered ? 'happy' : 'curious'}
-              chip={answered ? '已回答' : '有問題問你'}
-              tone={answered ? 'success' : 'warning'}
-              sub={answered ? '工作中 · 你剛剛回答' : '工作中，邊比價邊等你 · 10 分鐘沒回答就過期（還有 7 分鐘）'}
-            />
-            <p className="m-0">競品比較要不要也放進日本賣場的價格？會多花約 10 分鐘。</p>
-            {answered ? (
-              <Settled ok text={`已回答「${answered.label}」· 阿哲繼續比價`} undo={() => setAnswer(null)} undoText="改答案" />
-            ) : (
-              <div className="overflow-hidden rounded-menu border border-line bg-[#2A2A2A] px-2 [&>div>button:first-child]:border-t-0">
-                <OptionList options={OPTIONS} onPick={setAnswer} />
-              </div>
-            )}
-          </Card>
-
-          <Card>
-            <CardHead bot="shujumiao" chip="想找你討論" tone="neutral" sub="排隊中，等週報資料 · 1 小時前" />
-            <p className="m-0">經典帆布包上週退貨變多，留言多半說「比照片小」。要不要先在商品頁補一張尺寸對照圖？</p>
-            <div className="flex items-center gap-2">
-              <label className="relative flex min-w-0 flex-1">
-                <span className="sr-only-text">回覆數據喵</span>
-                <input
-                  type="text"
-                  placeholder="直接回覆，不用開會"
-                  className="h-10 min-w-0 flex-1 rounded-field border border-line bg-inset pl-3.5 pr-12 text-ui text-ink outline-none focus:border-focus max-sm:h-11"
-                />
-                <span className="absolute right-1 top-1 max-sm:top-1.5">
-                  <IconButton icon={ArrowUp} label="送出回覆" variant="send" size="sm" />
-                </span>
-              </label>
-              <Button variant="outline">
-                不用討論
-              </Button>
-            </div>
-          </Card>
-
-          <Card layout="flex flex-wrap items-center gap-x-3 gap-y-2.5 py-3 pl-[18px] pr-3.5">
-            <Avatar shape="shield" color="red" state="idle" dot="none" ring="#262626" size={32} />
-            <div className="flex min-w-0 flex-[999_1_300px] flex-col">
-              <span className="flex items-center gap-2">
-                <span className="text-body">抓蟲</span>
-                <StatusChip size="sm" tone="warning">
-                  預算用完，已暫停
-                </StatusChip>
-              </span>
-              <span className="text-sub text-ink-2">「重現結帳失敗」這條工作鏈用完 $5 上限，停在第 4 步。</span>
-            </div>
-            <div className="flex gap-2">
-              <Button>結束並回報</Button>
-              <Button variant="primary">
-                再給 $5
-              </Button>
-            </div>
-          </Card>
-
-          <Card layout="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5 pl-[18px] pr-3.5">
-            <Avatar shape="cursor" color="blue" state="working" dot="none" ring="#262626" size={32} />
-            <div className="flex min-w-0 flex-[999_1_300px] flex-col">
-              <span className="text-ui">小秘提案：每週一上午 9:00 整理銷售週報，發到「每週一早會」</span>
-              <span className="text-[13px] text-ink-2">不用你處理 · 沒意見就在 10 月 20 日照做</span>
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline">
-                否決
-              </Button>
-              <Button size="sm">現在就同意</Button>
-            </div>
-          </Card>
+          )}
+          {!!expired?.length && (
+            <section aria-label="過期的提問" className="flex flex-col gap-2 pt-3">
+              <h2 className="m-0 text-sub text-ink-2">過期的提問</h2>
+              {expired.map((it) => (
+                <ExpiredItem key={it.id} item={it} bot={cardBot(it, bots)} />
+              ))}
+            </section>
+          )}
 
           <p className="m-0 pt-2 text-center text-meta text-ink-3" data-testid="health">
             {health === undefined ? '連線中…' : health ? `服務正常 · ${health.version}` : '連不到服務'}
@@ -314,7 +300,7 @@ export function InboxPage() {
               { bot: 'xiaomi', state: 'working', note: '彙整價差表', thumb: '競品定價.xlsx' },
               { bot: 'azhe', state: 'searching', note: '比價第 3 家', thumb: '購物網站' },
               { bot: 'xiaobian', state: 'notifying', note: '等你接手', thumb: '輸入簡訊驗證碼', waiting: true },
-              { bot: 'zhangfang', state: 'notifying', note: decision ? (decision === 'deny' ? '待命' : '付款中') : '等你允許', thumb: '帳單付款', waiting: !decision },
+              { bot: 'zhangfang', state: 'notifying', note: '等你允許', thumb: '帳單付款', waiting: true },
             ].map((c) => {
               const b = BOTS[c.bot]
               return (

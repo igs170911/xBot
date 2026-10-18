@@ -464,9 +464,14 @@ func (r *Runtime) settleStale(ctx context.Context, it store.InboxItem) {
 
 // resume 在回覆送出後把任務改回工作中（停止中的不動）。
 func (r *Runtime) resume(t *turn) {
+	t.askMu.Lock()
+	defer t.askMu.Unlock()
 	t.mu.Lock()
-	wasWaiting := t.waiting && !t.finished && !t.stopping
-	t.waiting = false
+	// 已經又在等下一個問題了（引擎回覆得很快）：狀態由那個問題決定。
+	wasWaiting := t.waiting && !t.finished && !t.stopping && t.pending == nil
+	if t.pending == nil {
+		t.waiting = false
+	}
 	t.mu.Unlock()
 	if wasWaiting {
 		r.setState(t, store.TaskRunning)

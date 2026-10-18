@@ -42,6 +42,8 @@ export class MockServer {
   threads: Thread[] = []
   messages: Record<string, Msg[]> = {}
   modelsReady = true
+  /** 待我處理的卡（xbot.inbox.list 的項目）。 */
+  inbox: Array<Record<string, unknown> & { id: string; status: string }> = []
   calls: Array<{ op: string; input: Record<string, unknown> }> = []
   /** 測試可以換掉某個操作的回應。 */
   override: Record<string, Handler> = {}
@@ -83,7 +85,9 @@ export class MockServer {
     'bots.list': () => ({ bots: this.bots }),
     'bots.get': (i) => this.bots.find((b) => b.id === i.id),
     'bots.create': (i) => this.addBot(i as Partial<Bot> & { name: string }),
-    'inbox.list': () => ({ items: [] }),
+    'inbox.list': (i) => ({ items: this.inbox.filter((x) => (i.status ?? 'open') === 'all' || x.status === (i.status ?? 'open')) }),
+    'inbox.mark_read': () => ({ marked: 0 }),
+    'chat.steps': () => ({ events: [], has_more: false }),
     'models.get': () =>
       this.modelsReady
         ? { providers: [{ id: 'openai', base_url: 'https://api.openai.com/v1', api_key_set: true }], default: { provider: 'openai', model: 'gpt-4.1-mini' }, ready: true }

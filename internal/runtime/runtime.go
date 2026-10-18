@@ -107,6 +107,9 @@ type turn struct {
 	waiting   bool
 	lastErr   string
 	pending   *pending // Bot 正在等人回覆的請求（一次一個）
+
+	// askMu 讓「回覆後改回工作中」和「Bot 又問了新問題」不會交錯（否則新問題的「等你」會被蓋掉）。
+	askMu sync.Mutex
 }
 
 // ChatResult 是 Chat 的結果：訊息已收下，回覆經事件串流回來。
@@ -324,9 +327,11 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 			state = store.TaskWaitingApproval
 		}
 		// 先開卡、記下 Bot 在問什麼，再改狀態：看到「等你」的人一定查得到問題內容，也能就地回覆。
+		t.askMu.Lock()
 		item := r.openCard(t, e.Request)
 		r.emit(t, KindNeedsApproval, NeedsPayload{Event: e, InboxID: item.ID, ExpiresAt: item.ExpiresAt}, true)
 		r.setState(t, state)
+		t.askMu.Unlock()
 	case engine.EventRequestClosed:
 		if e.Request != nil {
 			r.closeRequest(t, e.Request.ID)
