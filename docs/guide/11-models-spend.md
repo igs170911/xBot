@@ -1,0 +1,95 @@
+# 模型與花費
+
+Hermes 引擎的 Bot 用你在「設定 → AI 模型」接上的模型。金鑰和登入權杖只放在 XBot 服務裡的 **Model Proxy**，Bot 的電腦只拿到一把只能經 Proxy 呼叫的通行碼。用 Claude Code、Codex 等其他引擎的 Bot 用的是訂閱，見 [引擎](12-engines.md)。
+
+## 接上模型供應商
+
+「設定 → AI 模型」→ 新增供應商：
+
+1. 選範本：OpenAI、Anthropic、OpenRouter、Gemini、DeepSeek、xAI、OpenCode Go／Zen、LM Studio、Ollama Cloud…共 40 多個，網址和呼叫方式都填好了。不在清單上的，選自訂（任何 OpenAI 相容的服務）。
+2. 貼上金鑰。金鑰只能寫、不能讀，存進去後畫面只顯示「已設定」。
+3. XBot 會探測這個供應商：列出模型、找出能用的呼叫方式。
+4. 選預設模型。
+
+其他設定：
+
+- **備援模型**：主要模型忙碌或出錯時改用。可以設全域的，也可以每個 Bot 各設。
+- **每個 Bot 用的模型**：Bot 設定的「進階」，或對話右上直接換。
+- 每個 Bot 換到別家供應商時，要重開它的電腦才生效。
+
+指令列（金鑰從標準輸入給，不會留在指令紀錄裡）：
+
+```bash
+xbot models presets
+xbot models set_provider --json - <<'JSON'
+{"id":"openai","base_url":"https://api.openai.com/v1","api_key":"sk-…","default_model":"gpt-4.1-mini"}
+JSON
+xbot models get
+```
+
+### OpenCode Go
+
+範本選 `opencode-go`。XBot 會自動帶上 OpenCode 要的 `x-opencode-session` 標頭。
+
+- 金鑰用 `opencode auth login` 登入後 `auth.json` 裡 **`opencode`** 那把（`opencode-go` 那把無效）。
+- OpenCode Zen 的免費模型（名稱有 `-free` 的）只給 OpenCode 自己的程式用，XBot 不能用。
+- Go 的額度有限，建議設一個「供應商上限」（見下面）。
+
+### ChatGPT 方案（Plus／Pro／Business）
+
+沒有 OpenAI API 金鑰時，可以用 ChatGPT 方案的額度。
+
+1. 「設定 → AI 模型」→「用 ChatGPT 方案登入」。
+2. 用你自己的瀏覽器打開畫面上的登入頁，輸入代碼。
+3. 完成後權杖加密存在 Model Proxy，不會進 Bot 的電腦。之後可以在供應商清單移除。
+
+要知道：這個方式借用 Codex CLI 的登入呼叫 ChatGPT，不是 OpenAI 公開給第三方的用法，可能違反使用條款，帳號有被限制的風險。能用 API 金鑰的話，建議用金鑰。
+
+### 本機模型
+
+範本選 LM Studio（`http://127.0.0.1:1234/v1`）或填 Ollama 的網址。不需要金鑰。速度看這台電腦。
+
+## 用量與花費
+
+「設定 → 用量與花費」：
+
+- 依 Bot、供應商、模型看花費，預設看 30 天，最多一年。
+- 金額用美元。價格照內建價目表算；不對可以自己改單價（要你允許）。
+- 匯出 CSV：`xbot usage export`。
+
+## 花費上限
+
+| 上限 | 可以設 |
+|---|---|
+| 每個 Bot | 每日、每月 |
+| 每個供應商（所有 Bot 合計，用來省著用某把金鑰） | 每日、每月 |
+| 全部合計 | 每月 |
+
+- 預設**沒有**上限。建議至少設全部合計的每月上限。
+- 到上限時：模型請求被擋下，正在做的工作停下，「待我處理」出現一張卡。
+- **降低**上限直接生效。**提高或取消**上限要你允許，代理不能代你核准。
+
+```bash
+xbot usage set_caps --monthly_usd 50                      # 全部合計每月
+xbot usage set_caps --bot_id <id> --daily_usd 2
+xbot usage set_caps --provider opencode-go --daily_usd 1
+xbot usage caps
+```
+
+## 快判
+
+快判是一個便宜、很快的模型，只做短判斷（例如「這件工作做完了嗎」「群組裡該誰回」「對話串取什麼名字」），不做主要工作。不確定、逾時、出錯，一律退回原本的規則，不會卡住你。
+
+設定在「設定 → AI 模型 → 快判模型」。
+
+- **預設模型**：OpenCode Go 的 `deepseek-v4.1-flash`（兩層都用它，實測約 2 秒）。沒接 OpenCode Go 時，快判自動略過、全部用規則。想用 Jev 分類模型，改成 `opencode-zen / jev-1.13`（要在 Zen 儲值）。
+- **每個用途各自開關**：
+  - 關：只用規則。
+  - 影子：呼叫模型、把它和規則的判斷並排記下來，但照規則做。用來看準不準。
+  - 生效：模型合格就用模型的判斷。
+- **預設**：選擇題類的用途是「影子」；要寫字的（摘要、命名、建 Bot 建議、整理定時任務句子）是「關」。
+- **用量**：每天最多 300 次（第二層另限 100 次）。到上限自動改用規則，並通知你一次。提高每日上限要你允許。
+- **統計**：每個用途和規則一致多少、和你的改正一致多少。一致率 95% 以上、至少 20 次時會標「可以生效」。
+- **安全只會更嚴**：規則判斷「要問你」的事，快判不能改成「不用問」。快判也永遠不會自己刪除、花錢、對外發送或核准。
+
+被快判判斷過的地方會有小標註（例如「快判 · 92%」），旁邊有「不對？」可以改正。
