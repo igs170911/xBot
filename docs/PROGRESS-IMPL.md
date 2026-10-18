@@ -9,3 +9,5 @@
 | B01 Bot 電腦映像 | ✅ 完成 | `task/B01-box` | Hermes 在建置時抓固定 commit（不放進 git）；`make install` 會一併 `make box`（首次約 10 分鐘）；未移植 Debian 鏡像測速 | B02 要用新的環境變數名稱 `XBOT_UID`／`XBOT_GID`／`XBOT_SCREEN_*`；容器內接 XBot MCP 的方式待 C11 決定 |
 | E01 Model Proxy 最小版 | ✅ 完成 | `task/E01-proxy` | 路徑白名單照 LazyBoy＋EN-3（多了 embeddings、images、audio）；worker key 改 HMAC＋每 Bot nonce；請求上限 64 MB；用量逐筆記錄 | 尚未接進 `xbot serve` 與 SQLite（E02／C01 後接）；`model-proxy.key` 必須和資料庫一起備份（已在資料目錄內）；每 Bot 綁定供應商留給 E11；串流閒置逾時待補 |
 | C01 資料庫與 schema | ✅ 完成 | `task/C01-store` | 依 §16 等章節補了 PRD §10 沒列的欄位（host、box.host_id、usage 成本以百萬分之一美元存）；message 用自動遞增 seq 排序 | 待確認：approval／inbox／host 狀態值、memory_enabled 預設；事件清理尚未排程；request_id 去重表留給 C02 |
+| W01 前端殼與設計系統 | ✅ 完成 | `task/W01-design-system` | 多了淺色主題 token（N01 有定義，尚無切換）；自建輕量路由；字型自帶後執行檔約 20 MB | 待確認：手機抽屜斷點 768px 與頂列設計；送出鈕空白時是否停用；是否要做字型子集縮小體積；Main 右欄電腦縮圖目前是灰色佔位 |
+| B02 本機 Box Manager | ✅ 完成 | `task/B02-boxmgr` | Docker client 改用 `moby/moby/client`（舊路徑已停止維護）；新增 migration 0002（box.hermes_port）；XBOT_UID 固定 1000；SEC-3 唯讀根目錄與 SEC-4 私有網段封鎖延到 B13 | compose 模式（make up）下服務連不到 127.0.0.1 的 Bot 埠，需要網路模式（B12/B13）；pids-limit 4096 待確認；Manager 尚未接進服務（E02／ops） |

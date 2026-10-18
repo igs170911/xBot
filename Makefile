@@ -15,7 +15,7 @@ XBOT    := bin/xbot
 # 管理已安裝服務時，優先用裝好的執行檔；還沒安裝就用剛建出來的。
 XBOT_INSTALLED = $(shell command -v $(HOME)/.local/bin/xbot 2>/dev/null || echo $(XBOT))
 
-.PHONY: help doctor setup deps dev check fmt test e2e box box-latest box-test build web-build install start stop restart \
+.PHONY: help doctor setup deps dev check fmt test test-docker e2e box box-latest box-test build web-build install start stop restart \
         status logs token up down update backup restore clean uninstall
 
 help: ## 列出所有指令
@@ -53,6 +53,9 @@ check: ## 全部檢查（排版、vet、staticcheck、測試、前端型別、li
 test: ## 只跑單元測試（Go＋前端）
 	$(RUN) go test ./...
 	cd web && $(RUN) pnpm test
+
+test-docker: ## Docker 整合測試（真的開一台 Bot 電腦；沒有 Docker 或映像時略過，先 make box）
+	BOX_IMAGE=$(BOX_IMAGE) $(RUN) go test -tags docker -count=1 ./internal/box/...
 
 e2e: ## Playwright 端對端測試（會先 make build）
 	@$(MAKE) --no-print-directory build
