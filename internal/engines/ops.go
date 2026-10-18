@@ -15,7 +15,7 @@ import (
 type Engine string
 
 // EnumValues 讓 JSON Schema 列出可用值。
-func (Engine) EnumValues() []string { return []string{acp.EngineClaude, acp.EngineCodex} }
+func (Engine) EnumValues() []string { return append([]string(nil), acp.Engines...) }
 
 // LinkIn 是 xbot.engines.link_credentials 的輸入。
 type LinkIn struct {
@@ -81,7 +81,7 @@ func Register(reg *ops.Registry, svc *Service) {
 		},
 	})
 	ops.Register(reg, ops.Op[LinkIn, BotStatus]{
-		Name: "xbot.engines.link_credentials", Summary: "讓一個 Bot 使用你在這台電腦上的訂閱登入（Claude Code／Codex CLI）",
+		Name: "xbot.engines.link_credentials", Summary: "讓一個 Bot 使用你在這台電腦上的訂閱登入（Claude Code／Codex CLI／Gemini CLI／OpenCode／Grok）",
 		Description: "你同意後，把這台電腦上該 CLI 的登入憑證唯讀放進這個 Bot 的電腦（只有這個 Bot），介面會標示「這個 Bot 用你的訂閱」。" +
 			"Bot 的引擎要先設成同一個 CLI。可以隨時用 xbot.engines.unlink_credentials 收回。只有你本人能做。",
 		Scope: ops.ScopeAdmin, Risk: ops.RiskSafe,
@@ -103,6 +103,7 @@ func Register(reg *ops.Registry, svc *Service) {
 			return svc.unlink(ctx, call, in)
 		},
 	})
+	registerSwitch(reg, svc)
 }
 
 func ownerOnly(call *ops.Call) error {
@@ -205,7 +206,7 @@ func (s *Service) link(ctx context.Context, call *ops.Call, in LinkIn) (BotStatu
 	}
 	sp, ok := Specs[string(in.Engine)]
 	if !ok {
-		return BotStatus{}, ops.InvalidInput(ops.FieldError{Field: "engine", Message: "只能連結 Claude Code 或 Codex CLI 的訂閱"})
+		return BotStatus{}, ops.InvalidInput(ops.FieldError{Field: "engine", Message: "只能連結 Claude Code、Codex CLI、Gemini CLI、OpenCode 或 Grok 的訂閱"})
 	}
 	if b.Engine != sp.Engine {
 		// EN-2a：Claude 訂閱只經 Claude Code 本身使用，Hermes 的 Bot 不能拿到這份憑證。

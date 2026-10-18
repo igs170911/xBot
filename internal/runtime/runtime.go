@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"xbot/internal/engine"
+	"xbot/internal/engine/hermes"
 	"xbot/internal/events"
 	"xbot/internal/judge"
 	"xbot/internal/limits"
@@ -52,6 +53,8 @@ type DonePayload struct {
 	Verdict   string    `json:"verdict"`
 	Text      string    `json:"text"`
 	Judge     *Judgment `json:"judge,omitempty"`
+	// Quota 是額度用完卡（EN-7）；這一輪不是因為額度失敗時沒有。
+	Quota *QuotaView `json:"quota,omitempty"`
 }
 
 // ErrBusy 表示這個 Bot 正在處理另一則訊息。
@@ -86,6 +89,10 @@ type Options struct {
 	// Admit 在開機前排隊等主機（B12：主機離線或滿了，CL-4、CL-6）；wait 收到排隊原因時，任務維持 waiting_box，
 	// 並發 task.state（payload 帶 wait）。回傳的 release 在開機完成後呼叫。可為 nil（不排隊）。
 	Admit func(ctx context.Context, botID string, wait func(any)) (release func(), err error)
+	// QuotaLog 是 Model Proxy 看到的額度類錯誤（EN-7）：Hermes 的一輪失敗時，用它找出是哪個供應商、何時恢復。可為 nil。
+	QuotaLog *engine.QuotaLog
+	// QuotaCard 回傳額度卡上引擎（或供應商）的名稱，與可以換用的引擎、模型（engines.Service.QuotaCard）。可為 nil（只顯示引擎代號、沒有選項）。
+	QuotaCard func(ctx context.Context, botID string, q *engine.QuotaError) (label string, options []engine.SwitchOption)
 }
 
 // Watchdog 是對話看門狗的時間（LazyBoy runtime.watch()）。
@@ -192,6 +199,7 @@ type turn struct {
 	source                  string // owner / bot / room / routine / webhook：不是 owner 的是無人在場的工作，提問會過期
 	lowPriority             bool   // Bot 交辦、群組接力（你的訊息會排在它後面第一個）
 	input                   string
+	orig                    string // 交辦時的原文（額度用完後可以重送的那一則）
 	cancel                  context.CancelFunc
 	done                    chan struct{}
 
@@ -207,7 +215,11 @@ type turn struct {
 	lastErr   string
 	pending   *pending // Bot 正在等人回覆的請求（一次一個）
 	usedTools bool     // 這一輪呼叫過工具（判斷「只說要做」用）
-	plan      []string // Bot 的計畫裡還沒做完的項目（最新的一份）
+	// engine、provider：這一輪用的引擎與 Model Proxy 供應商；started：開始送出的時間；quota：引擎報的額度錯誤（EN-7）。
+	engine, provider string
+	started          time.Time
+	quota            *engine.QuotaError
+	plan             []string // Bot 的計畫裡還沒做完的項目（最新的一份）
 
 	// 看門狗：最後一次收到事件的時間、正在執行的工具、看門狗送出中斷的時間、按停止的時間。
 	seen      time.Time
@@ -418,7 +430,7 @@ func (r *Runtime) kick(botID string) {
 func (r *Runtime) begin(task store.Task) {
 	runCtx, cancel := context.WithCancel(context.Background())
 	t := &turn{botID: task.BotID, threadID: task.ThreadID, taskID: task.ID, source: task.Source, lowPriority: task.LowPriority,
-		input: task.Input, cancel: cancel, done: make(chan struct{})}
+		input: task.Input, orig: task.Input, cancel: cancel, done: make(chan struct{})}
 	r.mu.Lock()
 	r.active[task.BotID] = t
 	r.mu.Unlock()
@@ -451,6 +463,9 @@ func (r *Runtime) run(ctx context.Context, t *turn) {
 		r.finishErr(t, err)
 		return
 	}
+	t.mu.Lock()
+	t.engine, t.provider, t.started = firstNonEmpty(b.Engine, hermes.Name), ref.Provider, time.Now()
+	t.mu.Unlock()
 	if h := r.hooks(); h.Prompt != nil {
 		task, err := r.o.DB.GetTask(ctx, t.taskID)
 		if err == nil {
@@ -650,6 +665,9 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 	case engine.EventError:
 		t.mu.Lock()
 		t.lastErr = e.Text
+		if e.Quota != nil {
+			t.quota = e.Quota
+		}
 		t.mu.Unlock()
 		r.emit(t, KindError, e, true)
 		if e.Fatal {
@@ -664,6 +682,11 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 			r.emit(t, KindError, engine.Event{Type: engine.EventError, Text: StalledText}, true)
 			r.finish(t, engine.StatusError, StalledText)
 			return
+		}
+		if e.Quota != nil {
+			t.mu.Lock()
+			t.quota = e.Quota
+			t.mu.Unlock()
 		}
 		r.finish(t, e.Status, e.Text)
 	}
@@ -711,6 +734,7 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		verdict = VerdictFailed
 	}
 	final := text
+	var quotaView *QuotaView
 	switch verdict {
 	case VerdictAnswer, VerdictCancelled:
 		if final == "" {
@@ -719,6 +743,12 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	case VerdictFailed:
 		if final == "" {
 			final = lastErr
+		}
+		// 額度用完、限流、餘額不足、登入過期（EN-7）：說清楚，開一張換引擎的卡。
+		if q := r.quotaOf(t, final); q != nil && text != StalledText {
+			quota, said := r.quotaCard(t, q)
+			quotaView = &quota
+			final = said
 		}
 		if streamed != "" && final != streamed {
 			final = strings.TrimSpace(streamed + "\n\n" + final)
@@ -748,6 +778,9 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		if judged != nil {
 			fields["judge"] = judged
 		}
+		if quotaView != nil {
+			fields["quota"] = quotaView
+		}
 		meta, _ := json.Marshal(fields)
 		if err := r.o.DB.UpdateMessage(ctx, msgID, final, nil, meta); err != nil {
 			r.log.Warn("寫入回覆失敗", "message", msgID, "err", err)
@@ -757,6 +790,9 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		fields := map[string]any{"task_id": t.taskID, "status": status}
 		if judged != nil {
 			fields["judge"] = judged
+		}
+		if quotaView != nil {
+			fields["quota"] = quotaView
 		}
 		meta, _ := json.Marshal(fields)
 		if m, err := r.o.DB.AddMessage(ctx, store.Message{Scope: store.ScopeThread, ScopeID: t.threadID, Sender: "bot:" + t.botID, Content: final, Meta: meta}); err == nil {
@@ -778,7 +814,9 @@ func (r *Runtime) finish(t *turn, status, text string) {
 			r.log.Warn("寫入完成判定失敗", "task", t.taskID, "err", err)
 		}
 	}
-	r.notifyDone(t, verdict, final, res, judged)
+	if quotaView == nil {
+		r.notifyDone(t, verdict, final, res, judged) // 額度卡已經是通知
+	}
 	// 先釋放這個 Bot 再寫 done：看到任務結束的人（wait_until_settled）馬上交辦下一件不會撞到「正在忙」。
 	r.mu.Lock()
 	if r.active[t.botID] == t {
@@ -790,7 +828,7 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		r.log.Warn("寫入任務狀態失敗", "task", t.taskID, "err", err)
 	}
 	r.emit(t, KindTaskState, map[string]string{"state": store.TaskDone, "verdict": verdict}, true)
-	r.emit(t, KindDone, DonePayload{MessageID: msgID, Status: status, Verdict: verdict, Text: final, Judge: judged}, true)
+	r.emit(t, KindDone, DonePayload{MessageID: msgID, Status: status, Verdict: verdict, Text: final, Judge: judged, Quota: quotaView}, true)
 	r.finished(t.taskID, verdict, final)
 	t.cancel()
 	close(t.done)

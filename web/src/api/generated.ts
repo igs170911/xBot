@@ -2265,8 +2265,8 @@ export interface BotsCreateInput {
   shape?: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
   /** 頭像平常的眼睛；不填是圓點 */
   eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
-  /** 引擎；預設 hermes。claude-code、codex 要再用 xbot.engines.link_credentials 同意使用你的訂閱 */
-  engine?: 'hermes' | 'claude-code' | 'codex'
+  /** 引擎；預設 hermes。claude-code、codex、gemini、opencode、grok 要再用 xbot.engines.link_credentials 同意使用你的訂閱 */
+  engine?: 'hermes' | 'claude-code' | 'codex' | 'gemini' | 'opencode' | 'grok'
   /** 模型；不填用預設模型（xbot.models.get 看設定） */
   model?: string
   /** 思考強度；不填是 medium */
@@ -2641,7 +2641,7 @@ export interface BotsUpdateInput {
   eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
   /** 頭像圖片：裁成形狀、256×256 的 data URL（PNG、JPEG、GIF、WebP）；空白字串改回吉祥物 */
   image?: string
-  engine?: 'hermes' | 'claude-code' | 'codex'
+  engine?: 'hermes' | 'claude-code' | 'codex' | 'gemini' | 'opencode' | 'grok'
   /** 空白字串表示改回預設模型 */
   model?: string
   /** 備援模型「<供應商>/<模型>」：主要模型忙碌或出錯時改用；空白字串表示用全域備援 */
@@ -2920,6 +2920,31 @@ export interface ChatReadOutput {
       files?: {
         path: string
         name?: string
+      }[]
+    }
+    quota?: {
+      /** 額度用完卡（待我處理）的 id */
+      inbox_id?: string
+      engine: string
+      /** Hermes 的 Model Proxy 供應商 */
+      provider?: string
+      /** quota 額度用完、rate_limit 限流、funds 餘額不足、auth 登入過期 */
+      kind: string
+      /** 預計恢復的時間（毫秒）；0 是不知道 */
+      reset_at?: number
+      /** 引擎或供應商原本的訊息 */
+      message?: string
+      label: string
+      bot_name: string
+      thread_id: string
+      task_id: string
+      retry_text?: string
+      options: {
+        engine: string
+        model?: string
+        label: string
+        note?: string
+        needs_link?: boolean
       }[]
     }
     created_at: number
@@ -4681,7 +4706,7 @@ export interface EnginesLinkCredentialsInput {
   /** Bot id */
   bot_id: string
   /** 要用哪個訂閱 CLI；要和 Bot 目前的引擎相同 */
-  engine: 'claude-code' | 'codex'
+  engine: 'claude-code' | 'codex' | 'gemini' | 'opencode' | 'grok'
 }
 
 export interface EnginesLinkCredentialsOutput {
@@ -4701,7 +4726,7 @@ export interface EnginesLinkCredentialsOutput {
 }
 
 /**
- * 讓一個 Bot 使用你在這台電腦上的訂閱登入（Claude Code／Codex CLI）
+ * 讓一個 Bot 使用你在這台電腦上的訂閱登入（Claude Code／Codex CLI／Gemini CLI／OpenCode／Grok）
  *
  * 你同意後，把這台電腦上該 CLI 的登入憑證唯讀放進這個 Bot 的電腦（只有這個 Bot），介面會標示「這個 Bot 用你的訂閱」。Bot 的引擎要先設成同一個 CLI。可以隨時用 xbot.engines.unlink_credentials 收回。只有你本人能做。
  *
@@ -4755,6 +4780,56 @@ export interface EnginesStatusOutput {
  */
 export function enginesStatus(input: EnginesStatusInput = {}, opts?: CallOptions): Promise<EnginesStatusOutput> {
   return invoke('xbot.engines.status', input, opts).then((r) => r.output)
+}
+
+// xbot.engines.switch
+
+export interface EnginesSwitchInput {
+  /** Bot id */
+  bot_id: string
+  /** 換到哪個引擎 */
+  engine: 'hermes' | 'claude-code' | 'codex' | 'gemini' | 'opencode' | 'grok'
+  /** Hermes：「<供應商>/<模型>」，空白用預設模型；ACP 引擎空白＝它自己的預設模型 */
+  model?: string
+  /** 同意讓這個 Bot 用你在這台電腦上這個 CLI 的訂閱登入（換到要訂閱的引擎、還沒同意過時要帶） */
+  link?: boolean
+  /** 換好之後，把額度用完那一輪的訊息在同一個對話串再送一次（要帶 inbox_id） */
+  resend?: boolean
+  /** 額度用完卡的 id（xbot.inbox.list，kind=engine_quota） */
+  inbox_id?: string
+}
+
+export interface EnginesSwitchOutput {
+  bot: {
+    bot_id: string
+    name: string
+    engine: string
+    engine_label: string
+    /** 這個引擎要連結你的訂閱才能用 */
+    needs_link: boolean
+    /** 已同意，Bot 正在用你的訂閱 */
+    linked: boolean
+    linked_engine?: string
+    linked_at?: number
+    /** 已收回，憑證等 Bot 的電腦連得上時清掉 */
+    pending_clear?: boolean
+    marker?: string
+  }
+  /** Bot 現在的模型設定；空白是預設 */
+  model: string
+  task_id?: string
+  thread_id?: string
+}
+
+/**
+ * 把一個 Bot 換到另一個引擎或模型（額度用完時）
+ *
+ * 改 Bot 的引擎與模型；要用你的訂閱而還沒同意過時，帶 link=true 表示你同意（和 xbot.engines.link_credentials 一樣）。帶 inbox_id 會收掉那張額度用完卡，再帶 resend=true 會把那一輪的訊息在同一個對話串再送一次。Bot 正在做事時不能換。只有你本人能做。
+ *
+ * `xbot.engines.switch`：權限 manage、風險 safe
+ */
+export function enginesSwitch(input: EnginesSwitchInput, opts?: CallOptions): Promise<EnginesSwitchOutput> {
+  return invoke('xbot.engines.switch', input, opts).then((r) => r.output)
 }
 
 // xbot.engines.unlink_credentials
@@ -6084,7 +6159,7 @@ export interface InboxDismissInput {
 export interface InboxDismissOutput {
   item: {
     id: string
-    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention、delegated（已由代理代為核准的紀錄） */
+    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、engine_quota（引擎額度用完，可換引擎：xbot.engines.switch）、done、error、mention、delegated（已由代理代為核准的紀錄） */
     kind: string
     /** decide（要你決定）、done（完成）、mention（提到你）、error（出錯） */
     group: string
@@ -6147,7 +6222,7 @@ export interface InboxListOutput {
   /** 新到舊 */
   items: {
     id: string
-    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention、delegated（已由代理代為核准的紀錄） */
+    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、engine_quota（引擎額度用完，可換引擎：xbot.engines.switch）、done、error、mention、delegated（已由代理代為核准的紀錄） */
     kind: string
     /** decide（要你決定）、done（完成）、mention（提到你）、error（出錯） */
     group: string
@@ -6224,7 +6299,7 @@ export interface InboxUndoInput {
 export interface InboxUndoOutput {
   item: {
     id: string
-    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention、delegated（已由代理代為核准的紀錄） */
+    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、engine_quota（引擎額度用完，可換引擎：xbot.engines.switch）、done、error、mention、delegated（已由代理代為核准的紀錄） */
     kind: string
     /** decide（要你決定）、done（完成）、mention（提到你）、error（出錯） */
     group: string
@@ -7880,7 +7955,7 @@ export interface OnboardStatusOutput {
   }
   /** 這台電腦上已登入的訂閱 CLI */
   engines: {
-    /** claude-code 或 codex */
+    /** claude-code、codex、gemini、opencode 或 grok */
     engine: string
     label: string
     /** 訂閱方案名稱，例：Claude */
@@ -12096,6 +12171,7 @@ export interface Ops {
   'xbot.devices.pair_status': { input: DevicesPairStatusInput; output: DevicesPairStatusOutput }
   'xbot.engines.link_credentials': { input: EnginesLinkCredentialsInput; output: EnginesLinkCredentialsOutput }
   'xbot.engines.status': { input: EnginesStatusInput; output: EnginesStatusOutput }
+  'xbot.engines.switch': { input: EnginesSwitchInput; output: EnginesSwitchOutput }
   'xbot.engines.unlink_credentials': { input: EnginesUnlinkCredentialsInput; output: EnginesUnlinkCredentialsOutput }
   'xbot.files.delete': { input: FilesDeleteInput; output: FilesDeleteOutput }
   'xbot.files.download': { input: FilesDownloadInput; output: FilesDownloadOutput }
@@ -12312,6 +12388,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.devices.pair_status': { path: '/api/v1/devices.pair_status', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.engines.link_credentials': { path: '/api/v1/engines.link_credentials', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.engines.status': { path: '/api/v1/engines.status', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.engines.switch': { path: '/api/v1/engines.switch', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.engines.unlink_credentials': { path: '/api/v1/engines.unlink_credentials', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.files.delete': { path: '/api/v1/files.delete', scope: 'operate', risk: 'confirm', mutates: true },
   'xbot.files.download': { path: '/api/v1/files.download', scope: 'read', risk: 'safe', mutates: false },

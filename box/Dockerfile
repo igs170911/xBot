@@ -117,6 +117,17 @@ ARG CODEX_ACP_VERSION=2.1.1
 RUN npm install -g "@agentclientprotocol/claude-agent-acp@${CLAUDE_AGENT_ACP_VERSION}" "@agentclientprotocol/codex-acp@${CODEX_ACP_VERSION}" \
     && npm cache clean --force \
     && command -v claude-agent-acp codex-acp
+# More ACP engines (E31). These CLIs speak ACP themselves, no adapter: Gemini CLI (`gemini --acp`; --experimental-acp
+# is deprecated) and OpenCode (`opencode acp`; the npm package carries its native binary). Grok Build, installed above,
+# speaks ACP as `grok agent stdio` (never with --always-approve). Pinned; logins are linked per bot like the others
+# (~/.gemini/oauth_creds.json, ~/.local/share/opencode/auth.json, ~/.grok/auth.json).
+ARG GEMINI_CLI_VERSION=0.64.0
+ARG OPENCODE_VERSION=1.19.3
+RUN npm install -g "@google/gemini-cli@${GEMINI_CLI_VERSION}" "opencode-ai@${OPENCODE_VERSION}" && npm cache clean --force \
+    && command -v gemini opencode && opencode --version && install -d -m 755 /etc/gemini-cli
+# Gemini CLI's system settings (root-owned, so Gemini trusts them and they override the bot's own ~/.gemini/settings.json):
+# sign in with the linked Google login, never YOLO mode (SEC-2), no auto-update, no usage statistics.
+COPY --chmod=644 gemini-settings.json /etc/gemini-cli/settings.json
 RUN mkdir -p /workspace /home/box /usr/share/xbot/xfce-skel /etc/xdg/xfce4 /usr/share/xfce4/helpers /etc/gtk-3.0 /etc/fonts/conf.d /usr/share/licenses/huninn \
     && chmod 1777 /workspace
 COPY --chmod=755 start-desktop.sh keep-desktop-awake desktop-probe.py stop-browser.py stop-browser.mjs restore-browser.mjs box-chrome box-terminal box-a11y box-teach-browser.mjs box-teach-desktop /usr/local/bin/

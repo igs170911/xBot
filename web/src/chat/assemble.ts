@@ -1,4 +1,5 @@
 import type { ChatReadOutput, ChatStepsOutput, XBotEvent } from '../api/generated'
+import { quotaFrom, type Quota } from './quota'
 import { askFromEvent, type Answered, type Ask } from './ask'
 
 // 把 chat.read 的快照和 SSE 事件組成畫面要的對話（純函式，好測）。
@@ -45,6 +46,8 @@ export type ChatMsg = {
   activity?: string
   /** Bot 回覆的完成判定（X04）：系統判斷做完了沒，與你的改正。 */
   judge?: Judge
+  /** 引擎額度用完卡（EN-7）：這一輪因為額度、限流、餘額或登入失敗時，回覆下面換引擎的卡。 */
+  quota?: Quota
 }
 
 /** 系統判斷一件工作做完了沒（X04，PRD §20 用途 2）。 */
@@ -179,6 +182,7 @@ type MessageMeta = {
   activity?: string
   judge?: Judge
   card?: ChatCard
+  quota?: unknown
 }
 
 type EngineEvent = {
@@ -261,6 +265,7 @@ export function applyRead(s: ChatState, out: ChatReadOutput): ChatState {
       ...(m.activity ? { activity: m.activity } : {}),
       ...(m.judge ? { judge: m.judge as Judge } : {}),
       ...(m.card ? { card: m.card } : {}),
+      ...(quotaFrom(m.quota) ? { quota: quotaFrom(m.quota)! } : {}),
     }
     if (local && server.streaming && local.content.length > server.content.length && local.content.startsWith(server.content)) {
       // 還在串流：本地已經接到比快照更多的字
@@ -331,6 +336,7 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
         ...(meta.activity ? { activity: meta.activity } : {}),
         ...(meta.judge ? { judge: meta.judge } : existing?.judge ? { judge: existing.judge } : {}),
         ...(meta.card ? { card: meta.card } : {}),
+        ...(quotaFrom(meta.quota) ? { quota: quotaFrom(meta.quota)! } : existing?.quota ? { quota: existing.quota } : {}),
       }
       const messages = existing ? th.messages.map((x) => (x.id === m.id ? msg : x)) : [...th.messages, msg]
       let next = putMessages(s, m.scope_id, messages)
@@ -439,6 +445,7 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
       const verdict = p.verdict as string | undefined
       const text = p.text as string | undefined
       const judge = p.judge as Judge | undefined
+      const quota = quotaFrom(p.quota)
       let next = s
       if (e.task_id) {
         const a = activity(next, e.task_id)
@@ -447,7 +454,7 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
       if (!id) return next
       const tid = threadOf(next, e, id)
       if (!tid) return next
-      return updateMessage(next, tid, id, (m) => ({ ...m, content: text ?? m.content, streaming: false, status: status ?? m.status, updatedAt: e.at, ...(judge ? { judge } : {}) }))
+      return updateMessage(next, tid, id, (m) => ({ ...m, content: text ?? m.content, streaming: false, status: status ?? m.status, updatedAt: e.at, ...(judge ? { judge } : {}), ...(quota ? { quota } : {}) }))
     }
   }
   return s

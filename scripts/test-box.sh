@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Bot 電腦映像的冒煙測試（任務卡 B01）：開一台 Bot 電腦，確認
 #   桌面（Xvnc＋XFCE）、Chromium（含 CDP 9222）、noVNC（6080）、Hermes（執行檔＋8642 的 gateway 主機）都起得來，
-#   Claude Code／Codex CLI 的 ACP adapter 裝好且回應 initialize（E12），
+#   Claude Code／Codex CLI 的 ACP adapter 與 Gemini CLI、OpenCode、Grok 裝好且回應 initialize（E12、E31），
 #   而且是用和 Box Manager 一樣的強化設定開機（SEC-3，B13）：Bot 使用者（1000）、沒有任何 capability、
 #   no-new-privileges、唯讀根檔案系統（只有 /tmp、/run、/var/tmp 與資料區可寫）、沒有 sudo。
 # 做完一定把容器（和它的匿名資料區）刪掉。
@@ -92,14 +92,19 @@ if in_box test -d /product-ipc && in_box test ! -e /opt/xbot/product_mcp.py; the
 
 # ACP adapters (E12): installed, runnable as the bot user, and answer ACP initialize without a login.
 acp_init='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1,"clientCapabilities":{"fs":{"readTextFile":false,"writeTextFile":false},"terminal":false}}}'
-for adapter in claude-agent-acp codex-acp; do
-  reply=$(as_bot sh -c "(echo '$acp_init'; sleep 15) | timeout 40 $adapter 2>/dev/null | head -n1" || true)
-  if printf '%s' "$reply" | grep -q '"protocolVersion":1'; then
-    ok "$adapter 已安裝，回應 ACP initialize（$(printf '%s' "$reply" | grep -o '"version":"[^"]*"' | head -n1)）"
+# E31: Gemini CLI, OpenCode and Grok Build speak ACP themselves (no adapter); same check, same commands as internal/engine/acp.
+# Gemini CLI 照映像的系統設定開機就要登入（沒有登入時停下來要授權碼）；這裡只驗它講 ACP，所以暫時不讀系統設定。
+for adapter in claude-agent-acp codex-acp "env GEMINI_CLI_SYSTEM_SETTINGS_PATH=/nonexistent gemini --acp" "opencode acp" "grok agent stdio"; do
+  reply=$(as_bot sh -c "(echo '$acp_init'; sleep 15) | timeout 40 $adapter 2>/dev/null | grep -m1 '\"id\":1,\"result\"'" || true)
+  if printf '%s' "$reply" | grep -q '"result":{.*"protocolVersion":1'; then
+    ok "$adapter 已安裝，回應 ACP initialize（$(printf '%s' "$reply" | grep -o '"\(version\|agentVersion\)":"[^"]*"' | head -n1)）"
   else
-    fail "$adapter 沒有回應 ACP initialize：${reply:-（沒有輸出）}"
+    fail "$adapter 沒有回應 ACP initialize：$(printf '%s' "${reply:-（沒有輸出）}" | head -c 300)"
   fi
 done
+# Gemini CLI 的系統設定（Bot 改不了）：用連結的 Google 登入、不准 YOLO。
+if [ "$(in_box stat -c '%U %a' /etc/gemini-cli/settings.json 2>/dev/null)" = "root 644" ] && as_bot grep -q '"disableYoloMode": true' /etc/gemini-cli/settings.json; then
+  ok "Gemini CLI 系統設定：root 擁有、Bot 讀得到、關掉 YOLO"; else fail "/etc/gemini-cli/settings.json 不對"; fi
 if in_box test -d /opt/xbot/cred && [ "$(in_box stat -c '%U %a' /opt/xbot/cred)" = "root 755" ] && [ -z "$(in_box ls -A /opt/xbot/cred)" ]; then
   ok "訂閱憑證資料夾 /opt/xbot/cred 是空的、屬於 root"; else fail "/opt/xbot/cred 不對（要空的、root 755）"; fi
 
