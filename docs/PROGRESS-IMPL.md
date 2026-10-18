@@ -19,3 +19,4 @@
 | W02 對話畫面最小版 | ✅ 完成 | `task/W02-chat` | 工作中再送訊息會顯示「忙碌中，先按停止」（伺服器不接受排隊）；Bot 的提問只顯示「在等你」（回答功能在 C12）；新增 `make e2e-docker`（真 Bot 電腦＋假模型） | 重新整理後看不到舊回合的步驟（需要 tasks.events 之類的 op）；開機中重新整理看不到進度；事件表沒存 thread_id |
 | CP1（關卡 G0） | ✅ 通過 | tag `cp1` | 用假模型驗收；Claude Code 真的透過 MCP 建 Bot 並對話 | 真模型驗收待使用者同意使用金鑰 |
 | W11 對話完整版 | ✅ 完成 | `task/W11-chat-full` | Markdown 用 marked lexer 自建 React 元素（不經 innerHTML）；數學只顯示原始 TeX、Mermaid 當程式碼；「再試一次」用 chat.send 重送（會多一則訊息）；`registerCard` 給 C12 掛卡片 | 待補 op：重新命名／釘選／刪除對話串、模型清單、context 用量、retry；手機頁首是否照 L03 |
+| E11 Model Proxy 完整版 | ✅ 完成 | `task/E11-proxy-full` | 花費以美元百萬分之一記；新增每供應商上限（給 OpenCode 省用）；OpenCode 自動帶 x-opencode-session；預設價格除 Claude 外待核對；migration 0005 | Bot 換到別的供應商要重啟電腦才生效；預算超過時 Hermes 的訊息是否夠清楚；日界線時區；80% 預警、EN-7 未做 |
