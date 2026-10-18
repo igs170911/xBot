@@ -41,7 +41,12 @@ C00、C06、C01、B01、E01、W01、C02、B02、E02、C03、C04、C05、W02（�
 
 1. CP0 的三題（安裝在家目錄、linger 每次問、Node 26）目前都用 A。
 2. `approval_mode` 四段：先問我／一般的事自己做／放手做／完全放手（ask/edits/auto/full），名稱可以嗎？
-3. 要不要用你的 OpenCode Go 金鑰跑一次真模型驗收？
+3. ~~要不要用你的 OpenCode Go 金鑰跑一次真模型驗收？~~ 使用者已同意（2026-10-18）。結果：
+   - OpenCode Zen 的免費模型（deepseek-v4-flash-free 等）目前回「Model is unavailable」。
+   - OpenCode Go 規定要帶 `x-opencode-session` 與自己的 User-Agent（已交給 E11 實作）。
+   - 但你的 OpenCode Go 金鑰連官方 `opencode run` 都回「Invalid credential」，金鑰可能過期或額度已用完。
+   - 請在終端機執行 `opencode auth login` 重新登入（或到 opencode.ai 確認額度），之後跑：
+     `CP1_BASE_URL=https://opencode.ai/zen/go/v1 CP1_MODEL=deepseek-v4-flash CP1_API_KEY=… scripts/test-cp1.sh`（E11 合併後才會自動帶 session 標頭）。
 
 ## 6. 下一階段：M1（一個 Bot＋自己的電腦）
 
