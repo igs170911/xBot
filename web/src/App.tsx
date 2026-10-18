@@ -47,6 +47,7 @@ import { PairPage } from './mobile/PairPage'
 import { BotProfilePage } from './mobile/BotProfilePage'
 import { NewBotPage, NewRoomPage } from './mobile/NewPages'
 import { SharePage } from './mobile/SharePage'
+import { ImportPage } from './onboard/ImportPage'
 import { CallPage } from './mobile/CallPage'
 import { WelcomePage } from './mobile/WelcomePage'
 
@@ -58,6 +59,7 @@ const TITLES: Record<string, string> = {
   '/new/bot': '新增 Bot',
   '/new/room': '新增群組',
   '/welcome': '第一次設定',
+  '/import': '帶入舊設定',
   '/agenda': '等你的事',
   '/teams': '團隊地圖',
   '/apps': '連接應用程式',
@@ -149,6 +151,7 @@ function Main() {
   else if (path === '/new/bot') page = <NewBotPage />
   else if (path === '/new/room') page = <NewRoomPage />
   else if (path === '/welcome') page = <WelcomePage />
+  else if (path === '/import') page = <ImportPage />
   else if (profile) page = <BotProfilePage key={profile[1]} botId={profile[1]} />
   else if (call) page = <CallPage key={call[1]} botId={call[1]} />
   else if (computer) page = <ComputerPage key={computer[1]} botId={computer[1]} />
