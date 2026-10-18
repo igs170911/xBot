@@ -1,0 +1,195 @@
+// Package ipc 是每個 Bot 的 product.sock：容器裡的 hermes_host.py 把模型請求（/model/*）與 XBot 工具（/product）
+// 轉送到這個 Unix socket，身分用該 Bot 的 worker-key（同 LazyBoy server/main.py 的 /internal/* 路由）。
+//
+// 本機主機時 socket 就在 <data>/bots/<id>/ipc/product.sock，該資料夾唯讀掛進容器的 /product-ipc。
+// 遠端主機（B11）會把同一個 socket 經 SSH 反向轉發過去。
+package ipc
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+)
+
+// SocketName 是 socket 的檔名（box/hermes_host.py 連 /product-ipc/product.sock）。
+const SocketName = "product.sock"
+
+// ProvidersPrefix 是 hermes_host.py 轉送模型請求用的路徑：/internal/providers/<供應商>/v1/<路徑>。
+const ProvidersPrefix = "/internal/providers/"
+
+// ModelPrefix 是 Model Proxy 的掛載點（internal/proxy.Prefix）；收到的請求改寫成這個開頭再交給它。
+const ModelPrefix = "/model/"
+
+// KeyVerifier 驗證 worker-key 並回傳它所屬的 Bot；*proxy.WorkerKeys 符合。
+type KeyVerifier interface {
+	Verify(ctx context.Context, key string) (string, error)
+}
+
+// Options 是 Server 的設定。
+type Options struct {
+	// Dir 回傳 Bot 的 ipc 資料夾（本機：<data>/bots/<id>/ipc）。
+	Dir func(botID string) string
+	// Model 是 Model Proxy 的處理器（掛在 /model/）。nil 時模型請求回 503。
+	Model http.Handler
+	// Keys 驗證 worker-key，確認請求來自這個 socket 所屬的 Bot。
+	Keys   KeyVerifier
+	Logger *slog.Logger
+}
+
+// Server 管理每個 Bot 的 product.sock。
+type Server struct {
+	o  Options
+	mu sync.Mutex
+	// bots 是正在聽的 socket。
+	bots map[string]*listener
+}
+
+type listener struct {
+	path string
+	info os.FileInfo
+	srv  *http.Server
+}
+
+// New 建立 Server。
+func New(o Options) *Server {
+	if o.Logger == nil {
+		o.Logger = slog.Default()
+	}
+	return &Server{o: o, bots: map[string]*listener{}}
+}
+
+// Path 回傳 Bot 的 socket 路徑。
+func (s *Server) Path(botID string) string { return filepath.Join(s.o.Dir(botID), SocketName) }
+
+// Ensure 確保 Bot 的 product.sock 正在聽；已經在聽而且檔案還在時什麼都不做。開機前呼叫。
+func (s *Server) Ensure(botID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	path := s.Path(botID)
+	if l, ok := s.bots[botID]; ok {
+		if info, err := os.Lstat(path); err == nil && os.SameFile(info, l.info) {
+			return nil
+		}
+		// 檔案被刪掉或換掉了（例：資料夾被清掉），重新開一個。
+		_ = l.srv.Close()
+		delete(s.bots, botID)
+	}
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o711); err != nil {
+		return fmt.Errorf("無法建立 Bot 的通訊資料夾：%w", err)
+	}
+	// 上次服務留下的 socket 檔：沒人在聽了，直接換掉。
+	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("無法清掉舊的 %s：%w", path, err)
+	}
+	ln, err := net.Listen("unix", path)
+	if err != nil {
+		return fmt.Errorf("無法建立 Bot 的 product.sock：%w", err)
+	}
+	// 容器裡的 Bot 使用者和服務不一定是同一個 UID；資料夾是 0711（看不到內容，只能用知道名字的檔案），
+	// 而且只掛進這個 Bot 的容器，所以 socket 本身開放連線，身分靠 worker-key。
+	if err := os.Chmod(path, 0o666); err != nil {
+		ln.Close()
+		return err
+	}
+	info, err := os.Lstat(path)
+	if err != nil {
+		ln.Close()
+		return err
+	}
+	srv := &http.Server{Handler: s.handler(botID), ReadHeaderTimeout: 10 * time.Second}
+	s.bots[botID] = &listener{path: path, info: info, srv: srv}
+	go func() {
+		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			s.o.Logger.Warn("product.sock 停止服務", "bot", botID, "err", err)
+		}
+	}()
+	return nil
+}
+
+// Close 關掉一個 Bot 的 socket（刪除 Bot 時用）。
+func (s *Server) Close(botID string) error {
+	s.mu.Lock()
+	l, ok := s.bots[botID]
+	delete(s.bots, botID)
+	s.mu.Unlock()
+	if !ok {
+		return nil
+	}
+	err := l.srv.Close()
+	if info, statErr := os.Lstat(l.path); statErr == nil && os.SameFile(info, l.info) {
+		_ = os.Remove(l.path)
+	}
+	return err
+}
+
+// Shutdown 關掉所有 socket。
+func (s *Server) Shutdown() error {
+	s.mu.Lock()
+	ids := make([]string, 0, len(s.bots))
+	for id := range s.bots {
+		ids = append(ids, id)
+	}
+	s.mu.Unlock()
+	var errs []error
+	for _, id := range ids {
+		errs = append(errs, s.Close(id))
+	}
+	return errors.Join(errs...)
+}
+
+func (s *Server) handler(botID string) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc(ProvidersPrefix, func(w http.ResponseWriter, r *http.Request) { s.model(botID, w, r) })
+	mux.HandleFunc("/internal/product", func(w http.ResponseWriter, _ *http.Request) {
+		// XBot MCP（C11）還沒做。
+		fail(w, http.StatusNotImplemented, "not_implemented", "XBot 工具還沒開放")
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+		fail(w, http.StatusNotFound, "not_found", "product.sock 沒有這個路徑")
+	})
+	return mux
+}
+
+// model 把 /internal/providers/<p>/v1/<路徑> 改寫成 /model/<p>/v1/<路徑> 交給 Model Proxy，
+// 並確認 worker-key 屬於這個 socket 的 Bot：一個 Bot 不能拿別人的 key 從自己的 socket 進來。
+func (s *Server) model(botID string, w http.ResponseWriter, r *http.Request) {
+	if s.o.Model == nil {
+		fail(w, http.StatusServiceUnavailable, "proxy_disabled", "模型代理還沒啟用")
+		return
+	}
+	key := ""
+	if auth := r.Header.Get("Authorization"); auth != "" {
+		key, _ = strings.CutPrefix(auth, "Bearer ")
+	} else {
+		key = r.Header.Get("X-Api-Key")
+	}
+	owner, err := s.o.Keys.Verify(r.Context(), strings.TrimSpace(key))
+	if err != nil || owner != botID {
+		fail(w, http.StatusUnauthorized, "invalid_worker_key", "需要這個 Bot 的 worker-key")
+		return
+	}
+	r2 := r.Clone(r.Context())
+	r2.URL.Path = ModelPrefix + strings.TrimPrefix(r.URL.Path, ProvidersPrefix)
+	r2.URL.RawPath = ""
+	r2.RequestURI = ""
+	s.o.Model.ServeHTTP(w, r2)
+}
+
+func fail(w http.ResponseWriter, status int, code, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"error": map[string]any{"message": message, "type": "xbot_product", "code": code},
+	})
+}

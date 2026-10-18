@@ -26,6 +26,7 @@ type fakeDocker struct {
 	volumes    map[string]volume.Volume
 	created    []client.ContainerCreateOptions
 	stops      []*int
+	copies     []string
 	nextPort   int
 	seq        int
 }
@@ -180,6 +181,21 @@ func (f *fakeDocker) VolumeRemove(_ context.Context, id string, _ client.VolumeR
 	}
 	delete(f.volumes, id)
 	return client.VolumeRemoveResult{}, nil
+}
+
+// CopyToContainer 記下寫入的路徑（Prepare 的測試用）。
+func (f *fakeDocker) CopyToContainer(_ context.Context, id string, o client.CopyToContainerOptions) (client.CopyToContainerResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.find(id) == nil {
+		return client.CopyToContainerResult{}, notFound("container")
+	}
+	f.copies = append(f.copies, o.DestinationPath)
+	return client.CopyToContainerResult{}, nil
+}
+
+func (f *fakeDocker) CopyFromContainer(context.Context, string, client.CopyFromContainerOptions) (client.CopyFromContainerResult, error) {
+	return client.CopyFromContainerResult{}, notFound("path")
 }
 
 // fakeHost 是接上 fakeDocker 的主機。

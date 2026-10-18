@@ -20,17 +20,19 @@ type Thread struct {
 	ModelOverride string          `json:"model_override"`
 	Usage         json.RawMessage `json:"usage"`
 	LastMessageAt int64           `json:"last_message_at"`
-	CreatedAt     int64           `json:"created_at"`
-	UpdatedAt     int64           `json:"updated_at"`
+	// EngineSession 是這條對話串在引擎裡的 session（例：Hermes 的 stored_session_id），由驅動寫入。
+	EngineSession string `json:"engine_session"`
+	CreatedAt     int64  `json:"created_at"`
+	UpdatedAt     int64  `json:"updated_at"`
 }
 
-const threadCols = `id, bot_id, title, folder_id, pinned, archived, unread, model_override, usage, last_message_at, created_at, updated_at`
+const threadCols = `id, bot_id, title, folder_id, pinned, archived, unread, model_override, usage, last_message_at, engine_session, created_at, updated_at`
 
 func scanThread(s scanner) (Thread, error) {
 	var t Thread
 	var folder sql.NullString
 	var usage string
-	err := s.Scan(&t.ID, &t.BotID, &t.Title, &folder, &t.Pinned, &t.Archived, &t.Unread, &t.ModelOverride, &usage, &t.LastMessageAt, &t.CreatedAt, &t.UpdatedAt)
+	err := s.Scan(&t.ID, &t.BotID, &t.Title, &folder, &t.Pinned, &t.Archived, &t.Unread, &t.ModelOverride, &usage, &t.LastMessageAt, &t.EngineSession, &t.CreatedAt, &t.UpdatedAt)
 	t.FolderID, t.Usage = folder.String, json.RawMessage(usage)
 	return t, err
 }
@@ -43,9 +45,9 @@ func (q *Queries) CreateThread(ctx context.Context, t Thread) (Thread, error) {
 	t.CreatedAt = nowMS()
 	t.UpdatedAt = t.CreatedAt
 	t.Usage = json.RawMessage(jsonOr(t.Usage, "{}"))
-	_, err := q.w.ExecContext(ctx, `INSERT INTO thread(`+threadCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+	_, err := q.w.ExecContext(ctx, `INSERT INTO thread(`+threadCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		t.ID, t.BotID, t.Title, nullStr(t.FolderID), b2i(t.Pinned), b2i(t.Archived), t.Unread, t.ModelOverride,
-		string(t.Usage), t.LastMessageAt, t.CreatedAt, t.UpdatedAt)
+		string(t.Usage), t.LastMessageAt, t.EngineSession, t.CreatedAt, t.UpdatedAt)
 	return t, err
 }
 
@@ -71,6 +73,11 @@ func (q *Queries) UpdateThread(ctx context.Context, t Thread) error {
 // SetThreadUsage 寫入對話串的用量摘要。
 func (q *Queries) SetThreadUsage(ctx context.Context, id string, usage json.RawMessage) error {
 	return affected(q.w.ExecContext(ctx, `UPDATE thread SET usage=?, updated_at=? WHERE id=?`, jsonOr(usage, "{}"), nowMS(), id))
+}
+
+// SetThreadEngineSession 記下對話串在引擎裡的 session，之後用它接回同一段對話。
+func (q *Queries) SetThreadEngineSession(ctx context.Context, id, session string) error {
+	return affected(q.w.ExecContext(ctx, `UPDATE thread SET engine_session=?, updated_at=? WHERE id=?`, session, nowMS(), id))
 }
 
 // MarkThreadRead 把未讀數歸零。

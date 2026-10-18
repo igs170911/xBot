@@ -54,8 +54,8 @@ test: ## 只跑單元測試（Go＋前端）
 	$(RUN) go test ./...
 	cd web && $(RUN) pnpm test
 
-test-docker: ## Docker 整合測試（真的開一台 Bot 電腦；沒有 Docker 或映像時略過，先 make box）
-	BOX_IMAGE=$(BOX_IMAGE) $(RUN) go test -tags docker -count=1 ./internal/box/...
+test-docker: ## Docker 整合測試（真的開 Bot 電腦，含對話端對端；沒有 Docker 或映像時略過，先 make box）
+	BOX_IMAGE=$(BOX_IMAGE) $(RUN) go test -tags docker -count=1 ./internal/box/... ./internal/runtime/...
 
 e2e: ## Playwright 端對端測試（會先 make build）
 	@$(MAKE) --no-print-directory build

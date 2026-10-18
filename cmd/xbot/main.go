@@ -23,6 +23,7 @@ func commands() []command {
 		{"backup", "備份資料（--out 檔案，--include-logins）", cmdBackup},
 		{"restore", "從備份還原資料", cmdRestore},
 		{"token", "顯示其他裝置用的登入碼", cmdToken},
+		{"dev", "開發用：dev chat --bot <名稱> \"訊息\"（對 Bot 說一句話並印出串流回覆）", cmdDev},
 		{"version", "顯示版本", cmdVersion},
 	}
 }
