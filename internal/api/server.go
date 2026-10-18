@@ -17,12 +17,19 @@ import (
 type Options struct {
 	// Web 是打包後的前端；nil 表示沒有嵌入（開發模式或 go test）。
 	Web fs.FS
+	// ModelProxy 掛在 /model/（internal/proxy.Handler）；nil 表示還沒啟用，回 503。
+	ModelProxy http.Handler
 }
 
 // New 回傳整個服務的 HTTP 處理器。
 func New(o Options) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", healthz)
+	if o.ModelProxy != nil {
+		mux.Handle("/model/", o.ModelProxy)
+	} else {
+		mux.HandleFunc("/model/", proxyDisabled)
+	}
 	mux.Handle("/", spa(o.Web))
 	return mux
 }
@@ -31,6 +38,16 @@ func healthz(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "version": version.Version})
+}
+
+// proxyDisabled 讓容器拿到明確的錯誤，而不是前端的 index.html。
+func proxyDisabled(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusServiceUnavailable)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"error": map[string]any{"message": "模型代理還沒啟用", "type": "xbot_model_proxy", "code": "proxy_disabled"},
+	})
 }
 
 const notBuilt = `<!doctype html><meta charset="utf-8"><title>XBot</title>
