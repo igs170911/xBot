@@ -289,24 +289,8 @@ func WriteError(w http.ResponseWriter, status int, e *ops.Error) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"error": e})
 }
 
-// StatusFor 是錯誤代碼對應的 HTTP 狀態。
-func StatusFor(e *ops.Error) int {
-	switch e.Code {
-	case ops.CodeForbidden:
-		return http.StatusForbidden
-	case ops.CodeNotFound:
-		return http.StatusNotFound
-	case ops.CodeInvalidInput:
-		return http.StatusBadRequest
-	case ops.CodeLimit, ops.CodeBudget:
-		return http.StatusTooManyRequests
-	case ops.CodeConflict:
-		return http.StatusConflict
-	case ops.CodePendingApproval:
-		return http.StatusAccepted
-	}
-	return http.StatusInternalServerError
-}
+// StatusFor 是錯誤對應的 HTTP 狀態（見 HTTPStatus）。
+func StatusFor(e *ops.Error) int { return HTTPStatus(e.Code) }
 
 func remoteIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)

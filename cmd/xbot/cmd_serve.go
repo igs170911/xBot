@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,7 +16,9 @@ import (
 	"xbot/internal/api"
 	"xbot/internal/auth"
 	"xbot/internal/config"
+	"xbot/internal/events"
 	"xbot/internal/mcpserver"
+	"xbot/internal/store"
 	"xbot/internal/version"
 	"xbot/web"
 )
@@ -46,23 +49,41 @@ func cmdServe(args []string) error {
 		}
 	}()
 
+	// 只有一條事件匯流排：runtime（對話串流）與操作登錄表都發布到它，SSE 從它訂閱。
+	bus := st.runtime.Bus()
 	pairing := auth.NewPairing(st.db)
-	reg := buildRegistry(st.db, pairing)
+	reg := buildRegistry(st.db, pairing, func(e store.Event) { bus.Publish(events.FromStore(e)) })
+	// 權杖驗證 HTTP 與 MCP 共用（登入碼＝你本人，代理權杖＝那個代理）。
+	tokens := &auth.Authenticator{DB: st.db, AccessToken: accessToken}
 	localOwner := os.Getenv("XBOT_MCP_LOCAL_OWNER") == "1"
 	if localOwner {
 		slog.Warn("XBOT_MCP_LOCAL_OWNER=1：這台機器上沒帶權杖的 MCP 連線都會被當成你本人")
 	}
 	mcpHandler := mcpserver.Handler(reg, mcpserver.HTTPOptions{
-		Auth:       &auth.Authenticator{DB: st.db, AccessToken: accessToken},
+		Auth:       tokens,
 		LocalOwner: localOwner,
 		Logger:     slog.Default(),
 	})
-
+	handler := api.New(api.Options{
+		Web:        web.Dist(),
+		ModelProxy: st.model,
+		MCP:        mcpHandler,
+		AgentPair:  pairing.Handler(),
+		Registry:   reg,
+		Bus:        bus,
+		DB:         st.db,
+		Auth:       auth.NewHTTP(auth.HTTPConfig{Tokens: tokens, AccessToken: accessToken, LocalNoAuth: cfg.LocalNoAuth}),
+	})
+	// 關機時先結束 SSE 這類長連線，Shutdown 才不會一直等。
+	baseCtx, cancelBase := context.WithCancel(context.Background())
+	defer cancelBase()
 	srv := &http.Server{
 		Addr:              cfg.Addr(),
-		Handler:           api.New(api.Options{Web: web.Dist(), ModelProxy: st.model, MCP: mcpHandler, AgentPair: pairing.Handler()}),
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
+		BaseContext:       func(net.Listener) context.Context { return baseCtx },
 	}
+	srv.RegisterOnShutdown(cancelBase)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

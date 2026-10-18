@@ -4,7 +4,10 @@ import App from './App'
 import { navigate } from './router'
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', async () => new Response(JSON.stringify({ ok: true, version: 'v-test' })))
+  vi.stubGlobal(
+    'fetch',
+    async () => new Response(JSON.stringify({ op: 'xbot.system.ping', output: { pong: true, api: 'xbot.v1', build: 'v-test', caller: 'owner' } })),
+  )
   window.history.replaceState(null, '', '/')
 })
 afterEach(() => vi.unstubAllGlobals())

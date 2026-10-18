@@ -10,24 +10,19 @@
 //
 // 成功回 200 與 ops.Result（{op, output, dry_run?, needs_approval?, replayed?}）；
 // 失敗回 {"error": {code, message, retryable, needs_approval_id?}}（MCP-5）。
-// 服務還沒有這條路由（回 404／405 且不是上面的錯誤格式）時，改走 /mcp 的同名工具，結果一樣。
 package opsclient
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
-
 	"xbot/internal/auth"
-	"xbot/internal/mcpserver"
 	"xbot/internal/ops"
 )
 
@@ -90,9 +85,6 @@ func (c *Client) Call(ctx context.Context, op string, input json.RawMessage, opt
 	if e := parseError(body); e != nil {
 		return ops.Result{Op: op}, e
 	}
-	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusMethodNotAllowed {
-		return c.callMCP(ctx, op, input, opts) // 服務還沒有 /api/v1 路由
-	}
 	if resp.StatusCode == http.StatusUnauthorized {
 		return ops.Result{Op: op}, ops.Forbidden("服務不接受這個身分：請確認 XBOT_TOKEN，或在服務那台機器上執行")
 	}
@@ -129,63 +121,6 @@ func parseResult(op string, body []byte) (ops.Result, error) {
 		res.Op = op
 	}
 	return res, nil
-}
-
-// callMCP 經 /mcp 呼叫同名工具。
-func (c *Client) callMCP(ctx context.Context, op string, input json.RawMessage, opts ops.Options) (ops.Result, error) {
-	args := map[string]json.RawMessage{}
-	if err := json.Unmarshal(input, &args); err != nil {
-		return ops.Result{}, ops.InvalidInput(ops.FieldError{Message: "輸入要是 JSON 物件"})
-	}
-	if opts.RequestID != "" {
-		args[mcpserver.ArgRequestID], _ = json.Marshal(opts.RequestID)
-	}
-	if opts.DryRun {
-		args[mcpserver.ArgDryRun] = json.RawMessage("true")
-	}
-	raw, _ := json.Marshal(args)
-	cs, err := mcpserver.Dial(ctx, c.BaseURL, c.Token, c.HTTP)
-	if err != nil {
-		return ops.Result{}, err
-	}
-	defer func() { _ = cs.Close() }()
-	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: op, Arguments: mcpserver.ArgsValue(raw)})
-	if err != nil {
-		return ops.Result{}, err
-	}
-	return FromToolResult(op, res)
-}
-
-// FromToolResult 把 MCP 工具結果轉回 ops.Result／*ops.Error。
-func FromToolResult(op string, res *mcp.CallToolResult) (ops.Result, error) {
-	structured, err := json.Marshal(res.StructuredContent)
-	if err != nil {
-		return ops.Result{}, err
-	}
-	if res.IsError {
-		var e ops.Error
-		if json.Unmarshal(structured, &e) == nil && e.Code != "" {
-			return ops.Result{Op: op}, &e
-		}
-		return ops.Result{Op: op}, errors.New(toolText(res))
-	}
-	out := ops.Result{Op: op, Output: structured}
-	if res.StructuredContent == nil {
-		out.Output = json.RawMessage(toolText(res))
-	}
-	out.DryRun, _ = res.Meta["xbot/dry_run"].(bool)
-	out.NeedsApproval, _ = res.Meta["xbot/needs_approval"].(bool)
-	out.Replayed, _ = res.Meta["xbot/replayed"].(bool)
-	return out, nil
-}
-
-func toolText(res *mcp.CallToolResult) string {
-	for _, c := range res.Content {
-		if t, ok := c.(*mcp.TextContent); ok {
-			return t.Text
-		}
-	}
-	return ""
 }
 
 // Pair 用配對碼換權杖（POST /api/v1/agents.pair，不需要登入）。

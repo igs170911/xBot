@@ -26,6 +26,7 @@ func commands() []command {
 		{"token", "顯示其他裝置用的登入碼", cmdToken},
 		{"mcp", "以 stdio 提供 XBot MCP；mcp pair <配對碼> 換代理權杖", cmdMCP},
 		{"ops", "列出所有操作（xbot <領域> <動作> 呼叫）", cmdOps},
+		{"gen", "由操作登錄表產生程式碼：gen ts（前端型別，make gen）", cmdGen},
 		{"dev", "開發用：dev chat --bot <名稱> \"訊息\"（對 Bot 說一句話並印出串流回覆）", cmdDev},
 		{"version", "顯示版本", cmdVersion},
 	}

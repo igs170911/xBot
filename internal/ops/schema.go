@@ -41,6 +41,8 @@ type Schema struct {
 
 	// Order 是 Properties 依 struct 欄位宣告的順序（CLI 旗標、前端型別用）。
 	Order []string `json:"-"`
+	// OmitEmpty 是有 omitempty／omitzero 標籤的欄位：輸出時可能不出現（前端型別用）。
+	OmitEmpty []string `json:"-"`
 }
 
 // Property 依名稱取出一個屬性；不是物件或沒有這個屬性時回傳 nil。
@@ -54,6 +56,11 @@ func (s *Schema) Property(name string) *Schema {
 // IsRequired 回答 name 是不是必填欄位。
 func (s *Schema) IsRequired(name string) bool {
 	return slices.Contains(s.Required, name)
+}
+
+// IsOmitEmpty 回答 name 欄位在輸出時是不是可能省略（omitempty／omitzero）。
+func (s *Schema) IsOmitEmpty(name string) bool {
+	return slices.Contains(s.OmitEmpty, name)
 }
 
 // SchemaOf 產生型別 T 的 JSON Schema。
@@ -153,7 +160,7 @@ func (g *schemaGen) fields(t reflect.Type, s *Schema) error {
 		if tag == "-" {
 			continue
 		}
-		name, _, _ := strings.Cut(tag, ",")
+		name, tagOpts, _ := strings.Cut(tag, ",")
 		if f.Anonymous && name == "" {
 			ft := f.Type
 			if ft.Kind() == reflect.Pointer {
@@ -181,6 +188,9 @@ func (g *schemaGen) fields(t reflect.Type, s *Schema) error {
 		}
 		if _, dup := s.Properties[name]; !dup {
 			s.Order = append(s.Order, name)
+			if slices.ContainsFunc(strings.Split(tagOpts, ","), func(o string) bool { return o == "omitempty" || o == "omitzero" }) {
+				s.OmitEmpty = append(s.OmitEmpty, name)
+			}
 		}
 		s.Properties[name] = p
 		if f.Tag.Get("required") == "true" {

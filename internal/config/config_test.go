@@ -32,6 +32,20 @@ func TestLoadBadPort(t *testing.T) {
 	}
 }
 
+func TestLocalNoAuth(t *testing.T) {
+	for v, want := range map[string]bool{"": true, "1": true, "0": false, "false": false} {
+		t.Setenv("XBOT_LOCAL_NOAUTH", v)
+		c, err := Load()
+		if err != nil || c.LocalNoAuth != want {
+			t.Fatalf("XBOT_LOCAL_NOAUTH=%q：%v %v", v, c.LocalNoAuth, err)
+		}
+	}
+	t.Setenv("XBOT_LOCAL_NOAUTH", "maybe")
+	if _, err := Load(); err == nil {
+		t.Fatal("不認得的值應該回錯誤")
+	}
+}
+
 func TestURLForAnyBind(t *testing.T) {
 	c := Config{Bind: "0.0.0.0", Port: 9000}
 	if c.URL() != "http://localhost:9000" {
