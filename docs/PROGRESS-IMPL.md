@@ -28,3 +28,4 @@
 | W12 設定頁（設定部分） | ✅ 完成 | `task/W12-settings` | 設定做成頁面（畫板是對話框）；金額用美元（Proxy 以美元記帳）；淺色主題補了幾個色票；外部代理頁留給 C21；電腦頁等 B12–B14 | 待決定：要不要全域預設引擎、顯示台幣、通知與語言設定、改核准模式要提示「重開電腦後生效」 |
 | X01 限制常數 | ✅ 完成 | `task/X01-limits` | 新增 85 個常數（每個標 LazyBoy 檔案:行號），對照表 `docs/limits.md`；修正 ChatTextMax 100000→64000；PRD §18／TM-5／§12 依程式更正 | 待確認：§12「每 Bot 進行中對話 3」程式裡沒有；Bot 在群組的回覆要不要也截在 12,000 字；§19 的 20／30 分鐘提醒是 LazyBoy 規劃、非程式 |
 | C21 代為核准與外部 MCP 權限 | ✅ 完成 | `task/C21-delegation` | 類別 external_send／spend_small／publish／sign；目前還沒有真的可代為核准的 op，用測試 op 驗證全流程；代理只能代為「允許」；MCP-8 預設只能碰自己建立的；速率預設每分鐘 60 次（自訂）；migration 0007；代理頁放進 W12 設定殼 /settings/advanced/agents | 代理能不能核准自己提出的請求（目前可以）；復原後是否還算次數；C16 欄位層級的「由 X 修改・復原」未做 |
+| E02 修正：連續送訊息卡住＋看門狗 | ✅ 完成 | `task/E02-fix-backtoback` | 根因：Hermes 在 message.complete 後還在收尾，此時送的訊息被當成「插話」吞掉；改成等 session 閒置、送 queued、被插話時明確報錯；新增啟動看門狗（630 秒）與 CH-12 停滯看門狗（15／40 分鐘，照 LazyBoy） | 看門狗放棄後 Hermes 的遲到事件可能落到下一輪（LazyBoy 用 draining 旗標）；Hermes 自己開的背景回合尚未收成工作 |
