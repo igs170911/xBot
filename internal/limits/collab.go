@@ -51,6 +51,22 @@ const (
 
 	// RoomNameMax 是群組名稱長度。LazyBoy server/collab.py:379 create_room（plain(name, 60)）
 	RoomNameMax = 60
+
+	// RoomBulletinMax 是群組公告（共同指示，RM-7）長度。XBot 新增（同 AgendaDetailsMax）。
+	RoomBulletinMax = 4000
+
+	// RoomReadMax 是讀群組訊息一次最多幾則（xbot.collab.room_read）。XBot 新增。
+	RoomReadMax = 200
+)
+
+// 工作鏈預算與往來紀錄（X02；XBot 新增，LazyBoy 沒有）。
+const (
+	// ChainBudgetTokens 是一條 Bot 往來的工作鏈（同一個 chain 的所有工作）最多用掉多少 token（輸入＋輸出）。
+	// 超過就不再傳話，並發一張「花費」卡給你（PRD LP-8、BL-3）。PRD 沒有定數字：XBot 先訂 200 萬，待確認。
+	ChainBudgetTokens int64 = 2_000_000
+
+	// PeerHistoryMax 是讀兩個 Bot 之間往來紀錄一次最多幾則（xbot.collab.peer_history，RM-12、C13）。XBot 新增。
+	PeerHistoryMax = 200
 )
 
 // Bot 建立 Bot（PRD §18、LP-9）。
