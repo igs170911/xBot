@@ -137,7 +137,7 @@ describe('設定 → 已連線的代理', () => {
     fireEvent.click(within(dlg).getByRole('checkbox', { name: '小額花費' }))
     fireEvent.change(within(dlg).getByRole('textbox', { name: '每日代為核准金額' }), { target: { value: '20' } })
     fireEvent.click(within(dlg).getByRole('radio', { name: '30 天' }))
-    await waitFor(() => expect(api.calls.some((c) => c.path === 'agents.set_delegation')).toBe(true), { timeout: 2000 })
+    await waitFor(() => expect(api.calls.some((c) => c.path === 'agents.set_delegation')).toBe(true))
     const last = api.calls.filter((c) => c.path === 'agents.set_delegation').at(-1)
     expect(last?.input).toEqual({ id: 'ag2', enabled: true, categories: ['external_send', 'spend_small'], daily_count: 5, daily_amount_micros: 20_000_000, days: 30 })
     expect(api.calls.filter((c) => c.path === 'agents.update_scopes').at(-1)?.input).toMatchObject({ id: 'ag2', resource_scope: 'all' })

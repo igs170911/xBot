@@ -318,18 +318,28 @@ func TestTakeoverAndHandback(t *testing.T) {
 	if _, err := f.svc.Handback(ctx, f.bot.ID, "agent:a1", ""); !errors.Is(err, ErrNotHolder) {
 		t.Fatalf("別的代理不能交還：%v", err)
 	}
+	// 像真的畫面（noVNC）一樣一直讀：服務關連線時要等對方回關閉訊框（沒人讀就要等滿 5 秒才放掉 Hold）。
+	rctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	closed := make(chan error, 1)
+	go func() {
+		for {
+			if _, _, err := c.Read(rctx); err != nil {
+				closed <- err
+				return
+			}
+		}
+	}()
 	var out HandbackOut
 	if err := f.call(t, "operate", "xbot.computers.handback", HandbackIn{BotID: f.bot.ID, Note: "輸入了驗證碼"}, &out); err != nil {
 		t.Fatal(err)
 	}
+	if err := <-closed; websocket.CloseStatus(err) != websocket.StatusNormalClosure {
+		t.Fatalf("交還後接手的連線要關掉：%v", err)
+	}
 	eventually(t, "接手的連線關掉、不再 hold", func() bool { return f.boxes.holds.Load() == 0 })
 	if out.ResumedTaskID == "" || out.ThreadID != res.ThreadID || out.Screen.Takeover != nil {
 		t.Fatalf("交還：%+v", out)
-	}
-	rctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	if _, _, err := c.Read(rctx); websocket.CloseStatus(err) != websocket.StatusNormalClosure {
-		t.Fatalf("交還後接手的連線要關掉：%v", err)
 	}
 	task, err := f.rt.Wait(rctx, out.ResumedTaskID)
 	if err != nil || task.ThreadID != res.ThreadID {

@@ -44,5 +44,8 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['./src/test-setup.ts'],
+    // 機器很忙（make check 同時跑 Go 測試、多個 worker 一起掛整個 App）時，單一測試可能要好幾秒；
+    // 要比 test-setup 裡 findBy／waitFor 的等待上限長，失敗時才看得到是哪一步等不到。
+    testTimeout: 20_000,
   },
 })

@@ -199,16 +199,20 @@ it('手機抽屜：打開後焦點在關閉鈕，Esc 關掉並回到選單鈕', 
   window.matchMedia = ((q: string) => ({ matches: q.includes('max-width'), media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
   window.history.replaceState(null, '', '/chats')
   render(<App />)
-  const opener = await screen.findByRole('button', { name: '打開側欄' })
-  opener.focus()
-  fireEvent.click(opener)
-  const drawer = screen.getByRole('dialog', { name: '側欄' })
-  const close = within(drawer).getByRole('button', { name: '關閉側欄' })
-  expect(close).toHaveFocus()
-  fireEvent.keyDown(close, { key: 'Escape' })
-  expect(screen.queryByRole('dialog', { name: '側欄' })).toBeNull()
-  expect(opener).toHaveFocus()
-  window.matchMedia = mm
+  try {
+    const opener = await screen.findByRole('button', { name: '打開側欄' })
+    opener.focus()
+    fireEvent.click(opener)
+    // findBy 可能在頁面剛畫好、effect（訂閱 drawerStore、移焦點）還沒跑時就回來：等畫面跟上，不要假設同步。
+    const drawer = await screen.findByRole('dialog', { name: '側欄' })
+    const close = within(drawer).getByRole('button', { name: '關閉側欄' })
+    await waitFor(() => expect(close).toHaveFocus())
+    fireEvent.keyDown(close, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '側欄' })).toBeNull())
+    await waitFor(() => expect(opener).toHaveFocus())
+  } finally {
+    window.matchMedia = mm
+  }
 })
 
 it('/dev/components 列出元件與頭像矩陣（7 列 × 10 形狀）', () => {

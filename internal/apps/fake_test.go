@@ -36,8 +36,12 @@ type fakeRemote struct {
 	apiKey    string
 }
 
+// fakeRefreshToken 是假的 refresh token。要夠長：測試會檢查加密後的資料裡找不到它，
+// 太短（例：2 個位元組）的字串在隨機的密文裡本來就會偶爾碰巧出現。
+const fakeRefreshToken = "fake-refresh-token-r1"
+
 func newFakeRemote(t *testing.T) *fakeRemote {
-	f := &fakeRemote{sessions: map[string]bool{}, refreshTok: "r1"}
+	f := &fakeRemote{sessions: map[string]bool{}, refreshTok: fakeRefreshToken}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/.well-known/oauth-protected-resource/mcp", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]any{"resource": f.srv.URL + "/mcp", "authorization_servers": []string{f.srv.URL}, "scopes_supported": []string{"read", "write"}})
