@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
-import { ArrowUp, AtSign, CirclePause, CirclePlay, Info, OctagonPause, Pin, TriangleAlert, Users } from 'lucide-react'
+import { ArrowUp, AtSign, Check, ChevronDown, ChevronLeft, CirclePause, Ellipsis, Phone, CirclePlay, Info, OctagonPause, Pin, TriangleAlert, Users } from 'lucide-react'
 import { ApiError, collabRoomRead, collabStopRoom, roomsPauseMember, roomsPost, roomsUpdate, type CollabRoomReadOutput } from '../api/generated'
 import { onEvent, onReconnect } from '../data/events'
 import { loadRooms } from '../data/rooms'
@@ -9,6 +9,10 @@ import { Button, IconButton } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { StatusChip } from '../ui/Pill'
 import { cx } from '../ui/cx'
+import { Dialog } from '../ui/Dialog'
+import { MenuButton } from '../ui/Menu'
+import { goBack } from '../router'
+import { usePhone } from '../mobile/nav'
 import { Markdown } from '../chat/markdown/Markdown'
 import { clockLabel } from '../chat/format'
 import { ROOM_ROUNDS as ROUNDS, RULES, type Rule } from './rules'
@@ -166,13 +170,13 @@ function Suggestions({ members, onPick }: { members: Member[]; onPick: (t: strin
   )
 }
 
-function MemberPanel({ room, onChanged }: { room: Read['room']; onChanged: () => void }) {
+function MemberPanel({ room, onChanged, inSheet }: { room: Read['room']; onChanged: () => void; inSheet?: boolean }) {
   const toggle = async (m: Member) => {
     await roomsPauseMember({ room_id: room.id, bot_id: m.bot_id, paused: !m.paused }).catch(() => undefined)
     onChanged()
   }
   return (
-    <aside aria-label="成員" className="flex w-[300px] flex-none flex-col gap-4 overflow-y-auto border-l border-divider px-5 py-4 max-lg:hidden">
+    <aside aria-label="成員" className={inSheet ? 'flex flex-col gap-4' : 'flex w-[300px] flex-none flex-col gap-4 overflow-y-auto border-l border-divider px-5 py-4 max-lg:hidden'}>
       <div className="flex flex-col gap-1">
         <span className="text-ui-sm text-ink">接力規則</span>
         <span className="text-meta text-ink-2">每次你發言後，Bot 之間最多交棒 {ROUNDS} 輪，避免互相丟來丟去。你的發言永遠優先。</span>
@@ -198,6 +202,7 @@ function MemberPanel({ room, onChanged }: { room: Read['room']; onChanged: () =>
 }
 
 function RoomComposer({ room, text, setText, onSend }: { room: Read['room']; text: string; setText: (t: string) => void; onSend: () => Promise<void> }) {
+  const phone = usePhone()
   const input = useRef<HTMLTextAreaElement>(null)
   const [sending, setSending] = useState(false)
   const submit = async (e?: FormEvent) => {
@@ -232,6 +237,19 @@ function RoomComposer({ room, text, setText, onSend }: { room: Read['room']; tex
           : `沒有點名時自動挑一位（目前交給主責 ${lead}）· Enter 送出`
   return (
     <div className="flex flex-col gap-2">
+      {phone ? (
+        <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-0.5 [scrollbar-width:none]" aria-label="點名">
+          {room.members.map((m) => (
+            <button key={m.bot_id} type="button" onClick={() => mention(m.name)} className="flex h-11 flex-none items-center gap-1.5 rounded-full border border-divider bg-panel pl-2.5 pr-3.5 text-ui text-ink active:bg-control">
+              <Avatar shape={m.shape} color={m.color} state="idle" dot="none" size={22} blink={false} ring="#111111" />@{m.name}
+            </button>
+          ))}
+          <button type="button" onClick={() => mention('所有人')} className="flex h-11 flex-none items-center gap-1.5 rounded-full border border-divider bg-panel pl-3 pr-3.5 text-ui text-ink active:bg-control">
+            <Icon icon={Users} size={18} />
+            @所有人
+          </button>
+        </div>
+      ) : (
       <div className="flex flex-wrap gap-1.5" aria-label="點名">
         {room.members.map((m) => (
           <button key={m.bot_id} type="button" onClick={() => mention(m.name)} className="relative flex h-7 items-center gap-1 rounded-full bg-inset px-2.5 text-meta text-ink-2 touch-target hover:text-ink">
@@ -240,6 +258,7 @@ function RoomComposer({ room, text, setText, onSend }: { room: Read['room']; tex
           </button>
         ))}
       </div>
+      )}
       <form onSubmit={submit} className="flex min-h-[52px] items-center gap-0.5 rounded-[26px] bg-control py-[8px] pl-4 pr-[9px]">
         <label className="flex min-w-0 flex-1">
           <span className="sr-only-text">傳訊息到群組</span>
@@ -249,14 +268,70 @@ function RoomComposer({ room, text, setText, onSend }: { room: Read['room']; tex
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder={`傳訊息到「${room.name}」，用 @ 指定負責的 Bot…`}
+            placeholder={phone ? '傳到群組…' : `傳訊息到「${room.name}」，用 @ 指定負責的 Bot…`}
             className="field-sizing-content max-h-40 min-h-9 min-w-0 flex-1 resize-none bg-transparent px-1.5 py-[6px] text-[15px] leading-6 text-ink outline-none focus-visible:outline-none"
           />
         </label>
         <IconButton icon={ArrowUp} label="送出" variant="send" type="submit" disabled={!text.trim() || sending} />
       </form>
-      <span className="self-center text-center text-meta text-ink-3">{hint}</span>
+      {!phone && <span className="self-center text-center text-meta text-ink-3">{hint}</span>}
     </div>
+  )
+}
+
+/** 手機的群組頁首（L05）：返回、通話｜成員頭像｜成員、更多；下面一顆「群組名 · 成員」膠囊。 */
+function PhoneRoomHeader({ room, status, anyBusy, lead, onRule, onStop, onMembers }: { room: Read['room']; status: { text: string; tone: string }; anyBusy: boolean; lead: string; onRule: (r: Rule) => void; onStop: () => void; onMembers: () => void }) {
+  const round = 'flex size-11 flex-none items-center justify-center rounded-full border border-divider bg-panel text-ink active:bg-control'
+  const [a, b] = room.members
+  return (
+    <header className="flex flex-none flex-col items-center gap-2 px-3 pb-2 pt-[max(8px,env(safe-area-inset-top))]">
+      <div className="flex w-full items-center gap-2">
+        <button type="button" aria-label="返回" className={round} onClick={() => goBack('/chats')}>
+          <Icon icon={ChevronLeft} size={22} />
+        </button>
+        <button type="button" aria-label="群組通話（還在做）" className={round} disabled>
+          <Icon icon={Phone} size={20} />
+        </button>
+        <span className="relative flex flex-1 justify-center" aria-hidden="true">
+          <span className="relative h-10 w-12">
+            {a && (
+              <span className="absolute left-0 top-1">
+                <Avatar shape={a.shape} color={a.color} state={a.seat === 'working' ? 'working' : 'idle'} dot="none" size={26} ring="#070707" />
+              </span>
+            )}
+            {b && (
+              <span className="absolute left-[20px] top-1">
+                <Avatar shape={b.shape} color={b.color} state={b.seat === 'working' ? 'working' : 'idle'} dot="none" size={26} ring="#070707" />
+              </span>
+            )}
+            {room.members.length > 2 && <span className="absolute bottom-0 left-[22px] rounded-full bg-control px-1 text-[10.5px] leading-[15px] text-ink-2">+{room.members.length - 2}</span>}
+          </span>
+        </span>
+        <button type="button" aria-label="成員" className={round} onClick={onMembers}>
+          <Icon icon={Users} size={20} />
+        </button>
+        <MenuButton
+          label="更多"
+          align="end"
+          items={[
+            ...RULES.map((r) => ({ label: `沒點名時：${r.label(lead)}`, icon: r.value === room.responder_rule ? Check : undefined, onSelect: () => onRule(r.value) })),
+            { label: '停止所有成員', icon: OctagonPause, separator: true, danger: true, disabled: !anyBusy, onSelect: onStop },
+          ]}
+          trigger={(p) => (
+            <button {...p} type="button" aria-label="更多" className={round}>
+              <Icon icon={Ellipsis} size={20} />
+            </button>
+          )}
+        />
+      </div>
+      <button type="button" onClick={onMembers} className="flex h-11 max-w-full items-center gap-2 rounded-full border border-divider bg-panel px-4 text-ink active:bg-control">
+        <span className="flex-none text-ui">{room.name}</span>
+        <span data-testid="room-status" className={cx('min-w-0 truncate text-sub', status.tone === 'waiting' ? 'text-warning-ink' : 'text-ink-2')}>
+          {status.tone === 'idle' ? room.members.map((m) => m.name).join('、') : status.text}
+        </span>
+        <Icon icon={ChevronDown} size={16} className="flex-none text-ink-2" />
+      </button>
+    </header>
   )
 }
 
@@ -265,6 +340,8 @@ export function RoomPage({ roomId }: { roomId: string }) {
   const [err, setErr] = useState<string | null>(null)
   const [text, setText] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
+  const [members, setMembers] = useState(false)
+  const phone = usePhone()
   const scroller = useRef<HTMLDivElement>(null)
   const memberIds = useRef<string[]>([])
   useEffect(() => {
@@ -345,9 +422,14 @@ export function RoomPage({ roomId }: { roomId: string }) {
   const lead = room.members.find((m) => m.lead)?.name ?? ''
 
   return (
-    <div className="flex h-[calc(100dvh-56px)] min-w-0 flex-1 md:h-dvh">
+    <div className="flex h-dvh min-w-0 flex-1">
       <main className="flex min-w-0 flex-1 flex-col bg-app" aria-label={`群組：${room.name}`}>
-        <header className="flex min-h-14 flex-none flex-wrap items-center gap-x-3 gap-y-1 py-2 pl-5 pr-3 max-md:pl-3">
+        {phone && (
+          <PhoneRoomHeader room={room} status={st} anyBusy={anyBusy} lead={lead} onRule={(r) => void setRule(r)} onStop={() => void stopAll()} onMembers={() => setMembers(true)} />
+        )}
+        {!phone && (
+        <header>
+        <div className="flex min-h-14 flex-none flex-wrap items-center gap-x-3 gap-y-1 py-2 pl-5 pr-3 max-md:pl-3">
           <GroupAvatar members={room.members} />
           <span className="flex min-w-0 flex-col leading-[1.3]">
             <span className="truncate text-[16px]">{room.name}</span>
@@ -374,7 +456,9 @@ export function RoomPage({ roomId }: { roomId: string }) {
           <Button size="sm" variant="danger" icon={OctagonPause} onClick={() => void stopAll()} disabled={!anyBusy}>
             停止所有成員
           </Button>
+        </div>
         </header>
+        )}
         {room.bulletin && (
           <div className="flex flex-none items-center gap-2 border-y border-divider px-5 py-2 text-meta text-ink-2">
             <Icon icon={Pin} size={14} />
@@ -400,6 +484,9 @@ export function RoomPage({ roomId }: { roomId: string }) {
         </div>
       </main>
       <MemberPanel room={room} onChanged={() => void load()} />
+      <Dialog open={members} onClose={() => setMembers(false)} title={`成員 · ${room.members.length}`}>
+        <MemberPanel inSheet room={room} onChanged={() => void load()} />
+      </Dialog>
     </div>
   )
 }

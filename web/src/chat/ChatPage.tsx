@@ -1,11 +1,13 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Activity as ActivityIcon, Compass, Cpu, Ellipsis, FolderOpen, Monitor, Plus, Settings, X } from 'lucide-react'
+import { Activity as ActivityIcon, ChevronDown, ChevronLeft, Compass, Cpu, Crown, Ellipsis, FolderOpen, Monitor, Phone, Plus, Settings, X } from 'lucide-react'
 import { ApiError, chatListThreads, chatSend, chatStop, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
 import { botsStore, type Bot, look } from '../data/bots'
 import { onEvent, onReconnect } from '../data/events'
 import { useStore } from '../data/store'
 import { stampLabel } from '../data/ui'
-import { navigate } from '../router'
+import { goBack, navigate } from '../router'
+import { inboxStore } from '../data/inbox'
+import { usePhone } from '../mobile/nav'
 import { Avatar } from '../ui/Avatar'
 import { Button, IconButton } from '../ui/Button'
 import { Icon } from '../ui/Icon'
@@ -188,6 +190,58 @@ function Header({
   )
 }
 
+/** 手機的頁首（L03）：返回（帶等你的件數）、通話｜大頭像｜對話串、電腦；下面置中一顆「名字 · 對話串標題」膠囊，點了看 Bot 資料（L10）。 */
+function PhoneHeader({ bot, act, busyElsewhere, threads, threadId, onProgress }: { bot: Bot; act?: Activity; busyElsewhere: boolean; threads: Thread[] | null; threadId?: string; onProgress: () => void }) {
+  const st = statusOf(bot, act, busyElsewhere)
+  const waiting = useStore(inboxStore).items?.length ?? 0
+  const current = threads?.find((t) => t.id === threadId)
+  const title = threadId ? current?.title || '對話' : '新對話串'
+  const waitingMe = act?.state === 'waiting_input' || act?.state === 'waiting_approval'
+  const round = 'flex size-11 flex-none items-center justify-center rounded-full border border-divider bg-panel text-ink active:bg-control'
+  return (
+    <header className="flex flex-none flex-col items-center gap-2 bg-app px-3 pb-2 pt-[max(8px,env(safe-area-inset-top))]">
+      <div className="flex w-full items-center gap-2">
+        <button type="button" aria-label={waiting ? `返回（${waiting} 件等你）` : '返回'} onClick={() => goBack('/chats')} className="flex h-11 flex-none items-center gap-1 rounded-full border border-divider bg-panel pl-2 pr-3 text-ink active:bg-control">
+          <Icon icon={ChevronLeft} size={22} />
+          {waiting > 0 && <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-control px-1.5 text-meta">{waiting}</span>}
+        </button>
+        <button type="button" aria-label={`和${bot.name}通話`} className={round} onClick={() => navigate(`/bots/${bot.id}/call`)}>
+          <Icon icon={Phone} size={20} />
+        </button>
+        <span className="flex flex-1 justify-center">
+          <button type="button" aria-label="目前進度" onClick={onProgress} className="flex size-11 items-center justify-center rounded-full">
+            <Avatar shape={bot.shape} color={bot.color} state={waitingMe ? 'notifying' : act ? 'working' : 'idle'} dot={waitingMe ? 'waiting' : 'none'} ring="#070707" size={40} />
+          </button>
+          <span className="sr-only-text" data-testid="bot-status">
+            {st.text}
+          </span>
+        </span>
+        <ThreadMenu look="phone" botName={bot.name} threads={threads} threadId={threadId} onPick={(id) => navigate(`/bots/${bot.id}/threads/${id}`)} onNew={() => navigate(`/bots/${bot.id}/threads/new`)} />
+        <button type="button" aria-label={`${bot.name}的電腦`} className={round} onClick={() => navigate(`/bots/${bot.id}/computer`)}>
+          <Icon icon={Monitor} size={20} />
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={() => navigate(`/bots/${bot.id}/profile`)}
+        aria-label={`${bot.name}的資料`}
+        className="flex h-11 max-w-full items-center gap-1.5 rounded-full border border-divider bg-panel px-4 text-ink active:bg-control"
+      >
+        <span className="flex-none text-ui">{bot.name}</span>
+        {bot.primary && (
+          <span className="text-ink-3">
+            <Icon icon={Crown} size={14} strokeWidth={2} />
+          </span>
+        )}
+        <span className="min-w-0 truncate text-sub text-ink-2" >
+          {title}
+        </span>
+        <Icon icon={ChevronDown} size={16} className="flex-none text-ink-2" />
+      </button>
+    </header>
+  )
+}
+
 // ── 對話頁 ───────────────────────────────────────────
 
 function useThreads(botId: string) {
@@ -218,6 +272,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   const [noticeState, setNoticeState] = useState<{ n: Notice; thread: string } | null>(null)
   const [stopRequested, setStopRequested] = useState<string | null>(null)
   const [olderBusy, setOlderBusy] = useState(false)
+  const phone = usePhone()
   const scroller = useRef<HTMLDivElement>(null)
   const composer = useRef<ComposerHandle>(null)
   // 從檔案頁按「在對話中提到」：把檔案路徑放進輸入框（C33、L19）。
@@ -366,7 +421,10 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
 
   return (
     <div className="flex min-w-0 flex-1">
-    <main className="flex h-[calc(100dvh-56px)] min-w-0 flex-1 flex-col bg-app md:h-dvh" aria-label={`和${name}的對話`}>
+    <main className="flex h-dvh min-w-0 flex-1 flex-col bg-app" aria-label={`和${name}的對話`}>
+      {phone ? (
+        <PhoneHeader bot={bot} act={act} busyElsewhere={busyElsewhere} threads={threads} threadId={threadId} onProgress={() => setProgress(true)} />
+      ) : (
       <Header
         bot={bot}
         act={act}
@@ -379,6 +437,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
         computerOpen={showPanel}
         onComputer={onComputer}
       />
+      )}
       <div ref={scroller} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto">
         <div
           className={cx('mx-auto box-border flex min-h-full max-w-[828px] flex-col gap-3.5 px-6 pb-2 pt-3 max-sm:px-3', empty ? (firstHome ? 'justify-start pt-8' : 'justify-center') : 'justify-end')}

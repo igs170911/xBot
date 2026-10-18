@@ -18,6 +18,7 @@ import { FileIcon, FilePreview } from './FilePreview'
 import { mentionInChat } from './mention'
 import { NewFolderDialog } from './NewFolderDialog'
 import { useNarrow } from './useNarrow'
+import { BackButton } from '../mobile/Phone'
 
 // 一個 Bot 的檔案（E07 電腦面板「檔案」、手機 L19）：/bots/<id>/files?path=<檔案>&view=folder&folder=<資料夾>。
 // 預設依「成果／你上傳的／示範教學／從隊友來的」分組；也可以照資料夾瀏覽。點檔案在右邊預覽（手機從底部拉出）。
@@ -238,7 +239,18 @@ export function BotFilesPage({ botId }: { botId: string }) {
         }}
         onDrop={onDrop}
       >
-        <header className="flex flex-none flex-col gap-2.5 px-3 pb-2 pt-3">
+        {narrow && (
+          // 手機（L19）：返回、Bot 頭像、「小秘的檔案 · N 個檔案」
+          <div className="flex min-h-[60px] flex-none items-center gap-2.5 px-3 pb-1 pt-[max(8px,env(safe-area-inset-top))]">
+            <BackButton fallback={`/bots/${botId}`} />
+            {bot && <Avatar shape={bot.shape} color={bot.color} dot="none" size={28} ring="#070707" />}
+            <div className="flex min-w-0 flex-1 flex-col">
+              <h1 className="m-0 truncate text-title font-normal">{name}的檔案</h1>
+              <span className="text-meta text-ink-3">{count === null ? ' ' : `${count} ${folderView ? '項' : '個檔案'}`}</span>
+            </div>
+          </div>
+        )}
+        <header className="flex flex-none flex-col gap-2.5 px-3 pb-2 pt-3 max-md:pt-1">
           <div className="flex items-center gap-2.5 px-1 max-md:hidden">
             {bot && <Avatar {...look(bot)} dot="none" size={30} ring="#070707" />}
             <div className="flex min-w-0 flex-1 flex-col">

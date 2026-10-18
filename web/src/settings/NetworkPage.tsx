@@ -124,7 +124,7 @@ function TailnetCard({ s }: { s: NetworkStatus }) {
               </Button>
             </div>
             <ol className="m-0 flex list-none flex-col gap-2 p-0 text-ui-sm">
-              {['手機裝 Tailscale App，登入同一個帳號', '用相機掃左邊的 QR，會打開 XBot', '第一次輸入登入碼；之後在哪裡都能用，登入維持 30 天'].map((x, i) => (
+              {['手機裝 Tailscale App，登入同一個帳號', '用相機掃左邊的 QR，會打開 XBot', '第一次輸入登入碼，或在「電腦與裝置 › 連手機」掃一次性 QR；之後在哪裡都能用，登入維持 30 天'].map((x, i) => (
                 <li key={x} className="flex items-center gap-2.5">
                   <span className="flex size-[22px] flex-none items-center justify-center rounded-full bg-control text-[12px] text-ink-2">{i + 1}</span>
                   {x}

@@ -3,9 +3,11 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -65,6 +67,13 @@ func Load() (Config, error) {
 
 		PublicURL:      os.Getenv("XBOT_PUBLIC_URL"),
 		TrustedProxies: os.Getenv("XBOT_TRUSTED_PROXIES"),
+	}
+	if v := strings.TrimRight(strings.TrimSpace(os.Getenv("XBOT_PUBLIC_URL")), "/"); v != "" {
+		u, err := url.Parse(v)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.Path != "" {
+			return c, fmt.Errorf("XBOT_PUBLIC_URL 要像 https://主機名稱[:埠]：%q", v)
+		}
+		c.PublicURL = v
 	}
 	switch v := os.Getenv("XBOT_LOCAL_NOAUTH"); v {
 	case "", "1", "true":

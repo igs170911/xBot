@@ -92,7 +92,7 @@ export function AskCard({
           <code className="whitespace-pre-wrap break-all font-mono text-[13px] text-ink-2">{ask.command || ask.prompt}</code>
         </div>
         {alert}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2" data-card-actions="1">
           <Button variant="primary" loading={busy === 'once'} disabled={!!busy} onClick={() => void respond('once', { choice: 'once' })}>
             允許這次
           </Button>

@@ -27,7 +27,9 @@ export function useFirstHome(bots: Bot[] | null): boolean {
 export function FirstHome({ bot }: { bot: Bot }) {
   const s = useStore(onboardStore).status
   const dismissed = s && s !== 'off' ? s.state.dismissed : []
-  const cards = CARDS.filter((c) => !dismissed.includes(c.id))
+  // 已經在手機上打開：連手機卡不出現
+  const phone = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
+  const cards = CARDS.filter((c) => !dismissed.includes(c.id) && !(phone && c.id === 'phone'))
   return (
     <div className="flex flex-col gap-5" data-testid="first-home">
       <div className="max-w-[85%] self-start rounded-bubble bg-bubble-bot px-4 py-2.5 text-[15px] leading-[1.6]">

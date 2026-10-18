@@ -16,6 +16,7 @@ import { NetworkPage } from './NetworkPage'
 import { SettingsOverview } from './SettingsOverview'
 import { SectionHeader } from './parts'
 import { SETTINGS_NAV, activeNav } from './nav'
+import { PhoneBar } from '../mobile/Phone'
 
 // 設定（J01～J04、L06）：15 個區塊整併成 5 個 —— 一般 · AI 模型 · 電腦與裝置 · 用量與花費 · 進階。
 // 桌面：左邊 220 的分類導覽＋右邊內容；手機：/settings 是 L06 的總覽清單，點進去一頁一頁看，左上角返回。
@@ -145,8 +146,9 @@ export function SettingsPage({ path }: { path: string }) {
   else body = <Content path={path} />
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col bg-sheet md:h-dvh md:flex-none">
-      <header className={cx('flex h-16 flex-none items-center gap-3 border-b border-divider pl-[22px] pr-3.5 max-md:h-14 max-md:pl-2', overview && 'hidden')}>
+    <main className="flex min-h-0 flex-1 flex-col bg-sheet md:h-dvh md:flex-none max-md:min-h-dvh max-md:bg-app">
+      {narrow && <PhoneBar title={overview ? '設定' : title} back={overview ? '/chats' : backTarget(path)} center />}
+      <header className={cx('flex h-16 flex-none items-center gap-3 border-b border-divider pl-[22px] pr-3.5', narrow && 'hidden')}>
         {narrow && !overview && (
           <a
             href={backTarget(path)}

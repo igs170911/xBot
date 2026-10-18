@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowRight, Check, Clock, Hand, RotateCcw, ShieldCheck, SquareTerminal, TriangleAlert, Undo2 } from 'lucide-react'
+import { ArrowRight, Bell, Check, Clock, Hand, Monitor, RotateCcw, ShieldCheck, SquareTerminal, TriangleAlert, Undo2 } from 'lucide-react'
 import { Avatar } from '../ui/Avatar'
-import { Button } from '../ui/Button'
+import { Button, IconButton } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -16,7 +16,9 @@ import { useStore } from '../data/store'
 import { AskCard } from '../chat/AskCard'
 import { askFromItem } from '../chat/ask'
 import { AgendaCard } from '../agenda/AgendaCard'
-import { linkClick } from '../router'
+import { TabHeader } from '../mobile/Phone'
+import { usePhone } from '../mobile/nav'
+import { linkClick, navigate } from '../router'
 
 // 待我處理（design/Main、F08、C08～C10、L02）：真的卡片來自 xbot.inbox.list。
 //   - Bot 在對話裡的提問（核准指令、補充問題、密碼）：和對話裡同一張 AskCard，回覆走 xbot.chat.respond。
@@ -132,7 +134,7 @@ function ApprovalItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
           {error}
         </p>
       )}
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2" data-card-actions="1">
         <Button variant="outline" onClick={() => void decide('deny')} loading={busy === 'deny'} disabled={!!busy}>
           退回
         </Button>
@@ -259,6 +261,14 @@ function InfoItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
         <Head bot={bot} chip={chip} tone="warning" sub={item.title} />
         {item.body && <p className="m-0 pl-11 text-sub text-ink-2">{item.body}</p>}
       </div>
+      {item.kind === 'signin' && item.bot_id && (
+        <span className="flex flex-[1_1_100%] gap-2" data-card-actions="1">
+          <Button variant="primary" icon={Monitor} onClick={() => navigate(`/bots/${item.bot_id}/computer`)}>
+            接手電腦
+          </Button>
+          <Button onClick={() => navigate(item.thread_id ? `/bots/${item.bot_id}/threads/${item.thread_id}` : `/bots/${item.bot_id}`)}>看對話</Button>
+        </span>
+      )}
       {item.kind === 'routine_failed' && typeof (item.payload as { routine_id?: unknown } | null)?.routine_id === 'string' && (
         <Button icon={RotateCcw} onClick={() => void rerun()} loading={busy}>
           重跑一次
@@ -396,12 +406,20 @@ export function InboxPage() {
   const left = real.length
   const now = new Date()
   const today = `${now.getMonth() + 1} 月 ${now.getDate()} 日（${WEEK[now.getDay()]}）`
+  const phone = usePhone()
 
   return (
     <div className="flex flex-1 flex-wrap">
-      <main className="min-w-0 flex-[999_1_560px] px-8 pb-2.5 pt-4 max-sm:px-4">
-        <div className="mx-auto flex max-w-[780px] flex-col gap-2">
-          <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-1.5">
+      <main className="min-w-0 flex-[999_1_560px] px-8 pb-2.5 pt-4 max-md:px-3 max-md:pt-0" data-phone-inbox={phone || undefined}>
+        {phone && (
+          <TabHeader
+            title="待我處理"
+            sub={items === null ? '讀取中…' : left > 0 ? `${left} 件需要你，其他 Bot 照常工作` : '事情都處理完了，Bot 照常工作'}
+            right={<IconButton icon={Bell} label="通知" className="-mr-2 size-11" onClick={() => navigate('/notifications')} />}
+          />
+        )}
+        <div className="mx-auto flex max-w-[780px] flex-col gap-2 max-md:gap-2.5">
+          <header className="flex flex-wrap items-end max-md:hidden justify-between gap-x-6 gap-y-3 pb-1.5">
             <div className="flex flex-col gap-0.5">
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="m-0 text-[24px] leading-[1.35]">{items === null ? '待我處理' : left > 0 ? `早安，有 ${left} 件事等你` : '早安，事情都處理完了'}</h1>
@@ -456,7 +474,7 @@ export function InboxPage() {
         </div>
       </main>
 
-      <aside aria-label="團隊現況" className="flex max-w-full flex-[1_1_340px] flex-col gap-6 border-l border-edge bg-panel px-5 py-[22px] max-[1179px]:border-l-0 max-[1179px]:border-t">
+      <aside aria-label="團隊現況" className="flex max-w-full max-md:hidden flex-[1_1_340px] flex-col gap-6 border-l border-edge bg-panel px-5 py-[22px] max-[1179px]:border-l-0 max-[1179px]:border-t">
         <section className="flex flex-col gap-2.5">
           <div className="flex items-baseline justify-between">
             <h2 className="m-0 text-body">電腦</h2>

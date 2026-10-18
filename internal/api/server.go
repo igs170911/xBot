@@ -8,6 +8,7 @@
 //	GET  /api/v1/events          SSE 事件流
 //	GET  /api/v1/computers/vnc   Bot 電腦畫面（noVNC WebSocket，B14）
 //	POST /api/v1/auth/login      用登入碼換 session cookie；auth/logout 登出；GET auth/status 看登入狀態
+//	POST /api/v1/auth/pair       手機用 QR 裡的一次性配對碼換 session cookie（W31，不需要登入）
 //	POST /api/v1/agents.pair     代理用配對碼換權杖（C04，不需要登入）
 //	/mcp                         MCP Streamable HTTP（C04）
 //	POST /hooks/<id>             定時任務的網址觸發（C32，不需要登入，帶金鑰）
@@ -42,6 +43,8 @@ type Options struct {
 	MCP http.Handler
 	// AgentPair 掛在 /api/v1/agents.pair（internal/auth.Pairing.Handler）：代理用配對碼換權杖，不需要登入。
 	AgentPair http.Handler
+	// DevicePair 掛在 POST /api/v1/auth/pair（手機用 QR 裡的一次性配對碼登入，W31）；nil 表示不提供。
+	DevicePair *auth.DevicePairing
 	// Hooks 掛在 /hooks/（定時任務的網址觸發，C32）：不需要登入，網址 id＋金鑰就是憑證。nil 表示不提供。
 	Hooks http.Handler
 	// AppsCallback 掛在 GET /api/v1/apps/oauth/callback（連接應用程式的 OAuth 回呼，C34）：不需要登入，
@@ -70,6 +73,7 @@ type server struct {
 	bus       *events.Bus
 	db        *store.DB
 	auth      *auth.HTTP
+	pair      *auth.DevicePairing
 	heartbeat time.Duration
 }
 
@@ -78,7 +82,7 @@ func New(o Options) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", healthz)
 	if o.Registry != nil {
-		s := &server{reg: o.Registry, bus: o.Bus, db: o.DB, auth: o.Auth, heartbeat: o.Heartbeat}
+		s := &server{reg: o.Registry, bus: o.Bus, db: o.DB, auth: o.Auth, heartbeat: o.Heartbeat, pair: o.DevicePair}
 		if s.heartbeat == 0 {
 			s.heartbeat = limits.SSEHeartbeat
 		}
@@ -88,6 +92,9 @@ func New(o Options) http.Handler {
 		mux.HandleFunc("POST "+Prefix+"auth/login", s.login)
 		mux.HandleFunc("POST "+Prefix+"auth/logout", s.logout)
 		mux.HandleFunc("GET "+Prefix+"auth/status", s.authStatus)
+		if s.pair != nil {
+			mux.HandleFunc("POST "+Prefix+"auth/pair", s.pairLogin)
+		}
 		mux.HandleFunc("GET "+Prefix+"ops", s.guard(s.listOps))
 		mux.HandleFunc("GET "+Prefix+"events", s.guard(s.events))
 		streams := map[string]StreamHandler{}
@@ -133,6 +140,11 @@ func New(o Options) http.Handler {
 	if o.AppsCallback != nil {
 		mux.Handle("GET "+Prefix+"apps/oauth/callback", o.AppsCallback)
 	}
+	// Android 分享目標（W31）：平常由 service worker 攔下；service worker 還沒啟用時退回分享頁，
+	// 請使用者再分享一次（內容沒辦法在這裡保存）。
+	mux.HandleFunc("POST /share", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/share?nosw=1", http.StatusSeeOther)
+	})
 	mux.Handle("/", spa(o.Web))
 	return mux
 }
@@ -184,8 +196,16 @@ func spa(files fs.FS) http.Handler {
 			r = r.Clone(r.Context())
 			r.URL.Path = "/"
 		}
-		if strings.HasPrefix(name, "assets/") {
+		switch {
+		case strings.HasPrefix(name, "assets/"):
 			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		case name == "sw.js":
+			// service worker 一定要每次問伺服器有沒有新版（PWA 更新）
+			w.Header().Set("Cache-Control", "no-cache")
+			w.Header().Set("Service-Worker-Allowed", "/")
+		case name == "manifest.webmanifest":
+			w.Header().Set("Content-Type", "application/manifest+json")
+			w.Header().Set("Cache-Control", "no-cache")
 		}
 		fileServer.ServeHTTP(w, r)
 	})

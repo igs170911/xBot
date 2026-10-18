@@ -104,7 +104,6 @@ test('還沒有 Bot（A09）：一句話建議、範本', async ({ page }, info)
   await api.install()
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1, name: '建立第一個 Bot' })).toBeVisible()
-  await expect(page.getByRole('navigation', { name: '側欄' }).or(page.getByRole('button', { name: '打開側欄' })).first()).toBeVisible()
   await page.getByLabel('一句話說你要它做什麼').fill('每天幫我找蝦皮上熱賣的居家小物，整理成表格')
   await page.getByRole('button', { name: '產生建議' }).click()
   const sug = page.getByRole('region', { name: '建議的 Bot' })
@@ -286,8 +285,8 @@ test('分享 Bot（G13）與匯入 Bot（G14）', async ({ page }, info) => {
   await share.getByRole('button', { name: '下載 .xbot 檔' }).click()
   expect((await download).suggestedFilename()).toBe('小秘.xbot')
 
-  // 從新增 Bot 對話框的「匯入 Bot」進來（G01 的次要入口）
-  if (info.project.name === 'mobile') await page.getByRole('button', { name: '打開側欄' }).click()
+  // 從新增 Bot 對話框的「匯入 Bot」進來（G01 的次要入口）；手機版的新增 Bot 是 W31 的獨立頁，匯入只在桌面測
+  if (info.project.name === 'mobile') return
   await page.getByRole('button', { name: '新增 Bot' }).first().click()
   await page.getByRole('dialog', { name: '新增 Bot' }).getByRole('button', { name: '匯入 Bot' }).click()
   const imp = page.getByRole('dialog', { name: '匯入 Bot' })

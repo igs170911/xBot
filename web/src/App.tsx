@@ -36,13 +36,27 @@ import { useStore } from './data/store'
 import { ToastProvider } from './ui/Toast'
 import { Icon } from './ui/Icon'
 import { Onboarding } from './onboard/Onboarding'
-import { WelcomePage } from './onboard/Welcome'
+import { WelcomePage as FirstBotPage } from './onboard/Welcome'
 import { Tour } from './onboard/Tour'
 import { loadOnboard, onboardStore } from './onboard/state'
 import { ImportBotDialog } from './settings/bot/share'
+import { ChatListPage } from './mobile/ChatListPage'
+import { NotificationsPage } from './mobile/NotificationsPage'
+import { PairPage } from './mobile/PairPage'
+import { BotProfilePage } from './mobile/BotProfilePage'
+import { NewBotPage, NewRoomPage } from './mobile/NewPages'
+import { SharePage } from './mobile/SharePage'
+import { CallPage } from './mobile/CallPage'
+import { WelcomePage } from './mobile/WelcomePage'
 
 const TITLES: Record<string, string> = {
   '/office': '辦公室',
+  '/chats': '對話',
+  '/notifications': '通知',
+  '/share': '分享給 Bot',
+  '/new/bot': '新增 Bot',
+  '/new/room': '新增群組',
+  '/welcome': '第一次設定',
   '/agenda': '等你的事',
   '/teams': '團隊地圖',
   '/apps': '連接應用程式',
@@ -57,6 +71,8 @@ const TITLES: Record<string, string> = {
 const BOT_PATH = /^\/bots\/([^/]+)(?:\/threads\/([^/]+))?\/?$/
 const COMPUTER_PATH = /^\/bots\/([^/]+)\/computer\/?$/
 const ROOM_PATH = /^\/rooms\/([^/]+)\/?$/
+const PROFILE_PATH = /^\/bots\/([^/]+)\/profile\/?$/
+const CALL_PATH = /^\/bots\/([^/]+)\/call\/?$/
 
 // 對話裡 kind=peer 的那一行（和隊友的往來，C13）。
 registerPeerCard()
@@ -110,6 +126,8 @@ function Main() {
   const computer = path.match(COMPUTER_PATH)
   const room = path.match(ROOM_PATH)
   const botFiles = path.match(BOT_FILES_PATH)
+  const profile = path.match(PROFILE_PATH)
+  const call = path.match(CALL_PATH)
   const botName = (id: string) => bots?.find((b) => b.id === id)?.name
   const title = path === '/' ? '待我處理' : botFiles ? `${botName(botFiles[1]) ?? 'Bot'}的檔案` : bot ? (botName(bot[1]) ?? '對話') : computer ? `${botName(computer[1]) ?? 'Bot'}的電腦` : room ? (rooms?.find((r) => r.id === room[1])?.name ?? '群組對話') : (TITLES[path] ?? (path.startsWith('/settings') ? '設定' : path.startsWith('/calendar') ? '定時任務與行事曆' : 'XBot'))
 
@@ -121,13 +139,21 @@ function Main() {
   const noBots = !!bots && bots.every((b) => b.archived) && inbox !== null && inbox.length === 0
 
   let page
-  if (path === '/' && noBots) page = <WelcomePage />
+  if (path === '/' && noBots) page = <FirstBotPage />
   else if (path === '/') page = <InboxPage />
+  else if (path === '/chats') page = <ChatListPage />
+  else if (path === '/office') page = <OfficePage />
+  else if (path === '/notifications') page = <NotificationsPage />
+  else if (path === '/share') page = <SharePage />
+  else if (path === '/new/bot') page = <NewBotPage />
+  else if (path === '/new/room') page = <NewRoomPage />
+  else if (path === '/welcome') page = <WelcomePage />
+  else if (profile) page = <BotProfilePage key={profile[1]} botId={profile[1]} />
+  else if (call) page = <CallPage key={call[1]} botId={call[1]} />
+  else if (computer) page = <ComputerPage key={computer[1]} botId={computer[1]} />
   else if (botFiles) page = <BotFilesPage key={botFiles[1]} botId={botFiles[1]} />
   else if (path === '/files') page = <FilesPage />
   else if (bot) page = <ChatPage key={bot[1]} botId={bot[1]} threadParam={bot[2]} />
-  else if (computer) page = <ComputerPage key={computer[1]} botId={computer[1]} />
-  else if (path === '/office') page = <OfficePage />
   else if (ROUTINES_PATH.test(path)) page = <RoutinesPage path={path} />
   else if (room) page = <RoomPage key={room[1]} roomId={room[1]} />
   else if (path === '/teams') page = <TeamMapPage />
@@ -155,6 +181,8 @@ function Main() {
 export default function App() {
   const path = usePath()
   const [auth, loggedIn] = useAuth()
+  // 手機掃 QR 打開的配對頁（L09）：還沒登入也要能用
+  if (path === '/pair') return <PairPage />
   if (path === '/dev/components') {
     return (
       <ToastProvider>
