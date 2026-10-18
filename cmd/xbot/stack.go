@@ -184,7 +184,10 @@ func openStack(cfg config.Config) (*stack, error) {
 		},
 		Judge: s.judge.TaskDoneJudge(), Namer: s.judge.Title, Summarize: s.judge.Summary})
 	s.pstore.Attribute = s.runtime.Active
-	s.routines = routines.New(routines.Options{DB: db, Runtime: s.runtime, Logger: logger, Rewrite: s.judge.Routine})
+	if !cfg.FakeNow.IsZero() {
+		logger.Warn("XBOT_FAKE_NOW：定時任務用假的現在時間（只供測試）", "start", cfg.FakeNow)
+	}
+	s.routines = routines.New(routines.Options{DB: db, Runtime: s.runtime, Logger: logger, Rewrite: s.judge.Routine, Now: cfg.Clock()})
 	s.comp = comp
 	s.skills = &skills.Service{Locate: comp.BotFS, Library: &skills.Library{Dir: filepath.Join(cfg.DataDir, "skills")}}
 	s.memory = &memory.Service{DB: db, Locate: comp.BotFS}

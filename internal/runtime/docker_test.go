@@ -19,6 +19,7 @@ import (
 	"github.com/moby/moby/client"
 
 	"xbot/internal/box"
+	"xbot/internal/box/guardlock"
 	"xbot/internal/engine/hermes"
 	"xbot/internal/engine/hermes/hermestest"
 	"xbot/internal/events"
@@ -109,6 +110,8 @@ func newDockerEnv(ctx context.Context, t *testing.T) *dockerEnv {
 	sockets := ipc.New(ipc.Options{Dir: func(id string) string { return filepath.Join(hosts.BotDir(dir, id), "ipc") }, Model: model, Keys: e.keys})
 	t.Cleanup(func() { _ = sockets.Shutdown() })
 	comp := &Computers{DB: db, Keys: e.keys, Sockets: sockets, Providers: pstore}
+	// 和其他套件共用本機的網路防護（xbot-netguard）；網路防護測試在跑時先等它做完（見 guardlock）。
+	guardlock.Shared(t)
 	boxes := box.New(db, hosts.NewRegistry(local), box.Options{Image: image, Prepare: comp.Prepare})
 	comp.Boxes = boxes
 	comp.Hosts = hosts.NewRegistry(local)

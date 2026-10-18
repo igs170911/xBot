@@ -15,6 +15,7 @@ import (
 
 	"github.com/moby/moby/client"
 
+	"xbot/internal/box/guardlock"
 	"xbot/internal/hosts"
 	"xbot/internal/store"
 )
@@ -59,6 +60,8 @@ func TestDockerLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// 和其他套件共用本機的網路防護（xbot-netguard）；網路防護測試在跑時先等它做完（見 guardlock）。
+	guardlock.Shared(t)
 	m := New(db, hosts.NewRegistry(host), Options{Image: image})
 	t.Cleanup(func() {
 		// 不論成敗都把容器和 volume 清掉。
