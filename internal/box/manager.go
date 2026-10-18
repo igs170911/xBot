@@ -42,15 +42,22 @@ type Hosts interface {
 type Options struct {
 	// Image 是 Bot 電腦映像，空白時用 DefaultImage。
 	Image string
+	// Prepare 在每次開機前（容器已建立，可能還沒開機）呼叫，用來寫入引擎設定、開好 product.sock（E02）。
+	// 已經在跑時也會呼叫，讓設定保持最新。回傳錯誤時不開機。
+	Prepare PrepareFunc
 }
+
+// PrepareFunc 準備一台電腦開機需要的東西。
+type PrepareFunc func(ctx context.Context, h hosts.Host, botID, containerID string) error
 
 // Manager 管理每個 Bot 的電腦（容器）：建立、開機、停止、刪除、重建，狀態寫回 box 表。
 // 同一個 Bot 的操作依序執行；不同 Bot 互不影響。
 type Manager struct {
-	db    *store.DB
-	hosts Hosts
-	image string
-	http  *http.Client
+	db      *store.DB
+	hosts   Hosts
+	image   string
+	prepare PrepareFunc
+	http    *http.Client
 
 	mu    sync.Mutex
 	locks map[string]*sync.Mutex
@@ -61,7 +68,7 @@ func New(db *store.DB, hs Hosts, opts Options) *Manager {
 	if opts.Image == "" {
 		opts.Image = DefaultImage
 	}
-	return &Manager{db: db, hosts: hs, image: opts.Image, http: &http.Client{Timeout: limits.BoxProbeTimeout}, locks: map[string]*sync.Mutex{}}
+	return &Manager{db: db, hosts: hs, image: opts.Image, prepare: opts.Prepare, http: &http.Client{Timeout: limits.BoxProbeTimeout}, locks: map[string]*sync.Mutex{}}
 }
 
 // Status 是一台電腦目前的狀態。
@@ -298,6 +305,11 @@ func (m *Manager) start(ctx context.Context, b store.Box, h hosts.Host) (Status,
 	c, err := m.ensure(ctx, &b, h)
 	if err != nil {
 		return Status{}, err
+	}
+	if m.prepare != nil {
+		if err := m.prepare(ctx, h, b.BotID, c.ID); err != nil {
+			return Status{}, m.fail(ctx, b, fmt.Errorf("準備 Bot 電腦失敗：%w", err))
+		}
 	}
 	if !running(c) {
 		if _, err := h.Docker().ContainerStart(ctx, c.ID, client.ContainerStartOptions{}); err != nil {

@@ -9,15 +9,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
 	"xbot/internal/api"
 	"xbot/internal/auth"
 	"xbot/internal/config"
-	"xbot/internal/hosts"
-	"xbot/internal/store"
 	"xbot/internal/version"
 	"xbot/web"
 )
@@ -37,27 +34,19 @@ func cmdServe(args []string) error {
 	if _, err := auth.EnsureAccessToken(cfg.DataDir); err != nil {
 		return err
 	}
-	db, err := store.Open(context.Background(), filepath.Join(cfg.DataDir, store.FileName))
+	st, err := openStack(cfg)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		if err := db.Close(); err != nil {
-			slog.Error("關閉資料庫失敗", "err", err)
+		if err := st.Close(); err != nil {
+			slog.Error("關閉服務元件失敗", "err", err)
 		}
 	}()
-	// 本機一定是一台 Bot 電腦主機（host 表沒有就新增）；Docker 沒開時記成離線，服務照常啟動。
-	hostCtx, hostCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	local, err := hosts.EnsureLocal(hostCtx, db, cfg.DataDir)
-	hostCancel()
-	if err != nil {
-		return err
-	}
-	defer local.Close()
 
 	srv := &http.Server{
 		Addr:              cfg.Addr(),
-		Handler:           api.New(api.Options{Web: web.Dist()}),
+		Handler:           api.New(api.Options{Web: web.Dist(), ModelProxy: st.model}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
