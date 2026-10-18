@@ -28,9 +28,26 @@ import (
 	"xbot/internal/store"
 )
 
-func TestDockerChatEndToEnd(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
-	defer cancel()
+// dockerEnv 是一台真的 Bot 電腦加上和 cmd/xbot/stack.go 相同的組裝。
+type dockerEnv struct {
+	cli     *client.Client
+	db      *store.DB
+	keys    *proxy.WorkerKeys
+	rt      *Runtime
+	bot     store.Bot
+	fake    *hermestest.FakeModel
+	realKey string
+	name    string
+}
+
+func (e *dockerEnv) logs() string {
+	out, _ := exec.Command("docker", "logs", "--tail", "60", e.name).CombinedOutput()
+	return string(out)
+}
+
+// newDockerEnv 開好組裝與一個 Hermes Bot（電腦在第一則訊息時才開機）；測試結束時刪掉電腦。沒有 Docker 或映像時略過。
+func newDockerEnv(ctx context.Context, t *testing.T) *dockerEnv {
+	t.Helper()
 	image := os.Getenv("BOX_IMAGE")
 	if image == "" {
 		image = box.DefaultImage
@@ -39,42 +56,44 @@ func TestDockerChatEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Skipf("沒有 Docker：%v", err)
 	}
-	defer cli.Close()
+	t.Cleanup(func() { cli.Close() })
 	if _, err := cli.Ping(ctx, client.PingOptions{}); err != nil {
 		t.Skipf("連不上 Docker：%v", err)
 	}
 	if _, err := cli.ImageInspect(ctx, image); err != nil {
 		t.Skipf("沒有映像 %s（先執行 make box）：%v", image, err)
 	}
+	e := &dockerEnv{cli: cli}
 
 	base, realKey, modelName := os.Getenv("XBOT_TEST_OPENAI_BASE"), os.Getenv("XBOT_TEST_OPENAI_KEY"), os.Getenv("XBOT_TEST_MODEL")
-	var fake *hermestest.FakeModel
 	if base == "" || realKey == "" || modelName == "" {
-		fake = &hermestest.FakeModel{}
-		srv := httptest.NewServer(fake)
-		defer srv.Close()
+		e.fake = &hermestest.FakeModel{}
+		srv := httptest.NewServer(e.fake)
+		t.Cleanup(srv.Close)
 		base, realKey, modelName = srv.URL+"/v1", "sk-FAKE-REAL-KEY-must-not-enter-box-7f3a", "fake-model"
 		t.Logf("用假模型 %s", base)
 	} else {
 		t.Logf("用真的模型 %s（%s）", base, modelName)
 	}
+	e.realKey = realKey
 
 	// 短一點的資料目錄：product.sock 的路徑不能超過 108 字元。
 	dir, err := os.MkdirTemp("", "xbe2e")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
+	t.Cleanup(func() { os.RemoveAll(dir) })
 	db, err := store.Open(ctx, filepath.Join(dir, store.FileName))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	t.Cleanup(func() { db.Close() })
+	e.db = db
 	local, err := hosts.EnsureLocal(ctx, db, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer local.Close()
+	t.Cleanup(func() { local.Close() })
 
 	// 和 cmd/xbot/stack.go 相同的組裝。
 	kr, err := proxy.LoadKeyring(dir)
@@ -83,16 +102,16 @@ func TestDockerChatEndToEnd(t *testing.T) {
 	}
 	pstore := proxy.NewDBStore(db)
 	providers := proxy.NewProviders(pstore, kr)
-	keys := proxy.NewWorkerKeys(pstore, kr)
-	model := proxy.NewHandler(proxy.Options{Keys: keys, Providers: providers, Usage: pstore})
-	sockets := ipc.New(ipc.Options{Dir: func(id string) string { return filepath.Join(hosts.BotDir(dir, id), "ipc") }, Model: model, Keys: keys})
-	defer sockets.Shutdown()
-	comp := &Computers{DB: db, Keys: keys, Sockets: sockets, Providers: pstore}
+	e.keys = proxy.NewWorkerKeys(pstore, kr)
+	model := proxy.NewHandler(proxy.Options{Keys: e.keys, Providers: providers, Usage: pstore})
+	sockets := ipc.New(ipc.Options{Dir: func(id string) string { return filepath.Join(hosts.BotDir(dir, id), "ipc") }, Model: model, Keys: e.keys})
+	t.Cleanup(func() { _ = sockets.Shutdown() })
+	comp := &Computers{DB: db, Keys: e.keys, Sockets: sockets, Providers: pstore}
 	boxes := box.New(db, hosts.NewRegistry(local), box.Options{Image: image, Prepare: comp.Prepare})
 	comp.Boxes = boxes
 	drv := hermes.New(comp.Connect, nil)
-	rt := New(Options{DB: db, Driver: drv, Bus: events.New(), Models: comp})
-	pstore.Attribute = rt.Active
+	e.rt = New(Options{DB: db, Driver: drv, Bus: events.New(), Models: comp})
+	pstore.Attribute = e.rt.Active
 
 	if err := providers.Put(ctx, proxy.Provider{ID: "openai", BaseURL: base, APIKey: proxy.Secret(realKey)}); err != nil {
 		t.Fatal(err)
@@ -100,23 +119,27 @@ func TestDockerChatEndToEnd(t *testing.T) {
 	if err := db.SetSetting(ctx, DefaultModelSetting, ModelRef{Provider: "openai", Model: modelName}); err != nil {
 		t.Fatal(err)
 	}
-	bot, err := db.CreateBot(ctx, store.Bot{Name: "端對端", Engine: hermes.Name})
+	e.bot, err = db.CreateBot(ctx, store.Bot{Name: "端對端", Engine: hermes.Name})
 	if err != nil {
 		t.Fatal(err)
 	}
-	name := box.ContainerName(bot.ID)
-	defer func() {
+	e.name = box.ContainerName(e.bot.ID)
+	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
-		drv.Close(bot.ID)
-		if _, err := boxes.Remove(ctx, bot.ID, true); err != nil {
+		drv.Close(e.bot.ID)
+		if _, err := boxes.Remove(ctx, e.bot.ID, true); err != nil {
 			t.Errorf("清理失敗：%v", err)
 		}
-	}()
-	logs := func() string {
-		out, _ := exec.Command("docker", "logs", "--tail", "60", name).CombinedOutput()
-		return string(out)
-	}
+	})
+	return e
+}
+
+func TestDockerChatEndToEnd(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+	env := newDockerEnv(ctx, t)
+	rt, db, bot, fake, realKey, cli, keys, name, logs := env.rt, env.db, env.bot, env.fake, env.realKey, env.cli, env.keys, env.name, env.logs
 
 	sub := rt.Bus().Subscribe(events.ForBot(bot.ID), 0)
 	defer sub.Close()
@@ -205,5 +228,51 @@ func TestDockerChatEndToEnd(t *testing.T) {
 	task, err := rt.Wait(ctx, res2.TaskID)
 	if err != nil || task.Verdict != VerdictAnswer {
 		t.Fatalf("第二輪：%+v %v\n%s", task, err, logs())
+	}
+}
+
+// 同一個 Bot、同一條對話串，上一輪 done 之後立刻送下一則（不留空檔）。Hermes 在 message.complete 之後還在收尾，
+// 這時送出的 prompt 曾經被當成「插話」收下卻不執行，那一輪就一直等不到結束。
+func TestDockerBackToBack(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+	env := newDockerEnv(ctx, t)
+	threadID := ""
+	for i, text := range []string{"回覆 OK", "再回覆一次 OK", "第三次回覆 OK", "回覆 OK"} {
+		res, err := env.rt.Chat(ctx, env.bot.ID, threadID, text)
+		if err != nil {
+			t.Fatalf("第 %d 輪：%v", i+1, err)
+		}
+		threadID = res.ThreadID
+		start := time.Now()
+		wctx, wcancel := context.WithTimeout(ctx, 3*time.Minute)
+		task, err := env.rt.Wait(wctx, res.TaskID)
+		wcancel()
+		if err != nil || task.Verdict != VerdictAnswer {
+			t.Fatalf("第 %d 輪：%+v %v\n%s", i+1, task, err, env.logs())
+		}
+		t.Logf("第 %d 輪完成（%s）", i+1, time.Since(start).Round(time.Millisecond))
+	}
+	// 換新的對話串也一樣（同一條連線上馬上開新的 session）。
+	for i := range 3 {
+		res, err := env.rt.Chat(ctx, env.bot.ID, "", "回覆 OK")
+		if err != nil {
+			t.Fatalf("新對話串第 %d 輪：%v", i+1, err)
+		}
+		wctx, wcancel := context.WithTimeout(ctx, 3*time.Minute)
+		task, err := env.rt.Wait(wctx, res.TaskID)
+		wcancel()
+		if err != nil || task.Verdict != VerdictAnswer {
+			t.Fatalf("新對話串第 %d 輪：%+v %v\n%s", i+1, task, err, env.logs())
+		}
+	}
+	msgs, _ := env.db.ListMessages(ctx, store.ScopeThread, threadID, 0, 0)
+	if len(msgs) != 8 {
+		t.Fatalf("應該有 4 問 4 答：%d 則", len(msgs))
+	}
+	for i := 1; i < len(msgs); i += 2 {
+		if !strings.Contains(strings.ToUpper(msgs[i].Content), "OK") {
+			t.Fatalf("第 %d 則回覆：%q", i, msgs[i].Content)
+		}
 	}
 }

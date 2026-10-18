@@ -29,6 +29,18 @@ const (
 	HermesPruneTokens    = 48000
 	HermesCompressTokens = 100000
 
+	// HermesIdleWait 是送出新訊息前，最多等 Hermes 把這個 session 的上一輪收完尾（session.info running=false）多久。
+	// Hermes 在 message.complete 之後還要跑 /loop 檢查、寫標題、發布控制快照，跑完才放開 running（tui_gateway/prompt_turn.py
+	// run_body 的 finally）；這段期間送出的 prompt 會被當成插話（busy_input_mode=steer）收下卻不會開新的一輪。
+	// 平常不到 2 秒；這是 XBot 自己的數字（LazyBoy 兩輪之間有路由與設定呼叫，碰不到這個時間差）。逾時就以 queued 送出，
+	// 讓 Hermes 收完尾再自己接著跑。
+	HermesIdleWait = 30 * time.Second
+
+	// HermesStartTimeout 是 prompt.submit 回 streaming 之後，最多等 message.start 多久。Hermes 會先等 agent 建好
+	// （MCP 探索、模型資料），上限是 agent.build_wait_timeout，預設 600 秒（tui_gateway/server.py _agent_build_wait_cap）；
+	// 再加 30 秒餘裕。超過就判定這一輪沒有開始，回報錯誤，不會永遠等下去。
+	HermesStartTimeout = 630 * time.Second
+
 	// StreamPersistInterval 是串流中的回覆最多多久寫回資料庫一次（重新整理頁面時看得到進度）。
 	// 出自 LazyBoy server/runtime.py:552 PERSIST_INTERVAL。
 	StreamPersistInterval = 500 * time.Millisecond

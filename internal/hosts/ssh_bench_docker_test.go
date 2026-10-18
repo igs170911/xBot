@@ -357,8 +357,6 @@ func throughput(ctx context.Context, t *testing.T, url string) string {
 }
 
 func chatOnce(ctx context.Context, s *stack, botID string) (time.Duration, error) {
-	s.settle(botID)
-	defer s.turnDone(botID)
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 	start := time.Now()

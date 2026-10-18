@@ -59,9 +59,25 @@ type Options struct {
 	Logger *slog.Logger
 	// QuestionTTL 是無人在場的工作裡提問多久沒回就過期；0 用 limits.QuestionTTL（測試可以調短）。
 	QuestionTTL time.Duration
+	// Watchdog 是對話看門狗的時間（CH-12）；0 的欄位用 limits.WatchdogIdle、WatchdogToolIdle、StopGrace、
+	// WatchInterval（測試可以調短）。
+	Watchdog Watchdog
 	// Budget 在交辦前檢查花費上限（Bot 與它的模型供應商）；超過時 Chat 回它的錯誤（*proxy.BudgetError）。可為 nil。
 	Budget func(ctx context.Context, botID, providerID string) error
 }
+
+// Watchdog 是對話看門狗的時間（LazyBoy runtime.watch()）。
+type Watchdog struct {
+	// Idle：一輪多久沒有任何事件就送中斷；Tool：有工具正在執行時的同一個時限。
+	Idle, Tool time.Duration
+	// Grace：送出中斷（看門狗或按停止）後，等引擎自己結束的時間；過了就直接結束這一輪。
+	Grace time.Duration
+	// Interval：多久檢查一次。
+	Interval time.Duration
+}
+
+// StalledText 是看門狗結束一輪時寫進回覆的說明。出自 LazyBoy server/runtime.py STALLED_TEXT。
+const StalledText = "Bot 長時間沒有回應，已停止這次工作；檔案與對話都保留。可以再交辦一次或請它繼續。"
 
 // Runtime 管理每個 Bot 正在進行的一輪對話。
 type Runtime struct {
@@ -84,6 +100,15 @@ func New(o Options) *Runtime {
 	}
 	if o.QuestionTTL <= 0 {
 		o.QuestionTTL = limits.QuestionTTL
+	}
+	w := &o.Watchdog
+	for _, d := range []struct {
+		v   *time.Duration
+		def time.Duration
+	}{{&w.Idle, limits.WatchdogIdle}, {&w.Tool, limits.WatchdogToolIdle}, {&w.Grace, limits.StopGrace}, {&w.Interval, limits.WatchInterval}} {
+		if *d.v <= 0 {
+			*d.v = d.def
+		}
 	}
 	return &Runtime{o: o, log: o.Logger, active: map[string]*turn{}, closing: map[string]*turn{}, consumers: map[engine.Session]string{}}
 }
@@ -110,6 +135,12 @@ type turn struct {
 	waiting   bool
 	lastErr   string
 	pending   *pending // Bot 正在等人回覆的請求（一次一個）
+
+	// 看門狗：最後一次收到事件的時間、正在執行的工具、看門狗送出中斷的時間、按停止的時間。
+	seen      time.Time
+	openTools map[string]bool
+	stalled   time.Time
+	stopAt    time.Time
 
 	// askMu 讓「回覆後改回工作中」和「Bot 又問了新問題」不會交錯（否則新問題的「等你」會被蓋掉）。
 	askMu sync.Mutex
@@ -257,10 +288,14 @@ func (r *Runtime) run(ctx context.Context, t *turn, th store.Thread, botName, mo
 		return
 	}
 	r.setState(t, store.TaskRunning)
+	t.mu.Lock()
+	t.seen = time.Now()
+	t.mu.Unlock()
 	if err := r.o.Driver.Send(ctx, s, engine.Message{Text: t.input}); err != nil {
 		r.finishErr(t, err)
 		return
 	}
+	go r.watch(t, s)
 	// 送出後 resume id 可能才定下來（Hermes 第一個 prompt 才建資料列）。
 	if id := s.ResumeID(); id != "" && id != th.EngineSession {
 		_ = r.o.DB.SetThreadEngineSession(context.WithoutCancel(ctx), t.threadID, id)
@@ -297,6 +332,20 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 	t.mu.Lock()
 	mine := t.session == s && !t.finished
 	msgID := t.messageID
+	if mine {
+		t.seen = time.Now()
+		if e.Tool != nil && e.Tool.ID != "" {
+			switch e.Type {
+			case engine.EventToolCall:
+				if t.openTools == nil {
+					t.openTools = map[string]bool{}
+				}
+				t.openTools[e.Tool.ID] = true
+			case engine.EventToolResult:
+				delete(t.openTools, e.Tool.ID)
+			}
+		}
+	}
 	t.mu.Unlock()
 	if !mine {
 		return
@@ -364,6 +413,15 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 			r.finish(t, engine.StatusError, e.Text)
 		}
 	case engine.EventDone:
+		t.mu.Lock()
+		stalled := !t.stalled.IsZero() && !t.stopping
+		t.mu.Unlock()
+		if stalled {
+			// 是看門狗中斷了沒有進度的一輪：算失敗，不是使用者按停止（LazyBoy 同）。
+			r.emit(t, KindError, engine.Event{Type: engine.EventError, Text: StalledText}, true)
+			r.finish(t, engine.StatusError, StalledText)
+			return
+		}
 		r.finish(t, e.Status, e.Text)
 	}
 }
@@ -503,6 +561,9 @@ func (r *Runtime) Stop(ctx context.Context, botID, threadID string) (bool, error
 	}
 	already := t.stopping
 	t.stopping = true
+	if !already {
+		t.stopAt = time.Now()
+	}
 	s := t.session
 	t.mu.Unlock()
 	if !already {
@@ -521,6 +582,70 @@ func (r *Runtime) Stop(ctx context.Context, botID, threadID string) (bool, error
 		return true, err
 	}
 	return true, nil
+}
+
+// watch 是一輪的看門狗（CH-12，照 LazyBoy runtime.watch()）：太久沒有任何事件（有工具在跑時給長一點）就送中斷；
+// 送出中斷或按了停止之後，引擎過了 Grace 還沒結束這一輪，就直接結束，不會永遠卡著。等人回覆的時間不算。
+func (r *Runtime) watch(t *turn, s engine.Session) {
+	w := r.o.Watchdog
+	tick := time.NewTicker(w.Interval)
+	defer tick.Stop()
+	for {
+		select {
+		case <-t.done:
+			return
+		case <-tick.C:
+		}
+		now := time.Now()
+		t.mu.Lock()
+		if t.finished {
+			t.mu.Unlock()
+			return
+		}
+		if t.waiting {
+			t.seen = now
+			t.mu.Unlock()
+			continue
+		}
+		if t.stopping || !t.stalled.IsZero() {
+			since := t.stalled
+			if t.stopping && !t.stopAt.IsZero() && (since.IsZero() || t.stopAt.Before(since)) {
+				since = t.stopAt
+			}
+			stopping := t.stopping
+			t.mu.Unlock()
+			if now.Sub(since) < w.Grace {
+				continue
+			}
+			if stopping {
+				r.log.Warn("停止後引擎沒有結束這一輪，直接結束", "bot", t.botID, "task", t.taskID)
+				r.finish(t, engine.StatusInterrupted, "")
+			} else {
+				r.log.Warn("中斷後引擎沒有結束這一輪，直接結束", "bot", t.botID, "task", t.taskID)
+				r.emit(t, KindError, engine.Event{Type: engine.EventError, Text: StalledText}, true)
+				r.finish(t, engine.StatusError, StalledText)
+			}
+			return
+		}
+		limit := w.Idle
+		if len(t.openTools) > 0 {
+			limit = w.Tool
+		}
+		idle := now.Sub(t.seen)
+		if idle < limit {
+			t.mu.Unlock()
+			continue
+		}
+		t.stalled = now
+		t.mu.Unlock()
+		r.log.Warn("這一輪太久沒有進度，送出中斷", "bot", t.botID, "task", t.taskID, "idle", idle.Round(time.Second))
+		r.emit(t, KindStatus, engine.Event{Type: engine.EventStatus, Text: "Bot 太久沒有回應，正在停止這次工作"}, true)
+		ctx, cancel := context.WithTimeout(context.Background(), w.Grace)
+		if err := r.o.Driver.Interrupt(ctx, s); err != nil {
+			r.log.Warn("看門狗中斷失敗", "bot", t.botID, "task", t.taskID, "err", err)
+		}
+		cancel()
+	}
 }
 
 // Active 回傳 Bot 正在進行的對話串與任務（沒有時是空字串）；Model Proxy 用它把用量記到任務上。
