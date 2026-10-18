@@ -151,7 +151,7 @@ func Read(ctx context.Context, f boxfs.FS) (State, error) {
 }
 
 // ErrChanged 表示 Bot 在你編輯時改了這份記憶；存下去會蓋掉它剛學到的事（LazyBoy memory.Changed）。
-var ErrChanged = errors.New("Bot 剛剛更新了這份記憶，已重新載入，請再改一次")
+var ErrChanged = errors.New("剛剛 Bot 更新了這份記憶，已重新載入，請再改一次")
 
 // InvalidError 是輸入不對（條目太長、超過上限）。
 type InvalidError struct{ Msg string }

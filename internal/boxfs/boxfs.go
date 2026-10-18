@@ -237,7 +237,7 @@ func (d *Docker) Remove(ctx context.Context, p string) error {
 	}
 	if !d.Running {
 		if d.Wake == nil {
-			return errors.New("Bot 的電腦沒有開機，刪不了檔案")
+			return errors.New("這個 Bot 的電腦沒有開機，刪不了檔案")
 		}
 		id, err := d.Wake(ctx)
 		if err != nil {

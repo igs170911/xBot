@@ -93,11 +93,11 @@ func TestMemoryEditNeverErasesWhatTheBotWroteMeanwhile(t *testing.T) {
 
 func TestRedact(t *testing.T) {
 	for in, want := range map[string]string{
-		"API 金鑰 sk-abcdefghijklmnop1234 放這":        "API 金鑰 *** 放這",
-		"密碼：hunter2，記得換":                          "密碼：***，記得換",
-		"api_key=abc123 用在測試":                     "api_key=*** 用在測試",
+		"API 金鑰 sk-abcdefghijklmnop1234 放這":         "API 金鑰 *** 放這",
+		"密碼：hunter2，記得換":                            "密碼：***，記得換",
+		"api_key=abc123 用在測試":                       "api_key=*** 用在測試",
 		"GitHub ghp_abcdefghijklmnopqrstuvwxyz0123": "GitHub ***",
-		"喜歡簡短回答":                                  "喜歡簡短回答",
+		"喜歡簡短回答":                                    "喜歡簡短回答",
 	} {
 		if got := Redact(in); got != want {
 			t.Errorf("%q → %q，想要 %q", in, got, want)

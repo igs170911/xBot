@@ -254,10 +254,10 @@ func TestDocKeepsOtherFrontmatter(t *testing.T) {
 
 func TestValidateImport(t *testing.T) {
 	for raw, want := range map[string]string{
-		"":                                  "空的",
-		"# hi":                              "frontmatter",
-		"---\nname: a\n":                    "收尾",
-		"---\nname: a\n---\n\nx":            "description",
+		"":                                    "空的",
+		"# hi":                                "frontmatter",
+		"---\nname: a\n":                      "收尾",
+		"---\nname: a\n---\n\nx":              "description",
 		"---\nname: a\ndescription: b\n---\n": "內文",
 	} {
 		if _, err := ValidateImport(raw); err == nil || !strings.Contains(err.Error(), want) {
