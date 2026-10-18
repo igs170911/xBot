@@ -196,7 +196,7 @@ function Thumb({ row, className }: { row: Row; className?: string }) {
   const waiting = row.status === 'waiting'
   const icon = row.status === 'offline' ? WifiOff : row.status === 'booting' || row.status === 'queued' ? (row.status === 'booting' ? LoaderCircle : Hourglass) : Moon
   return (
-    <div className={cx('relative overflow-hidden rounded-[10px] bg-[#0d0d0d]', className)} data-testid="thumb">
+    <div className={cx('surface-dark relative overflow-hidden rounded-[10px] bg-[#0d0d0d]', className)} data-testid="thumb">
       {live && src ? (
         <img src={src} alt={`${row.screen.name}的電腦畫面`} className="size-full object-cover object-top" />
       ) : (

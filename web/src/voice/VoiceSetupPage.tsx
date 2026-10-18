@@ -17,7 +17,6 @@ import { useToast } from '../ui/toast-context'
 import { loadVoiceSettings, playerStore, speak, stopPlayback, voiceSettingsStore, type VoiceSettings } from './voice'
 import { Wave } from './Wave'
 
-export const VOICE_PATH = /^\/bots\/([^/]+)\/voice\/?$/
 
 type VoiceId = NonNullable<VoiceBotSetInput['voice']>
 
@@ -102,7 +101,7 @@ function Advanced({ settings, onSaved }: { settings: VoiceSettings; onSaved: (s:
           onChange={(v) => void save({ hangup_minutes: Number(v) })}
         />
       </div>
-      <div className="flex items-center gap-3 opacity-60">
+      <div className="flex items-center gap-3">
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="text-ui">隨時插話</span>
           <span className="text-meta text-ink-3">不用等它說完就能開口（全雙工即時語音）· 之後的版本開放</span>

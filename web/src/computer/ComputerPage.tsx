@@ -370,7 +370,7 @@ function Key({ label, aria, pressed, disabled, onClick }: { label: string; aria?
       aria-pressed={pressed}
       disabled={disabled}
       onClick={onClick}
-      className={cx('h-11 rounded-field font-mono text-ui disabled:opacity-40', pressed ? 'bg-accent text-white' : 'bg-control hover:bg-hover')}
+      className={cx('h-11 rounded-field font-mono text-ui disabled:opacity-40', pressed ? 'bg-accent-strong text-white' : 'bg-control hover:bg-hover')}
     >
       {label}
     </button>

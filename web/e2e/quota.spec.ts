@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // E31（EN-7）：引擎額度用完卡（design/C09「額度用完 · 換一個模型繼續」）在待我處理與對話裡；

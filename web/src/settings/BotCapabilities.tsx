@@ -365,7 +365,7 @@ export function SkillsTab({ bot }: { bot: Bot }) {
 function SkillRow({ skill, onEdit, menu }: { skill: Skill; onEdit: () => void; menu: MenuItem[] }) {
   const src = SOURCE_LABEL[skill.source] ?? SOURCE_LABEL.custom
   return (
-    <div className={cx('flex min-h-14 items-center gap-3 border-line px-4 py-2.5 not-first:border-t', skill.place === 'off' && 'opacity-70')}>
+    <div className={cx('flex min-h-14 items-center gap-3 border-line px-4 py-2.5 not-first:border-t')}>
       <span className="flex size-8 flex-none items-center justify-center rounded-field bg-control text-ink-2">
         <Icon icon={Sparkles} size={18} />
       </span>
@@ -558,7 +558,7 @@ export function MemoryTab({ bot, onBot }: { bot: Bot; onBot: (b: Bot) => void })
         </Note>
       )}
       <div className="flex gap-5 max-lg:flex-col">
-        <div className={cx('flex min-w-0 flex-1 flex-col gap-4', !on && 'opacity-60')}>
+        <div className={cx('flex min-w-0 flex-1 flex-col gap-4')}>
           {TARGETS.map((t) => (
             <MemoryList key={t.value} title={t.title} sub={t.sub(bot.name)} list={mem[t.value]} onWrite={(entries, done) => write(t.value, entries, done)} />
           ))}

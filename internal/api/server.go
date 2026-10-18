@@ -184,6 +184,7 @@ func spa(files fs.FS) http.Handler {
 		})
 	}
 	fileServer := http.FileServerFS(files)
+	gz := newGzipCache(files)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			http.NotFound(w, r)
@@ -200,6 +201,9 @@ func spa(files fs.FS) http.Handler {
 		switch {
 		case strings.HasPrefix(name, "assets/"):
 			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			if gz.serve(w, r, name) {
+				return
+			}
 		case name == "sw.js":
 			// service worker 一定要每次問伺服器有沒有新版（PWA 更新）
 			w.Header().Set("Cache-Control", "no-cache")

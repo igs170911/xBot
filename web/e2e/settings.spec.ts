@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // W12 設定：用假服務測一般／AI 模型／用量與花費／Bot 的引擎與權限，截圖和 J01～J04、G09、L06 畫板並排比對。

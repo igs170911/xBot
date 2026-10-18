@@ -633,20 +633,22 @@ func listInbox(ctx context.Context, call *ops.Call, in InboxListIn) (InboxListOu
 	if in.Kind != "" {
 		f.Kinds = []string{in.Kind}
 	}
-	all, err := call.DB.ListInboxFiltered(ctx, f)
+	f.ThreadID = in.ThreadID
+	limit := pageLimit(in.Limit)
+	// 只讀到一頁滿就停（v1.0 效能：待我處理有幾千張時不整批讀出）。
+	var page []store.InboxItem
+	err := call.DB.EachInbox(ctx, f, func(i store.InboxItem) bool {
+		if (in.Group == "" || notify.Group(i.Kind) == string(in.Group)) && visible(call.Identity, i) {
+			page = append(page, i)
+		}
+		return len(page) < limit
+	})
 	if err != nil {
 		return InboxListOut{}, err
 	}
-	limit := pageLimit(in.Limit)
 	out := InboxListOut{Items: []Item{}}
 	now := clock().UnixMilli()
-	for _, i := range all {
-		if len(out.Items) == limit {
-			break
-		}
-		if (in.Group != "" && notify.Group(i.Kind) != string(in.Group)) || (in.ThreadID != "" && i.ThreadID != in.ThreadID) || !visible(call.Identity, i) {
-			continue
-		}
+	for _, i := range page {
 		v, err := itemView(ctx, call.DB, i, now)
 		if err != nil {
 			return out, err
@@ -716,7 +718,8 @@ func undoable(ctx context.Context, db *store.DB, i store.InboxItem) (bool, error
 }
 
 func counts(ctx context.Context, call *ops.Call, in CountsIn) (CountsOut, error) {
-	all, err := call.DB.ListInboxFiltered(ctx, store.InboxFilter{BotID: in.BotID})
+	// 在資料庫裡依種類與 Bot 統計（v1.0 效能：徽章常常要讀，不逐張讀出）。
+	tally, err := call.DB.TallyInbox(ctx, in.BotID)
 	if err != nil {
 		return CountsOut{}, err
 	}
@@ -724,20 +727,16 @@ func counts(ctx context.Context, call *ops.Call, in CountsIn) (CountsOut, error)
 	for _, g := range notify.Groups {
 		out.Groups[g] = GroupCount{}
 	}
-	for _, i := range all {
-		g := notify.Group(i.Kind)
-		if g == "" || !visible(call.Identity, i) {
+	for _, t := range tally {
+		g := notify.Group(t.Kind)
+		if g == "" || !visible(call.Identity, store.InboxItem{Kind: t.Kind, BotID: t.BotID}) {
 			continue
 		}
 		c := out.Groups[g]
-		if i.Status == store.InboxOpen {
-			c.Open++
-			out.Open++
-		}
-		if i.ReadAt == 0 {
-			c.Unread++
-			out.Unread++
-		}
+		c.Open += t.Open
+		c.Unread += t.Unread
+		out.Open += t.Open
+		out.Unread += t.Unread
 		out.Groups[g] = c
 	}
 	return out, nil

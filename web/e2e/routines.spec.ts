@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test, type APIRequestContext, type Page } from './fixtures'
 import { E2E_NOW } from './clock'
 
 // C32 定時任務：對著真的服務（真的 routines.propose／create／calendar 與網址觸發），截圖和 H01、H02、H03、H06、L16、L17 畫板比對。

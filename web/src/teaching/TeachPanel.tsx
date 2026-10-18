@@ -57,9 +57,9 @@ function StepRow({ step, n, botId, lessonId, last, recording, onDrop }: { step: 
       </span>
       <span className="min-w-0 flex-1 text-ui-sm leading-snug">{note ? `「${step.value ?? step.text}」` : step.text}</span>
       {last && recording && (
-        <span className="flex flex-none items-center gap-1 text-meta text-danger" aria-label="記錄中">
+        <span role="img" aria-label="記錄中" className="flex flex-none items-center gap-1 text-meta text-danger">
           <span className="size-1.5 rounded-full bg-danger" />
-          <span className="max-sm:hidden">記錄中</span>
+          <span aria-hidden="true" className="max-sm:hidden">記錄中</span>
         </span>
       )}
       {onDrop && <IconButton icon={Trash2} label={`刪掉第 ${n} 步`} size="sm" onClick={onDrop} />}

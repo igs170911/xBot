@@ -80,7 +80,7 @@ function Timeline({ messages, members }: { messages: RoomMsg[]; members: Member[
     if (m.sender === 'owner') {
       out.push(
         <div key={m.id} className="flex flex-col items-end gap-1">
-          <div data-testid="room-owner" className="max-w-[75%] whitespace-pre-wrap break-words rounded-bubble bg-bubble-user px-4 py-2.5 text-[15px] leading-[1.6] text-white">
+          <div data-testid="room-owner" className="max-w-[75%] whitespace-pre-wrap break-words rounded-bubble bg-bubble-user px-4 py-2.5 text-[15px] leading-[1.6] text-ink">
             {m.content}
           </div>
           <span className="text-meta text-ink-3">{clockLabel(m.created_at)}</span>
@@ -260,7 +260,8 @@ function RoomComposer({ room, text, setText, onSend }: { room: Read['room']; tex
       </div>
       )}
       <form onSubmit={submit} className="flex min-h-[52px] items-center gap-0.5 rounded-[26px] bg-control py-[8px] pl-4 pr-[9px]">
-        <label className="flex min-w-0 flex-1">
+        {/* label 撐滿輸入列的高度（含上下留白），點輸入列任何地方都會聚焦到輸入框（手機至少 44 高） */}
+        <label className="-my-[8px] flex min-w-0 flex-1 items-center self-stretch py-[8px]">
           <span className="sr-only-text">傳訊息到群組</span>
           <textarea
             ref={input}
@@ -424,6 +425,7 @@ export function RoomPage({ roomId }: { roomId: string }) {
   return (
     <div className="flex h-dvh min-w-0 flex-1">
       <main className="flex min-w-0 flex-1 flex-col bg-app" aria-label={`群組：${room.name}`}>
+        {messages.length > 0 && <h1 className="sr-only-text">群組：{room.name}</h1>}
         {phone && (
           <PhoneRoomHeader room={room} status={st} anyBusy={anyBusy} lead={lead} onRule={(r) => void setRule(r)} onStop={() => void stopAll()} onMembers={() => setMembers(true)} />
         )}

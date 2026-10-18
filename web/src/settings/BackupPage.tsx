@@ -169,7 +169,7 @@ export function BackupPage() {
             sub={
               <>
                 正在工作的 Bot 在 make update 時會跳過；之後到「
-                <a href="/settings/computers" onClick={linkClick('/settings/computers')}>
+                <a href="/settings/computers" onClick={linkClick('/settings/computers')} className="underline underline-offset-2">
                   電腦與裝置
                 </a>
                 」按「更新電腦」補做。

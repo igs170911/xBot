@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { ensureBot } from './real-helpers'
 
 // W01：截圖給人和 design/N02、N03、Sidebar、Main 畫板並排比對（存在 e2e-results/screens，不進 git）。

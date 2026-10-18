@@ -182,11 +182,13 @@ function MascotBoard() {
         </Panel>
 
         <Panel title="10 種形狀 × 眼睛 × 顏色" aside="任何形狀配任何顏色；只有等你、出錯有小點" className="min-w-0 flex-1">
-          <div className="overflow-x-auto">
+          <div tabIndex={0} role="region" aria-label="元件表" className="overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse" aria-label="頭像形狀、眼睛與顏色" data-testid="avatar-matrix">
               <thead>
                 <tr>
-                  <th className="w-24" />
+                  <th className="w-24">
+                    <span className="sr-only-text">項目</span>
+                  </th>
                   {SHAPE_IDS.map((id) => (
                     <th key={id} scope="col" className="pb-1.5 font-normal leading-[1.3]">
                       <span className={`block whitespace-nowrap text-[13px] ${id === 'cursor' ? 'text-accent-ink' : ''}`}>

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { MockServer, settle } from './mock'
 import { fakeVnc, loadFrame } from './rfb'
 

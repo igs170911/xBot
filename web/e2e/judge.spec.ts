@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // X05 快判：J10 設定頁（層級、逐項開關、每日上限、今天的用量、影子一致率）與 C15 先判斷列（「不對？」改正）。

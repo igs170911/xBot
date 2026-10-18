@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { ensureBot } from './real-helpers'
 
 test('首頁打得開，而且連得到服務', async ({ page, request }) => {

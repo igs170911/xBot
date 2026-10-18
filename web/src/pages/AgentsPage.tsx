@@ -116,7 +116,7 @@ function Entrances() {
         <div className="flex flex-col gap-2">
           <EntranceRow title="Streamable HTTP" tag={net?.tailscale.url ? 'tailnet 內' : '這個網址'} sub="其他電腦上的代理" value={url} action={<CopyButton k="http" text={url} copied={copied} copy={copy} label="Streamable HTTP" />} />
           <EntranceRow title="stdio（這台電腦）" tag="本機" sub="裝在這台電腦的代理" value="xbot mcp" action={<CopyButton k="stdio" text="xbot mcp" copied={copied} copy={copy} label="stdio" />} />
-          <div data-testid="external-entry" className={cx('flex flex-col gap-1.5 rounded-group bg-inset px-3.5 py-2.5', !extOn && 'opacity-70')}>
+          <div data-testid="external-entry" className={'flex flex-col gap-1.5 rounded-group bg-inset px-3.5 py-2.5'}>
             <span className="flex flex-wrap items-center gap-2">
               <span className="text-ui-sm">外部入口</span>
               <StatusChip size="sm" tone={extOn ? 'warning' : 'neutral'}>
@@ -157,7 +157,7 @@ function Entrances() {
             />
             <CopyButton k="json" text={snippet} copied={copied} copy={copy} label="設定" />
           </div>
-          <pre className="m-0 overflow-x-auto whitespace-pre rounded-field bg-app px-3 py-2 font-mono text-[12.5px] leading-[1.5] text-ink-2">{snippet}</pre>
+          <pre tabIndex={0} className="m-0 overflow-x-auto whitespace-pre rounded-field bg-app px-3 py-2 font-mono text-[12.5px] leading-[1.5] text-ink-2">{snippet}</pre>
         </div>
       </div>
       {funnel.dialog}
@@ -325,7 +325,7 @@ function NumberBox({ label, value, onChange, prefix, suffix, error }: { label: s
     <label className="flex flex-col gap-1">
       <span
         className={cx(
-          'inline-flex h-9 items-center gap-1.5 rounded-field border bg-inset px-3 text-ui-sm focus-within:border-focus',
+          'inline-flex h-9 items-center gap-1.5 rounded-field border bg-inset px-3 text-ui-sm focus-within:border-focus max-sm:h-11',
           error ? 'border-danger' : 'border-line',
         )}
       >
@@ -722,7 +722,8 @@ export function AgentsPage() {
   const editing = dialog?.kind === 'edit' ? agents?.find((a) => a.id === dialog.id) : undefined
 
   return (
-    <main className="flex flex-1 justify-center px-8 py-6 max-sm:px-4">
+    // 放在設定頁的 <main> 裡，自己不再是 main（v1.0 無障礙：landmark 不重複）
+    <div className="flex flex-1 justify-center px-8 py-6 max-sm:px-4">
       <div className="flex w-full max-w-[1000px] flex-col gap-5">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex flex-col gap-0.5">
@@ -783,7 +784,7 @@ export function AgentsPage() {
         />
       )}
       {editing && <EditDialog key={editing.id} agent={editing} onClose={() => setDialog(null)} onSaved={load} />}
-    </main>
+    </div>
   )
 }
 

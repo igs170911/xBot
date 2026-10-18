@@ -4,8 +4,10 @@ import './index.css'
 import App from './App'
 import { initTheme } from './settings/theme'
 import { registerServiceWorker, watchInstall } from './mobile/pwa'
+import { installRovingKeys } from './ui/rovingKeys'
 
 initTheme()
+installRovingKeys()
 watchInstall()
 registerServiceWorker()
 

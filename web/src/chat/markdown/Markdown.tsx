@@ -59,7 +59,7 @@ function inlineOne(t: Token, k: string): ReactNode {
       if (!href) return <span key={k}>{children}</span>
       const external = !href.startsWith('#')
       return (
-        <a key={k} href={href} title={l.title ?? undefined} {...(external ? { target: '_blank', rel: 'noopener noreferrer nofollow' } : {})} className="text-accent-ink hover:underline">
+        <a key={k} href={href} title={l.title ?? undefined} {...(external ? { target: '_blank', rel: 'noopener noreferrer nofollow' } : {})} className="text-accent-ink underline decoration-accent-ink/50 underline-offset-2 hover:decoration-accent-ink">
           {children}
         </a>
       )
@@ -164,7 +164,7 @@ function ListBlock({ t, k }: { t: Tokens.List; k: string }) {
       {t.items.map((it, i) => (
         <li key={i} className={cx(it.task && 'flex items-start gap-2')}>
           {it.task && (
-            <span role="checkbox" aria-checked={!!it.checked} aria-disabled="true" className={cx('mt-[5px] flex', it.checked ? 'text-success' : 'text-ink-3')}>
+            <span role="checkbox" aria-checked={!!it.checked} aria-disabled="true" aria-label={it.checked ? '已完成' : '未完成'} className={cx('mt-[5px] flex', it.checked ? 'text-success' : 'text-ink-3')}>
               <Icon icon={it.checked ? SquareCheck : Square} size={16} />
             </span>
           )}

@@ -199,7 +199,7 @@ export const VncScreen = forwardRef<VncHandle, Props>(function VncScreen({ path,
       aria-label={label}
       data-testid="vnc-screen"
       data-control={control || undefined}
-      className={cx('overflow-hidden bg-[#111111] [&_canvas]:!outline-none', control ? 'cursor-default' : 'cursor-not-allowed', className)}
+      className={cx('surface-dark overflow-hidden bg-[#111111] [&_canvas]:!outline-none', control ? 'cursor-default' : 'cursor-not-allowed', className)}
     />
   )
 })

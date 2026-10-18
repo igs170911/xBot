@@ -106,7 +106,7 @@ export function WelcomePage() {
           </button>
           <span className="flex-1" />
           <span className="text-sub text-ink-3">下一步</span>
-          <div className="flex items-center gap-3 rounded-card border border-dashed border-line px-4 py-3 opacity-80">
+          <div className="flex items-center gap-3 rounded-card border border-dashed border-line px-4 py-3">
             <Avatar shape="cursor" color="blue" state="idle" dot="none" size={32} ring="#070707" />
             <span className="flex flex-1 flex-col">
               <span className="text-ui">2/2 認識小秘</span>

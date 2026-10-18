@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // V10：從 LazyBoy、OpenMausBot 帶入舊設定。首頁卡片（A05）→ 預演（F10 版型）→ 匯入進度與結果，用假服務跑並截圖。

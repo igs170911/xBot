@@ -158,7 +158,12 @@ func (q *Queries) ListEvents(ctx context.Context, botID string, since int64, lim
 // LastEventID 回傳最新一筆事件的 ID（沒有就是 0）；botID 不是空白時只看那個 Bot。
 func (q *Queries) LastEventID(ctx context.Context, botID string) (int64, error) {
 	var id int64
-	err := q.r.QueryRowContext(ctx, `SELECT COALESCE(MAX(id), 0) FROM event WHERE ? = '' OR bot_id = ?`, botID, botID).Scan(&id)
+	if botID == "" {
+		// 每條 SSE 連線一開始都會查；不加條件時 SQLite 直接讀主鍵最後一筆。
+		err := q.r.QueryRowContext(ctx, `SELECT COALESCE(MAX(id), 0) FROM event`).Scan(&id)
+		return id, err
+	}
+	err := q.r.QueryRowContext(ctx, `SELECT COALESCE(MAX(id), 0) FROM event WHERE bot_id = ?`, botID).Scan(&id)
 	return id, err
 }
 

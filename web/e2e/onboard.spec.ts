@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // W32：首次設定（A03～A06、A09、A10）與 Bot 設定（G02～G14）用假服務跑，截圖和 A、G 畫板並排比對。

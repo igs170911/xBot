@@ -29,7 +29,7 @@ export function DataTable({ t, rows, label }: { t: Table; rows?: number; label: 
   const width = Math.max(t.columns.length, ...shown.map((r) => r.length))
   const numeric = Array.from({ length: width }, (_, i) => shown.length > 0 && shown.every((r) => !r[i] || NUM.test(r[i].trim())))
   return (
-    <div className="overflow-auto rounded-group border border-divider bg-inset" data-testid="file-table">
+    <div tabIndex={0} role="region" aria-label="表格內容" className="overflow-auto rounded-group border border-divider bg-inset" data-testid="file-table">
       <table aria-label={label} className="w-full border-collapse text-ui-sm">
         <thead className="sticky top-0 bg-inset">
           <tr>
@@ -131,7 +131,7 @@ function Body({ d, raw, onSheet, sheet }: { d: FilesReadOutput; raw: boolean; on
     }
     return (
       <div className="flex flex-col gap-2">
-        <pre className="m-0 max-h-[70vh] overflow-auto whitespace-pre-wrap break-words rounded-group bg-inset px-4 py-3 font-mono text-[13px] leading-relaxed">{d.text}</pre>
+        <pre tabIndex={0} className="m-0 max-h-[70vh] overflow-auto whitespace-pre-wrap break-words rounded-group bg-inset px-4 py-3 font-mono text-[13px] leading-relaxed">{d.text}</pre>
         {more}
       </div>
     )

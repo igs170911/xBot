@@ -16,7 +16,6 @@ import { KeyDialog, SigninDialog, type Signin } from './SigninDialog'
 import { AppIcon, Segmented } from './shared'
 import { statusOf, toneText, whoCanUse, type CatalogApp, type Conn } from './appsData'
 
-export const APPS_PATH = /^\/apps(?:\/(mcp|logins))?\/?$/
 
 // I01：連接應用程式。已連接的放上面（含需要重新登入、授權過期），常用應用程式一鍵「連接」；只有一組篩選（全部／已連接）。
 export function AppsPage() {

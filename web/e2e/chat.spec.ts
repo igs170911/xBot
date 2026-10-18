@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { MockServer, opError, settle } from './mock'
 
 // W02 對話畫面：用瀏覽器層的假服務（mock.ts）確定地測流程，並截圖和 C01／C02／C03 畫板並排比對。

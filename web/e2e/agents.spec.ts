@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // C21 代為核准與外部 MCP 權限：用假服務測畫面流程，截圖和 J12、C16、F08 畫板並排比對。
