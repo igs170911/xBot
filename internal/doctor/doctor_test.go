@@ -165,3 +165,23 @@ func TestParentDir(t *testing.T) {
 		}
 	}
 }
+
+func TestFirewallCheck(t *testing.T) {
+	env := fakeEnv(allTools, map[string]string{"systemctl is-active ufw": "active"}, nil)
+	env.ReadFile = func(p string) ([]byte, error) {
+		if p == "/etc/ufw/user.rules" {
+			return []byte("-A ufw-user-input -p tcp --dport 8790 -s 10.0.0.0/24 -j ACCEPT\n"), nil
+		}
+		return []byte("ID=arch\n"), nil
+	}
+	r := firewallCheck(env, "0.0.0.0:8780")
+	if r.Status != Warn || !strings.Contains(r.Fix, "port 8780") {
+		t.Fatalf("沒放行 8780 應警告：%+v", r)
+	}
+	if r := firewallCheck(env, "0.0.0.0:8790"); r.Status != OK {
+		t.Fatalf("已放行 8790：%+v", r)
+	}
+	if r := firewallCheck(env, "127.0.0.1:8780"); r.Status != OK {
+		t.Fatalf("只聽本機不需要防火牆：%+v", r)
+	}
+}

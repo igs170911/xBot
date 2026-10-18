@@ -160,6 +160,7 @@ func Check(env Env, o Options) []Result {
 	rs = append(rs,
 		diskCheck(env, o.DataDir),
 		portCheck(env, o.Addr),
+		firewallCheck(env, o.Addr),
 	)
 	return rs
 }
@@ -406,6 +407,66 @@ func diskCheck(env Env, dataDir string) Result {
 		r.Status, r.Detail = OK, fmt.Sprintf("剩 %.0f GB", gb)
 	}
 	return r
+}
+
+// firewallCheck：服務聽 0.0.0.0 時，ufw 開著卻沒放行這個埠，區網其他裝置會連不進來。
+// 只讀 /etc/ufw/user.rules（一般使用者可讀），不需要 sudo；看不到就略過。
+func firewallCheck(env Env, addr string) Result {
+	host, port, _ := net.SplitHostPort(addr)
+	r := Result{Name: "防火牆（區網連線）", Required: false}
+	if host != "" && host != "0.0.0.0" && host != "::" {
+		r.Status, r.Detail = OK, "只聽本機，不需要開防火牆"
+		return r
+	}
+	if out, err := env.Output("systemctl", "is-active", "ufw"); err != nil || strings.TrimSpace(out) != "active" {
+		r.Status, r.Detail = OK, "沒有啟用 ufw"
+		return r
+	}
+	b, err := env.ReadFile("/etc/ufw/user.rules")
+	if err != nil {
+		r.Status, r.Detail = Warn, "ufw 開著，但讀不到規則；區網連不進來時請放行 "+port
+		r.Fix = "sudo ufw allow from <你的區網，例 10.0.0.0/24> to any port " + port + " proto tcp"
+		return r
+	}
+	if ufwAllows(string(b), port) {
+		r.Status, r.Detail = OK, "ufw 已放行 "+port
+		return r
+	}
+	r.Status, r.Detail = Warn, "ufw 開著但沒有放行 "+port+"，區網其他裝置會連不進來"
+	r.Fix = "sudo ufw allow from " + lanCIDR() + " to any port " + port + " proto tcp"
+	return r
+}
+
+// ufwAllows 看 ufw 的使用者規則裡有沒有放行這個 TCP 埠（任何來源）。
+func ufwAllows(rules, port string) bool {
+	for _, line := range strings.Split(rules, "\n") {
+		if strings.Contains(line, "-j ACCEPT") && strings.Contains(line, "--dport "+port+" ") && !strings.Contains(line, "-p udp") {
+			return true
+		}
+	}
+	return false
+}
+
+// lanCIDR 猜這台機器的區網範圍（第一個私有 IPv4 的 /24）；猜不到就給範例。
+func lanCIDR() string {
+	ifaces, _ := net.Interfaces()
+	for _, ifc := range ifaces {
+		if ifc.Flags&net.FlagUp == 0 || ifc.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		n := ifc.Name
+		if strings.HasPrefix(n, "docker") || strings.HasPrefix(n, "br-") || strings.HasPrefix(n, "veth") || strings.HasPrefix(n, "xbot") || strings.HasPrefix(n, "tailscale") {
+			continue
+		}
+		addrs, _ := ifc.Addrs()
+		for _, a := range addrs {
+			if ipn, ok := a.(*net.IPNet); ok && ipn.IP.To4() != nil && ipn.IP.IsPrivate() {
+				ip := ipn.IP.To4()
+				return net.IPv4(ip[0], ip[1], ip[2], 0).String() + "/24"
+			}
+		}
+	}
+	return "<你的區網，例 10.0.0.0/24>"
 }
 
 func portCheck(env Env, addr string) Result {
