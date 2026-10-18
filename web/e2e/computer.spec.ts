@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { MockServer, settle, type Bot } from './mock'
 import { fakeVnc, loadFrame, type Frame } from './rfb'
 

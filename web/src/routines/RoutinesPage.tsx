@@ -9,10 +9,10 @@ import { cx } from '../ui/cx'
 import { CalendarView } from './CalendarView'
 import { openNewRoutine, startRoutinesFeed } from './data'
 import { RoutineDrawer, RoutineList } from './RoutineList'
+import { ROUTINES_PATH } from '../paths'
 
 // 定時任務與行事曆（H01、H03；手機 L16）。路徑：/calendar（行事曆）、/calendar/routines（清單）、/calendar/routines/<id>（含執行紀錄）。
 
-export const ROUTINES_PATH = /^\/calendar(?:\/routines(?:\/([^/]+))?)?\/?$/
 
 function Tab({ to, on, icon, children }: { to: string; on: boolean; icon: typeof Repeat; children: string }) {
   return (

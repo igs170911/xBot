@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // C34：連接應用程式（I01）、應用程式詳細（I02）、登入（I03）、自訂連接（I04）、網站登入（I05）與分享登入（E09）。

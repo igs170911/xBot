@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { CircleCheck, Download, Info, Lock, ShieldCheck, TriangleAlert, Upload } from 'lucide-react'
 import { botsExport, botsImport, type BotsExportOutput, type BotsImportOutput } from '../../api/generated'
 import { look, upsertBot, type Bot } from '../../data/bots'
-import { createStore, useStore } from '../../data/store'
+import { useStore } from '../../data/store'
+import { importBotDialog } from './import-store'
 import { navigate } from '../../router'
 import { Avatar } from '../../ui/Avatar'
 import { Button } from '../../ui/Button'
@@ -143,8 +144,6 @@ function Row({ children }: { children: React.ReactNode }) {
 
 // ── 匯入（G14）────────────────────────────────────────
 
-export const importBotDialog = createStore(false)
-export const openImportBot = () => importBotDialog.set(true)
 
 const STATUS_ICON = { ok: { icon: CircleCheck, cls: 'text-success' }, action: { icon: TriangleAlert, cls: 'text-warning-ink' }, info: { icon: ShieldCheck, cls: 'text-success' } } as const
 

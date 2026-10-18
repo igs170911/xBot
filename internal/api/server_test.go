@@ -1,7 +1,9 @@
 package api
 
 import (
+	"compress/gzip"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -51,6 +53,30 @@ func TestSPAFallback(t *testing.T) {
 	h.ServeHTTP(rec, httptest.NewRequest("GET", "/assets/app.js", nil))
 	if !strings.Contains(rec.Body.String(), "console.log") || !strings.Contains(rec.Header().Get("Cache-Control"), "immutable") {
 		t.Fatalf("靜態檔回應錯誤：%q %q", rec.Body.String(), rec.Header().Get("Cache-Control"))
+	}
+
+	// v1.0 效能：接受 gzip 的瀏覽器拿到壓縮版（打包檔夠大才壓）
+	big := strings.Repeat("console.log('xbot');\n", 500)
+	files["assets/big.js"] = &fstest.MapFile{Data: []byte(big)}
+	req := httptest.NewRequest("GET", "/assets/big.js", nil)
+	req.Header.Set("Accept-Encoding", "br, gzip")
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Header().Get("Content-Encoding") != "gzip" || !strings.Contains(rec.Header().Get("Content-Type"), "javascript") ||
+		!strings.Contains(rec.Header().Get("Vary"), "Accept-Encoding") || rec.Body.Len() >= len(big)/4 {
+		t.Fatalf("應回 gzip：%v，%d bytes", rec.Header(), rec.Body.Len())
+	}
+	zr, err := gzip.NewReader(rec.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plain, _ := io.ReadAll(zr); string(plain) != big {
+		t.Fatal("解壓後內容不對")
+	}
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("GET", "/assets/big.js", nil))
+	if rec.Header().Get("Content-Encoding") != "" || rec.Body.String() != big {
+		t.Fatalf("不接受 gzip 時照原樣送：%v", rec.Header())
 	}
 
 	rec = httptest.NewRecorder()

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // B12 電腦與裝置：主機清單（J06）、新增主機 3 步（J11）、主機詳情與移除。用假服務，截圖和畫板並排比對。

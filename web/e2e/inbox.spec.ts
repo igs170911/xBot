@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // C12 待我處理與核准：用假服務測就地處理的流程，截圖和 Main／F08／C08～C10 畫板並排比對。

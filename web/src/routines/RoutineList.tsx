@@ -108,7 +108,7 @@ function RoutineCard({ r, bot, selected, onSelect }: { r: Routine; bot?: Bot; se
       }}
     >
       <div className="flex flex-wrap items-center gap-2.5">
-        <h3 className={cx('m-0 min-w-0 text-[16px] font-normal', st.key === 'paused' && 'text-ink-2')}>{r.title}</h3>
+        <h2 className={cx('m-0 min-w-0 text-[16px] font-normal', st.key === 'paused' && 'text-ink-2')}>{r.title}</h2>
         <StatusChip size="sm" tone={st.tone}>
           {st.label}
         </StatusChip>
@@ -141,7 +141,7 @@ function RoutineCard({ r, bot, selected, onSelect }: { r: Routine; bot?: Bot; se
             {g.done_when}
           </span>
           <span className="flex items-center gap-3">
-            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-control" role="progressbar" aria-valuemin={0} aria-valuemax={g.max_rounds} aria-valuenow={g.rounds}>
+            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-control" role="progressbar" aria-label="已跑的輪數" aria-valuemin={0} aria-valuemax={g.max_rounds} aria-valuenow={g.rounds}>
               <span className="block h-full rounded-full bg-accent" style={{ width: `${Math.min(100, (g.rounds / g.max_rounds) * 100)}%` }} />
             </span>
             <span className="text-sub">
@@ -226,7 +226,7 @@ function HookSection({ r }: { r: Routine }) {
             {copiedCurl ? '已複製' : '複製指令'}
           </Button>
         </div>
-        <pre className="m-0 overflow-x-auto px-3 py-2 font-mono text-[12px] text-ink-2">{curlFor({ ...r, hook: { ...r.hook, secret: show ? secret : '<金鑰>' } })}</pre>
+        <pre tabIndex={0} className="m-0 overflow-x-auto px-3 py-2 font-mono text-[12px] text-ink-2">{curlFor({ ...r, hook: { ...r.hook, secret: show ? secret : '<金鑰>' } })}</pre>
       </div>
       <p className="m-0 text-meta text-ink-3">XBot 要開著才收得到；同一個網址至少隔 60 秒，內容最多 64 KiB。也可以用 X-XBot-Signature: sha256=…（HMAC）代替 Bearer。</p>
       <Button size="sm" variant="danger" className="self-start" loading={busy === 'off'} onClick={() => void act('off', () => routinesHookDelete({ id: r.id }), '網址觸發已關閉')}>

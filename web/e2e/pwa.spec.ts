@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 // W31 PWA（MB-1）：像 Lighthouse 的可安裝檢查——manifest 合格、service worker 註冊並控制頁面、
 // Chrome 回報沒有安裝障礙、app 殼有存、/api 的回應不進快取；Android 分享目標由 SW 收下再帶到 /share。

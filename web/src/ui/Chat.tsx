@@ -55,7 +55,7 @@ export function Composer({ placeholder = '輸入訊息…', onSend, onAttach, on
   return (
     <form onSubmit={submit} className="flex h-[52px] items-center gap-1.5 rounded-full bg-control pl-2 pr-[9px]">
       <IconButton icon={Plus} label="附加" shape="round" strong onClick={onAttach} />
-      <label className="flex min-w-0 flex-1">
+      <label className="flex min-w-0 flex-1 items-center self-stretch">
         <span className="sr-only-text">{placeholder.replace(/…$/, '')}</span>
         <input
           value={text}

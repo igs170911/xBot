@@ -81,15 +81,15 @@ func (q *Queries) ListInbox(ctx context.Context, status string) ([]InboxItem, er
 
 // InboxFilter 是列卡片的條件；空白的欄位不限。
 type InboxFilter struct {
-	Status string
-	Kinds  []string
-	BotID  string
-	TaskID string
-	Unread bool
+	Status   string
+	Kinds    []string
+	BotID    string
+	TaskID   string
+	ThreadID string
+	Unread   bool
 }
 
-// ListInboxFiltered 依條件列出卡片，新到舊。
-func (q *Queries) ListInboxFiltered(ctx context.Context, f InboxFilter) ([]InboxItem, error) {
+func (f InboxFilter) where() (string, []any) {
 	where := []string{"1=1"}
 	var args []any
 	if f.Status != "" {
@@ -107,12 +107,61 @@ func (q *Queries) ListInboxFiltered(ctx context.Context, f InboxFilter) ([]Inbox
 	if f.TaskID != "" {
 		where, args = append(where, "task_id = ?"), append(args, f.TaskID)
 	}
+	if f.ThreadID != "" {
+		where, args = append(where, "thread_id = ?"), append(args, f.ThreadID)
+	}
 	if f.Unread {
 		where = append(where, "read_at = 0")
 	}
-	rows, err := q.r.QueryContext(ctx, `SELECT `+inboxCols+` FROM inbox_item WHERE `+strings.Join(where, " AND ")+
-		` ORDER BY created_at DESC, id DESC`, args...)
+	return strings.Join(where, " AND "), args
+}
+
+// ListInboxFiltered 依條件列出卡片，新到舊。
+func (q *Queries) ListInboxFiltered(ctx context.Context, f InboxFilter) ([]InboxItem, error) {
+	where, args := f.where()
+	rows, err := q.r.QueryContext(ctx, `SELECT `+inboxCols+` FROM inbox_item WHERE `+where+` ORDER BY created_at DESC, id DESC`, args...)
 	return collect(rows, err, scanInbox)
+}
+
+// EachInbox 依條件逐張讀卡片（新到舊）；fn 回 false 就停，不必把整個待我處理讀進記憶體（v1.0 效能）。
+// fn 裡不要再查資料庫（讀取連線還開著）。
+func (q *Queries) EachInbox(ctx context.Context, f InboxFilter, fn func(InboxItem) bool) error {
+	where, args := f.where()
+	rows, err := q.r.QueryContext(ctx, `SELECT `+inboxCols+` FROM inbox_item WHERE `+where+` ORDER BY created_at DESC, id DESC`, args...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		i, err := scanInbox(rows)
+		if err != nil {
+			return err
+		}
+		if !fn(i) {
+			return nil
+		}
+	}
+	return rows.Err()
+}
+
+// InboxTally 是一組（種類、Bot）的卡片數：還沒處理的、未讀的。
+type InboxTally struct {
+	Kind   string
+	BotID  string
+	Open   int
+	Unread int
+}
+
+// TallyInbox 依種類與 Bot 統計卡片數（徽章用）；只統計還沒處理或未讀的卡，在資料庫裡算，不逐張讀出。
+func (q *Queries) TallyInbox(ctx context.Context, botID string) ([]InboxTally, error) {
+	where, args := InboxFilter{BotID: botID}.where()
+	rows, err := q.r.QueryContext(ctx, `SELECT kind, COALESCE(bot_id, ''), SUM(status = 'open'), SUM(read_at = 0) FROM inbox_item
+		WHERE `+where+` AND (status = 'open' OR read_at = 0) GROUP BY kind, bot_id`, args...)
+	return collect(rows, err, func(s scanner) (InboxTally, error) {
+		var t InboxTally
+		err := s.Scan(&t.Kind, &t.BotID, &t.Open, &t.Unread)
+		return t, err
+	})
 }
 
 // ResolveInboxItem 把 open 的卡改成 resolved 或 dismissed。已處理過的回 ErrAlreadyDecided。

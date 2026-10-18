@@ -402,7 +402,7 @@ function ScreenThumb({ label, waiting, children }: { label: string; waiting?: bo
   return (
     <span
       aria-hidden="true"
-      className="flex h-[90px] items-center justify-center overflow-hidden rounded-field bg-[#F4F5F7] text-[11px] text-[#6B7280]"
+      className="flex h-[90px] items-center justify-center overflow-hidden rounded-field bg-[#F4F5F7] text-[11px] text-[#5F6673]"
       style={waiting ? { boxShadow: '0 0 0 1.5px #FF9800' } : undefined}
     >
       {children ?? label}

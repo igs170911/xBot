@@ -66,7 +66,7 @@ function Stepper({ step, done, go }: { step: number; done: number; go: (n: numbe
                 cur ? 'border-hover bg-card text-ink' : 'border-card bg-transparent text-ink-2',
               )}
             >
-              <span className={cx('flex size-6 flex-none items-center justify-center rounded-full text-meta', ok ? 'bg-accent text-white' : 'bg-control text-ink')}>
+              <span className={cx('flex size-6 flex-none items-center justify-center rounded-full text-meta', ok ? 'bg-accent-strong text-white' : 'bg-control text-ink')}>
                 {ok ? <Icon icon={Check} size={14} /> : n}
               </span>
               <span className="flex min-w-0 flex-col">

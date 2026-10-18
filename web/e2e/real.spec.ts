@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { pastOnboarding } from './real-helpers'
 
 // 對著真的執行檔（不攔截網路）：建 Bot 走真的 bots.create，側欄靠真的 SSE 事件更新；

@@ -2,8 +2,11 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
+	"slices"
+	"strings"
 )
 
 // ── usage_entry ──────────────────────────────────────
@@ -63,15 +66,30 @@ type UsageFilter struct {
 	Until    int64
 }
 
-const usageWhere = ` WHERE (? = '' OR bot_id = ?) AND (? = '' OR provider = ?) AND (? = 0 OR created_at >= ?) AND (? = 0 OR created_at < ?)`
-
-func (f UsageFilter) args() []any {
-	return []any{f.BotID, f.BotID, f.Provider, f.Provider, f.Since, f.Since, f.Until, f.Until}
+// where 組出查詢條件（col 是欄位前綴，例："u."）。不限的條件不寫進 SQL：寫成 (? = ” OR bot_id = ?) 時
+// SQLite 用不到索引，10 萬筆的統計要整張表掃過（v1.0 效能）。
+func (f UsageFilter) where(col string) (string, []any) {
+	where := []string{"1=1"}
+	var args []any
+	if f.BotID != "" {
+		where, args = append(where, col+"bot_id = ?"), append(args, f.BotID)
+	}
+	if f.Provider != "" {
+		where, args = append(where, col+"provider = ?"), append(args, f.Provider)
+	}
+	if f.Since != 0 {
+		where, args = append(where, col+"created_at >= ?"), append(args, f.Since)
+	}
+	if f.Until != 0 {
+		where, args = append(where, col+"created_at < ?"), append(args, f.Until)
+	}
+	return " WHERE " + strings.Join(where, " AND "), args
 }
 
-// EachUsage 依時間由舊到新逐筆讀用量明細（統計、匯出用，不必整批放進記憶體）。fn 回錯誤就停止。
+// EachUsage 依時間由舊到新逐筆讀用量明細（匯出用，不必整批放進記憶體）。fn 回錯誤就停止。
 func (q *Queries) EachUsage(ctx context.Context, f UsageFilter, fn func(UsageEntry) error) error {
-	rows, err := q.r.QueryContext(ctx, `SELECT `+usageCols+` FROM usage_entry`+usageWhere+` ORDER BY created_at, id`, f.args()...)
+	where, args := f.where("")
+	rows, err := q.r.QueryContext(ctx, `SELECT `+usageCols+` FROM usage_entry`+where+` ORDER BY created_at, id`, args...)
 	if err != nil {
 		return err
 	}
@@ -88,9 +106,87 @@ func (q *Queries) EachUsage(ctx context.Context, f UsageFilter, fn func(UsageEnt
 	return rows.Err()
 }
 
+// UsageSpan 回傳符合條件的最早、最晚一筆的時間；沒有資料時 ok 是 false。
+func (q *Queries) UsageSpan(ctx context.Context, f UsageFilter) (first, last int64, ok bool, err error) {
+	where, args := f.where("")
+	var lo, hi sql.NullInt64
+	err = q.r.QueryRowContext(ctx, `SELECT MIN(created_at), MAX(created_at) FROM usage_entry`+where, args...).Scan(&lo, &hi)
+	return lo.Int64, hi.Int64, lo.Valid, err
+}
+
+// UsageGroup 是一段時間裡、一組（Bot、供應商、模型）的用量合計。
+type UsageGroup struct {
+	Span             int // 第幾段（bounds[Span] ≤ 時間 < bounds[Span+1]）
+	BotID            string
+	Provider         string
+	Model            string
+	Calls            int64
+	InputTokens      int64
+	OutputTokens     int64
+	CacheReadTokens  int64
+	CacheWriteTokens int64
+	CostMicros       int64
+	UnpricedCalls    int64
+	FallbackCalls    int64
+}
+
+// GroupUsage 把用量依時間段（bounds 是遞增的分段點，例：每天 0 點）、Bot、供應商、模型合計；落在 bounds 外的不算。
+// 只讀合計要用的欄位、不排序，字串欄位用 RawBytes 讀（同一組只配置一次），不逐筆建 UsageEntry
+// （v1.0 效能；在 SQLite 裡 GROUP BY 要先排序，在純 Go 的 driver 上反而比較慢）。
+func (q *Queries) GroupUsage(ctx context.Context, f UsageFilter, bounds []int64) ([]UsageGroup, error) {
+	if len(bounds) < 2 {
+		return nil, nil
+	}
+	where, args := f.where("")
+	rows, err := q.r.QueryContext(ctx, `SELECT bot_id, provider, model, created_at, input_tokens, output_tokens, cache_read_tokens,
+		cache_write_tokens, cost_micros, unpriced, fallback FROM usage_entry`+where, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	type key struct {
+		span                 int
+		bot, provider, model string
+	}
+	index := map[key]int{}
+	var out []UsageGroup
+	var bot, provider, model sql.RawBytes
+	var at, in, outTok, cr, cw, cost, unpriced, fallback int64
+	for rows.Next() {
+		if err := rows.Scan(&bot, &provider, &model, &at, &in, &outTok, &cr, &cw, &cost, &unpriced, &fallback); err != nil {
+			return nil, err
+		}
+		span, found := slices.BinarySearch(bounds, at)
+		if !found {
+			span--
+		}
+		if span < 0 || span >= len(bounds)-1 {
+			continue
+		}
+		k := key{span, string(bot), string(provider), string(model)}
+		i, ok := index[k]
+		if !ok {
+			i = len(out)
+			index[k] = i
+			out = append(out, UsageGroup{Span: span, BotID: k.bot, Provider: k.provider, Model: k.model})
+		}
+		g := &out[i]
+		g.Calls++
+		g.InputTokens += in
+		g.OutputTokens += outTok
+		g.CacheReadTokens += cr
+		g.CacheWriteTokens += cw
+		g.CostMicros += cost
+		g.UnpricedCalls += unpriced
+		g.FallbackCalls += fallback
+	}
+	return out, rows.Err()
+}
+
 // ListUsage 列出用量明細，依時間由舊到新。
 func (q *Queries) ListUsage(ctx context.Context, f UsageFilter) ([]UsageEntry, error) {
-	rows, err := q.r.QueryContext(ctx, `SELECT `+usageCols+` FROM usage_entry`+usageWhere+` ORDER BY created_at, id`, f.args()...)
+	where, args := f.where("")
+	rows, err := q.r.QueryContext(ctx, `SELECT `+usageCols+` FROM usage_entry`+where+` ORDER BY created_at, id`, args...)
 	return collect(rows, err, scanUsage)
 }
 
@@ -107,9 +203,10 @@ type UsageTotals struct {
 // SumUsage 合計符合條件的用量（花費上限檢查用）。
 func (q *Queries) SumUsage(ctx context.Context, f UsageFilter) (UsageTotals, error) {
 	var t UsageTotals
+	where, args := f.where("")
 	err := q.r.QueryRowContext(ctx, `SELECT COUNT(*), COALESCE(SUM(input_tokens),0), COALESCE(SUM(output_tokens),0),
 		COALESCE(SUM(cache_read_tokens),0), COALESCE(SUM(cache_write_tokens),0), COALESCE(SUM(cost_micros),0)
-		FROM usage_entry`+usageWhere, f.args()...).Scan(&t.Calls, &t.InputTokens, &t.OutputTokens, &t.CacheReadTokens, &t.CacheWriteTokens, &t.CostMicros)
+		FROM usage_entry`+where, args...).Scan(&t.Calls, &t.InputTokens, &t.OutputTokens, &t.CacheReadTokens, &t.CacheWriteTokens, &t.CostMicros)
 	return t, err
 }
 
@@ -123,8 +220,9 @@ type UnpricedModel struct {
 
 // UnpricedModels 列出符合條件、花費記成 0 的模型（價目表要補的）。
 func (q *Queries) UnpricedModels(ctx context.Context, f UsageFilter) ([]UnpricedModel, error) {
-	rows, err := q.r.QueryContext(ctx, `SELECT provider, model, COUNT(*), MAX(created_at) FROM usage_entry`+usageWhere+
-		` AND unpriced = 1 GROUP BY provider, model ORDER BY provider, model`, f.args()...)
+	where, args := f.where("")
+	rows, err := q.r.QueryContext(ctx, `SELECT provider, model, COUNT(*), MAX(created_at) FROM usage_entry`+where+
+		` AND unpriced = 1 GROUP BY provider, model ORDER BY provider, model`, args...)
 	return collect(rows, err, func(s scanner) (UnpricedModel, error) {
 		var m UnpricedModel
 		err := s.Scan(&m.Provider, &m.Model, &m.Calls, &m.LastAt)

@@ -1,56 +1,82 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react'
 import { Construction } from 'lucide-react'
 import { authStatus } from './api/generated'
 import { usePath } from './router'
 import { AppShell } from './shell/AppShell'
 import { InboxPage } from './pages/InboxPage'
-import { DevComponentsPage } from './pages/DevComponentsPage'
 import { LoginPage } from './pages/LoginPage'
-import { NewBotDialog } from './pages/NewBotDialog'
-import { SettingsPage } from './settings/SettingsPage'
-import { NewRoutineDialog } from './routines/NewRoutineDialog'
-import { ROUTINES_PATH, RoutinesPage } from './routines/RoutinesPage'
 import { ChatPage } from './chat/ChatPage'
-import { ComputerPage } from './computer/ComputerPage'
-import { OfficePage } from './computer/OfficePage'
 import { registerActivityCard, registerPeerCard } from './chat/peer'
 import { registerChatCards } from './files/register'
-import { BOT_FILES_PATH, BotFilesPage } from './files/BotFilesPage'
-import { FilesPage } from './files/FilesPage'
-import { NewRoomDialog } from './rooms/NewRoomDialog'
-import { RoomPage } from './rooms/RoomPage'
-import { NewTeamDialog } from './teams/NewTeamDialog'
-import { TeachStartDialog } from './teaching/TeachStartDialog'
-import { TeamMapPage } from './teams/TeamMapPage'
-import { OrgPage } from './teams/OrgPage'
-import { AgendaPage } from './agenda/AgendaPage'
-import { APPS_PATH, AppsPage } from './apps/AppsPage'
-import { McpPage } from './apps/McpPage'
-import { LoginsPage } from './apps/LoginsPage'
-import { startTeams } from './data/teams'
-import { roomsStore, startRooms } from './data/rooms'
+import { APPS_PATH, BOT_FILES_PATH, ROUTINES_PATH, VOICE_PATH } from './paths'
+import { startTeams, newTeamDialog } from './data/teams'
+import { roomsStore, startRooms, newRoomDialog } from './data/rooms'
 import { startChat } from './chat/chatStore'
 import { botsStore, startBots } from './data/bots'
 import { startEvents } from './data/events'
 import { inboxStore, startInbox } from './data/inbox'
-import { useStore } from './data/store'
+import { newBotDialog } from './data/ui'
+import { useStore, type Store } from './data/store'
 import { ToastProvider } from './ui/Toast'
 import { Icon } from './ui/Icon'
-import { Onboarding } from './onboard/Onboarding'
 import { WelcomePage as FirstBotPage } from './onboard/Welcome'
-import { Tour } from './onboard/Tour'
 import { loadOnboard, onboardStore } from './onboard/state'
-import { ImportBotDialog } from './settings/bot/share'
-import { ChatListPage } from './mobile/ChatListPage'
-import { NotificationsPage } from './mobile/NotificationsPage'
-import { PairPage } from './mobile/PairPage'
-import { BotProfilePage } from './mobile/BotProfilePage'
-import { NewBotPage, NewRoomPage } from './mobile/NewPages'
-import { SharePage } from './mobile/SharePage'
-import { ImportPage } from './onboard/ImportPage'
-import { CallPage } from './voice/CallPage'
-import { VOICE_PATH, VoiceSetupPage } from './voice/VoiceSetupPage'
-import { WelcomePage } from './mobile/WelcomePage'
+import { newRoutineDialog } from './routines/data'
+import { teachStartStore } from './teaching/teachingData'
+import { importBotDialog } from './settings/bot/import-store'
+
+// v1.0 效能：待我處理與對話（最常開的兩頁）跟著主程式載入；其他頁面與對話框按需載入（React.lazy），
+// 第一次打開時才下載那一頁的程式。
+type PropsOf<C> = C extends (props: infer P) => unknown ? P : never
+function page<M, K extends keyof M>(load: () => Promise<M>, name: K) {
+  return lazy(() => load().then((m) => ({ default: m[name] as ComponentType<PropsOf<M[K]>> })))
+}
+const SettingsPage = page(() => import('./settings/SettingsPage'), 'SettingsPage')
+const RoutinesPage = page(() => import('./routines/RoutinesPage'), 'RoutinesPage')
+const NewRoutineDialog = page(() => import('./routines/NewRoutineDialog'), 'NewRoutineDialog')
+const ComputerPage = page(() => import('./computer/ComputerPage'), 'ComputerPage')
+const OfficePage = page(() => import('./computer/OfficePage'), 'OfficePage')
+const BotFilesPage = page(() => import('./files/BotFilesPage'), 'BotFilesPage')
+const FilesPage = page(() => import('./files/FilesPage'), 'FilesPage')
+const NewBotDialog = page(() => import('./pages/NewBotDialog'), 'NewBotDialog')
+const DevComponentsPage = page(() => import('./pages/DevComponentsPage'), 'DevComponentsPage')
+const NewRoomDialog = page(() => import('./rooms/NewRoomDialog'), 'NewRoomDialog')
+const RoomPage = page(() => import('./rooms/RoomPage'), 'RoomPage')
+const NewTeamDialog = page(() => import('./teams/NewTeamDialog'), 'NewTeamDialog')
+const TeamMapPage = page(() => import('./teams/TeamMapPage'), 'TeamMapPage')
+const OrgPage = page(() => import('./teams/OrgPage'), 'OrgPage')
+const TeachStartDialog = page(() => import('./teaching/TeachStartDialog'), 'TeachStartDialog')
+const AgendaPage = page(() => import('./agenda/AgendaPage'), 'AgendaPage')
+const AppsPage = page(() => import('./apps/AppsPage'), 'AppsPage')
+const McpPage = page(() => import('./apps/McpPage'), 'McpPage')
+const LoginsPage = page(() => import('./apps/LoginsPage'), 'LoginsPage')
+const Onboarding = page(() => import('./onboard/Onboarding'), 'Onboarding')
+const Tour = page(() => import('./onboard/Tour'), 'Tour')
+const ImportBotDialog = page(() => import('./settings/bot/share'), 'ImportBotDialog')
+const ChatListPage = page(() => import('./mobile/ChatListPage'), 'ChatListPage')
+const NotificationsPage = page(() => import('./mobile/NotificationsPage'), 'NotificationsPage')
+const PairPage = page(() => import('./mobile/PairPage'), 'PairPage')
+const BotProfilePage = page(() => import('./mobile/BotProfilePage'), 'BotProfilePage')
+const NewBotPage = page(() => import('./mobile/NewPages'), 'NewBotPage')
+const NewRoomPage = page(() => import('./mobile/NewPages'), 'NewRoomPage')
+const SharePage = page(() => import('./mobile/SharePage'), 'SharePage')
+const CallPage = page(() => import('./voice/CallPage'), 'CallPage')
+const VoiceSetupPage = page(() => import('./voice/VoiceSetupPage'), 'VoiceSetupPage')
+const ImportPage = page(() => import('./onboard/ImportPage'), 'ImportPage')
+const WelcomePage = page(() => import('./mobile/WelcomePage'), 'WelcomePage')
+
+/** 第一次打開之後才掛上（之後一直掛著，關閉時的焦點歸還照舊）：對話框的程式等你要用時才下載。 */
+function MountWhen<T>({ store, open, children }: { store: Store<T>; open: (v: T) => boolean; children: React.ReactNode }) {
+  const v = useStore(store)
+  const [seen, setSeen] = useState(false)
+  if (!seen && open(v)) setSeen(true)
+  return seen || open(v) ? <Suspense fallback={null}>{children}</Suspense> : null
+}
+
+/** 頁面載入中：保留版面，不閃。 */
+function PageLoading() {
+  return <main className="flex flex-1" aria-busy="true" />
+}
 
 const TITLES: Record<string, string> = {
   '/office': '辦公室',
@@ -139,7 +165,11 @@ function Main() {
   // 首次設定（A03、A04）：還沒有任何 Bot、也還沒做完首次設定時，整頁顯示；讀狀態的那一下先不畫，免得閃一下首頁。
   if (onboard.status === null) return null
   if (onboard.status !== 'off' && onboard.status.first_run && !onboard.skipped) {
-    return <Onboarding onDone={() => onboardStore.set((o) => ({ ...o, skipped: true }))} />
+    return (
+      <Suspense fallback={null}>
+        <Onboarding onDone={() => onboardStore.set((o) => ({ ...o, skipped: true }))} />
+      </Suspense>
+    )
   }
   const noBots = !!bots && bots.every((b) => b.archived) && inbox !== null && inbox.length === 0
 
@@ -174,14 +204,28 @@ function Main() {
 
   return (
     <AppShell path={path} title={title}>
-      {page}
-      <NewBotDialog />
-      <NewRoutineDialog />
-      <NewRoomDialog />
-      <NewTeamDialog />
-      <ImportBotDialog />
-      <Tour />
-      <TeachStartDialog />
+      <Suspense fallback={<PageLoading />}>{page}</Suspense>
+      <MountWhen store={newBotDialog} open={(v) => v}>
+        <NewBotDialog />
+      </MountWhen>
+      <MountWhen store={newRoutineDialog} open={(v) => v.open}>
+        <NewRoutineDialog />
+      </MountWhen>
+      <MountWhen store={newRoomDialog} open={(v) => v}>
+        <NewRoomDialog />
+      </MountWhen>
+      <MountWhen store={newTeamDialog} open={(v) => v}>
+        <NewTeamDialog />
+      </MountWhen>
+      <MountWhen store={importBotDialog} open={(v) => v}>
+        <ImportBotDialog />
+      </MountWhen>
+      <MountWhen store={onboardStore} open={(v) => v.tour != null}>
+        <Tour />
+      </MountWhen>
+      <MountWhen store={teachStartStore} open={(v) => v != null}>
+        <TeachStartDialog />
+      </MountWhen>
     </AppShell>
   )
 }
@@ -190,11 +234,18 @@ export default function App() {
   const path = usePath()
   const [auth, loggedIn] = useAuth()
   // 手機掃 QR 打開的配對頁（L09）：還沒登入也要能用
-  if (path === '/pair') return <PairPage />
+  if (path === '/pair')
+    return (
+      <Suspense fallback={null}>
+        <PairPage />
+      </Suspense>
+    )
   if (path === '/dev/components') {
     return (
       <ToastProvider>
-        <DevComponentsPage />
+        <Suspense fallback={null}>
+          <DevComponentsPage />
+        </Suspense>
       </ToastProvider>
     )
   }

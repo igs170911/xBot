@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import http from 'node:http'
 import path from 'node:path'
-import { expect, test, type Page, type Route } from '@playwright/test'
+import { expect, test, type Page, type Route } from './fixtures'
 import { MockServer, settle, type Bot } from './mock'
 
 // E32 語音：K02 設定聲音、C05 語音輸入、VC-1 自動朗讀（語音訊息）、K01／L18 通話（說話→辨識→交辦→念回覆→用說的核定→掛斷）。

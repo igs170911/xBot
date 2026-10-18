@@ -11,7 +11,7 @@ import { Icon } from '../ui/Icon'
 import { StatusChip } from '../ui/Pill'
 import { useToast } from '../ui/toast-context'
 import { errText } from '../settings/format'
-import { openImportBot } from '../settings/bot/share'
+import { openImportBot } from '../settings/bot/import-store'
 
 // 還沒有 Bot（A09、BT-1、§21「建立 Bot：1 個欄位＋確認」）：一句話說要它做什麼 → 系統建議名字、職稱、它會做什麼 → 建立；
 // 下面 10 個範本點一下就建立。權限預設「先問我」。

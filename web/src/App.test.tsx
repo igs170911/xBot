@@ -131,7 +131,8 @@ it('側欄連結用前端路由換頁', async () => {
   const nav = await screen.findByRole('navigation', { name: '側欄' })
   fireEvent.click(within(nav).getByRole('link', { name: /辦公室/ }))
   expect(window.location.pathname).toBe('/office')
-  expect(screen.getByRole('heading', { level: 1, name: '辦公室' })).toBeInTheDocument()
+  // 頁面按需載入（v1.0）：等那一頁的程式載入
+  expect(await screen.findByRole('heading', { level: 1, name: '辦公室' }, { timeout: 5000 })).toBeInTheDocument()
   act(() => navigate('/'))
   // 待我處理是非同步讀的：讀完才知道「事情都處理完了」。
   expect(await screen.findByRole('heading', { level: 1, name: '早安，事情都處理完了' })).toBeInTheDocument()
@@ -215,10 +216,10 @@ it('手機抽屜：打開後焦點在關閉鈕，Esc 關掉並回到選單鈕', 
   }
 })
 
-it('/dev/components 列出元件與頭像矩陣（7 列 × 10 形狀）', () => {
+it('/dev/components 列出元件與頭像矩陣（7 列 × 10 形狀）', async () => {
   window.history.replaceState(null, '', '/dev/components')
   render(<App />)
-  expect(screen.getByRole('heading', { level: 1, name: '元件（Grok 風格 · Midnight）' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { level: 1, name: '元件（Grok 風格 · Midnight）' }, { timeout: 5000 })).toBeInTheDocument()
   const table = screen.getByRole('table', { name: '頭像形狀、眼睛與顏色' })
   expect(within(table).getAllByRole('row')).toHaveLength(8)
   expect(table.querySelectorAll('[data-shape]')).toHaveLength(70)

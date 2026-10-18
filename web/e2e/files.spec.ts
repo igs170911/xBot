@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { MockServer, opError, settle } from './mock'
 
 // C33 檔案：瀏覽、預覽（CSV 表格／原始內容、Markdown）、上傳、傳給其他 Bot、刪除、資料夾、全部檔案頁、手機 sheet、對話裡的檔案卡。

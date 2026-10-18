@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"math"
 )
 
 // ── thread ───────────────────────────────────────────
@@ -177,9 +178,13 @@ func (q *Queries) ListMessages(ctx context.Context, scope, scopeID string, befor
 	if limit <= 0 {
 		limit = -1 // 不限
 	}
+	// before 是 0 時不要寫成 (? = 0 OR seq < ?)：SQLite 看不出是範圍，往前翻得越深掃得越多（v1.0 效能）。
+	if before <= 0 {
+		before = math.MaxInt64
+	}
 	rows, err := q.r.QueryContext(ctx, `SELECT * FROM (SELECT `+messageCols+` FROM message
-		WHERE scope = ? AND scope_id = ? AND (? = 0 OR seq < ?) ORDER BY seq DESC LIMIT ?) ORDER BY seq`,
-		scope, scopeID, before, before, limit)
+		WHERE scope = ? AND scope_id = ? AND seq < ? ORDER BY seq DESC LIMIT ?) ORDER BY seq`,
+		scope, scopeID, before, limit)
 	return collect(rows, err, scanMessage)
 }
 

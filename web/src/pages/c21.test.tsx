@@ -112,7 +112,7 @@ describe('設定 → 已連線的代理', () => {
 
   it('列出代理、代為核准標籤與最近的呼叫', async () => {
     render(<App />)
-    expect(await screen.findByRole('heading', { level: 1, name: '已連線的代理（MCP）' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: '已連線的代理（MCP）' }, { timeout: 5000 })).toBeInTheDocument()
     const rows = await screen.findAllByTestId('agent-row')
     expect(rows).toHaveLength(2)
     expect(within(rows[0]).getByText('代為核准')).toBeInTheDocument()

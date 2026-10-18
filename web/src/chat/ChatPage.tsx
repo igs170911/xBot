@@ -32,6 +32,7 @@ import { ThreadMenu, type Thread } from './ThreadMenu'
 import { WorkSteps } from './WorkSteps'
 import { FirstHome, FirstTasks, useFirstHome } from '../onboard/FirstHome'
 import { startTour } from '../onboard/state'
+import { ChatAnnouncer } from './Announcer'
 import { ComputerPanel } from '../computer/ComputerPanel'
 import { useNarrow } from '../computer/hooks'
 import { useAutoRead, useAutoReadReplies } from '../voice/useChatVoice'
@@ -486,6 +487,8 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
           <p className="m-0 text-sub text-ink-2">檔案會放進它電腦的 /workspace/uploads/，送出時附上路徑</p>
         </div>
       )}
+      {/* 頁面標題給螢幕閱讀器（畫面上的名字在頁首）；空白對話的歡迎畫面自己有 h1 */}
+      {!(empty && !firstHome) && <h1 className="sr-only-text">和{name}的對話</h1>}
       {phone ? (
         <PhoneHeader bot={bot} act={act} busyElsewhere={busyElsewhere} threads={threads} threadId={threadId} onProgress={() => setProgress(true)} />
       ) : (
@@ -507,7 +510,6 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
       <div ref={scroller} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto">
         <div
           className={cx('mx-auto box-border flex min-h-full max-w-[828px] flex-col gap-3.5 px-6 pb-2 pt-3 max-sm:px-3', empty ? (firstHome ? 'justify-start pt-8' : 'justify-center') : 'justify-end')}
-          aria-live="polite"
           aria-busy={loading || undefined}
         >
           {th?.hasMore && (
@@ -529,6 +531,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
           </div>
         </div>
       </div>
+      <ChatAnnouncer key={threadId ?? ''} items={items} name={name} ready={!threadId || !!th?.loaded} />
       <ModelSettingsDialog open={modelDialog} onClose={() => setModelDialog(false)} onSaved={(m) => setModels(m)} />
       <ProgressDialog open={progress} onClose={() => setProgress(false)} bot={bot} chat={chat} threadId={threadId} act={act} botAct={botAct} />
     </main>

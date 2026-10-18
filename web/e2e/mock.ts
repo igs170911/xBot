@@ -212,6 +212,16 @@ export class MockServer {
       w.__xbotEmit = (events: unknown[]) => {
         for (const e of events) for (const s of sources) if (s.readyState === 1) s.onmessage?.({ data: JSON.stringify(e) })
       }
+      /** 模擬服務斷線（例：重啟）：連線關掉並觸發 onerror，網頁會自己重連。 */
+      w.__xbotDrop = () => {
+        for (const s of sources)
+          if (s.readyState === 1) {
+            s.readyState = 2
+            s.onerror?.()
+          }
+      }
+      /** 還開著的連線數（應該永遠只有一條）。 */
+      w.__xbotOpenSources = () => sources.filter((s) => s.readyState !== 2).length
     })
     await this.page.route('**/api/v1/**', (route) => this.handle(route))
   }

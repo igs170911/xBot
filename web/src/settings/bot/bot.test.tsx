@@ -3,7 +3,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { fakeApi, type FakeApi } from '../../test-api'
 import { ToastProvider } from '../../ui/Toast'
 import { BotSettingsPage } from '../BotSettings'
-import { ImportBotDialog, openImportBot } from './share'
+import { ImportBotDialog } from './share'
+import { openImportBot } from './import-store'
 
 const BOT = { id: 'b1', name: '小秘', title: '幕僚長', description: '每天整理重點', soul: '說話簡短', color: 'blue', shape: 'cursor', eyes: '', engine: 'hermes', model: '', fallback: '', effort: '', approval_mode: 'ask', memory_enabled: true, archived: false, primary: true, created_at: 1, updated_at: 1 }
 

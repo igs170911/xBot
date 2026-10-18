@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // W11 對話完整版：回覆排版（C07）、訊息動作與重試（C02、C11）、模型選擇器（C06）、

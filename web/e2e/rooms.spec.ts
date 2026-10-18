@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // X02：群組（D01 群組對話、D03 新增群組、D04 開場建議）與兩個 Bot 的往來（C13）。

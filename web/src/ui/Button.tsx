@@ -13,7 +13,7 @@ const VARIANT: Record<ButtonVariant, string> = {
   ghost: 'bg-transparent text-accent-ink hover:bg-control',
   // 危險：#2F2F2F 底紅字；實心紅只在確認對話框（N03、B08）。
   danger: 'bg-control text-danger hover:bg-hover',
-  'danger-solid': 'bg-danger text-white',
+  'danger-solid': 'bg-danger-solid text-white',
 }
 
 const SIZE: Record<ButtonSize, string> = {

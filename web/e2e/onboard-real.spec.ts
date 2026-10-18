@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { pastOnboarding } from './real-helpers'
 
 // W32 對著真的服務（不攔截網路）：首次設定的偵測操作回得來；分享出去的 .xbot 檔在網頁匯入，

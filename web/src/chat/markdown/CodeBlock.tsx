@@ -59,7 +59,7 @@ export function CodeBlock({ code, lang }: { code: string; lang?: string }) {
           {copied ? '已複製' : '複製'}
         </button>
       </div>
-      <pre className="m-0 overflow-x-auto px-3.5 py-3 font-mono text-[12.5px] leading-[1.7] text-[#e6e6e6]">
+      <pre tabIndex={0} className="m-0 overflow-x-auto px-3.5 py-3 font-mono text-[12.5px] leading-[1.7]">
         <code className="hl">{tree && tree.code === code ? renderTree(tree.root.children) : code}</code>
       </pre>
     </div>

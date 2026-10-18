@@ -69,7 +69,8 @@ M2 之後再加一條 **協作（Collab）**，負責 `internal/collab`、`org`�
 | `make gen` | 由操作登錄表產生前端型別等程式碼 | C03 |
 | `make dev` | 開發模式：後端熱重載＋前端 Vite | C00 |
 | `make check` | gofmt、go vet、staticcheck、go test、前端 typecheck／lint／單元測試；全過才算完成 | C00 |
-| `make test` / `make e2e` | 單元測試／Playwright 端對端測試 | C00 |
+| `make test` / `make e2e` | 單元測試／Playwright 端對端測試（e2e 每次截圖也跑 axe 無障礙檢查，另有 `a11y.spec`、`keyboard.spec`） | C00 |
+| `make bench` / `make bundle` | 後端效能基準／前端建置大小報告（數字記在 `docs/perf.md`） | v1.0 |
 | `make test-docker` | Docker 整合測試（`go test -tags docker`）：真的開一台 Bot 電腦走完生命週期；也開一台測試用遠端主機（dind＋sshd）走 SSH 轉發（B11）；沒有 Docker 或映像時略過 | B02 |
 | `make build` | 建出單一執行檔 `bin/xbot`（前端打包後嵌入），amd64 與 arm64 | C06 |
 | `make box` | 建 Bot 電腦映像 | B01 |

@@ -37,12 +37,16 @@
 
   /* 語意：填色與文字用色分開 */
   --color-accent: #1084fe;
+  /* 藍底白字（小字）用：#1084fe 配白字只有 3.6:1 */
+  --color-accent-strong: #0b6bd3;
   --color-accent-ink: #7fc0ff;
   --color-accent-soft: rgb(16 132 254 / 0.2);
   --color-focus: #459ffe;
   --color-success: #38d591;
   --color-success-soft: rgb(56 213 145 / 0.14);
-  --color-danger: #ff5667;
+  /* 文字用的紅：v1.0 由 #ff5667 調亮，深灰按鈕上的「刪除」等字才有 4.5:1；實心紅底白字用 danger-solid */
+  --color-danger: #ff7a87;
+  --color-danger-solid: #d92d3f;
   --color-danger-soft: rgb(255 86 103 / 0.14);
   --color-warning: #ff9800;
   --color-warning-ink: #ffb547;
@@ -104,10 +108,22 @@
   --color-ink-2: #5e5e5e;
   --color-ink-3: #5e5e5e;
   --color-on-ink: #ffffff;
-  --color-warning-ink: #a65f00;
   --color-sheet: #ffffff;
-  --color-accent-ink: #0a64c2;
-  --color-success: #12854f;
+  /* v1.0 無障礙：淺底與淺色小膠囊（*-soft）上的文字都要到 4.5:1（axe color-contrast） */
+  --color-accent-ink: #0a5bb0;
+  --color-success: #0d7343;
+  --color-danger: #b42234;
+  --color-danger-solid: #b42234;
+  --color-accent-strong: #0a5bb0;
+  --color-warning-ink: #8a4f00;
+  /* 程式碼高亮的淺色版 */
+  --hl-text: #1f1f1f;
+  --hl-keyword: #b3245a;
+  --hl-title: #0a5bb0;
+  --hl-number: #8a4f00;
+  --hl-string: #0d7343;
+  --hl-comment: #5e5e5e;
+  --hl-deletion: #b42234;
 }
 
 /* 手機寬度下，把小控制項的可點範圍撐到至少 44×44（外觀不變）。元素本身要 position: relative。 */
@@ -125,6 +141,25 @@
   }
 }
 
+/* 一直是深色底的區塊（Bot 電腦畫面與縮圖）：淺色主題下也用深色主題的字色，不然深底配深字（v1.0 無障礙）。 */
+@utility surface-dark {
+  [data-theme="light"] & {
+    color-scheme: dark;
+    --color-ink: #fcfcfc;
+    --color-ink-2: #fcfcfc99;
+    --color-ink-3: #fcfcfc90;
+    --color-on-ink: #070707;
+    --color-control: #2f2f2f;
+    --color-hover: #3d3d3d;
+    --color-line: #333333;
+    --color-accent-ink: #7fc0ff;
+    --color-success: #38d591;
+    --color-danger: #ff7a87;
+    --color-warning-ink: #ffb547;
+  }
+  color: var(--color-ink);
+}
+
 /* 只給螢幕閱讀器的文字 */
 @utility sr-only-text {
   position: absolute;
@@ -133,6 +168,13 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+/* 聚焦時再顯示（跳到主要內容的連結） */
+@utility not-sr-only-text {
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
 }
 
 @layer base {
@@ -177,6 +219,47 @@
     outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }
+  /* 句子裡的連結加底線：不能只靠顏色分辨（WCAG 1.4.1，axe link-in-text-block） */
+  p a[href] {
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
+    text-underline-offset: 2px;
+  }
+  /*
+   * v1.0 無障礙：手機寬度下，所有按鈕、連結、分頁的可點範圍至少 44×44（外觀不變，同 touch-target）。
+   * 放在 base 層：元件自己的 absolute／fixed、before: 樣式都蓋得過它；句子裡的連結不撐（會蓋到上下行）。
+   * 個別不要的加 class no-touch-target。e2e/a11y.spec.ts 會檢查。
+   */
+  @media (width < 40rem) {
+    :is(button, a[href], summary, [role="button"], [role="tab"], [role="radio"], [role="switch"], [role="checkbox"], [role="menuitem"], [role="option"]):not(
+        [class*="before:"],
+        .no-touch-target,
+        p a
+      ) {
+      position: relative;
+    }
+    :is(button, a[href], summary, [role="button"], [role="tab"], [role="radio"], [role="switch"], [role="checkbox"], [role="menuitem"], [role="option"]):not(
+        [class*="before:"],
+        .no-touch-target,
+        p a
+      )::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+    /* 文字欄位至少 44 高（包在 label 裡的，由 label 撐） */
+    :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"]), select, textarea):not(
+        label *,
+        .no-touch-target,
+        .sr-only-text
+      ) {
+      min-height: 44px;
+    }
+  }
 }
 
 /* 滑桿（N03）：自畫軌道與圓鈕，保留原生 range 的鍵盤與輔助功能 */
@@ -216,13 +299,26 @@
   }
 }
 
-/* 程式碼高亮（design/C07）：關鍵字粉、名稱藍、數字橘、註解灰、字串綠 */
+/* 程式碼高亮（design/C07）：關鍵字粉、名稱藍、數字橘、註解灰、字串綠。淺色主題在 [data-theme="light"] 換一組深色字。 */
+/* 用 html（比 [data-theme="light"] 低一級）放深色預設，淺色主題的覆寫才蓋得過去 */
+html {
+  --hl-text: #e6e6e6;
+  --hl-keyword: #ff8fb1;
+  --hl-title: #7fc0ff;
+  --hl-number: #ffb547;
+  --hl-string: #8fdcb4;
+  --hl-comment: #8a8a8a;
+  --hl-deletion: #ff5667;
+}
 @layer components {
+  .hl {
+    color: var(--hl-text);
+  }
   .hl .hljs-keyword,
   .hl .hljs-literal,
   .hl .hljs-selector-tag,
   .hl .hljs-doctag {
-    color: #ff8fb1;
+    color: var(--hl-keyword);
   }
   .hl .hljs-title,
   .hl .hljs-built_in,
@@ -230,7 +326,7 @@
   .hl .hljs-section,
   .hl .hljs-selector-class,
   .hl .hljs-selector-id {
-    color: #7fc0ff;
+    color: var(--hl-title);
   }
   .hl .hljs-number,
   .hl .hljs-attr,
@@ -239,21 +335,21 @@
   .hl .hljs-template-variable,
   .hl .hljs-type,
   .hl .hljs-symbol {
-    color: #ffb547;
+    color: var(--hl-number);
   }
   .hl .hljs-string,
   .hl .hljs-regexp,
   .hl .hljs-addition,
   .hl .hljs-bullet {
-    color: #8fdcb4;
+    color: var(--hl-string);
   }
   .hl .hljs-comment,
   .hl .hljs-quote,
   .hl .hljs-meta {
-    color: #8a8a8a;
+    color: var(--hl-comment);
   }
   .hl .hljs-deletion {
-    color: #ff5667;
+    color: var(--hl-deletion);
   }
   .hl .hljs-emphasis {
     font-style: italic;
@@ -269,5 +365,18 @@
   }
   [data-phone-inbox] [data-card-actions] > span:empty {
     display: none;
+  }
+}
+
+/* v1.0 無障礙（PRD §8 減少動態效果）：系統設定「減少動態效果」時，關掉轉圈、閃爍、淡入等動畫與轉場。
+ * 頭像眨眼是 SVG 動畫，另外在 Avatar 裡依同一個設定關掉。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

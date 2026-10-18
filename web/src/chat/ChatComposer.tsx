@@ -239,7 +239,8 @@ export function ChatComposer({ name, mode, onSend, onStop, hint, handle, onUploa
             />
           </>
         )}
-        <label className="flex min-w-0 flex-1">
+        {/* label 撐滿輸入列的高度（含上下留白），點輸入列任何地方都會聚焦到輸入框（手機至少 44 高） */}
+        <label className="-my-[8px] flex min-w-0 flex-1 items-center self-stretch py-[8px]">
           <span className="sr-only-text">{placeholder.replace(/…$/, '')}</span>
           <textarea
             ref={input}

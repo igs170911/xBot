@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { useReducedMotion } from './useReducedMotion'
 import {
   COLORS,
   DOT_COLORS,
@@ -69,7 +70,8 @@ export function Avatar({
   const picture = img === 'sample' ? SAMPLE_IMAGE : img || ''
   const d = resolveDot(dot, state)
   const dotColor = DOT_COLORS[d]
-  const doBlink = !picture && (st === 'idle' || st === 'working') && blink
+  const reduced = useReducedMotion()
+  const doBlink = !picture && (st === 'idle' || st === 'working') && blink && !reduced
   const k = SHAPE_IDS.indexOf(bodyId)
   const clipId = `av${uid}c`
   const eyeProps = {

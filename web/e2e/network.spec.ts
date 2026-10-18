@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // C35 內建 Tailscale 與外部入口：真的服務（預設關閉）＋假服務（已連上、Funnel 開著），截圖和 J05、P02、J12 畫板比對。

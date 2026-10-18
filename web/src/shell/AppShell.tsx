@@ -1,4 +1,4 @@
-import { useCallback, useRef, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, type ReactNode } from 'react'
 import { drawerStore } from '../data/ui'
 import { useStore } from '../data/store'
 import { useFocusTrap } from '../ui/useFocusTrap'
@@ -19,9 +19,27 @@ export function AppShell({ path, title, children }: { path: string; title: strin
   const tab = isTabPath(path)
   const onSwipe = useCallback(() => (tab ? drawerStore.set(true) : goBack(backFallback(path))), [tab, path])
   useEdgeSwipe(page, phone && !drawer, onSwipe)
+  // 分頁標題跟著頁面換（WCAG 2.4.2；螢幕閱讀器換頁時會念、瀏覽器分頁與歷史紀錄也看得出是哪一頁）
+  useEffect(() => {
+    document.title = title && title !== 'XBot' ? `${title} · XBot` : 'XBot'
+  }, [title])
 
   return (
     <div className="flex min-h-dvh bg-app">
+      {/* 跳過側欄（WCAG 2.4.1）：按 Tab 第一個出現，按下把焦點移到這一頁的主要內容 */}
+      <a
+        href="#main"
+        onClick={(e) => {
+          e.preventDefault()
+          const main = page.current?.querySelector<HTMLElement>('main')
+          if (!main) return
+          if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1')
+          main.focus()
+        }}
+        className="sr-only-text focus:not-sr-only-text fixed left-3 top-3 z-[60] rounded-full bg-ink px-4 py-2 text-ui text-on-ink"
+      >
+        跳到主要內容
+      </a>
       <div className="sticky top-0 hidden h-dvh w-[301px] flex-none border-r border-edge bg-panel md:block">
         <Sidebar path={path} />
       </div>

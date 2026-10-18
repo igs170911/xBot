@@ -235,7 +235,7 @@ export function SkillsLabPage() {
             {viewing.review.scripts.length > 0 && <span>附帶的程式：{viewing.review.scripts.join('、')}</span>}
           </div>
         )}
-        <pre className="m-0 max-h-[50vh] overflow-auto rounded-field bg-inset p-3 font-mono text-[13px] whitespace-pre-wrap">{viewing?.instructions}</pre>
+        <pre tabIndex={0} className="m-0 max-h-[50vh] overflow-auto rounded-field bg-inset p-3 font-mono text-[13px] whitespace-pre-wrap">{viewing?.instructions}</pre>
         {viewing?.files && viewing.files.length > 0 && <p className="m-0 mt-2 text-[13px] text-ink-2">附帶的檔案：{viewing.files.join('、')}</p>}
       </Dialog>
 

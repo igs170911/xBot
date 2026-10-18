@@ -55,7 +55,7 @@ export function Stage({
   return (
     <div
       className={cx(
-        'relative overflow-hidden rounded-[10px] bg-[#111111]',
+        'surface-dark relative overflow-hidden rounded-[10px] bg-[#111111]',
         control && 'ring-2 ring-accent',
         screen.request && !screen.takeover && 'ring-2 ring-warning',
         recording === 'recording' && 'ring-2 ring-danger',
@@ -107,7 +107,7 @@ export function Stage({
                   {recording === 'paused' ? '已暫停錄製' : '錄製中 · 密碼只會記成 ••••'}
                 </span>
               ) : who === 'you' ? (
-                <span className="flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-white">
+                <span className="flex items-center gap-1.5 rounded-full bg-accent-strong px-2.5 py-1 text-white">
                   <Icon icon={MousePointerClick} size={14} />
                   你正在操作 · {screen.name}已暫停
                 </span>

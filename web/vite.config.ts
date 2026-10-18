@@ -39,7 +39,22 @@ export default defineConfig({
       '/healthz': { target: api, changeOrigin: false },
     },
   },
-  build: { outDir: 'dist', emptyOutDir: true },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    rolldownOptions: {
+      output: {
+        // v1.0 效能：頁面按需載入後，主程式和各頁共用的小模組（圖示、元件、資料層）會被切成上百個小檔，
+        // 首頁要多發上百個請求。把它們併成幾個共用 chunk（首頁本來就要用到）。
+        codeSplitting: {
+          groups: [
+            { name: 'vendor', test: /node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?(?:react|react-dom|scheduler|lucide-react|marked)[\\/]/, priority: 20 },
+            { name: 'core', test: /[\\/]src[\\/](?:ui|data|api|chat|files|shell|onboard|computer|teaching|mobile[\\/](?:pwa|Phone))[\\/.]|[\\/]src[\\/](?:router|paths)\.ts/, priority: 10, minShareCount: 2 },
+          ],
+        },
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],

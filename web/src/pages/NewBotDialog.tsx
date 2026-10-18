@@ -11,7 +11,7 @@ import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
 import { TextInput } from '../ui/Field'
 import { cx } from '../ui/cx'
-import { openImportBot } from '../settings/bot/share'
+import { openImportBot } from '../settings/bot/import-store'
 
 // 新增 Bot 最簡版（W02）：名字、一句話說明、頭像形狀與顏色。
 // 「幫我想」（X05，PRD §20 用途 9）：用那一句話請快判建議名字、職稱、常駐指示（快判沒生效時用最接近的內建範本），都可以改。

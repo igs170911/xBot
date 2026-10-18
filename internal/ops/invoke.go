@@ -477,6 +477,10 @@ func (r *Registry) revertApproved(ctx context.Context, approvalID string, by Ide
 func (r *Registry) finish(ctx context.Context, call *Call, botID string, audit auditor, out json.RawMessage, claimed bool) error {
 	ctx = context.WithoutCancel(ctx) // 動作已經做了，紀錄一定要寫完
 	id, info := call.Identity, call.Op
+	if !claimed && !audit.enabled() && !info.Mutates {
+		// 你本人讀東西：沒有要寫的，不要開寫入交易（寫入只有一條連線，所有讀都會排在它後面）。
+		return nil
+	}
 	reqID := call.RequestID
 	if audit.requestID != "" {
 		reqID = audit.requestID

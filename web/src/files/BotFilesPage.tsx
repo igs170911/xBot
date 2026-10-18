@@ -23,7 +23,6 @@ import { BackButton } from '../mobile/Phone'
 // 一個 Bot 的檔案（E07 電腦面板「檔案」、手機 L19）：/bots/<id>/files?path=<檔案>&view=folder&folder=<資料夾>。
 // 預設依「成果／你上傳的／示範教學／從隊友來的」分組；也可以照資料夾瀏覽。點檔案在右邊預覽（手機從底部拉出）。
 
-export const BOT_FILES_PATH = /^\/bots\/([^/]+)\/files\/?$/
 
 type Listing = { key: string; out?: FilesListOutput; error?: string }
 
@@ -226,7 +225,7 @@ export function BotFilesPage({ botId }: { botId: string }) {
 
   const count = state?.out?.state === 'ready' ? state.out.total : null
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 max-md:flex-col md:h-dvh">
+    <main className="flex min-h-0 min-w-0 flex-1 max-md:flex-col md:h-dvh" aria-label={`${name}的檔案`}>
       <section
         aria-label={`${name}的檔案`}
         className={cx('relative flex min-h-0 flex-col border-r border-divider md:w-[380px] md:flex-none', 'max-md:flex-1')}
@@ -367,7 +366,7 @@ export function BotFilesPage({ botId }: { botId: string }) {
           }}
         />
       )}
-    </div>
+    </main>
   )
 }
 

@@ -160,7 +160,7 @@ function TimeGrid({ days, items, bots, now, onEmpty }: { days: Date[]; items: It
                 <span key={i} className="pointer-events-none absolute inset-x-0 border-t border-divider/70" style={{ top: i * HOUR_PX }} />
               ))}
               {today && now.getHours() >= START_H && now.getHours() < END_H && (
-                <span aria-label="現在" className="pointer-events-none absolute inset-x-0 z-10 flex items-center" style={{ top: top(now) }}>
+                <span role="img" aria-label="現在" className="pointer-events-none absolute inset-x-0 z-10 flex items-center" style={{ top: top(now) }}>
                   <span className="-ml-1 size-2 rounded-full bg-danger" />
                   <span className="h-[1.5px] flex-1 bg-danger" />
                 </span>

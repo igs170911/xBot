@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // W31 手機版：L01～L21 每個畫面在 Pixel 7（mobile）與 iPhone（iphone）各截一張，和 design/L*.dc.html 畫板並排比對。

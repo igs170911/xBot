@@ -222,7 +222,7 @@ export function NetworkAllow({ botId, botName, state, className }: { botId: stri
             }}
             placeholder="例：192.168.1.10、192.168.1.0/24、http://192.168.1.20:8080"
             aria-invalid={!!fieldErr || undefined}
-            className="h-9 min-w-0 rounded-field border border-line bg-inset px-3 text-ui-sm outline-none focus:border-focus"
+            className="h-9 min-w-0 rounded-field border border-line bg-inset px-3 text-ui-sm outline-none focus:border-focus max-sm:h-11"
           />
         </label>
         <Button size="sm" icon={Plus} type="submit" disabled={!draft.trim() || busy}>

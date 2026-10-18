@@ -183,19 +183,30 @@ func (d Deps) filter(in RangeIn) store.UsageFilter {
 	return f
 }
 
-func (r *Row) add(u store.UsageEntry) {
-	r.Calls++
-	r.InputTokens += u.InputTokens
-	r.OutputTokens += u.OutputTokens
-	r.CacheReadTokens += u.CacheReadTokens
-	r.CacheWriteTokens += u.CacheWriteTokens
-	r.CostMicros += u.CostMicros
-	if u.Unpriced {
-		r.UnpricedCalls++
+func (r *Row) addGroup(g store.UsageGroup) {
+	r.Calls += g.Calls
+	r.InputTokens += g.InputTokens
+	r.OutputTokens += g.OutputTokens
+	r.CacheReadTokens += g.CacheReadTokens
+	r.CacheWriteTokens += g.CacheWriteTokens
+	r.CostMicros += g.CostMicros
+	r.UnpricedCalls += g.UnpricedCalls
+	r.FallbackCalls += g.FallbackCalls
+}
+
+// dayBounds 回傳涵蓋符合條件的用量的每天 0 點（d.loc() 的時區），最後再多一個隔天 0 點；沒有用量時回空的。
+func (d Deps) dayBounds(ctx context.Context, db *store.DB, f store.UsageFilter) ([]int64, error) {
+	first, last, ok, err := db.UsageSpan(ctx, f)
+	if err != nil || !ok {
+		return nil, err
 	}
-	if u.Fallback {
-		r.FallbackCalls++
+	t := time.UnixMilli(first).In(d.loc())
+	day := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	var out []int64
+	for ; day.UnixMilli() <= last; day = day.AddDate(0, 0, 1) {
+		out = append(out, day.UnixMilli())
 	}
+	return append(out, day.UnixMilli()), nil
 }
 
 func (r *Row) finish() {
@@ -212,25 +223,30 @@ func (d Deps) summary(ctx context.Context, call *ops.Call, in RangeIn) (SummaryO
 		out.Until = d.now().UnixMilli()
 	}
 	groups := [4]map[string]*Row{{}, {}, {}, {}}
+	// 在資料庫裡依「日、Bot、供應商、模型」先合計，再併成四種分組（v1.0 效能：不逐筆讀出）。
+	days, err := d.dayBounds(ctx, call.DB, f)
+	if err != nil {
+		return SummaryOut{}, err
+	}
+	sums, err := call.DB.GroupUsage(ctx, f, days)
+	if err != nil {
+		return SummaryOut{}, err
+	}
 	loc := d.loc()
-	err := call.DB.EachUsage(ctx, f, func(u store.UsageEntry) error {
-		if !call.Identity.CanAccess(ops.ResourceBot, u.BotID) {
-			return nil
+	for _, g := range sums {
+		if !call.Identity.CanAccess(ops.ResourceBot, g.BotID) {
+			continue
 		}
-		out.Total.add(u)
-		keys := [4]string{u.BotID, u.Provider, u.Provider + "/" + u.Model, time.UnixMilli(u.CreatedAt).In(loc).Format("2006-01-02")}
+		out.Total.addGroup(g)
+		keys := [4]string{g.BotID, g.Provider, g.Provider + "/" + g.Model, time.UnixMilli(days[g.Span]).In(loc).Format("2006-01-02")}
 		for i, k := range keys {
 			r := groups[i][k]
 			if r == nil {
 				r = &Row{Key: k}
 				groups[i][k] = r
 			}
-			r.add(u)
+			r.addGroup(g)
 		}
-		return nil
-	})
-	if err != nil {
-		return SummaryOut{}, err
 	}
 	out.Total.finish()
 	names, err := botNames(ctx, call.DB)

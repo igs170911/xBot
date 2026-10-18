@@ -26,7 +26,7 @@ function Collapsible({ long, mine, children }: { long: boolean; mine: boolean; c
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={cx('relative flex h-7 items-center gap-1 self-start rounded-full bg-transparent px-2 text-meta touch-target hover:bg-black/20', mine ? 'text-white/85' : 'text-accent-ink')}
+        className={cx('relative flex h-7 items-center gap-1 self-start rounded-full bg-transparent px-2 text-meta touch-target hover:bg-black/20', mine ? 'text-ink' : 'text-accent-ink')}
       >
         {open ? '收起' : '顯示全部'}
         <Icon icon={ChevronDown} size={14} className={cx('transition-transform', open && 'rotate-180')} />
@@ -86,7 +86,7 @@ function OwnerActions({ msg }: { msg: ChatMsg }) {
 export function OwnerMessage({ msg, below }: { msg: ChatMsg; below?: ReactNode }) {
   return (
     <div className="group relative flex flex-col gap-2">
-      <div data-testid="msg-owner" className="max-w-[75%] self-end whitespace-pre-wrap break-words rounded-bubble bg-bubble-user px-4 py-2.5 text-[15px] leading-[1.6] text-white">
+      <div data-testid="msg-owner" className="max-w-[75%] self-end whitespace-pre-wrap break-words rounded-bubble bg-bubble-user px-4 py-2.5 text-[15px] leading-[1.6] text-ink">
         <Collapsible long={isLong(msg)} mine>
           {msg.content}
         </Collapsible>
@@ -108,6 +108,7 @@ export function BotMessage({ msg, last, botId }: { msg: ChatMsg; last: boolean; 
       <div
         data-testid="msg-bot"
         data-streaming={msg.streaming || undefined}
+        aria-busy={msg.streaming || undefined}
         className={cx('min-w-0 self-start rounded-bubble bg-bubble-bot text-[15px]', rich ? 'w-full px-6 pb-[22px] pt-5 leading-[1.75] max-sm:px-4 max-sm:pb-4 max-sm:pt-3.5' : 'max-w-[85%] px-4 py-2.5 leading-[1.6]')}
       >
         {msg.voice && done && <VoiceNoteBar botId={botId} msg={msg} note={msg.voice} />}

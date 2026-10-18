@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // C31：Bot 設定的人設、技能（G05）、記憶（G06），以及技能庫（J09）。用假服務測流程並截圖和畫板並排比對。
