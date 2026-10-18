@@ -10,3 +10,4 @@ web/e2e-results/
 web/playwright-report/
 *.test
 coverage.out
+.claude/
