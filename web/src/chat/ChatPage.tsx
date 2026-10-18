@@ -25,6 +25,9 @@ import { ModelPicker } from './ModelPicker'
 import { ProgressDialog } from './ProgressDialog'
 import { ThreadMenu, type Thread } from './ThreadMenu'
 import { WorkSteps } from './WorkSteps'
+import { ComputerPanel } from '../computer/ComputerPanel'
+import { useNarrow } from '../computer/hooks'
+import { computerPanelStore } from '../computer/screenData'
 
 const GAP = 30 * 60 * 1000
 
@@ -130,6 +133,8 @@ function Header({
   models,
   onSetupModels,
   onProgress,
+  computerOpen,
+  onComputer,
 }: {
   bot: Bot
   act?: Activity
@@ -139,6 +144,8 @@ function Header({
   models: ModelsGetOutput | null
   onSetupModels: () => void
   onProgress: () => void
+  computerOpen?: boolean
+  onComputer: () => void
 }) {
   const st = statusOf(bot, act, busyElsewhere)
   return (
@@ -162,7 +169,7 @@ function Header({
       <span className="flex-1" />
       <ModelPicker bot={bot} models={models} onSetup={onSetupModels} className="max-sm:max-w-[124px]" />
       <IconButton icon={FolderOpen} label={`${bot.name}的檔案`} onClick={() => navigate(`/bots/${bot.id}/files`)} />
-      <IconButton icon={Monitor} label={`${bot.name}的電腦`} onClick={() => navigate(`/bots/${bot.id}/computer`)} />
+      <IconButton icon={Monitor} label={`${bot.name}的電腦`} pressed={computerOpen} onClick={onComputer} />
       <MenuButton
         label="更多"
         align="end"
@@ -219,6 +226,12 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   }, [hasBot, botId])
   const stick = useRef(true)
   const keepFromBottom = useRef<number | null>(null)
+
+  // 電腦面板（E01）：寬螢幕放在對話右邊；窄的螢幕直接開全視窗的電腦頁。
+  const panelOpen = useStore(computerPanelStore)
+  const wide = !useNarrow('(max-width: 1179px)')
+  const showPanel = panelOpen && wide
+  const onComputer = () => (wide ? computerPanelStore.set(!panelOpen) : navigate(`/bots/${botId}/computer`))
 
   const isNew = threadParam === 'new'
   const threadId = isNew ? undefined : (threadParam ?? threads?.[0]?.id)
@@ -348,6 +361,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   const empty = !loading && items.length === 0
 
   return (
+    <div className="flex min-w-0 flex-1">
     <main className="flex h-[calc(100dvh-56px)] min-w-0 flex-1 flex-col bg-app md:h-dvh" aria-label={`和${name}的對話`}>
       <Header
         bot={bot}
@@ -358,6 +372,8 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
         models={models}
         onSetupModels={() => setModelDialog(true)}
         onProgress={() => setProgress(true)}
+        computerOpen={showPanel}
+        onComputer={onComputer}
       />
       <div ref={scroller} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto">
         <div
@@ -384,5 +400,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
       <ModelSettingsDialog open={modelDialog} onClose={() => setModelDialog(false)} onSaved={(m) => setModels(m)} />
       <ProgressDialog open={progress} onClose={() => setProgress(false)} bot={bot} chat={chat} threadId={threadId} act={act} botAct={botAct} />
     </main>
+    {showPanel && <ComputerPanel key={bot.id} bot={bot} />}
+    </div>
   )
 }

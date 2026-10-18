@@ -11,6 +11,8 @@ import { SettingsPage } from './settings/SettingsPage'
 import { NewRoutineDialog } from './routines/NewRoutineDialog'
 import { ROUTINES_PATH, RoutinesPage } from './routines/RoutinesPage'
 import { ChatPage } from './chat/ChatPage'
+import { ComputerPage } from './computer/ComputerPage'
+import { OfficePage } from './computer/OfficePage'
 import { registerActivityCard, registerPeerCard } from './chat/peer'
 import { registerChatCards } from './files/register'
 import { BOT_FILES_PATH, BotFilesPage } from './files/BotFilesPage'
@@ -103,6 +105,8 @@ function Main() {
   else if (botFiles) page = <BotFilesPage key={botFiles[1]} botId={botFiles[1]} />
   else if (path === '/files') page = <FilesPage />
   else if (bot) page = <ChatPage key={bot[1]} botId={bot[1]} threadParam={bot[2]} />
+  else if (computer) page = <ComputerPage key={computer[1]} botId={computer[1]} />
+  else if (path === '/office') page = <OfficePage />
   else if (ROUTINES_PATH.test(path)) page = <RoutinesPage path={path} />
   else if (room) page = <RoomPage key={room[1]} roomId={room[1]} />
   else if (path === '/teams') page = <TeamMapPage />

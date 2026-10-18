@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowRight, Check, Clock, RotateCcw, ShieldCheck, SquareTerminal, TriangleAlert, Undo2 } from 'lucide-react'
+import { ArrowRight, Check, Clock, Hand, RotateCcw, ShieldCheck, SquareTerminal, TriangleAlert, Undo2 } from 'lucide-react'
 import { Avatar } from '../ui/Avatar'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
@@ -16,6 +16,7 @@ import { useStore } from '../data/store'
 import { AskCard } from '../chat/AskCard'
 import { askFromItem } from '../chat/ask'
 import { AgendaCard } from '../agenda/AgendaCard'
+import { linkClick } from '../router'
 
 // 待我處理（design/Main、F08、C08～C10、L02）：真的卡片來自 xbot.inbox.list。
 //   - Bot 在對話裡的提問（核准指令、補充問題、密碼）：和對話裡同一張 AskCard，回覆走 xbot.chat.respond。
@@ -270,6 +271,23 @@ function InfoItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
   )
 }
 
+/** Bot 請你接手電腦（B14：登入、驗證碼）：「接手電腦」直接到全視窗的電腦頁（E02）。 */
+function TakeoverItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
+  const to = item.bot_id ? `/bots/${item.bot_id}/computer` : '/office'
+  return (
+    <Card data-testid="inbox-item" data-kind={item.kind} layout="flex flex-wrap items-center gap-x-3 gap-y-2.5 py-3 pl-[18px] pr-3.5">
+      <div className="flex min-w-0 flex-[999_1_300px] flex-col gap-1">
+        <Head bot={bot} chip="等你接手" tone="warning" sub={`${item.title} · ${sinceLabel(item.created_at)}`} />
+        {item.body && <p className="m-0 pl-11 text-sub text-ink-2">{item.body}</p>}
+      </div>
+      <a href={to} onClick={linkClick(to)} className="inline-flex h-9 flex-none items-center gap-2 rounded-full bg-ink pl-3 pr-3.5 text-ui text-on-ink">
+        <Icon icon={Hand} size={16} />
+        接手電腦
+      </a>
+    </Card>
+  )
+}
+
 /** 過期的提問（L14）：顯示已過期，可以請它再問一次。 */
 function ExpiredItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
   const [busy, setBusy] = useState(false)
@@ -348,6 +366,7 @@ function RealItem({ item, bots }: { item: InboxItem; bots: Bot[] | null }) {
     )
   }
   if (item.kind === 'approval' && item.ref) return <ApprovalItem item={item} bot={bot} />
+  if (item.kind === 'takeover') return <TakeoverItem item={item} bot={bot} />
   return <InfoItem item={item} bot={bot} />
 }
 
