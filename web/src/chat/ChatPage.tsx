@@ -27,6 +27,12 @@ const GAP = 30 * 60 * 1000
 
 // ── 訊息 ─────────────────────────────────────────────
 
+/** 隊友交辦、群組裡 Bot 回 [silent]（後面 40 字內）＝不發言，不顯示（LazyBoy is_silent）。 */
+function isSilentText(c: string): boolean {
+  const t = c.trim().replace(/^`+|`+$/g, '').trim()
+  return t.toLowerCase().startsWith('[silent]') && t.length < 48
+}
+
 function Stamp({ at }: { at: number }) {
   return <span className="self-center pt-1.5 text-meta text-ink-3">{stampLabel(at)}</span>
 }
@@ -44,6 +50,7 @@ function Messages({ items, bot, threadId, onRetry, canRetry }: { items: ChatItem
       continue
     }
     const m = it.msg
+    if (m.silent || (m.sender !== 'owner' && !m.streaming && isSilentText(m.content))) continue
     if (m.createdAt && m.seq !== Number.MAX_SAFE_INTEGER && (!last || m.createdAt - last > GAP)) out.push(<Stamp key={'t' + m.id} at={m.createdAt} />)
     if (m.createdAt) last = m.createdAt
     // 進行中：進度接在回覆下面（C01，最新的動態靠近輸入框）；做完：摺疊的步驟放在回答上面（C02）

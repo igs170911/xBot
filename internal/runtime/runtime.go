@@ -87,6 +87,12 @@ type Runtime struct {
 	o   Options
 	log *slog.Logger
 
+	// dispatchMu 讓「收下一件工作」和「Bot 空下來開始下一件」不會交錯（排隊、優先順序，LP-1）。
+	dispatchMu sync.Mutex
+
+	hookMu sync.RWMutex
+	hook   Hooks
+
 	mu        sync.Mutex
 	active    map[string]*turn          // botID → 進行中的一輪
 	closing   map[string]*turn          // taskID → 已經釋放 Bot、還在收尾的一輪（Wait 要等它寫完）
@@ -119,11 +125,44 @@ func New(o Options) *Runtime {
 // Bus 回傳事件匯流排。
 func (r *Runtime) Bus() *events.Bus { return r.o.Bus }
 
+// Hooks 讓協作層（internal/collab，X02）接上 runtime。每個欄位都可以是 nil。
+type Hooks struct {
+	// Prompt 在一件工作真的開始時組出要送給引擎的文字（例：群組座位輪到時才讀新的群組訊息，LazyBoy room_prompt）。
+	// ok=false 時用 task.Input；回錯誤時這一輪以失敗結束。
+	Prompt func(ctx context.Context, task store.Task) (prompt string, ok bool, err error)
+	// Finished 在一件工作結束後呼叫（含排隊中被取消的）：把回覆送回等它的 Bot、貼到群組（LazyBoy collab.finished）。
+	// 呼叫時 Bot 已經空下來，可以再交辦工作。
+	Finished func(task store.Task, verdict, text string)
+	// Stopped 在 Stop 停下一個 Bot 的工作後呼叫（停止連鎖，LP-6）。
+	Stopped func(botID string, taskIDs []string)
+	// Silent 回答這一輪的回覆要不要藏起來（隊友交辦、群組裡回 [silent] 的；群組已刪除的）。
+	Silent func(taskID, verdict, text string) bool
+}
+
+// SetHooks 接上協作層。
+func (r *Runtime) SetHooks(h Hooks) {
+	r.hookMu.Lock()
+	r.hook = h
+	r.hookMu.Unlock()
+}
+
+func (r *Runtime) hooks() Hooks {
+	r.hookMu.RLock()
+	defer r.hookMu.RUnlock()
+	return r.hook
+}
+
+// attended：你自己交辦的，或你在群組發言叫醒的（不是低優先的群組座位）。其餘是無人在場的工作（LazyBoy unattended）。
+func (t *turn) attended() bool {
+	return t.source == SourceOwner || (t.source == SourceRoom && !t.lowPriority)
+}
+
 // turn 是進行中的一輪。
 type turn struct {
 	botID, threadID, taskID string
 	botName                 string
-	source                  string // owner / bot / routine / webhook：不是 owner 的是無人在場的工作，提問會過期
+	source                  string // owner / bot / room / routine / webhook：不是 owner 的是無人在場的工作，提問會過期
+	lowPriority             bool   // Bot 交辦、群組接力（你的訊息會排在它後面第一個）
 	input                   string
 	cancel                  context.CancelFunc
 	done                    chan struct{}
@@ -154,6 +193,8 @@ type ChatResult struct {
 	ThreadID  string `json:"thread_id"`
 	TaskID    string `json:"task_id"`
 	MessageID string `json:"message_id"` // 使用者那則訊息
+	// Queued：Bot 正在做別的事，這件工作在排隊（做完前面的才開始；你的訊息排在 Bot 交辦的前面，LP-1）。
+	Queued bool `json:"queued,omitempty"`
 }
 
 // Chat 把使用者的訊息交給 Bot。threadID 空白時開一條新的對話串。
@@ -162,22 +203,46 @@ func (r *Runtime) Chat(ctx context.Context, botID, threadID, text string) (ChatR
 	return r.Start(ctx, ChatRequest{BotID: botID, ThreadID: threadID, Text: text})
 }
 
+// 任務來源（task.source）。
+const (
+	SourceOwner   = "owner"
+	SourceBot     = "bot"  // 隊友傳來的工作（X02）
+	SourceRoom    = "room" // 群組座位的一輪（X02）
+	SourceRoutine = "routine"
+	SourceWebhook = "webhook"
+)
+
 // ChatRequest 是交給 Bot 的一件工作。
 type ChatRequest struct {
 	BotID, ThreadID, Text string
-	// Source 是誰交辦的：owner（預設，你自己）、bot、routine、webhook。不是 owner 的算無人在場，提問會過期（PRD §18）。
+	// Source 是誰交辦的：owner（預設，你自己）、bot、room、routine、webhook。
+	// 不是 owner 的算無人在場（你在群組發言叫醒的除外），提問會過期（PRD §18）。
 	Source string
+	// Prompt 是送給引擎的文字；空白時用 Text。Text 是對話裡顯示的那一則（例：隊友傳話的原文，Prompt 是加了資料框架的版本）。
+	Prompt string
+	// Sender、Kind 是對話裡那則訊息的發送者與種類；空白時是 owner、text。
+	Sender, Kind string
+	// MessageMeta 會併進那則訊息的 meta（task_id 之外的欄位，例：peer）。
+	MessageMeta map[string]any
+	// TaskMeta 是任務的 meta（例：隊友傳話的 hop、chain，群組的 room_id、round）。
+	TaskMeta json.RawMessage
+	// LowPriority：Bot 交辦、群組接力是低優先，排在你的訊息後面（LP-1）。
+	LowPriority bool
+	// Queue：Bot 正在忙時排隊，不回 ErrBusy。你的訊息遇到 Bot 在做低優先的工作時一律排隊（排在第一個）。
+	Queue bool
+	// Title 是開新對話串時的標題；空白時用 Text 開頭。
+	Title string
 	// Actor 是誰送出這則訊息（owner、agent:<權杖 id>）；ActorName 是顯示名稱、Via 是從哪裡來（mcp、http…）。
 	// 代理送的記在訊息與工作的 meta 裡：介面標「由 ○○（MCP）傳送」（MCP-13），每日花費算到代理頭上（MCP-12）。
 	Actor, ActorName, Via string
 }
 
-// Start 和 Chat 一樣，但可以指定交辦來源。
+// Start 和 Chat 一樣，但可以指定交辦來源、優先順序與排隊。
 func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error) {
 	botID, threadID, text := req.BotID, req.ThreadID, strings.TrimSpace(req.Text)
 	source := req.Source
 	if source == "" {
-		source = "owner"
+		source = SourceOwner
 	}
 	if text == "" {
 		return ChatResult{}, errors.New("訊息是空的")
@@ -200,7 +265,11 @@ func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error
 	}
 	var th store.Thread
 	if threadID == "" {
-		if th, err = r.o.DB.CreateThread(ctx, store.Thread{BotID: botID, Title: title(text)}); err != nil {
+		t := req.Title
+		if t == "" {
+			t = title(text)
+		}
+		if th, err = r.o.DB.CreateThread(ctx, store.Thread{BotID: botID, Title: t}); err != nil {
 			return ChatResult{}, err
 		}
 	} else {
@@ -211,58 +280,157 @@ func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error
 			return ChatResult{}, fmt.Errorf("對話串不屬於這個 Bot：%w", store.ErrNotFound)
 		}
 	}
+	prompt := strings.TrimSpace(req.Prompt)
+	if prompt == "" {
+		prompt = text
+	}
+	sender, kind := req.Sender, req.Kind
+	if sender == "" {
+		sender = "owner"
+	}
 
+	r.dispatchMu.Lock()
+	defer r.dispatchMu.Unlock()
 	r.mu.Lock()
-	if _, busy := r.active[botID]; busy {
-		r.mu.Unlock()
+	cur := r.active[botID]
+	r.mu.Unlock()
+	if cur != nil && !req.Queue && (source != SourceOwner || !cur.lowPriority) {
 		return ChatResult{}, ErrBusy
 	}
-	runCtx, cancel := context.WithCancel(context.Background())
-	t := &turn{botID: botID, threadID: th.ID, botName: b.Name, source: source, input: text, cancel: cancel, done: make(chan struct{})}
-	r.active[botID] = t
-	r.mu.Unlock()
-
 	var task store.Task
 	var msg store.Message
 	err = r.o.DB.Tx(ctx, func(q *store.Queries) error {
 		var err error
-		var taskMeta json.RawMessage
+		taskMeta := req.TaskMeta
 		if req.Actor != "" && req.Actor != "owner" {
-			taskMeta, _ = json.Marshal(map[string]string{"actor": req.Actor})
+			m := map[string]any{}
+			_ = json.Unmarshal(taskMeta, &m)
+			m["actor"] = req.Actor
+			taskMeta, _ = json.Marshal(m)
 		}
-		if task, err = q.CreateTask(ctx, store.Task{BotID: botID, ThreadID: th.ID, Source: source, State: store.TaskQueued, Input: text, Meta: taskMeta}); err != nil {
+		if task, err = q.CreateTask(ctx, store.Task{BotID: botID, ThreadID: th.ID, Source: source, State: store.TaskQueued, Input: prompt,
+			LowPriority: req.LowPriority, Meta: taskMeta}); err != nil {
 			return err
 		}
-		m := map[string]string{"task_id": task.ID}
-		if req.Actor != "" && req.Actor != "owner" {
-			m["actor"], m["actor_name"], m["via"] = req.Actor, req.ActorName, req.Via
+		meta := map[string]any{}
+		for k, v := range req.MessageMeta {
+			meta[k] = v
 		}
-		meta, _ := json.Marshal(m)
-		msg, err = q.AddMessage(ctx, store.Message{Scope: store.ScopeThread, ScopeID: th.ID, Sender: "owner", Content: text, Meta: meta})
+		meta["task_id"] = task.ID
+		if req.Actor != "" && req.Actor != "owner" {
+			meta["actor"], meta["actor_name"], meta["via"] = req.Actor, req.ActorName, req.Via
+		}
+		rawMeta, _ := json.Marshal(meta)
+		msg, err = q.AddMessage(ctx, store.Message{Scope: store.ScopeThread, ScopeID: th.ID, Sender: sender, Kind: kind, Content: text, Meta: rawMeta})
 		return err
 	})
 	if err != nil {
-		r.mu.Lock()
-		delete(r.active, botID)
-		r.mu.Unlock()
-		cancel()
 		return ChatResult{}, err
 	}
-	r.mu.Lock()
-	t.taskID = task.ID
-	r.mu.Unlock()
-	r.emit(t, KindMessageCreated, msg, true)
-	go r.run(runCtx, t, th, b.Name, b.ApprovalMode, ref)
-	return ChatResult{ThreadID: th.ID, TaskID: task.ID, MessageID: msg.ID}, nil
+	r.publish(botID, th.ID, task.ID, KindMessageCreated, msg, true)
+	started := r.next(botID)
+	if started != task.ID {
+		r.publish(botID, th.ID, task.ID, KindTaskState, map[string]string{"state": store.TaskQueued}, true)
+	}
+	return ChatResult{ThreadID: th.ID, TaskID: task.ID, MessageID: msg.ID, Queued: started != task.ID}, nil
 }
 
-// run 在背景完成一輪：開（或接回）引擎 session（必要時開機）、送出訊息；之後由 consume 處理事件直到 done。
-func (r *Runtime) run(ctx context.Context, t *turn, th store.Thread, botName, mode string, ref ModelRef) {
-	r.setState(t, store.TaskWaitingBox)
-	title := botName
-	if th.Title != "" {
-		title = botName + " · " + th.Title
+// next 在 Bot 空下來時開始排隊中的下一件工作：你的訊息優先，其餘依先來後到（LazyBoy next_task）。
+// 呼叫時要拿著 dispatchMu。回傳開始的任務 id（沒有開始任何工作時是空白）。
+func (r *Runtime) next(botID string) string {
+	r.mu.Lock()
+	busy := r.active[botID] != nil
+	r.mu.Unlock()
+	if busy {
+		return ""
 	}
+	tasks, err := r.o.DB.ListTasks(context.Background(), botID, true)
+	if err != nil {
+		r.log.Warn("讀排隊中的工作失敗", "bot", botID, "err", err)
+		return ""
+	}
+	var pick *store.Task
+	for i := range tasks {
+		t := &tasks[i]
+		if t.State != store.TaskQueued {
+			continue
+		}
+		if pick == nil {
+			pick = t
+		}
+		if !t.LowPriority {
+			pick = t
+			break
+		}
+	}
+	if pick == nil {
+		return ""
+	}
+	r.begin(*pick)
+	return pick.ID
+}
+
+// kick 在 Bot 空下來時開始下一件排隊中的工作。
+func (r *Runtime) kick(botID string) {
+	r.dispatchMu.Lock()
+	defer r.dispatchMu.Unlock()
+	r.next(botID)
+}
+
+// begin 讓一件排隊中的工作成為 Bot 正在進行的一輪，在背景開始。呼叫時要拿著 dispatchMu。
+func (r *Runtime) begin(task store.Task) {
+	runCtx, cancel := context.WithCancel(context.Background())
+	t := &turn{botID: task.BotID, threadID: task.ThreadID, taskID: task.ID, source: task.Source, lowPriority: task.LowPriority,
+		input: task.Input, cancel: cancel, done: make(chan struct{})}
+	r.mu.Lock()
+	r.active[task.BotID] = t
+	r.mu.Unlock()
+	go r.run(runCtx, t)
+}
+
+// run 在背景完成一輪：讀 Bot 與模型、開（或接回）引擎 session（必要時開機）、送出訊息；之後由 consume 處理事件直到 done。
+func (r *Runtime) run(ctx context.Context, t *turn) {
+	b, err := r.o.DB.GetBot(ctx, t.botID)
+	if err == nil && b.Archived {
+		err = errors.New("這個 Bot 已封存")
+	}
+	if err != nil {
+		r.finishErr(t, err)
+		return
+	}
+	t.mu.Lock()
+	t.botName = b.Name
+	t.mu.Unlock()
+	th, err := r.o.DB.GetThread(ctx, t.threadID)
+	if err != nil {
+		r.finishErr(t, err)
+		return
+	}
+	ref, err := r.o.Models.ResolveModel(ctx, b)
+	if err == nil && r.o.Budget != nil {
+		err = r.o.Budget(ctx, t.botID, ref.Provider)
+	}
+	if err != nil {
+		r.finishErr(t, err)
+		return
+	}
+	if h := r.hooks(); h.Prompt != nil {
+		task, err := r.o.DB.GetTask(ctx, t.taskID)
+		if err == nil {
+			var p string
+			var ok bool
+			if p, ok, err = h.Prompt(ctx, task); ok && err == nil {
+				t.mu.Lock()
+				t.input = p
+				t.mu.Unlock()
+			}
+		}
+		if err != nil {
+			r.finishErr(t, err)
+			return
+		}
+	}
+	r.setState(t, store.TaskWaitingBox)
 	if r.o.Admit != nil {
 		release, err := r.o.Admit(ctx, t.botID, func(w any) {
 			// 還在等電腦（主機離線／滿了）：狀態仍是 waiting_box，介面依 wait 顯示「主機離線」或「等電腦空出來」。
@@ -274,7 +442,11 @@ func (r *Runtime) run(ctx context.Context, t *turn, th store.Thread, botName, mo
 		}
 		defer release()
 	}
-	s, err := r.o.Driver.Start(ctx, engine.StartOptions{BotID: t.botID, ThreadID: t.threadID, Resume: th.EngineSession, Title: title, Model: ref.Model, Mode: mode})
+	title := b.Name
+	if th.Title != "" {
+		title = b.Name + " · " + th.Title
+	}
+	s, err := r.o.Driver.Start(ctx, engine.StartOptions{BotID: t.botID, ThreadID: t.threadID, Resume: th.EngineSession, Title: title, Model: ref.Model, Mode: b.ApprovalMode})
 	if err != nil {
 		r.finishErr(t, err)
 		return
@@ -295,6 +467,7 @@ func (r *Runtime) run(ctx context.Context, t *turn, th store.Thread, botName, mo
 	t.mu.Lock()
 	t.session, t.messageID = s, msg.ID
 	stopping := t.stopping
+	input := t.input
 	t.mu.Unlock()
 	r.emit(t, KindMessageCreated, msg, true)
 	if stopping {
@@ -305,7 +478,7 @@ func (r *Runtime) run(ctx context.Context, t *turn, th store.Thread, botName, mo
 	t.mu.Lock()
 	t.seen = time.Now()
 	t.mu.Unlock()
-	if err := r.o.Driver.Send(ctx, s, engine.Message{Text: t.input}); err != nil {
+	if err := r.o.Driver.Send(ctx, s, engine.Message{Text: input}); err != nil {
 		r.finishErr(t, err)
 		return
 	}
@@ -496,7 +669,11 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	}
 	ctx := context.Background()
 	if msgID != "" {
-		meta, _ := json.Marshal(map[string]any{"task_id": t.taskID, "status": status})
+		fields := map[string]any{"task_id": t.taskID, "status": status}
+		if h := r.hooks(); h.Silent != nil && h.Silent(t.taskID, verdict, final) {
+			fields["silent"] = true // 隊友、群組裡回 [silent] 的：不顯示（LazyBoy finish）
+		}
+		meta, _ := json.Marshal(fields)
 		if err := r.o.DB.UpdateMessage(ctx, msgID, final, nil, meta); err != nil {
 			r.log.Warn("寫入回覆失敗", "message", msgID, "err", err)
 		}
@@ -526,11 +703,27 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	}
 	r.emit(t, KindTaskState, map[string]string{"state": store.TaskDone, "verdict": verdict}, true)
 	r.emit(t, KindDone, map[string]string{"message_id": msgID, "status": status, "verdict": verdict, "text": final}, true)
+	r.finished(t.taskID, verdict, final)
 	t.cancel()
 	close(t.done)
 	r.mu.Lock()
 	delete(r.closing, t.taskID)
 	r.mu.Unlock()
+	r.kick(t.botID)
+}
+
+// finished 呼叫協作層的 Finished（回覆送回、貼到群組）。
+func (r *Runtime) finished(taskID, verdict, text string) {
+	h := r.hooks()
+	if h.Finished == nil {
+		return
+	}
+	task, err := r.o.DB.GetTask(context.Background(), taskID)
+	if err != nil {
+		r.log.Warn("讀結束的工作失敗", "task", taskID, "err", err)
+		return
+	}
+	h.Finished(task, verdict, text)
 }
 
 func (r *Runtime) setState(t *turn, state string) {
@@ -542,14 +735,19 @@ func (r *Runtime) setState(t *turn, state string) {
 
 // emit 發布一個事件；persist 時先寫進 event 表，帶著流水號發布。
 func (r *Runtime) emit(t *turn, kind string, payload any, persist bool) {
+	r.publish(t.botID, t.threadID, t.taskID, kind, payload, persist)
+}
+
+// publish 發布一個 Bot 的事件；persist 時先寫進 event 表，帶著流水號發布。
+func (r *Runtime) publish(botID, threadID, taskID, kind string, payload any, persist bool) {
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		r.log.Error("事件無法轉成 JSON", "kind", kind, "err", err)
 		return
 	}
-	e := events.Event{Kind: kind, BotID: t.botID, ThreadID: t.threadID, TaskID: t.taskID, Payload: raw, At: time.Now().UnixMilli()}
+	e := events.Event{Kind: kind, BotID: botID, ThreadID: threadID, TaskID: taskID, Payload: raw, At: time.Now().UnixMilli()}
 	if persist {
-		row, err := r.o.DB.AppendEvent(context.Background(), store.Event{BotID: t.botID, ThreadID: t.threadID, TaskID: t.taskID, Kind: kind, Payload: raw})
+		row, err := r.o.DB.AppendEvent(context.Background(), store.Event{BotID: botID, ThreadID: threadID, TaskID: taskID, Kind: kind, Payload: raw})
 		if err != nil {
 			r.log.Warn("寫入事件失敗", "kind", kind, "err", err)
 		} else {
@@ -559,15 +757,77 @@ func (r *Runtime) emit(t *turn, kind string, payload any, persist bool) {
 	r.o.Bus.Publish(e)
 }
 
-// Stop 停止 Bot 正在進行的一輪（threadID 不是空白時，只停那條對話串的）。沒有在進行時回傳 false。
-// 停止後仍會收到 verdict=cancelled 的 chat.done。
+// Stop 停止 Bot 的工作（threadID 不是空白時，只停那條對話串的）：正在進行的一輪，以及排隊中的工作
+// （LazyBoy stop）。沒有東西可停時回傳 false。停止後仍會收到 verdict=cancelled 的 chat.done。
+// 停下的工作派給其他 Bot 的子工作也會一起停（停止連鎖，LP-6，由 Hooks.Stopped 處理）。
 func (r *Runtime) Stop(ctx context.Context, botID, threadID string) (bool, error) {
+	var stopped []string
+	tasks, err := r.o.DB.ListTasks(ctx, botID, true)
+	if err != nil {
+		return false, err
+	}
+	for _, task := range tasks {
+		if task.State == store.TaskQueued && (threadID == "" || task.ThreadID == threadID) && r.cancelQueued(task) {
+			stopped = append(stopped, task.ID)
+		}
+	}
 	r.mu.Lock()
 	t := r.active[botID]
 	r.mu.Unlock()
-	if t == nil || (threadID != "" && t.threadID != threadID) {
+	var stopErr error
+	if t != nil && (threadID == "" || t.threadID == threadID) {
+		var ok bool
+		if ok, stopErr = r.stopTurn(ctx, t); ok {
+			stopped = append(stopped, t.taskID)
+		}
+	}
+	if h := r.hooks(); h.Stopped != nil && len(stopped) > 0 {
+		h.Stopped(botID, stopped)
+	}
+	return len(stopped) > 0, stopErr
+}
+
+// StopTask 只停一件工作（隊友交辦的、群組座位的一輪），不碰 Bot 的其他工作（LazyBoy stop_task）。
+func (r *Runtime) StopTask(ctx context.Context, taskID string) (bool, error) {
+	task, err := r.o.DB.GetTask(ctx, taskID)
+	if err != nil {
+		return false, err
+	}
+	if task.State == store.TaskDone {
 		return false, nil
 	}
+	if task.State == store.TaskQueued && r.cancelQueued(task) {
+		return true, nil
+	}
+	r.mu.Lock()
+	t := r.active[task.BotID]
+	r.mu.Unlock()
+	if t == nil || t.taskID != taskID {
+		return false, nil
+	}
+	return r.stopTurn(ctx, t)
+}
+
+// cancelQueued 取消一件還在排隊的工作；已經開始了就不動。
+func (r *Runtime) cancelQueued(task store.Task) bool {
+	r.dispatchMu.Lock()
+	ok, err := r.o.DB.SetTaskCancelledIfQueued(context.Background(), task.ID)
+	r.dispatchMu.Unlock()
+	if err != nil {
+		r.log.Warn("取消排隊中的工作失敗", "task", task.ID, "err", err)
+		return false
+	}
+	if !ok {
+		return false
+	}
+	r.publish(task.BotID, task.ThreadID, task.ID, KindTaskState, map[string]string{"state": store.TaskDone, "verdict": VerdictCancelled}, true)
+	r.publish(task.BotID, task.ThreadID, task.ID, KindDone, map[string]string{"status": engine.StatusInterrupted, "verdict": VerdictCancelled}, true)
+	r.finished(task.ID, VerdictCancelled, "")
+	return true
+}
+
+// stopTurn 停止進行中的一輪。
+func (r *Runtime) stopTurn(ctx context.Context, t *turn) (bool, error) {
 	t.mu.Lock()
 	if t.finished {
 		t.mu.Unlock()
@@ -596,6 +856,48 @@ func (r *Runtime) Stop(ctx context.Context, botID, threadID string) (bool, error
 		return true, err
 	}
 	return true, nil
+}
+
+// Busy 回答 Bot 是不是正在做事；lowPriority 表示正在做的是 Bot 交辦或群組接力（你的訊息會排在它後面第一個）。
+func (r *Runtime) Busy(botID string) (busy, lowPriority bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if t := r.active[botID]; t != nil {
+		return true, t.lowPriority
+	}
+	return false, false
+}
+
+// VerdictInterrupted 是服務重開時還沒做完的工作（LazyBoy interrupted）：沒有自動重播，等它的 Bot 會收到「做到一半被中斷」。
+const VerdictInterrupted = "interrupted"
+
+// RecoverTasks 在服務啟動時（接上 Hooks 之後）收掉上次沒做完的工作，並開始排隊中的工作（AA-10）。
+func (r *Runtime) RecoverTasks(ctx context.Context) error {
+	tasks, err := r.o.DB.ListOpenTasks(ctx)
+	if err != nil {
+		return err
+	}
+	bots := map[string]bool{}
+	for _, task := range tasks {
+		r.mu.Lock()
+		running := r.active[task.BotID] != nil && r.active[task.BotID].taskID == task.ID
+		r.mu.Unlock()
+		if running {
+			continue
+		}
+		if task.State != store.TaskQueued {
+			if err := r.o.DB.SetTaskState(ctx, task.ID, store.TaskDone, VerdictInterrupted); err != nil {
+				return err
+			}
+			r.publish(task.BotID, task.ThreadID, task.ID, KindTaskState, map[string]string{"state": store.TaskDone, "verdict": VerdictInterrupted}, true)
+			r.finished(task.ID, VerdictInterrupted, "")
+		}
+		bots[task.BotID] = true
+	}
+	for id := range bots {
+		r.kick(id)
+	}
+	return nil
 }
 
 // watch 是一輪的看門狗（CH-12，照 LazyBoy runtime.watch()）：太久沒有任何事件（有工具在跑時給長一點）就送中斷；
@@ -672,27 +974,38 @@ func (r *Runtime) Active(botID string) (threadID, taskID string) {
 	return "", ""
 }
 
-// Wait 等任務結束（或 ctx 結束），回傳任務的最後狀態。
+// Wait 等任務結束（或 ctx 結束），回傳任務的最後狀態。排隊中的工作會等它開始、做完。
 func (r *Runtime) Wait(ctx context.Context, taskID string) (store.Task, error) {
-	r.mu.Lock()
-	var done chan struct{}
-	for _, t := range r.active {
-		if t.taskID == taskID {
+	for {
+		r.mu.Lock()
+		var done chan struct{}
+		for _, t := range r.active {
+			if t.taskID == taskID {
+				done = t.done
+			}
+		}
+		if t := r.closing[taskID]; t != nil {
 			done = t.done
 		}
-	}
-	if t := r.closing[taskID]; t != nil {
-		done = t.done
-	}
-	r.mu.Unlock()
-	if done != nil {
+		r.mu.Unlock()
+		if done != nil {
+			select {
+			case <-done:
+			case <-ctx.Done():
+				return store.Task{}, ctx.Err()
+			}
+			return r.o.DB.GetTask(ctx, taskID)
+		}
+		task, err := r.o.DB.GetTask(ctx, taskID)
+		if err != nil || task.State != store.TaskQueued {
+			return task, err
+		}
 		select {
-		case <-done:
 		case <-ctx.Done():
 			return store.Task{}, ctx.Err()
+		case <-time.After(20 * time.Millisecond):
 		}
 	}
-	return r.o.DB.GetTask(ctx, taskID)
 }
 
 // title 用訊息開頭當新對話串的標題。

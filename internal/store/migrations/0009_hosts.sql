@@ -1,4 +1,4 @@
--- 0008（B12）：遠端主機（SSH）的連線設定、健康狀態，以及每個 Bot 放在哪台主機（CL-1）。
+-- 0009（B12）：遠端主機（SSH）的連線設定、健康狀態，以及每個 Bot 放在哪台主機（CL-1）。
 --
 -- host.status 要多一個 failed（主機金鑰不符等要人處理的狀態），SQLite 不能改 CHECK，只好換表。
 -- box.host_id 參照 host（ON DELETE RESTRICT），直接 DROP host 會被擋，所以 box 也一起換表：

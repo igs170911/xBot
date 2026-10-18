@@ -23,6 +23,7 @@ type Runtime interface {
 	Start(ctx context.Context, req runtime.ChatRequest) (runtime.ChatResult, error)
 	Stop(ctx context.Context, botID, threadID string) (bool, error)
 	Active(botID string) (threadID, taskID string)
+	Busy(botID string) (busy, lowPriority bool)
 	Bus() *events.Bus
 	Respond(ctx context.Context, itemID string, a runtime.Answer, by string) (store.InboxItem, error)
 	AskAgain(ctx context.Context, itemID string) (runtime.ChatResult, store.InboxItem, error)
@@ -48,6 +49,7 @@ type SendOut struct {
 	ThreadID  string `json:"thread_id" desc:"預演且沒給 thread_id 時是空白（會開新的對話串）"`
 	TaskID    string `json:"task_id" desc:"這件工作的 id，交給 wait_until_settled"`
 	MessageID string `json:"message_id" desc:"你這則訊息的 id"`
+	Queued    bool   `json:"queued,omitempty" desc:"Bot 正在做隊友交辦或群組的事，你的訊息排在第一個，做完那件就開始"`
 }
 
 // StopIn 是 xbot.chat.stop 的輸入。
@@ -83,8 +85,12 @@ type Message struct {
 	Via       string `json:"via,omitempty" desc:"從哪裡送的：mcp、http、cli"`
 	Streaming bool   `json:"streaming,omitempty" desc:"Bot 還在寫這則回覆"`
 	Status    string `json:"status,omitempty" desc:"Bot 回覆的結果：complete、interrupted、error"`
-	CreatedAt int64  `json:"created_at"`
-	UpdatedAt int64  `json:"updated_at"`
+	// Silent：隊友交辦或群組裡 Bot 回 [silent]（沒有要補充），畫面不顯示。
+	Silent bool `json:"silent,omitempty"`
+	// Peer：kind=peer 時這一行是什麼（已傳訊息給…、來自…的訊息、開了群組…，X02）。
+	Peer      *PeerLine `json:"peer,omitempty"`
+	CreatedAt int64     `json:"created_at"`
+	UpdatedAt int64     `json:"updated_at"`
 }
 
 // ReadOut 是 xbot.chat.read 的輸出。
@@ -210,7 +216,8 @@ func Register(reg *ops.Registry, d Deps) {
 	ops.Register(reg, ops.Op[SendIn, SendOut]{
 		Name: "xbot.chat.send", Summary: "對一個 Bot 說話（交辦一件事）",
 		Description: "訊息收下就回傳 thread_id、task_id；Bot 在背景做事（第一次會先開機），用 xbot.chat.wait_until_settled 等回覆。" +
-			"Bot 正在忙另一件事時回 conflict（retryable），等它做完或先 xbot.chat.stop。",
+			"Bot 正在忙你交辦的另一件事時回 conflict（retryable），等它做完或先 xbot.chat.stop；" +
+			"正在做隊友交辦或群組的事時，你的訊息排在第一個（queued=true），做完那件就開始（LP-1）。",
 		Scope: ops.ScopeOperate, Risk: ops.RiskSafe,
 		Handle: d.send,
 	})
@@ -310,7 +317,7 @@ func (d Deps) send(ctx context.Context, call *ops.Call, in SendIn) (SendOut, err
 		}
 	}
 	if call.DryRun {
-		if _, task := rt.Active(b.ID); task != "" {
+		if isBusy, low := rt.Busy(b.ID); isBusy && !low {
 			return SendOut{}, busy()
 		}
 		return SendOut{BotID: b.ID, ThreadID: in.ThreadID}, nil
@@ -329,7 +336,7 @@ func (d Deps) send(ctx context.Context, call *ops.Call, in SendIn) (SendOut, err
 	case err != nil:
 		return SendOut{}, err
 	}
-	return SendOut{BotID: b.ID, ThreadID: res.ThreadID, TaskID: res.TaskID, MessageID: res.MessageID}, nil
+	return SendOut{BotID: b.ID, ThreadID: res.ThreadID, TaskID: res.TaskID, MessageID: res.MessageID, Queued: res.Queued}, nil
 }
 
 func busy() *ops.Error {
@@ -423,20 +430,36 @@ func threadView(t store.Thread) Thread {
 		LastMessageAt: t.LastMessageAt, CreatedAt: t.CreatedAt}
 }
 
+// PeerLine 是對話裡和隊友往來的那一行（C13、C14）。
+type PeerLine struct {
+	Event     string `json:"event" desc:"message_out（已傳訊息給）、message_in（來自…的訊息）、group_created、group_post"`
+	PeerID    string `json:"peer_id,omitempty"`
+	PeerName  string `json:"peer_name,omitempty"`
+	Intent    string `json:"intent,omitempty" desc:"request、question、result、fyi"`
+	MessageID string `json:"message_id,omitempty"`
+	Hop       int    `json:"hop,omitempty" desc:"這條往來的第幾次"`
+	Chain     string `json:"chain,omitempty" desc:"往來的 id；用 xbot.collab.peer_history 讀整條"`
+	RoomID    string `json:"room_id,omitempty"`
+	Files     int    `json:"files,omitempty" desc:"帶了幾個檔案"`
+}
+
 type messageMeta struct {
-	TaskID    string `json:"task_id"`
-	Actor     string `json:"actor"`
-	ActorName string `json:"actor_name"`
-	Via       string `json:"via"`
-	Streaming bool   `json:"streaming"`
-	Status    string `json:"status"`
+	TaskID    string    `json:"task_id"`
+	Actor     string    `json:"actor"`
+	ActorName string    `json:"actor_name"`
+	Via       string    `json:"via"`
+	Streaming bool      `json:"streaming"`
+	Status    string    `json:"status"`
+	Silent    bool      `json:"silent"`
+	Peer      *PeerLine `json:"peer"`
 }
 
 func messageView(m store.Message) Message {
 	var meta messageMeta
 	_ = json.Unmarshal(m.Meta, &meta)
 	return Message{ID: m.ID, Seq: m.Seq, Sender: m.Sender, Kind: m.Kind, Content: m.Content, TaskID: meta.TaskID,
-		Actor: meta.Actor, ActorName: meta.ActorName, Via: meta.Via, Streaming: meta.Streaming, Status: meta.Status, CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
+		Actor: meta.Actor, ActorName: meta.ActorName, Via: meta.Via, Streaming: meta.Streaming, Status: meta.Status, Silent: meta.Silent, Peer: meta.Peer,
+		CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
 }
 
 // settled：做完了，或在等人。

@@ -163,7 +163,7 @@ func (r *Runtime) openCard(t *turn, req *engine.Request) store.InboxItem {
 	}
 	_ = json.Unmarshal(req.Params, &params)
 	p := cardPayload{RequestID: req.ID, Method: req.Method, Prompt: req.Prompt, Command: params.Command, Description: params.Description,
-		Unattended: t.source != "owner", BotName: t.botName}
+		Unattended: !t.attended(), BotName: t.botName}
 	if th, err := r.o.DB.GetThread(ctx, t.threadID); err == nil {
 		p.ThreadTitle = th.Title
 	}
@@ -535,6 +535,9 @@ func (r *Runtime) notifyDone(t *turn, verdict, final string) {
 	var it store.InboxItem
 	switch verdict {
 	case VerdictAnswer:
+		if t.source == SourceBot || t.source == SourceRoom {
+			return // 隊友之間、群組裡的每一輪不各發一張「完成」（結果會回到交辦的 Bot 或群組）
+		}
 		it = store.InboxItem{Kind: "done", Title: t.botName + "完成了工作"}
 	case VerdictFailed:
 		it = store.InboxItem{Kind: "error", Title: t.botName + "的工作沒有完成"}

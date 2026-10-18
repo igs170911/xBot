@@ -53,6 +53,10 @@ func cmdServe(args []string) error {
 	if err := st.runtime.Recover(context.Background()); err != nil {
 		slog.Warn("收掉舊的提問卡失敗", "err", err)
 	}
+	// 上次沒做完的工作收掉（等它的 Bot 會收到「做到一半被中斷」），排隊中的照順序開始（AA-10）。
+	if err := st.runtime.RecoverTasks(context.Background()); err != nil {
+		slog.Warn("接續排隊中的工作失敗", "err", err)
+	}
 	// 只有一條事件匯流排：runtime（對話串流）與操作登錄表都發布到它，SSE 從它訂閱。
 	bus := st.runtime.Bus()
 	pairing := auth.NewPairing(st.db)
