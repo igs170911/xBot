@@ -33,3 +33,25 @@ const (
 	// 出自 LazyBoy server/runtime.py PERSIST_INTERVAL。
 	StreamPersistInterval = 500 * time.Millisecond
 )
+
+// ACP 驅動（E12：Claude Code、Codex CLI，經 docker exec 跑在 Bot 的電腦裡）。
+const (
+	// ACPInitTimeout 是開 agent 行程到 initialize 回覆的時限（Node.js 冷啟動加上載入 SDK）。
+	// OpenMausBot acp/core.ts 用 INIT_TIMEOUT；XBot 的行程在容器裡，給寬一點。
+	ACPInitTimeout = 60 * time.Second
+
+	// ACPSessionTimeout 是 session/new、session/load 的時限（要等 MCP 伺服器都起來）。
+	ACPSessionTimeout = 120 * time.Second
+
+	// ACPCallTimeout 是其他 ACP 呼叫（設定模式、模型、取消）的時限。
+	ACPCallTimeout = 30 * time.Second
+
+	// ACPMaxLineBytes 是 agent 輸出的一行 JSON-RPC 的上限（同 Hermes 的單一訊息上限）。
+	ACPMaxLineBytes = 16 << 20
+
+	// ACPStderrTailBytes 是 agent 行程結束時保留下來寫進紀錄的 stderr 長度。
+	ACPStderrTailBytes = 4 << 10
+
+	// ACPToolPayloadBytes 是一個工具呼叫的輸入或輸出寫進事件的上限（截圖的 base64 不整包存）。
+	ACPToolPayloadBytes = 64 << 10
+)

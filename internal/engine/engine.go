@@ -109,6 +109,9 @@ type StartOptions struct {
 	Title  string
 	// Model 是這段對話要用的模型（引擎自己的寫法）。
 	Model string
+	// Mode 是 Bot 的權限等級（bot.approval_mode：ask／edits／auto／full）。ACP 引擎用它挑 session 模式；
+	// Hermes 不用（容器內的指令審核已關閉）。
+	Mode string
 }
 
 // Session 是引擎裡的一段對話，對應 XBot 的一條對話串。

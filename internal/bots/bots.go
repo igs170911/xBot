@@ -45,14 +45,19 @@ const (
 // EnumValues 讓 JSON Schema 列出可用值。
 func (ApprovalMode) EnumValues() []string { return []string{"ask", "edits", "auto", "full"} }
 
-// Engine 是 Bot 用的引擎。目前只有 Hermes（ACP 驅動在 E12）。
+// Engine 是 Bot 用的引擎：Hermes（預設，經 Model Proxy）、Claude Code、Codex CLI（ACP 驅動，E12；
+// 要你同意後用你在這台電腦上的訂閱登入，見 xbot.engines.link_credentials）。
 type Engine string
 
-// EngineHermes 是預設引擎。
-const EngineHermes Engine = "hermes"
+// 引擎。
+const (
+	EngineHermes Engine = "hermes"
+	EngineClaude Engine = "claude-code"
+	EngineCodex  Engine = "codex"
+)
 
 // EnumValues 讓 JSON Schema 列出可用值。
-func (Engine) EnumValues() []string { return []string{"hermes"} }
+func (Engine) EnumValues() []string { return []string{"hermes", "claude-code", "codex"} }
 
 // Effort 是思考強度（Hermes 的 reasoning_effort；空白＝medium）。
 type Effort string
@@ -125,7 +130,7 @@ type CreateIn struct {
 	Soul         string       `json:"soul,omitempty" max:"4000" desc:"常駐指示（SOUL.md）"`
 	Color        Color        `json:"color,omitempty" desc:"頭像顏色；不填自動挑"`
 	Shape        Shape        `json:"shape,omitempty" desc:"頭像形狀；不填自動挑"`
-	Engine       Engine       `json:"engine,omitempty" desc:"引擎；預設 hermes"`
+	Engine       Engine       `json:"engine,omitempty" desc:"引擎；預設 hermes。claude-code、codex 要再用 xbot.engines.link_credentials 同意使用你的訂閱"`
 	Model        string       `json:"model,omitempty" max:"200" desc:"模型；不填用預設模型（xbot.models.get 看設定）"`
 	Effort       Effort       `json:"effort,omitempty" desc:"思考強度；不填是 medium"`
 	ApprovalMode ApprovalMode `json:"approval_mode,omitempty" desc:"權限等級；預設 ask（先問我）。設成其他等級要你核准"`

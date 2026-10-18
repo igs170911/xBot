@@ -132,6 +132,9 @@ func Check(env Env, o Options) []Result {
 	rs = append(rs,
 		toolCheck(env, "ssh（連遠端主機用）", "ssh", false, d.install("openssh-client"), "-V"),
 		tailscaleCheck(env, d),
+	)
+	rs = append(rs, subscriptionChecks(env)...)
+	rs = append(rs,
 		diskCheck(env, o.DataDir),
 		portCheck(env, o.Addr),
 	)
@@ -241,6 +244,31 @@ func tailscaleCheck(env Env, d distroInfo) Result {
 	}
 	r.Status, r.Detail = OK, firstLine(out)
 	return r
+}
+
+// subscriptionChecks 看這台電腦上有沒有 Claude Code／Codex CLI 的登入（選用，EN-2b）：
+// Bot 用 Claude Code、Codex CLI 當引擎時，經你逐 Bot 同意後借用這份登入（xbot.engines.link_credentials）。
+// CLI 本身已裝在 Bot 的電腦映像裡，這台電腦只需要登入過一次。
+func subscriptionChecks(env Env) []Result {
+	home, _ := os.UserHomeDir()
+	var rs []Result
+	for _, c := range []struct{ name, envDir, dir, file, fix string }{
+		{"Claude Code 登入（選用）", "CLAUDE_CONFIG_DIR", ".claude", ".credentials.json", "安裝 Claude Code 後執行 claude，輸入 /login 登入"},
+		{"Codex CLI 登入（選用）", "CODEX_HOME", ".codex", "auth.json", "安裝 Codex CLI 後執行 codex login"},
+	} {
+		dir := os.Getenv(c.envDir)
+		if dir == "" {
+			dir = home + "/" + c.dir
+		}
+		r := Result{Name: c.name, Required: false, Fix: c.fix}
+		if _, err := env.ReadFile(dir + "/" + c.file); err != nil {
+			r.Status, r.Detail = Warn, "沒有登入（要讓 Bot 用你的訂閱時才需要）"
+		} else {
+			r.Status, r.Detail = OK, "已登入，可以讓 Bot 使用（要你逐 Bot 同意）"
+		}
+		rs = append(rs, r)
+	}
+	return rs
 }
 
 // 建議的空閒空間：Bot 電腦映像約 5 GB，加上每個 Bot 的資料。
