@@ -20,3 +20,4 @@
 | CP1（關卡 G0） | ✅ 通過 | tag `cp1` | 假模型與真模型（OpenCode Go deepseek-v4-flash）都通過；Claude Code 真的透過 MCP 建 Bot 並對話 | — |
 | W11 對話完整版 | ✅ 完成 | `task/W11-chat-full` | Markdown 用 marked lexer 自建 React 元素（不經 innerHTML）；數學只顯示原始 TeX、Mermaid 當程式碼；「再試一次」用 chat.send 重送（會多一則訊息）；`registerCard` 給 C12 掛卡片 | 待補 op：重新命名／釘選／刪除對話串、模型清單、context 用量、retry；手機頁首是否照 L03 |
 | E11 Model Proxy 完整版 | ✅ 完成 | `task/E11-proxy-full` | 花費以美元百萬分之一記；新增每供應商上限（給 OpenCode 省用）；OpenCode 自動帶 x-opencode-session；預設價格除 Claude 外待核對；migration 0005 | Bot 換到別的供應商要重啟電腦才生效；預算超過時 Hermes 的訊息是否夠清楚；日界線時區；80% 預警、EN-7 未做 |
+| E13 Hermes 訂閱登入驗證 | ✅ 完成（原型） | `task/E13-oauth` | 結論：ChatGPT 方案可經 Hermes 使用、權杖只留在 Model Proxy（假伺服器測試，未用真帳號）；報告 `docs/spike-hermes-oauth.md` | **待使用者決定**：Hermes 用 Codex CLI 的 OAuth client 呼叫 ChatGPT 內部 API 有條款風險；OpenAI 已有官方「ChatGPT 方案使用」流程（自架可能要先申請）。ChatGPT 方案 Bot 要關掉 Hermes 的 tool_search；登入畫面、重新登入卡片未做 |
