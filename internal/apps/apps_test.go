@@ -210,7 +210,7 @@ func TestOAuthSigninAndProxyKeepTokensServerSide(t *testing.T) {
 	}
 	// 權杖加密存放：資料庫裡找不到明文，畫面也拿不到。
 	raw, _ := e.db.GetAppConnection(ctx, c.ID)
-	if strings.Contains(string(raw.Secret), "tok1") || strings.Contains(string(raw.Secret), "r1") {
+	if strings.Contains(string(raw.Secret), "tok1") || strings.Contains(string(raw.Secret), fakeRefreshToken) {
 		t.Fatal("權杖要加密")
 	}
 	full, _ := json.Marshal(c)
@@ -311,7 +311,7 @@ func TestOAuthSigninAndProxyKeepTokensServerSide(t *testing.T) {
 	u, _ = url.Parse(out.Signin.AuthURL)
 	f.challenge = u.Query().Get("code_challenge")
 	f.mu.Lock()
-	f.refreshTok = "r1"
+	f.refreshTok = fakeRefreshToken
 	f.mu.Unlock()
 	if f.registered != 1 {
 		t.Fatalf("回呼網址沒變就不用重新註冊：%d", f.registered)
