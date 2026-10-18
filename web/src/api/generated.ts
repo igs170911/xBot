@@ -9998,6 +9998,859 @@ export function tasksProgress(input: TasksProgressInput, opts?: CallOptions): Pr
   return invoke('xbot.tasks.progress', input, opts).then((r) => r.output)
 }
 
+// xbot.teaching.discard
+
+export interface TeachingDiscardInput {
+  /** Bot id */
+  bot_id: string
+  /** 教學 id（xbot.teaching.start 的 id） */
+  lesson_id: string
+}
+
+export interface TeachingDiscardOutput {
+  id: string
+  bot_id: string
+  /** 要教什麼（可以做完再補） */
+  goal: string
+  /** recording 錄製中、paused 暫停、stopped 錄完（草稿等你確認）、saved 已存成技能、discarded 已捨棄 */
+  state: string
+  started_at: number
+  ended_at?: number
+  steps: {
+    /** 步驟 id（刪除步驟時用） */
+    id: string
+    /** 發生時間（毫秒） */
+    at: number
+    /** browser 瀏覽器、desktop 桌面 App、user 你的補充說明 */
+    source: string
+    /** click、right_click、input、select、upload、submit、key、navigate、tab、note */
+    kind: string
+    /** 白話的一步，例：點擊按鈕「搜尋」 */
+    text: string
+    /** 輸入或選擇的值（密碼記成 ••••） */
+    value?: string
+    key?: string
+    /** 截圖（教學資料夾裡的相對路徑，用 xbot.teaching.shot 讀） */
+    shot?: string
+    url?: string
+    title?: string
+    /** 桌面 App 的視窗標題 */
+    window?: string
+    new_tab?: boolean
+    target?: {
+      role?: string
+      name?: string
+      label?: string
+      tag?: string
+      type?: string
+      /** CSS 定位（瀏覽器） */
+      selector?: string
+      href?: string
+      frame?: string
+      /** 元素的位置 [x, y, 寬, 高]（瀏覽器：視窗座標；桌面：螢幕座標） */
+      box?: number[]
+      /** 瀏覽器視窗大小 [寬, 高] */
+      viewport?: number[]
+    }
+    result?: {
+      url?: string
+      title?: string
+      shot?: string
+    }
+    mark?: number[]
+  }[]
+  draft?: {
+    /** 技能名稱 */
+    name: string
+    /** 什麼時候使用 */
+    description: string
+    /** 怎麼做（SKILL.md 內文，含步驟、網址、定位、截圖） */
+    instructions: string
+    /** 會一起存進技能資料夾的截圖（shots/…） */
+    shots: string[]
+    /** rules（照範本整理）或 model（快判模型潤飾過名稱與用途） */
+    by: string
+  }
+  skill_id?: string
+  thread_id?: string
+  trial_task_id?: string
+}
+
+/**
+ * 取消示範或捨棄技能草稿（錄到的步驟與截圖會刪掉）
+ *
+ * `xbot.teaching.discard`：權限 operate、風險 safe
+ */
+export function teachingDiscard(input: TeachingDiscardInput, opts?: CallOptions): Promise<TeachingDiscardOutput> {
+  return invoke('xbot.teaching.discard', input, opts).then((r) => r.output)
+}
+
+// xbot.teaching.draft
+
+export interface TeachingDraftInput {
+  /** Bot id */
+  bot_id: string
+  lesson_id: string
+  /** 補上或改掉要教什麼，並重新整理草稿（選填；不填只讀草稿） */
+  goal?: string
+  /** 重新整理草稿（你改過的內容不會保留） */
+  redo?: boolean
+}
+
+export interface TeachingDraftOutput {
+  id: string
+  bot_id: string
+  /** 要教什麼（可以做完再補） */
+  goal: string
+  /** recording 錄製中、paused 暫停、stopped 錄完（草稿等你確認）、saved 已存成技能、discarded 已捨棄 */
+  state: string
+  started_at: number
+  ended_at?: number
+  steps: {
+    /** 步驟 id（刪除步驟時用） */
+    id: string
+    /** 發生時間（毫秒） */
+    at: number
+    /** browser 瀏覽器、desktop 桌面 App、user 你的補充說明 */
+    source: string
+    /** click、right_click、input、select、upload、submit、key、navigate、tab、note */
+    kind: string
+    /** 白話的一步，例：點擊按鈕「搜尋」 */
+    text: string
+    /** 輸入或選擇的值（密碼記成 ••••） */
+    value?: string
+    key?: string
+    /** 截圖（教學資料夾裡的相對路徑，用 xbot.teaching.shot 讀） */
+    shot?: string
+    url?: string
+    title?: string
+    /** 桌面 App 的視窗標題 */
+    window?: string
+    new_tab?: boolean
+    target?: {
+      role?: string
+      name?: string
+      label?: string
+      tag?: string
+      type?: string
+      /** CSS 定位（瀏覽器） */
+      selector?: string
+      href?: string
+      frame?: string
+      /** 元素的位置 [x, y, 寬, 高]（瀏覽器：視窗座標；桌面：螢幕座標） */
+      box?: number[]
+      /** 瀏覽器視窗大小 [寬, 高] */
+      viewport?: number[]
+    }
+    result?: {
+      url?: string
+      title?: string
+      shot?: string
+    }
+    mark?: number[]
+  }[]
+  draft?: {
+    /** 技能名稱 */
+    name: string
+    /** 什麼時候使用 */
+    description: string
+    /** 怎麼做（SKILL.md 內文，含步驟、網址、定位、截圖） */
+    instructions: string
+    /** 會一起存進技能資料夾的截圖（shots/…） */
+    shots: string[]
+    /** rules（照範本整理）或 model（快判模型潤飾過名稱與用途） */
+    by: string
+  }
+  skill_id?: string
+  thread_id?: string
+  trial_task_id?: string
+}
+
+/**
+ * 讀示範整理出的技能草稿；補上要教什麼時重新整理
+ *
+ * `xbot.teaching.draft`：權限 operate、風險 safe
+ */
+export function teachingDraft(input: TeachingDraftInput, opts?: CallOptions): Promise<TeachingDraftOutput> {
+  return invoke('xbot.teaching.draft', input, opts).then((r) => r.output)
+}
+
+// xbot.teaching.drop
+
+export interface TeachingDropInput {
+  /** Bot id */
+  bot_id: string
+  lesson_id: string
+  /** 要刪掉的步驟 id */
+  step_id: string
+}
+
+export interface TeachingDropOutput {
+  id: string
+  bot_id: string
+  /** 要教什麼（可以做完再補） */
+  goal: string
+  /** recording 錄製中、paused 暫停、stopped 錄完（草稿等你確認）、saved 已存成技能、discarded 已捨棄 */
+  state: string
+  started_at: number
+  ended_at?: number
+  steps: {
+    /** 步驟 id（刪除步驟時用） */
+    id: string
+    /** 發生時間（毫秒） */
+    at: number
+    /** browser 瀏覽器、desktop 桌面 App、user 你的補充說明 */
+    source: string
+    /** click、right_click、input、select、upload、submit、key、navigate、tab、note */
+    kind: string
+    /** 白話的一步，例：點擊按鈕「搜尋」 */
+    text: string
+    /** 輸入或選擇的值（密碼記成 ••••） */
+    value?: string
+    key?: string
+    /** 截圖（教學資料夾裡的相對路徑，用 xbot.teaching.shot 讀） */
+    shot?: string
+    url?: string
+    title?: string
+    /** 桌面 App 的視窗標題 */
+    window?: string
+    new_tab?: boolean
+    target?: {
+      role?: string
+      name?: string
+      label?: string
+      tag?: string
+      type?: string
+      /** CSS 定位（瀏覽器） */
+      selector?: string
+      href?: string
+      frame?: string
+      /** 元素的位置 [x, y, 寬, 高]（瀏覽器：視窗座標；桌面：螢幕座標） */
+      box?: number[]
+      /** 瀏覽器視窗大小 [寬, 高] */
+      viewport?: number[]
+    }
+    result?: {
+      url?: string
+      title?: string
+      shot?: string
+    }
+    mark?: number[]
+  }[]
+  draft?: {
+    /** 技能名稱 */
+    name: string
+    /** 什麼時候使用 */
+    description: string
+    /** 怎麼做（SKILL.md 內文，含步驟、網址、定位、截圖） */
+    instructions: string
+    /** 會一起存進技能資料夾的截圖（shots/…） */
+    shots: string[]
+    /** rules（照範本整理）或 model（快判模型潤飾過名稱與用途） */
+    by: string
+  }
+  skill_id?: string
+  thread_id?: string
+  trial_task_id?: string
+}
+
+/**
+ * 刪掉示範中做錯的一步
+ *
+ * `xbot.teaching.drop`：權限 operate、風險 safe
+ */
+export function teachingDrop(input: TeachingDropInput, opts?: CallOptions): Promise<TeachingDropOutput> {
+  return invoke('xbot.teaching.drop', input, opts).then((r) => r.output)
+}
+
+// xbot.teaching.get
+
+export interface TeachingGetInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface TeachingGetOutput {
+  /** 進行中的教學（錄製中、暫停、草稿等你確認）；沒有時是 null */
+  lesson: {
+    id: string
+    bot_id: string
+    /** 要教什麼（可以做完再補） */
+    goal: string
+    /** recording 錄製中、paused 暫停、stopped 錄完（草稿等你確認）、saved 已存成技能、discarded 已捨棄 */
+    state: string
+    started_at: number
+    ended_at?: number
+    steps: {
+      /** 步驟 id（刪除步驟時用） */
+      id: string
+      /** 發生時間（毫秒） */
+      at: number
+      /** browser 瀏覽器、desktop 桌面 App、user 你的補充說明 */
+      source: string
+      /** click、right_click、input、select、upload、submit、key、navigate、tab、note */
+      kind: string
+      /** 白話的一步，例：點擊按鈕「搜尋」 */
+      text: string
+      /** 輸入或選擇的值（密碼記成 ••••） */
+      value?: string
+      key?: string
+      /** 截圖（教學資料夾裡的相對路徑，用 xbot.teaching.shot 讀） */
+      shot?: string
+      url?: string
+      title?: string
+      /** 桌面 App 的視窗標題 */
+      window?: string
+      new_tab?: boolean
+      target?: {
+        role?: string
+        name?: string
+        label?: string
+        tag?: string
+        type?: string
+        /** CSS 定位（瀏覽器） */
+        selector?: string
+        href?: string
+        frame?: string
+        /** 元素的位置 [x, y, 寬, 高]（瀏覽器：視窗座標；桌面：螢幕座標） */
+        box?: number[]
+        /** 瀏覽器視窗大小 [寬, 高] */
+        viewport?: number[]
+      }
+      result?: {
+        url?: string
+        title?: string
+        shot?: string
+      }
+      mark?: number[]
+    }[]
+    draft?: {
+      /** 技能名稱 */
+      name: string
+      /** 什麼時候使用 */
+      description: string
+      /** 怎麼做（SKILL.md 內文，含步驟、網址、定位、截圖） */
+      instructions: string
+      /** 會一起存進技能資料夾的截圖（shots/…） */
+      shots: string[]
+      /** rules（照範本整理）或 model（快判模型潤飾過名稱與用途） */
+      by: string
+    }
+    skill_id?: string
+    thread_id?: string
+    trial_task_id?: string
+  }
+}
+
+/**
+ * 看一個 Bot 進行中的示範教學：錄到的步驟、草稿
+ *
+ * `xbot.teaching.get`：權限 read、風險 safe
+ */
+export function teachingGet(input: TeachingGetInput, opts?: CallOptions): Promise<TeachingGetOutput> {
+  return invoke('xbot.teaching.get', input, opts).then((r) => r.output)
+}
+
+// xbot.teaching.note
+
+export interface TeachingNoteInput {
+  /** Bot id */
+  bot_id: string
+  lesson_id: string
+  /** 補充說明，例：每次都先清空購物車 */
+  text: string
+}
+
+export interface TeachingNoteOutput {
+  id: string
+  bot_id: string
+  /** 要教什麼（可以做完再補） */
+  goal: string
+  /** recording 錄製中、paused 暫停、stopped 錄完（草稿等你確認）、saved 已存成技能、discarded 已捨棄 */
+  state: string
+  started_at: number
+  ended_at?: number
+  steps: {
+    /** 步驟 id（刪除步驟時用） */
+    id: string
+    /** 發生時間（毫秒） */
+    at: number
+    /** browser 瀏覽器、desktop 桌面 App、user 你的補充說明 */
+    source: string
+    /** click、right_click、input、select、upload、submit、key、navigate、tab、note */
+    kind: string
+    /** 白話的一步，例：點擊按鈕「搜尋」 */
+    text: string
+    /** 輸入或選擇的值（密碼記成 ••••） */
+    value?: string
+    key?: string
+    /** 截圖（教學資料夾裡的相對路徑，用 xbot.teaching.shot 讀） */
+    shot?: string
+    url?: string
+    title?: string
+    /** 桌面 App 的視窗標題 */
+    window?: string
+    new_tab?: boolean
+    target?: {
+      role?: string
+      name?: string
+      label?: string
+      tag?: string
+      type?: string
+      /** CSS 定位（瀏覽器） */
+      selector?: string
+      href?: string
+      frame?: string
+      /** 元素的位置 [x, y, 寬, 高]（瀏覽器：視窗座標；桌面：螢幕座標） */
+      box?: number[]
+      /** 瀏覽器視窗大小 [寬, 高] */
+      viewport?: number[]
+    }
+    result?: {
+      url?: string
+      title?: string
+      shot?: string
+    }
+    mark?: number[]
+  }[]
+  draft?: {
+    /** 技能名稱 */
+    name: string
+    /** 什麼時候使用 */
+    description: string
+    /** 怎麼做（SKILL.md 內文，含步驟、網址、定位、截圖） */
+    instructions: string
+    /** 會一起存進技能資料夾的截圖（shots/…） */
+    shots: string[]
+    /** rules（照範本整理）或 model（快判模型潤飾過名稱與用途） */
+    by: string
+  }
+  skill_id?: string
+  thread_id?: string
+  trial_task_id?: string
+}
+
+/**
+ * 示範中補充一句說明（會成為一步）
+ *
+ * `xbot.teaching.note`：權限 operate、風險 safe
+ */
+export function teachingNote(input: TeachingNoteInput, opts?: CallOptions): Promise<TeachingNoteOutput> {
+  return invoke('xbot.teaching.note', input, opts).then((r) => r.output)
+}
+
+// xbot.teaching.pause
+
+export interface TeachingPauseInput {
+  /** Bot id */
+  bot_id: string
+  lesson_id: string
+  /** true 暫停（這段時間的操作不記）；false 繼續 */
+  paused?: boolean
+}
+
+export interface TeachingPauseOutput {
+  id: string
+  bot_id: string
+  /** 要教什麼（可以做完再補） */
+  goal: string
+  /** recording 錄製中、paused 暫停、stopped 錄完（草稿等你確認）、saved 已存成技能、discarded 已捨棄 */
+  state: string
+  started_at: number
+  ended_at?: number
+  steps: {
+    /** 步驟 id（刪除步驟時用） */
+    id: string
+    /** 發生時間（毫秒） */
+    at: number
+    /** browser 瀏覽器、desktop 桌面 App、user 你的補充說明 */
+    source: string
+    /** click、right_click、input、select、upload、submit、key、navigate、tab、note */
+    kind: string
+    /** 白話的一步，例：點擊按鈕「搜尋」 */
+    text: string
+    /** 輸入或選擇的值（密碼記成 ••••） */
+    value?: string
+    key?: string
+    /** 截圖（教學資料夾裡的相對路徑，用 xbot.teaching.shot 讀） */
+    shot?: string
+    url?: string
+    title?: string
+    /** 桌面 App 的視窗標題 */
+    window?: string
+    new_tab?: boolean
+    target?: {
+      role?: string
+      name?: string
+      label?: string
+      tag?: string
+      type?: string
+      /** CSS 定位（瀏覽器） */
+      selector?: string
+      href?: string
+      frame?: string
+      /** 元素的位置 [x, y, 寬, 高]（瀏覽器：視窗座標；桌面：螢幕座標） */
+      box?: number[]
+      /** 瀏覽器視窗大小 [寬, 高] */
+      viewport?: number[]
+    }
+    result?: {
+      url?: string
+      title?: string
+      shot?: string
+    }
+    mark?: number[]
+  }[]
+  draft?: {
+    /** 技能名稱 */
+    name: string
+    /** 什麼時候使用 */
+    description: string
+    /** 怎麼做（SKILL.md 內文，含步驟、網址、定位、截圖） */
+    instructions: string
+    /** 會一起存進技能資料夾的截圖（shots/…） */
+    shots: string[]
+    /** rules（照範本整理）或 model（快判模型潤飾過名稱與用途） */
+    by: string
+  }
+  skill_id?: string
+  thread_id?: string
+  trial_task_id?: string
+}
+
+/**
+ * 暫停或繼續示範錄製（暫停時的操作不記）
+ *
+ * `xbot.teaching.pause`：權限 operate、風險 safe
+ */
+export function teachingPause(input: TeachingPauseInput, opts?: CallOptions): Promise<TeachingPauseOutput> {
+  return invoke('xbot.teaching.pause', input, opts).then((r) => r.output)
+}
+
+// xbot.teaching.save
+
+export interface TeachingSaveInput {
+  /** Bot id */
+  bot_id: string
+  lesson_id: string
+  /** 技能名稱 */
+  name: string
+  /** 什麼時候使用（一句話） */
+  description: string
+  /** 怎麼做（草稿的內文，可以改）；提到的截圖（shots/…）會一起存進技能 */
+  instructions: string
+  /** 存好後不要請 Bot 試做（預設會試做一次） */
+  skip_trial?: boolean
+}
+
+export interface TeachingSaveOutput {
+  lesson: {
+    id: string
+    bot_id: string
+    /** 要教什麼（可以做完再補） */
+    goal: string
+    /** recording 錄製中、paused 暫停、stopped 錄完（草稿等你確認）、saved 已存成技能、discarded 已捨棄 */
+    state: string
+    started_at: number
+    ended_at?: number
+    steps: {
+      /** 步驟 id（刪除步驟時用） */
+      id: string
+      /** 發生時間（毫秒） */
+      at: number
+      /** browser 瀏覽器、desktop 桌面 App、user 你的補充說明 */
+      source: string
+      /** click、right_click、input、select、upload、submit、key、navigate、tab、note */
+      kind: string
+      /** 白話的一步，例：點擊按鈕「搜尋」 */
+      text: string
+      /** 輸入或選擇的值（密碼記成 ••••） */
+      value?: string
+      key?: string
+      /** 截圖（教學資料夾裡的相對路徑，用 xbot.teaching.shot 讀） */
+      shot?: string
+      url?: string
+      title?: string
+      /** 桌面 App 的視窗標題 */
+      window?: string
+      new_tab?: boolean
+      target?: {
+        role?: string
+        name?: string
+        label?: string
+        tag?: string
+        type?: string
+        /** CSS 定位（瀏覽器） */
+        selector?: string
+        href?: string
+        frame?: string
+        /** 元素的位置 [x, y, 寬, 高]（瀏覽器：視窗座標；桌面：螢幕座標） */
+        box?: number[]
+        /** 瀏覽器視窗大小 [寬, 高] */
+        viewport?: number[]
+      }
+      result?: {
+        url?: string
+        title?: string
+        shot?: string
+      }
+      mark?: number[]
+    }[]
+    draft?: {
+      /** 技能名稱 */
+      name: string
+      /** 什麼時候使用 */
+      description: string
+      /** 怎麼做（SKILL.md 內文，含步驟、網址、定位、截圖） */
+      instructions: string
+      /** 會一起存進技能資料夾的截圖（shots/…） */
+      shots: string[]
+      /** rules（照範本整理）或 model（快判模型潤飾過名稱與用途） */
+      by: string
+    }
+    skill_id?: string
+    thread_id?: string
+    trial_task_id?: string
+  }
+  skill: {
+    /** 技能的資料夾（Bot 的技能：/hermes/skills 底下的相對路徑；技能庫：資料夾名稱） */
+    id: string
+    name: string
+    /** 什麼時候使用 */
+    description: string
+    /** 怎麼做（SKILL.md 的內文） */
+    instructions?: string
+    /** list：技能清單；library：技能庫（需要時才載入）；off：已停用 */
+    place: 'list' | 'library' | 'off'
+    enabled: boolean
+    /** hermes（Hermes 內建）、xbot（XBot 內建）、learned（從對話學到）、imported（匯入）、proposed（Bot 提議、你核准）、custom（自訂） */
+    source: string
+    /** 附帶的檔案（scripts/、references/…） */
+    files?: string[]
+    last_used_at?: string
+  }
+  task_id?: string
+  thread_id?: string
+  note?: string
+}
+
+/**
+ * 把示範的技能草稿存成 Bot 的技能（預設存好後請它試做一次）
+ *
+ * name、description、instructions 是你確認（可能改過）的內容。內文提到的截圖（shots/…）會一起存進技能資料夾。同名的技能已經存在時回 conflict。
+ *
+ * `xbot.teaching.save`：權限 manage、風險 safe
+ */
+export function teachingSave(input: TeachingSaveInput, opts?: CallOptions): Promise<TeachingSaveOutput> {
+  return invoke('xbot.teaching.save', input, opts).then((r) => r.output)
+}
+
+// xbot.teaching.shot
+
+export interface TeachingShotInput {
+  /** Bot id */
+  bot_id: string
+  lesson_id: string
+  /** 步驟的截圖（shots/b-0001.jpg 這種） */
+  name: string
+}
+
+export interface TeachingShotOutput {
+  /** JPEG（base64） */
+  image: string
+  media_type: string
+}
+
+/**
+ * 讀示範中一步的截圖（JPEG）
+ *
+ * `xbot.teaching.shot`：權限 read、風險 safe
+ */
+export function teachingShot(input: TeachingShotInput, opts?: CallOptions): Promise<TeachingShotOutput> {
+  return invoke('xbot.teaching.shot', input, opts).then((r) => r.output)
+}
+
+// xbot.teaching.start
+
+export interface TeachingStartInput {
+  /** Bot id */
+  bot_id: string
+  /** 要教什麼（選填；可以做完再補） */
+  goal?: string
+  /** 從哪條對話串開始（選填）：在那裡記「你開始示範」等系統訊息 */
+  thread_id?: string
+}
+
+export interface TeachingStartOutput {
+  id: string
+  bot_id: string
+  /** 要教什麼（可以做完再補） */
+  goal: string
+  /** recording 錄製中、paused 暫停、stopped 錄完（草稿等你確認）、saved 已存成技能、discarded 已捨棄 */
+  state: string
+  started_at: number
+  ended_at?: number
+  steps: {
+    /** 步驟 id（刪除步驟時用） */
+    id: string
+    /** 發生時間（毫秒） */
+    at: number
+    /** browser 瀏覽器、desktop 桌面 App、user 你的補充說明 */
+    source: string
+    /** click、right_click、input、select、upload、submit、key、navigate、tab、note */
+    kind: string
+    /** 白話的一步，例：點擊按鈕「搜尋」 */
+    text: string
+    /** 輸入或選擇的值（密碼記成 ••••） */
+    value?: string
+    key?: string
+    /** 截圖（教學資料夾裡的相對路徑，用 xbot.teaching.shot 讀） */
+    shot?: string
+    url?: string
+    title?: string
+    /** 桌面 App 的視窗標題 */
+    window?: string
+    new_tab?: boolean
+    target?: {
+      role?: string
+      name?: string
+      label?: string
+      tag?: string
+      type?: string
+      /** CSS 定位（瀏覽器） */
+      selector?: string
+      href?: string
+      frame?: string
+      /** 元素的位置 [x, y, 寬, 高]（瀏覽器：視窗座標；桌面：螢幕座標） */
+      box?: number[]
+      /** 瀏覽器視窗大小 [寬, 高] */
+      viewport?: number[]
+    }
+    result?: {
+      url?: string
+      title?: string
+      shot?: string
+    }
+    mark?: number[]
+  }[]
+  draft?: {
+    /** 技能名稱 */
+    name: string
+    /** 什麼時候使用 */
+    description: string
+    /** 怎麼做（SKILL.md 內文，含步驟、網址、定位、截圖） */
+    instructions: string
+    /** 會一起存進技能資料夾的截圖（shots/…） */
+    shots: string[]
+    /** rules（照範本整理）或 model（快判模型潤飾過名稱與用途） */
+    by: string
+  }
+  skill_id?: string
+  thread_id?: string
+  trial_task_id?: string
+}
+
+/**
+ * 開始示範教學（教它一件事）：XBot 接手 Bot 的電腦並開始記錄你的每一步
+ *
+ * 電腦沒開機時先開機（桌面就緒最多 75 秒）。Bot 會暫停，你直接在即時畫面（mode=control）操作；瀏覽器與桌面 App 的操作都會記下（密碼欄位只記成 ••••）。示範中可以補充說明（xbot.teaching.note）、暫停（pause）、刪掉做錯的步驟（drop）；做完用 xbot.teaching.stop 產生技能草稿。Bot 正在工作時回 conflict。
+ *
+ * `xbot.teaching.start`：權限 operate、風險 safe
+ */
+export function teachingStart(input: TeachingStartInput, opts?: CallOptions): Promise<TeachingStartOutput> {
+  return invoke('xbot.teaching.start', input, opts).then((r) => r.output)
+}
+
+// xbot.teaching.stop
+
+export interface TeachingStopInput {
+  /** Bot id */
+  bot_id: string
+  lesson_id: string
+  /** 順便補上要教什麼（選填） */
+  goal?: string
+}
+
+export interface TeachingStopOutput {
+  id: string
+  bot_id: string
+  /** 要教什麼（可以做完再補） */
+  goal: string
+  /** recording 錄製中、paused 暫停、stopped 錄完（草稿等你確認）、saved 已存成技能、discarded 已捨棄 */
+  state: string
+  started_at: number
+  ended_at?: number
+  steps: {
+    /** 步驟 id（刪除步驟時用） */
+    id: string
+    /** 發生時間（毫秒） */
+    at: number
+    /** browser 瀏覽器、desktop 桌面 App、user 你的補充說明 */
+    source: string
+    /** click、right_click、input、select、upload、submit、key、navigate、tab、note */
+    kind: string
+    /** 白話的一步，例：點擊按鈕「搜尋」 */
+    text: string
+    /** 輸入或選擇的值（密碼記成 ••••） */
+    value?: string
+    key?: string
+    /** 截圖（教學資料夾裡的相對路徑，用 xbot.teaching.shot 讀） */
+    shot?: string
+    url?: string
+    title?: string
+    /** 桌面 App 的視窗標題 */
+    window?: string
+    new_tab?: boolean
+    target?: {
+      role?: string
+      name?: string
+      label?: string
+      tag?: string
+      type?: string
+      /** CSS 定位（瀏覽器） */
+      selector?: string
+      href?: string
+      frame?: string
+      /** 元素的位置 [x, y, 寬, 高]（瀏覽器：視窗座標；桌面：螢幕座標） */
+      box?: number[]
+      /** 瀏覽器視窗大小 [寬, 高] */
+      viewport?: number[]
+    }
+    result?: {
+      url?: string
+      title?: string
+      shot?: string
+    }
+    mark?: number[]
+  }[]
+  draft?: {
+    /** 技能名稱 */
+    name: string
+    /** 什麼時候使用 */
+    description: string
+    /** 怎麼做（SKILL.md 內文，含步驟、網址、定位、截圖） */
+    instructions: string
+    /** 會一起存進技能資料夾的截圖（shots/…） */
+    shots: string[]
+    /** rules（照範本整理）或 model（快判模型潤飾過名稱與用途） */
+    by: string
+  }
+  skill_id?: string
+  thread_id?: string
+  trial_task_id?: string
+}
+
+/**
+ * 完成示範：停止記錄、把電腦交還給 Bot，並把步驟整理成技能草稿
+ *
+ * 回傳的 draft 是技能草稿（名稱、什麼時候使用、步驟），看過、改過後用 xbot.teaching.save 存成技能，或用 xbot.teaching.discard 捨棄。還沒記到任何操作時回 invalid_input，示範繼續。
+ *
+ * `xbot.teaching.stop`：權限 operate、風險 safe
+ */
+export function teachingStop(input: TeachingStopInput, opts?: CallOptions): Promise<TeachingStopOutput> {
+  return invoke('xbot.teaching.stop', input, opts).then((r) => r.output)
+}
+
 // xbot.team.roster
 
 export interface TeamRosterInput {
@@ -11086,6 +11939,16 @@ export interface Ops {
   'xbot.skills.update': { input: SkillsUpdateInput; output: SkillsUpdateOutput }
   'xbot.system.ping': { input: SystemPingInput; output: SystemPingOutput }
   'xbot.tasks.progress': { input: TasksProgressInput; output: TasksProgressOutput }
+  'xbot.teaching.discard': { input: TeachingDiscardInput; output: TeachingDiscardOutput }
+  'xbot.teaching.draft': { input: TeachingDraftInput; output: TeachingDraftOutput }
+  'xbot.teaching.drop': { input: TeachingDropInput; output: TeachingDropOutput }
+  'xbot.teaching.get': { input: TeachingGetInput; output: TeachingGetOutput }
+  'xbot.teaching.note': { input: TeachingNoteInput; output: TeachingNoteOutput }
+  'xbot.teaching.pause': { input: TeachingPauseInput; output: TeachingPauseOutput }
+  'xbot.teaching.save': { input: TeachingSaveInput; output: TeachingSaveOutput }
+  'xbot.teaching.shot': { input: TeachingShotInput; output: TeachingShotOutput }
+  'xbot.teaching.start': { input: TeachingStartInput; output: TeachingStartOutput }
+  'xbot.teaching.stop': { input: TeachingStopInput; output: TeachingStopOutput }
   'xbot.team.roster': { input: TeamRosterInput; output: TeamRosterOutput }
   'xbot.teams.approval_items': { input: TeamsApprovalItemsInput; output: TeamsApprovalItemsOutput }
   'xbot.teams.chart': { input: TeamsChartInput; output: TeamsChartOutput }
@@ -11288,6 +12151,16 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.skills.update': { path: '/api/v1/skills.update', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.system.ping': { path: '/api/v1/system.ping', scope: 'read', risk: 'safe', mutates: false },
   'xbot.tasks.progress': { path: '/api/v1/tasks.progress', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.teaching.discard': { path: '/api/v1/teaching.discard', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.teaching.draft': { path: '/api/v1/teaching.draft', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.teaching.drop': { path: '/api/v1/teaching.drop', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.teaching.get': { path: '/api/v1/teaching.get', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.teaching.note': { path: '/api/v1/teaching.note', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.teaching.pause': { path: '/api/v1/teaching.pause', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.teaching.save': { path: '/api/v1/teaching.save', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.teaching.shot': { path: '/api/v1/teaching.shot', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.teaching.start': { path: '/api/v1/teaching.start', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.teaching.stop': { path: '/api/v1/teaching.stop', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.team.roster': { path: '/api/v1/team.roster', scope: 'read', risk: 'safe', mutates: false },
   'xbot.teams.approval_items': { path: '/api/v1/teams.approval_items', scope: 'read', risk: 'safe', mutates: false },
   'xbot.teams.chart': { path: '/api/v1/teams.chart', scope: 'read', risk: 'safe', mutates: false },

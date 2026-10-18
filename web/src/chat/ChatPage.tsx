@@ -1,5 +1,6 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Activity as ActivityIcon, ChevronDown, ChevronLeft, Compass, Cpu, Crown, Ellipsis, FolderOpen, Monitor, Phone, Plus, Settings, X } from 'lucide-react'
+import { Activity as ActivityIcon, ChevronDown, ChevronLeft, Compass, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, Monitor, Phone, Plus, Settings, X } from 'lucide-react'
+import { isRecording, teachStartStore, useLesson } from '../teaching/teachingData'
 import { ApiError, chatListThreads, chatSend, chatStop, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
 import { botsStore, type Bot, look } from '../data/bots'
 import { onEvent, onReconnect } from '../data/events'
@@ -152,12 +153,19 @@ function Header({
   onComputer: () => void
 }) {
   const st = statusOf(bot, act, busyElsewhere)
+  const { lesson } = useLesson(bot.id)
   return (
     <header className="flex h-14 flex-none items-center gap-2 pl-5 pr-3 max-md:h-12 max-md:gap-1.5 max-md:pl-3 max-md:pr-1.5">
       <span className="flex items-center gap-2 max-md:hidden">
         <Avatar {...look(bot)} state={act ? 'working' : 'idle'} dot="none" ring="#070707" size={26} />
-        <span className="text-[16px]">{bot.name}</span>
+        <span className="whitespace-nowrap text-[16px]">{bot.name}</span>
       </span>
+      {lesson && isRecording(lesson) && (
+        <button type="button" onClick={onComputer} className="inline-flex h-6 flex-none items-center gap-1.5 rounded-full bg-danger-soft px-2.5 text-meta text-danger" data-testid="teaching-pill">
+          <span className="size-1.5 rounded-full bg-danger" />
+          {lesson.state === 'paused' ? '教學已暫停' : '教學中'}
+        </button>
+      )}
       <span className="flex items-center gap-1.5 whitespace-nowrap text-[13px] text-ink-3" data-testid="bot-status">
         {st.color && <span className={cx('size-1.5 rounded-full', st.pulse && 'animate-pulse')} style={{ background: st.color }} />}
         <span className="max-sm:sr-only-text">{st.text}</span>
@@ -180,6 +188,7 @@ function Header({
         items={[
           { label: '目前進度', icon: ActivityIcon, onSelect: onProgress },
           { label: '新對話串', icon: Plus, onSelect: () => navigate(`/bots/${bot.id}/threads/new`) },
+          { label: '教它一件事', icon: GraduationCap, onSelect: () => teachStartStore.set({ botId: bot.id, threadId }) },
           { label: '看導覽', icon: Compass, onSelect: startTour },
           { label: 'Bot 設定', icon: Settings, separator: true, onSelect: () => navigate(`/settings/bots/${encodeURIComponent(bot.id)}`) },
           { label: '模型與金鑰設定', icon: Settings, onSelect: () => navigate('/settings/models') },

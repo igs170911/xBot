@@ -47,6 +47,8 @@ const (
 	JudgeWaitPeerReply = 1 * time.Second
 	// JudgeWaitRoutine 是一句話建定時任務（C32 解析器的快判）。XBot 新增，同用途 9：2 秒。
 	JudgeWaitRoutine = 2 * time.Second
+	// JudgeWaitTeach 是示範整理成技能（B32）的快判等待上限。XBot 新增，同用途 9：2 秒。
+	JudgeWaitTeach = 2 * time.Second
 
 	// JudgeMinP 是第一層（Jev）選擇題採用的機率門檻；低於它照規則。OpenMausBot ROOM_ROUTING_MIN_PROBABILITY = 0.6。
 	JudgeMinP = 0.6

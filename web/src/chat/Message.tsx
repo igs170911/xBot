@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Check, ChevronDown, CircleX, Code, Copy, Hand, OctagonPause, Repeat, RotateCcw, Square, Volume2 } from 'lucide-react'
+import { Check, ChevronDown, CircleX, Code, Copy, GraduationCap, Hand, OctagonPause, Repeat, RotateCcw, Square, Volume2 } from 'lucide-react'
 import { ApiError, judgeCorrect } from '../api/generated'
 import { AgentMark } from '../ui/AgentMark'
 import { Button } from '../ui/Button'
@@ -204,7 +204,7 @@ export function JudgeRow({ msg, threadId }: { msg: ChatMsg; threadId: string }) 
 export function ActivityLine({ msg }: CardProps) {
   return (
     <p className="m-0 flex items-center gap-1.5 self-center text-meta text-ink-3" data-testid="activity-line" data-activity={msg.activity}>
-      <Icon icon={msg.activity === 'takeover' || msg.activity === 'handback' ? Hand : Repeat} size={14} />
+      <Icon icon={msg.activity === 'teaching' ? GraduationCap : msg.activity === 'takeover' || msg.activity === 'handback' ? Hand : Repeat} size={14} />
       {msg.content}
     </p>
   )

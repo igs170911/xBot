@@ -86,4 +86,23 @@ const (
 	// TeachGoalMax、TeachNoteMax 是教學目標與註記的長度。LazyBoy server/teaching.py:203（goal[:200]）、:254（text[:500]）
 	TeachGoalMax = 200
 	TeachNoteMax = 500
+
+	// TeachPoll 是示範中多久看一次錄到的新步驟（即時步驟清單）。LazyBoy server/teaching.py watch() asyncio.sleep(1)
+	TeachPoll = 1 * time.Second
+
+	// TeachSubmitMerge：點擊或按鍵之後這麼短的時間內送出表單，算同一步。LazyBoy server/teaching.py normalize() gap < 1500
+	TeachSubmitMerge = 1500 * time.Millisecond
+	// TeachNavigateMerge：連續的換頁（轉址）在這段時間內算同一步。LazyBoy server/teaching.py normalize() gap < 2500
+	TeachNavigateMerge = 2500 * time.Millisecond
+	// TeachTabMerge：開新分頁後這段時間內的換頁算「在新分頁前往」。LazyBoy server/teaching.py normalize() gap < 4000
+	TeachTabMerge = 4000 * time.Millisecond
+	// TeachCauseWindow：點擊、送出之後這段時間內的換頁算那一步的結果。LazyBoy server/teaching.py normalize() < 5000
+	TeachCauseWindow = 5000 * time.Millisecond
+
+	// TeachKeyShots 是一個學成的技能最多附幾張截圖。LazyBoy server/teaching.py key_shots(limit=8)
+	TeachKeyShots = 8
+	// TeachShotBytes 是一張示範截圖最多讀多大（介面縮圖、存進技能）。XBot 新增（錄製器的 JPEG 品質 60，一張約 100–300 KB）。
+	TeachShotBytes = 2 << 20
+	// TeachRowsBytes 是錄製紀錄（browser.jsonl＋desktop.jsonl）最多讀多大。XBot 新增（300 步遠低於此）。
+	TeachRowsBytes = 8 << 20
 )

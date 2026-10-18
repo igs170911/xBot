@@ -20,6 +20,7 @@ import { FilesPage } from './files/FilesPage'
 import { NewRoomDialog } from './rooms/NewRoomDialog'
 import { RoomPage } from './rooms/RoomPage'
 import { NewTeamDialog } from './teams/NewTeamDialog'
+import { TeachStartDialog } from './teaching/TeachStartDialog'
 import { TeamMapPage } from './teams/TeamMapPage'
 import { OrgPage } from './teams/OrgPage'
 import { AgendaPage } from './agenda/AgendaPage'
@@ -174,6 +175,7 @@ function Main() {
       <NewTeamDialog />
       <ImportBotDialog />
       <Tour />
+      <TeachStartDialog />
     </AppShell>
   )
 }
