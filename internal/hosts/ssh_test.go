@@ -25,11 +25,12 @@ import (
 // fakeSSHD 是測試用的最小 sshd：在同一台機器上實作 direct-tcpip、direct-streamlocal、
 // streamlocal-forward（含 StreamLocalBindUnlink 的行為）與 exec。真的 OpenSSH 見 ssh_docker_test.go。
 type fakeSSHD struct {
-	t     *testing.T
-	ln    net.Listener
-	cfg   *ssh.ServerConfig
-	mu    sync.Mutex
-	conns []net.Conn
+	t       *testing.T
+	hostKey ssh.Signer
+	ln      net.Listener
+	cfg     *ssh.ServerConfig
+	mu      sync.Mutex
+	conns   []net.Conn
 }
 
 func newSigner(t *testing.T) ssh.Signer {
@@ -58,7 +59,7 @@ func startSSHD(t *testing.T, hostKey ssh.Signer, user ssh.PublicKey) *fakeSSHD {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := &fakeSSHD{t: t, ln: ln, cfg: cfg}
+	d := &fakeSSHD{t: t, ln: ln, cfg: cfg, hostKey: hostKey}
 	t.Cleanup(d.close)
 	go func() {
 		for {
@@ -123,6 +124,7 @@ func (d *fakeSSHD) serve(c net.Conn) {
 					_ = r.Reply(false, nil)
 					continue
 				}
+				_ = os.Chmod(m.Path, 0o666) // StreamLocalBindMask 0111
 				lmu.Lock()
 				listeners = append(listeners, l)
 				lmu.Unlock()
@@ -134,6 +136,45 @@ func (d *fakeSSHD) serve(c net.Conn) {
 							return
 						}
 						ch, in, err := sc.OpenChannel("forwarded-streamlocal@openssh.com", ssh.Marshal(struct{ Path, Reserved string }{m.Path, ""}))
+						if err != nil {
+							lc.Close()
+							continue
+						}
+						go ssh.DiscardRequests(in)
+						go pipe(lc, chanConn{ch})
+					}
+				}()
+			case "tcpip-forward":
+				var m struct {
+					Addr string
+					Port uint32
+				}
+				if ssh.Unmarshal(r.Payload, &m) != nil {
+					_ = r.Reply(false, nil)
+					continue
+				}
+				l, err := net.Listen("tcp", net.JoinHostPort(m.Addr, strconv.Itoa(int(m.Port))))
+				if err != nil {
+					_ = r.Reply(false, nil)
+					continue
+				}
+				lmu.Lock()
+				listeners = append(listeners, l)
+				lmu.Unlock()
+				port := uint32(l.Addr().(*net.TCPAddr).Port)
+				_ = r.Reply(true, ssh.Marshal(struct{ Port uint32 }{port}))
+				go func() {
+					for {
+						lc, err := l.Accept()
+						if err != nil {
+							return
+						}
+						ch, in, err := sc.OpenChannel("forwarded-tcpip", ssh.Marshal(struct {
+							Addr       string
+							Port       uint32
+							OriginAddr string
+							OriginPort uint32
+						}{m.Addr, port, "127.0.0.1", uint32(lc.RemoteAddr().(*net.TCPAddr).Port)}))
 						if err != nil {
 							lc.Close()
 							continue

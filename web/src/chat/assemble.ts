@@ -80,6 +80,20 @@ export type Activity = {
   request?: Ask
   /** 這件工作裡回覆過的問題（一行結果）。 */
   answered?: Answered[]
+  /** 還在等電腦的原因（B12：主機離線、主機滿了排隊）。 */
+  wait?: BoxWait
+}
+
+/** 開機前排隊的原因（task.state 的 wait，B12 CL-4、CL-6）。 */
+export type BoxWait = { reason: 'host_offline' | 'host_full' | string; host_name?: string; position?: number; running?: number; max_running?: number }
+
+/** waiting_box 時給人看的一句話；沒有排隊原因時是 undefined（就是在開機）。 */
+export function waitText(w?: BoxWait): string | undefined {
+  if (!w) return undefined
+  const host = w.host_name ? `「${w.host_name}」` : ''
+  if (w.reason === 'host_offline') return `主機${host}離線，工作先排隊`
+  if (w.reason === 'host_full') return w.position ? `等電腦空出來（排第 ${w.position} 位）` : '等電腦空出來'
+  return undefined
 }
 
 export type ThreadState = {
@@ -356,6 +370,7 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
       const a = activity(s, e.task_id)
       const patch: Partial<Activity> = { state: st, botId: a.botId ?? e.bot_id, threadId: a.threadId ?? e.thread_id, startedAt: a.startedAt ?? e.at }
       if (st !== 'waiting_input' && st !== 'waiting_approval') patch.request = undefined
+      patch.wait = st === 'waiting_box' ? (p.wait as BoxWait | undefined) : undefined
       if (st === 'done') {
         patch.verdict = (p.verdict as string | undefined) ?? a.verdict
         patch.endedAt = e.at

@@ -113,6 +113,14 @@ func (m *Manager) load(ctx context.Context, botID string) (store.Box, hosts.Host
 	if err != nil {
 		return b, nil, err
 	}
+	if b.HostID == "" {
+		// 還沒有電腦：放在 Bot 指定（或自動擺放記下）的主機（CL-1、CL-4）；都沒有時是預設主機。
+		bot, err := m.db.GetBot(ctx, botID)
+		if err != nil {
+			return b, nil, err
+		}
+		b.HostID = bot.HostID
+	}
 	h, err := m.hosts.Get(b.HostID)
 	if err != nil {
 		return b, nil, err
@@ -249,6 +257,9 @@ func (m *Manager) create(ctx context.Context, b *store.Box, h hosts.Host) (*cont
 	api := h.Docker()
 	img, err := api.ImageInspect(ctx, m.image)
 	if cerrdefs.IsNotFound(err) {
+		if h.Kind() != "local" {
+			return nil, fmt.Errorf("這台主機上沒有 Bot 電腦映像 %s：到「設定 → 電腦與裝置」重新檢查這台主機（會把映像傳過去）", m.image)
+		}
 		return nil, fmt.Errorf("找不到 Bot 電腦映像 %s，請先執行 make box", m.image)
 	}
 	if err != nil {
@@ -381,6 +392,9 @@ func (m *Manager) Remove(ctx context.Context, botID string, purge bool) (Status,
 				return Status{}, m.fail(ctx, b, fmt.Errorf("刪除資料區 %s 失敗：%w", name, dockerErr(err)))
 			}
 		}
+	}
+	if r, ok := h.(interface{ ReleaseIPC(botID string) }); ok && purge {
+		r.ReleaseIPC(botID) // 遠端主機：停掉這個 Bot 的 product.sock 反向轉發
 	}
 	b.Error = ""
 	return m.sync(ctx, b, h, nil)

@@ -867,6 +867,8 @@ export interface BotsArchiveOutput {
   /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
   memory_enabled: boolean
   archived: boolean
+  /** 放在哪台主機（xbot.hosts.list）；空白＝第一次開機時自動擺放 */
+  host_id: string
   /** 誰建立的：owner、agent:<id>、bot:<id> */
   created_by?: string
   /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
@@ -929,6 +931,8 @@ export interface BotsCreateOutput {
   /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
   memory_enabled: boolean
   archived: boolean
+  /** 放在哪台主機（xbot.hosts.list）；空白＝第一次開機時自動擺放 */
+  host_id: string
   /** 誰建立的：owner、agent:<id>、bot:<id> */
   created_by?: string
   /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
@@ -1000,6 +1004,8 @@ export interface BotsGetOutput {
   /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
   memory_enabled: boolean
   archived: boolean
+  /** 放在哪台主機（xbot.hosts.list）；空白＝第一次開機時自動擺放 */
+  host_id: string
   /** 誰建立的：owner、agent:<id>、bot:<id> */
   created_by?: string
   /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
@@ -1043,6 +1049,8 @@ export interface BotsListOutput {
     /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
     memory_enabled: boolean
     archived: boolean
+    /** 放在哪台主機（xbot.hosts.list）；空白＝第一次開機時自動擺放 */
+    host_id: string
     /** 誰建立的：owner、agent:<id>、bot:<id> */
     created_by?: string
     /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
@@ -1082,6 +1090,8 @@ export interface BotsUpdateInput {
   approval_mode?: 'ask' | 'edits' | 'auto' | 'full'
   /** 打開或關掉記憶（下次開機生效） */
   memory_enabled?: boolean
+  /** 放在哪台主機（CL-1）；空白字串＝自動擺放。已經有電腦的 Bot 換主機要等搬家（CL-5） */
+  host_id?: string
 }
 
 export interface BotsUpdateOutput {
@@ -1102,6 +1112,8 @@ export interface BotsUpdateOutput {
   /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
   memory_enabled: boolean
   archived: boolean
+  /** 放在哪台主機（xbot.hosts.list）；空白＝第一次開機時自動擺放 */
+  host_id: string
   /** 誰建立的：owner、agent:<id>、bot:<id> */
   created_by?: string
   /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
@@ -1921,6 +1933,579 @@ export interface EnginesUnlinkCredentialsOutput {
  */
 export function enginesUnlinkCredentials(input: EnginesUnlinkCredentialsInput, opts?: CallOptions): Promise<EnginesUnlinkCredentialsOutput> {
   return invoke('xbot.engines.unlink_credentials', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.add
+
+export interface HostsAddInput {
+  /** 主機位址：Tailscale 名稱或 IP，可帶 :埠號（例：cloud-01、100.101.7.23、vps.example.com:2222） */
+  address: string
+  /** 主機名稱；不填用位址 */
+  name?: string
+  /** 同時開機上限；不填是 3 */
+  max_running?: number
+  /** 只檢查，不要把電腦映像傳過去 */
+  skip_image?: boolean
+}
+
+export interface HostsAddOutput {
+  host: {
+    id: string
+    name: string
+    /** local（這台電腦）或 ssh（遠端主機） */
+    kind: string
+    address: string
+    port?: number
+    user?: string
+    /** online、offline、updating、failed、unknown */
+    status: string
+    status_error?: string
+    arch: string
+    max_running: number
+    running: number
+    resources: {
+      cpus: number
+      mem_bytes: number
+      disk_free_bytes: number
+      disk_total_bytes: number
+      docker_version: string
+      os: string
+      /** amd64 或 arm64 */
+      arch: string
+      hostname: string
+      rtt_ms: number
+      /** 主機上的電腦映像版本 */
+      image_id?: string
+      /** 經 Tailscale 連線 */
+      tailscale: boolean
+    }
+    /** 遠端主機的 SSH 連線狀態 */
+    health?: {
+      /** connecting、online、reconnecting、failed、closed */
+      state: string
+      since: number
+      last_error?: string
+      connects: number
+      rtt_ms: number
+      reverse_forwards: number
+      local_forwards: number
+    }
+    last_seen_at: number
+    /** XBot 服務就在這台（不能移除） */
+    control_center: boolean
+    /** 新 Bot 預設放這台 */
+    default: boolean
+    bots: {
+      id: string
+      name: string
+      color: string
+      shape: string
+      state: string
+      running: boolean
+    }[]
+    queued: number
+    /** 電腦映像傳輸中的進度 */
+    image?: {
+      host_id: string
+      done: number
+      total: number
+      percent: number
+      error?: string
+    }
+    created_at: number
+  }
+  report: {
+    items: {
+      /** ssh、docker、resources、arch、forwarding、image、network */
+      id: string
+      label: string
+      /** ok、warn、fail、pending、running */
+      status: string
+      detail: string
+      /** 沒過時怎麼修 */
+      fix?: string
+      progress?: number
+    }[]
+    resources: {
+      cpus: number
+      mem_bytes: number
+      disk_free_bytes: number
+      disk_total_bytes: number
+      docker_version: string
+      os: string
+      /** amd64 或 arm64 */
+      arch: string
+      hostname: string
+      rtt_ms: number
+      /** 主機上的電腦映像版本 */
+      image_id?: string
+      /** 經 Tailscale 連線 */
+      tailscale: boolean
+    }
+    ok: boolean
+    need_image: boolean
+  }
+  added: boolean
+  loading: boolean
+}
+
+/**
+ * 加入一台遠端主機（自動檢查 SSH、Docker、資源、架構、轉發，並把電腦映像傳過去）
+ *
+ * 先在主機上貼 xbot.hosts.install_script 的指令。第一次連線會記下主機金鑰，之後金鑰不同就拒絕連線。檢查沒過時不會加入，report 說明原因與修法。電腦映像在背景傳，傳完主機變成在線（進度看 host.image 事件）。同一個位址重複加入會重新檢查，不會重複新增。
+ *
+ * `xbot.hosts.add`：權限 admin、風險 safe
+ */
+export function hostsAdd(input: HostsAddInput, opts?: CallOptions): Promise<HostsAddOutput> {
+  return invoke('xbot.hosts.add', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.check
+
+export interface HostsCheckInput {
+  /** 主機 id */
+  id: string
+  /** 主機上的電腦映像和這台不同時傳過去（更新電腦） */
+  update_image?: boolean
+}
+
+export interface HostsCheckOutput {
+  host: {
+    id: string
+    name: string
+    /** local（這台電腦）或 ssh（遠端主機） */
+    kind: string
+    address: string
+    port?: number
+    user?: string
+    /** online、offline、updating、failed、unknown */
+    status: string
+    status_error?: string
+    arch: string
+    max_running: number
+    running: number
+    resources: {
+      cpus: number
+      mem_bytes: number
+      disk_free_bytes: number
+      disk_total_bytes: number
+      docker_version: string
+      os: string
+      /** amd64 或 arm64 */
+      arch: string
+      hostname: string
+      rtt_ms: number
+      /** 主機上的電腦映像版本 */
+      image_id?: string
+      /** 經 Tailscale 連線 */
+      tailscale: boolean
+    }
+    /** 遠端主機的 SSH 連線狀態 */
+    health?: {
+      /** connecting、online、reconnecting、failed、closed */
+      state: string
+      since: number
+      last_error?: string
+      connects: number
+      rtt_ms: number
+      reverse_forwards: number
+      local_forwards: number
+    }
+    last_seen_at: number
+    /** XBot 服務就在這台（不能移除） */
+    control_center: boolean
+    /** 新 Bot 預設放這台 */
+    default: boolean
+    bots: {
+      id: string
+      name: string
+      color: string
+      shape: string
+      state: string
+      running: boolean
+    }[]
+    queued: number
+    /** 電腦映像傳輸中的進度 */
+    image?: {
+      host_id: string
+      done: number
+      total: number
+      percent: number
+      error?: string
+    }
+    created_at: number
+  }
+  report: {
+    items: {
+      /** ssh、docker、resources、arch、forwarding、image、network */
+      id: string
+      label: string
+      /** ok、warn、fail、pending、running */
+      status: string
+      detail: string
+      /** 沒過時怎麼修 */
+      fix?: string
+      progress?: number
+    }[]
+    resources: {
+      cpus: number
+      mem_bytes: number
+      disk_free_bytes: number
+      disk_total_bytes: number
+      docker_version: string
+      os: string
+      /** amd64 或 arm64 */
+      arch: string
+      hostname: string
+      rtt_ms: number
+      /** 主機上的電腦映像版本 */
+      image_id?: string
+      /** 經 Tailscale 連線 */
+      tailscale: boolean
+    }
+    ok: boolean
+    need_image: boolean
+  }
+  added: boolean
+  loading: boolean
+}
+
+/**
+ * 重新檢查一台主機（離線時順便重新連線）
+ *
+ * 更新資源、Docker 版本與連線狀態。update_image 為 true 時，主機上的電腦映像和這台不同就傳過去。
+ *
+ * `xbot.hosts.check`：權限 admin、風險 safe
+ */
+export function hostsCheck(input: HostsCheckInput, opts?: CallOptions): Promise<HostsCheckOutput> {
+  return invoke('xbot.hosts.check', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.get
+
+export interface HostsGetInput {
+  /** 主機 id */
+  id: string
+}
+
+export interface HostsGetOutput {
+  id: string
+  name: string
+  /** local（這台電腦）或 ssh（遠端主機） */
+  kind: string
+  address: string
+  port?: number
+  user?: string
+  /** online、offline、updating、failed、unknown */
+  status: string
+  status_error?: string
+  arch: string
+  max_running: number
+  running: number
+  resources: {
+    cpus: number
+    mem_bytes: number
+    disk_free_bytes: number
+    disk_total_bytes: number
+    docker_version: string
+    os: string
+    /** amd64 或 arm64 */
+    arch: string
+    hostname: string
+    rtt_ms: number
+    /** 主機上的電腦映像版本 */
+    image_id?: string
+    /** 經 Tailscale 連線 */
+    tailscale: boolean
+  }
+  /** 遠端主機的 SSH 連線狀態 */
+  health?: {
+    /** connecting、online、reconnecting、failed、closed */
+    state: string
+    since: number
+    last_error?: string
+    connects: number
+    rtt_ms: number
+    reverse_forwards: number
+    local_forwards: number
+  }
+  last_seen_at: number
+  /** XBot 服務就在這台（不能移除） */
+  control_center: boolean
+  /** 新 Bot 預設放這台 */
+  default: boolean
+  bots: {
+    id: string
+    name: string
+    color: string
+    shape: string
+    state: string
+    running: boolean
+  }[]
+  queued: number
+  /** 電腦映像傳輸中的進度 */
+  image?: {
+    host_id: string
+    done: number
+    total: number
+    percent: number
+    error?: string
+  }
+  created_at: number
+}
+
+/**
+ * 讀一台主機的狀態
+ *
+ * `xbot.hosts.get`：權限 read、風險 safe
+ */
+export function hostsGet(input: HostsGetInput, opts?: CallOptions): Promise<HostsGetOutput> {
+  return invoke('xbot.hosts.get', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.install_script
+
+export interface HostsInstallScriptInput {
+  /** 不要裝 Tailscale（主機已經用別的方式連得到） */
+  no_tailscale?: boolean
+}
+
+export interface HostsInstallScriptOutput {
+  /** 在要加入的主機上貼的一行指令 */
+  command: string
+  /** 指令展開後的安裝腳本（可重複執行） */
+  script: string
+  public_key: string
+  fingerprint: string
+  /** 主機上 XBot 用的帳號 */
+  user: string
+}
+
+/**
+ * 產生新增主機第 1 步要在主機上貼的一行安裝指令
+ *
+ * 指令會在那台 Linux 主機上裝 Docker 與 Tailscale（已經有就略過）、建 xbot 帳號（docker 群組）只放 XBot 的 SSH 公鑰、設定 sshd 允許 XBot 的轉發。可以重複執行。之後用 xbot.hosts.add 加入。
+ *
+ * `xbot.hosts.install_script`：權限 admin、風險 safe
+ */
+export function hostsInstallScript(input: HostsInstallScriptInput = {}, opts?: CallOptions): Promise<HostsInstallScriptOutput> {
+  return invoke('xbot.hosts.install_script', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.list
+
+export type HostsListInput = Record<string, never>
+
+export interface HostsListOutput {
+  hosts: {
+    id: string
+    name: string
+    /** local（這台電腦）或 ssh（遠端主機） */
+    kind: string
+    address: string
+    port?: number
+    user?: string
+    /** online、offline、updating、failed、unknown */
+    status: string
+    status_error?: string
+    arch: string
+    max_running: number
+    running: number
+    resources: {
+      cpus: number
+      mem_bytes: number
+      disk_free_bytes: number
+      disk_total_bytes: number
+      docker_version: string
+      os: string
+      /** amd64 或 arm64 */
+      arch: string
+      hostname: string
+      rtt_ms: number
+      /** 主機上的電腦映像版本 */
+      image_id?: string
+      /** 經 Tailscale 連線 */
+      tailscale: boolean
+    }
+    /** 遠端主機的 SSH 連線狀態 */
+    health?: {
+      /** connecting、online、reconnecting、failed、closed */
+      state: string
+      since: number
+      last_error?: string
+      connects: number
+      rtt_ms: number
+      reverse_forwards: number
+      local_forwards: number
+    }
+    last_seen_at: number
+    /** XBot 服務就在這台（不能移除） */
+    control_center: boolean
+    /** 新 Bot 預設放這台 */
+    default: boolean
+    bots: {
+      id: string
+      name: string
+      color: string
+      shape: string
+      state: string
+      running: boolean
+    }[]
+    queued: number
+    /** 電腦映像傳輸中的進度 */
+    image?: {
+      host_id: string
+      done: number
+      total: number
+      percent: number
+      error?: string
+    }
+    created_at: number
+  }[]
+}
+
+/**
+ * 列出放 Bot 電腦的主機（狀態、資源、開機台數、上面有哪些 Bot）
+ *
+ * `xbot.hosts.list`：權限 read、風險 safe
+ */
+export function hostsList(input: HostsListInput = {}, opts?: CallOptions): Promise<HostsListOutput> {
+  return invoke('xbot.hosts.list', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.remove
+
+export interface HostsRemoveInput {
+  /** 主機 id */
+  id: string
+}
+
+export interface HostsRemoveOutput {
+  id: string
+  name: string
+  /** 預演時是 false */
+  removed: boolean
+}
+
+/**
+ * 移除一台遠端主機
+ *
+ * 上面還有 Bot 的電腦時不能移除（先搬走或刪掉）。只會斷線並忘掉這台主機，不會動主機上的任何東西。一定要你本人核准，不能代為核准。
+ *
+ * `xbot.hosts.remove`：權限 admin、風險 confirm
+ */
+export function hostsRemove(input: HostsRemoveInput, opts?: CallOptions): Promise<HostsRemoveOutput> {
+  return invoke('xbot.hosts.remove', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.set_default
+
+export interface HostsSetDefaultInput {
+  /** 新 Bot 預設放的主機；空白＝這台電腦 */
+  id?: string
+}
+
+export interface HostsSetDefaultOutput {
+  id: string
+}
+
+/**
+ * 設定新 Bot 預設放哪台主機
+ *
+ * 預設主機滿了或離線時，新 Bot 會自動放到其他有空位的主機（CL-4）。
+ *
+ * `xbot.hosts.set_default`：權限 admin、風險 safe
+ */
+export function hostsSetDefault(input: HostsSetDefaultInput = {}, opts?: CallOptions): Promise<HostsSetDefaultOutput> {
+  return invoke('xbot.hosts.set_default', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.set_limits
+
+export interface HostsSetLimitsInput {
+  /** 主機 id */
+  id: string
+  /** 主機名稱 */
+  name?: string
+  /** 同時開機上限；0＝不限 */
+  max_running?: number
+}
+
+export interface HostsSetLimitsOutput {
+  id: string
+  name: string
+  /** local（這台電腦）或 ssh（遠端主機） */
+  kind: string
+  address: string
+  port?: number
+  user?: string
+  /** online、offline、updating、failed、unknown */
+  status: string
+  status_error?: string
+  arch: string
+  max_running: number
+  running: number
+  resources: {
+    cpus: number
+    mem_bytes: number
+    disk_free_bytes: number
+    disk_total_bytes: number
+    docker_version: string
+    os: string
+    /** amd64 或 arm64 */
+    arch: string
+    hostname: string
+    rtt_ms: number
+    /** 主機上的電腦映像版本 */
+    image_id?: string
+    /** 經 Tailscale 連線 */
+    tailscale: boolean
+  }
+  /** 遠端主機的 SSH 連線狀態 */
+  health?: {
+    /** connecting、online、reconnecting、failed、closed */
+    state: string
+    since: number
+    last_error?: string
+    connects: number
+    rtt_ms: number
+    reverse_forwards: number
+    local_forwards: number
+  }
+  last_seen_at: number
+  /** XBot 服務就在這台（不能移除） */
+  control_center: boolean
+  /** 新 Bot 預設放這台 */
+  default: boolean
+  bots: {
+    id: string
+    name: string
+    color: string
+    shape: string
+    state: string
+    running: boolean
+  }[]
+  queued: number
+  /** 電腦映像傳輸中的進度 */
+  image?: {
+    host_id: string
+    done: number
+    total: number
+    percent: number
+    error?: string
+  }
+  created_at: number
+}
+
+/**
+ * 改主機名稱或同時開機上限
+ *
+ * 上限滿了時新的工作會排隊（等電腦空出來）；改大之後排隊的工作會自動開機。
+ *
+ * `xbot.hosts.set_limits`：權限 admin、風險 safe
+ */
+export function hostsSetLimits(input: HostsSetLimitsInput, opts?: CallOptions): Promise<HostsSetLimitsOutput> {
+  return invoke('xbot.hosts.set_limits', input, opts).then((r) => r.output)
 }
 
 // xbot.inbox.counts
@@ -4082,6 +4667,14 @@ export interface Ops {
   'xbot.engines.link_credentials': { input: EnginesLinkCredentialsInput; output: EnginesLinkCredentialsOutput }
   'xbot.engines.status': { input: EnginesStatusInput; output: EnginesStatusOutput }
   'xbot.engines.unlink_credentials': { input: EnginesUnlinkCredentialsInput; output: EnginesUnlinkCredentialsOutput }
+  'xbot.hosts.add': { input: HostsAddInput; output: HostsAddOutput }
+  'xbot.hosts.check': { input: HostsCheckInput; output: HostsCheckOutput }
+  'xbot.hosts.get': { input: HostsGetInput; output: HostsGetOutput }
+  'xbot.hosts.install_script': { input: HostsInstallScriptInput; output: HostsInstallScriptOutput }
+  'xbot.hosts.list': { input: HostsListInput; output: HostsListOutput }
+  'xbot.hosts.remove': { input: HostsRemoveInput; output: HostsRemoveOutput }
+  'xbot.hosts.set_default': { input: HostsSetDefaultInput; output: HostsSetDefaultOutput }
+  'xbot.hosts.set_limits': { input: HostsSetLimitsInput; output: HostsSetLimitsOutput }
   'xbot.inbox.counts': { input: InboxCountsInput; output: InboxCountsOutput }
   'xbot.inbox.dismiss': { input: InboxDismissInput; output: InboxDismissOutput }
   'xbot.inbox.list': { input: InboxListInput; output: InboxListOutput }
@@ -4172,6 +4765,14 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.engines.link_credentials': { path: '/api/v1/engines.link_credentials', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.engines.status': { path: '/api/v1/engines.status', scope: 'read', risk: 'safe', mutates: false },
   'xbot.engines.unlink_credentials': { path: '/api/v1/engines.unlink_credentials', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.hosts.add': { path: '/api/v1/hosts.add', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.hosts.check': { path: '/api/v1/hosts.check', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.hosts.get': { path: '/api/v1/hosts.get', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.hosts.install_script': { path: '/api/v1/hosts.install_script', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.hosts.list': { path: '/api/v1/hosts.list', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.hosts.remove': { path: '/api/v1/hosts.remove', scope: 'admin', risk: 'confirm', mutates: true },
+  'xbot.hosts.set_default': { path: '/api/v1/hosts.set_default', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.hosts.set_limits': { path: '/api/v1/hosts.set_limits', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.inbox.counts': { path: '/api/v1/inbox.counts', scope: 'read', risk: 'safe', mutates: false },
   'xbot.inbox.dismiss': { path: '/api/v1/inbox.dismiss', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.inbox.list': { path: '/api/v1/inbox.list', scope: 'read', risk: 'safe', mutates: false },

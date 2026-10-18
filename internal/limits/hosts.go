@@ -27,3 +27,32 @@ const (
 
 // SSHRemoteDataDir 是遠端主機上 XBot 的資料目錄（PRD §16.3：/var/lib/xbot/bots/<id>/…），由 xbot 帳號擁有。
 const SSHRemoteDataDir = "/var/lib/xbot"
+
+// 主機管理（B12）。LazyBoy 沒有遠端主機，以下是 XBot 自訂。
+const (
+	// HostMinDockerMajor：遠端主機的 Docker 至少要 26 版（PLAN §2 make doctor 同一個門檻）。
+	HostMinDockerMajor = 26
+	// HostMinDiskBytes：Docker 資料目錄至少要有 10 GB 可用（電腦映像約 3 GB，加上每個 Bot 的資料）。
+	HostMinDiskBytes = 10 << 30
+	// HostDefaultMaxRunning 是新增主機時「同時開機上限」的預設值（J11 步驟 3）。
+	HostDefaultMaxRunning = 3
+	// HostMaxRunningCap 是同時開機上限能設的最大值。
+	HostMaxRunningCap = 64
+	// HostWatchInterval 是檢查主機連線狀態、寫回 host.status 的間隔。
+	HostWatchInterval = time.Second
+	// HostLocalPingInterval 是檢查本機 Docker 還在不在的間隔。
+	HostLocalPingInterval = 30 * time.Second
+	// HostQueuePoll：工作在排隊等電腦（主機離線或滿了）時，多久重新看一次。
+	HostQueuePoll = 2 * time.Second
+	// HostImageProgressEvery：載入電腦映像時，進度事件最多多久發一次。
+	HostImageProgressEvery = 500 * time.Millisecond
+	// HostCheckTimeout 是一次主機檢查（不含載入映像）的時限。
+	HostCheckTimeout = 60 * time.Second
+	// HostCheckGrace：檢查一台從來沒連上過的主機時，連不上（例：sshd 剛重新載入）最多再試這麼久才回報。
+	HostCheckGrace = 3 * time.Second
+	// HostImageLoadTimeout 是把電腦映像傳到一台主機的時限。
+	HostImageLoadTimeout = 2 * time.Hour
+)
+
+// HostSSHUser 是遠端主機上 XBot 用的帳號（安裝指令會建立）。
+const HostSSHUser = "xbot"

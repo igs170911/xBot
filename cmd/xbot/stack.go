@@ -41,6 +41,7 @@ type stack struct {
 	boxes     *box.Manager
 	driver    *engine.Router
 	creds     *engines.Service
+	hosts     *hosts.Service
 	runtime   *runtime.Runtime
 	comp      *runtime.Computers
 	skills    *skills.Service
@@ -104,7 +105,15 @@ func openStack(cfg config.Config) (*stack, error) {
 	comp.XBotMCP = runtime.XBotMCPServer() // Claude Code、Codex 也拿到 XBot MCP（C11）
 	registry := hosts.NewRegistry(s.local)
 	comp.Hosts = registry
-	s.boxes = box.New(db, registry, box.Options{Image: os.Getenv("XBOT_BOX_IMAGE"), Prepare: comp.Prepare})
+	image := os.Getenv("XBOT_BOX_IMAGE")
+	if image == "" {
+		image = box.DefaultImage
+	}
+	s.boxes = box.New(db, registry, box.Options{Image: image, Prepare: comp.Prepare})
+	bus := events.New()
+	// 遠端主機（B12）：連線、健康狀態寫回 host.status、加入與檢查、擺放與排隊。
+	s.hosts = hosts.NewService(hosts.Options{DB: db, Registry: registry, Local: s.local, DataDir: cfg.DataDir, Image: image,
+		LocalSocket: s.sockets.Path, Bus: bus, Logger: logger})
 	comp.Boxes = s.boxes
 	// 訂閱 CLI 的憑證從執行 XBot 服務的使用者家目錄讀（EN-2b）。
 	home, _ := os.UserHomeDir()
@@ -117,7 +126,10 @@ func openStack(cfg config.Config) (*stack, error) {
 	}
 	s.driver = engine.NewRouter(hermes.Name, comp.EngineOf, drivers...)
 	s.creds.Close = s.driver.Close
-	s.runtime = runtime.New(runtime.Options{DB: db, Driver: s.driver, Bus: events.New(), Models: comp, Logger: logger,
+	s.runtime = runtime.New(runtime.Options{DB: db, Driver: s.driver, Bus: bus, Models: comp, Logger: logger,
+		Admit: func(ctx context.Context, botID string, wait func(any)) (func(), error) {
+			return s.hosts.Admit(ctx, botID, func(w hosts.Wait) { wait(w) })
+		},
 		Budget: func(ctx context.Context, botID, providerID string) error {
 			if err := s.budgets.Check(ctx, botID); err != nil {
 				return err
@@ -140,11 +152,18 @@ func openStack(cfg config.Config) (*stack, error) {
 		UID: box.BotUID, GID: box.BotGID,
 	}})
 	comp.Roster = s.collab.RosterText
+	if err := s.hosts.Start(context.Background()); err != nil {
+		s.Close()
+		return nil, err
+	}
 	return s, nil
 }
 
 func (s *stack) Close() error {
 	var errs []error
+	if s.hosts != nil {
+		errs = append(errs, s.hosts.Close())
+	}
 	if s.sockets != nil {
 		errs = append(errs, s.sockets.Shutdown())
 	}

@@ -59,6 +59,8 @@ type Bot struct {
 	MemoryEnabled  bool            `json:"memory_enabled"`
 	Voice          string          `json:"voice"`
 	Archived       bool            `json:"archived"`
+	// HostID 是 Bot 放在哪台主機（CL-1）；空白＝還沒擺放，第一次開機時自動擺放（CL-4）。
+	HostID string `json:"host_id"`
 	// CreatedBy／UpdatedBy 是誰建立、最後修改（owner、agent:<權杖 id>、bot:<id>；舊資料是空白）。
 	// MCP-8 用 CreatedBy 決定代理「自己建立的」Bot；MCP-13 用 UpdatedBy 標「由 ○○（MCP）修改」。
 	CreatedBy string `json:"created_by"`
@@ -69,21 +71,21 @@ type Bot struct {
 
 const botCols = `id, name, title, description, soul, color, avatar, engine, model, effort, fallback,
 	approval_mode, tool_scope, contacts_policy, team_id, reports_to, is_chief, box_limits, idle_minutes,
-	budget, memory_enabled, voice, archived, created_at, updated_at, created_by, updated_by`
+	budget, memory_enabled, voice, archived, host_id, created_at, updated_at, created_by, updated_by`
 
 func scanBot(s scanner) (Bot, error) {
 	var b Bot
 	var avatar, fallback, toolScope, contacts, boxLimits, budget string
-	var team, reports sql.NullString
+	var team, reports, host sql.NullString
 	err := s.Scan(&b.ID, &b.Name, &b.Title, &b.Description, &b.Soul, &b.Color, &avatar, &b.Engine, &b.Model,
 		&b.Effort, &fallback, &b.ApprovalMode, &toolScope, &contacts, &team, &reports, &b.IsChief, &boxLimits,
-		&b.IdleMinutes, &budget, &b.MemoryEnabled, &b.Voice, &b.Archived, &b.CreatedAt, &b.UpdatedAt, &b.CreatedBy, &b.UpdatedBy)
+		&b.IdleMinutes, &budget, &b.MemoryEnabled, &b.Voice, &b.Archived, &host, &b.CreatedAt, &b.UpdatedAt, &b.CreatedBy, &b.UpdatedBy)
 	if err != nil {
 		return b, err
 	}
 	b.Avatar, b.ToolScope, b.ContactsPolicy = json.RawMessage(avatar), json.RawMessage(toolScope), json.RawMessage(contacts)
 	b.BoxLimits, b.Budget = json.RawMessage(boxLimits), json.RawMessage(budget)
-	b.TeamID, b.ReportsTo = team.String, reports.String
+	b.TeamID, b.ReportsTo, b.HostID = team.String, reports.String, host.String
 	b.Fallback, err = parseList(fallback)
 	return b, err
 }
@@ -92,7 +94,7 @@ func (b *Bot) args() []any {
 	return []any{b.Name, b.Title, b.Description, b.Soul, b.Color, jsonOr(b.Avatar, "{}"), b.Engine, b.Model,
 		b.Effort, strList(b.Fallback), b.ApprovalMode, jsonOr(b.ToolScope, "{}"), jsonOr(b.ContactsPolicy, "{}"),
 		nullStr(b.TeamID), nullStr(b.ReportsTo), b2i(b.IsChief), jsonOr(b.BoxLimits, "{}"), b.IdleMinutes,
-		jsonOr(b.Budget, "{}"), b2i(b.MemoryEnabled), b.Voice, b2i(b.Archived)}
+		jsonOr(b.Budget, "{}"), b2i(b.MemoryEnabled), b.Voice, b2i(b.Archived), nullStr(b.HostID)}
 }
 
 // CreateBot 新增一個 Bot。ID 空白會自動產生；IdleMinutes 為 0 時用預設值。回傳存好的 Bot。
@@ -110,7 +112,7 @@ func (q *Queries) CreateBot(ctx context.Context, b Bot) (Bot, error) {
 		b.UpdatedBy = b.CreatedBy
 	}
 	args = append(args, b.CreatedAt, b.UpdatedAt, b.CreatedBy, b.UpdatedBy)
-	_, err := q.w.ExecContext(ctx, `INSERT INTO bot(`+botCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, args...)
+	_, err := q.w.ExecContext(ctx, `INSERT INTO bot(`+botCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, args...)
 	if err != nil {
 		return b, err
 	}
@@ -139,7 +141,7 @@ func (q *Queries) UpdateBot(ctx context.Context, b Bot) (Bot, error) {
 	err := affected(q.w.ExecContext(ctx, `UPDATE bot SET name=?, title=?, description=?, soul=?, color=?, avatar=?,
 		engine=?, model=?, effort=?, fallback=?, approval_mode=?, tool_scope=?, contacts_policy=?, team_id=?,
 		reports_to=?, is_chief=?, box_limits=?, idle_minutes=?, budget=?, memory_enabled=?, voice=?, archived=?,
-		updated_at=?, updated_by=? WHERE id=?`, args...))
+		host_id=?, updated_at=?, updated_by=? WHERE id=?`, args...))
 	if err != nil {
 		return b, err
 	}
@@ -163,82 +165,6 @@ func (q *Queries) SetBotArchived(ctx context.Context, id string, archived bool) 
 // DeleteBot 刪除 Bot；它的電腦、對話串、任務、事件、核准、待我處理會一起刪掉（外鍵 CASCADE）。
 func (q *Queries) DeleteBot(ctx context.Context, id string) error {
 	return affected(q.w.ExecContext(ctx, `DELETE FROM bot WHERE id=?`, id))
-}
-
-// ── host ─────────────────────────────────────────────
-
-// Host 是一台 Docker 主機（PRD §16）。
-type Host struct {
-	ID         string          `json:"id"`
-	Name       string          `json:"name"`
-	Kind       string          `json:"kind"` // local / ssh
-	Address    string          `json:"address"`
-	Status     string          `json:"status"` // unknown / online / offline / updating
-	Arch       string          `json:"arch"`
-	MaxRunning int             `json:"max_running"`
-	Resources  json.RawMessage `json:"resources"`
-	LastSeenAt int64           `json:"last_seen_at"`
-	CreatedAt  int64           `json:"created_at"`
-	UpdatedAt  int64           `json:"updated_at"`
-}
-
-const hostCols = `id, name, kind, address, status, arch, max_running, resources, last_seen_at, created_at, updated_at`
-
-func scanHost(s scanner) (Host, error) {
-	var h Host
-	var res string
-	err := s.Scan(&h.ID, &h.Name, &h.Kind, &h.Address, &h.Status, &h.Arch, &h.MaxRunning, &res, &h.LastSeenAt, &h.CreatedAt, &h.UpdatedAt)
-	h.Resources = json.RawMessage(res)
-	return h, err
-}
-
-// CreateHost 新增主機。Status 空白時為 unknown。
-func (q *Queries) CreateHost(ctx context.Context, h Host) (Host, error) {
-	if h.ID == "" {
-		h.ID = NewID()
-	}
-	if h.Status == "" {
-		h.Status = "unknown"
-	}
-	h.CreatedAt = nowMS()
-	h.UpdatedAt = h.CreatedAt
-	_, err := q.w.ExecContext(ctx, `INSERT INTO host(`+hostCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-		h.ID, h.Name, h.Kind, h.Address, h.Status, h.Arch, h.MaxRunning, jsonOr(h.Resources, "{}"), h.LastSeenAt, h.CreatedAt, h.UpdatedAt)
-	if err != nil {
-		return h, err
-	}
-	h.Resources = json.RawMessage(jsonOr(h.Resources, "{}"))
-	return h, nil
-}
-
-// GetHost 讀一台主機。
-func (q *Queries) GetHost(ctx context.Context, id string) (Host, error) {
-	h, err := scanHost(q.r.QueryRowContext(ctx, `SELECT `+hostCols+` FROM host WHERE id = ?`, id))
-	return h, notFound(err)
-}
-
-// ListHosts 列出所有主機。
-func (q *Queries) ListHosts(ctx context.Context) ([]Host, error) {
-	rows, err := q.r.QueryContext(ctx, `SELECT `+hostCols+` FROM host ORDER BY created_at, id`)
-	return collect(rows, err, scanHost)
-}
-
-// UpdateHost 覆寫主機的名稱、位址、上限等設定。
-func (q *Queries) UpdateHost(ctx context.Context, h Host) error {
-	return affected(q.w.ExecContext(ctx, `UPDATE host SET name=?, kind=?, address=?, arch=?, max_running=?, resources=?, updated_at=? WHERE id=?`,
-		h.Name, h.Kind, h.Address, h.Arch, h.MaxRunning, jsonOr(h.Resources, "{}"), nowMS(), h.ID))
-}
-
-// SetHostStatus 記錄健康檢查結果；online 時同時更新 last_seen_at。
-func (q *Queries) SetHostStatus(ctx context.Context, id, status string) error {
-	now := nowMS()
-	return affected(q.w.ExecContext(ctx, `UPDATE host SET status=?,
-		last_seen_at = CASE WHEN ? = 'online' THEN ? ELSE last_seen_at END, updated_at=? WHERE id=?`, status, status, now, now, id))
-}
-
-// DeleteHost 移除主機；上面還有 Bot 電腦時會失敗（外鍵 RESTRICT）。
-func (q *Queries) DeleteHost(ctx context.Context, id string) error {
-	return affected(q.w.ExecContext(ctx, `DELETE FROM host WHERE id=?`, id))
 }
 
 // ── box ──────────────────────────────────────────────

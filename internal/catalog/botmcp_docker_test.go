@@ -223,8 +223,16 @@ func TestDockerBotMCP(t *testing.T) {
 		names = append(names, tool.Name)
 	}
 	slices.Sort(names)
-	if !slices.Equal(names, []string{"xbot.approvals.list", "xbot.approvals.request", "xbot.approvals.wait", "xbot.cards.post", "xbot.team.roster"}) {
-		t.Fatalf("橋接的 tools/list：%v\n%s", names, out)
+	// 至少要有 C11 的這幾個（X02 之後還有 xbot.collab.*）；不能有 Bot 不該用的（例：主機、刪除 Bot）。
+	for _, want := range []string{"xbot.approvals.list", "xbot.approvals.request", "xbot.approvals.wait", "xbot.cards.post", "xbot.team.roster"} {
+		if !slices.Contains(names, want) {
+			t.Fatalf("橋接的 tools/list 少了 %s：%v\n%s", want, names, out)
+		}
+	}
+	for _, n := range names {
+		if strings.HasPrefix(n, "xbot.hosts.") || n == "xbot.bots.delete" {
+			t.Fatalf("Bot 不該看得到 %s", n)
+		}
 	}
 	if !strings.Contains(string(replies[3]), `\"executed\":true`) && !strings.Contains(string(replies[3]), `"executed":true`) {
 		t.Fatalf("approvals.wait：%s", replies[3])
