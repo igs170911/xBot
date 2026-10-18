@@ -11,10 +11,11 @@ LDFLAGS := -s -w -X xbot/internal/version.Version=$(VERSION)
 GOBUILD := CGO_ENABLED=0 $(RUN) go build -tags webembed -trimpath -ldflags "$(LDFLAGS)"
 ARCH    := $(shell uname -m | sed -e 's/x86_64/amd64/' -e 's/aarch64/arm64/')
 XBOT    := bin/xbot
+, := ,
 # 管理已安裝服務時，優先用裝好的執行檔；還沒安裝就用剛建出來的。
 XBOT_INSTALLED = $(shell command -v $(HOME)/.local/bin/xbot 2>/dev/null || echo $(XBOT))
 
-.PHONY: help doctor setup deps dev check fmt test e2e box build web-build install start stop restart \
+.PHONY: help doctor setup deps dev check fmt test e2e box box-latest box-test build web-build install start stop restart \
         status logs token up down update backup restore clean uninstall
 
 help: ## 列出所有指令
@@ -57,8 +58,19 @@ e2e: ## Playwright 端對端測試（會先 make build）
 	@$(MAKE) --no-print-directory build
 	cd web && $(RUN) pnpm e2e
 
-box: ## 建 Bot 電腦映像（B01 實作）
-	@echo "尚未實作：Bot 電腦映像在任務卡 B01 加入"; exit 1
+# Bot 電腦映像：box/Dockerfile（桌面＋Chromium＋noVNC＋Hermes，Hermes 版本固定在 box/HERMES_VERSION）。
+# DEBIAN_MIRROR=<網址> 改用較快的 Debian 鏡像站（當成建置密鑰傳入，不影響快取）。
+BOX_IMAGE ?= xbot-box:dev
+box: ## 建 Bot 電腦映像 xbot-box:dev（沿用快取與固定版本）
+	@docker info >/dev/null 2>&1 || { echo "❌ 無法連線到 Docker。請先啟動 Docker，並確認目前的使用者可以執行 docker（make doctor 會告訴你怎麼修）"; exit 1; }
+	DOCKER_BUILDKIT=1 docker build $(if $(DEBIAN_MIRROR),--secret id=debian_mirror$(,)env=DEBIAN_MIRROR,) $(BOX_ARGS) -t $(BOX_IMAGE) box
+	@echo "✅ 已建好 $(BOX_IMAGE)（Hermes $$(cut -c1-12 box/HERMES_VERSION)）。驗證：make box-test"
+
+box-latest: ## 同 make box，但 grok 等工具與 Python 資料套件更新到最新版
+	@$(MAKE) --no-print-directory box BOX_ARGS="--build-arg BOX_REFRESH=$$(date +%Y%m%d%H%M%S) --build-arg GROK_CLI_VERSION=$${GROK_CLI_VERSION:-latest}"
+
+box-test: ## 開一台 Bot 電腦，確認桌面、Chromium、noVNC、Hermes 都起得來
+	@BOX_IMAGE=$(BOX_IMAGE) scripts/test-box.sh
 
 # ── 建置 ──────────────────────────────────────────────
 
@@ -74,10 +86,10 @@ build: web-build ## 建出單一執行檔（前端內嵌），amd64 與 arm64
 
 # ── 安裝到這台機器（systemd 使用者服務）────────────────
 
-install: ## 一鍵安裝：補齊工具 → 建置 → 設成開機自動啟動的服務
+install: ## 一鍵安裝：補齊工具 → 建置 → 建 Bot 電腦映像 → 設成開機自動啟動的服務
 	@scripts/bootstrap.sh setup
 	@$(MAKE) --no-print-directory build
-	@echo "（Bot 電腦映像會在任務卡 B01 加入 make box 後一併建置）"
+	@$(MAKE) --no-print-directory box
 	@YES=$(YES) $(XBOT) service install --bin $(XBOT)
 
 start: ## 啟動服務
