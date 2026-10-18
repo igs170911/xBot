@@ -1,0 +1,339 @@
+package box
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/mount"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
+
+	"xbot/internal/hosts"
+	"xbot/internal/store"
+)
+
+var ctx = context.Background()
+
+type env struct {
+	db     *store.DB
+	docker *fakeDocker
+	host   *fakeHost
+	m      *Manager
+	bot    string
+}
+
+func setup(t *testing.T) *env {
+	t.Helper()
+	dir := t.TempDir()
+	db, err := store.Open(ctx, filepath.Join(dir, store.FileName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Close() })
+	row, err := db.CreateHost(ctx, store.Host{Name: hosts.LocalName, Kind: "local"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bot, err := db.CreateBot(ctx, store.Bot{Name: "小秘"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := newFakeDocker()
+	h := &fakeHost{id: row.ID, dir: dir, docker: d}
+	return &env{db: db, docker: d, host: h, m: New(db, hosts.NewRegistry(h), Options{}), bot: bot.ID}
+}
+
+func ok[T any](t *testing.T) func(T, error) T {
+	return func(v T, err error) T {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return v
+	}
+}
+
+func TestCreateOptions(t *testing.T) {
+	o := createOptions("b1", "xbot-box:dev", "/data/bots/b1/ipc", DefaultLimits())
+	cfg, hc := o.Config, o.HostConfig
+
+	if o.Name != "xbot-box-b1" || cfg.Image != "xbot-box:dev" {
+		t.Fatalf("名稱與映像：%s %s", o.Name, cfg.Image)
+	}
+	if cfg.Labels["xbot.bot"] != "b1" || cfg.Labels["xbot.managed"] != "true" || cfg.Labels["xbot.limits"] == "" {
+		t.Fatalf("標籤：%v", cfg.Labels)
+	}
+	if !slices.Contains(cfg.Env, "XBOT_UID=1000") || !slices.Contains(cfg.Env, "XBOT_GID=1000") {
+		t.Fatalf("環境變數：%v", cfg.Env)
+	}
+	for _, e := range cfg.Env {
+		if strings.Contains(strings.ToUpper(e), "KEY") || strings.Contains(strings.ToUpper(e), "TOKEN") {
+			t.Fatalf("金鑰不能進容器：%s", e)
+		}
+	}
+	if cfg.StopTimeout == nil || *cfg.StopTimeout != 20 {
+		t.Fatalf("停止等待時間：%v", cfg.StopTimeout)
+	}
+
+	// SEC-3 強化。
+	if !slices.Equal(hc.CapDrop, []string{"ALL"}) {
+		t.Fatalf("cap-drop：%v", hc.CapDrop)
+	}
+	for _, c := range hc.CapAdd {
+		if !slices.Contains([]string{"CHOWN", "DAC_OVERRIDE", "FOWNER", "KILL", "SETGID", "SETUID"}, c) {
+			t.Fatalf("多給了 capability：%s", c)
+		}
+	}
+	if !slices.Contains(hc.SecurityOpt, "no-new-privileges:true") {
+		t.Fatalf("security-opt：%v", hc.SecurityOpt)
+	}
+	if hc.Privileged || hc.NetworkMode == "host" || hc.PidMode == "host" || hc.IpcMode == "host" {
+		t.Fatal("不能用特權或主機命名空間")
+	}
+	if len(hc.ExtraHosts) != 0 {
+		t.Fatalf("不需要直接連主機（SEC-4）：%v", hc.ExtraHosts)
+	}
+	if hc.RestartPolicy.Name != container.RestartPolicyUnlessStopped {
+		t.Fatalf("重啟策略：%v", hc.RestartPolicy)
+	}
+
+	// BX-11 資源限制。
+	r := hc.Resources
+	if r.Memory != 3<<30 || hc.ShmSize != 512<<20 || r.CPUPeriod != 10000 || r.CPUQuota != 20000 {
+		t.Fatalf("資源：mem=%d shm=%d period=%d quota=%d", r.Memory, hc.ShmSize, r.CPUPeriod, r.CPUQuota)
+	}
+	if r.PidsLimit == nil || *r.PidsLimit <= 0 {
+		t.Fatalf("pids-limit：%v", r.PidsLimit)
+	}
+
+	// 掛載：三個具名 volume＋唯讀的 product.sock 資料夾；不能有 Docker socket（SEC-9）。
+	want := map[string]mount.Mount{
+		"/hermes":      {Type: mount.TypeVolume, Source: "xbot-box-b1-hermes", Target: "/hermes"},
+		"/home/box":    {Type: mount.TypeVolume, Source: "xbot-box-b1-home", Target: "/home/box"},
+		"/workspace":   {Type: mount.TypeVolume, Source: "xbot-box-b1-workspace", Target: "/workspace"},
+		"/product-ipc": {Type: mount.TypeBind, Source: "/data/bots/b1/ipc", Target: "/product-ipc", ReadOnly: true},
+	}
+	if len(hc.Mounts) != len(want) || len(hc.Binds) != 0 {
+		t.Fatalf("掛載數量：%+v %v", hc.Mounts, hc.Binds)
+	}
+	for _, m := range hc.Mounts {
+		if w, ok := want[m.Target]; !ok || w.Type != m.Type || w.Source != m.Source || w.ReadOnly != m.ReadOnly {
+			t.Fatalf("掛載 %s：%+v", m.Target, m)
+		}
+		if strings.Contains(m.Source, "docker.sock") {
+			t.Fatal("不能把 Docker socket 掛進容器")
+		}
+	}
+
+	// 埠：noVNC 與 Hermes 只發布在 127.0.0.1，主機埠隨機。
+	for _, p := range []string{"6080/tcp", "8642/tcp"} {
+		port := network.MustParsePort(p)
+		if _, ok := cfg.ExposedPorts[port]; !ok {
+			t.Fatalf("沒有 expose %s", p)
+		}
+		bs := hc.PortBindings[port]
+		if len(bs) != 1 || bs[0].HostIP.String() != "127.0.0.1" || bs[0].HostPort != "" {
+			t.Fatalf("%s 的發布：%+v", p, bs)
+		}
+	}
+	if len(hc.PortBindings) != 2 || hc.PublishAllPorts {
+		t.Fatalf("只發布兩個埠：%+v", hc.PortBindings)
+	}
+}
+
+func TestLimitsFromRow(t *testing.T) {
+	l := parseLimits(json.RawMessage(`{"cpus":4,"memory_mb":8192}`))
+	if l.CPUs != 4 || l.MemoryMB != 8192 || l.ShmMB != 512 || l.Pids != DefaultLimits().Pids {
+		t.Fatalf("合併預設值：%+v", l)
+	}
+	o := createOptions("b1", "img", "/ipc", l)
+	if o.HostConfig.CPUQuota != 40000 || o.HostConfig.Memory != 8<<30 {
+		t.Fatalf("自訂限制沒有套用：%+v", o.HostConfig.Resources)
+	}
+	if parseLimits(json.RawMessage(`{}`)) != DefaultLimits() || parseLimits(nil) != DefaultLimits() {
+		t.Fatal("空白時用預設值")
+	}
+}
+
+func TestLifecycle(t *testing.T) {
+	e := setup(t)
+	if s := ok[Status](t)(e.m.Status(ctx, e.bot)); s.State != StateNone || s.Running {
+		t.Fatalf("還沒建立：%+v", s)
+	}
+
+	// 第一次開機：建立三個 volume 與容器，再開機（BX-1 延遲建立）。
+	s := ok[Status](t)(e.m.Start(ctx, e.bot))
+	if s.State != StateRunning || !s.Running || s.NoVNCPort == 0 || s.HermesPort == 0 || s.HostID != e.host.id {
+		t.Fatalf("開機：%+v", s)
+	}
+	if s.NoVNCAddr != e.host.Addr(s.NoVNCPort) || s.HermesAddr != e.host.Addr(s.HermesPort) {
+		t.Fatalf("位址：%+v", s)
+	}
+	if len(e.docker.volumes) != 3 || len(e.docker.created) != 1 {
+		t.Fatalf("volume=%d 容器=%d", len(e.docker.volumes), len(e.docker.created))
+	}
+	for name, v := range e.docker.volumes {
+		if v.Labels["xbot.bot"] != e.bot || v.Labels["xbot.managed"] != "true" {
+			t.Fatalf("volume %s 標籤：%v", name, v.Labels)
+		}
+	}
+	row := ok[store.Box](t)(e.db.GetBox(ctx, e.bot))
+	if row.State != StateRunning || row.ContainerID != s.ContainerID || row.NoVNCPort != s.NoVNCPort || row.HermesPort != s.HermesPort ||
+		row.ImageRev != "sha256:image1" || row.HostID != e.host.id || row.LastActiveAt == 0 {
+		t.Fatalf("box 表：%+v", row)
+	}
+	if parseLimits(row.Limits) != DefaultLimits() || !strings.Contains(string(row.Limits), "memory_mb") {
+		t.Fatalf("box.limits：%s", row.Limits)
+	}
+	id := s.ContainerID
+
+	// 再開一次不會重建。
+	if s2 := ok[Status](t)(e.m.Start(ctx, e.bot)); s2.ContainerID != id || len(e.docker.created) != 1 {
+		t.Fatalf("重複開機不該重建：%+v", s2)
+	}
+
+	// 停止：休眠，埠清掉，等 20 秒收尾。
+	s = ok[Status](t)(e.m.Stop(ctx, e.bot))
+	if s.State != StateSleeping || s.Running || s.NoVNCPort != 0 || s.ContainerID != id {
+		t.Fatalf("停止：%+v", s)
+	}
+	if n := len(e.docker.stops); n != 1 || *e.docker.stops[0] != 20 {
+		t.Fatalf("停止參數：%v", e.docker.stops)
+	}
+	if row = ok[store.Box](t)(e.db.GetBox(ctx, e.bot)); row.State != StateSleeping || row.NoVNCPort != 0 || row.HermesPort != 0 {
+		t.Fatalf("box 表停止後：%+v", row)
+	}
+
+	// 重開：同一台容器，新的隨機埠。
+	s = ok[Status](t)(e.m.Start(ctx, e.bot))
+	if s.ContainerID != id || !s.Running || len(e.docker.created) != 1 {
+		t.Fatalf("重開：%+v", s)
+	}
+
+	// 刪除但保留資料。
+	s = ok[Status](t)(e.m.Remove(ctx, e.bot, false))
+	if s.State != StateNone || s.ContainerID != "" || len(e.docker.containers) != 0 || len(e.docker.volumes) != 3 {
+		t.Fatalf("刪除保留資料：%+v volumes=%d", s, len(e.docker.volumes))
+	}
+	// 再建立會接回原本的 volume。
+	s = ok[Status](t)(e.m.Create(ctx, e.bot))
+	if s.State != StateSleeping || s.Running || s.ContainerID == id || len(e.docker.volumes) != 3 {
+		t.Fatalf("重新建立：%+v", s)
+	}
+	// 連資料一起刪。
+	ok[Status](t)(e.m.Remove(ctx, e.bot, true))
+	if len(e.docker.containers) != 0 || len(e.docker.volumes) != 0 {
+		t.Fatalf("purge 後還有 容器=%d volume=%d", len(e.docker.containers), len(e.docker.volumes))
+	}
+	// 對已經不存在的電腦再刪一次不會出錯。
+	ok[Status](t)(e.m.Remove(ctx, e.bot, true))
+	ok[Status](t)(e.m.Stop(ctx, e.bot))
+}
+
+func TestRebuildKeepsVolumes(t *testing.T) {
+	e := setup(t)
+	old := ok[Status](t)(e.m.Start(ctx, e.bot))
+	e.docker.images[DefaultImage] = "sha256:image2"
+	s := ok[Status](t)(e.m.Rebuild(ctx, e.bot))
+	if s.ContainerID == old.ContainerID || !s.Running || s.State != StateRunning {
+		t.Fatalf("重建後應該是新容器且在執行：%+v", s)
+	}
+	if len(e.docker.volumes) != 3 || len(e.docker.created) != 2 || len(e.docker.stops) != 1 {
+		t.Fatalf("volume=%d 建立=%d 停止=%d", len(e.docker.volumes), len(e.docker.created), len(e.docker.stops))
+	}
+	if row := ok[store.Box](t)(e.db.GetBox(ctx, e.bot)); row.ImageRev != "sha256:image2" {
+		t.Fatalf("映像版本：%s", row.ImageRev)
+	}
+
+	// 休眠中的電腦重建後維持休眠。
+	ok[Status](t)(e.m.Stop(ctx, e.bot))
+	s = ok[Status](t)(e.m.Rebuild(ctx, e.bot))
+	if s.Running || s.State != StateSleeping || len(e.docker.created) != 3 {
+		t.Fatalf("休眠中重建：%+v", s)
+	}
+}
+
+func TestCustomLimitsApplied(t *testing.T) {
+	e := setup(t)
+	if err := e.db.UpsertBox(ctx, store.Box{BotID: e.bot, HostID: e.host.id, Limits: json.RawMessage(`{"cpus":1}`)}); err != nil {
+		t.Fatal(err)
+	}
+	ok[Status](t)(e.m.Create(ctx, e.bot))
+	if q := e.docker.created[0].HostConfig.CPUQuota; q != 10000 {
+		t.Fatalf("CPU 配額：%d", q)
+	}
+}
+
+func TestMissingImage(t *testing.T) {
+	e := setup(t)
+	delete(e.docker.images, DefaultImage)
+	_, err := e.m.Start(ctx, e.bot)
+	if err == nil || !strings.Contains(err.Error(), "make box") {
+		t.Fatalf("沒有映像：%v", err)
+	}
+	row := ok[store.Box](t)(e.db.GetBox(ctx, e.bot))
+	if row.State != StateError || !strings.Contains(row.Error, "make box") {
+		t.Fatalf("錯誤要記在 box 表：%+v", row)
+	}
+	// 補上映像後可以恢復。
+	e.docker.images[DefaultImage] = "sha256:image1"
+	if s := ok[Status](t)(e.m.Start(ctx, e.bot)); s.State != StateRunning || s.Error != "" {
+		t.Fatalf("恢復：%+v", s)
+	}
+}
+
+func TestNameTakenByOtherContainer(t *testing.T) {
+	e := setup(t)
+	o := createOptions(e.bot, DefaultImage, "/ipc", DefaultLimits())
+	o.Config.Labels = map[string]string{"other": "app"}
+	o.HostConfig.Mounts = nil
+	if _, err := e.docker.ContainerCreate(ctx, o); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.m.Start(ctx, e.bot); !errors.Is(err, ErrNameTaken) {
+		t.Fatalf("名稱被佔用：%v", err)
+	}
+	if _, err := e.m.Remove(ctx, e.bot, true); !errors.Is(err, ErrNameTaken) {
+		t.Fatalf("不能刪別人的容器：%v", err)
+	}
+	if len(e.docker.containers) != 1 {
+		t.Fatal("別人的容器不能被動到")
+	}
+}
+
+func TestUnknownBotAndHost(t *testing.T) {
+	e := setup(t)
+	if _, err := e.m.Start(ctx, "nobody"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("不存在的 Bot：%v", err)
+	}
+	other := ok[store.Host](t)(e.db.CreateHost(ctx, store.Host{Name: "遠端", Kind: "ssh"}))
+	if err := e.db.UpsertBox(ctx, store.Box{BotID: e.bot, HostID: other.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.m.Start(ctx, e.bot); !errors.Is(err, hosts.ErrUnknownHost) {
+		t.Fatalf("主機沒連上：%v", err)
+	}
+}
+
+func TestStatusReconciles(t *testing.T) {
+	e := setup(t)
+	s := ok[Status](t)(e.m.Start(ctx, e.bot))
+	// 容器在 XBot 之外被停掉。
+	if _, err := e.docker.ContainerStop(ctx, s.ContainerID, client.ContainerStopOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if s = ok[Status](t)(e.m.Status(ctx, e.bot)); s.State != StateSleeping || s.NoVNCPort != 0 {
+		t.Fatalf("同步停止：%+v", s)
+	}
+	// 容器在 XBot 之外被刪掉。
+	delete(e.docker.containers, ContainerName(e.bot))
+	if s = ok[Status](t)(e.m.Status(ctx, e.bot)); s.State != StateNone || s.ContainerID != "" {
+		t.Fatalf("同步刪除：%+v", s)
+	}
+}

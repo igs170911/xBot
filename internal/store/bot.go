@@ -238,17 +238,18 @@ type Box struct {
 	Limits       json.RawMessage `json:"limits"`
 	LastActiveAt int64           `json:"last_active_at"`
 	NoVNCPort    int             `json:"novnc_port"`
+	HermesPort   int             `json:"hermes_port"`
 	CreatedAt    int64           `json:"created_at"`
 	UpdatedAt    int64           `json:"updated_at"`
 }
 
-const boxCols = `bot_id, host_id, container_id, image_rev, state, error, limits, last_active_at, novnc_port, created_at, updated_at`
+const boxCols = `bot_id, host_id, container_id, image_rev, state, error, limits, last_active_at, novnc_port, hermes_port, created_at, updated_at`
 
 func scanBox(s scanner) (Box, error) {
 	var b Box
 	var host sql.NullString
 	var lim string
-	err := s.Scan(&b.BotID, &host, &b.ContainerID, &b.ImageRev, &b.State, &b.Error, &lim, &b.LastActiveAt, &b.NoVNCPort, &b.CreatedAt, &b.UpdatedAt)
+	err := s.Scan(&b.BotID, &host, &b.ContainerID, &b.ImageRev, &b.State, &b.Error, &lim, &b.LastActiveAt, &b.NoVNCPort, &b.HermesPort, &b.CreatedAt, &b.UpdatedAt)
 	b.HostID, b.Limits = host.String, json.RawMessage(lim)
 	return b, err
 }
@@ -259,11 +260,11 @@ func (q *Queries) UpsertBox(ctx context.Context, b Box) error {
 		b.State = "none"
 	}
 	now := nowMS()
-	_, err := q.w.ExecContext(ctx, `INSERT INTO box(`+boxCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?)
+	_, err := q.w.ExecContext(ctx, `INSERT INTO box(`+boxCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(bot_id) DO UPDATE SET host_id=excluded.host_id, container_id=excluded.container_id,
 		image_rev=excluded.image_rev, state=excluded.state, error=excluded.error, limits=excluded.limits,
-		last_active_at=excluded.last_active_at, novnc_port=excluded.novnc_port, updated_at=excluded.updated_at`,
-		b.BotID, nullStr(b.HostID), b.ContainerID, b.ImageRev, b.State, b.Error, jsonOr(b.Limits, "{}"), b.LastActiveAt, b.NoVNCPort, now, now)
+		last_active_at=excluded.last_active_at, novnc_port=excluded.novnc_port, hermes_port=excluded.hermes_port, updated_at=excluded.updated_at`,
+		b.BotID, nullStr(b.HostID), b.ContainerID, b.ImageRev, b.State, b.Error, jsonOr(b.Limits, "{}"), b.LastActiveAt, b.NoVNCPort, b.HermesPort, now, now)
 	return err
 }
 
