@@ -1323,6 +1323,37 @@ export function botsList(input: BotsListInput = {}, opts?: CallOptions): Promise
   return invoke('xbot.bots.list', input, opts).then((r) => r.output)
 }
 
+// xbot.bots.suggest
+
+export interface BotsSuggestInput {
+  /** 一句話說你要什麼樣的 Bot，例：幫我每天整理科技新聞 */
+  text: string
+}
+
+export interface BotsSuggestOutput {
+  name: string
+  title: string
+  description: string
+  soul: string
+  /** rules（最接近的內建範本）或 model（快判模型） */
+  by: string
+  p?: number
+  why?: string
+  /** 規則用的內建範本 */
+  template?: string
+}
+
+/**
+ * 一句話建議一個 Bot（名字、職稱、介紹、常駐指示）
+ *
+ * 快判用途 9：生效時用第二層模型寫建議，否則用最接近的內建範本。只回傳建議，不會建立 Bot（建立用 xbot.bots.create）。
+ *
+ * `xbot.bots.suggest`：權限 manage、風險 safe
+ */
+export function botsSuggest(input: BotsSuggestInput, opts?: CallOptions): Promise<BotsSuggestOutput> {
+  return invoke('xbot.bots.suggest', input, opts).then((r) => r.output)
+}
+
 // xbot.bots.update
 
 export interface BotsUpdateInput {
@@ -3558,6 +3589,462 @@ export interface JudgeCorrectionsOutput {
  */
 export function judgeCorrections(input: JudgeCorrectionsInput = {}, opts?: CallOptions): Promise<JudgeCorrectionsOutput> {
   return invoke('xbot.judge.corrections', input, opts).then((r) => r.output)
+}
+
+// xbot.judge.feedback
+
+export interface JudgeFeedbackInput {
+  /** 哪個用途（例：precheck_engine）；任務完成判定請用 xbot.judge.correct */
+  use: string
+  /** 被判斷的那件工作 */
+  task_id: string
+  /** 系統當時的判斷（標籤） */
+  judged: string
+  /** 誰判斷的 */
+  judged_by?: 'rules' | 'model'
+  /** 應該是哪一個（選項標籤）；空白表示只是說不對 */
+  corrected?: string
+  note?: string
+}
+
+export interface JudgeFeedbackOutput {
+  correction: {
+    id: string
+    use: string
+    task_id: string
+    bot_id: string
+    judged: string
+    judged_by: string
+    reason: string
+    corrected: string
+    note: string
+    actor: string
+    created_at: number
+    updated_at: number
+  }
+}
+
+/**
+ * 說快判的某項判斷不對（不對？）
+ *
+ * 記下來用來校正門檻（FJ-7），不會改變工作本身。同一件工作、同一個用途再說一次會換成新的。只有你本人能改正。
+ *
+ * `xbot.judge.feedback`：權限 operate、風險 safe
+ */
+export function judgeFeedback(input: JudgeFeedbackInput, opts?: CallOptions): Promise<JudgeFeedbackOutput> {
+  return invoke('xbot.judge.feedback', input, opts).then((r) => r.output)
+}
+
+// xbot.judge.precheck
+
+export interface JudgePrecheckInput {
+  /** 交給哪個 Bot */
+  bot_id: string
+  /** 你交辦的話 */
+  text: string
+  /** 送出後的工作 id（改正時對得上） */
+  task_id?: string
+}
+
+export interface JudgePrecheckOutput {
+  /** 生效、模型有把握（≥ 0.6）的項目；沒有時不顯示先判斷列 */
+  chips: {
+    use: string
+    n: number
+    label: string
+    /** 膠囊上的字，例：夠清楚、交給 Hermes · 中 */
+    shown: string
+    p: number
+    why?: string
+    by: string
+    options: {
+      key: string
+      shown: string
+    }[]
+  }[]
+}
+
+/**
+ * 先判斷：夠不夠清楚、要不要開電腦、交給哪個引擎、預估花費
+ *
+ * 你交辦工作時，快判先做四個選擇題（用途 11–14）。只回生效而且模型有把握（≥ 0.6）的項目；影子模式只記錄、不回。只是建議：不會擋住工作，也不會自己換引擎或開關電腦。
+ *
+ * `xbot.judge.precheck`：權限 read、風險 safe
+ */
+export function judgePrecheck(input: JudgePrecheckInput, opts?: CallOptions): Promise<JudgePrecheckOutput> {
+  return invoke('xbot.judge.precheck', input, opts).then((r) => r.output)
+}
+
+// xbot.judge.run
+
+export interface JudgeRunInput {
+  /** 用途 id（xbot.judge.settings_get 的 uses） */
+  use: string
+  /** 要判斷的內容（會依用途截短） */
+  text: string
+  /** 補充的幾行（最近的訊息等） */
+  context?: string[]
+  /** 不填用設定的開關；填 live 可以試模型的判斷（只回傳，不會做任何事） */
+  mode?: 'off' | 'shadow' | 'live'
+}
+
+export interface JudgeRunOutput {
+  label: string
+  /** 模型給的機率（0–1）；規則判斷時是 0 */
+  p?: number
+  /** 一句話原因 */
+  why?: string
+  /** rules（規則）或 model（快判模型） */
+  by: string
+  /** 要寫字的用途的其他欄位（例：建 Bot 建議的職稱、介紹） */
+  fields?: Record<string, string>
+  use: string
+  mode: 'off' | 'shadow' | 'live'
+  /** 規則的判斷 */
+  rule: {
+    label: string
+    /** 模型給的機率（0–1）；規則判斷時是 0 */
+    p?: number
+    /** 一句話原因 */
+    why?: string
+    /** rules（規則）或 model（快判模型） */
+    by: string
+    /** 要寫字的用途的其他欄位（例：建 Bot 建議的職稱、介紹） */
+    fields?: Record<string, string>
+  }
+  /** 模型的判斷（有回答時；影子模式時不生效） */
+  model?: {
+    label: string
+    /** 模型給的機率（0–1）；規則判斷時是 0 */
+    p?: number
+    /** 一句話原因 */
+    why?: string
+    /** rules（規則）或 model（快判模型） */
+    by: string
+    /** 要寫字的用途的其他欄位（例：建 Bot 建議的職稱、介紹） */
+    fields?: Record<string, string>
+  }
+  /** ok、low_confidence、invalid、timeout、error、rate_limited、capped、not_configured、locked、off */
+  outcome: string
+  /** 回答的是哪一層：tier1、tier2、local */
+  tier?: string
+  provider?: string
+  model_id?: string
+  /** 介面上的白話（選擇題的選項說明） */
+  shown?: string
+}
+
+/**
+ * 請快判判斷一件事（只回傳判斷，不會做任何事）
+ *
+ * 照用途的開關：off 只用規則；shadow 呼叫模型、記錄，回傳規則的判斷（model 欄位看得到模型怎麼說）；live 模型合格就用模型。逾時、出錯、格式不合、機率低於 0.6 都退回規則。每次呼叫模型都算進每日上限。
+ *
+ * `xbot.judge.run`：權限 read、風險 safe
+ */
+export function judgeRun(input: JudgeRunInput, opts?: CallOptions): Promise<JudgeRunOutput> {
+  return invoke('xbot.judge.run', input, opts).then((r) => r.output)
+}
+
+// xbot.judge.settings_get
+
+export type JudgeSettingsGetInput = Record<string, never>
+
+export interface JudgeSettingsGetOutput {
+  settings: {
+    /** 第一層 · 選擇題（預設 opencode-zen / jev-1.13） */
+    tier1: {
+      /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
+      provider: string
+      /** 模型 */
+      model: string
+    }
+    /** 第二層 · 短文字（預設 opencode-go / deepseek-v4-flash） */
+    tier2: {
+      /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
+      provider: string
+      /** 模型 */
+      model: string
+    }
+    /** 本機小模型（LM Studio／Ollama 等，設成一個供應商）；空白不用 */
+    local: {
+      /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
+      provider: string
+      /** 模型 */
+      model: string
+    }
+    /** 每個用途的開關：off 只用規則、shadow 只記錄、live 生效 */
+    modes: Record<string, 'off' | 'shadow' | 'live'>
+    /** 每天最多呼叫幾次模型；到了全部退回規則並通知一次（預設 300） */
+    daily_cap: number
+    /** 第二層每天最多幾次（預設 100）；到了往下一層退 */
+    tier2_cap: number
+  }
+  /** 所有用途（依編號），含現在的開關 */
+  uses: {
+    id: string
+    /** PRD §20 的編號；16 是一句話建定時任務（C32） */
+    n: number
+    name: string
+    desc: string
+    tier: string
+    wait_ms: number
+    options?: {
+      key: string
+      meaning: string
+      shown: string
+    }[]
+    locked?: string[]
+    max_out?: number
+    wired: boolean
+    default_mode: 'off' | 'shadow' | 'live'
+    background?: boolean
+    mode: 'off' | 'shadow' | 'live'
+  }[]
+  today: {
+    /** 今天呼叫了幾次模型 */
+    calls: number
+    /** 其中第二層幾次 */
+    tier2_calls: number
+    daily_cap: number
+    tier2_cap: number
+    /** 今天已經到每日上限（全部照規則） */
+    capped: boolean
+    /** 今天的花費（百萬分之一美元，Model Proxy 用量帳本上標記 judge 的） */
+    cost_micros: number
+    /** 用量帳本上今天標記 judge 的請求數 */
+    requests: number
+    input_tokens: number
+    output_tokens: number
+  }
+  /** 第一層採用的機率門檻 */
+  min_p: number
+  /** 今天遇到的供應商問題（已自動退回規則） */
+  problems: {
+    /** no_funds 餘額不足 */
+    kind: string
+    provider: string
+    message: string
+  }[]
+}
+
+/**
+ * 看快判模型的設定與今天的用量
+ *
+ * 第一層（選擇題，預設 OpenCode Zen 的 jev-1.13）、第二層（短文字，預設 OpenCode Go 的 deepseek-v4-flash）、本機小模型，每個用途的開關（off 只用規則、shadow 只記錄、live 生效）、每日呼叫上限與今天的次數和花費。
+ *
+ * `xbot.judge.settings_get`：權限 read、風險 safe
+ */
+export function judgeSettingsGet(input: JudgeSettingsGetInput = {}, opts?: CallOptions): Promise<JudgeSettingsGetOutput> {
+  return invoke('xbot.judge.settings_get', input, opts).then((r) => r.output)
+}
+
+// xbot.judge.settings_set
+
+export interface JudgeSettingsSetInput {
+  /** 第一層 · 選擇題；provider 空白表示不用快判（只用規則） */
+  tier1?: {
+    /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
+    provider?: string
+    /** 模型 */
+    model?: string
+  }
+  /** 第二層 · 短文字；provider 空白表示不用 */
+  tier2?: {
+    /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
+    provider?: string
+    /** 模型 */
+    model?: string
+  }
+  /** 本機小模型；provider 空白表示不用 */
+  local?: {
+    /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
+    provider?: string
+    /** 模型 */
+    model?: string
+  }
+  /** 要改的用途開關：{用途 id: off／shadow／live} */
+  modes?: Record<string, 'off' | 'shadow' | 'live'>
+  /** 每天最多呼叫幾次模型；提高要你核准 */
+  daily_cap?: number
+  /** 第二層每天最多幾次；提高要你核准 */
+  tier2_cap?: number
+}
+
+export interface JudgeSettingsSetOutput {
+  settings: {
+    /** 第一層 · 選擇題（預設 opencode-zen / jev-1.13） */
+    tier1: {
+      /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
+      provider: string
+      /** 模型 */
+      model: string
+    }
+    /** 第二層 · 短文字（預設 opencode-go / deepseek-v4-flash） */
+    tier2: {
+      /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
+      provider: string
+      /** 模型 */
+      model: string
+    }
+    /** 本機小模型（LM Studio／Ollama 等，設成一個供應商）；空白不用 */
+    local: {
+      /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
+      provider: string
+      /** 模型 */
+      model: string
+    }
+    /** 每個用途的開關：off 只用規則、shadow 只記錄、live 生效 */
+    modes: Record<string, 'off' | 'shadow' | 'live'>
+    /** 每天最多呼叫幾次模型；到了全部退回規則並通知一次（預設 300） */
+    daily_cap: number
+    /** 第二層每天最多幾次（預設 100）；到了往下一層退 */
+    tier2_cap: number
+  }
+  /** 所有用途（依編號），含現在的開關 */
+  uses: {
+    id: string
+    /** PRD §20 的編號；16 是一句話建定時任務（C32） */
+    n: number
+    name: string
+    desc: string
+    tier: string
+    wait_ms: number
+    options?: {
+      key: string
+      meaning: string
+      shown: string
+    }[]
+    locked?: string[]
+    max_out?: number
+    wired: boolean
+    default_mode: 'off' | 'shadow' | 'live'
+    background?: boolean
+    mode: 'off' | 'shadow' | 'live'
+  }[]
+  today: {
+    /** 今天呼叫了幾次模型 */
+    calls: number
+    /** 其中第二層幾次 */
+    tier2_calls: number
+    daily_cap: number
+    tier2_cap: number
+    /** 今天已經到每日上限（全部照規則） */
+    capped: boolean
+    /** 今天的花費（百萬分之一美元，Model Proxy 用量帳本上標記 judge 的） */
+    cost_micros: number
+    /** 用量帳本上今天標記 judge 的請求數 */
+    requests: number
+    input_tokens: number
+    output_tokens: number
+  }
+  /** 第一層採用的機率門檻 */
+  min_p: number
+  /** 今天遇到的供應商問題（已自動退回規則） */
+  problems: {
+    /** no_funds 餘額不足 */
+    kind: string
+    provider: string
+    message: string
+  }[]
+}
+
+/**
+ * 改快判模型的設定
+ *
+ * 選每一層的模型、逐項切換用途（off／shadow／live）、每日上限。快判永遠只做判斷與建議，不會自己刪除、花錢、對外發送或核准。降低上限直接生效；提高上限要你核准，而且不能代為核准。
+ *
+ * `xbot.judge.settings_set`：權限 admin、風險 safe（依輸入可能需要核准）
+ */
+export function judgeSettingsSet(input: JudgeSettingsSetInput = {}, opts?: CallOptions): Promise<JudgeSettingsSetOutput> {
+  return invoke('xbot.judge.settings_set', input, opts).then((r) => r.output)
+}
+
+// xbot.judge.stats
+
+export interface JudgeStatsInput {
+  /** 看最近幾天；預設 7 */
+  days?: number
+}
+
+export interface JudgeStatsOutput {
+  days: number
+  /** 依編號；沒有紀錄的用途也列出（次數為 0） */
+  uses: {
+    use: string
+    /** 判斷了幾次（含沒有呼叫模型的） */
+    runs: number
+    /** 呼叫了幾次模型 */
+    calls: number
+    /** 模型有給出合格答案的次數 */
+    answered: number
+    /** 其中和規則一樣的次數 */
+    agreed: number
+    /** 生效模式下採用模型判斷的次數 */
+    used_by_model: number
+    /** 逾時、出錯、限流、格式不合的次數 */
+    failed: number
+    corrected: number
+    corrected_model: number
+    corrected_rule: number
+    avg_latency_ms: number
+    n: number
+    name: string
+    mode: 'off' | 'shadow' | 'live'
+    /** 模型和規則一致的比例（0–1）；-1 表示還沒有資料 */
+    agreement: number
+    /** 有你改正的那幾次，模型和你一致的比例；-1 表示沒有資料 */
+    corrected_agreement: number
+    /** 影子模式與你的改正（沒有改正時與規則）一致率 ≥ 95%，建議可以生效 */
+    ready_for_live: boolean
+  }[]
+  today: {
+    /** 今天呼叫了幾次模型 */
+    calls: number
+    /** 其中第二層幾次 */
+    tier2_calls: number
+    daily_cap: number
+    tier2_cap: number
+    /** 今天已經到每日上限（全部照規則） */
+    capped: boolean
+    /** 今天的花費（百萬分之一美元，Model Proxy 用量帳本上標記 judge 的） */
+    cost_micros: number
+    /** 用量帳本上今天標記 judge 的請求數 */
+    requests: number
+    input_tokens: number
+    output_tokens: number
+  }
+  /** 最近 20 次快判（新到舊） */
+  recent: {
+    id: number
+    use: string
+    mode: string
+    tier: string
+    provider: string
+    model: string
+    calls: number
+    tier2_calls: number
+    ref: string
+    bot_id: string
+    rule_label: string
+    model_label: string
+    p: number
+    why: string
+    outcome: string
+    used: string
+    latency_ms: number
+    created_at: number
+  }[]
+}
+
+/**
+ * 看快判的影子模式統計（和規則、和你的改正一致多少）
+ *
+ * 每個用途：判斷幾次、呼叫幾次模型、模型和規則一致的比例、有你改正的那幾次模型對了多少、平均等多久；一致率 ≥ 95% 時 ready_for_live 為 true（建議可以從影子切到生效）。
+ *
+ * `xbot.judge.stats`：權限 read、風險 safe
+ */
+export function judgeStats(input: JudgeStatsInput = {}, opts?: CallOptions): Promise<JudgeStatsOutput> {
+  return invoke('xbot.judge.stats', input, opts).then((r) => r.output)
 }
 
 // xbot.memory.add
@@ -7397,6 +7884,7 @@ export interface Ops {
   'xbot.bots.delete': { input: BotsDeleteInput; output: BotsDeleteOutput }
   'xbot.bots.get': { input: BotsGetInput; output: BotsGetOutput }
   'xbot.bots.list': { input: BotsListInput; output: BotsListOutput }
+  'xbot.bots.suggest': { input: BotsSuggestInput; output: BotsSuggestOutput }
   'xbot.bots.update': { input: BotsUpdateInput; output: BotsUpdateOutput }
   'xbot.bots.update_my_profile': { input: BotsUpdateMyProfileInput; output: BotsUpdateMyProfileOutput }
   'xbot.cards.post': { input: CardsPostInput; output: CardsPostOutput }
@@ -7443,6 +7931,12 @@ export interface Ops {
   'xbot.inbox.undo': { input: InboxUndoInput; output: InboxUndoOutput }
   'xbot.judge.correct': { input: JudgeCorrectInput; output: JudgeCorrectOutput }
   'xbot.judge.corrections': { input: JudgeCorrectionsInput; output: JudgeCorrectionsOutput }
+  'xbot.judge.feedback': { input: JudgeFeedbackInput; output: JudgeFeedbackOutput }
+  'xbot.judge.precheck': { input: JudgePrecheckInput; output: JudgePrecheckOutput }
+  'xbot.judge.run': { input: JudgeRunInput; output: JudgeRunOutput }
+  'xbot.judge.settings_get': { input: JudgeSettingsGetInput; output: JudgeSettingsGetOutput }
+  'xbot.judge.settings_set': { input: JudgeSettingsSetInput; output: JudgeSettingsSetOutput }
+  'xbot.judge.stats': { input: JudgeStatsInput; output: JudgeStatsOutput }
   'xbot.memory.add': { input: MemoryAddInput; output: MemoryAddOutput }
   'xbot.memory.history': { input: MemoryHistoryInput; output: MemoryHistoryOutput }
   'xbot.memory.read': { input: MemoryReadInput; output: MemoryReadOutput }
@@ -7540,6 +8034,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.bots.delete': { path: '/api/v1/bots.delete', scope: 'manage', risk: 'confirm', mutates: true },
   'xbot.bots.get': { path: '/api/v1/bots.get', scope: 'read', risk: 'safe', mutates: false },
   'xbot.bots.list': { path: '/api/v1/bots.list', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.bots.suggest': { path: '/api/v1/bots.suggest', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.bots.update': { path: '/api/v1/bots.update', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.bots.update_my_profile': { path: '/api/v1/bots.update_my_profile', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.cards.post': { path: '/api/v1/cards.post', scope: 'operate', risk: 'safe', mutates: true },
@@ -7586,6 +8081,12 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.inbox.undo': { path: '/api/v1/inbox.undo', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.judge.correct': { path: '/api/v1/judge.correct', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.judge.corrections': { path: '/api/v1/judge.corrections', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.judge.feedback': { path: '/api/v1/judge.feedback', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.judge.precheck': { path: '/api/v1/judge.precheck', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.judge.run': { path: '/api/v1/judge.run', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.judge.settings_get': { path: '/api/v1/judge.settings_get', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.judge.settings_set': { path: '/api/v1/judge.settings_set', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.judge.stats': { path: '/api/v1/judge.stats', scope: 'read', risk: 'safe', mutates: false },
   'xbot.memory.add': { path: '/api/v1/memory.add', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.memory.history': { path: '/api/v1/memory.history', scope: 'read', risk: 'safe', mutates: false },
   'xbot.memory.read': { path: '/api/v1/memory.read', scope: 'read', risk: 'safe', mutates: false },

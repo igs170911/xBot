@@ -63,6 +63,10 @@ func cmdServe(args []string) error {
 	notify := func(e store.Event) { bus.Publish(events.FromStore(e)) }
 	st.budgets.Notify = notify // 花費上限卡片也即時推給介面
 	st.routines.SetNotify(notify)
+	st.judge.Notify = notify // 快判到每日上限的通知
+	if err := st.judge.Prune(context.Background()); err != nil {
+		slog.Warn("清掉太舊的快判紀錄失敗", "err", err)
+	}
 	reg := buildRegistry(st.db, pairing, notify, st)
 	// Bot 經自己的 product.sock 用 XBot MCP（C11）：身分就是那個 Bot。
 	st.sockets.SetProduct(mcpserver.BotHandler(reg, mcpserver.BotOptions{Keys: st.keys, DB: st.db, Logger: slog.Default()}))

@@ -19,6 +19,8 @@ import { ChatComposer, type ComposerHandle, type ComposerMode } from './ChatComp
 import { chatStore, loadOlder, loadThread } from './chatStore'
 import { EmptyState } from './EmptyState'
 import { BotMessage, JudgeRow, OutcomeRow, OwnerMessage } from './Message'
+import { PreCheckRow } from './PreCheck'
+import { runPreCheck } from './precheckData'
 import { ModelPicker } from './ModelPicker'
 import { ProgressDialog } from './ProgressDialog'
 import { ThreadMenu, type Thread } from './ThreadMenu'
@@ -61,7 +63,8 @@ function Messages({ items, bot, threadId, onRetry, canRetry }: { items: ChatItem
     const isLast = it === lastBot
     if (Card) out.push(createElement(Card, { key: m.id, msg: m, bot, threadId, activity: it.activity }))
     else if (m.sender === 'owner') {
-      if (m.content || !m.streaming) out.push(<OwnerMessage key={m.id} msg={m} />)
+      // 先判斷列（C15）放在泡泡下面、懸停的複製列上面
+      if (m.content || !m.streaming) out.push(<OwnerMessage key={m.id} msg={m} below={<PreCheckRow taskId={m.taskId} />} />)
     } else if (m.content) out.push(<BotMessage key={m.id} msg={m} last={isLast} />)
     if (it.activity && live) out.push(<WorkSteps key={'a' + it.activity.taskId} a={it.activity} bot={bot} />)
     const retryText = m.taskId ? asked.get(m.taskId) : undefined
@@ -300,6 +303,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
     stick.current = true
     try {
       const out = await chatSend({ bot_id: botId, text, thread_id: threadId })
+      if (out.task_id) runPreCheck(botId, text, out.task_id) // 先判斷（C15）：只是建議，背景跑
       if (out.thread_id !== threadId) {
         void reloadThreads()
         navigate(`/bots/${botId}/threads/${out.thread_id}`, { replace: isNew || !threadParam })

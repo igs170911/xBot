@@ -53,12 +53,26 @@ export function SimplifiedTag({ children }: { children: ReactNode }) {
 }
 
 // 「系統判斷 · 不對？」：快判模型判斷過的地方都帶這個。給 menu 時「不對？」打開選單（選正確的那一種）。
-export function JudgeTag({ children, onDispute, menu, menuLabel = '應該是哪一種？' }: { children: ReactNode; onDispute?: () => void; menu?: MenuItem[]; menuLabel?: string }) {
+export function JudgeTag({
+  children,
+  onDispute,
+  menu,
+  menuLabel = '應該是哪一種？',
+  prefix = '系統判斷：',
+}: {
+  children: ReactNode
+  onDispute?: () => void
+  menu?: MenuItem[]
+  menuLabel?: string
+  /** 標籤前面的字；先判斷列（C15）一排好幾顆，不重複寫「系統判斷」。 */
+  prefix?: string
+}) {
   const cls = 'relative h-[26px] rounded-full bg-transparent px-1.5 text-meta text-accent-ink touch-target hover:bg-control'
   return (
     <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-line pl-2.5 pr-1 text-meta text-ink-2" data-testid="judge-tag">
       <Icon icon={BadgeCheck} size={14} color="var(--color-success)" />
-      系統判斷：{children} ·
+      {prefix}
+      {children} ·
       {menu ? (
         <MenuButton
           label={menuLabel}

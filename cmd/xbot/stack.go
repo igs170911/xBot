@@ -20,6 +20,8 @@ import (
 	"xbot/internal/files"
 	"xbot/internal/hosts"
 	"xbot/internal/ipc"
+	"xbot/internal/judge"
+	"xbot/internal/limits"
 	"xbot/internal/memory"
 	"xbot/internal/org"
 	"xbot/internal/proxy"
@@ -54,6 +56,7 @@ type stack struct {
 	collab    *collab.Service
 	files     *files.Service
 	org       *org.Service
+	judge     *judge.Service // 快判（X05）：經 Model Proxy 呼叫 Jev／OpenCode Go，規則兜底
 }
 
 func openStack(cfg config.Config) (*stack, error) {
@@ -132,6 +135,15 @@ func openStack(cfg config.Config) (*stack, error) {
 			MCPServers: comp.MCPServers, Logger: logger}))
 	}
 	s.driver = engine.NewRouter(hermes.Name, comp.EngineOf, drivers...)
+	// 快判（X05）：服務自己經 Model Proxy 呼叫模型（金鑰只在 Model Proxy），用量標記 judge。
+	s.judge = &judge.Service{DB: db, Logger: logger, Call: func(ctx context.Context, provider string, body []byte, session string) (int, []byte, error) {
+		resp, err := s.model.Call(ctx, proxy.CallRequest{Provider: provider, Path: "chat/completions", Body: body, Engine: judge.UsageEngine,
+			Session: session, MaxBytes: limits.JudgeReplyBytes})
+		if errors.Is(err, proxy.ErrNotFound) {
+			return 0, nil, judge.ErrNotConfigured
+		}
+		return resp.Status, resp.Body, err
+	}}
 	s.creds.Close = s.driver.Close
 	s.runtime = runtime.New(runtime.Options{DB: db, Driver: s.driver, Bus: bus, Models: comp, Logger: logger,
 		Admit: func(ctx context.Context, botID string, wait func(any)) (func(), error) {
@@ -142,9 +154,10 @@ func openStack(cfg config.Config) (*stack, error) {
 				return err
 			}
 			return s.budgets.CheckProvider(ctx, botID, providerID)
-		}})
+		},
+		Judge: s.judge.TaskDoneJudge(), Namer: s.judge.Title, Summarize: s.judge.Summary})
 	s.pstore.Attribute = s.runtime.Active
-	s.routines = routines.New(routines.Options{DB: db, Runtime: s.runtime, Logger: logger})
+	s.routines = routines.New(routines.Options{DB: db, Runtime: s.runtime, Logger: logger, Rewrite: s.judge.Routine})
 	s.comp = comp
 	s.skills = &skills.Service{Locate: comp.BotFS, Library: &skills.Library{Dir: filepath.Join(cfg.DataDir, "skills")}}
 	s.memory = &memory.Service{DB: db, Locate: comp.BotFS}
@@ -159,7 +172,7 @@ func openStack(cfg config.Config) (*stack, error) {
 		},
 		UID: box.BotUID, GID: box.BotGID,
 	}
-	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Files: carry})
+	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Judge: s.judge.Responder, Files: carry})
 	// 檔案面板（C33）：經 Docker 讀寫 Bot 電腦的 /workspace；在電腦裡執行的指令用 Bot 自己的使用者。傳給別的 Bot 沿用 X02 帶檔。
 	s.files = &files.Service{Locate: files.DockerLocator(comp.BotFS, fmt.Sprintf("%d:%d", box.BotUID, box.BotGID)), Carry: carry}
 	// 團隊、匯報線、提案與討論（X03）。Bot 的系統提示：隊友名冊＋組織與回報。

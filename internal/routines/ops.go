@@ -458,6 +458,15 @@ func (d *deps) propose(ctx context.Context, call *ops.Call, in ProposeIn) (Propo
 	}
 	now := d.now()
 	p := Parse(in.Text, now, loc, bots)
+	// 快判先試（X05）：模型把你的話整理過，解析得一樣完整或更完整才採用；否則照規則解析原句。
+	if d.svc != nil && d.svc.o.Rewrite != nil && !call.DryRun {
+		if text, ok := d.svc.o.Rewrite(ctx, in.Text); ok && strings.TrimSpace(text) != strings.TrimSpace(in.Text) {
+			if mp := Parse(text, now, loc, bots); len(mp.Missing) <= len(p.Missing) {
+				p = mp
+				p.Notes = append(p.Notes, "系統判斷：整理成「"+strings.TrimSpace(text)+"」")
+			}
+		}
+	}
 	if in.BotID != "" && p.BotID != in.BotID {
 		// 指定了 Bot：句子裡的其他名字當成內容。
 		p.BotID, p.BotName = bots[0].ID, bots[0].Name

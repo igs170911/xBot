@@ -89,7 +89,8 @@ func strandedKey(botID, goal string) string {
 // judgeTurn 判斷這一輪做完了沒。停掉的、中斷的不判斷（回 nil）。判斷器出錯時退回規則。
 func (r *Runtime) judgeTurn(t *turn, task store.Task, verdict, final string, stalled bool) (judge.Input, *judge.Result) {
 	t.mu.Lock()
-	in := judge.Input{Outcome: verdict, Text: final, UsedTools: t.usedTools, Stalled: stalled, PlanLeft: append([]string(nil), t.plan...)}
+	in := judge.Input{Outcome: verdict, Text: final, UsedTools: t.usedTools, Stalled: stalled, PlanLeft: append([]string(nil), t.plan...),
+		TaskID: task.ID, BotID: t.botID}
 	t.mu.Unlock()
 	if r.o.Stranded != nil && verdict == VerdictAnswer {
 		goals, background := r.o.Stranded(context.Background(), task)

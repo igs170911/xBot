@@ -94,6 +94,8 @@ type Input struct {
 	Stranded []string
 	// Background：這一輪是背景子任務回報結果後自己開始的那一輪（LazyBoy kind=background）。
 	Background bool
+	// TaskID、BotID 是這一輪的工作與 Bot（快判記錄用，對得到你的改正）。
+	TaskID, BotID string
 }
 
 // Result 是一次判斷。

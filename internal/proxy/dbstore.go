@@ -146,12 +146,16 @@ func (s *DBStore) RecordUsage(ctx context.Context, e UsageEntry) error {
 	if cost == 0 && e.Cost > 0 {
 		cost = int64(math.Round(e.Cost * 1e6))
 	}
+	engine := s.Engine
+	if e.Engine != "" {
+		engine = e.Engine
+	}
 	at := e.At.UnixMilli()
 	if e.At.IsZero() {
 		at = 0
 	}
 	_, err := s.db.AddUsage(ctx, store.UsageEntry{
-		BotID: e.BotID, ThreadID: thread, TaskID: task, Engine: s.Engine, Provider: e.Provider, Model: e.Model,
+		BotID: e.BotID, ThreadID: thread, TaskID: task, Engine: engine, Provider: e.Provider, Model: e.Model,
 		InputTokens: e.InputTokens, OutputTokens: e.OutputTokens, CacheReadTokens: e.CachedTokens,
 		CacheWriteTokens: e.CacheWriteTokens, CostMicros: cost, Unpriced: e.Unpriced, Endpoint: e.Endpoint,
 		Fallback: e.Fallback, CreatedAt: at,

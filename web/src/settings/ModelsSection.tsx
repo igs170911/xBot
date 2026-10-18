@@ -37,6 +37,7 @@ import { IconButton } from '../ui/Button'
 import { useToast } from '../ui/toast-context'
 import { cx } from '../ui/cx'
 import { BotsEngineList } from './BotSettings'
+import { FastJudge } from './FastJudge'
 import { ModelChooser } from './ModelChooser'
 import { OAuthCard } from './OAuthLogin'
 import { Block, Group, Note, Row, SectionHeader } from './parts'
@@ -84,7 +85,7 @@ export function ModelsSection({ path }: { path: string }) {
       )}
       {tab === '/settings/models' && <MainModels {...data} />}
       {tab === '/settings/models/routing' && <Routing {...data} />}
-      {tab === '/settings/models/judge' && <FastJudge />}
+      {tab === '/settings/models/judge' && <FastJudge providers={data.models?.providers ?? []} />}
       {tab === '/settings/models/bots' && <BotsEngineList />}
     </>
   )
@@ -549,24 +550,3 @@ function Routing({ models, presets, reload }: Data) {
   )
 }
 
-// ── 快判模型（J10，先放說明）────────────────────────────
-
-function FastJudge() {
-  const uses = ['對話分流', '任務完成了沒', '要不要找你核定', '是不是在問進度', '錯誤分類']
-  return (
-    <>
-      <Note icon={<Icon icon={Info} />}>快判模型還沒接上（之後的任務卡 X05）。現在所有判斷都只用規則。</Note>
-      <Block title="快判模型會做什麼" sub="先用便宜又快的模型做選擇題，只判斷、給建議；永遠不能自己刪除、花錢、對外發送或核准。">
-        <Group>
-          <Row title="第一層 · 選擇題" sub="從幾個選項挑一個；把握不夠就照規則">
-            <span className="font-mono text-meta text-ink-2">opencode/jev</span>
-          </Row>
-          <Row title="第二層 · 短文字" sub="摘要、命名、建 Bot 建議；到每日上限就退回本機小模型">
-            <span className="font-mono text-meta text-ink-2">opencode-go</span>
-          </Row>
-          <Row title="會用在" sub={uses.join('、') + ' 等 15 個地方'} />
-        </Group>
-      </Block>
-    </>
-  )
-}

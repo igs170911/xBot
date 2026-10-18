@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { ApiError, botsCreate } from '../api/generated'
+import { ApiError, botsCreate, botsSuggest, type BotsSuggestOutput } from '../api/generated'
 import { upsertBot } from '../data/bots'
 import { useStore } from '../data/store'
 import { newBotDialog } from '../data/ui'
@@ -12,7 +12,7 @@ import { TextInput } from '../ui/Field'
 import { cx } from '../ui/cx'
 
 // 新增 Bot 最簡版（W02）：名字、一句話說明、頭像形狀與顏色。
-// G01 的「一句話產生建議」要等快判（X05），這裡先做手填的表單。
+// 「幫我想」（X05，PRD §20 用途 9）：用那一句話請快判建議名字、職稱、常駐指示（快判沒生效時用最接近的內建範本），都可以改。
 
 const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(Math.random() * xs.length)]
 
@@ -23,6 +23,22 @@ function NewBotForm({ onDone }: { onDone: () => void }) {
   const [color, setColor] = useState<AvatarColor>(() => pick(COLOR_IDS))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<unknown>(null)
+  const [hint, setHint] = useState<BotsSuggestOutput | null>(null)
+  const [thinking, setThinking] = useState(false)
+
+  const suggest = async () => {
+    setThinking(true)
+    setErr(null)
+    try {
+      const s = await botsSuggest({ text: description.trim() })
+      setHint(s)
+      if (!name.trim() || name === hint?.name) setName(s.name)
+    } catch (e2) {
+      setErr(e2)
+    } finally {
+      setThinking(false)
+    }
+  }
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -33,7 +49,14 @@ function NewBotForm({ onDone }: { onDone: () => void }) {
     setBusy(true)
     setErr(null)
     try {
-      const bot = await botsCreate({ name: name.trim(), description: description.trim() || undefined, shape, color })
+      const bot = await botsCreate({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        title: hint?.title || undefined,
+        soul: hint?.soul || undefined,
+        shape,
+        color,
+      })
       upsertBot(bot)
       onDone()
       navigate(`/bots/${bot.id}`)
@@ -64,6 +87,16 @@ function NewBotForm({ onDone }: { onDone: () => void }) {
         maxLength={200}
         error={fieldErr('description')}
       />
+      <div className="-mt-2 flex flex-wrap items-center gap-2">
+        <Button type="button" size="sm" variant="secondary" disabled={!description.trim() || thinking} onClick={() => void suggest()}>
+          {thinking ? '想一下…' : '幫我想名字和職稱'}
+        </Button>
+        {hint && (
+          <span className="text-meta text-ink-2" data-testid="bot-suggest">
+            {hint.by === 'model' ? `系統判斷 · ${Math.round((hint.p ?? 0) * 100)}%` : `照範本「${hint.title}」`}：職稱 {hint.title} · 常駐指示已填好，之後可以改
+          </span>
+        )}
+      </div>
       <fieldset className="m-0 flex flex-col gap-1.5 border-0 p-0">
         <legend className="mb-1.5 p-0 text-meta text-ink-3">形狀</legend>
         <div role="radiogroup" aria-label="形狀" className="grid grid-cols-5 gap-1.5">
