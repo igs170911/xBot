@@ -229,7 +229,7 @@ func (p *peer) handle(f frame) {
 		p.result(f.ID, map[string]any{
 			"sessionId": id,
 			"modes": map[string]any{"currentModeId": "default", "availableModes": []map[string]string{
-				{"id": "default", "name": "Manual"}, {"id": "acceptEdits", "name": "Accept edits"}, {"id": "bypassPermissions", "name": "Bypass"},
+				{"id": "default", "name": "Manual"}, {"id": "acceptEdits", "name": "Accept edits"}, {"id": "auto", "name": "Auto"}, {"id": "bypassPermissions", "name": "Bypass"},
 			}},
 			"configOptions": []map[string]any{{"id": "model", "type": "select", "currentValue": "default",
 				"options": []map[string]string{{"value": "default"}, {"value": "sonnet"}}}},

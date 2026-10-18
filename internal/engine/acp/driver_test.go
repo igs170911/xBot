@@ -180,8 +180,8 @@ func TestStreamingPrompt(t *testing.T) {
 	if sn.Cwd != "/workspace" || len(sn.MCPServers) != 1 || sn.MCPServers[0].Name != "computer" || sn.MCPServers[0].Args[0] != "/opt/xbot/desktop_mcp.py" {
 		t.Errorf("session/new = %s", calls[1].Params)
 	}
-	if !strings.Contains(string(calls[2].Params), `"modeId":"bypassPermissions"`) {
-		t.Errorf("full 應該對到 bypassPermissions：%s", calls[2].Params)
+	if !strings.Contains(string(calls[2].Params), `"modeId":"auto"`) {
+		t.Errorf("full 應該對到 auto（SEC-2 不用 bypassPermissions）：%s", calls[2].Params)
 	}
 	if !strings.Contains(string(calls[3].Params), `"value":"sonnet"`) {
 		t.Errorf("模型：%s", calls[3].Params)

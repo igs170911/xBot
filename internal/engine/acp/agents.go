@@ -34,13 +34,15 @@ var Agents = map[string]Agent{
 		Engine: EngineClaude, Label: "Claude Code",
 		Command: []string{"claude-agent-acp"},
 		// 映像裡的版本是固定的，不讓它自己更新。
-		Env:   []string{"DISABLE_AUTOUPDATER=1", "DISABLE_ERROR_REPORTING=1", "DISABLE_TELEMETRY=1"},
-		Modes: map[string]string{"ask": "default", "edits": "acceptEdits", "auto": "auto", "full": "bypassPermissions"},
+		Env: []string{"DISABLE_AUTOUPDATER=1", "DISABLE_ERROR_REPORTING=1", "DISABLE_TELEMETRY=1"},
+		// full 也只到 auto：SEC-2 規定危險動作在任何等級都不能自動放行，所以不用 bypassPermissions。
+		Modes: map[string]string{"ask": "default", "edits": "acceptEdits", "auto": "auto", "full": "auto"},
 	},
 	EngineCodex: {
 		Engine: EngineCodex, Label: "Codex CLI",
 		Command: []string{"codex-acp"},
-		Modes:   map[string]string{"ask": "workspace-write", "edits": "workspace-write", "auto": "agent", "full": "agent-full-access"},
+		// full 也只到 agent（自動審查），不用 agent-full-access（SEC-2）。
+		Modes: map[string]string{"ask": "workspace-write", "edits": "workspace-write", "auto": "agent", "full": "agent"},
 	},
 }
 
