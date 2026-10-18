@@ -19,9 +19,10 @@ import { useRemoveHost } from './removeHost'
 import { look } from '../data/bots'
 import { EgressSummary, MoveAllDialog, MovesBlock } from './MoveAll'
 import { moveTargets } from '../computer/moveData'
+import { UpdateComputers } from './UpdateComputers'
 
 // 設定 › 電腦與裝置（J06，PRD §16 CL-1、CL-3、CL-6、CL-8）：主機清單（狀態、資源、上面的 Bot、開機台數／上限）、
-// 新增主機（J11）、新 Bot 預設放哪台、整台搬家（CL-5、16.1a）與「從家裡出去」（CL-7）的狀態。
+// 新增主機（J11）、新 Bot 預設放哪台、整台搬家（CL-5、16.1a）與「從家裡出去」（CL-7）的狀態、映像過期時「更新電腦」（B13）。
 
 const TONE: Record<string, Tone> = { online: 'success', offline: 'neutral', updating: 'accent', failed: 'danger', unknown: 'neutral' }
 
@@ -103,6 +104,11 @@ function HostRow({ h, s, onRemove, onMove }: { h: HostView; s: HostsState; onRem
             </StatusChip>
           )}
           <HostStatusChip h={h} />
+          {h.image_outdated && (
+            <StatusChip tone="warning" size="sm">
+              映像過期
+            </StatusChip>
+          )}
         </span>
         <span className="mt-0.5 block truncate text-[13px] text-ink-2">{hostSub(h, s)}</span>
       </a>
@@ -180,6 +186,7 @@ export function ComputersSection() {
   return (
     <>
       <SectionHeader title="電腦與裝置" sub="Bot 的電腦放在哪幾台主機。" aside={local && <span className="whitespace-nowrap pt-1 text-[13px] text-ink-2 max-sm:hidden">控制中心在：{local.name}</span>} />
+      <UpdateComputers />
       <Block
         title="主機"
         aside={

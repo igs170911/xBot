@@ -65,6 +65,8 @@ export interface OpMeta {
   scope: 'read' | 'operate' | 'manage' | 'admin'
   risk: 'safe' | 'confirm'
   mutates: boolean
+  /** 一句白話中文（操作的 Summary） */
+  summary: string
 }
 
 /** 呼叫一個操作，回傳完整結果。失敗時丟 ApiError。 */
@@ -2186,6 +2188,14 @@ export interface AuditListInput {
   actor?: string
   /** 只列和這個 id 有關的 */
   target?: string
+  /** 只列這個操作（xbot.bots.create），或整個領域（xbot.bots） */
+  op?: string
+  /** 只列這種結果：ok 成功、error 失敗、pending_approval 等核准、dry_run 預演、reverted 已復原 */
+  status?: 'ok' | 'error' | 'pending_approval' | 'dry_run' | 'reverted'
+  /** 只列這個時間（Unix 毫秒）之後的 */
+  since?: number
+  /** 只列這個時間（Unix 毫秒）之前的 */
+  until?: number
   /** 往前翻頁：只列 id 比它小的（上一頁的 next_before） */
   before?: number
   /** 最多幾筆；預設 50 */
@@ -2216,6 +2226,110 @@ export interface AuditListOutput {
  */
 export function auditList(input: AuditListInput = {}, opts?: CallOptions): Promise<AuditListOutput> {
   return invoke('xbot.audit.list', input, opts).then((r) => r.output)
+}
+
+// xbot.backup.create
+
+export type BackupCreateInput = Record<string, never>
+
+export interface BackupCreateOutput {
+  running: boolean
+  started_at: number
+  finished_at?: number
+  /** 備份檔（做完才有大小） */
+  file: {
+    /** 檔名，例：xbot-backup-20261019-030000.tar.gz */
+    name: string
+    /** 完整路徑（make restore FILE=… 用） */
+    path: string
+    /** 位元組 */
+    size: number
+    /** 建立時間（Unix 毫秒，取檔案修改時間） */
+    created_at: number
+  }
+  /** 資料目錄裡備了幾個檔案 */
+  files?: number
+  /** 備到幾台 Bot 電腦的資料 */
+  computers?: number
+  /** 沒有備到的 Bot 電腦（主機連不上等），主機恢復後再備份一次 */
+  skipped?: {
+    bot_name: string
+    reason: string
+  }[]
+  /** 備份失敗的原因 */
+  error?: string
+}
+
+/**
+ * 立即備份 XBot 的資料與每個 Bot 電腦的資料（同 make backup，不含瀏覽器登入）
+ *
+ * 在背景進行，進度看 xbot.backup.list 的 job。資料庫用一致的快照、Bot 電腦開著也能備份（不會停下它）。訂閱登入憑證不備份；要包含瀏覽器登入請用指令列 make backup INCLUDE_LOGINS=1。同一時間只能有一份在做（再呼叫回目前的進度）。
+ *
+ * `xbot.backup.create`：權限 admin、風險 safe
+ */
+export function backupCreate(input: BackupCreateInput = {}, opts?: CallOptions): Promise<BackupCreateOutput> {
+  return invoke('xbot.backup.create', input, opts).then((r) => r.output)
+}
+
+// xbot.backup.list
+
+export type BackupListInput = Record<string, never>
+
+export interface BackupListOutput {
+  /** 備份放在哪個資料夾 */
+  dir: string
+  /** XBot 的資料目錄 */
+  data_dir: string
+  /** 新到舊，最多 BackupListMax 份 */
+  backups: {
+    /** 檔名，例：xbot-backup-20261019-030000.tar.gz */
+    name: string
+    /** 完整路徑（make restore FILE=… 用） */
+    path: string
+    /** 位元組 */
+    size: number
+    /** 建立時間（Unix 毫秒，取檔案修改時間） */
+    created_at: number
+  }[]
+  /** 網頁按的「立即備份」：進行中或最近一次 */
+  job?: {
+    running: boolean
+    started_at: number
+    finished_at?: number
+    /** 備份檔（做完才有大小） */
+    file: {
+      /** 檔名，例：xbot-backup-20261019-030000.tar.gz */
+      name: string
+      /** 完整路徑（make restore FILE=… 用） */
+      path: string
+      /** 位元組 */
+      size: number
+      /** 建立時間（Unix 毫秒，取檔案修改時間） */
+      created_at: number
+    }
+    /** 資料目錄裡備了幾個檔案 */
+    files?: number
+    /** 備到幾台 Bot 電腦的資料 */
+    computers?: number
+    /** 沒有備到的 Bot 電腦（主機連不上等），主機恢復後再備份一次 */
+    skipped?: {
+      bot_name: string
+      reason: string
+    }[]
+    /** 備份失敗的原因 */
+    error?: string
+  }
+}
+
+/**
+ * 列出最近的備份檔（資料目錄旁的 xbot-backups）與網頁備份的進度
+ *
+ * 還原要先停服務，請用指令列：make restore FILE=<備份檔>。
+ *
+ * `xbot.backup.list`：權限 admin、風險 safe
+ */
+export function backupList(input: BackupListInput = {}, opts?: CallOptions): Promise<BackupListOutput> {
+  return invoke('xbot.backup.list', input, opts).then((r) => r.output)
 }
 
 // xbot.bots.archive
@@ -12587,6 +12701,8 @@ export interface Ops {
   'xbot.apps.test': { input: AppsTestInput; output: AppsTestOutput }
   'xbot.apps.update': { input: AppsUpdateInput; output: AppsUpdateOutput }
   'xbot.audit.list': { input: AuditListInput; output: AuditListOutput }
+  'xbot.backup.create': { input: BackupCreateInput; output: BackupCreateOutput }
+  'xbot.backup.list': { input: BackupListInput; output: BackupListOutput }
   'xbot.bots.archive': { input: BotsArchiveInput; output: BotsArchiveOutput }
   'xbot.bots.create': { input: BotsCreateInput; output: BotsCreateOutput }
   'xbot.bots.delete': { input: BotsDeleteInput; output: BotsDeleteOutput }
@@ -12781,227 +12897,229 @@ export interface Ops {
 
 export type OpName = keyof Ops
 
-/** 每個操作的 HTTP 路徑、權限範圍、風險。 */
+/** 每個操作的 HTTP 路徑、權限範圍、風險、一句話說明（稽核紀錄顯示用）。 */
 export const OPS: Record<OpName, OpMeta> = {
-  'xbot.agenda.decide': { path: '/api/v1/agenda.decide', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.agenda.list': { path: '/api/v1/agenda.list', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.agenda.propose': { path: '/api/v1/agenda.propose', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.agenda.request_discussion': { path: '/api/v1/agenda.request_discussion', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.agents.get_delegation': { path: '/api/v1/agents.get_delegation', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.agents.list': { path: '/api/v1/agents.list', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.agents.pair_start': { path: '/api/v1/agents.pair_start', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.agents.restore': { path: '/api/v1/agents.restore', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.agents.revoke': { path: '/api/v1/agents.revoke', scope: 'admin', risk: 'confirm', mutates: true },
-  'xbot.agents.set_delegation': { path: '/api/v1/agents.set_delegation', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.agents.update_scopes': { path: '/api/v1/agents.update_scopes', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.approvals.decide': { path: '/api/v1/approvals.decide', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.approvals.list': { path: '/api/v1/approvals.list', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.approvals.request': { path: '/api/v1/approvals.request', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.approvals.wait': { path: '/api/v1/approvals.wait', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.apps.add_mcp_server': { path: '/api/v1/apps.add_mcp_server', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.apps.cancel_signin': { path: '/api/v1/apps.cancel_signin', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.apps.catalog': { path: '/api/v1/apps.catalog', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.apps.connect': { path: '/api/v1/apps.connect', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.apps.disconnect': { path: '/api/v1/apps.disconnect', scope: 'admin', risk: 'confirm', mutates: true },
-  'xbot.apps.finish_signin': { path: '/api/v1/apps.finish_signin', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.apps.get': { path: '/api/v1/apps.get', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.apps.grant_to_bot': { path: '/api/v1/apps.grant_to_bot', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.apps.list': { path: '/api/v1/apps.list', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.apps.request': { path: '/api/v1/apps.request', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.apps.revoke_from_bot': { path: '/api/v1/apps.revoke_from_bot', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.apps.signin': { path: '/api/v1/apps.signin', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.apps.signin_status': { path: '/api/v1/apps.signin_status', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.apps.test': { path: '/api/v1/apps.test', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.apps.update': { path: '/api/v1/apps.update', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.audit.list': { path: '/api/v1/audit.list', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.bots.archive': { path: '/api/v1/bots.archive', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.bots.create': { path: '/api/v1/bots.create', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.bots.delete': { path: '/api/v1/bots.delete', scope: 'manage', risk: 'confirm', mutates: true },
-  'xbot.bots.export': { path: '/api/v1/bots.export', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.bots.get': { path: '/api/v1/bots.get', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.bots.import': { path: '/api/v1/bots.import', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.bots.list': { path: '/api/v1/bots.list', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.bots.suggest': { path: '/api/v1/bots.suggest', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.bots.update': { path: '/api/v1/bots.update', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.bots.update_my_profile': { path: '/api/v1/bots.update_my_profile', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.cards.post': { path: '/api/v1/cards.post', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.chat.ask_again': { path: '/api/v1/chat.ask_again', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.chat.list_threads': { path: '/api/v1/chat.list_threads', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.chat.read': { path: '/api/v1/chat.read', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.chat.respond': { path: '/api/v1/chat.respond', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.chat.send': { path: '/api/v1/chat.send', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.chat.steps': { path: '/api/v1/chat.steps', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.chat.stop': { path: '/api/v1/chat.stop', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.chat.wait_until_settled': { path: '/api/v1/chat.wait_until_settled', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.collab.assignment_status': { path: '/api/v1/collab.assignment_status', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.collab.message_bot': { path: '/api/v1/collab.message_bot', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.collab.peer_history': { path: '/api/v1/collab.peer_history', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.collab.post_to_group': { path: '/api/v1/collab.post_to_group', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.collab.room_read': { path: '/api/v1/collab.room_read', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.collab.start_group': { path: '/api/v1/collab.start_group', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.collab.stop_chain': { path: '/api/v1/collab.stop_chain', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.collab.stop_room': { path: '/api/v1/collab.stop_room', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.computers.egress_status': { path: '/api/v1/computers.egress_status', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.computers.handback': { path: '/api/v1/computers.handback', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.computers.move': { path: '/api/v1/computers.move', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.computers.move_all': { path: '/api/v1/computers.move_all', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.computers.move_cancel': { path: '/api/v1/computers.move_cancel', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.computers.move_status': { path: '/api/v1/computers.move_status', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.computers.purge': { path: '/api/v1/computers.purge', scope: 'manage', risk: 'confirm', mutates: true },
-  'xbot.computers.rebuild': { path: '/api/v1/computers.rebuild', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.computers.request_takeover': { path: '/api/v1/computers.request_takeover', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.computers.restart': { path: '/api/v1/computers.restart', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.computers.screen': { path: '/api/v1/computers.screen', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.computers.screens': { path: '/api/v1/computers.screens', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.computers.set_egress': { path: '/api/v1/computers.set_egress', scope: 'admin', risk: 'confirm', mutates: true },
-  'xbot.computers.set_network': { path: '/api/v1/computers.set_network', scope: 'admin', risk: 'confirm', mutates: true },
-  'xbot.computers.sleep': { path: '/api/v1/computers.sleep', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.computers.snapshot': { path: '/api/v1/computers.snapshot', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.computers.status': { path: '/api/v1/computers.status', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.computers.takeover': { path: '/api/v1/computers.takeover', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.computers.update': { path: '/api/v1/computers.update', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.computers.update_status': { path: '/api/v1/computers.update_status', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.computers.wake': { path: '/api/v1/computers.wake', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.devices.pair_start': { path: '/api/v1/devices.pair_start', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.devices.pair_status': { path: '/api/v1/devices.pair_status', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.engines.link_credentials': { path: '/api/v1/engines.link_credentials', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.engines.status': { path: '/api/v1/engines.status', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.engines.switch': { path: '/api/v1/engines.switch', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.engines.unlink_credentials': { path: '/api/v1/engines.unlink_credentials', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.files.delete': { path: '/api/v1/files.delete', scope: 'operate', risk: 'confirm', mutates: true },
-  'xbot.files.download': { path: '/api/v1/files.download', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.files.list': { path: '/api/v1/files.list', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.files.mkdir': { path: '/api/v1/files.mkdir', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.files.move': { path: '/api/v1/files.move', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.files.move_between_bots': { path: '/api/v1/files.move_between_bots', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.files.read': { path: '/api/v1/files.read', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.files.upload': { path: '/api/v1/files.upload', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.files.write': { path: '/api/v1/files.write', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.hosts.add': { path: '/api/v1/hosts.add', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.hosts.check': { path: '/api/v1/hosts.check', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.hosts.get': { path: '/api/v1/hosts.get', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.hosts.install_script': { path: '/api/v1/hosts.install_script', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.hosts.list': { path: '/api/v1/hosts.list', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.hosts.remove': { path: '/api/v1/hosts.remove', scope: 'admin', risk: 'confirm', mutates: true },
-  'xbot.hosts.set_default': { path: '/api/v1/hosts.set_default', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.hosts.set_limits': { path: '/api/v1/hosts.set_limits', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.import.detect': { path: '/api/v1/import.detect', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.import.plan': { path: '/api/v1/import.plan', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.import.run': { path: '/api/v1/import.run', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.import.status': { path: '/api/v1/import.status', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.inbox.counts': { path: '/api/v1/inbox.counts', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.inbox.dismiss': { path: '/api/v1/inbox.dismiss', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.inbox.list': { path: '/api/v1/inbox.list', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.inbox.mark_read': { path: '/api/v1/inbox.mark_read', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.inbox.undo': { path: '/api/v1/inbox.undo', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.judge.correct': { path: '/api/v1/judge.correct', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.judge.corrections': { path: '/api/v1/judge.corrections', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.judge.feedback': { path: '/api/v1/judge.feedback', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.judge.precheck': { path: '/api/v1/judge.precheck', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.judge.run': { path: '/api/v1/judge.run', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.judge.settings_get': { path: '/api/v1/judge.settings_get', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.judge.settings_set': { path: '/api/v1/judge.settings_set', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.judge.stats': { path: '/api/v1/judge.stats', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.logins.forget': { path: '/api/v1/logins.forget', scope: 'manage', risk: 'confirm', mutates: true },
-  'xbot.logins.list': { path: '/api/v1/logins.list', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.logins.share': { path: '/api/v1/logins.share', scope: 'manage', risk: 'confirm', mutates: true },
-  'xbot.logins.undo_share': { path: '/api/v1/logins.undo_share', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.memory.add': { path: '/api/v1/memory.add', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.memory.history': { path: '/api/v1/memory.history', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.memory.read': { path: '/api/v1/memory.read', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.memory.restore': { path: '/api/v1/memory.restore', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.memory.write': { path: '/api/v1/memory.write', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.models.add_provider': { path: '/api/v1/models.add_provider', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.models.get': { path: '/api/v1/models.get', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.models.oauth_complete': { path: '/api/v1/models.oauth_complete', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.models.oauth_start': { path: '/api/v1/models.oauth_start', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.models.presets': { path: '/api/v1/models.presets', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.models.pricing': { path: '/api/v1/models.pricing', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.models.probe': { path: '/api/v1/models.probe', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.models.remove_provider': { path: '/api/v1/models.remove_provider', scope: 'admin', risk: 'confirm', mutates: true },
-  'xbot.models.set_default': { path: '/api/v1/models.set_default', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.models.set_fallback': { path: '/api/v1/models.set_fallback', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.models.set_price': { path: '/api/v1/models.set_price', scope: 'admin', risk: 'confirm', mutates: true },
-  'xbot.models.set_provider': { path: '/api/v1/models.set_provider', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.models.update_provider': { path: '/api/v1/models.update_provider', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.network.funnel_set': { path: '/api/v1/network.funnel_set', scope: 'admin', risk: 'confirm', mutates: true },
-  'xbot.network.status': { path: '/api/v1/network.status', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.network.tailscale_set': { path: '/api/v1/network.tailscale_set', scope: 'admin', risk: 'confirm', mutates: true },
-  'xbot.onboard.status': { path: '/api/v1/onboard.status', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.onboard.update': { path: '/api/v1/onboard.update', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.push.config': { path: '/api/v1/push.config', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.push.subscribe': { path: '/api/v1/push.subscribe', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.push.test': { path: '/api/v1/push.test', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.push.unsubscribe': { path: '/api/v1/push.unsubscribe', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.rooms.create': { path: '/api/v1/rooms.create', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.rooms.delete': { path: '/api/v1/rooms.delete', scope: 'manage', risk: 'confirm', mutates: true },
-  'xbot.rooms.list': { path: '/api/v1/rooms.list', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.rooms.pause_member': { path: '/api/v1/rooms.pause_member', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.rooms.post': { path: '/api/v1/rooms.post', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.rooms.update': { path: '/api/v1/rooms.update', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.routines.calendar': { path: '/api/v1/routines.calendar', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.routines.complete': { path: '/api/v1/routines.complete', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.routines.create': { path: '/api/v1/routines.create', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.routines.delete': { path: '/api/v1/routines.delete', scope: 'operate', risk: 'confirm', mutates: true },
-  'xbot.routines.get': { path: '/api/v1/routines.get', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.routines.hook_create': { path: '/api/v1/routines.hook_create', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.routines.hook_delete': { path: '/api/v1/routines.hook_delete', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.routines.hook_rotate': { path: '/api/v1/routines.hook_rotate', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.routines.list': { path: '/api/v1/routines.list', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.routines.logs': { path: '/api/v1/routines.logs', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.routines.pause': { path: '/api/v1/routines.pause', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.routines.propose': { path: '/api/v1/routines.propose', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.routines.resume': { path: '/api/v1/routines.resume', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.routines.run_now': { path: '/api/v1/routines.run_now', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.routines.update': { path: '/api/v1/routines.update', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.settings.get': { path: '/api/v1/settings.get', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.skills.create': { path: '/api/v1/skills.create', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.skills.delete': { path: '/api/v1/skills.delete', scope: 'manage', risk: 'confirm', mutates: true },
-  'xbot.skills.disable': { path: '/api/v1/skills.disable', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.skills.enable': { path: '/api/v1/skills.enable', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.skills.get': { path: '/api/v1/skills.get', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.skills.import': { path: '/api/v1/skills.import', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.skills.install_to_bot': { path: '/api/v1/skills.install_to_bot', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.skills.list': { path: '/api/v1/skills.list', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.skills.propose': { path: '/api/v1/skills.propose', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.skills.update': { path: '/api/v1/skills.update', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.system.ping': { path: '/api/v1/system.ping', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.tasks.progress': { path: '/api/v1/tasks.progress', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.teaching.discard': { path: '/api/v1/teaching.discard', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.teaching.draft': { path: '/api/v1/teaching.draft', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.teaching.drop': { path: '/api/v1/teaching.drop', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.teaching.get': { path: '/api/v1/teaching.get', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.teaching.note': { path: '/api/v1/teaching.note', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.teaching.pause': { path: '/api/v1/teaching.pause', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.teaching.save': { path: '/api/v1/teaching.save', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.teaching.shot': { path: '/api/v1/teaching.shot', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.teaching.start': { path: '/api/v1/teaching.start', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.teaching.stop': { path: '/api/v1/teaching.stop', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.team.roster': { path: '/api/v1/team.roster', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.teams.approval_items': { path: '/api/v1/teams.approval_items', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.teams.chart': { path: '/api/v1/teams.chart', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.teams.create': { path: '/api/v1/teams.create', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.teams.delete': { path: '/api/v1/teams.delete', scope: 'manage', risk: 'confirm', mutates: true },
-  'xbot.teams.list': { path: '/api/v1/teams.list', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.teams.set_approval_items': { path: '/api/v1/teams.set_approval_items', scope: 'manage', risk: 'confirm', mutates: true },
-  'xbot.teams.set_reports_to': { path: '/api/v1/teams.set_reports_to', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.teams.suggest': { path: '/api/v1/teams.suggest', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.teams.team_status': { path: '/api/v1/teams.team_status', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.teams.templates': { path: '/api/v1/teams.templates', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.teams.update': { path: '/api/v1/teams.update', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.teams.update_bot': { path: '/api/v1/teams.update_bot', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.teams.work_review': { path: '/api/v1/teams.work_review', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.usage.caps': { path: '/api/v1/usage.caps', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.usage.export': { path: '/api/v1/usage.export', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.usage.set_caps': { path: '/api/v1/usage.set_caps', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.usage.summary': { path: '/api/v1/usage.summary', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.voice.audio': { path: '/api/v1/voice.audio', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.voice.bot_get': { path: '/api/v1/voice.bot_get', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.voice.bot_set': { path: '/api/v1/voice.bot_set', scope: 'manage', risk: 'safe', mutates: true },
-  'xbot.voice.call_end': { path: '/api/v1/voice.call_end', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.voice.settings_get': { path: '/api/v1/voice.settings_get', scope: 'read', risk: 'safe', mutates: false },
-  'xbot.voice.settings_set': { path: '/api/v1/voice.settings_set', scope: 'admin', risk: 'safe', mutates: true },
-  'xbot.voice.speak': { path: '/api/v1/voice.speak', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.voice.thread_set': { path: '/api/v1/voice.thread_set', scope: 'operate', risk: 'safe', mutates: true },
-  'xbot.voice.transcribe': { path: '/api/v1/voice.transcribe', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.agenda.decide': { path: '/api/v1/agenda.decide', scope: 'operate', risk: 'safe', mutates: true, summary: '回覆一件提案或討論（同意、否決、直接回覆、不用討論、改時間）' },
+  'xbot.agenda.list': { path: '/api/v1/agenda.list', scope: 'read', risk: 'safe', mutates: false, summary: '等你的提案與討論、接下來的行程、待你核定' },
+  'xbot.agenda.propose': { path: '/api/v1/agenda.propose', scope: 'operate', risk: 'safe', mutates: true, summary: '提案：幾天後沒意見就照做' },
+  'xbot.agenda.request_discussion': { path: '/api/v1/agenda.request_discussion', scope: 'operate', risk: 'safe', mutates: true, summary: '約使用者討論一件事' },
+  'xbot.agents.get_delegation': { path: '/api/v1/agents.get_delegation', scope: 'read', risk: 'safe', mutates: false, summary: '看一個代理的代為核准授權' },
+  'xbot.agents.list': { path: '/api/v1/agents.list', scope: 'admin', risk: 'safe', mutates: true, summary: '列出已連線的代理' },
+  'xbot.agents.pair_start': { path: '/api/v1/agents.pair_start', scope: 'admin', risk: 'safe', mutates: true, summary: '產生一個配對碼，讓外部代理換到權杖' },
+  'xbot.agents.restore': { path: '/api/v1/agents.restore', scope: 'admin', risk: 'safe', mutates: true, summary: '復原剛撤銷的代理' },
+  'xbot.agents.revoke': { path: '/api/v1/agents.revoke', scope: 'admin', risk: 'confirm', mutates: true, summary: '撤銷一個代理的權杖' },
+  'xbot.agents.set_delegation': { path: '/api/v1/agents.set_delegation', scope: 'admin', risk: 'safe', mutates: true, summary: '設定一個代理的代為核准授權' },
+  'xbot.agents.update_scopes': { path: '/api/v1/agents.update_scopes', scope: 'admin', risk: 'safe', mutates: true, summary: '改一個代理的權限範圍、資源範圍與上限' },
+  'xbot.approvals.decide': { path: '/api/v1/approvals.decide', scope: 'operate', risk: 'safe', mutates: true, summary: '允許或退回一個等核准的動作' },
+  'xbot.approvals.list': { path: '/api/v1/approvals.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出等你核准的動作' },
+  'xbot.approvals.request': { path: '/api/v1/approvals.request', scope: 'operate', risk: 'safe', mutates: true, summary: '請使用者核准一件事' },
+  'xbot.approvals.wait': { path: '/api/v1/approvals.wait', scope: 'read', risk: 'safe', mutates: false, summary: '等一個核准的結果' },
+  'xbot.apps.add_mcp_server': { path: '/api/v1/apps.add_mcp_server', scope: 'admin', risk: 'safe', mutates: true, summary: '加一個自訂 MCP 服務' },
+  'xbot.apps.cancel_signin': { path: '/api/v1/apps.cancel_signin', scope: 'admin', risk: 'safe', mutates: true, summary: '取消一次登入' },
+  'xbot.apps.catalog': { path: '/api/v1/apps.catalog', scope: 'read', risk: 'safe', mutates: false, summary: '列出可以連接的應用程式' },
+  'xbot.apps.connect': { path: '/api/v1/apps.connect', scope: 'admin', risk: 'safe', mutates: true, summary: '連接一個應用程式' },
+  'xbot.apps.disconnect': { path: '/api/v1/apps.disconnect', scope: 'admin', risk: 'confirm', mutates: true, summary: '中斷一個連接' },
+  'xbot.apps.finish_signin': { path: '/api/v1/apps.finish_signin', scope: 'admin', risk: 'safe', mutates: true, summary: '用貼上的網址完成登入' },
+  'xbot.apps.get': { path: '/api/v1/apps.get', scope: 'read', risk: 'safe', mutates: false, summary: '看一個連接的詳細' },
+  'xbot.apps.grant_to_bot': { path: '/api/v1/apps.grant_to_bot', scope: 'admin', risk: 'safe', mutates: true, summary: '讓一個 Bot 可以用這個連接' },
+  'xbot.apps.list': { path: '/api/v1/apps.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出已連接的應用程式' },
+  'xbot.apps.request': { path: '/api/v1/apps.request', scope: 'operate', risk: 'safe', mutates: true, summary: '請使用者連接一個應用程式' },
+  'xbot.apps.revoke_from_bot': { path: '/api/v1/apps.revoke_from_bot', scope: 'admin', risk: 'safe', mutates: true, summary: '不再讓一個 Bot 用這個連接' },
+  'xbot.apps.signin': { path: '/api/v1/apps.signin', scope: 'admin', risk: 'safe', mutates: true, summary: '重新登入一個連接' },
+  'xbot.apps.signin_status': { path: '/api/v1/apps.signin_status', scope: 'read', risk: 'safe', mutates: false, summary: '查一次登入的結果' },
+  'xbot.apps.test': { path: '/api/v1/apps.test', scope: 'admin', risk: 'safe', mutates: true, summary: '測試一個連接' },
+  'xbot.apps.update': { path: '/api/v1/apps.update', scope: 'admin', risk: 'safe', mutates: true, summary: '修改一個連接' },
+  'xbot.audit.list': { path: '/api/v1/audit.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出稽核紀錄（誰、從哪裡、做了什麼）' },
+  'xbot.backup.create': { path: '/api/v1/backup.create', scope: 'admin', risk: 'safe', mutates: true, summary: '立即備份 XBot 的資料與每個 Bot 電腦的資料（同 make backup，不含瀏覽器登入）' },
+  'xbot.backup.list': { path: '/api/v1/backup.list', scope: 'admin', risk: 'safe', mutates: true, summary: '列出最近的備份檔（資料目錄旁的 xbot-backups）與網頁備份的進度' },
+  'xbot.bots.archive': { path: '/api/v1/bots.archive', scope: 'manage', risk: 'safe', mutates: true, summary: '封存（或取消封存）一個 Bot' },
+  'xbot.bots.create': { path: '/api/v1/bots.create', scope: 'manage', risk: 'safe', mutates: true, summary: '建立一個 Bot' },
+  'xbot.bots.delete': { path: '/api/v1/bots.delete', scope: 'manage', risk: 'confirm', mutates: true, summary: '刪除一個 Bot' },
+  'xbot.bots.export': { path: '/api/v1/bots.export', scope: 'manage', risk: 'safe', mutates: true, summary: '把一個 Bot 做成可以分享的 .xbot 檔' },
+  'xbot.bots.get': { path: '/api/v1/bots.get', scope: 'read', risk: 'safe', mutates: false, summary: '讀一個 Bot 的設定' },
+  'xbot.bots.import': { path: '/api/v1/bots.import', scope: 'manage', risk: 'safe', mutates: true, summary: '從 .xbot 檔匯入一個 Bot' },
+  'xbot.bots.list': { path: '/api/v1/bots.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出 Bot' },
+  'xbot.bots.suggest': { path: '/api/v1/bots.suggest', scope: 'manage', risk: 'safe', mutates: true, summary: '一句話建議一個 Bot（名字、職稱、介紹、常駐指示）' },
+  'xbot.bots.update': { path: '/api/v1/bots.update', scope: 'manage', risk: 'safe', mutates: true, summary: '修改一個 Bot 的設定' },
+  'xbot.bots.update_my_profile': { path: '/api/v1/bots.update_my_profile', scope: 'operate', risk: 'safe', mutates: true, summary: '改自己的職稱或頭像' },
+  'xbot.cards.post': { path: '/api/v1/cards.post', scope: 'operate', risk: 'safe', mutates: true, summary: '在對話裡發一張卡片給使用者' },
+  'xbot.chat.ask_again': { path: '/api/v1/chat.ask_again', scope: 'operate', risk: 'safe', mutates: true, summary: '請 Bot 把過期的問題再問一次' },
+  'xbot.chat.list_threads': { path: '/api/v1/chat.list_threads', scope: 'read', risk: 'safe', mutates: false, summary: '列出和一個 Bot 的對話串' },
+  'xbot.chat.read': { path: '/api/v1/chat.read', scope: 'read', risk: 'safe', mutates: false, summary: '讀一條對話串的訊息' },
+  'xbot.chat.respond': { path: '/api/v1/chat.respond', scope: 'operate', risk: 'safe', mutates: true, summary: '回覆 Bot 的提問（允許指令、回答問題、提供密碼）' },
+  'xbot.chat.send': { path: '/api/v1/chat.send', scope: 'operate', risk: 'safe', mutates: true, summary: '對一個 Bot 說話（交辦一件事）' },
+  'xbot.chat.steps': { path: '/api/v1/chat.steps', scope: 'read', risk: 'safe', mutates: false, summary: '讀一條對話串的工作步驟（工具、提問、回覆、狀態）' },
+  'xbot.chat.stop': { path: '/api/v1/chat.stop', scope: 'operate', risk: 'safe', mutates: true, summary: '停止 Bot 正在做的事' },
+  'xbot.chat.wait_until_settled': { path: '/api/v1/chat.wait_until_settled', scope: 'read', risk: 'safe', mutates: false, summary: '等 Bot 做完（或需要人）再回傳它的回覆' },
+  'xbot.collab.assignment_status': { path: '/api/v1/collab.assignment_status', scope: 'read', risk: 'safe', mutates: false, summary: '看一件交辦給隊友的工作現在的狀態' },
+  'xbot.collab.message_bot': { path: '/api/v1/collab.message_bot', scope: 'operate', risk: 'safe', mutates: true, summary: '傳訊息給隊友（交辦、提問、通知）' },
+  'xbot.collab.peer_history': { path: '/api/v1/collab.peer_history', scope: 'read', risk: 'safe', mutates: false, summary: '讀兩個 Bot 之間的往來（X ⇄ Y 的對話）' },
+  'xbot.collab.post_to_group': { path: '/api/v1/collab.post_to_group', scope: 'operate', risk: 'safe', mutates: true, summary: '在你所在的群組發言（補充或交棒）' },
+  'xbot.collab.room_read': { path: '/api/v1/collab.room_read', scope: 'read', risk: 'safe', mutates: false, summary: '讀群組的訊息與成員狀態' },
+  'xbot.collab.start_group': { path: '/api/v1/collab.start_group', scope: 'operate', risk: 'safe', mutates: true, summary: '和隊友開一個群組對話' },
+  'xbot.collab.stop_chain': { path: '/api/v1/collab.stop_chain', scope: 'operate', risk: 'safe', mutates: true, summary: '停止一條 Bot 之間的往來' },
+  'xbot.collab.stop_room': { path: '/api/v1/collab.stop_room', scope: 'operate', risk: 'safe', mutates: true, summary: '停止群組裡所有成員的工作' },
+  'xbot.computers.egress_status': { path: '/api/v1/computers.egress_status', scope: 'read', risk: 'safe', mutates: false, summary: '看「從家裡出去」的設定與各主機上 Tailscale 小容器的狀態' },
+  'xbot.computers.handback': { path: '/api/v1/computers.handback', scope: 'operate', risk: 'safe', mutates: true, summary: '把電腦交還給 Bot，可以附一句說明；Bot 會從目前的畫面接著做原本的工作' },
+  'xbot.computers.move': { path: '/api/v1/computers.move', scope: 'manage', risk: 'safe', mutates: true, summary: '搬家：把一個 Bot 的電腦搬到另一台主機，家目錄、工作資料夾、引擎紀錄與瀏覽器登入都跟著走' },
+  'xbot.computers.move_all': { path: '/api/v1/computers.move_all', scope: 'manage', risk: 'safe', mutates: true, summary: '把一台主機上的 Bot 全部搬到另一台（一個做完再做下一個）' },
+  'xbot.computers.move_cancel': { path: '/api/v1/computers.move_cancel', scope: 'manage', risk: 'safe', mutates: true, summary: '取消一個 Bot 排隊中或進行中的搬家（Bot 留在原主機，原資料不動）' },
+  'xbot.computers.move_status': { path: '/api/v1/computers.move_status', scope: 'read', risk: 'safe', mutates: false, summary: '看搬家的進度：進行中、排隊中與最近做完的搬家' },
+  'xbot.computers.purge': { path: '/api/v1/computers.purge', scope: 'manage', risk: 'confirm', mutates: true, summary: '刪掉一個 Bot 的電腦和裡面所有資料（家目錄、工作資料夾、瀏覽器登入、引擎紀錄），無法復原' },
+  'xbot.computers.rebuild': { path: '/api/v1/computers.rebuild', scope: 'manage', risk: 'safe', mutates: true, summary: '重建一個 Bot 的電腦：用目前的映像與設定重新建立，家目錄、工作資料夾、瀏覽器登入都保留' },
+  'xbot.computers.request_takeover': { path: '/api/v1/computers.request_takeover', scope: 'operate', risk: 'safe', mutates: true, summary: '請使用者接手你的電腦（登入、驗證碼、付款這類一定要真人做的步驟）' },
+  'xbot.computers.restart': { path: '/api/v1/computers.restart', scope: 'operate', risk: 'safe', mutates: true, summary: '重開一個 Bot 的電腦（資料保留）' },
+  'xbot.computers.screen': { path: '/api/v1/computers.screen', scope: 'read', risk: 'safe', mutates: false, summary: '看一台電腦的畫面狀態：開機或休眠、有沒有人在接手、Bot 有沒有請你接手、幾個人在看' },
+  'xbot.computers.screens': { path: '/api/v1/computers.screens', scope: 'read', risk: 'safe', mutates: false, summary: '列出所有 Bot 的電腦（辦公室）：在哪台主機、開機或休眠、誰在工作、誰在等你接手' },
+  'xbot.computers.set_egress': { path: '/api/v1/computers.set_egress', scope: 'admin', risk: 'confirm', mutates: true, summary: '「從家裡出去」：讓一個 Bot 的電腦連外經過家裡那台電腦（Tailscale exit node）' },
+  'xbot.computers.set_network': { path: '/api/v1/computers.set_network', scope: 'admin', risk: 'confirm', mutates: true, summary: '設定一個 Bot 的電腦可以連哪些私有網路（區網、主機上的服務）' },
+  'xbot.computers.sleep': { path: '/api/v1/computers.sleep', scope: 'operate', risk: 'safe', mutates: true, summary: '讓一個 Bot 的電腦休眠（關機，資料與瀏覽器登入都保留）' },
+  'xbot.computers.snapshot': { path: '/api/v1/computers.snapshot', scope: 'operate', risk: 'safe', mutates: true, summary: '擷取一台電腦目前畫面的小縮圖（JPEG）；電腦沒開機時 available=false，不會叫醒它' },
+  'xbot.computers.status': { path: '/api/v1/computers.status', scope: 'read', risk: 'safe', mutates: false, summary: '看一個 Bot 的電腦：開機或休眠、在哪台主機、什麼時候會閒置休眠、要不要更新' },
+  'xbot.computers.takeover': { path: '/api/v1/computers.takeover', scope: 'operate', risk: 'safe', mutates: true, summary: '接手一台電腦：Bot 先暫停（正在做的那一輪中斷、排隊的先等），你可以直接操作畫面' },
+  'xbot.computers.update': { path: '/api/v1/computers.update', scope: 'admin', risk: 'safe', mutates: true, summary: '更新電腦：把新的電腦映像傳到主機，並重建上面要更新的電腦（資料保留）' },
+  'xbot.computers.update_status': { path: '/api/v1/computers.update_status', scope: 'read', risk: 'safe', mutates: false, summary: '看「更新電腦」的進度：正在進行或最近一次的結果（還沒更新過時 hosts 是空的）' },
+  'xbot.computers.wake': { path: '/api/v1/computers.wake', scope: 'operate', risk: 'safe', mutates: true, summary: '叫醒（開機）一個 Bot 的電腦；還沒有電腦時先建立' },
+  'xbot.devices.pair_start': { path: '/api/v1/devices.pair_start', scope: 'admin', risk: 'safe', mutates: true, summary: '產生連手機用的 QR（一次性配對碼）' },
+  'xbot.devices.pair_status': { path: '/api/v1/devices.pair_status', scope: 'admin', risk: 'safe', mutates: true, summary: '看連手機的配對碼用掉了沒' },
+  'xbot.engines.link_credentials': { path: '/api/v1/engines.link_credentials', scope: 'admin', risk: 'safe', mutates: true, summary: '讓一個 Bot 使用你在這台電腦上的訂閱登入（Claude Code／Codex CLI／Gemini CLI／OpenCode／Grok）' },
+  'xbot.engines.status': { path: '/api/v1/engines.status', scope: 'read', risk: 'safe', mutates: false, summary: '看每個 Bot 用哪個引擎、有沒有用你的訂閱' },
+  'xbot.engines.switch': { path: '/api/v1/engines.switch', scope: 'manage', risk: 'safe', mutates: true, summary: '把一個 Bot 換到另一個引擎或模型（額度用完時）' },
+  'xbot.engines.unlink_credentials': { path: '/api/v1/engines.unlink_credentials', scope: 'admin', risk: 'safe', mutates: true, summary: '收回一個 Bot 使用你訂閱登入的同意' },
+  'xbot.files.delete': { path: '/api/v1/files.delete', scope: 'operate', risk: 'confirm', mutates: true, summary: '刪除 Bot 電腦裡的檔案' },
+  'xbot.files.download': { path: '/api/v1/files.download', scope: 'read', risk: 'safe', mutates: false, summary: '取得 Bot 電腦裡一個檔案的下載網址' },
+  'xbot.files.list': { path: '/api/v1/files.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出 Bot 電腦裡的檔案' },
+  'xbot.files.mkdir': { path: '/api/v1/files.mkdir', scope: 'operate', risk: 'safe', mutates: true, summary: '在 Bot 電腦裡建資料夾' },
+  'xbot.files.move': { path: '/api/v1/files.move', scope: 'operate', risk: 'safe', mutates: true, summary: '搬移或改名 Bot 電腦裡的檔案' },
+  'xbot.files.move_between_bots': { path: '/api/v1/files.move_between_bots', scope: 'operate', risk: 'safe', mutates: true, summary: '把檔案傳給另一個 Bot' },
+  'xbot.files.read': { path: '/api/v1/files.read', scope: 'read', risk: 'safe', mutates: false, summary: '預覽 Bot 電腦裡的一個檔案' },
+  'xbot.files.upload': { path: '/api/v1/files.upload', scope: 'operate', risk: 'safe', mutates: true, summary: '上傳檔案到 Bot 電腦' },
+  'xbot.files.write': { path: '/api/v1/files.write', scope: 'operate', risk: 'safe', mutates: true, summary: '在 Bot 電腦裡寫一個文字檔' },
+  'xbot.hosts.add': { path: '/api/v1/hosts.add', scope: 'admin', risk: 'safe', mutates: true, summary: '加入一台遠端主機（自動檢查 SSH、Docker、資源、架構、轉發，並把電腦映像傳過去）' },
+  'xbot.hosts.check': { path: '/api/v1/hosts.check', scope: 'admin', risk: 'safe', mutates: true, summary: '重新檢查一台主機（離線時順便重新連線）' },
+  'xbot.hosts.get': { path: '/api/v1/hosts.get', scope: 'read', risk: 'safe', mutates: false, summary: '讀一台主機的狀態' },
+  'xbot.hosts.install_script': { path: '/api/v1/hosts.install_script', scope: 'admin', risk: 'safe', mutates: true, summary: '產生新增主機第 1 步要在主機上貼的一行安裝指令' },
+  'xbot.hosts.list': { path: '/api/v1/hosts.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出放 Bot 電腦的主機（狀態、資源、開機台數、上面有哪些 Bot）' },
+  'xbot.hosts.remove': { path: '/api/v1/hosts.remove', scope: 'admin', risk: 'confirm', mutates: true, summary: '移除一台遠端主機' },
+  'xbot.hosts.set_default': { path: '/api/v1/hosts.set_default', scope: 'admin', risk: 'safe', mutates: true, summary: '設定新 Bot 預設放哪台主機' },
+  'xbot.hosts.set_limits': { path: '/api/v1/hosts.set_limits', scope: 'admin', risk: 'safe', mutates: true, summary: '改主機名稱或同時開機上限' },
+  'xbot.import.detect': { path: '/api/v1/import.detect', scope: 'read', risk: 'safe', mutates: false, summary: '找這台電腦上 LazyBoy、OpenMausBot 的舊資料' },
+  'xbot.import.plan': { path: '/api/v1/import.plan', scope: 'read', risk: 'safe', mutates: false, summary: '預演匯入：逐項列出會帶什麼' },
+  'xbot.import.run': { path: '/api/v1/import.run', scope: 'manage', risk: 'safe', mutates: true, summary: '從 LazyBoy 或 OpenMausBot 匯入勾選的項目' },
+  'xbot.import.status': { path: '/api/v1/import.status', scope: 'read', risk: 'safe', mutates: false, summary: '匯入的進度與結果' },
+  'xbot.inbox.counts': { path: '/api/v1/inbox.counts', scope: 'read', risk: 'safe', mutates: false, summary: '待我處理與通知的數量（徽章用）' },
+  'xbot.inbox.dismiss': { path: '/api/v1/inbox.dismiss', scope: 'operate', risk: 'safe', mutates: true, summary: '略過一張不用處理的卡' },
+  'xbot.inbox.list': { path: '/api/v1/inbox.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出「待我處理」與通知' },
+  'xbot.inbox.mark_read': { path: '/api/v1/inbox.mark_read', scope: 'operate', risk: 'safe', mutates: true, summary: '把通知標為已讀' },
+  'xbot.inbox.undo': { path: '/api/v1/inbox.undo', scope: 'operate', risk: 'safe', mutates: true, summary: '復原剛剛的決定' },
+  'xbot.judge.correct': { path: '/api/v1/judge.correct', scope: 'operate', risk: 'safe', mutates: true, summary: '改正系統對一件工作的判斷（不對？）' },
+  'xbot.judge.corrections': { path: '/api/v1/judge.corrections', scope: 'read', risk: 'safe', mutates: false, summary: '列出你對系統判斷的改正' },
+  'xbot.judge.feedback': { path: '/api/v1/judge.feedback', scope: 'operate', risk: 'safe', mutates: true, summary: '說快判的某項判斷不對（不對？）' },
+  'xbot.judge.precheck': { path: '/api/v1/judge.precheck', scope: 'read', risk: 'safe', mutates: false, summary: '先判斷：夠不夠清楚、要不要開電腦、交給哪個引擎、預估花費' },
+  'xbot.judge.run': { path: '/api/v1/judge.run', scope: 'read', risk: 'safe', mutates: false, summary: '請快判判斷一件事（只回傳判斷，不會做任何事）' },
+  'xbot.judge.settings_get': { path: '/api/v1/judge.settings_get', scope: 'read', risk: 'safe', mutates: false, summary: '看快判模型的設定與今天的用量' },
+  'xbot.judge.settings_set': { path: '/api/v1/judge.settings_set', scope: 'admin', risk: 'safe', mutates: true, summary: '改快判模型的設定' },
+  'xbot.judge.stats': { path: '/api/v1/judge.stats', scope: 'read', risk: 'safe', mutates: false, summary: '看快判的影子模式統計（和規則、和你的改正一致多少）' },
+  'xbot.logins.forget': { path: '/api/v1/logins.forget', scope: 'manage', risk: 'confirm', mutates: true, summary: '移除 Bot 瀏覽器裡某些網站的登入' },
+  'xbot.logins.list': { path: '/api/v1/logins.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出 Bot 的瀏覽器登入了哪些網站' },
+  'xbot.logins.share': { path: '/api/v1/logins.share', scope: 'manage', risk: 'confirm', mutates: true, summary: '把一個 Bot 的網站登入分享給其他 Bot' },
+  'xbot.logins.undo_share': { path: '/api/v1/logins.undo_share', scope: 'manage', risk: 'safe', mutates: true, summary: '復原一次分享登入' },
+  'xbot.memory.add': { path: '/api/v1/memory.add', scope: 'operate', risk: 'safe', mutates: true, summary: '記住一件事' },
+  'xbot.memory.history': { path: '/api/v1/memory.history', scope: 'read', risk: 'safe', mutates: false, summary: '看 Bot 記憶最近的變更' },
+  'xbot.memory.read': { path: '/api/v1/memory.read', scope: 'read', risk: 'safe', mutates: false, summary: '讀 Bot 的記憶' },
+  'xbot.memory.restore': { path: '/api/v1/memory.restore', scope: 'manage', risk: 'safe', mutates: true, summary: '復原一次記憶的變更' },
+  'xbot.memory.write': { path: '/api/v1/memory.write', scope: 'manage', risk: 'safe', mutates: true, summary: '改 Bot 的一份記憶' },
+  'xbot.models.add_provider': { path: '/api/v1/models.add_provider', scope: 'admin', risk: 'safe', mutates: true, summary: '新增一個模型供應商' },
+  'xbot.models.get': { path: '/api/v1/models.get', scope: 'read', risk: 'safe', mutates: false, summary: '看模型設定（供應商與預設模型，不含金鑰）' },
+  'xbot.models.oauth_complete': { path: '/api/v1/models.oauth_complete', scope: 'admin', risk: 'safe', mutates: true, summary: '查訂閱登入是否完成，完成就存成模型供應商' },
+  'xbot.models.oauth_start': { path: '/api/v1/models.oauth_start', scope: 'admin', risk: 'safe', mutates: true, summary: '用訂閱登入新增模型供應商（例：ChatGPT 方案）' },
+  'xbot.models.presets': { path: '/api/v1/models.presets', scope: 'read', risk: 'safe', mutates: false, summary: '列出內建的模型供應商範本' },
+  'xbot.models.pricing': { path: '/api/v1/models.pricing', scope: 'read', risk: 'safe', mutates: false, summary: '看模型價目表' },
+  'xbot.models.probe': { path: '/api/v1/models.probe', scope: 'admin', risk: 'safe', mutates: true, summary: '探測模型供應商：列出模型、找出能用的呼叫方式' },
+  'xbot.models.remove_provider': { path: '/api/v1/models.remove_provider', scope: 'admin', risk: 'confirm', mutates: true, summary: '移除一個模型供應商（連同金鑰）' },
+  'xbot.models.set_default': { path: '/api/v1/models.set_default', scope: 'admin', risk: 'safe', mutates: true, summary: '設定預設模型' },
+  'xbot.models.set_fallback': { path: '/api/v1/models.set_fallback', scope: 'admin', risk: 'safe', mutates: true, summary: '設定備援模型' },
+  'xbot.models.set_price': { path: '/api/v1/models.set_price', scope: 'admin', risk: 'confirm', mutates: true, summary: '設定一個模型的價格' },
+  'xbot.models.set_provider': { path: '/api/v1/models.set_provider', scope: 'admin', risk: 'safe', mutates: true, summary: '設定一個模型供應商（網址與金鑰）' },
+  'xbot.models.update_provider': { path: '/api/v1/models.update_provider', scope: 'admin', risk: 'safe', mutates: true, summary: '修改一個模型供應商' },
+  'xbot.network.funnel_set': { path: '/api/v1/network.funnel_set', scope: 'admin', risk: 'confirm', mutates: true, summary: '開啟或關閉外部入口（Tailscale Funnel）：讓 tailnet 外的代理與網址觸發連得到 XBot' },
+  'xbot.network.status': { path: '/api/v1/network.status', scope: 'read', risk: 'safe', mutates: false, summary: '看網路狀態：本機網址、內建 Tailscale（tailnet 網址、憑證、裝置數）、外部入口（Funnel／反向代理）' },
+  'xbot.network.tailscale_set': { path: '/api/v1/network.tailscale_set', scope: 'admin', risk: 'confirm', mutates: true, summary: '開啟或關閉內建 Tailscale（手機、筆電經 tailnet 用正式 HTTPS 連 XBot）' },
+  'xbot.onboard.status': { path: '/api/v1/onboard.status', scope: 'read', risk: 'safe', mutates: false, summary: '首次設定的狀態：已登入的 AI 工具、本機模型、Bot 電腦映像' },
+  'xbot.onboard.update': { path: '/api/v1/onboard.update', scope: 'manage', risk: 'safe', mutates: true, summary: '記下首次設定、導覽與首頁卡片的狀態' },
+  'xbot.push.config': { path: '/api/v1/push.config', scope: 'admin', risk: 'safe', mutates: true, summary: '看推播設定：VAPID 公鑰與已訂閱的裝置' },
+  'xbot.push.subscribe': { path: '/api/v1/push.subscribe', scope: 'admin', risk: 'safe', mutates: true, summary: '讓這個裝置接收推播' },
+  'xbot.push.test': { path: '/api/v1/push.test', scope: 'admin', risk: 'safe', mutates: true, summary: '送一則測試推播' },
+  'xbot.push.unsubscribe': { path: '/api/v1/push.unsubscribe', scope: 'admin', risk: 'safe', mutates: true, summary: '讓一個裝置不再接收推播' },
+  'xbot.rooms.create': { path: '/api/v1/rooms.create', scope: 'manage', risk: 'safe', mutates: true, summary: '開一個群組（你＋2–10 個 Bot）' },
+  'xbot.rooms.delete': { path: '/api/v1/rooms.delete', scope: 'manage', risk: 'confirm', mutates: true, summary: '刪除一個群組（連同訊息）' },
+  'xbot.rooms.list': { path: '/api/v1/rooms.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出群組' },
+  'xbot.rooms.pause_member': { path: '/api/v1/rooms.pause_member', scope: 'operate', risk: 'safe', mutates: true, summary: '暫停或恢復群組裡的一位成員' },
+  'xbot.rooms.post': { path: '/api/v1/rooms.post', scope: 'operate', risk: 'safe', mutates: true, summary: '在群組發言' },
+  'xbot.rooms.update': { path: '/api/v1/rooms.update', scope: 'manage', risk: 'safe', mutates: true, summary: '改群組（名稱、成員、回應規則、主責、公告）' },
+  'xbot.routines.calendar': { path: '/api/v1/routines.calendar', scope: 'read', risk: 'safe', mutates: false, summary: '行事曆：一段時間內的定時任務' },
+  'xbot.routines.complete': { path: '/api/v1/routines.complete', scope: 'operate', risk: 'safe', mutates: true, summary: '目標達成，結束這個目標型定時任務' },
+  'xbot.routines.create': { path: '/api/v1/routines.create', scope: 'operate', risk: 'safe', mutates: true, summary: '新增定時任務' },
+  'xbot.routines.delete': { path: '/api/v1/routines.delete', scope: 'operate', risk: 'confirm', mutates: true, summary: '刪除定時任務' },
+  'xbot.routines.get': { path: '/api/v1/routines.get', scope: 'read', risk: 'safe', mutates: false, summary: '讀一個定時任務' },
+  'xbot.routines.hook_create': { path: '/api/v1/routines.hook_create', scope: 'operate', risk: 'safe', mutates: true, summary: '幫定時任務開一個網址觸發' },
+  'xbot.routines.hook_delete': { path: '/api/v1/routines.hook_delete', scope: 'operate', risk: 'safe', mutates: true, summary: '關掉網址觸發' },
+  'xbot.routines.hook_rotate': { path: '/api/v1/routines.hook_rotate', scope: 'operate', risk: 'safe', mutates: true, summary: '換網址觸發的金鑰' },
+  'xbot.routines.list': { path: '/api/v1/routines.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出定時任務' },
+  'xbot.routines.logs': { path: '/api/v1/routines.logs', scope: 'read', risk: 'safe', mutates: false, summary: '看定時任務的執行紀錄' },
+  'xbot.routines.pause': { path: '/api/v1/routines.pause', scope: 'operate', risk: 'safe', mutates: true, summary: '暫停定時任務' },
+  'xbot.routines.propose': { path: '/api/v1/routines.propose', scope: 'read', risk: 'safe', mutates: false, summary: '把一句話解析成定時任務草稿' },
+  'xbot.routines.resume': { path: '/api/v1/routines.resume', scope: 'operate', risk: 'safe', mutates: true, summary: '繼續已暫停的定時任務' },
+  'xbot.routines.run_now': { path: '/api/v1/routines.run_now', scope: 'operate', risk: 'safe', mutates: true, summary: '現在就跑一次定時任務' },
+  'xbot.routines.update': { path: '/api/v1/routines.update', scope: 'operate', risk: 'safe', mutates: true, summary: '修改定時任務' },
+  'xbot.settings.get': { path: '/api/v1/settings.get', scope: 'admin', risk: 'safe', mutates: true, summary: '讀一項設定' },
+  'xbot.skills.create': { path: '/api/v1/skills.create', scope: 'manage', risk: 'safe', mutates: true, summary: '新增一個技能' },
+  'xbot.skills.delete': { path: '/api/v1/skills.delete', scope: 'manage', risk: 'confirm', mutates: true, summary: '刪除一個技能' },
+  'xbot.skills.disable': { path: '/api/v1/skills.disable', scope: 'manage', risk: 'safe', mutates: true, summary: '停用一個技能' },
+  'xbot.skills.enable': { path: '/api/v1/skills.enable', scope: 'manage', risk: 'safe', mutates: true, summary: '打開一個技能' },
+  'xbot.skills.get': { path: '/api/v1/skills.get', scope: 'read', risk: 'safe', mutates: false, summary: '讀一個技能的完整內容' },
+  'xbot.skills.import': { path: '/api/v1/skills.import', scope: 'manage', risk: 'safe', mutates: true, summary: '匯入一個技能（預設停用）' },
+  'xbot.skills.install_to_bot': { path: '/api/v1/skills.install_to_bot', scope: 'manage', risk: 'safe', mutates: true, summary: '把技能庫的技能裝到一個 Bot 身上' },
+  'xbot.skills.list': { path: '/api/v1/skills.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出技能' },
+  'xbot.skills.propose': { path: '/api/v1/skills.propose', scope: 'operate', risk: 'safe', mutates: true, summary: '提議把一個做法存成你的技能' },
+  'xbot.skills.update': { path: '/api/v1/skills.update', scope: 'manage', risk: 'safe', mutates: true, summary: '修改一個技能' },
+  'xbot.system.ping': { path: '/api/v1/system.ping', scope: 'read', risk: 'safe', mutates: false, summary: '確認 XBot 有在運作' },
+  'xbot.tasks.progress': { path: '/api/v1/tasks.progress', scope: 'read', risk: 'safe', mutates: false, summary: '看 Bot 的目前進度（正在做什麼、卡在哪、等誰）' },
+  'xbot.teaching.discard': { path: '/api/v1/teaching.discard', scope: 'operate', risk: 'safe', mutates: true, summary: '取消示範或捨棄技能草稿（錄到的步驟與截圖會刪掉）' },
+  'xbot.teaching.draft': { path: '/api/v1/teaching.draft', scope: 'operate', risk: 'safe', mutates: true, summary: '讀示範整理出的技能草稿；補上要教什麼時重新整理' },
+  'xbot.teaching.drop': { path: '/api/v1/teaching.drop', scope: 'operate', risk: 'safe', mutates: true, summary: '刪掉示範中做錯的一步' },
+  'xbot.teaching.get': { path: '/api/v1/teaching.get', scope: 'read', risk: 'safe', mutates: false, summary: '看一個 Bot 進行中的示範教學：錄到的步驟、草稿' },
+  'xbot.teaching.note': { path: '/api/v1/teaching.note', scope: 'operate', risk: 'safe', mutates: true, summary: '示範中補充一句說明（會成為一步）' },
+  'xbot.teaching.pause': { path: '/api/v1/teaching.pause', scope: 'operate', risk: 'safe', mutates: true, summary: '暫停或繼續示範錄製（暫停時的操作不記）' },
+  'xbot.teaching.save': { path: '/api/v1/teaching.save', scope: 'manage', risk: 'safe', mutates: true, summary: '把示範的技能草稿存成 Bot 的技能（預設存好後請它試做一次）' },
+  'xbot.teaching.shot': { path: '/api/v1/teaching.shot', scope: 'read', risk: 'safe', mutates: false, summary: '讀示範中一步的截圖（JPEG）' },
+  'xbot.teaching.start': { path: '/api/v1/teaching.start', scope: 'operate', risk: 'safe', mutates: true, summary: '開始示範教學（教它一件事）：XBot 接手 Bot 的電腦並開始記錄你的每一步' },
+  'xbot.teaching.stop': { path: '/api/v1/teaching.stop', scope: 'operate', risk: 'safe', mutates: true, summary: '完成示範：停止記錄、把電腦交還給 Bot，並把步驟整理成技能草稿' },
+  'xbot.team.roster': { path: '/api/v1/team.roster', scope: 'read', risk: 'safe', mutates: false, summary: '列出你的隊友' },
+  'xbot.teams.approval_items': { path: '/api/v1/teams.approval_items', scope: 'read', risk: 'safe', mutates: false, summary: '只有你能決定的事（清單）' },
+  'xbot.teams.chart': { path: '/api/v1/teams.chart', scope: 'read', risk: 'safe', mutates: false, summary: '組織圖與團隊地圖：每個 Bot 的狀態、報告線、團隊' },
+  'xbot.teams.create': { path: '/api/v1/teams.create', scope: 'manage', risk: 'safe', mutates: true, summary: '建立團隊：主管、成員、報告線，順便開群組' },
+  'xbot.teams.delete': { path: '/api/v1/teams.delete', scope: 'manage', risk: 'confirm', mutates: true, summary: '刪除一個團隊（Bot 不會被刪）' },
+  'xbot.teams.list': { path: '/api/v1/teams.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出團隊（側欄分區）' },
+  'xbot.teams.set_approval_items': { path: '/api/v1/teams.set_approval_items', scope: 'manage', risk: 'confirm', mutates: true, summary: '改「只有你能決定的事」清單' },
+  'xbot.teams.set_reports_to': { path: '/api/v1/teams.set_reports_to', scope: 'manage', risk: 'safe', mutates: true, summary: '改 Bot 向誰報告' },
+  'xbot.teams.suggest': { path: '/api/v1/teams.suggest', scope: 'read', risk: 'safe', mutates: false, summary: '依一句話建議團隊範本' },
+  'xbot.teams.team_status': { path: '/api/v1/teams.team_status', scope: 'read', risk: 'safe', mutates: false, summary: '看團隊每個人在做什麼' },
+  'xbot.teams.templates': { path: '/api/v1/teams.templates', scope: 'read', risk: 'safe', mutates: false, summary: '團隊範本（行銷、工程、公司）' },
+  'xbot.teams.update': { path: '/api/v1/teams.update', scope: 'manage', risk: 'safe', mutates: true, summary: '改團隊（名稱、說明、主管、團隊記憶、成員）' },
+  'xbot.teams.update_bot': { path: '/api/v1/teams.update_bot', scope: 'manage', risk: 'safe', mutates: true, summary: '調整另一個 Bot 的職稱、人設、報告對象或團隊' },
+  'xbot.teams.work_review': { path: '/api/v1/teams.work_review', scope: 'read', risk: 'safe', mutates: false, summary: '看自己和團隊最近的工作與出錯的地方（每週檢討用）' },
+  'xbot.usage.caps': { path: '/api/v1/usage.caps', scope: 'read', risk: 'safe', mutates: false, summary: '看花費上限與目前花費' },
+  'xbot.usage.export': { path: '/api/v1/usage.export', scope: 'read', risk: 'safe', mutates: false, summary: '匯出用量明細（CSV）' },
+  'xbot.usage.set_caps': { path: '/api/v1/usage.set_caps', scope: 'manage', risk: 'safe', mutates: true, summary: '設定花費上限' },
+  'xbot.usage.summary': { path: '/api/v1/usage.summary', scope: 'read', risk: 'safe', mutates: false, summary: '看用量與花費' },
+  'xbot.voice.audio': { path: '/api/v1/voice.audio', scope: 'read', risk: 'safe', mutates: false, summary: '查一段合成好的音訊（內容用 GET /api/v1/voice.audio?id=… 拿）' },
+  'xbot.voice.bot_get': { path: '/api/v1/voice.bot_get', scope: 'read', risk: 'safe', mutates: false, summary: '看一個 Bot 的聲音（聲音、語速、自動朗讀）' },
+  'xbot.voice.bot_set': { path: '/api/v1/voice.bot_set', scope: 'manage', risk: 'safe', mutates: true, summary: '幫 Bot 挑聲音、改語速、開關自動朗讀' },
+  'xbot.voice.call_end': { path: '/api/v1/voice.call_end', scope: 'operate', risk: 'safe', mutates: true, summary: '通話結束：在對話裡留一列通話紀錄' },
+  'xbot.voice.settings_get': { path: '/api/v1/voice.settings_get', scope: 'read', risk: 'safe', mutates: false, summary: '看語音設定（朗讀與語音輸入的引擎、可以挑的聲音）' },
+  'xbot.voice.settings_set': { path: '/api/v1/voice.settings_set', scope: 'admin', risk: 'safe', mutates: true, summary: '改語音設定（朗讀、語音輸入用哪個引擎、通話多久沒說話就掛斷）' },
+  'xbot.voice.speak': { path: '/api/v1/voice.speak', scope: 'operate', risk: 'safe', mutates: true, summary: '用 Bot 的聲音念一段文字（朗讀、語音訊息、通話）' },
+  'xbot.voice.thread_set': { path: '/api/v1/voice.thread_set', scope: 'operate', risk: 'safe', mutates: true, summary: '這條對話串要不要自動朗讀 Bot 的回覆' },
+  'xbot.voice.transcribe': { path: '/api/v1/voice.transcribe', scope: 'operate', risk: 'safe', mutates: true, summary: '把一段錄音轉成文字（語音輸入、通話）' },
 }

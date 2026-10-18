@@ -36,7 +36,7 @@ import { STATUS_LABEL, ago, gb, hostSub, imageProgress, loadHosts, useHosts, typ
 import { look } from '../data/bots'
 
 // 新增主機（J11，PRD §16 CL-2）：①在主機上貼一行安裝指令 ②XBot 自動檢查 ③取名、設同時開機上限 → 完成。
-// 和畫板不同：指令不需要主機連回 XBot（沒有一次性代碼），所以第 1 步要填主機的位址；「從家裡出去」（CL-7）之後做。
+// 和畫板不同：指令不需要主機連回 XBot（沒有一次性代碼），所以第 1 步要填主機的位址；「從家裡出去」（CL-7）在電腦面板的「在哪裡跑」逐 Bot 打開。
 
 type Report = HostsAddOutput['report']
 type CheckItem = Report['items'][number]

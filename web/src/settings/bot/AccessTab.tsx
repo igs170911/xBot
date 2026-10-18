@@ -11,9 +11,14 @@ import { cx } from '../../ui/cx'
 import { useToast } from '../../ui/toast-context'
 import { errText, isPending } from '../format'
 import { Block, Group, Row } from '../parts'
+import { ComputerActions, NetworkAllow, useComputer } from '../../computer/ComputerActions'
+import { MoveCard, MoveDialog } from '../../computer/MoveParts'
+import { loadMoves } from '../../computer/moveData'
 
 // Bot 設定 · 能力 › 應用程式與電腦（G07 畫板；任務卡的 G08「能用哪些應用程式、主機、檔案」）：
 // 哪些已連接的應用程式給它用（連接一次，所有 Bot 都能用；這裡決定這個 Bot 能不能用），它的電腦放在哪台主機、檔案在哪。
+// 已經有電腦的 Bot 換主機＝搬家（B31，開搬家確認）；還沒有電腦時只改第一次開機放的位置。
+// 電腦的動作（休眠、重開、重建、刪除電腦資料）與私有網路例外和電腦面板（E01）共用。
 
 type Bot = BotsGetOutput
 type Host = HostsListOutput['hosts'][number]
@@ -26,6 +31,11 @@ export function AccessTab({ bot, onSaved }: { bot: Bot; onSaved: (b: Bot) => voi
   const [hosts, setHosts] = useState<Host[]>([])
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const computer = useComputer(bot.id)
+  const [moveTo, setMoveTo] = useState<Host | null>(null)
+  const cv = computer.view
+  const hasComputer = !!cv?.computer && cv.computer.state !== 'none' && cv.computer.state !== ''
+  const currentHost = hasComputer ? cv.computer.host_id : bot.host_id || ''
 
   const load = useCallback(() => {
     appsList({})
@@ -57,6 +67,12 @@ export function AccessTab({ bot, onSaved }: { bot: Bot; onSaved: (b: Bot) => voi
   }
 
   const moveHost = async (id: string) => {
+    if (hasComputer) {
+      // 已經有電腦：換主機就是搬家（資料與登入跟著走），先確認。
+      const to = hosts.find((h) => h.id === id)
+      if (to && id !== currentHost) setMoveTo(to)
+      return
+    }
     try {
       const b = await botsUpdate({ id: bot.id, host_id: id })
       onSaved(b)
@@ -105,12 +121,26 @@ export function AccessTab({ bot, onSaved }: { bot: Bot; onSaved: (b: Bot) => voi
 
       <Block title="電腦" sub={`${bot.name}有一台自己的電腦，第一次收到工作才開機，閒置 30 分鐘休眠；登入與檔案都會保留。`}>
         <Group>
-          <Row title="在哪裡跑" sub="已經有電腦的 Bot 換主機要搬家（之後的版本）" wrap>
+          <Row
+            title="在哪裡跑"
+            sub={
+              cv?.moving && cv.move
+                ? `正在搬到 ${cv.move.to_name}…`
+                : hasComputer
+                  ? '換主機就是搬家：家目錄、工作資料夾、瀏覽器登入都跟著走'
+                  : '還沒有電腦：第一次開機時放在這台主機'
+            }
+            wrap
+          >
             <Select
               label="主機"
               hideLabel
-              value={bot.host_id || ''}
-              options={[{ value: '', label: '自動擺放' }, ...hosts.map((h) => ({ value: h.id, label: `${h.name}${h.kind === 'local' ? '（這台）' : ''}${h.status === 'online' ? '' : ' · 離線'}` }))]}
+              value={currentHost}
+              disabled={!!cv?.moving}
+              options={[
+                ...(hasComputer ? [] : [{ value: '', label: '自動擺放' }]),
+                ...hosts.map((h) => ({ value: h.id, label: `${h.name}${h.kind === 'local' ? '（這台）' : ''}${h.status === 'online' ? '' : ' · 離線'}` })),
+              ]}
               onChange={(v) => void moveHost(v)}
             />
           </Row>
@@ -126,9 +156,23 @@ export function AccessTab({ bot, onSaved }: { bot: Bot; onSaved: (b: Bot) => voi
               打開檔案
             </a>
           </Row>
-          <Row title="電腦資源" sub="2 CPU · 3 GB 記憶體 · 閒置 30 分鐘休眠 · 只能上網（連不到這台主機與區網）" />
+          <Row title="電腦資源" sub="2 CPU · 3 GB 記憶體 · 閒置 30 分鐘休眠 · 只能上網（連不到這台主機與區網，除非下面加了例外）" />
         </Group>
+        {cv?.move && (cv.moving || cv.move.state === 'failed') && <MoveCard job={cv.move} compact={!cv.moving} />}
+        <ComputerActions botId={bot.id} botName={bot.name} state={computer} className="bg-card" />
+        <NetworkAllow botId={bot.id} botName={bot.name} state={computer} className="bg-card" />
       </Block>
+      <MoveDialog
+        botId={bot.id}
+        botName={bot.name}
+        from={hosts.find((h) => h.id === currentHost)}
+        to={moveTo}
+        onClose={() => {
+          setMoveTo(null)
+          void loadMoves()
+          computer.reload()
+        }}
+      />
     </div>
   )
 }

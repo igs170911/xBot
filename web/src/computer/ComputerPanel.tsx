@@ -8,12 +8,13 @@ import { cx } from '../ui/cx'
 import { isRecording, useLesson } from '../teaching/teachingData'
 import { TeachSection } from '../teaching/TeachPanel'
 import { controlOf, useTakeover } from './hooks'
+import { ComputerActions, NetworkAllow, useComputer } from './ComputerActions'
 import { WhereSection } from './MoveParts'
 import { BOX_SPEC, computerPanelStore, IDLE_SLEEP_MIN, useScreen } from './screenData'
 import { Stage } from './Stage'
 import type { VncHandle } from './vnc'
 
-/** 對話旁的電腦面板（design/E01）：即時畫面、接手／交還、在哪裡跑（搬家、從家裡出去）、電腦資訊。 */
+/** 對話旁的電腦面板（design/E01）：即時畫面、接手／交還、在哪裡跑（搬家、從家裡出去）、休眠／重開／重建／刪除、私有網路例外、電腦資訊。 */
 export function ComputerPanel({ bot, className }: { bot: Bot; className?: string }) {
   const { screen, error, setScreen } = useScreen(bot.id)
   const vnc = useRef<VncHandle>(null)
@@ -22,6 +23,7 @@ export function ComputerPanel({ bot, className }: { bot: Bot; className?: string
   const who = controlOf(screen)
   const { lesson } = useLesson(bot.id)
   const teaching = lesson && isRecording(lesson) ? lesson : null
+  const computer = useComputer(bot.id)
 
   return (
     <aside aria-label={`${bot.name}的電腦`} data-testid="computer-panel" className={cx('flex h-dvh w-[540px] flex-none flex-col border-l border-edge bg-app', className)}>
@@ -95,6 +97,8 @@ export function ComputerPanel({ bot, className }: { bot: Bot; className?: string
               </div>
             )}
             <WhereSection botId={bot.id} botName={bot.name} hostId={screen.host_id} />
+            <ComputerActions botId={bot.id} botName={bot.name} state={computer} />
+            <NetworkAllow botId={bot.id} botName={bot.name} state={computer} />
             <section className="flex flex-col gap-2.5 rounded-group bg-panel px-4 py-3.5">
               <h3 className="m-0 text-ui">電腦資訊</h3>
               <InfoRow icon={Cpu} label={`${BOX_SPEC} 記憶體`} aside={screen.box === 'running' ? '開機中' : screen.box === 'sleeping' ? '休眠中' : undefined} />

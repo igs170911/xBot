@@ -92,7 +92,13 @@ export function AgendaPage() {
         </section>
         <section className="flex flex-col gap-1.5 rounded-card bg-card p-4">
           <h2 className="m-0 text-body">定時任務與學習</h2>
-          <p className="m-0 text-meta text-ink-3">每週檢討與學習、定時任務、行事曆訂閱網址會在這裡（還在做）。</p>
+          <p className="m-0 text-meta text-ink-3">
+            定時任務在「
+            <a href="/calendar/routines" onClick={linkClick('/calendar/routines')}>
+              定時任務
+            </a>
+            」；每週檢討與學習、行事曆訂閱網址還沒開放。
+          </p>
         </section>
       </aside>
     </div>

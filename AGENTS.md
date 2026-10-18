@@ -13,6 +13,12 @@
 - 引擎：Hermes 驅動（JSON-RPC）＋ ACP 驅動（Claude Code、Codex CLI）。不要自己寫 agent harness。
 - 細節見 `docs/TECH-DESIGN.md`。
 
+## 文件在哪
+- 使用者看的：`docs/guide/`（使用手冊，一個主題一份，入口 `docs/guide/README.md`）。改了畫面或行為，要同時改對應的那一份。
+- 管理者看的：`docs/ADMIN.md`（安裝位置、服務、更新、備份還原、疑難排解）。
+- 這一版的範圍與已知限制：`docs/RELEASE-NOTES-v1.0.md`；修好限制時把那一行拿掉或改寫。
+- 外部代理接 MCP：`docs/mcp-setup.md`。
+
 ## 規格的權威順序
 1. **數字與行為**：以 LazyBoy DEV 程式為準（`/home/daniel/Projects/LazyBoyHermes`，例：`server/collab.py` 的限制值）。規格和程式不一致時，照程式做，並在 PR 說明中列出差異。
 2. **需求**：`docs/PRD.md`。每個任務卡會標出需求 ID（例：CH-1、BX-3、MCP-9）。

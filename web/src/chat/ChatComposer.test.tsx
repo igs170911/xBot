@@ -52,3 +52,71 @@ it('正在停止：停止鈕變成停用的轉圈', () => {
   expect(screen.getByRole('button', { name: '正在停止' })).toBeDisabled()
   expect(box()).toHaveAttribute('placeholder', '正在停止小秘…')
 })
+
+// ── 附件（C05「8 · 附件」）────────────────────────────
+
+const pick = (files: File[]) => fireEvent.change(screen.getByTestId('attach-input'), { target: { files } })
+
+it('沒給 onUpload 時沒有附檔按鈕', () => {
+  render(<ChatComposer name="小秘" mode="idle" onSend={async () => true} onStop={() => {}} />)
+  expect(screen.queryByRole('button', { name: '附加檔案' })).toBeNull()
+})
+
+it('選檔：先上傳到 uploads，送出時把路徑附在訊息後面；只有附件也能送', async () => {
+  const onSend = vi.fn(async () => true)
+  const onUpload = vi.fn(async (f: File) => ({ name: f.name, path: `/workspace/uploads/${f.name}`, size: f.size }))
+  render(<ChatComposer name="小秘" mode="idle" onSend={onSend} onStop={() => {}} onUpload={onUpload} />)
+  expect(screen.getByRole('button', { name: '附加檔案' })).toBeEnabled()
+  pick([new File(['a,b'], '10月訂單.csv', { type: 'text/csv' }), new File(['%PDF'], '報價單.pdf', { type: 'application/pdf' })])
+  expect(await screen.findByText('10月訂單.csv')).toBeInTheDocument()
+  await waitFor(() => expect(screen.getByRole('button', { name: '送出' })).toBeEnabled())
+  expect(onUpload).toHaveBeenCalledTimes(2)
+  expect(screen.getByText(/2 個 ·/)).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: '移除 報價單.pdf' }))
+  fireEvent.change(box(), { target: { value: '幫我整理' } })
+  fireEvent.click(screen.getByRole('button', { name: '送出' }))
+  await waitFor(() => expect(onSend).toHaveBeenCalledWith('幫我整理\n\n附件：/workspace/uploads/10月訂單.csv'))
+  await waitFor(() => expect(screen.queryByTestId('attachments')).toBeNull())
+
+  pick([new File(['x'], 'a.txt')])
+  await waitFor(() => expect(screen.getByRole('button', { name: '送出' })).toBeEnabled())
+  fireEvent.click(screen.getByRole('button', { name: '送出' }))
+  await waitFor(() => expect(onSend).toHaveBeenLastCalledWith('附件：/workspace/uploads/a.txt'))
+})
+
+it('上傳中不能送出；上傳失敗顯示原因、不附在訊息裡', async () => {
+  type Up = { name: string; path: string; size: number }
+  let finish: (v: Up) => void = () => {}
+  const onUpload = vi.fn((f: File) => (f.name === 'bad.bin' ? Promise.reject(new Error('檔案太大')) : new Promise<Up>((r) => (finish = r))))
+  const onSend = vi.fn(async () => true)
+  render(<ChatComposer name="小秘" mode="idle" onSend={onSend} onStop={() => {}} onUpload={onUpload} />)
+  pick([new File(['x'], 'slow.txt'), new File(['x'], 'bad.bin')])
+  fireEvent.change(box(), { target: { value: '看一下' } })
+  expect(await screen.findByText('上傳中…')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '送出' })).toBeDisabled()
+  expect(await screen.findByText(/沒有傳上去：檔案太大/)).toBeInTheDocument()
+  finish({ name: 'slow.txt', path: '/workspace/uploads/slow.txt', size: 1 })
+  await waitFor(() => expect(screen.getByRole('button', { name: '送出' })).toBeEnabled())
+  fireEvent.click(screen.getByRole('button', { name: '送出' }))
+  await waitFor(() => expect(onSend).toHaveBeenCalledWith('看一下\n\n附件：/workspace/uploads/slow.txt'))
+})
+
+it('貼上截圖：補上檔名並上傳；貼文字照常', async () => {
+  const onUpload = vi.fn(async (f: File) => ({ name: f.name, path: `/workspace/uploads/${f.name}`, size: f.size }))
+  render(<ChatComposer name="小秘" mode="idle" onSend={async () => true} onStop={() => {}} onUpload={onUpload} />)
+  fireEvent.paste(box(), { clipboardData: { files: [new File(['png'], 'image.png', { type: 'image/png' })] } })
+  await waitFor(() => expect(onUpload).toHaveBeenCalledTimes(1))
+  expect(onUpload.mock.calls[0][0].name).toMatch(/^貼上的圖片-\d{8}-\d{6}\.png$/)
+  fireEvent.paste(box(), { clipboardData: { files: [] } })
+  expect(onUpload).toHaveBeenCalledTimes(1)
+})
+
+it('一則最多 10 個附件', async () => {
+  const onUpload = vi.fn(async (f: File) => ({ name: f.name, path: `/workspace/uploads/${f.name}`, size: 1 }))
+  render(<ChatComposer name="小秘" mode="idle" onSend={async () => true} onStop={() => {}} onUpload={onUpload} />)
+  pick(Array.from({ length: 12 }, (_, i) => new File(['x'], `f${i}.txt`)))
+  expect(await screen.findByText(/最多附 10 個檔案，多的沒有加進來/)).toBeInTheDocument()
+  expect(onUpload).toHaveBeenCalledTimes(10)
+  expect(screen.getByRole('button', { name: '附加檔案' })).toBeDisabled()
+})

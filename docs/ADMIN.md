@@ -177,6 +177,8 @@ make backup NO_COMPUTERS=1           # 只備份資料目錄（快，不含 Bot 
 make restore FILE=…                  # 服務會先停、還原後再啟動；原本的資料改名保留
 ```
 
+網頁「設定 → 進階 → 備份與更新」的「立即備份」等於 `make backup`（資料目錄＋每個 Bot 電腦的資料，不含瀏覽器登入；`xbot.backup.create`，在背景做），也列出備份資料夾裡最近的備份（`xbot.backup.list`）。還原只能用指令列（要先停服務）。
+
 備份檔裡有：
 
 - **資料目錄**（扣掉 SQLite 暫存）。資料庫用 SQLite 的 `VACUUM INTO` 做快照，服務執行中也能備份。裡面有 `model-proxy.key`、登入碼、SSH 私鑰：**當成密碼一樣保管**。
@@ -226,7 +228,7 @@ make update
 - 服務：`make logs`（`journalctl --user -u xbot.service -f`）。結構化文字紀錄，金鑰已遮蔽。
 - Bot 電腦：`docker logs xbot-box-<Bot id>`。
 - 網路防護：`docker logs xbot-netguard`。
-- 誰做了什麼：`xbot audit list`（稽核紀錄存在資料庫）。
+- 誰做了什麼：網頁「設定 → 進階 → 成員與紀錄」，或 `xbot audit list`（稽核紀錄存在資料庫；可加 `--actor`、`--op`、`--status`、`--since`、`--until`）。
 
 ## 資源與限制
 
