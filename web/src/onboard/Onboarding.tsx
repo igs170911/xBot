@@ -83,7 +83,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     onboardStatus({})
       .then(setStatus)
-      .catch(() => setStatus({ first_run: true, bots: 0, state: { completed: false, tour_done: false, dismissed: [] }, engines: [], local: [], computer: { docker: false, image: '', ready: false } }))
+      .catch(() => setStatus({ first_run: true, bots: 0, state: { completed: false, tour_done: false, dismissed: [] }, engines: [], local: [], computer: { docker: false, image: '', ready: false }, legacy: { found: false, sources: 0 } }))
     modelsGet({})
       .then(setModels)
       .catch(() => setModels(null))

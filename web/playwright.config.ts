@@ -20,7 +20,8 @@ export default defineConfig({
     command: `../bin/xbot serve`,
     url: `http://127.0.0.1:${port}/healthz`,
     // 定時任務的時鐘固定（見 e2e/clock.ts）；XBOT_FAKE_NOW 只有 XBOT_DEV=1 時服務才理。
-    env: { XBOT_PORT: String(port), XBOT_DATA_DIR: './e2e-results/data', XBOT_DEV: '1', XBOT_FAKE_NOW: E2E_NOW },
+    // XBOT_IMPORT_PATHS=off：不去找這台電腦上真的 LazyBoy、OpenMausBot 舊資料（V10）。
+    env: { XBOT_PORT: String(port), XBOT_DATA_DIR: './e2e-results/data', XBOT_DEV: '1', XBOT_FAKE_NOW: E2E_NOW, XBOT_IMPORT_PATHS: 'off' },
     reuseExistingServer: false,
     timeout: 30_000,
   },

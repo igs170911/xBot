@@ -21,6 +21,7 @@ import (
 	"xbot/internal/events"
 	"xbot/internal/files"
 	"xbot/internal/hosts"
+	"xbot/internal/importer"
 	"xbot/internal/ipc"
 	"xbot/internal/judge"
 	"xbot/internal/limits"
@@ -67,7 +68,8 @@ type stack struct {
 	network *network.Service // 內建 Tailscale 與外部入口（C35）：serve 才建立
 	// stopIdle 停掉閒置休眠的背景檢查（startBackground 開始）。
 	stopIdle context.CancelFunc
-	screen   *screen.Service // 看畫面與接手（B14）
+	screen   *screen.Service   // 看畫面與接手（B14）
+	importer *importer.Service // 從 LazyBoy、OpenMausBot 匯入（V10）
 }
 
 func openStack(cfg config.Config) (*stack, error) {
@@ -246,6 +248,17 @@ func openStack(cfg config.Config) (*stack, error) {
 	s.computers = &computers.Service{DB: db, Boxes: s.boxes, Hosts: s.hosts, Activity: s.runtime, Bus: bus, Logger: logger, Sealer: s.keyring}
 	// 看畫面與接手（B14）：noVNC 經服務代理、接手時暫停 Bot、辦公室縮圖。
 	s.screen = screen.New(screen.Options{DB: db, Boxes: s.boxes, Hosts: registry, Runtime: s.runtime, Bus: bus, Logger: logger})
+	// 從 LazyBoy、OpenMausBot 匯入（V10）：技能、記憶、電腦資料寫進新 Bot 的電腦（沒有時先建立、不開機）；
+	// 金鑰加密後存在 Model Proxy；進度推給介面。
+	s.importer = &importer.Service{DB: db, Locate: comp.BotFS, Memory: s.memory, Providers: s.providers, Logger: logger,
+		ApprovalItems: func(ctx context.Context, add []string) ([]string, error) {
+			cur, err := s.org.ApprovalItems(ctx)
+			if err != nil {
+				return nil, err
+			}
+			return s.org.SetApprovalItems(ctx, append(cur, add...))
+		},
+		Publish: func(kind string, payload any) { computers.Publish(db, bus, kind, "", payload, false) }}
 	if err := s.hosts.Start(context.Background()); err != nil {
 		s.Close()
 		return nil, err
@@ -300,6 +313,9 @@ func (s *stack) Close() error {
 	}
 	if s.computers != nil {
 		s.computers.Close()
+	}
+	if s.importer != nil {
+		s.importer.Close()
 	}
 	if s.routines != nil {
 		s.routines.Close()

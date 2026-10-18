@@ -48,6 +48,15 @@ type Deps struct {
 	Local []LocalServer
 	// Client 是偵測本機模型用的 HTTP client；nil 用 http.DefaultClient（每個網址各自限時）。
 	Client *http.Client
+	// Legacy 找這台電腦上 LazyBoy、OpenMausBot 的舊資料（importer.Service.Detect 的摘要）；nil 時不找。
+	Legacy func(ctx context.Context) Legacy
+}
+
+// Legacy 是找到的舊資料（A05「帶入舊設定」卡片只在 Found 時出現）。
+type Legacy struct {
+	Found   bool   `json:"found" desc:"找到還沒帶進來的舊資料"`
+	Summary string `json:"summary,omitempty" desc:"卡片上的一句話，例：在這台電腦找到 LazyBoy 的 3 個 Bot、2 把金鑰和 4 個定時任務。"`
+	Sources int    `json:"sources" desc:"找到幾份舊資料"`
 }
 
 // State 是首次設定的狀態（存在 setting 表）。
@@ -98,6 +107,7 @@ type StatusOut struct {
 	Engines  []Engine `json:"engines" desc:"這台電腦上已登入的訂閱 CLI"`
 	Local    []Local  `json:"local" desc:"偵測到的本機模型服務（LM Studio、Ollama）"`
 	Computer Computer `json:"computer"`
+	Legacy   Legacy   `json:"legacy" desc:"這台電腦上 LazyBoy、OpenMausBot 的舊資料（首頁「帶入舊設定」）"`
 }
 
 // UpdateIn 是 xbot.onboard.update 的輸入：有給的欄位才改。
@@ -187,6 +197,10 @@ func (d Deps) status(ctx context.Context, call *ops.Call, in StatusIn) (StatusOu
 		for _, h := range d.Engines() {
 			out.Engines = append(out.Engines, Engine{Engine: h.Engine, Label: h.Label, Plan: h.Plan, LoggedIn: h.LoggedIn, Login: h.Login})
 		}
+	}
+	if d.Legacy != nil {
+		// 只看檔案，很快；skip_detect 時也找（首頁卡片要用）。
+		out.Legacy = d.Legacy(ctx)
 	}
 	if in.SkipDetect {
 		return out, nil

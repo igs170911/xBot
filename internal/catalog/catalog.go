@@ -17,6 +17,7 @@ import (
 	"xbot/internal/engines"
 	"xbot/internal/files"
 	"xbot/internal/hosts"
+	"xbot/internal/importer"
 	"xbot/internal/inbox"
 	"xbot/internal/judge"
 	"xbot/internal/memory"
@@ -67,6 +68,8 @@ type Deps struct {
 	Screen *screen.Service
 	// Network 是內建 Tailscale 與外部入口（C35）；nil 時只登錄定義。
 	Network *network.Service
+	// Importer 是從 LazyBoy、OpenMausBot 匯入（V10）；nil 時只登錄定義。
+	Importer *importer.Service
 }
 
 // Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines、files、computers（生命週期、看畫面與接手）、judge（快判）、network（內建 Tailscale、外部入口）各領域的操作。
@@ -137,7 +140,29 @@ func Register(reg *ops.Registry, d Deps) {
 			return ref.Name, ref.ID != "", err
 		}
 	}
+	if d.Importer != nil {
+		imp := d.Importer
+		od.Legacy = func(ctx context.Context) onboard.Legacy {
+			list, err := imp.Detect(ctx, "")
+			if err != nil {
+				return onboard.Legacy{}
+			}
+			// 卡片只在還有沒帶進來的 Bot（或金鑰）時出現。
+			out := onboard.Legacy{}
+			for _, f := range list {
+				if f.Imported >= f.Bots && f.Bots > 0 {
+					continue
+				}
+				out.Sources++
+				if !out.Found {
+					out.Found, out.Summary = true, f.Summary
+				}
+			}
+			return out
+		}
+	}
 	onboard.Register(reg, od)
+	importer.Register(reg, d.Importer)
 	network.Register(reg, d.Network)
 }
 
