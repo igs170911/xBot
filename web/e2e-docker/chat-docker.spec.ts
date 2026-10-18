@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { execFileSync } from 'node:child_process'
+import { pastOnboarding } from '../e2e/real-helpers'
 
 // 真的端對端（make e2e-docker，需要 Docker 與 make box 建好的映像）：
 // 網頁建 Bot → 設定模型（指向這裡的假 OpenAI 相容服務）→ 送訊息 → Bot 的電腦開機、Hermes 呼叫模型 → 網頁看到串流回覆。
@@ -72,6 +73,8 @@ test.afterAll(async () => {
 })
 
 test('建 Bot → 送訊息 → 真的 Bot 電腦＋Hermes 回覆，網頁即時看到', async ({ page }) => {
+  // 跳過首次設定（W32）：這個測試從側欄的「新增 Bot」開始。
+  await pastOnboarding(page.request)
   await page.goto('/')
   const nav = page.getByRole('navigation', { name: '側欄' })
   await nav.getByRole('button', { name: '新增 Bot' }).first().click()
@@ -79,7 +82,8 @@ test('建 Bot → 送訊息 → 真的 Bot 電腦＋Hermes 回覆，網頁即時
   await dlg.getByLabel('名字').fill('測試員')
   await dlg.getByRole('button', { name: '建立「測試員」' }).click()
   const main = page.getByRole('main', { name: '和測試員的對話' })
-  await expect(main.getByTestId('chat-empty')).toBeVisible()
+  // 第一個 Bot 的首頁是 W32 的「第一次」畫面（招呼＋之後再做），不是一般的空對話。
+  await expect(main.getByText('嗨，我是測試員')).toBeVisible()
   botId = new URL(page.url()).pathname.split('/')[2]
 
   // 新的資料目錄沒有模型：從提示卡設定

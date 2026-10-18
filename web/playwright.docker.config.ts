@@ -19,7 +19,8 @@ export default defineConfig({
   webServer: {
     command: `../bin/xbot serve`,
     url: `http://127.0.0.1:${port}/healthz`,
-    env: { XBOT_PORT: String(port), XBOT_DATA_DIR: dataDir, XBOT_BOX_IMAGE: process.env.BOX_IMAGE ?? 'xbot-box:dev' },
+    // XBOT_IMPORT_PATHS=off：不去找這台電腦上真的 LazyBoy、OpenMausBot 舊資料（V10）。
+    env: { XBOT_PORT: String(port), XBOT_DATA_DIR: dataDir, XBOT_BOX_IMAGE: process.env.BOX_IMAGE ?? 'xbot-box:dev', XBOT_IMPORT_PATHS: 'off' },
     reuseExistingServer: false,
     timeout: 30_000,
   },
