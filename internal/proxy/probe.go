@@ -30,6 +30,8 @@ const (
 	CheckAuth        = "auth"
 	CheckBusy        = "busy"
 	CheckUnknown     = "unknown"
+	// CheckFreeTier：OpenCode Zen 的免費模型（*-free）只給 OpenCode 自己的程式用，回 FreeTierError。XBot 新增。
+	CheckFreeTier = "free_tier"
 )
 
 var checkMessages = map[string]string{
@@ -39,6 +41,7 @@ var checkMessages = map[string]string{
 	CheckAuth:        "API 金鑰無效或額度不足",
 	CheckBusy:        "供應商暫時忙碌或無法連線，稍後再試",
 	CheckUnknown:     "無法確認這個模型能不能用，詳細原因請看提示",
+	CheckFreeTier:    "這是只給 OpenCode 自己程式用的免費模型，XBot 不能用，請換付費模型",
 }
 
 // 順序有意義：抱怨請求參數，表示端點認得這個模型（model_check.py _RULES）。
@@ -46,6 +49,7 @@ var checkRules = []struct {
 	kind string
 	re   *regexp.Regexp
 }{
+	{CheckFreeTier, regexp.MustCompile(`FreeTierError`)},
 	{CheckOK, regexp.MustCompile(`(?i)max_(?:output_)?tokens|max_completion_tokens|temperature|unsupported (?:parameter|value)|unknown parameter`)},
 	{CheckProtocol, regexp.MustCompile(`(?i)protocol|not support(?:ed)? (?:on|by|for) this (?:endpoint|api)|unsupported (?:endpoint|api|route)|no route|unknown (?:endpoint|url|path)|invalid url|use the (?:responses|messages|chat)`)},
 	{CheckUnavailable, regexp.MustCompile(`(?i)model[^.]{0,40}(?:unavailable|not (?:found|available|exist|supported))|does not exist|no such model|unknown model|invalid model|model_not_found|not a valid model`)},
@@ -123,7 +127,7 @@ func RuleTransport(providerID, baseURL, model string) string {
 // ModelCheck 是一個模型的探測結果。
 type ModelCheck struct {
 	Model     string `json:"model"`
-	Status    string `json:"status" desc:"ok、protocol、unavailable、auth、busy、unknown"`
+	Status    string `json:"status" desc:"ok、protocol、unavailable、auth、busy、unknown、free_tier"`
 	Transport string `json:"transport,omitempty" desc:"能用的呼叫方式（status=ok 時）"`
 	Message   string `json:"message"`
 	Detail    string `json:"detail,omitempty" desc:"供應商回的錯誤（前 400 字）"`
@@ -273,7 +277,7 @@ func (p *Prober) CheckModel(ctx context.Context, pr Provider, model, guess strin
 			return ModelCheck{Model: model, Status: CheckOK, Transport: t, Message: checkMessages[CheckOK], At: at}
 		}
 		lastKind, lastDetail = kind, detail
-		if kind == CheckAuth || kind == CheckBusy || kind == CheckUnknown {
+		if kind == CheckAuth || kind == CheckBusy || kind == CheckUnknown || kind == CheckFreeTier {
 			break
 		}
 		if kind == CheckUnavailable && firstFailKind == "" {
@@ -327,6 +331,10 @@ func errorText(status int, body []byte) string {
 			}
 			if em, ok := e.(map[string]any); ok {
 				if msg, ok := em["message"].(string); ok && msg != "" {
+					// 錯誤種類（例：OpenCode 的 FreeTierError）也留著，分類要用。
+					if typ, ok := em["type"].(string); ok && typ != "" && !strings.Contains(msg, typ) {
+						return typ + ": " + msg
+					}
 					return msg
 				}
 			}

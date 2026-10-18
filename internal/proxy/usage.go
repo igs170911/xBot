@@ -39,6 +39,10 @@ func normalize(u map[string]any) counts {
 		c.Input = int64(num(u["prompt_tokens"]))
 		c.Output = int64(num(u["completion_tokens"]))
 		c.Cached = int64(num(sub(u, "prompt_tokens_details")["cached_tokens"]))
+		if c.Cached == 0 {
+			// DeepSeek（含 OpenCode Go 的 deepseek-*）：prompt_tokens = 命中 + 未命中。
+			c.Cached = int64(num(u["prompt_cache_hit_tokens"]))
+		}
 		c.Reasoning = int64(num(sub(u, "completion_tokens_details")["reasoning_tokens"]))
 	} else {
 		c.Input = int64(num(u["input_tokens"]) + cacheRead + cacheWrite)

@@ -1222,7 +1222,7 @@ export interface ModelsProbeOutput {
   /** 這次測的模型能不能用、用哪種呼叫方式 */
   check?: {
     model: string
-    /** ok、protocol、unavailable、auth、busy、unknown */
+    /** ok、protocol、unavailable、auth、busy、unknown、free_tier */
     status: string
     /** 能用的呼叫方式（status=ok 時） */
     transport?: string

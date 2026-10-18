@@ -71,6 +71,13 @@ var defaultPrices = map[string]Price{
 	"grok-4": {Input: 3, Output: 15, CacheRead: 0.75},
 }
 
+// providerDefaultPrices 是只適用某個供應商的預設價格（key：<供應商>/<模型>，模型名照原樣）。
+// 取自 OpenCode 的 models.json（2026-10）。
+var providerDefaultPrices = map[string]Price{
+	"opencode-go/deepseek-v4-flash": {Input: 0.15, Output: 0.6, CacheRead: 0.003},
+	"opencode-zen/jev-1.13":         {Input: 0.042, Output: 0},
+}
+
 var normalizedDefaults = func() map[string]Price {
 	out := make(map[string]Price, len(defaultPrices))
 	for k, v := range defaultPrices {
@@ -94,8 +101,11 @@ func NormalizeModel(model string) string {
 
 // DefaultPrices 回傳內建價格表（key 是原本的寫法）。
 func DefaultPrices() map[string]Price {
-	out := make(map[string]Price, len(defaultPrices))
+	out := make(map[string]Price, len(defaultPrices)+len(providerDefaultPrices))
 	for k, v := range defaultPrices {
+		out[k] = v
+	}
+	for k, v := range providerDefaultPrices {
 		out[k] = v
 	}
 	return out
@@ -138,6 +148,9 @@ func LookupPrice(custom map[string]Price, provider, model string) (Price, string
 		if NormalizeModel(k) == norm && !strings.Contains(k, "/") {
 			return pr, PriceSourceCustom, true
 		}
+	}
+	if pr, ok := providerDefaultPrices[provider+"/"+model]; ok {
+		return pr, PriceSourceDefault, true
 	}
 	if pr, ok := normalizedDefaults[norm]; ok {
 		return pr, PriceSourceDefault, true
