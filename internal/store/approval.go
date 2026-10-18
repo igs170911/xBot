@@ -160,3 +160,10 @@ func (q *Queries) ResolveInboxByRef(ctx context.Context, ref, resolvedBy string)
 	}
 	return res.RowsAffected()
 }
+
+// InboxRefExists 回答有沒有指向 ref 的卡（不管狀態）；同一件事只發一次卡時用（例：花費上限）。
+func (q *Queries) InboxRefExists(ctx context.Context, ref string) (bool, error) {
+	var n int
+	err := q.r.QueryRowContext(ctx, `SELECT COUNT(*) FROM inbox_item WHERE ref = ?`, ref).Scan(&n)
+	return n > 0, err
+}

@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"math"
 	"strings"
@@ -17,6 +18,9 @@ const ProviderSettingPrefix = "model.provider."
 type providerSetting struct {
 	BaseURL   string `json:"base_url"`
 	SealedKey []byte `json:"sealed_key"`
+	Label     string `json:"label,omitempty"`
+	Transport string `json:"transport,omitempty"`
+	Preset    string `json:"preset,omitempty"`
 	UpdatedAt int64  `json:"updated_at"`
 }
 
@@ -47,13 +51,53 @@ func (s *DBStore) GetProvider(ctx context.Context, id string) (ProviderRecord, e
 	if !ok {
 		return ProviderRecord{}, ErrNotFound
 	}
-	return ProviderRecord{ID: id, BaseURL: v.BaseURL, SealedKey: v.SealedKey, UpdatedAt: time.UnixMilli(v.UpdatedAt)}, nil
+	return v.record(id), nil
+}
+
+func (v providerSetting) record(id string) ProviderRecord {
+	return ProviderRecord{ID: id, BaseURL: v.BaseURL, SealedKey: v.SealedKey, Label: v.Label, Transport: v.Transport,
+		Preset: v.Preset, UpdatedAt: time.UnixMilli(v.UpdatedAt)}
+}
+
+// DeleteProvider 實作 ProviderStore；探測結果一起刪。
+func (s *DBStore) DeleteProvider(ctx context.Context, id string) error {
+	if _, err := s.GetProvider(ctx, id); err != nil {
+		return err
+	}
+	return s.db.Tx(ctx, func(q *store.Queries) error {
+		if err := q.DeleteSetting(ctx, ProviderSettingPrefix+id); err != nil {
+			return err
+		}
+		return q.DeleteSetting(ctx, ProbeSettingPrefix+id)
+	})
+}
+
+// ListProviders 實作 ProviderStore。
+func (s *DBStore) ListProviders(ctx context.Context) ([]ProviderRecord, error) {
+	all, err := s.db.ListSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out []ProviderRecord
+	for k, raw := range all {
+		id, ok := strings.CutPrefix(k, ProviderSettingPrefix)
+		if !ok {
+			continue
+		}
+		var v providerSetting
+		if err := json.Unmarshal(raw, &v); err != nil {
+			return nil, err
+		}
+		out = append(out, v.record(id))
+	}
+	return out, nil
 }
 
 // PutProvider 實作 ProviderStore。
 func (s *DBStore) PutProvider(ctx context.Context, rec ProviderRecord) error {
 	return s.db.SetSetting(ctx, ProviderSettingPrefix+rec.ID, providerSetting{
-		BaseURL: rec.BaseURL, SealedKey: rec.SealedKey, UpdatedAt: rec.UpdatedAt.UnixMilli(),
+		BaseURL: rec.BaseURL, SealedKey: rec.SealedKey, Label: rec.Label, Transport: rec.Transport, Preset: rec.Preset,
+		UpdatedAt: rec.UpdatedAt.UnixMilli(),
 	})
 }
 
@@ -91,11 +135,15 @@ func (s *DBStore) DeleteWorkerNonce(ctx context.Context, botID string) error {
 	return s.db.DeleteWorkerNonce(ctx, botID)
 }
 
-// RecordUsage 實作 UsageLedger。花費換算成百萬分之一美元；快取命中記在 cache_read_tokens。
+// RecordUsage 實作 UsageLedger。花費以百萬分之一美元記；快取命中記在 cache_read_tokens、寫入快取記在 cache_write_tokens。
 func (s *DBStore) RecordUsage(ctx context.Context, e UsageEntry) error {
 	var thread, task string
 	if s.Attribute != nil {
 		thread, task = s.Attribute(e.BotID)
+	}
+	cost := e.CostMicros
+	if cost == 0 && e.Cost > 0 {
+		cost = int64(math.Round(e.Cost * 1e6))
 	}
 	at := e.At.UnixMilli()
 	if e.At.IsZero() {
@@ -104,7 +152,59 @@ func (s *DBStore) RecordUsage(ctx context.Context, e UsageEntry) error {
 	_, err := s.db.AddUsage(ctx, store.UsageEntry{
 		BotID: e.BotID, ThreadID: thread, TaskID: task, Engine: s.Engine, Provider: e.Provider, Model: e.Model,
 		InputTokens: e.InputTokens, OutputTokens: e.OutputTokens, CacheReadTokens: e.CachedTokens,
-		CostMicros: int64(math.Round(e.Cost * 1e6)), CreatedAt: at,
+		CacheWriteTokens: e.CacheWriteTokens, CostMicros: cost, Unpriced: e.Unpriced, Endpoint: e.Endpoint,
+		Fallback: e.Fallback, CreatedAt: at,
 	})
 	return err
+}
+
+// Probe 讀一個供應商的探測結果；沒有時 ok 為 false。
+func (s *DBStore) Probe(ctx context.Context, providerID string) (ProbeResult, bool, error) {
+	var r ProbeResult
+	ok, err := s.db.GetSettingInto(ctx, ProbeSettingPrefix+providerID, &r)
+	if r.Checks == nil {
+		r.Checks = map[string]ModelCheck{}
+	}
+	return r, ok, err
+}
+
+// PutProbe 存探測結果。
+func (s *DBStore) PutProbe(ctx context.Context, r ProbeResult) error {
+	return s.db.SetSetting(ctx, ProbeSettingPrefix+r.Provider, r)
+}
+
+// TransportFor 決定一個模型的呼叫方式：探測確認過的 → 範本對這個模型的記載 → Hermes 規則 → 供應商預設。
+// 供應商不存在時回空白。
+func (s *DBStore) TransportFor(ctx context.Context, providerID, model string) (string, error) {
+	if t, err := s.ProbedTransport(ctx, providerID, model); err != nil || t != "" {
+		return t, err
+	}
+	rec, err := s.GetProvider(ctx, providerID)
+	if errors.Is(err, ErrNotFound) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if p, ok := PresetByID(rec.Preset); ok {
+		if t, ok := p.ModelTransports[model]; ok {
+			return t, nil
+		}
+	}
+	if t := RuleTransport(providerID, rec.BaseURL, model); t != "" {
+		return t, nil
+	}
+	return rec.Transport, nil
+}
+
+// ProbedTransport 回傳探測確認過的呼叫方式；沒探測過或不能用時回空白。
+func (s *DBStore) ProbedTransport(ctx context.Context, providerID, model string) (string, error) {
+	r, ok, err := s.Probe(ctx, providerID)
+	if err != nil || !ok {
+		return "", err
+	}
+	if c, ok := r.Checks[model]; ok && c.Status == CheckOK {
+		return c.Transport, nil
+	}
+	return "", nil
 }

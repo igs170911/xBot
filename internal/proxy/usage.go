@@ -12,8 +12,8 @@ import (
 
 // counts 是正規化後的用量；input 一律包含快取命中的部分。
 type counts struct {
-	Input, Output, Cached, Reasoning int64
-	Cost                             float64
+	Input, Output, Cached, CacheWrite, Reasoning int64
+	Cost                                         float64
 }
 
 func num(v any) float64 {
@@ -39,6 +39,10 @@ func normalize(u map[string]any) counts {
 		c.Input = int64(num(u["prompt_tokens"]))
 		c.Output = int64(num(u["completion_tokens"]))
 		c.Cached = int64(num(sub(u, "prompt_tokens_details")["cached_tokens"]))
+		if c.Cached == 0 {
+			// DeepSeek（含 OpenCode Go 的 deepseek-*）：prompt_tokens = 命中 + 未命中。
+			c.Cached = int64(num(u["prompt_cache_hit_tokens"]))
+		}
 		c.Reasoning = int64(num(sub(u, "completion_tokens_details")["reasoning_tokens"]))
 	} else {
 		c.Input = int64(num(u["input_tokens"]) + cacheRead + cacheWrite)
@@ -49,6 +53,7 @@ func normalize(u map[string]any) counts {
 	if c.Cached == 0 {
 		c.Cached = int64(cacheRead)
 	}
+	c.CacheWrite = int64(cacheWrite)
 	c.Cost = num(u["cost"])
 	return c
 }
@@ -132,6 +137,7 @@ func (m *meter) take(raw []byte) {
 	m.seen.Input = max(m.seen.Input, c.Input)
 	m.seen.Output = max(m.seen.Output, c.Output)
 	m.seen.Cached = max(m.seen.Cached, c.Cached)
+	m.seen.CacheWrite = max(m.seen.CacheWrite, c.CacheWrite)
 	m.seen.Reasoning = max(m.seen.Reasoning, c.Reasoning)
 	m.seen.Cost = max(m.seen.Cost, c.Cost)
 }

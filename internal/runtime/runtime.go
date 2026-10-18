@@ -56,6 +56,8 @@ type Options struct {
 		ResolveModel(ctx context.Context, b store.Bot) (ModelRef, error)
 	}
 	Logger *slog.Logger
+	// Budget 在交辦前檢查花費上限（Bot 與它的模型供應商）；超過時 Chat 回它的錯誤（*proxy.BudgetError）。可為 nil。
+	Budget func(ctx context.Context, botID, providerID string) error
 }
 
 // Runtime 管理每個 Bot 正在進行的一輪對話。
@@ -124,6 +126,11 @@ func (r *Runtime) Chat(ctx context.Context, botID, threadID, text string) (ChatR
 	ref, err := r.o.Models.ResolveModel(ctx, b)
 	if err != nil {
 		return ChatResult{}, err
+	}
+	if r.o.Budget != nil {
+		if err := r.o.Budget(ctx, botID, ref.Provider); err != nil {
+			return ChatResult{}, err
+		}
 	}
 	var th store.Thread
 	if threadID == "" {
