@@ -56,7 +56,9 @@ func cmdServe(args []string) error {
 	// 只有一條事件匯流排：runtime（對話串流）與操作登錄表都發布到它，SSE 從它訂閱。
 	bus := st.runtime.Bus()
 	pairing := auth.NewPairing(st.db)
-	reg := buildRegistry(st.db, pairing, func(e store.Event) { bus.Publish(events.FromStore(e)) }, st)
+	notify := func(e store.Event) { bus.Publish(events.FromStore(e)) }
+	st.budgets.Notify = notify // 花費上限卡片也即時推給介面
+	reg := buildRegistry(st.db, pairing, notify, st)
 	// 權杖驗證 HTTP 與 MCP 共用（登入碼＝你本人，代理權杖＝那個代理）。
 	tokens := &auth.Authenticator{DB: st.db, AccessToken: accessToken}
 	localOwner := os.Getenv("XBOT_MCP_LOCAL_OWNER") == "1"

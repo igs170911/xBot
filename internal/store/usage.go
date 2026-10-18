@@ -22,16 +22,20 @@ type UsageEntry struct {
 	CacheReadTokens  int64  `json:"cache_read_tokens"`
 	CacheWriteTokens int64  `json:"cache_write_tokens"`
 	CostMicros       int64  `json:"cost_micros"`
-	CreatedAt        int64  `json:"created_at"`
+	// Unpriced：價目表沒有這個模型、供應商也沒回報花費，CostMicros 記成 0。
+	Unpriced  bool   `json:"unpriced"`
+	Endpoint  string `json:"endpoint"`
+	Fallback  bool   `json:"fallback"` // 主要模型忙碌或出錯，改用備援模型
+	CreatedAt int64  `json:"created_at"`
 }
 
 const usageCols = `id, bot_id, thread_id, task_id, engine, provider, model, input_tokens, output_tokens,
-	cache_read_tokens, cache_write_tokens, cost_micros, created_at`
+	cache_read_tokens, cache_write_tokens, cost_micros, unpriced, endpoint, fallback, created_at`
 
 func scanUsage(s scanner) (UsageEntry, error) {
 	var u UsageEntry
 	err := s.Scan(&u.ID, &u.BotID, &u.ThreadID, &u.TaskID, &u.Engine, &u.Provider, &u.Model, &u.InputTokens,
-		&u.OutputTokens, &u.CacheReadTokens, &u.CacheWriteTokens, &u.CostMicros, &u.CreatedAt)
+		&u.OutputTokens, &u.CacheReadTokens, &u.CacheWriteTokens, &u.CostMicros, &u.Unpriced, &u.Endpoint, &u.Fallback, &u.CreatedAt)
 	return u, err
 }
 
@@ -41,9 +45,9 @@ func (q *Queries) AddUsage(ctx context.Context, u UsageEntry) (UsageEntry, error
 		u.CreatedAt = nowMS()
 	}
 	res, err := q.w.ExecContext(ctx, `INSERT INTO usage_entry(bot_id, thread_id, task_id, engine, provider, model,
-		input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, cost_micros, created_at)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`, u.BotID, u.ThreadID, u.TaskID, u.Engine, u.Provider, u.Model,
-		u.InputTokens, u.OutputTokens, u.CacheReadTokens, u.CacheWriteTokens, u.CostMicros, u.CreatedAt)
+		input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, cost_micros, unpriced, endpoint, fallback, created_at)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, u.BotID, u.ThreadID, u.TaskID, u.Engine, u.Provider, u.Model,
+		u.InputTokens, u.OutputTokens, u.CacheReadTokens, u.CacheWriteTokens, u.CostMicros, b2i(u.Unpriced), u.Endpoint, b2i(u.Fallback), u.CreatedAt)
 	if err != nil {
 		return u, err
 	}
@@ -53,15 +57,35 @@ func (q *Queries) AddUsage(ctx context.Context, u UsageEntry) (UsageEntry, error
 
 // UsageFilter 是用量查詢的條件；時間是 [Since, Until)，0 表示不限。
 type UsageFilter struct {
-	BotID string
-	Since int64
-	Until int64
+	BotID    string
+	Provider string
+	Since    int64
+	Until    int64
 }
 
-const usageWhere = ` WHERE (? = '' OR bot_id = ?) AND (? = 0 OR created_at >= ?) AND (? = 0 OR created_at < ?)`
+const usageWhere = ` WHERE (? = '' OR bot_id = ?) AND (? = '' OR provider = ?) AND (? = 0 OR created_at >= ?) AND (? = 0 OR created_at < ?)`
 
 func (f UsageFilter) args() []any {
-	return []any{f.BotID, f.BotID, f.Since, f.Since, f.Until, f.Until}
+	return []any{f.BotID, f.BotID, f.Provider, f.Provider, f.Since, f.Since, f.Until, f.Until}
+}
+
+// EachUsage 依時間由舊到新逐筆讀用量明細（統計、匯出用，不必整批放進記憶體）。fn 回錯誤就停止。
+func (q *Queries) EachUsage(ctx context.Context, f UsageFilter, fn func(UsageEntry) error) error {
+	rows, err := q.r.QueryContext(ctx, `SELECT `+usageCols+` FROM usage_entry`+usageWhere+` ORDER BY created_at, id`, f.args()...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		u, err := scanUsage(rows)
+		if err != nil {
+			return err
+		}
+		if err := fn(u); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
 }
 
 // ListUsage 列出用量明細，依時間由舊到新。
@@ -87,6 +111,25 @@ func (q *Queries) SumUsage(ctx context.Context, f UsageFilter) (UsageTotals, err
 		COALESCE(SUM(cache_read_tokens),0), COALESCE(SUM(cache_write_tokens),0), COALESCE(SUM(cost_micros),0)
 		FROM usage_entry`+usageWhere, f.args()...).Scan(&t.Calls, &t.InputTokens, &t.OutputTokens, &t.CacheReadTokens, &t.CacheWriteTokens, &t.CostMicros)
 	return t, err
+}
+
+// UnpricedModel 是用過、但沒有價格的模型。
+type UnpricedModel struct {
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+	Calls    int64  `json:"calls"`
+	LastAt   int64  `json:"last_at"`
+}
+
+// UnpricedModels 列出符合條件、花費記成 0 的模型（價目表要補的）。
+func (q *Queries) UnpricedModels(ctx context.Context, f UsageFilter) ([]UnpricedModel, error) {
+	rows, err := q.r.QueryContext(ctx, `SELECT provider, model, COUNT(*), MAX(created_at) FROM usage_entry`+usageWhere+
+		` AND unpriced = 1 GROUP BY provider, model ORDER BY provider, model`, f.args()...)
+	return collect(rows, err, func(s scanner) (UnpricedModel, error) {
+		var m UnpricedModel
+		err := s.Scan(&m.Provider, &m.Model, &m.Calls, &m.LastAt)
+		return m, err
+	})
 }
 
 // ── setting ──────────────────────────────────────────

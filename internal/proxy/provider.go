@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 )
@@ -27,11 +28,40 @@ func (Secret) MarshalText() ([]byte, error) { return []byte(Masked), nil }
 // Format 讓 %s、%v、%q、%#v 都只印出遮蔽字樣。
 func (Secret) Format(f fmt.State, _ rune) { _, _ = f.Write([]byte(Masked)) }
 
-// Provider 是一個 OpenAI 相容的模型供應商。
+// 模型的呼叫方式（Hermes 的 api_mode；LazyBoy 叫 protocol）。
+const (
+	TransportChat      = "chat_completions"   // POST chat/completions
+	TransportResponses = "codex_responses"    // POST responses
+	TransportMessages  = "anthropic_messages" // POST messages
+)
+
+// Transports 是所有呼叫方式，探測時依序嘗試。
+var Transports = []string{TransportChat, TransportResponses, TransportMessages}
+
+// TransportPath 回傳呼叫方式對應的 API 路徑（/v1/ 之後）；不認得的當成 chat/completions。
+func TransportPath(t string) string {
+	switch t {
+	case TransportResponses:
+		return "responses"
+	case TransportMessages:
+		return "messages"
+	}
+	return "chat/completions"
+}
+
+// ValidTransport 回答 t 是不是認得的呼叫方式（空白也可以，表示預設）。
+func ValidTransport(t string) bool { return t == "" || slices.Contains(Transports, t) }
+
+// Provider 是一個模型供應商。
 type Provider struct {
 	ID      string // 出現在網址 /model/<ID>/v1/… 裡
 	BaseURL string // 例：https://api.openai.com/v1（結尾的 / 可有可無）
 	APIKey  Secret // 真正的金鑰，只在服務端
+	Label   string // 顯示名稱，例：OpenAI API
+	// Transport 是這個供應商預設的呼叫方式；空白表示 chat_completions。
+	Transport string
+	Preset    string // 從哪個內建範本建立（空白表示自訂）
+	UpdatedAt time.Time
 }
 
 var providerIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,31}$`)
@@ -58,6 +88,9 @@ func (p *Providers) Put(ctx context.Context, pr Provider) error {
 	if !ValidProviderID(pr.ID) {
 		return fmt.Errorf("供應商代號只能用小寫英文、數字和 -：%q", pr.ID)
 	}
+	if !ValidTransport(pr.Transport) {
+		return fmt.Errorf("不認得的呼叫方式：%q", pr.Transport)
+	}
 	base, err := NormalizeBaseURL(pr.BaseURL)
 	if err != nil {
 		return err
@@ -70,6 +103,9 @@ func (p *Providers) Put(ctx context.Context, pr Provider) error {
 		ID:        pr.ID,
 		BaseURL:   base,
 		SealedKey: sealed,
+		Label:     pr.Label,
+		Transport: pr.Transport,
+		Preset:    pr.Preset,
 		UpdatedAt: p.now(),
 	})
 }
@@ -96,5 +132,33 @@ func (p *Providers) Get(ctx context.Context, id string) (Provider, error) {
 	if err != nil {
 		return Provider{}, err
 	}
-	return Provider{ID: rec.ID, BaseURL: rec.BaseURL, APIKey: Secret(key)}, nil
+	return providerOf(rec, Secret(key)), nil
+}
+
+func providerOf(rec ProviderRecord, key Secret) Provider {
+	return Provider{ID: rec.ID, BaseURL: rec.BaseURL, APIKey: key, Label: rec.Label, Transport: rec.Transport,
+		Preset: rec.Preset, UpdatedAt: rec.UpdatedAt}
+}
+
+// Delete 移除供應商（連同加密的金鑰）。沒有時回 ErrNotFound。
+func (p *Providers) Delete(ctx context.Context, id string) error {
+	return p.store.DeleteProvider(ctx, id)
+}
+
+// List 列出所有供應商（依代號排序）。金鑰不解開：APIKey 只用來表示「有沒有設定」（非空時是遮蔽字樣）。
+func (p *Providers) List(ctx context.Context) ([]Provider, error) {
+	recs, err := p.store.ListProviders(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Provider, 0, len(recs))
+	for _, rec := range recs {
+		var key Secret
+		if pt, err := p.keys.Open(rec.SealedKey, providerAAD(rec.ID)); err == nil && len(pt) > 0 {
+			key = Masked
+		}
+		out = append(out, providerOf(rec, key))
+	}
+	slices.SortFunc(out, func(a, b Provider) int { return strings.Compare(a.ID, b.ID) })
+	return out, nil
 }

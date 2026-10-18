@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-// 0005 重建 inbox_item：舊的卡與事件都要留著，事件補上對話串。
-func TestMigration0005KeepsData(t *testing.T) {
+// 0006 重建 inbox_item：舊的卡與事件都要留著，事件補上對話串。
+func TestMigration0006KeepsData(t *testing.T) {
 	path := filepath.Join(t.TempDir(), FileName)
 	raw, err := sql.Open("sqlite", "file:"+path+"?_pragma=foreign_keys(1)")
 	check(t, err)
@@ -15,7 +15,7 @@ func TestMigration0005KeepsData(t *testing.T) {
 	ms := must[[]Migration](t)(Migrations())
 	var before []Migration
 	for _, m := range ms {
-		if m.Version < 5 {
+		if m.Version < 6 {
 			before = append(before, m)
 		}
 	}

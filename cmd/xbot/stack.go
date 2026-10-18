@@ -29,6 +29,7 @@ type stack struct {
 	providers *proxy.Providers
 	keys      *proxy.WorkerKeys
 	model     *proxy.Handler
+	budgets   *proxy.Budgets
 	sockets   *ipc.Server
 	boxes     *box.Manager
 	driver    *hermes.Driver
@@ -60,16 +61,44 @@ func openStack(cfg config.Config) (*stack, error) {
 	s.pstore = proxy.NewDBStore(db)
 	s.providers = proxy.NewProviders(s.pstore, s.keyring)
 	s.keys = proxy.NewWorkerKeys(s.pstore, s.keyring)
-	s.model = proxy.NewHandler(proxy.Options{Keys: s.keys, Providers: s.providers, Usage: s.pstore, Logger: logger})
+	// 超過花費上限時停下 Bot 正在做的工作（卡片由 Budgets 自己發）；Notify 由 serve 接上 SSE。
+	s.budgets = &proxy.Budgets{DB: db, OnExceeded: func(e *proxy.BudgetError) {
+		if e.BotID == "" || s.runtime == nil {
+			return
+		}
+		go func() {
+			if _, err := s.runtime.Stop(context.Background(), e.BotID, ""); err != nil {
+				logger.Warn("超過花費上限，停止工作失敗", "bot", e.BotID, "err", err)
+			}
+		}()
+	}}
+	comp := &runtime.Computers{DB: db, Providers: s.pstore}
+	s.model = proxy.NewHandler(proxy.Options{
+		Keys: s.keys, Providers: s.providers, Usage: s.pstore, Logger: logger,
+		Bindings: comp, Budget: s.budgets, Pricing: &proxy.Pricing{DB: db},
+		Session: func(botID string) string {
+			if s.runtime == nil {
+				return ""
+			}
+			thread, _ := s.runtime.Active(botID)
+			return thread
+		},
+	})
 	s.sockets = ipc.New(ipc.Options{
 		Dir:   func(id string) string { return filepath.Join(hosts.BotDir(cfg.DataDir, id), "ipc") },
 		Model: s.model, Keys: s.keys, Logger: logger,
 	})
-	comp := &runtime.Computers{DB: db, Keys: s.keys, Sockets: s.sockets, Providers: s.pstore}
+	comp.Keys, comp.Sockets = s.keys, s.sockets
 	s.boxes = box.New(db, hosts.NewRegistry(s.local), box.Options{Image: os.Getenv("XBOT_BOX_IMAGE"), Prepare: comp.Prepare})
 	comp.Boxes = s.boxes
 	s.driver = hermes.New(comp.Connect, logger)
-	s.runtime = runtime.New(runtime.Options{DB: db, Driver: s.driver, Bus: events.New(), Models: comp, Logger: logger})
+	s.runtime = runtime.New(runtime.Options{DB: db, Driver: s.driver, Bus: events.New(), Models: comp, Logger: logger,
+		Budget: func(ctx context.Context, botID, providerID string) error {
+			if err := s.budgets.Check(ctx, botID); err != nil {
+				return err
+			}
+			return s.budgets.CheckProvider(ctx, botID, providerID)
+		}})
 	s.pstore.Attribute = s.runtime.Active
 	return s, nil
 }

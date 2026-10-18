@@ -13,6 +13,7 @@ import (
 	"xbot/internal/events"
 	"xbot/internal/limits"
 	"xbot/internal/ops"
+	"xbot/internal/proxy"
 	"xbot/internal/runtime"
 	"xbot/internal/store"
 )
@@ -311,9 +312,12 @@ func (d Deps) send(ctx context.Context, call *ops.Call, in SendIn) (SendOut, err
 		return SendOut{BotID: b.ID, ThreadID: in.ThreadID}, nil
 	}
 	res, err := rt.Chat(ctx, b.ID, in.ThreadID, text)
+	var over *proxy.BudgetError
 	switch {
 	case errors.Is(err, runtime.ErrBusy):
 		return SendOut{}, busy()
+	case errors.As(err, &over):
+		return SendOut{}, ops.Budget(over.Error())
 	case errors.Is(err, runtime.ErrNoModel):
 		return SendOut{}, ops.Conflict("還沒設定模型：請先用 xbot.models.set_provider 設定模型供應商與預設模型")
 	case err != nil:

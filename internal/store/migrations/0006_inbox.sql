@@ -1,4 +1,4 @@
--- 0005（C12）：待我處理與核准。
+-- 0006（C12）：待我處理與核准。
 
 -- 事件記下對話串（W02 待確認）：重新整理後用 chat.steps 依對話串讀回工作步驟，SSE 補送時也帶 thread_id。
 ALTER TABLE event ADD COLUMN thread_id TEXT;

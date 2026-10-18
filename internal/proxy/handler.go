@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"math"
 	"net"
 	"net/http"
 	"regexp"
@@ -71,6 +72,47 @@ type Options struct {
 	MaxBodyBytes int64
 	Logger       *slog.Logger
 	Now          func() time.Time
+	// Bindings 決定每個 Bot 能用哪個供應商、備援模型是什麼；nil 時不限制（測試用）。
+	Bindings Binder
+	// Budget 檢查花費上限；nil 時不限制。
+	Budget BudgetGuard
+	// Pricing 查模型價格算花費；nil 時只記供應商自己回報的花費。
+	Pricing Pricer
+	// IdleTimeout 是串流兩段資料之間最久等多久；預設 limits.ModelStreamIdleTimeout。
+	IdleTimeout time.Duration
+	// Session 回傳 Bot 目前這段對話的穩定 id（runtime 的對話串 id），給要求對話識別標頭的供應商（OpenCode）；
+	// 回空白時用「xbot-<Bot id>」。可為 nil。
+	Session func(botID string) string
+}
+
+// Route 指定一個模型：哪個供應商的哪個模型、用哪種呼叫方式。
+type Route struct {
+	Provider  string
+	Model     string
+	Transport string
+}
+
+// Binding 是一個 Bot 的模型綁定：容器只能用 Provider；Fallback 是主要模型忙碌時改用的模型（可為 nil）。
+type Binding struct {
+	Provider string
+	Fallback *Route
+}
+
+// Binder 回答一個 Bot 的模型綁定（runtime.Computers 實作）。
+type Binder interface {
+	Binding(ctx context.Context, botID string) (Binding, error)
+}
+
+// BudgetGuard 檢查花費上限（*Budgets 實作）。
+type BudgetGuard interface {
+	Check(ctx context.Context, botID string) error // 超過時回 *BudgetError
+	CheckProvider(ctx context.Context, botID, providerID string) error
+	Exceeded(ctx context.Context, e *BudgetError) (bool, error)
+}
+
+// Pricer 查模型價格（*Pricing 實作）。
+type Pricer interface {
+	Lookup(ctx context.Context, provider, model string) (Price, string, bool, error)
 }
 
 // Handler 是掛在 /model/ 的 HTTP 處理器：驗 worker-key → 檢查路徑 → 換上真金鑰轉送 → 串流回傳 → 記用量。
@@ -91,6 +133,9 @@ func NewHandler(o Options) *Handler {
 	}
 	if o.Now == nil {
 		o.Now = time.Now
+	}
+	if o.IdleTimeout <= 0 {
+		o.IdleTimeout = limits.ModelStreamIdleTimeout
 	}
 	return &Handler{o: o}
 }
@@ -145,6 +190,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 每個 Bot 只能用它設定的模型所屬的供應商（金鑰不能被別的 Bot 借用）。
+	var binding Binding
+	if h.o.Bindings != nil {
+		binding, err = h.o.Bindings.Binding(r.Context(), botID)
+		if err != nil {
+			h.o.Logger.Warn("模型代理：讀不到 Bot 的模型設定", "bot", botID, "err", err)
+			fail(w, http.StatusForbidden, "provider_not_allowed", "這個 Bot 還沒設定可以用的模型")
+			return
+		}
+		if binding.Provider != providerID {
+			fail(w, http.StatusForbidden, "provider_not_allowed", "這個 Bot 只能用它設定的模型供應商（"+binding.Provider+"）")
+			return
+		}
+	}
+
 	provider, err := h.o.Providers.Get(r.Context(), providerID)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
@@ -155,7 +215,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusInternalServerError, "internal_error", "讀不到模型供應商設定")
 		return
 	}
-	realKey := string(provider.APIKey)
 
 	if r.ContentLength > h.o.MaxBodyBytes {
 		fail(w, http.StatusRequestEntityTooLarge, "request_too_large", "請求內容太大")
@@ -172,49 +231,62 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	target := provider.BaseURL + "/" + apiPath
-	if r.URL.RawQuery != "" {
-		target += "?" + r.URL.RawQuery
-	}
-	var reqBody io.Reader
-	if r.Method == http.MethodPost {
-		reqBody = bytes.NewReader(body)
-	}
-	up, err := http.NewRequestWithContext(r.Context(), r.Method, target, reqBody)
-	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal_error", "模型供應商網址有問題")
-		return
-	}
-	for _, name := range forwardRequestHeaders {
-		if v := r.Header.Get(name); v != "" {
-			up.Header.Set(name, v)
+	// 花費上限（US-2）：會花錢的請求在送出前檢查。
+	metered := meteredPaths[apiPath]
+	if metered && h.o.Budget != nil {
+		err := h.o.Budget.Check(r.Context(), botID)
+		if err == nil {
+			err = h.o.Budget.CheckProvider(r.Context(), botID, providerID)
 		}
-	}
-	if r.Method == http.MethodPost && up.Header.Get("Content-Type") == "" {
-		up.Header.Set("Content-Type", "application/json")
-	}
-	up.Header.Set("User-Agent", "XBot/"+version.Version)
-	if realKey != "" {
-		up.Header.Set("Authorization", "Bearer "+realKey)
-		if apiPath == "messages" {
-			// Anthropic 相容端點用 x-api-key。
-			up.Header.Set("X-Api-Key", realKey)
-			if up.Header.Get("Anthropic-Version") == "" {
-				up.Header.Set("Anthropic-Version", "2023-06-01")
+		if err != nil {
+			var be *BudgetError
+			if errors.As(err, &be) {
+				h.exceeded(r.Context(), be)
+				fail(w, http.StatusPaymentRequired, "budget_exceeded", be.Error())
+				return
 			}
+			h.o.Logger.Error("模型代理：檢查花費上限失敗", "bot", botID, "err", err)
+			fail(w, http.StatusInternalServerError, "internal_error", "暫時無法確認花費上限")
+			return
 		}
 	}
 
+	model := requestModel(body)
 	start := h.o.Now()
-	resp, err := h.o.Client.Do(up)
+	resp, cancel, err := h.forward(r, botID, provider, apiPath, body)
+	fellBack := false
+	// 備援（EN-5）：供應商忙碌或出錯、而且還沒送出任何位元組時，改用設定好的備援模型重試一次。
+	if fb := fallbackRoute(binding, r.Method, apiPath, body, providerID, model); fb != nil &&
+		((err != nil && r.Context().Err() == nil) || (err == nil && retryableStatus(resp.StatusCode))) {
+		fp, ferr := h.o.Providers.Get(r.Context(), fb.Provider)
+		if ferr == nil && h.o.Budget != nil && fb.Provider != providerID {
+			// 備援的供應商也有自己的上限；超過了就不備援。
+			ferr = h.o.Budget.CheckProvider(r.Context(), botID, fb.Provider)
+		}
+		if ferr == nil {
+			reason := "連不上"
+			if err == nil {
+				reason = resp.Status
+				_ = resp.Body.Close()
+			}
+			cancel()
+			h.o.Logger.Warn("模型代理：改用備援模型", "bot", botID, "from", providerID+"/"+model, "to", fb.Provider+"/"+fb.Model, "reason", reason)
+			provider, model, fellBack = fp, fb.Model, true
+			resp, cancel, err = h.forward(r, botID, provider, apiPath, withModel(body, fb.Model))
+		} else {
+			h.o.Logger.Warn("模型代理：不能改用備援模型", "provider", fb.Provider, "err", ferr)
+		}
+	}
+	realKey := string(provider.APIKey)
 	if err != nil {
 		if r.Context().Err() == nil {
-			h.o.Logger.Warn("模型代理：連不上供應商", "bot", botID, "provider", providerID, "path", apiPath,
+			h.o.Logger.Warn("模型代理：連不上供應商", "bot", botID, "provider", provider.ID, "path", apiPath,
 				"err", redactString(err.Error(), realKey))
 		}
 		fail(w, http.StatusBadGateway, "upstream_unavailable", "連不上模型供應商")
 		return
 	}
+	defer cancel()
 	defer resp.Body.Close()
 
 	for name, values := range resp.Header {
@@ -225,11 +297,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	if fellBack {
+		w.Header().Set("X-Xbot-Fallback", provider.ID+"/"+model)
+	}
 	w.WriteHeader(resp.StatusCode)
 
 	streaming := strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream")
 	var m *meter
-	if meteredPaths[apiPath] {
+	if metered {
 		m = newMeter(streaming)
 	}
 	out := newRedactWriter(w, realKey)
@@ -237,22 +312,194 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_ = out.flush()
 	flush(w)
 	if copyErr != nil && r.Context().Err() == nil {
-		h.o.Logger.Warn("模型代理：轉送回應中斷", "bot", botID, "provider", providerID, "path", apiPath,
+		h.o.Logger.Warn("模型代理：轉送回應中斷", "bot", botID, "provider", provider.ID, "path", apiPath,
 			"err", redactString(copyErr.Error(), realKey))
 	}
 
 	if m != nil && h.o.Usage != nil {
 		c, _ := m.result()
+		ctx := context.WithoutCancel(r.Context()) // 容器斷線也要記下已經用掉的量。
 		entry := UsageEntry{
-			BotID: botID, Provider: providerID, Model: requestModel(body), Endpoint: apiPath,
-			InputTokens: c.Input, OutputTokens: c.Output, CachedTokens: c.Cached, ReasoningTokens: c.Reasoning,
-			Cost: c.Cost, Status: resp.StatusCode, OK: resp.StatusCode < 400 && copyErr == nil, At: start,
+			BotID: botID, Provider: provider.ID, Model: model, Endpoint: apiPath,
+			InputTokens: c.Input, OutputTokens: c.Output, CachedTokens: c.Cached, CacheWriteTokens: c.CacheWrite,
+			ReasoningTokens: c.Reasoning, Cost: c.Cost, Fallback: fellBack,
+			Status: resp.StatusCode, OK: resp.StatusCode < 400 && copyErr == nil, At: start,
 		}
-		// 容器斷線也要記下已經用掉的量。
-		if err := h.o.Usage.RecordUsage(context.WithoutCancel(r.Context()), entry); err != nil {
-			h.o.Logger.Error("模型代理：記錄用量失敗", "bot", botID, "provider", providerID, "err", err)
+		entry.CostMicros, entry.Unpriced = h.cost(ctx, provider.ID, model, c)
+		if err := h.o.Usage.RecordUsage(ctx, entry); err != nil {
+			h.o.Logger.Error("模型代理：記錄用量失敗", "bot", botID, "provider", provider.ID, "err", err)
+		}
+		// 這一筆讓花費到了上限：馬上停下工作並發卡，不必等下一個請求。
+		if h.o.Budget != nil && entry.CostMicros > 0 {
+			var be *BudgetError
+			err := h.o.Budget.Check(ctx, botID)
+			if err == nil {
+				err = h.o.Budget.CheckProvider(ctx, botID, provider.ID)
+			}
+			if errors.As(err, &be) {
+				h.exceeded(ctx, be)
+			}
 		}
 	}
+}
+
+// cost 算出一次請求的花費：供應商有回報就用回報的，否則照價目表；都沒有時回 unpriced。
+func (h *Handler) cost(ctx context.Context, provider, model string, c counts) (int64, bool) {
+	if c.Cost > 0 {
+		return int64(math.Round(c.Cost * 1e6)), false
+	}
+	if h.o.Pricing == nil {
+		return 0, false
+	}
+	pr, _, ok, err := h.o.Pricing.Lookup(ctx, provider, model)
+	if err != nil {
+		h.o.Logger.Warn("模型代理：讀不到價目表", "err", err)
+	}
+	if !ok {
+		return 0, c.Input+c.Output > 0
+	}
+	return pr.CostMicros(c.Input, c.Cached, c.CacheWrite, c.Output), false
+}
+
+func (h *Handler) exceeded(ctx context.Context, be *BudgetError) {
+	if _, err := h.o.Budget.Exceeded(context.WithoutCancel(ctx), be); err != nil {
+		h.o.Logger.Error("模型代理：發花費上限卡片失敗", "bot", be.BotID, "err", err)
+	}
+}
+
+// session 回傳這個 Bot 目前對話的穩定 id；沒有進行中的對話時用「xbot-<Bot id>」。
+func (h *Handler) session(botID string) string {
+	if h.o.Session != nil {
+		if s := h.o.Session(botID); s != "" {
+			return "xbot-" + s
+		}
+	}
+	return "xbot-" + botID
+}
+
+// errStreamIdle 是串流閒置太久時取消請求的原因。
+var errStreamIdle = errors.New("模型供應商太久沒有送資料（串流閒置逾時）")
+
+// forward 換上真金鑰把請求送給供應商。回傳的 cancel 要在讀完回應後呼叫。
+// 回應內容兩次讀取之間超過 IdleTimeout 就取消請求（LazyBoy httpx read timeout 300 秒）。
+func (h *Handler) forward(r *http.Request, botID string, provider Provider, apiPath string, body []byte) (*http.Response, context.CancelFunc, error) {
+	realKey := string(provider.APIKey)
+	target := provider.BaseURL + "/" + apiPath
+	if r.URL.RawQuery != "" {
+		target += "?" + r.URL.RawQuery
+	}
+	ctx, cancelCause := context.WithCancelCause(r.Context())
+	cancel := func() { cancelCause(context.Canceled) }
+	var reqBody io.Reader
+	if r.Method == http.MethodPost {
+		reqBody = bytes.NewReader(body)
+	}
+	up, err := http.NewRequestWithContext(ctx, r.Method, target, reqBody)
+	if err != nil {
+		cancel()
+		return nil, func() {}, errors.New("模型供應商網址有問題")
+	}
+	for _, name := range forwardRequestHeaders {
+		if v := r.Header.Get(name); v != "" {
+			up.Header.Set(name, v)
+		}
+	}
+	if r.Method == http.MethodPost && up.Header.Get("Content-Type") == "" {
+		up.Header.Set("Content-Type", "application/json")
+	}
+	// 一律用 XBot 自己的身分（OpenCode 等要求用戶端自報名稱）；容器送來的 User-Agent 不轉送。
+	up.Header.Set("User-Agent", "XBot/"+version.Version)
+	if name := SessionHeaderFor(provider); name != "" {
+		up.Header.Set(name, h.session(botID))
+	}
+	if realKey != "" {
+		up.Header.Set("Authorization", "Bearer "+realKey)
+		if apiPath == "messages" {
+			// Anthropic 相容端點用 x-api-key。
+			up.Header.Set("X-Api-Key", realKey)
+			if up.Header.Get("Anthropic-Version") == "" {
+				up.Header.Set("Anthropic-Version", "2023-06-01")
+			}
+		}
+	}
+	resp, err := h.o.Client.Do(up)
+	if err != nil {
+		cancel()
+		return nil, func() {}, err
+	}
+	idle := h.o.IdleTimeout
+	resp.Body = &idleBody{ReadCloser: resp.Body, d: idle, t: time.AfterFunc(idle, func() { cancelCause(errStreamIdle) }), ctx: ctx}
+	return resp, cancel, nil
+}
+
+// idleBody 每讀到一段資料就把閒置計時器重設；計時器到了就取消請求，讀取會回 errStreamIdle。
+type idleBody struct {
+	io.ReadCloser
+	d   time.Duration
+	t   *time.Timer
+	ctx context.Context
+}
+
+func (b *idleBody) Read(p []byte) (int, error) {
+	n, err := b.ReadCloser.Read(p)
+	if err != nil && errors.Is(context.Cause(b.ctx), errStreamIdle) {
+		err = errStreamIdle
+	}
+	b.t.Reset(b.d)
+	return n, err
+}
+
+func (b *idleBody) Close() error {
+	b.t.Stop()
+	return b.ReadCloser.Close()
+}
+
+// retryableStatus 是可以改用備援模型的狀態碼（LazyBoy server/main.py：{429, 500, 502, 503, 504}）。
+func retryableStatus(code int) bool {
+	switch code {
+	case http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusBadGateway,
+		http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	}
+	return false
+}
+
+// fallbackRoute 回傳這個請求可以改用的備援模型；不適用時回 nil。
+// 只有模型請求（chat/completions、responses、messages）、備援的呼叫方式和這個請求相同、
+// 不是接續先前回應（previous_response_id 只在原供應商有效）時才備援。
+func fallbackRoute(b Binding, method, apiPath string, body []byte, providerID, model string) *Route {
+	fb := b.Fallback
+	if fb == nil || method != http.MethodPost || fb.Model == "" || fb.Provider == "" {
+		return nil
+	}
+	if apiPath != "chat/completions" && apiPath != "responses" && apiPath != "messages" {
+		return nil
+	}
+	if TransportPath(fb.Transport) != apiPath || (fb.Provider == providerID && fb.Model == model) {
+		return nil
+	}
+	var req map[string]json.RawMessage
+	if json.Unmarshal(body, &req) != nil || req == nil {
+		return nil
+	}
+	if _, ok := req["previous_response_id"]; ok {
+		return nil
+	}
+	return fb
+}
+
+// withModel 把請求內容的 model 換掉（其他欄位原樣保留）。
+func withModel(body []byte, model string) []byte {
+	var req map[string]json.RawMessage
+	if json.Unmarshal(body, &req) != nil {
+		return body
+	}
+	req["model"], _ = json.Marshal(model)
+	out, err := json.Marshal(req)
+	if err != nil {
+		return body
+	}
+	return out
 }
 
 // pipe 把供應商的回應一段一段轉給容器，每段都 flush，SSE 才能即時送達。

@@ -1,4 +1,6 @@
-// Package models 是模型設定的操作（PRD §6.12、EN-3、MCP-11）：models.get、models.set_provider、models.set_default。
+// Package models 是模型設定的操作（PRD §6.12、EN-3～EN-5、MCP-11）：
+// models.get、models.presets、models.set_provider、models.add_provider、models.update_provider、models.remove_provider、
+// models.set_default、models.set_fallback、models.probe、models.pricing、models.set_price。
 // 供應商的金鑰只能寫、不能讀：存進 Model Proxy（加密），任何操作都只回「已設定」。
 package models
 
@@ -17,17 +19,28 @@ import (
 type Providers interface {
 	Put(ctx context.Context, p proxy.Provider) error
 	Get(ctx context.Context, id string) (proxy.Provider, error)
+	Delete(ctx context.Context, id string) error
 }
 
-// Lister 列出已設定的供應商代號；*proxy.DBStore 符合。
+// Lister 列出已設定的供應商代號、存取探測結果；*proxy.DBStore 符合。
 type Lister interface {
 	ProviderIDs(ctx context.Context) ([]string, error)
+	Probe(ctx context.Context, providerID string) (proxy.ProbeResult, bool, error)
+	PutProbe(ctx context.Context, r proxy.ProbeResult) error
+}
+
+// Prober 對供應商送探測請求；*proxy.Prober 符合。
+type Prober interface {
+	ListModels(ctx context.Context, p proxy.Provider) ([]string, string)
+	CheckModel(ctx context.Context, p proxy.Provider, model, guess string) proxy.ModelCheck
 }
 
 // Deps 是模型操作需要的服務元件；nil 時（指令列只產生說明）呼叫會回 internal。
 type Deps struct {
 	Providers Providers
 	Lister    Lister
+	// Prober 預設是 &proxy.Prober{}（真的連到供應商）。
+	Prober Prober
 }
 
 // Transport 是模型的呼叫方式（E02 runtime.ModelRef.Transport）。
@@ -40,9 +53,14 @@ func (Transport) EnumValues() []string {
 
 // Provider 是對外的供應商設定（不含金鑰）。
 type Provider struct {
-	ID        string `json:"id"`
-	BaseURL   string `json:"base_url"`
-	APIKeySet bool   `json:"api_key_set" desc:"有沒有設定金鑰；金鑰本身永遠不會回傳"`
+	ID        string    `json:"id"`
+	Label     string    `json:"label,omitempty"`
+	BaseURL   string    `json:"base_url"`
+	Transport Transport `json:"transport,omitempty" desc:"預設的呼叫方式；空白是 chat_completions"`
+	Preset    string    `json:"preset,omitempty" desc:"從哪個內建範本建立"`
+	APIKeySet bool      `json:"api_key_set" desc:"有沒有設定金鑰；金鑰本身永遠不會回傳"`
+	Models    []string  `json:"models,omitempty" desc:"探測時供應商列出的模型（沒探測過時是範本的常用模型）"`
+	ProbedAt  int64     `json:"probed_at,omitempty" desc:"上次探測的時間；0 表示還沒探測"`
 }
 
 // Default 是預設模型。
@@ -59,6 +77,7 @@ type GetIn struct{}
 type GetOut struct {
 	Providers []Provider `json:"providers"`
 	Default   *Default   `json:"default,omitempty" desc:"沒設定預設模型時不出現"`
+	Fallback  *Default   `json:"fallback,omitempty" desc:"全域備援模型；沒設定時不出現"`
 	Ready     bool       `json:"ready" desc:"預設模型和它的供應商都設好了，新 Bot 可以直接對話"`
 }
 
@@ -104,6 +123,9 @@ func Register(reg *ops.Registry, d Deps) {
 		Scope:       ops.ScopeAdmin, Risk: ops.RiskSafe,
 		Handle: d.setDefault,
 	})
+	registerProviders(reg, d)
+	registerProbe(reg, d)
+	registerPricing(reg)
 }
 
 func (d Deps) ready() error {
@@ -121,7 +143,25 @@ func (d Deps) provider(ctx context.Context, id string) (Provider, bool, error) {
 	if err != nil {
 		return Provider{}, false, err
 	}
-	return Provider{ID: p.ID, BaseURL: p.BaseURL, APIKeySet: p.APIKey != ""}, true, nil
+	out := viewOf(p)
+	probe, ok, err := d.Lister.Probe(ctx, id)
+	if err != nil {
+		return Provider{}, false, err
+	}
+	if ok {
+		out.ProbedAt = probe.At
+		out.Models = probe.Models
+	}
+	if len(out.Models) == 0 {
+		if pre, ok := proxy.PresetByID(p.Preset); ok {
+			out.Models = pre.Models
+		}
+	}
+	return out, true, nil
+}
+
+func viewOf(p proxy.Provider) Provider {
+	return Provider{ID: p.ID, Label: p.Label, BaseURL: p.BaseURL, Transport: Transport(p.Transport), Preset: p.Preset, APIKeySet: p.APIKey != ""}
 }
 
 func (d Deps) get(ctx context.Context, call *ops.Call, _ GetIn) (GetOut, error) {
@@ -152,6 +192,12 @@ func (d Deps) get(ctx context.Context, call *ops.Call, _ GetIn) (GetOut, error) 
 		out.Default = &Default{Provider: def.Provider, Model: def.Model, Transport: Transport(def.Transport)}
 		out.Ready = slices.Contains(ids, def.Provider)
 	}
+	var fb runtime.ModelRef
+	if ok, err := call.DB.GetSettingInto(ctx, runtime.FallbackModelSetting, &fb); err != nil {
+		return GetOut{}, err
+	} else if ok && fb.Model != "" {
+		out.Fallback = &Default{Provider: fb.Provider, Model: fb.Model, Transport: Transport(fb.Transport)}
+	}
 	return out, nil
 }
 
@@ -170,16 +216,17 @@ func (d Deps) setProvider(ctx context.Context, call *ops.Call, in SetProviderIn)
 	if err != nil {
 		return SetProviderOut{}, ops.InvalidInput(ops.FieldError{Field: "base_url", Message: err.Error()})
 	}
+	old, err := d.Providers.Get(ctx, id)
+	if err != nil && !errors.Is(err, proxy.ErrNotFound) {
+		return SetProviderOut{}, err
+	}
 	key := proxy.Secret(strings.TrimSpace(in.APIKey))
 	if key == "" {
 		// 沒給金鑰：保留原本的（只改網址）。
-		old, err := d.Providers.Get(ctx, id)
-		if err != nil && !errors.Is(err, proxy.ErrNotFound) {
-			return SetProviderOut{}, err
-		}
 		key = old.APIKey
 	}
-	out := SetProviderOut{Provider: Provider{ID: id, BaseURL: base, APIKeySet: key != ""}}
+	next := proxy.Provider{ID: id, BaseURL: base, APIKey: key, Label: old.Label, Transport: old.Transport, Preset: old.Preset}
+	out := SetProviderOut{Provider: viewOf(next)}
 	var def *runtime.ModelRef
 	if m := strings.TrimSpace(in.DefaultModel); m != "" {
 		def = &runtime.ModelRef{Provider: id, Model: m, Transport: string(in.Transport)}
@@ -190,7 +237,7 @@ func (d Deps) setProvider(ctx context.Context, call *ops.Call, in SetProviderIn)
 	if call.DryRun {
 		return out, nil
 	}
-	if err := d.Providers.Put(ctx, proxy.Provider{ID: id, BaseURL: base, APIKey: key}); err != nil {
+	if err := d.Providers.Put(ctx, next); err != nil {
 		return SetProviderOut{}, err
 	}
 	if def != nil {

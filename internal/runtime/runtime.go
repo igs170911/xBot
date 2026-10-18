@@ -59,6 +59,8 @@ type Options struct {
 	Logger *slog.Logger
 	// QuestionTTL 是無人在場的工作裡提問多久沒回就過期；0 用 limits.QuestionTTL（測試可以調短）。
 	QuestionTTL time.Duration
+	// Budget 在交辦前檢查花費上限（Bot 與它的模型供應商）；超過時 Chat 回它的錯誤（*proxy.BudgetError）。可為 nil。
+	Budget func(ctx context.Context, botID, providerID string) error
 }
 
 // Runtime 管理每個 Bot 正在進行的一輪對話。
@@ -152,6 +154,11 @@ func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error
 	ref, err := r.o.Models.ResolveModel(ctx, b)
 	if err != nil {
 		return ChatResult{}, err
+	}
+	if r.o.Budget != nil {
+		if err := r.o.Budget(ctx, botID, ref.Provider); err != nil {
+			return ChatResult{}, err
+		}
 	}
 	var th store.Thread
 	if threadID == "" {
