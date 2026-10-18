@@ -28,7 +28,7 @@ var Groups = []string{GroupDecide, GroupDone, GroupMention, GroupError}
 var groupOf = map[string]string{
 	"approval": GroupDecide, "question": GroupDecide, "secret": GroupDecide, "signin": GroupDecide, "takeover": GroupDecide,
 	"proposal": GroupDecide, "discussion": GroupDecide, "budget": GroupDecide,
-	"done": GroupDone, "mention": GroupMention, "error": GroupError, "routine_failed": GroupError,
+	"done": GroupDone, "delegated": GroupDone, "mention": GroupMention, "error": GroupError, "routine_failed": GroupError,
 }
 
 // Group 回傳卡片種類屬於哪個分類。
@@ -38,7 +38,7 @@ func Group(kind string) string { return groupOf[kind] }
 func KindsOf(group string) []string {
 	var out []string
 	for _, k := range []string{"approval", "question", "secret", "signin", "takeover", "proposal", "discussion", "budget",
-		"done", "mention", "error", "routine_failed"} {
+		"done", "delegated", "mention", "error", "routine_failed"} {
 		if groupOf[k] == group {
 			out = append(out, k)
 		}

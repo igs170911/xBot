@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError, modelsGet, modelsSetProvider, type ModelsGetOutput } from '../api/generated'
+import { linkClick } from '../router'
 import { Button } from '../ui/Button'
+import { SettingsGroup, SettingsLink } from '../ui/Card'
 import { Dialog } from '../ui/Dialog'
 import { TextInput } from '../ui/Field'
 
@@ -110,7 +112,7 @@ export function ModelSettingsDialog({ open, onClose, onSaved }: { open: boolean;
   )
 }
 
-/** /settings：目前只有模型。 */
+/** /settings：模型，和進階裡的「已連線的代理」（J12）。 */
 export function SettingsPage() {
   const [saved, setSaved] = useState(false)
   return (
@@ -125,6 +127,12 @@ export function SettingsPage() {
               已儲存
             </p>
           )}
+        </section>
+        <section className="flex flex-col gap-3 rounded-card bg-panel px-[22px] py-5">
+          <h2 className="m-0 text-[16px]">進階</h2>
+          <SettingsGroup label="進階">
+            <SettingsLink title="已連線的代理（MCP）" note="Claude Code、Codex…" href="/settings/agents" onClick={linkClick('/settings/agents')} />
+          </SettingsGroup>
         </section>
       </div>
     </main>

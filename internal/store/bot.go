@@ -59,13 +59,17 @@ type Bot struct {
 	MemoryEnabled  bool            `json:"memory_enabled"`
 	Voice          string          `json:"voice"`
 	Archived       bool            `json:"archived"`
-	CreatedAt      int64           `json:"created_at"`
-	UpdatedAt      int64           `json:"updated_at"`
+	// CreatedBy／UpdatedBy 是誰建立、最後修改（owner、agent:<權杖 id>、bot:<id>；舊資料是空白）。
+	// MCP-8 用 CreatedBy 決定代理「自己建立的」Bot；MCP-13 用 UpdatedBy 標「由 ○○（MCP）修改」。
+	CreatedBy string `json:"created_by"`
+	UpdatedBy string `json:"updated_by"`
+	CreatedAt int64  `json:"created_at"`
+	UpdatedAt int64  `json:"updated_at"`
 }
 
 const botCols = `id, name, title, description, soul, color, avatar, engine, model, effort, fallback,
 	approval_mode, tool_scope, contacts_policy, team_id, reports_to, is_chief, box_limits, idle_minutes,
-	budget, memory_enabled, voice, archived, created_at, updated_at`
+	budget, memory_enabled, voice, archived, created_at, updated_at, created_by, updated_by`
 
 func scanBot(s scanner) (Bot, error) {
 	var b Bot
@@ -73,7 +77,7 @@ func scanBot(s scanner) (Bot, error) {
 	var team, reports sql.NullString
 	err := s.Scan(&b.ID, &b.Name, &b.Title, &b.Description, &b.Soul, &b.Color, &avatar, &b.Engine, &b.Model,
 		&b.Effort, &fallback, &b.ApprovalMode, &toolScope, &contacts, &team, &reports, &b.IsChief, &boxLimits,
-		&b.IdleMinutes, &budget, &b.MemoryEnabled, &b.Voice, &b.Archived, &b.CreatedAt, &b.UpdatedAt)
+		&b.IdleMinutes, &budget, &b.MemoryEnabled, &b.Voice, &b.Archived, &b.CreatedAt, &b.UpdatedAt, &b.CreatedBy, &b.UpdatedBy)
 	if err != nil {
 		return b, err
 	}
@@ -102,8 +106,11 @@ func (q *Queries) CreateBot(ctx context.Context, b Bot) (Bot, error) {
 	b.CreatedAt = nowMS()
 	b.UpdatedAt = b.CreatedAt
 	args := append([]any{b.ID}, b.args()...)
-	args = append(args, b.CreatedAt, b.UpdatedAt)
-	_, err := q.w.ExecContext(ctx, `INSERT INTO bot(`+botCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, args...)
+	if b.UpdatedBy == "" {
+		b.UpdatedBy = b.CreatedBy
+	}
+	args = append(args, b.CreatedAt, b.UpdatedAt, b.CreatedBy, b.UpdatedBy)
+	_, err := q.w.ExecContext(ctx, `INSERT INTO bot(`+botCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, args...)
 	if err != nil {
 		return b, err
 	}
@@ -126,17 +133,26 @@ func (q *Queries) ListBots(ctx context.Context, includeArchived bool) ([]Bot, er
 	return collect(rows, err, scanBot)
 }
 
-// UpdateBot 整筆覆寫一個 Bot 的可改欄位（id、created_at 不變）。
+// UpdateBot 整筆覆寫一個 Bot 的可改欄位（id、created_at、created_by 不變）。UpdatedBy 記下誰改的。
 func (q *Queries) UpdateBot(ctx context.Context, b Bot) (Bot, error) {
-	args := append(b.args(), nowMS(), b.ID)
+	args := append(b.args(), nowMS(), b.UpdatedBy, b.ID)
 	err := affected(q.w.ExecContext(ctx, `UPDATE bot SET name=?, title=?, description=?, soul=?, color=?, avatar=?,
 		engine=?, model=?, effort=?, fallback=?, approval_mode=?, tool_scope=?, contacts_policy=?, team_id=?,
 		reports_to=?, is_chief=?, box_limits=?, idle_minutes=?, budget=?, memory_enabled=?, voice=?, archived=?,
-		updated_at=? WHERE id=?`, args...))
+		updated_at=?, updated_by=? WHERE id=?`, args...))
 	if err != nil {
 		return b, err
 	}
 	return q.getBot(ctx, q.w, b.ID)
+}
+
+// ListBotIDsCreatedBy 列出 actor 建立的 Bot id（MCP-8：代理預設只能碰自己建立的）。
+func (q *Queries) ListBotIDsCreatedBy(ctx context.Context, actor string) ([]string, error) {
+	rows, err := q.r.QueryContext(ctx, `SELECT id FROM bot WHERE created_by = ? ORDER BY created_at, id`, actor)
+	return collect(rows, err, func(s scanner) (string, error) {
+		var id string
+		return id, s.Scan(&id)
+	})
 }
 
 // SetBotArchived 封存或取消封存。

@@ -204,6 +204,43 @@ export function subscribeEvents(onEvent: (e: XBotEvent) => void, opts: EventsOpt
 
 // ── 操作 ─────────────────────────────────────────────
 
+// xbot.agents.get_delegation
+
+export interface AgentsGetDelegationInput {
+  /** 代理 id；代理查自己的授權時填自己的 id */
+  id: string
+}
+
+export interface AgentsGetDelegationOutput {
+  agent_id: string
+  /** 有授權、而且還沒過期 */
+  enabled: boolean
+  /** 授權過，但已經過期 */
+  expired?: boolean
+  categories: ('external_send' | 'spend_small' | 'publish' | 'sign')[]
+  daily_count: number
+  daily_amount_micros: number
+  /** 到期時間（Unix 毫秒）；0 表示沒有授權 */
+  expires_at: number
+  /** 今天代為核准了幾次 */
+  used_today: number
+  /** 今天代為核准了多少錢（美元百萬分之一） */
+  amount_today_micros: number
+  /** 永遠要你本人核准的動作 */
+  never: string[]
+}
+
+/**
+ * 看一個代理的代為核准授權
+ *
+ * 代理可以查自己的授權（id 填自己的），看還能代為核准幾次。
+ *
+ * `xbot.agents.get_delegation`：權限 read、風險 safe
+ */
+export function agentsGetDelegation(input: AgentsGetDelegationInput, opts?: CallOptions): Promise<AgentsGetDelegationOutput> {
+  return invoke('xbot.agents.get_delegation', input, opts).then((r) => r.output)
+}
+
 // xbot.agents.list
 
 export interface AgentsListInput {
@@ -222,6 +259,7 @@ export interface AgentsListOutput {
       teams: string[]
       hosts: string[]
     }
+    resource_scope: 'own' | 'all' | 'custom'
     /** 最後使用時間（Unix 毫秒；0 表示還沒用過） */
     last_used_at: number
     /** 0 表示不過期 */
@@ -229,6 +267,32 @@ export interface AgentsListOutput {
     /** 0 表示有效 */
     revoked_at: number
     created_at: number
+    /** 每分鐘最多呼叫幾次 */
+    rate_per_min: number
+    /** 每天最多呼叫幾次；0 表示不限制 */
+    daily_calls: number
+    /** 每天最多花多少（美元百萬分之一）；0 表示不另外限制 */
+    daily_spend_micros: number
+    calls_today: number
+    spend_today_micros: number
+    delegation: {
+      agent_id: string
+      /** 有授權、而且還沒過期 */
+      enabled: boolean
+      /** 授權過，但已經過期 */
+      expired?: boolean
+      categories: ('external_send' | 'spend_small' | 'publish' | 'sign')[]
+      daily_count: number
+      daily_amount_micros: number
+      /** 到期時間（Unix 毫秒）；0 表示沒有授權 */
+      expires_at: number
+      /** 今天代為核准了幾次 */
+      used_today: number
+      /** 今天代為核准了多少錢（美元百萬分之一） */
+      amount_today_micros: number
+      /** 永遠要你本人核准的動作 */
+      never: string[]
+    }
   }[]
 }
 
@@ -248,7 +312,9 @@ export interface AgentsPairStartInput {
   name?: string
   /** 給這個代理的權限範圍（可疊加）：read、operate、manage、admin */
   scopes: ('read' | 'operate' | 'manage' | 'admin')[]
-  /** 限制只能碰哪些 Bot／團隊／主機；不填表示不限制 */
+  /** own：只能碰自己建立的（預設）；all：全部；custom：resources 指定的，加上自己建立的 */
+  resource_scope?: 'own' | 'all' | 'custom'
+  /** resource_scope=custom 時指定哪些 Bot／團隊／主機 */
   resources?: {
     bots?: string[]
     teams?: string[]
@@ -256,6 +322,10 @@ export interface AgentsPairStartInput {
   }
   /** 權杖有效天數；0 或不填表示不過期（可隨時撤銷） */
   token_days?: number
+  /** 每天最多呼叫幾次；0 表示不限制 */
+  daily_calls?: number
+  /** 它交辦的工作每天最多花多少（美元百萬分之一）；0 表示不另外限制 */
+  daily_spend_micros?: number
 }
 
 export interface AgentsPairStartOutput {
@@ -267,12 +337,15 @@ export interface AgentsPairStartOutput {
   pair_path: string
   name?: string
   scopes: ('read' | 'operate' | 'manage' | 'admin')[]
+  resource_scope: 'own' | 'all' | 'custom'
   resources?: {
     bots: string[]
     teams: string[]
     hosts: string[]
   }
   token_days?: number
+  daily_calls?: number
+  daily_spend_micros?: number
 }
 
 /**
@@ -284,6 +357,70 @@ export interface AgentsPairStartOutput {
  */
 export function agentsPairStart(input: AgentsPairStartInput, opts?: CallOptions): Promise<AgentsPairStartOutput> {
   return invoke('xbot.agents.pair_start', input, opts).then((r) => r.output)
+}
+
+// xbot.agents.restore
+
+export interface AgentsRestoreInput {
+  /** 代理 id（xbot.agents.list 的 id） */
+  id: string
+}
+
+export interface AgentsRestoreOutput {
+  id: string
+  name: string
+  status: 'active' | 'revoked' | 'expired'
+  scopes: ('read' | 'operate' | 'manage' | 'admin')[]
+  resources: {
+    bots: string[]
+    teams: string[]
+    hosts: string[]
+  }
+  resource_scope: 'own' | 'all' | 'custom'
+  /** 最後使用時間（Unix 毫秒；0 表示還沒用過） */
+  last_used_at: number
+  /** 0 表示不過期 */
+  expires_at: number
+  /** 0 表示有效 */
+  revoked_at: number
+  created_at: number
+  /** 每分鐘最多呼叫幾次 */
+  rate_per_min: number
+  /** 每天最多呼叫幾次；0 表示不限制 */
+  daily_calls: number
+  /** 每天最多花多少（美元百萬分之一）；0 表示不另外限制 */
+  daily_spend_micros: number
+  calls_today: number
+  spend_today_micros: number
+  delegation: {
+    agent_id: string
+    /** 有授權、而且還沒過期 */
+    enabled: boolean
+    /** 授權過，但已經過期 */
+    expired?: boolean
+    categories: ('external_send' | 'spend_small' | 'publish' | 'sign')[]
+    daily_count: number
+    daily_amount_micros: number
+    /** 到期時間（Unix 毫秒）；0 表示沒有授權 */
+    expires_at: number
+    /** 今天代為核准了幾次 */
+    used_today: number
+    /** 今天代為核准了多少錢（美元百萬分之一） */
+    amount_today_micros: number
+    /** 永遠要你本人核准的動作 */
+    never: string[]
+  }
+}
+
+/**
+ * 復原剛撤銷的代理
+ *
+ * 撤銷後 10 分鐘內可以復原，權杖恢復原本的權限。超過就要重新配對。只有你本人能復原。
+ *
+ * `xbot.agents.restore`：權限 admin、風險 safe
+ */
+export function agentsRestore(input: AgentsRestoreInput, opts?: CallOptions): Promise<AgentsRestoreOutput> {
+  return invoke('xbot.agents.restore', input, opts).then((r) => r.output)
 }
 
 // xbot.agents.revoke
@@ -303,6 +440,7 @@ export interface AgentsRevokeOutput {
     teams: string[]
     hosts: string[]
   }
+  resource_scope: 'own' | 'all' | 'custom'
   /** 最後使用時間（Unix 毫秒；0 表示還沒用過） */
   last_used_at: number
   /** 0 表示不過期 */
@@ -310,17 +448,90 @@ export interface AgentsRevokeOutput {
   /** 0 表示有效 */
   revoked_at: number
   created_at: number
+  /** 每分鐘最多呼叫幾次 */
+  rate_per_min: number
+  /** 每天最多呼叫幾次；0 表示不限制 */
+  daily_calls: number
+  /** 每天最多花多少（美元百萬分之一）；0 表示不另外限制 */
+  daily_spend_micros: number
+  calls_today: number
+  spend_today_micros: number
+  delegation: {
+    agent_id: string
+    /** 有授權、而且還沒過期 */
+    enabled: boolean
+    /** 授權過，但已經過期 */
+    expired?: boolean
+    categories: ('external_send' | 'spend_small' | 'publish' | 'sign')[]
+    daily_count: number
+    daily_amount_micros: number
+    /** 到期時間（Unix 毫秒）；0 表示沒有授權 */
+    expires_at: number
+    /** 今天代為核准了幾次 */
+    used_today: number
+    /** 今天代為核准了多少錢（美元百萬分之一） */
+    amount_today_micros: number
+    /** 永遠要你本人核准的動作 */
+    never: string[]
+  }
 }
 
 /**
  * 撤銷一個代理的權杖
  *
- * 撤銷後這個代理的下一個請求就會被拒絕，要重新配對才能再連線。
+ * 撤銷後這個代理的下一個請求就會被拒絕；10 分鐘內你可以復原（xbot.agents.restore），之後要重新配對才能再連線。
  *
  * `xbot.agents.revoke`：權限 admin、風險 confirm
  */
 export function agentsRevoke(input: AgentsRevokeInput, opts?: CallOptions): Promise<AgentsRevokeOutput> {
   return invoke('xbot.agents.revoke', input, opts).then((r) => r.output)
+}
+
+// xbot.agents.set_delegation
+
+export interface AgentsSetDelegationInput {
+  /** 代理 id（xbot.agents.list 的 id） */
+  id: string
+  /** true：授權代為核准；false：收回（預設關閉） */
+  enabled?: boolean
+  /** 哪些類別：external_send（對外發送）、spend_small（小額花費）、publish（上架）、sign（簽約） */
+  categories?: ('external_send' | 'spend_small' | 'publish' | 'sign')[]
+  /** 每天最多代為核准幾次 */
+  daily_count?: number
+  /** 每天最多核准多少錢（美元百萬分之一）；只算帶金額的動作，0 表示帶金額的一律要你本人 */
+  daily_amount_micros?: number
+  /** 有效幾天（1、7、30） */
+  days?: number
+}
+
+export interface AgentsSetDelegationOutput {
+  agent_id: string
+  /** 有授權、而且還沒過期 */
+  enabled: boolean
+  /** 授權過，但已經過期 */
+  expired?: boolean
+  categories: ('external_send' | 'spend_small' | 'publish' | 'sign')[]
+  daily_count: number
+  daily_amount_micros: number
+  /** 到期時間（Unix 毫秒）；0 表示沒有授權 */
+  expires_at: number
+  /** 今天代為核准了幾次 */
+  used_today: number
+  /** 今天代為核准了多少錢（美元百萬分之一） */
+  amount_today_micros: number
+  /** 永遠要你本人核准的動作 */
+  never: string[]
+}
+
+/**
+ * 設定一個代理的代為核准授權
+ *
+ * 授權後這個代理可以用 xbot.approvals.decide 代你允許指定類別的動作（每日次數、金額、有效期限內）。刪除 Bot 或資料、移除主機、提高花費上限、改代為核准授權永遠要你本人。只有你本人能設定。
+ *
+ * `xbot.agents.set_delegation`：權限 admin、風險 safe
+ */
+export function agentsSetDelegation(input: AgentsSetDelegationInput, opts?: CallOptions): Promise<AgentsSetDelegationOutput> {
+  return invoke('xbot.agents.set_delegation', input, opts).then((r) => r.output)
 }
 
 // xbot.agents.update_scopes
@@ -330,12 +541,18 @@ export interface AgentsUpdateScopesInput {
   id: string
   /** 新的權限範圍（整組取代）；空陣列表示什麼都不能做 */
   scopes: ('read' | 'operate' | 'manage' | 'admin')[]
+  /** own：只能碰自己建立的；all：全部；custom：resources 指定的＋自己建立的；不填表示不變（除非給了 resources） */
+  resource_scope?: 'own' | 'all' | 'custom'
   /** 新的資源範圍；不填表示不變 */
   resources?: {
     bots?: string[]
     teams?: string[]
     hosts?: string[]
   }
+  /** 每天最多呼叫幾次；0 表示不限制 */
+  daily_calls?: number
+  /** 每天最多花多少（美元百萬分之一）；0 表示不另外限制 */
+  daily_spend_micros?: number
 }
 
 export interface AgentsUpdateScopesOutput {
@@ -348,6 +565,7 @@ export interface AgentsUpdateScopesOutput {
     teams: string[]
     hosts: string[]
   }
+  resource_scope: 'own' | 'all' | 'custom'
   /** 最後使用時間（Unix 毫秒；0 表示還沒用過） */
   last_used_at: number
   /** 0 表示不過期 */
@@ -355,12 +573,38 @@ export interface AgentsUpdateScopesOutput {
   /** 0 表示有效 */
   revoked_at: number
   created_at: number
+  /** 每分鐘最多呼叫幾次 */
+  rate_per_min: number
+  /** 每天最多呼叫幾次；0 表示不限制 */
+  daily_calls: number
+  /** 每天最多花多少（美元百萬分之一）；0 表示不另外限制 */
+  daily_spend_micros: number
+  calls_today: number
+  spend_today_micros: number
+  delegation: {
+    agent_id: string
+    /** 有授權、而且還沒過期 */
+    enabled: boolean
+    /** 授權過，但已經過期 */
+    expired?: boolean
+    categories: ('external_send' | 'spend_small' | 'publish' | 'sign')[]
+    daily_count: number
+    daily_amount_micros: number
+    /** 到期時間（Unix 毫秒）；0 表示沒有授權 */
+    expires_at: number
+    /** 今天代為核准了幾次 */
+    used_today: number
+    /** 今天代為核准了多少錢（美元百萬分之一） */
+    amount_today_micros: number
+    /** 永遠要你本人核准的動作 */
+    never: string[]
+  }
 }
 
 /**
- * 改一個代理的權限範圍
+ * 改一個代理的權限範圍、資源範圍與上限
  *
- * scopes 整組取代原本的權限；resources 有給才取代資源範圍。只有你本人能改。
+ * scopes 整組取代原本的權限；resource_scope／resources 有給才改資源範圍；daily_calls、daily_spend_micros 有給才改上限。只有你本人能改。
  *
  * `xbot.agents.update_scopes`：權限 admin、風險 safe
  */
@@ -416,7 +660,7 @@ export interface ApprovalsDecideOutput {
 /**
  * 允許或退回一個等核准的動作
  *
- * 允許後立刻執行原本的動作並回傳結果。目前只有你本人能決定；代為核准（MCP-10）之後才開放給有授權的代理。
+ * 允許後立刻執行原本的動作並回傳結果。只有你本人、或拿到代為核准授權的代理（MCP-10，xbot.agents.set_delegation）能用；代理只能允許授權類別內的動作，受每日次數、金額與有效期限限制。刪除 Bot 或資料、移除主機、提高花費上限、改代為核准授權永遠要你本人。每次代為核准都會在待我處理留一張紀錄卡，動作可以復原的話，你 10 分鐘內可以復原。
  *
  * `xbot.approvals.decide`：權限 operate、風險 safe
  */
@@ -457,6 +701,8 @@ export interface ApprovalsListOutput {
 
 /**
  * 列出等你核准的動作
+ *
+ * 代理看得到自己要求的；有代為核准授權的代理也看得到授權類別內、它能碰的 Bot 的核准。
  *
  * `xbot.approvals.list`：權限 read、風險 safe
  */
@@ -585,6 +831,10 @@ export interface BotsArchiveOutput {
   effort: string
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
   archived: boolean
+  /** 誰建立的：owner、agent:<id>、bot:<id> */
+  created_by?: string
+  /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
+  updated_by?: string
   created_at: number
   updated_at: number
 }
@@ -641,6 +891,10 @@ export interface BotsCreateOutput {
   effort: string
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
   archived: boolean
+  /** 誰建立的：owner、agent:<id>、bot:<id> */
+  created_by?: string
+  /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
+  updated_by?: string
   created_at: number
   updated_at: number
 }
@@ -648,7 +902,7 @@ export interface BotsCreateOutput {
 /**
  * 建立一個 Bot
  *
- * 新 Bot 的權限等級預設是「先問我」（SEC-1）。它的電腦在第一次對話時才開機。受資源範圍限制的代理建立的 Bot，會自動加進它能碰的 Bot。
+ * 新 Bot 的權限等級預設是「先問我」（SEC-1）。它的電腦在第一次對話時才開機。代理建立的 Bot 記在它名下：只能碰自己建立的東西的代理（預設）也能碰它（MCP-8）。
  *
  * `xbot.bots.create`：權限 manage、風險 safe（依輸入可能需要核准）
  */
@@ -706,6 +960,10 @@ export interface BotsGetOutput {
   effort: string
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
   archived: boolean
+  /** 誰建立的：owner、agent:<id>、bot:<id> */
+  created_by?: string
+  /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
+  updated_by?: string
   created_at: number
   updated_at: number
 }
@@ -743,6 +1001,10 @@ export interface BotsListOutput {
     effort: string
     approval_mode: 'ask' | 'edits' | 'auto' | 'full'
     archived: boolean
+    /** 誰建立的：owner、agent:<id>、bot:<id> */
+    created_by?: string
+    /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
+    updated_by?: string
     created_at: number
     updated_at: number
   }[]
@@ -794,6 +1056,10 @@ export interface BotsUpdateOutput {
   effort: string
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
   archived: boolean
+  /** 誰建立的：owner、agent:<id>、bot:<id> */
+  created_by?: string
+  /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
+  updated_by?: string
   created_at: number
   updated_at: number
 }
@@ -899,6 +1165,12 @@ export interface ChatReadOutput {
     kind: string
     content: string
     task_id?: string
+    /** 代理送的訊息：agent:<id> */
+    actor?: string
+    /** 代理的名字，例：Claude Code */
+    actor_name?: string
+    /** 從哪裡送的：mcp、http、cli */
+    via?: string
     /** Bot 還在寫這則回覆 */
     streaming?: boolean
     /** Bot 回覆的結果：complete、interrupted、error */
@@ -1146,7 +1418,7 @@ export interface InboxDismissInput {
 export interface InboxDismissOutput {
   item: {
     id: string
-    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention */
+    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention、delegated（已由代理代為核准的紀錄） */
     kind: string
     /** decide（要你決定）、done（完成）、mention（提到你）、error（出錯） */
     group: string
@@ -1163,7 +1435,7 @@ export interface InboxDismissOutput {
     payload: unknown
     /** open、resolved、dismissed、expired */
     status: string
-    /** 怎麼處理的：once、always、deny、allow、answered、provided、declined、expired、gone、canceled、asked_again、dismissed、info */
+    /** 怎麼處理的：once、always、deny、allow、answered、provided、declined、expired、gone、canceled、asked_again、dismissed、info、delegated（代理代為核准）、undone（代為核准的動作已復原） */
     resolution?: string
     resolved_by?: string
     resolved_at?: number
@@ -1209,7 +1481,7 @@ export interface InboxListOutput {
   /** 新到舊 */
   items: {
     id: string
-    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention */
+    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention、delegated（已由代理代為核准的紀錄） */
     kind: string
     /** decide（要你決定）、done（完成）、mention（提到你）、error（出錯） */
     group: string
@@ -1226,7 +1498,7 @@ export interface InboxListOutput {
     payload: unknown
     /** open、resolved、dismissed、expired */
     status: string
-    /** 怎麼處理的：once、always、deny、allow、answered、provided、declined、expired、gone、canceled、asked_again、dismissed、info */
+    /** 怎麼處理的：once、always、deny、allow、answered、provided、declined、expired、gone、canceled、asked_again、dismissed、info、delegated（代理代為核准）、undone（代為核准的動作已復原） */
     resolution?: string
     resolved_by?: string
     resolved_at?: number
@@ -1286,7 +1558,7 @@ export interface InboxUndoInput {
 export interface InboxUndoOutput {
   item: {
     id: string
-    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention */
+    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention、delegated（已由代理代為核准的紀錄） */
     kind: string
     /** decide（要你決定）、done（完成）、mention（提到你）、error（出錯） */
     group: string
@@ -1303,7 +1575,7 @@ export interface InboxUndoOutput {
     payload: unknown
     /** open、resolved、dismissed、expired */
     status: string
-    /** 怎麼處理的：once、always、deny、allow、answered、provided、declined、expired、gone、canceled、asked_again、dismissed、info */
+    /** 怎麼處理的：once、always、deny、allow、answered、provided、declined、expired、gone、canceled、asked_again、dismissed、info、delegated（代理代為核准）、undone（代為核准的動作已復原） */
     resolution?: string
     resolved_by?: string
     resolved_at?: number
@@ -1319,7 +1591,7 @@ export interface InboxUndoOutput {
 /**
  * 復原剛剛的決定
  *
- * 10 分鐘內可以復原：退回的核准會回到等你決定，略過的卡會回到待我處理。已經執行的動作、已經交給 Bot 的回答不能復原（undo_until 是 0）。
+ * 10 分鐘內可以復原：退回的核准會回到等你決定，略過的卡會回到待我處理，代理代為核准的動作（可以復原的話）會被收回。已經執行的動作、已經交給 Bot 的回答不能復原（undo_until 是 0）。
  *
  * `xbot.inbox.undo`：權限 operate、風險 safe
  */
@@ -2198,9 +2470,12 @@ export function usageSummary(input: UsageSummaryInput = {}, opts?: CallOptions):
 
 /** 每個操作的輸入與輸出型別，invoke 用它檢查型別。 */
 export interface Ops {
+  'xbot.agents.get_delegation': { input: AgentsGetDelegationInput; output: AgentsGetDelegationOutput }
   'xbot.agents.list': { input: AgentsListInput; output: AgentsListOutput }
   'xbot.agents.pair_start': { input: AgentsPairStartInput; output: AgentsPairStartOutput }
+  'xbot.agents.restore': { input: AgentsRestoreInput; output: AgentsRestoreOutput }
   'xbot.agents.revoke': { input: AgentsRevokeInput; output: AgentsRevokeOutput }
+  'xbot.agents.set_delegation': { input: AgentsSetDelegationInput; output: AgentsSetDelegationOutput }
   'xbot.agents.update_scopes': { input: AgentsUpdateScopesInput; output: AgentsUpdateScopesOutput }
   'xbot.approvals.decide': { input: ApprovalsDecideInput; output: ApprovalsDecideOutput }
   'xbot.approvals.list': { input: ApprovalsListInput; output: ApprovalsListOutput }
@@ -2250,9 +2525,12 @@ export type OpName = keyof Ops
 
 /** 每個操作的 HTTP 路徑、權限範圍、風險。 */
 export const OPS: Record<OpName, OpMeta> = {
+  'xbot.agents.get_delegation': { path: '/api/v1/agents.get_delegation', scope: 'read', risk: 'safe', mutates: false },
   'xbot.agents.list': { path: '/api/v1/agents.list', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.agents.pair_start': { path: '/api/v1/agents.pair_start', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.agents.restore': { path: '/api/v1/agents.restore', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.agents.revoke': { path: '/api/v1/agents.revoke', scope: 'admin', risk: 'confirm', mutates: true },
+  'xbot.agents.set_delegation': { path: '/api/v1/agents.set_delegation', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.agents.update_scopes': { path: '/api/v1/agents.update_scopes', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.approvals.decide': { path: '/api/v1/approvals.decide', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.approvals.list': { path: '/api/v1/approvals.list', scope: 'read', risk: 'safe', mutates: false },

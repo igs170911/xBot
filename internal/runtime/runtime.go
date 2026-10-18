@@ -133,6 +133,9 @@ type ChatRequest struct {
 	BotID, ThreadID, Text string
 	// Source 是誰交辦的：owner（預設，你自己）、bot、routine、webhook。不是 owner 的算無人在場，提問會過期（PRD §18）。
 	Source string
+	// Actor 是誰送出這則訊息（owner、agent:<權杖 id>）；ActorName 是顯示名稱、Via 是從哪裡來（mcp、http…）。
+	// 代理送的記在訊息與工作的 meta 裡：介面標「由 ○○（MCP）傳送」（MCP-13），每日花費算到代理頭上（MCP-12）。
+	Actor, ActorName, Via string
 }
 
 // Start 和 Chat 一樣，但可以指定交辦來源。
@@ -189,10 +192,18 @@ func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error
 	var msg store.Message
 	err = r.o.DB.Tx(ctx, func(q *store.Queries) error {
 		var err error
-		if task, err = q.CreateTask(ctx, store.Task{BotID: botID, ThreadID: th.ID, Source: source, State: store.TaskQueued, Input: text}); err != nil {
+		var taskMeta json.RawMessage
+		if req.Actor != "" && req.Actor != "owner" {
+			taskMeta, _ = json.Marshal(map[string]string{"actor": req.Actor})
+		}
+		if task, err = q.CreateTask(ctx, store.Task{BotID: botID, ThreadID: th.ID, Source: source, State: store.TaskQueued, Input: text, Meta: taskMeta}); err != nil {
 			return err
 		}
-		meta, _ := json.Marshal(map[string]string{"task_id": task.ID})
+		m := map[string]string{"task_id": task.ID}
+		if req.Actor != "" && req.Actor != "owner" {
+			m["actor"], m["actor_name"], m["via"] = req.Actor, req.ActorName, req.Via
+		}
+		meta, _ := json.Marshal(m)
 		msg, err = q.AddMessage(ctx, store.Message{Scope: store.ScopeThread, ScopeID: th.ID, Sender: "owner", Content: text, Meta: meta})
 		return err
 	})

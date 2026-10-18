@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	"xbot/internal/limits"
 	"xbot/internal/notify"
@@ -35,13 +36,17 @@ func (r *Registry) Invoke(ctx context.Context, id Identity, name string, raw jso
 func (r *Registry) invoke(ctx context.Context, id Identity, name string, raw json.RawMessage, opts Options) (Result, *Error) {
 	r.mu.RLock()
 	e, ok := r.ops[name]
-	policy := r.cfg.Policy
+	policy, limiter := r.cfg.Policy, r.cfg.Limiter
 	r.mu.RUnlock()
 	if !ok {
 		return Result{}, NotFound("沒有這個操作：" + name)
 	}
 	if len(raw) == 0 {
 		raw = json.RawMessage("{}")
+	}
+	id, err := r.withOwned(ctx, id)
+	if err != nil {
+		return Result{}, Internal(err)
 	}
 	info := &e.info
 	call := &Call{Op: info, Identity: id, RequestID: opts.RequestID, DryRun: opts.DryRun, DB: r.cfg.DB}
@@ -51,6 +56,12 @@ func (r *Registry) invoke(ctx context.Context, id Identity, name string, raw jso
 	// 1. 身分
 	if !id.valid() {
 		return Result{}, audit.fail(ctx, Forbidden("不知道你是誰，請重新登入或配對"))
+	}
+	// 上限（MCP-12：代理的每分鐘呼叫、每日呼叫、每日花費）
+	if limiter != nil {
+		if lerr := limiter(ctx, id, info); lerr != nil {
+			return Result{}, audit.fail(ctx, lerr)
+		}
 	}
 	// 2. 權限範圍
 	if !id.HasScope(info.Scope) {
@@ -207,7 +218,9 @@ func (r *Registry) requestApproval(ctx context.Context, call *Call, raw, masked 
 			return err
 		}
 		approvalID = a.ID
-		card, err := json.Marshal(map[string]any{"op": info.Name, "params": masked, "approval_id": a.ID, "actor": id.Actor()})
+		card, err := json.Marshal(map[string]any{"op": info.Name, "params": masked, "approval_id": a.ID, "actor": id.Actor(),
+			"actor_name": id.DisplayName(), "via": id.Via, "request_id": call.RequestID, "category": info.Category,
+			"delegable": info.Delegable(), "reversible": info.Reversible})
 		if err != nil {
 			return err
 		}
@@ -238,7 +251,7 @@ func (r *Registry) requestApproval(ctx context.Context, call *Call, raw, masked 
 			Target: target, Params: masked, Status: "pending_approval", ErrorCode: string(CodePendingApproval)}); err != nil {
 			return err
 		}
-		ev, err = addEvent(ctx, q, bot, map[string]any{"op": info.Name, "actor": id.Actor(), "status": "pending_approval",
+		ev, err = addEvent(ctx, q, bot, map[string]any{"op": info.Name, "actor": id.Actor(), "actor_name": id.DisplayName(), "via": id.Via, "status": "pending_approval",
 			"request_id": call.RequestID, "target": target, "approval_id": a.ID, "inbox_id": item.ID})
 		return err
 	})
@@ -330,6 +343,85 @@ func (r *Registry) executeApproved(ctx context.Context, approvalID string) (Resu
 	return Result{Op: a.Action, Output: out}, nil
 }
 
+// withOwned 把代理（或 Bot）自己建立的 Bot 加進它能碰的範圍（MCP-8「預設只能碰自己建立的東西」）。
+// 只在 Bot 範圍有限制時才查；不限制（nil）的不用加。
+func (r *Registry) withOwned(ctx context.Context, id Identity) (Identity, error) {
+	if id.Kind == KindOwner || id.Resources.Bots == nil || r.cfg.DB == nil || !id.valid() {
+		return id, nil
+	}
+	own, err := r.cfg.DB.ListBotIDsCreatedBy(ctx, id.Actor())
+	if err != nil || len(own) == 0 {
+		return id, err
+	}
+	bots := append([]string{}, id.Resources.Bots...)
+	for _, b := range own {
+		if !slices.Contains(bots, b) {
+			bots = append(bots, b)
+		}
+	}
+	id.Resources.Bots = bots
+	return id, nil
+}
+
+// RevertApproved 復原一個已經允許並執行完的動作（代為核准的紀錄卡 10 分鐘內按「復原」，MCP-10）。
+// by 是按復原的人（寫進稽核）。動作沒有 Revert、還沒執行完、或已經復原過時回 conflict。
+// 時限與「已經復原過」由呼叫端（inbox.undo）在同一張卡上檢查。
+func (r *Registry) RevertApproved(ctx context.Context, approvalID string, by Identity) error {
+	if err := r.revertApproved(ctx, approvalID, by); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Registry) revertApproved(ctx context.Context, approvalID string, by Identity) *Error {
+	a, err := r.cfg.DB.GetApproval(ctx, approvalID)
+	if err != nil {
+		return AsError(err)
+	}
+	r.mu.RLock()
+	e, ok := r.ops[a.Action]
+	r.mu.RUnlock()
+	if !ok {
+		return NotFound("沒有這個操作：" + a.Action)
+	}
+	if e.revert == nil {
+		return Conflict("這個動作做了就不能復原")
+	}
+	prev, err := r.cfg.DB.GetOpRequestByApproval(ctx, approvalID)
+	if err != nil || prev.Status != "ok" {
+		return Conflict("這個動作還沒執行完，不能復原")
+	}
+	call := &Call{Op: &e.info, Identity: by, RequestID: prev.RequestID, ApprovalID: a.ID, DB: r.cfg.DB}
+	refs := e.refs(a.Input)
+	audit := auditor{r: r, call: call, params: Mask(a.Input, e.info.Input)}
+	if len(refs) > 0 {
+		audit.target = refs[0].id
+	}
+	if err := e.revert(ctx, call, a.Input, prev.Result); err != nil {
+		return audit.fail(ctx, AsError(err))
+	}
+	bg := context.WithoutCancel(ctx)
+	var ev *store.Event
+	err = r.cfg.DB.Tx(bg, func(q *store.Queries) error {
+		if _, err := q.AddAudit(bg, audit.entry("reverted", "")); err != nil {
+			return err
+		}
+		bot, err := existingBot(bg, q, firstBot(refs))
+		if err != nil {
+			return err
+		}
+		ev, err = addEvent(bg, q, bot, map[string]any{"op": e.info.Name, "actor": by.Actor(), "actor_name": by.DisplayName(), "via": by.Via,
+			"status": "reverted", "approval_id": a.ID, "target": audit.target})
+		return err
+	})
+	if err != nil {
+		r.cfg.Logger.Error("寫入復原紀錄失敗", "op", e.info.Name, "approval", approvalID, "err", err)
+		return nil
+	}
+	r.notify(ev)
+	return nil
+}
+
 // finish 在成功後寫：去重結果、稽核、事件。
 func (r *Registry) finish(ctx context.Context, call *Call, botID string, audit auditor, out json.RawMessage, claimed bool) error {
 	ctx = context.WithoutCancel(ctx) // 動作已經做了，紀錄一定要寫完
@@ -357,7 +449,8 @@ func (r *Registry) finish(ctx context.Context, call *Call, botID string, audit a
 		if err != nil {
 			return err
 		}
-		payload := map[string]any{"op": info.Name, "actor": id.Actor(), "status": "ok", "request_id": call.RequestID, "target": audit.target}
+		payload := map[string]any{"op": info.Name, "actor": id.Actor(), "actor_name": id.DisplayName(), "via": id.Via,
+			"status": "ok", "request_id": call.RequestID, "target": audit.target}
 		if call.ApprovalID != "" {
 			payload["approval_id"] = call.ApprovalID
 		}

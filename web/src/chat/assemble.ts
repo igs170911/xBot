@@ -31,6 +31,10 @@ export type ChatMsg = {
   updatedAt: number
   /** 這則回覆是從頭看著它串流的：內容完整，比資料庫的快照（每隔一段時間才存）新。 */
   live: boolean
+  /** 代理（MCP）替你送的訊息：哪個代理（MCP-13，C16「由 Claude Code（MCP）傳送」）。 */
+  actorName?: string
+  /** 從哪個出口送的：mcp、http、cli。 */
+  via?: string
 }
 
 export type Step = {
@@ -98,7 +102,7 @@ type StoreMessage = {
   updated_at: number
 }
 
-type MessageMeta = { task_id?: string; streaming?: boolean; status?: string }
+type MessageMeta = { task_id?: string; streaming?: boolean; status?: string; actor?: string; actor_name?: string; via?: string }
 
 type EngineEvent = {
   text?: string
@@ -174,6 +178,7 @@ export function applyRead(s: ChatState, out: ChatReadOutput): ChatState {
       createdAt: m.created_at,
       updatedAt: m.updated_at,
       live: false,
+      ...(m.actor ? { actorName: m.actor_name || m.actor, via: m.via } : {}),
     }
     if (local && server.streaming && local.content.length > server.content.length && local.content.startsWith(server.content)) {
       // 還在串流：本地已經接到比快照更多的字
@@ -238,6 +243,7 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
         createdAt: m.created_at,
         updatedAt: m.updated_at,
         live: existing ? existing.live : !!meta.streaming && m.content === '',
+        ...(meta.actor ? { actorName: meta.actor_name || meta.actor, via: meta.via } : {}),
       }
       const messages = existing ? th.messages.map((x) => (x.id === m.id ? msg : x)) : [...th.messages, msg]
       let next = putMessages(s, m.scope_id, messages)

@@ -8,6 +8,7 @@ import { DevComponentsPage } from './pages/DevComponentsPage'
 import { LoginPage } from './pages/LoginPage'
 import { NewBotDialog } from './pages/NewBotDialog'
 import { SettingsPage } from './pages/ModelSettings'
+import { AgentsPage } from './pages/AgentsPage'
 import { ChatPage } from './chat/ChatPage'
 import { startChat } from './chat/chatStore'
 import { botsStore, startBots } from './data/bots'
@@ -23,6 +24,7 @@ const TITLES: Record<string, string> = {
   '/apps': '連接應用程式',
   '/org': '組織架構',
   '/settings': '設定',
+  '/settings/agents': '已連線的代理',
 }
 
 const BOT_PATH = /^\/bots\/([^/]+)(?:\/threads\/([^/]+))?\/?$/
@@ -73,6 +75,7 @@ function Main() {
   if (path === '/') page = <InboxPage />
   else if (bot) page = <ChatPage key={bot[1]} botId={bot[1]} threadParam={bot[2]} />
   else if (path === '/settings') page = <SettingsPage />
+  else if (path === '/settings/agents') page = <AgentsPage />
   else page = <Placeholder title={title} />
 
   return (

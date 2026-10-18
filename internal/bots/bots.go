@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"slices"
 	"strings"
 
 	"xbot/internal/ops"
@@ -83,6 +82,8 @@ type View struct {
 	Effort       string       `json:"effort"`
 	ApprovalMode ApprovalMode `json:"approval_mode"`
 	Archived     bool         `json:"archived"`
+	CreatedBy    string       `json:"created_by,omitempty" desc:"誰建立的：owner、agent:<id>、bot:<id>"`
+	UpdatedBy    string       `json:"updated_by,omitempty" desc:"最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」"`
 	CreatedAt    int64        `json:"created_at"`
 	UpdatedAt    int64        `json:"updated_at"`
 }
@@ -97,7 +98,8 @@ func ViewOf(b store.Bot) View {
 	_ = json.Unmarshal(b.Avatar, &a)
 	return View{ID: b.ID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul,
 		Color: Color(b.Color), Shape: Shape(a.Shape), Engine: b.Engine, Model: b.Model, Fallback: first(b.Fallback), Effort: b.Effort,
-		ApprovalMode: ApprovalMode(b.ApprovalMode), Archived: b.Archived, CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt}
+		ApprovalMode: ApprovalMode(b.ApprovalMode), Archived: b.Archived, CreatedBy: b.CreatedBy, UpdatedBy: b.UpdatedBy,
+		CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt}
 }
 
 // ── 輸入輸出 ──────────────────────────────────────────
@@ -189,7 +191,7 @@ func Register(reg *ops.Registry, d Deps) {
 	ops.Register(reg, ops.Op[CreateIn, View]{
 		Name: "xbot.bots.create", Summary: "建立一個 Bot",
 		Description: "新 Bot 的權限等級預設是「先問我」（SEC-1）。它的電腦在第一次對話時才開機。" +
-			"受資源範圍限制的代理建立的 Bot，會自動加進它能碰的 Bot。",
+			"代理建立的 Bot 記在它名下：只能碰自己建立的東西的代理（預設）也能碰它（MCP-8）。",
 		Scope: ops.ScopeManage, Risk: ops.RiskSafe,
 		RiskOf: func(in CreateIn) ops.Risk { return modeRisk(in.ApprovalMode) },
 		Handle: func(ctx context.Context, call *ops.Call, in CreateIn) (View, error) {
@@ -214,6 +216,7 @@ func Register(reg *ops.Registry, d Deps) {
 			if err := apply(&b, in); err != nil {
 				return View{}, err
 			}
+			b.UpdatedBy = call.Identity.Actor()
 			if call.DryRun {
 				return ViewOf(b), nil
 			}
@@ -314,7 +317,7 @@ func create(ctx context.Context, call *ops.Call, in CreateIn) (View, error) {
 	av, _ := json.Marshal(avatar{Shape: shape})
 	b := store.Bot{Name: name, Title: strings.TrimSpace(in.Title), Description: strings.TrimSpace(in.Description), Soul: in.Soul,
 		Color: color, Avatar: av, Engine: string(in.Engine), Model: strings.TrimSpace(in.Model), Effort: string(in.Effort),
-		ApprovalMode: string(in.ApprovalMode), MemoryEnabled: true}
+		ApprovalMode: string(in.ApprovalMode), MemoryEnabled: true, CreatedBy: call.Identity.Actor()}
 	if b.Engine == "" {
 		b.Engine = string(EngineHermes)
 	}
@@ -324,39 +327,8 @@ func create(ctx context.Context, call *ops.Call, in CreateIn) (View, error) {
 	if call.DryRun {
 		return ViewOf(b), nil
 	}
-	err = call.DB.Tx(ctx, func(q *store.Queries) error {
-		if b, err = q.CreateBot(ctx, b); err != nil {
-			return err
-		}
-		return grantCreator(ctx, q, call.Identity, b.ID)
-	})
+	b, err = call.DB.CreateBot(ctx, b)
 	return ViewOf(b), err
-}
-
-// grantCreator：受資源範圍限制的代理建立的 Bot，加進它能碰的 Bot（MCP-8「預設只能碰自己建立的東西」）。
-func grantCreator(ctx context.Context, q *store.Queries, id ops.Identity, botID string) error {
-	if id.Kind != ops.KindAgent || id.Resources.Bots == nil {
-		return nil
-	}
-	t, err := q.GetAgentToken(ctx, id.ID)
-	if err != nil {
-		return err
-	}
-	var res ops.Resources
-	if len(t.Resources) > 0 {
-		if err := json.Unmarshal(t.Resources, &res); err != nil {
-			return err
-		}
-	}
-	if res.Bots == nil || slices.Contains(res.Bots, botID) {
-		return nil
-	}
-	res.Bots = append(res.Bots, botID)
-	raw, err := json.Marshal(res)
-	if err != nil {
-		return err
-	}
-	return q.UpdateAgentTokenScopes(ctx, t.ID, t.Scopes, raw)
 }
 
 func first(list []string) string {
