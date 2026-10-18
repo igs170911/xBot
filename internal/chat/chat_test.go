@@ -277,10 +277,13 @@ func TestWaitReturnsWhenBotNeedsPerson(t *testing.T) {
 	e.g.OnPrompt = func(tr *hermestest.Turn) {
 		tr.Event("message.start", nil)
 		tr.Request("approval", map[string]any{"command": "rm -rf /workspace/tmp", "choices": []string{"once", "deny"}})
-		tr.Complete("好了", "complete", nil)
+		// 真的 Bot 會停在這裡等人回答；不要馬上結束，否則等待者可能先看到「完成」。
+		<-tr.Interrupted()
+		tr.Complete("", "interrupted", nil)
 	}
 	raw, err := e.call(owner, "xbot.chat.send", map[string]any{"bot_id": e.bot.ID, "text": "清理暫存"})
 	sent := must[SendOut](t, raw, err)
+	t.Cleanup(func() { _, _ = e.rt.Stop(bg, e.bot.ID, "") })
 	w := e.waitFor(t, owner, sent.TaskID)
 	if !w.Settled || !w.NeedsPerson || w.State != store.TaskWaitingApproval || w.Request == nil ||
 		w.Request.Kind != "approval" || w.Request.Prompt != "rm -rf /workspace/tmp" {
