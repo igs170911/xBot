@@ -282,10 +282,14 @@ func (r *Runtime) Respond(ctx context.Context, itemID string, a Answer, by strin
 	r.mu.Unlock()
 	var p *pending
 	if t != nil && t.taskID == it.TaskID {
+		// 開卡時卡片先寫進資料庫（已經查得到），之後才記下 Bot 在等它；整段在 askMu 裡。
+		// 等那段做完再看，否則剛開的卡會被誤當成 Bot 已經不等而收掉。
+		t.askMu.Lock()
 		t.mu.Lock()
 		p = t.pending
 		ok := !t.finished && p != nil && p.inboxID == it.ID
 		t.mu.Unlock()
+		t.askMu.Unlock()
 		if !ok {
 			p = nil
 		}
