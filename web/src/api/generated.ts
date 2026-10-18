@@ -5546,14 +5546,14 @@ export type JudgeSettingsGetInput = Record<string, never>
 
 export interface JudgeSettingsGetOutput {
   settings: {
-    /** 第一層 · 選擇題（預設 opencode-zen / jev-1.13） */
+    /** 第一層 · 選擇題（預設 opencode-go / deepseek-v4.1-flash；Jev 需 Zen 儲值） */
     tier1: {
       /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
       provider: string
       /** 模型 */
       model: string
     }
-    /** 第二層 · 短文字（預設 opencode-go / deepseek-v4-flash） */
+    /** 第二層 · 短文字（預設 opencode-go / deepseek-v4.1-flash） */
     tier2: {
       /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
       provider: string
@@ -5625,7 +5625,7 @@ export interface JudgeSettingsGetOutput {
 /**
  * 看快判模型的設定與今天的用量
  *
- * 第一層（選擇題，預設 OpenCode Zen 的 jev-1.13）、第二層（短文字，預設 OpenCode Go 的 deepseek-v4-flash）、本機小模型，每個用途的開關（off 只用規則、shadow 只記錄、live 生效）、每日呼叫上限與今天的次數和花費。
+ * 第一層（選擇題）與第二層（短文字）預設都是 OpenCode Go 的 deepseek-v4.1-flash（可改用 Zen 的 jev-1.13）、本機小模型，每個用途的開關（off 只用規則、shadow 只記錄、live 生效）、每日呼叫上限與今天的次數和花費。
  *
  * `xbot.judge.settings_get`：權限 read、風險 safe
  */
@@ -5667,14 +5667,14 @@ export interface JudgeSettingsSetInput {
 
 export interface JudgeSettingsSetOutput {
   settings: {
-    /** 第一層 · 選擇題（預設 opencode-zen / jev-1.13） */
+    /** 第一層 · 選擇題（預設 opencode-go / deepseek-v4.1-flash；Jev 需 Zen 儲值） */
     tier1: {
       /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
       provider: string
       /** 模型 */
       model: string
     }
-    /** 第二層 · 短文字（預設 opencode-go / deepseek-v4-flash） */
+    /** 第二層 · 短文字（預設 opencode-go / deepseek-v4.1-flash） */
     tier2: {
       /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
       provider: string

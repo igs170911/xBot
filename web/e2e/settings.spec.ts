@@ -227,16 +227,13 @@ test('AI 模型：探測、貼金鑰認出供應商、換預設模型、移除�
   expect(api.calls.filter((c) => c.op === 'models.remove_provider')).toHaveLength(1)
 })
 
-test('ChatGPT 方案登入：標實驗性、先同意風險，再走裝置代碼', async ({ page }, info) => {
+test('ChatGPT 方案登入：說明條款風險，直接走裝置代碼（使用者決定正式使用）', async ({ page }, info) => {
   const { api } = await open(page, '/settings/models')
   const m = main(page)
   const block = m.getByRole('region', { name: '用 ChatGPT 方案登入' })
-  await expect(block.getByText('實驗性')).toBeVisible()
   await block.getByRole('button', { name: '登入' }).click()
   const dlg = page.getByRole('dialog', { name: /ChatGPT 方案登入/ })
   await expect(dlg).toContainText('使用條款')
-  await expect(dlg.getByRole('button', { name: '開始登入' })).toBeDisabled()
-  await dlg.getByText('我了解風險').click()
   await dlg.getByRole('button', { name: '開始登入' }).click()
   await expect(dlg.getByTestId('oauth-code')).toHaveText('WXYZ-1234')
   await settle(page)

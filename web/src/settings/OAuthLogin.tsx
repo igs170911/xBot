@@ -1,16 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { CircleCheck, Copy, ExternalLink, FlaskConical, TriangleAlert } from 'lucide-react'
+import { CircleCheck, Copy, ExternalLink } from 'lucide-react'
 import { modelsOauthComplete, modelsOauthStart, type ModelsOauthStartOutput } from '../api/generated'
 import { Button } from '../ui/Button'
-import { Checkbox } from '../ui/Controls'
 import { Dialog } from '../ui/Dialog'
 import { Icon } from '../ui/Icon'
-import { StatusChip } from '../ui/Pill'
 import { Block, Group } from './parts'
 import { errText } from './format'
 import type { Provider } from './modelData'
 
-// ChatGPT 方案的訂閱登入（E13 原型，實驗性）：裝置代碼流程。
+// ChatGPT 方案的訂閱登入（E13）：裝置代碼流程。使用者決定（2026-10-18）正式使用。
 // 服務端拿一組代碼 → 你在自己的瀏覽器打開網址輸入代碼 → 這裡每隔 interval 秒問一次 oauth_complete。
 // 權杖只存在 Model Proxy，不會進 Bot 的電腦。
 
@@ -23,7 +21,7 @@ export function OAuthCard({ providers, onDone }: { providers: Provider[]; onDone
   const [open, setOpen] = useState(false)
   const existing = providers.find((p) => p.auth === 'oauth_codex')
   return (
-    <Block title="用 ChatGPT 方案登入" aside={<StatusChip tone="warning" icon={FlaskConical}>實驗性</StatusChip>}>
+    <Block title="用 ChatGPT 方案登入">
       <Group>
         <div className="flex items-center gap-4 px-4 py-3 max-sm:flex-col max-sm:items-stretch">
           <span className="min-w-0 flex-1">
@@ -46,7 +44,6 @@ export function OAuthCard({ providers, onDone }: { providers: Provider[]; onDone
 }
 
 export function OAuthDialog({ onClose, onDone }: { onClose: () => void; onDone: () => Promise<void> }) {
-  const [agree, setAgree] = useState(false)
   const [phase, setPhase] = useState<Phase>({ kind: 'consent' })
   const [copied, setCopied] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -108,13 +105,13 @@ export function OAuthDialog({ onClose, onDone }: { onClose: () => void; onDone: 
     <Dialog
       open
       onClose={onClose}
-      title="用 ChatGPT 方案登入（實驗性）"
+      title="用 ChatGPT 方案登入"
       width={520}
       actions={
         phase.kind === 'consent' || phase.kind === 'starting' ? (
           <>
             <Button onClick={onClose}>取消</Button>
-            <Button variant="primary" disabled={!agree} loading={phase.kind === 'starting'} onClick={start}>
+            <Button variant="primary" loading={phase.kind === 'starting'} onClick={start}>
               開始登入
             </Button>
           </>
@@ -134,16 +131,8 @@ export function OAuthDialog({ onClose, onDone }: { onClose: () => void; onDone: 
     >
       {(phase.kind === 'consent' || phase.kind === 'starting') && (
         <div className="flex flex-col gap-3">
-          <div className="flex gap-2.5 rounded-group bg-warning-soft px-3.5 py-3 text-ui-sm">
-            <span className="pt-0.5 text-warning-ink">
-              <Icon icon={TriangleAlert} size={18} />
-            </span>
-            <span>{OAUTH_RISK}</span>
-          </div>
+          <p className="m-0 text-ui-sm text-ink-2">{OAUTH_RISK}</p>
           <p className="m-0 text-ui-sm text-ink-2">登入後的權杖加密存在這台主機的 Model Proxy，不會進 Bot 的電腦。之後可以在供應商清單移除。</p>
-          <Checkbox checked={agree} onChange={setAgree}>
-            我了解風險，還是要用 ChatGPT 方案登入
-          </Checkbox>
         </div>
       )}
       {waiting && (
