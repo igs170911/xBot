@@ -27,7 +27,12 @@ ensure_base() {
     command -v "$b" >/dev/null 2>&1 || pkgs+=("$b")
   done
   command -v xz >/dev/null 2>&1 || case $pm in apt) pkgs+=(xz-utils) ;; *) pkgs+=(xz) ;; esac
-  if ! ls /usr/lib*/libatomic.so.1 /usr/lib*/*/libatomic.so.1 /lib*/*/libatomic.so.1 >/dev/null 2>&1; then
+  # 任何一個位置有就算有（ls 多個樣式時只要一個不存在就回錯，所以逐一檢查）。
+  local atomic=""
+  for f in /usr/lib*/libatomic.so.1 /usr/lib*/*/libatomic.so.1 /lib*/libatomic.so.1 /lib*/*/libatomic.so.1; do
+    [ -e "$f" ] && { atomic=$f; break; }
+  done
+  if [ -z "$atomic" ]; then
     case $pm in apt) pkgs+=(libatomic1) ;; dnf) pkgs+=(libatomic) ;; pacman) pkgs+=(gcc-libs) ;; esac
   fi
   if [ "$pm" = apt ] && [ ! -e /etc/ssl/certs/ca-certificates.crt ]; then pkgs+=(ca-certificates); fi

@@ -119,23 +119,37 @@ func printWelcome(m *service.Manager, cfg config.Config) {
 	fmt.Printf("   其他裝置登入碼：%s（用 make token 顯示）\n   常用：make status｜make logs｜make stop｜make backup\n", tokenPath)
 }
 
-// lanIPs 列出這台機器的私有 IPv4 位址（排除 loopback 與 link-local），給區網其他裝置連線用。
+// lanIPs 列出這台機器的區網 IPv4，給區網其他裝置連線用。
+// 排除 loopback、link-local，以及 Docker／虛擬網路介面（docker0、br-*、veth*、xbot-box0、virbr*、podman*）的位址。
 func lanIPs() []string {
 	var out []string
-	addrs, err := net.InterfaceAddrs()
+	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil
 	}
-	for _, a := range addrs {
-		n, ok := a.(*net.IPNet)
-		if !ok || n.IP.To4() == nil || n.IP.IsLoopback() || n.IP.IsLinkLocalUnicast() {
+	for _, ifc := range ifaces {
+		if ifc.Flags&net.FlagUp == 0 || ifc.Flags&net.FlagLoopback != 0 || virtualIface(ifc.Name) {
 			continue
 		}
-		if n.IP.IsPrivate() {
+		addrs, _ := ifc.Addrs()
+		for _, a := range addrs {
+			n, ok := a.(*net.IPNet)
+			if !ok || n.IP.To4() == nil || n.IP.IsLinkLocalUnicast() || !n.IP.IsPrivate() {
+				continue
+			}
 			out = append(out, n.IP.String())
 		}
 	}
 	return out
+}
+
+func virtualIface(name string) bool {
+	for _, p := range []string{"docker", "br-", "veth", "xbot-box", "virbr", "podman", "cni", "flannel", "tailscale"} {
+		if strings.HasPrefix(name, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // cmdBackup：xbot backup [--out 檔案] [--include-logins] [--no-computers]
