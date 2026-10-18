@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useImperativeHandle, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type Ref } from 'react'
 import { ArrowUp, LoaderCircle } from 'lucide-react'
 import { IconButton } from '../ui/Button'
 import { Icon } from '../ui/Icon'
@@ -15,15 +15,45 @@ export type ChatComposerProps = {
   onStop: () => void
   /** 輸入框下方的一行說明（覆寫預設）。 */
   hint?: string
+  /** 從外面放字進輸入框或聚焦（例：空狀態的建議）。 */
+  handle?: Ref<ComposerHandle>
 }
+
+export type ComposerHandle = {
+  /** 放字進輸入框（取代原本的字）並聚焦；text 沒給只聚焦。 */
+  fill: (text?: string) => void
+}
+
+// 不支援 field-sizing 的瀏覽器（Firefox、舊 Safari）用 JS 自動長高。
+const fieldSizing = typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('field-sizing', 'content')
 
 // 輸入框（design/C05-Composer）：#2F2F2F 膠囊 52 高；有字才能送出（白色圓鈕）；
 // Bot 工作中右側是停止鈕（白底黑方塊），正在停止時變灰色轉圈。
-export function ChatComposer({ name, mode, onSend, onStop, hint }: ChatComposerProps) {
+export function ChatComposer({ name, mode, onSend, onStop, hint, handle }: ChatComposerProps) {
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const input = useRef<HTMLTextAreaElement>(null)
   const empty = text.trim() === ''
+
+  const caretToEnd = useRef(false)
+  useImperativeHandle(handle, () => ({
+    fill: (t) => {
+      if (t !== undefined) setText(t)
+      caretToEnd.current = true
+      input.current?.focus()
+    },
+  }))
+
+  useLayoutEffect(() => {
+    const el = input.current
+    if (el && caretToEnd.current) {
+      caretToEnd.current = false
+      el.setSelectionRange(el.value.length, el.value.length)
+    }
+    if (fieldSizing || !el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+  }, [text])
 
   const submit = async (e?: FormEvent) => {
     e?.preventDefault()
