@@ -28,7 +28,8 @@ const (
 	KindThinking       = "chat.thinking"   // transient；payload：{message_id, text}
 	KindToolCall       = "chat.tool_call"  // payload：engine.Event
 	KindToolResult     = "chat.tool_result"
-	KindNeedsApproval  = "chat.needs_approval"
+	KindNeedsApproval  = "chat.needs_approval" // payload：NeedsPayload（engine.Event＋inbox_id、expires_at）
+	KindAnswered       = "chat.answered"       // payload：AnsweredPayload（誰怎麼回覆了 Bot 的提問；密碼類不含內容）
 	KindUsage          = "chat.usage"
 	KindStatus         = "chat.status"
 	KindError          = "chat.error"
@@ -56,6 +57,8 @@ type Options struct {
 		ResolveModel(ctx context.Context, b store.Bot) (ModelRef, error)
 	}
 	Logger *slog.Logger
+	// QuestionTTL 是無人在場的工作裡提問多久沒回就過期；0 用 limits.QuestionTTL（測試可以調短）。
+	QuestionTTL time.Duration
 }
 
 // Runtime 管理每個 Bot 正在進行的一輪對話。
@@ -76,6 +79,9 @@ func New(o Options) *Runtime {
 	if o.Bus == nil {
 		o.Bus = events.New()
 	}
+	if o.QuestionTTL <= 0 {
+		o.QuestionTTL = limits.QuestionTTL
+	}
 	return &Runtime{o: o, log: o.Logger, active: map[string]*turn{}, consumers: map[engine.Session]string{}}
 }
 
@@ -85,6 +91,8 @@ func (r *Runtime) Bus() *events.Bus { return r.o.Bus }
 // turn 是進行中的一輪。
 type turn struct {
 	botID, threadID, taskID string
+	botName                 string
+	source                  string // owner / bot / routine / webhook：不是 owner 的是無人在場的工作，提問會過期
 	input                   string
 	cancel                  context.CancelFunc
 	done                    chan struct{}
@@ -98,6 +106,7 @@ type turn struct {
 	finished  bool
 	waiting   bool
 	lastErr   string
+	pending   *pending // Bot 正在等人回覆的請求（一次一個）
 }
 
 // ChatResult 是 Chat 的結果：訊息已收下，回覆經事件串流回來。
@@ -110,7 +119,23 @@ type ChatResult struct {
 // Chat 把使用者的訊息交給 Bot。threadID 空白時開一條新的對話串。
 // 訊息與任務寫好就回傳；開機、送出與串流在背景進行，進度發布在匯流排上，用 Wait 等結果。
 func (r *Runtime) Chat(ctx context.Context, botID, threadID, text string) (ChatResult, error) {
-	text = strings.TrimSpace(text)
+	return r.Start(ctx, ChatRequest{BotID: botID, ThreadID: threadID, Text: text})
+}
+
+// ChatRequest 是交給 Bot 的一件工作。
+type ChatRequest struct {
+	BotID, ThreadID, Text string
+	// Source 是誰交辦的：owner（預設，你自己）、bot、routine、webhook。不是 owner 的算無人在場，提問會過期（PRD §18）。
+	Source string
+}
+
+// Start 和 Chat 一樣，但可以指定交辦來源。
+func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error) {
+	botID, threadID, text := req.BotID, req.ThreadID, strings.TrimSpace(req.Text)
+	source := req.Source
+	if source == "" {
+		source = "owner"
+	}
 	if text == "" {
 		return ChatResult{}, errors.New("訊息是空的")
 	}
@@ -145,7 +170,7 @@ func (r *Runtime) Chat(ctx context.Context, botID, threadID, text string) (ChatR
 		return ChatResult{}, ErrBusy
 	}
 	runCtx, cancel := context.WithCancel(context.Background())
-	t := &turn{botID: botID, threadID: th.ID, input: text, cancel: cancel, done: make(chan struct{})}
+	t := &turn{botID: botID, threadID: th.ID, botName: b.Name, source: source, input: text, cancel: cancel, done: make(chan struct{})}
 	r.active[botID] = t
 	r.mu.Unlock()
 
@@ -153,7 +178,7 @@ func (r *Runtime) Chat(ctx context.Context, botID, threadID, text string) (ChatR
 	var msg store.Message
 	err = r.o.DB.Tx(ctx, func(q *store.Queries) error {
 		var err error
-		if task, err = q.CreateTask(ctx, store.Task{BotID: botID, ThreadID: th.ID, Source: "owner", State: store.TaskQueued, Input: text}); err != nil {
+		if task, err = q.CreateTask(ctx, store.Task{BotID: botID, ThreadID: th.ID, Source: source, State: store.TaskQueued, Input: text}); err != nil {
 			return err
 		}
 		meta, _ := json.Marshal(map[string]string{"task_id": task.ID})
@@ -254,7 +279,7 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 	if !mine {
 		return
 	}
-	if e.Type != engine.EventNeedsApproval {
+	if e.Type != engine.EventNeedsApproval && e.Type != engine.EventRequestClosed {
 		t.mu.Lock()
 		wasWaiting := t.waiting
 		t.waiting = false
@@ -298,9 +323,14 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 		if e.Request != nil && e.Request.Kind == "approval" {
 			state = store.TaskWaitingApproval
 		}
-		// 先記下 Bot 在問什麼，再改狀態：看到「等你」的人一定查得到問題內容。
-		r.emit(t, KindNeedsApproval, e, true)
+		// 先開卡、記下 Bot 在問什麼，再改狀態：看到「等你」的人一定查得到問題內容，也能就地回覆。
+		item := r.openCard(t, e.Request)
+		r.emit(t, KindNeedsApproval, NeedsPayload{Event: e, InboxID: item.ID, ExpiresAt: item.ExpiresAt}, true)
 		r.setState(t, state)
+	case engine.EventRequestClosed:
+		if e.Request != nil {
+			r.closeRequest(t, e.Request.ID)
+		}
 	case engine.EventError:
 		t.mu.Lock()
 		t.lastErr = e.Text
@@ -336,6 +366,8 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		return
 	}
 	t.finished = true
+	p := t.pending
+	t.pending = nil
 	streamed := t.text.String()
 	msgID := t.messageID
 	stopping := t.stopping
@@ -377,9 +409,15 @@ func (r *Runtime) finish(t *turn, status, text string) {
 			r.emit(t, KindMessageCreated, m, true)
 		}
 	}
+	if p != nil {
+		// 工作結束了，Bot 不再等這個回覆。
+		p.stop()
+		r.settle(t, p, store.InboxDismissed, ResolutionGone, "system", nil, "")
+	}
 	if err := r.o.DB.SetTaskState(ctx, t.taskID, store.TaskDone, verdict); err != nil {
 		r.log.Warn("寫入任務狀態失敗", "task", t.taskID, "err", err)
 	}
+	r.notifyDone(t, verdict, final)
 	r.emit(t, KindTaskState, map[string]string{"state": store.TaskDone, "verdict": verdict}, true)
 	r.emit(t, KindDone, map[string]string{"message_id": msgID, "status": status, "verdict": verdict, "text": final}, true)
 
@@ -408,7 +446,7 @@ func (r *Runtime) emit(t *turn, kind string, payload any, persist bool) {
 	}
 	e := events.Event{Kind: kind, BotID: t.botID, ThreadID: t.threadID, TaskID: t.taskID, Payload: raw, At: time.Now().UnixMilli()}
 	if persist {
-		row, err := r.o.DB.AppendEvent(context.Background(), store.Event{BotID: t.botID, TaskID: t.taskID, Kind: kind, Payload: raw})
+		row, err := r.o.DB.AppendEvent(context.Background(), store.Event{BotID: t.botID, ThreadID: t.threadID, TaskID: t.taskID, Kind: kind, Payload: raw})
 		if err != nil {
 			r.log.Warn("寫入事件失敗", "kind", kind, "err", err)
 		} else {

@@ -1,4 +1,5 @@
-// Package chat 是對話的操作（PRD §6.1 CH-*、§22.3 chat）：send、stop、read、list_threads、wait_until_settled。
+// Package chat 是對話的操作（PRD §6.1 CH-*、§22.3 chat）：send、stop、read、list_threads、wait_until_settled，
+// 以及回覆 Bot 的提問（respond、ask_again，C12）和讀回工作步驟（steps）。
 // 真正的執行在 internal/runtime；這裡負責權限、資源範圍、輸入檢查與把結果整理給代理看。
 package chat
 
@@ -9,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"xbot/internal/engine"
 	"xbot/internal/events"
 	"xbot/internal/limits"
 	"xbot/internal/ops"
@@ -23,6 +23,8 @@ type Runtime interface {
 	Stop(ctx context.Context, botID, threadID string) (bool, error)
 	Active(botID string) (threadID, taskID string)
 	Bus() *events.Bus
+	Respond(ctx context.Context, itemID string, a runtime.Answer, by string) (store.InboxItem, error)
+	AskAgain(ctx context.Context, itemID string) (runtime.ChatResult, store.InboxItem, error)
 }
 
 // Deps 是對話操作需要的服務元件。Runtime 是 nil 時（指令列只產生說明）呼叫會回 internal。
@@ -123,6 +125,7 @@ type Request struct {
 	Kind    string   `json:"kind" desc:"approval（核准）、clarify（補充問題）、secret（密碼、驗證碼）…"`
 	Prompt  string   `json:"prompt"`
 	Choices []string `json:"choices,omitempty"`
+	InboxID string   `json:"inbox_id,omitempty" desc:"這個問題的待我處理卡；用 xbot.chat.respond 回覆"`
 }
 
 // WaitOut 是 xbot.chat.wait_until_settled 的輸出。
@@ -140,6 +143,62 @@ type WaitOut struct {
 	MessageID     string   `json:"message_id,omitempty" desc:"Bot 回覆那則訊息的 id"`
 	WaitedSeconds float64  `json:"waited_s"`
 }
+
+// RespondIn 是 xbot.chat.respond 的輸入。
+type RespondIn struct {
+	InboxID string            `json:"inbox_id,omitempty" max:"64" desc:"待我處理卡的 id（chat.needs_approval 事件或 wait_until_settled 的 request.inbox_id）"`
+	TaskID  string            `json:"task_id,omitempty" max:"64" desc:"或：這件工作目前在等的那個問題"`
+	Choice  string            `json:"choice,omitempty" enum:"once,always,deny" desc:"核准卡：once 允許這次、always 一律允許（卡片有給才行）、deny 拒絕"`
+	Text    string            `json:"text,omitempty" max:"100000" desc:"提問的回答（點選項就送選項的文字）"`
+	Answers []string          `json:"answers,omitempty" max:"20" desc:"多個問題時逐題的回答（依題目順序）"`
+	Value   string            `json:"value,omitempty" max:"16384" secret:"true" desc:"密碼、金鑰、驗證碼；只交給 Bot 的電腦，不寫進紀錄"`
+	Values  map[string]string `json:"values,omitempty" secret:"true" desc:"多欄位的密碼類輸入（例：identifier、password）"`
+	Decline bool              `json:"decline,omitempty" desc:"不回答：核准＝拒絕、提問＝略過、密碼＝不提供"`
+}
+
+// RespondOut 是 xbot.chat.respond 的輸出。
+type RespondOut struct {
+	InboxID    string `json:"inbox_id"`
+	TaskID     string `json:"task_id"`
+	ThreadID   string `json:"thread_id"`
+	Status     string `json:"status" desc:"卡片狀態：resolved（已交給 Bot）；預演時是 open"`
+	Resolution string `json:"resolution,omitempty" desc:"once、always、deny、answered、provided、declined"`
+}
+
+// AskAgainIn 是 xbot.chat.ask_again 的輸入。
+type AskAgainIn struct {
+	InboxID string `json:"inbox_id" required:"true" max:"64" desc:"過期的那張提問卡"`
+}
+
+// StepsIn 是 xbot.chat.steps 的輸入。
+type StepsIn struct {
+	ThreadID string `json:"thread_id" required:"true" max:"64"`
+	TaskID   string `json:"task_id,omitempty" max:"64" desc:"只讀這件工作的"`
+	After    int64  `json:"after,omitempty" min:"0" desc:"只讀 id 比它大的（上一頁的 next_after）"`
+	Limit    int    `json:"limit,omitempty" min:"1" max:"500" desc:"最多幾筆；預設 500"`
+}
+
+// StepEvent 是一筆工作步驟事件（和 SSE 的事件同一個格式）。
+type StepEvent struct {
+	ID       int64           `json:"id"`
+	Kind     string          `json:"kind" desc:"chat.tool_call、chat.tool_result、chat.needs_approval、chat.answered、chat.error、task.state"`
+	BotID    string          `json:"bot_id,omitempty"`
+	ThreadID string          `json:"thread_id,omitempty"`
+	TaskID   string          `json:"task_id,omitempty"`
+	Payload  json.RawMessage `json:"payload"`
+	At       int64           `json:"at"`
+}
+
+// StepsOut 是 xbot.chat.steps 的輸出。
+type StepsOut struct {
+	Events    []StepEvent `json:"events" desc:"由舊到新"`
+	HasMore   bool        `json:"has_more"`
+	NextAfter int64       `json:"next_after,omitempty"`
+}
+
+// stepKinds 是 chat.steps 回的事件種類：重畫工作步驟需要的，不含訊息（chat.read 有）和用量。
+var stepKinds = []string{runtime.KindToolCall, runtime.KindToolResult, runtime.KindNeedsApproval, runtime.KindAnswered,
+	runtime.KindError, runtime.KindTaskState}
 
 // Register 登錄對話操作。
 func Register(reg *ops.Registry, d Deps) {
@@ -165,6 +224,26 @@ func Register(reg *ops.Registry, d Deps) {
 		Name: "xbot.chat.list_threads", Summary: "列出和一個 Bot 的對話串",
 		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
 		Handle: listThreads,
+	})
+	ops.Register(reg, ops.Op[RespondIn, RespondOut]{
+		Name: "xbot.chat.respond", Summary: "回覆 Bot 的提問（允許指令、回答問題、提供密碼）",
+		Description: "Bot 在等人時（needs_person）用它回覆；對話裡和待我處理用的是同一個操作。inbox_id 或 task_id 擇一。" +
+			"核准卡用 choice（once／always／deny）；提問用 text（多題用 answers）；密碼類用 value（帳號＋密碼用 values），" +
+			"值只交給 Bot 的電腦，不寫進紀錄。decline=true 表示不回答（拒絕、略過、不提供）。目前只有你本人能回覆。",
+		Scope: ops.ScopeOperate, Risk: ops.RiskSafe,
+		Handle: d.respond,
+	})
+	ops.Register(reg, ops.Op[AskAgainIn, SendOut]{
+		Name: "xbot.chat.ask_again", Summary: "請 Bot 把過期的問題再問一次",
+		Description: "無人在場的提問 10 分鐘沒回會過期；之後用它在原本的對話串請 Bot 再問一次。Bot 正在忙時回 conflict（retryable）。",
+		Scope:       ops.ScopeOperate, Risk: ops.RiskSafe,
+		Handle: d.askAgain,
+	})
+	ops.Register(reg, ops.Op[StepsIn, StepsOut]{
+		Name: "xbot.chat.steps", Summary: "讀一條對話串的工作步驟（工具、提問、回覆、狀態）",
+		Description: "重新整理後用它把工作步驟補回來（chat.read 只有訊息）。事件和 SSE 的格式一樣；has_more 時用 next_after 往後讀。",
+		Scope:       ops.ScopeRead, Risk: ops.RiskSafe,
+		Handle: steps,
 	})
 	ops.Register(reg, ops.Op[WaitIn, WaitOut]{
 		Name: "xbot.chat.wait_until_settled", Summary: "等 Bot 做完（或需要人）再回傳它的回覆",
@@ -406,9 +485,9 @@ func (d Deps) wait(ctx context.Context, call *ops.Call, in WaitIn) (WaitOut, err
 	out.NeedsPerson = task.State == store.TaskWaitingInput || task.State == store.TaskWaitingApproval
 	if out.NeedsPerson {
 		if e, err := call.DB.LatestTaskEvent(ctx, task.BotID, task.ID, runtime.KindNeedsApproval); err == nil {
-			var ev engine.Event
+			var ev runtime.NeedsPayload
 			if json.Unmarshal(e.Payload, &ev) == nil && ev.Request != nil {
-				out.Request = &Request{Kind: ev.Request.Kind, Prompt: ev.Request.Prompt, Choices: ev.Request.Choices}
+				out.Request = &Request{Kind: ev.Request.Kind, Prompt: ev.Request.Prompt, Choices: ev.Request.Choices, InboxID: ev.InboxID}
 			}
 		}
 	}
@@ -427,6 +506,143 @@ func (d Deps) wait(ctx context.Context, call *ops.Call, in WaitIn) (WaitOut, err
 				break
 			}
 		}
+	}
+	return out, nil
+}
+
+// ── 回覆 Bot 的提問（C12）─────────────────────────────
+
+func (d Deps) respond(ctx context.Context, call *ops.Call, in RespondIn) (RespondOut, error) {
+	// SEC-8／§18：只有你本人能回答 Bot 的提問、允許它的指令；代為處理（MCP-10）之後才開放給有授權的代理。
+	if call.Identity.Kind != ops.KindOwner {
+		return RespondOut{}, ops.Forbidden("只有你本人能回覆 Bot 的提問")
+	}
+	rt, err := d.runtime()
+	if err != nil {
+		return RespondOut{}, err
+	}
+	it, err := findCard(ctx, call, in.InboxID, in.TaskID)
+	if err != nil {
+		return RespondOut{}, err
+	}
+	out := RespondOut{InboxID: it.ID, TaskID: it.TaskID, ThreadID: it.ThreadID, Status: it.Status}
+	if call.DryRun {
+		if it.Status != store.InboxOpen {
+			return out, ops.Conflict(runtime.ErrAnswered.Error())
+		}
+		return out, nil
+	}
+	a := runtime.Answer{Choice: in.Choice, Text: in.Text, Answers: in.Answers, Value: in.Value, Values: in.Values, Decline: in.Decline}
+	got, err := rt.Respond(ctx, it.ID, a, call.Identity.Actor())
+	var bad *runtime.InvalidAnswer
+	switch {
+	case errors.As(err, &bad):
+		return out, ops.InvalidInput(ops.FieldError{Field: bad.Field, Message: bad.Message})
+	case errors.Is(err, runtime.ErrAnswered), errors.Is(err, runtime.ErrNotQuestion):
+		return out, ops.Conflict(err.Error())
+	case errors.Is(err, runtime.ErrRequestGone):
+		return out, ops.Conflict(err.Error() + "；需要的話請重新交代")
+	case errors.Is(err, store.ErrNotFound):
+		return out, ops.NotFound("找不到這張卡")
+	case err != nil:
+		return out, err
+	}
+	out.Status, out.Resolution = got.Status, got.Resolution
+	return out, nil
+}
+
+// findCard 找要回覆的卡：直接給 inbox_id，或給 task_id 找那件工作目前在等的。
+func findCard(ctx context.Context, call *ops.Call, inboxID, taskID string) (store.InboxItem, error) {
+	if (inboxID == "") == (taskID == "") {
+		return store.InboxItem{}, ops.InvalidInput(ops.FieldError{Message: "inbox_id、task_id 要擇一"})
+	}
+	var it store.InboxItem
+	var err error
+	if inboxID != "" {
+		it, err = call.DB.GetInboxItem(ctx, inboxID)
+	} else {
+		var items []store.InboxItem
+		items, err = call.DB.ListInboxFiltered(ctx, store.InboxFilter{Status: store.InboxOpen, TaskID: taskID,
+			Kinds: []string{"approval", "question", "secret"}})
+		if err == nil && len(items) == 0 {
+			err = store.ErrNotFound
+		}
+		if err == nil {
+			it = items[0]
+		}
+	}
+	if errors.Is(err, store.ErrNotFound) {
+		return it, ops.NotFound("找不到 Bot 在等的這個問題")
+	}
+	if err != nil {
+		return it, err
+	}
+	if it.BotID != "" && !call.Identity.CanAccess(ops.ResourceBot, it.BotID) {
+		return it, ops.Forbidden(call.Identity.DisplayName() + " 不能碰這個 Bot")
+	}
+	return it, nil
+}
+
+func (d Deps) askAgain(ctx context.Context, call *ops.Call, in AskAgainIn) (SendOut, error) {
+	if call.Identity.Kind != ops.KindOwner {
+		return SendOut{}, ops.Forbidden("只有你本人能請 Bot 再問一次")
+	}
+	rt, err := d.runtime()
+	if err != nil {
+		return SendOut{}, err
+	}
+	it, err := findCard(ctx, call, in.InboxID, "")
+	if err != nil {
+		return SendOut{}, err
+	}
+	if it.Status != store.InboxExpired || it.ThreadID == "" {
+		return SendOut{}, ops.Conflict(runtime.ErrNotExpired.Error())
+	}
+	if call.DryRun {
+		if _, task := rt.Active(it.BotID); task != "" {
+			return SendOut{}, busy()
+		}
+		return SendOut{BotID: it.BotID, ThreadID: it.ThreadID}, nil
+	}
+	res, _, err := rt.AskAgain(ctx, it.ID)
+	switch {
+	case errors.Is(err, runtime.ErrBusy):
+		return SendOut{}, busy()
+	case errors.Is(err, runtime.ErrAnswered):
+		return SendOut{}, ops.Conflict("已經請它再問過了")
+	case errors.Is(err, runtime.ErrNotExpired):
+		return SendOut{}, ops.Conflict(err.Error())
+	case errors.Is(err, runtime.ErrNoModel):
+		return SendOut{}, ops.Conflict("還沒設定模型：請先用 xbot.models.set_provider 設定模型供應商與預設模型")
+	case err != nil:
+		return SendOut{}, err
+	}
+	return SendOut{BotID: it.BotID, ThreadID: res.ThreadID, TaskID: res.TaskID, MessageID: res.MessageID}, nil
+}
+
+func steps(ctx context.Context, call *ops.Call, in StepsIn) (StepsOut, error) {
+	th, err := thread(ctx, call, in.ThreadID)
+	if err != nil {
+		return StepsOut{}, err
+	}
+	limit := in.Limit
+	if limit <= 0 || limit > limits.StepsPageMax {
+		limit = limits.StepsPageMax
+	}
+	rows, err := call.DB.ListThreadEvents(ctx, th.ID, in.TaskID, stepKinds, in.After, limit+1)
+	if err != nil {
+		return StepsOut{}, err
+	}
+	out := StepsOut{Events: []StepEvent{}}
+	if len(rows) > limit {
+		rows, out.HasMore = rows[:limit], true
+	}
+	for _, r := range rows {
+		out.Events = append(out.Events, StepEvent{ID: r.ID, Kind: r.Kind, BotID: r.BotID, ThreadID: r.ThreadID, TaskID: r.TaskID,
+			Payload: r.Payload, At: r.CreatedAt})
+	}
+	if out.HasMore {
+		out.NextAfter = rows[len(rows)-1].ID
 	}
 	return out, nil
 }

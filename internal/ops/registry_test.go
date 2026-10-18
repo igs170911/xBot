@@ -394,8 +394,8 @@ func TestConfirmGoesToInbox(t *testing.T) {
 	if au := lastAudit(t, env); au.Status != "pending_approval" || au.Target != b.ID {
 		t.Fatalf("稽核要記等待核准：%+v", au)
 	}
-	if env.events.Load() != 1 {
-		t.Fatalf("送去核准要發事件：%d", env.events.Load())
+	if env.events.Load() != 2 {
+		t.Fatalf("送去核准要發事件（inbox.created＋op）：%d", env.events.Load())
 	}
 
 	// 重送：同一個核准，不會多開一張。

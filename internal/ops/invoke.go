@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"xbot/internal/limits"
+	"xbot/internal/notify"
 	"xbot/internal/store"
 )
 
@@ -187,7 +188,7 @@ type approvalPayload struct {
 func (r *Registry) requestApproval(ctx context.Context, call *Call, raw, masked json.RawMessage, botID, target string, claimed bool) *Error {
 	id, info := call.Identity, call.Op
 	var approvalID string
-	var ev *store.Event
+	var ev, cardEv *store.Event
 	err := r.cfg.DB.Tx(ctx, func(q *store.Queries) error {
 		bot, err := existingBot(ctx, q, botID)
 		if err != nil {
@@ -217,6 +218,11 @@ func (r *Registry) requestApproval(ctx context.Context, call *Call, raw, masked 
 		if err != nil {
 			return err
 		}
+		created, err := q.AppendEvent(ctx, notify.Event(notify.KindCreated, item))
+		if err != nil {
+			return err
+		}
+		cardEv = &created
 		// 沒帶 request_id 也記一筆，讓核准後執行只會做一次（StartApprovedOpRequest）。
 		reqID := call.RequestID
 		if !claimed {
@@ -239,6 +245,7 @@ func (r *Registry) requestApproval(ctx context.Context, call *Call, raw, masked 
 	if err != nil {
 		return AsError(err)
 	}
+	r.notify(cardEv)
 	r.notify(ev)
 	return pendingError(approvalID)
 }
@@ -298,11 +305,23 @@ func (r *Registry) executeApproved(ctx context.Context, approvalID string) (Resu
 	}
 	out, err := e.run(ctx, call, a.Input)
 	if err != nil {
-		// 退回等待狀態，讓之後可以再試。
-		if e := r.cfg.DB.FinishOpRequest(context.WithoutCancel(ctx), prev.Actor, prev.RequestID, "pending_approval", nil, approvalID); e != nil {
+		// 退回等待狀態，讓之後可以再試；記下錯誤，approvals.wait 才分得出「允許了但失敗」。
+		bg := context.WithoutCancel(ctx)
+		if e := r.cfg.DB.FinishOpRequest(bg, prev.Actor, prev.RequestID, "pending_approval", nil, approvalID); e != nil {
 			r.cfg.Logger.Error("退回核准狀態失敗", "approval", approvalID, "err", e)
 		}
-		return Result{}, audit.fail(ctx, AsError(err))
+		oe := AsError(err)
+		if raw, e := json.Marshal(oe); e == nil {
+			if e := r.cfg.DB.SetApprovalError(bg, approvalID, string(raw)); e != nil && !errors.Is(e, store.ErrNotFound) {
+				r.cfg.Logger.Error("記錄核准執行失敗", "approval", approvalID, "err", e)
+			}
+		}
+		return Result{}, audit.fail(ctx, oe)
+	}
+	if a.Error != "" {
+		if e := r.cfg.DB.SetApprovalError(context.WithoutCancel(ctx), approvalID, ""); e != nil && !errors.Is(e, store.ErrNotFound) {
+			r.cfg.Logger.Error("清除核准錯誤失敗", "approval", approvalID, "err", e)
+		}
 	}
 	audit.requestID = prev.RequestID
 	if err := r.finish(ctx, call, firstBot(refs), audit, out, true); err != nil {
@@ -364,6 +383,13 @@ func addEvent(ctx context.Context, q *store.Queries, botID string, payload map[s
 func (r *Registry) notify(ev *store.Event) {
 	if ev != nil && r.cfg.Notify != nil {
 		r.cfg.Notify(*ev)
+	}
+}
+
+// Notify 通知已經寫進 event 表的事件（SSE 用）；操作自己寫事件時（例：待我處理卡片被處理）在交易提交後呼叫。
+func (r *Registry) Notify(evs ...store.Event) {
+	for i := range evs {
+		r.notify(&evs[i])
 	}
 }
 

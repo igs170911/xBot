@@ -24,6 +24,8 @@ const (
 	EventToolResult EventType = "tool_result"
 	// EventNeedsApproval 是引擎在等人回覆（核准、補充問題、密碼等）；用 Driver.Respond 回覆。
 	EventNeedsApproval EventType = "needs_approval"
+	// EventRequestClosed 是引擎不再等某個 needs_approval 的回覆了（例：Hermes 自己逾時或取消）；Request 只有 ID。
+	EventRequestClosed EventType = "request_closed"
 	// EventUsage 是用量更新（輪中的即時值；Done 會帶最後的值）。
 	EventUsage EventType = "usage"
 	// EventDone 是這一輪結束（Status 說明是正常完成、被中斷或失敗）。
@@ -75,7 +77,9 @@ type ToolEvent struct {
 type Request struct {
 	ID string `json:"id"`
 	// Kind：approval（核准）、clarify（補充問題）、secret（密碼、驗證碼）、或引擎自己的名稱。
-	Kind    string   `json:"kind"`
+	Kind string `json:"kind"`
+	// Method 是引擎原本的請求名稱（Hermes：clarify、approval、secret、sudo、vault.code…）。
+	Method  string   `json:"method,omitempty"`
 	Prompt  string   `json:"prompt"`
 	Choices []string `json:"choices,omitempty"`
 	// Params 是引擎原本的參數，回覆時可能用得到。
@@ -124,6 +128,8 @@ type Message struct {
 type Answer struct {
 	// Choice：approval 用 once／always／deny。
 	Choice string
+	// Answers：clarify 有多個問題時，逐題的回答（依問題順序）；空的時每題都用 Text。
+	Answers []string
 	// Text：clarify 的回答。
 	Text string
 	// Value：secret 類的值（不會寫進紀錄）。

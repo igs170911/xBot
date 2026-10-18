@@ -396,9 +396,11 @@ export interface ApprovalsDecideOutput {
   settled: boolean
   /** 允許後動作已經執行完成 */
   executed: boolean
+  /** 允許了但執行失敗（error 是原因；你可以再按一次允許重試） */
+  failed: boolean
   /** 動作的輸出（executed 時） */
   output?: unknown
-  /** 允許了但執行失敗時的錯誤（可以再允許一次重試） */
+  /** 允許了但執行失敗時的錯誤 */
   error?: {
     code: string
     message: string
@@ -491,9 +493,11 @@ export interface ApprovalsWaitOutput {
   settled: boolean
   /** 允許後動作已經執行完成 */
   executed: boolean
+  /** 允許了但執行失敗（error 是原因；你可以再按一次允許重試） */
+  failed: boolean
   /** 動作的輸出（executed 時） */
   output?: unknown
-  /** 允許了但執行失敗時的錯誤（可以再允許一次重試） */
+  /** 允許了但執行失敗時的錯誤 */
   error?: {
     code: string
     message: string
@@ -509,7 +513,7 @@ export interface ApprovalsWaitOutput {
 /**
  * 等一個核准的結果
  *
- * 收到 pending_approval 後用它等：使用者允許並執行完、退回、或逾時（settled=false，可以再呼叫）。代理只能等自己要求的核准。
+ * 收到 pending_approval 後用它等：使用者允許並執行完（executed）、允許了但執行失敗（failed）、退回、或逾時（settled=false，可以再呼叫）。代理只能等自己要求的核准。
  *
  * `xbot.approvals.wait`：權限 read、風險 safe
  */
@@ -793,6 +797,34 @@ export function botsUpdate(input: BotsUpdateInput, opts?: CallOptions): Promise<
   return invoke('xbot.bots.update', input, opts).then((r) => r.output)
 }
 
+// xbot.chat.ask_again
+
+export interface ChatAskAgainInput {
+  /** 過期的那張提問卡 */
+  inbox_id: string
+}
+
+export interface ChatAskAgainOutput {
+  bot_id: string
+  /** 預演且沒給 thread_id 時是空白（會開新的對話串） */
+  thread_id: string
+  /** 這件工作的 id，交給 wait_until_settled */
+  task_id: string
+  /** 你這則訊息的 id */
+  message_id: string
+}
+
+/**
+ * 請 Bot 把過期的問題再問一次
+ *
+ * 無人在場的提問 10 分鐘沒回會過期；之後用它在原本的對話串請 Bot 再問一次。Bot 正在忙時回 conflict（retryable）。
+ *
+ * `xbot.chat.ask_again`：權限 operate、風險 safe
+ */
+export function chatAskAgain(input: ChatAskAgainInput, opts?: CallOptions): Promise<ChatAskAgainOutput> {
+  return invoke('xbot.chat.ask_again', input, opts).then((r) => r.output)
+}
+
 // xbot.chat.list_threads
 
 export interface ChatListThreadsInput {
@@ -879,6 +911,48 @@ export function chatRead(input: ChatReadInput, opts?: CallOptions): Promise<Chat
   return invoke('xbot.chat.read', input, opts).then((r) => r.output)
 }
 
+// xbot.chat.respond
+
+export interface ChatRespondInput {
+  /** 待我處理卡的 id（chat.needs_approval 事件或 wait_until_settled 的 request.inbox_id） */
+  inbox_id?: string
+  /** 或：這件工作目前在等的那個問題 */
+  task_id?: string
+  /** 核准卡：once 允許這次、always 一律允許（卡片有給才行）、deny 拒絕 */
+  choice?: 'once' | 'always' | 'deny'
+  /** 提問的回答（點選項就送選項的文字） */
+  text?: string
+  /** 多個問題時逐題的回答（依題目順序） */
+  answers?: string[]
+  /** 密碼、金鑰、驗證碼；只交給 Bot 的電腦，不寫進紀錄（密鑰：只能寫、不能讀） */
+  value?: string
+  /** 多欄位的密碼類輸入（例：identifier、password）（密鑰：只能寫、不能讀） */
+  values?: Record<string, string>
+  /** 不回答：核准＝拒絕、提問＝略過、密碼＝不提供 */
+  decline?: boolean
+}
+
+export interface ChatRespondOutput {
+  inbox_id: string
+  task_id: string
+  thread_id: string
+  /** 卡片狀態：resolved（已交給 Bot）；預演時是 open */
+  status: string
+  /** once、always、deny、answered、provided、declined */
+  resolution?: string
+}
+
+/**
+ * 回覆 Bot 的提問（允許指令、回答問題、提供密碼）
+ *
+ * Bot 在等人時（needs_person）用它回覆；對話裡和待我處理用的是同一個操作。inbox_id 或 task_id 擇一。核准卡用 choice（once／always／deny）；提問用 text（多題用 answers）；密碼類用 value（帳號＋密碼用 values），值只交給 Bot 的電腦，不寫進紀錄。decline=true 表示不回答（拒絕、略過、不提供）。目前只有你本人能回覆。
+ *
+ * `xbot.chat.respond`：權限 operate、風險 safe
+ */
+export function chatRespond(input: ChatRespondInput = {}, opts?: CallOptions): Promise<ChatRespondOutput> {
+  return invoke('xbot.chat.respond', input, opts).then((r) => r.output)
+}
+
 // xbot.chat.send
 
 export interface ChatSendInput {
@@ -909,6 +983,45 @@ export interface ChatSendOutput {
  */
 export function chatSend(input: ChatSendInput, opts?: CallOptions): Promise<ChatSendOutput> {
   return invoke('xbot.chat.send', input, opts).then((r) => r.output)
+}
+
+// xbot.chat.steps
+
+export interface ChatStepsInput {
+  thread_id: string
+  /** 只讀這件工作的 */
+  task_id?: string
+  /** 只讀 id 比它大的（上一頁的 next_after） */
+  after?: number
+  /** 最多幾筆；預設 500 */
+  limit?: number
+}
+
+export interface ChatStepsOutput {
+  /** 由舊到新 */
+  events: {
+    id: number
+    /** chat.tool_call、chat.tool_result、chat.needs_approval、chat.answered、chat.error、task.state */
+    kind: string
+    bot_id?: string
+    thread_id?: string
+    task_id?: string
+    payload: unknown
+    at: number
+  }[]
+  has_more: boolean
+  next_after?: number
+}
+
+/**
+ * 讀一條對話串的工作步驟（工具、提問、回覆、狀態）
+ *
+ * 重新整理後用它把工作步驟補回來（chat.read 只有訊息）。事件和 SSE 的格式一樣；has_more 時用 next_after 往後讀。
+ *
+ * `xbot.chat.steps`：權限 read、風險 safe
+ */
+export function chatSteps(input: ChatStepsInput, opts?: CallOptions): Promise<ChatStepsOutput> {
+  return invoke('xbot.chat.steps', input, opts).then((r) => r.output)
 }
 
 // xbot.chat.stop
@@ -961,6 +1074,8 @@ export interface ChatWaitUntilSettledOutput {
     kind: string
     prompt: string
     choices?: string[]
+    /** 這個問題的待我處理卡；用 xbot.chat.respond 回覆 */
+    inbox_id?: string
   }
   /** Bot 這次的回覆（目前為止） */
   text: string
@@ -980,14 +1095,100 @@ export function chatWaitUntilSettled(input: ChatWaitUntilSettledInput, opts?: Ca
   return invoke('xbot.chat.wait_until_settled', input, opts).then((r) => r.output)
 }
 
+// xbot.inbox.counts
+
+export interface InboxCountsInput {
+  /** 只算這個 Bot 的 */
+  bot_id?: string
+}
+
+export interface InboxCountsOutput {
+  /** 待我處理：還沒處理的卡（側欄徽章） */
+  open: number
+  /** 通知中心的未讀數 */
+  unread: number
+  /** 各分類：decide、done、mention、error */
+  groups: Record<string, {
+    /** 還沒處理的 */
+    open: number
+    /** 未讀的 */
+    unread: number
+  }>
+}
+
+/**
+ * 待我處理與通知的數量（徽章用）
+ *
+ * `xbot.inbox.counts`：權限 read、風險 safe
+ */
+export function inboxCounts(input: InboxCountsInput = {}, opts?: CallOptions): Promise<InboxCountsOutput> {
+  return invoke('xbot.inbox.counts', input, opts).then((r) => r.output)
+}
+
+// xbot.inbox.dismiss
+
+export interface InboxDismissInput {
+  inbox_id: string
+}
+
+export interface InboxDismissOutput {
+  item: {
+    id: string
+    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention */
+    kind: string
+    /** decide（要你決定）、done（完成）、mention（提到你）、error（出錯） */
+    group: string
+    bot_id?: string
+    /** Bot 在對話裡問的：是哪件工作 */
+    task_id?: string
+    /** Bot 在對話裡問的：是哪條對話串 */
+    thread_id?: string
+    /** 例：核准的 id */
+    ref?: string
+    title: string
+    body: string
+    /** 卡片內容（選項、指令、輸入欄…）；不含任何密碼類的值 */
+    payload: unknown
+    /** open、resolved、dismissed、expired */
+    status: string
+    /** 怎麼處理的：once、always、deny、allow、answered、provided、declined、expired、gone、canceled、asked_again、dismissed、info */
+    resolution?: string
+    resolved_by?: string
+    resolved_at?: number
+    read: boolean
+    /** 無人在場的提問：這個時間沒回就過期（0 表示不會過期） */
+    expires_at?: number
+    /** 這個時間之前可以用 xbot.inbox.undo 復原（0 表示不能復原） */
+    undo_until?: number
+    created_at: number
+  }
+}
+
+/**
+ * 略過一張不用處理的卡
+ *
+ * 操作的核准請用 xbot.approvals.decide；Bot 在對話裡的提問請用 xbot.chat.respond（decline）。10 分鐘內可以復原。
+ *
+ * `xbot.inbox.dismiss`：權限 operate、風險 safe
+ */
+export function inboxDismiss(input: InboxDismissInput, opts?: CallOptions): Promise<InboxDismissOutput> {
+  return invoke('xbot.inbox.dismiss', input, opts).then((r) => r.output)
+}
+
 // xbot.inbox.list
 
 export interface InboxListInput {
-  /** 預設 open（還沒處理的） */
-  status?: 'open' | 'resolved' | 'dismissed' | 'all'
+  /** 預設 open（還沒處理的）；通知中心用 all */
+  status?: 'open' | 'resolved' | 'dismissed' | 'expired' | 'all'
+  /** 只列這一類：decide（要你決定）、done（完成）、mention（提到你）、error（出錯） */
+  group?: 'decide' | 'done' | 'mention' | 'error'
   /** 只列這一種 */
   kind?: string
   bot_id?: string
+  /** 只列這條對話串的 */
+  thread_id?: string
+  /** 只列未讀的 */
+  unread?: boolean
   /** 最多幾筆；預設 50 */
   limit?: number
 }
@@ -996,28 +1197,122 @@ export interface InboxListOutput {
   /** 新到舊 */
   items: {
     id: string
-    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget */
+    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention */
     kind: string
+    /** decide（要你決定）、done（完成）、mention（提到你）、error（出錯） */
+    group: string
     bot_id?: string
+    /** Bot 在對話裡問的：是哪件工作 */
+    task_id?: string
+    /** Bot 在對話裡問的：是哪條對話串 */
+    thread_id?: string
     /** 例：核准的 id */
     ref?: string
     title: string
     body: string
+    /** 卡片內容（選項、指令、輸入欄…）；不含任何密碼類的值 */
     payload: unknown
+    /** open、resolved、dismissed、expired */
     status: string
+    /** 怎麼處理的：once、always、deny、allow、answered、provided、declined、expired、gone、canceled、asked_again、dismissed、info */
+    resolution?: string
     resolved_by?: string
     resolved_at?: number
+    read: boolean
+    /** 無人在場的提問：這個時間沒回就過期（0 表示不會過期） */
+    expires_at?: number
+    /** 這個時間之前可以用 xbot.inbox.undo 復原（0 表示不能復原） */
+    undo_until?: number
     created_at: number
   }[]
 }
 
 /**
- * 列出「待我處理」
+ * 列出「待我處理」與通知
+ *
+ * 預設只列還沒處理的（待我處理）；通知中心用 status=all 加 group 篩選。
  *
  * `xbot.inbox.list`：權限 read、風險 safe
  */
 export function inboxList(input: InboxListInput = {}, opts?: CallOptions): Promise<InboxListOutput> {
   return invoke('xbot.inbox.list', input, opts).then((r) => r.output)
+}
+
+// xbot.inbox.mark_read
+
+export interface InboxMarkReadInput {
+  /** 這幾張 */
+  ids?: string[]
+  /** 這條對話串的全部（打開對話時） */
+  thread_id?: string
+  /** 全部標為已讀 */
+  all?: boolean
+}
+
+export interface InboxMarkReadOutput {
+  /** 這次從未讀變成已讀的張數 */
+  marked: number
+}
+
+/**
+ * 把通知標為已讀
+ *
+ * ids、thread_id、all 擇一。只有你本人能用（已讀是你的狀態）。
+ *
+ * `xbot.inbox.mark_read`：權限 operate、風險 safe
+ */
+export function inboxMarkRead(input: InboxMarkReadInput = {}, opts?: CallOptions): Promise<InboxMarkReadOutput> {
+  return invoke('xbot.inbox.mark_read', input, opts).then((r) => r.output)
+}
+
+// xbot.inbox.undo
+
+export interface InboxUndoInput {
+  inbox_id: string
+}
+
+export interface InboxUndoOutput {
+  item: {
+    id: string
+    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention */
+    kind: string
+    /** decide（要你決定）、done（完成）、mention（提到你）、error（出錯） */
+    group: string
+    bot_id?: string
+    /** Bot 在對話裡問的：是哪件工作 */
+    task_id?: string
+    /** Bot 在對話裡問的：是哪條對話串 */
+    thread_id?: string
+    /** 例：核准的 id */
+    ref?: string
+    title: string
+    body: string
+    /** 卡片內容（選項、指令、輸入欄…）；不含任何密碼類的值 */
+    payload: unknown
+    /** open、resolved、dismissed、expired */
+    status: string
+    /** 怎麼處理的：once、always、deny、allow、answered、provided、declined、expired、gone、canceled、asked_again、dismissed、info */
+    resolution?: string
+    resolved_by?: string
+    resolved_at?: number
+    read: boolean
+    /** 無人在場的提問：這個時間沒回就過期（0 表示不會過期） */
+    expires_at?: number
+    /** 這個時間之前可以用 xbot.inbox.undo 復原（0 表示不能復原） */
+    undo_until?: number
+    created_at: number
+  }
+}
+
+/**
+ * 復原剛剛的決定
+ *
+ * 10 分鐘內可以復原：退回的核准會回到等你決定，略過的卡會回到待我處理。已經執行的動作、已經交給 Bot 的回答不能復原（undo_until 是 0）。
+ *
+ * `xbot.inbox.undo`：權限 operate、風險 safe
+ */
+export function inboxUndo(input: InboxUndoInput, opts?: CallOptions): Promise<InboxUndoOutput> {
+  return invoke('xbot.inbox.undo', input, opts).then((r) => r.output)
 }
 
 // xbot.models.get
@@ -1189,12 +1484,19 @@ export interface Ops {
   'xbot.bots.get': { input: BotsGetInput; output: BotsGetOutput }
   'xbot.bots.list': { input: BotsListInput; output: BotsListOutput }
   'xbot.bots.update': { input: BotsUpdateInput; output: BotsUpdateOutput }
+  'xbot.chat.ask_again': { input: ChatAskAgainInput; output: ChatAskAgainOutput }
   'xbot.chat.list_threads': { input: ChatListThreadsInput; output: ChatListThreadsOutput }
   'xbot.chat.read': { input: ChatReadInput; output: ChatReadOutput }
+  'xbot.chat.respond': { input: ChatRespondInput; output: ChatRespondOutput }
   'xbot.chat.send': { input: ChatSendInput; output: ChatSendOutput }
+  'xbot.chat.steps': { input: ChatStepsInput; output: ChatStepsOutput }
   'xbot.chat.stop': { input: ChatStopInput; output: ChatStopOutput }
   'xbot.chat.wait_until_settled': { input: ChatWaitUntilSettledInput; output: ChatWaitUntilSettledOutput }
+  'xbot.inbox.counts': { input: InboxCountsInput; output: InboxCountsOutput }
+  'xbot.inbox.dismiss': { input: InboxDismissInput; output: InboxDismissOutput }
   'xbot.inbox.list': { input: InboxListInput; output: InboxListOutput }
+  'xbot.inbox.mark_read': { input: InboxMarkReadInput; output: InboxMarkReadOutput }
+  'xbot.inbox.undo': { input: InboxUndoInput; output: InboxUndoOutput }
   'xbot.models.get': { input: ModelsGetInput; output: ModelsGetOutput }
   'xbot.models.set_default': { input: ModelsSetDefaultInput; output: ModelsSetDefaultOutput }
   'xbot.models.set_provider': { input: ModelsSetProviderInput; output: ModelsSetProviderOutput }
@@ -1220,12 +1522,19 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.bots.get': { path: '/api/v1/bots.get', scope: 'read', risk: 'safe', mutates: false },
   'xbot.bots.list': { path: '/api/v1/bots.list', scope: 'read', risk: 'safe', mutates: false },
   'xbot.bots.update': { path: '/api/v1/bots.update', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.chat.ask_again': { path: '/api/v1/chat.ask_again', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.chat.list_threads': { path: '/api/v1/chat.list_threads', scope: 'read', risk: 'safe', mutates: false },
   'xbot.chat.read': { path: '/api/v1/chat.read', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.chat.respond': { path: '/api/v1/chat.respond', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.chat.send': { path: '/api/v1/chat.send', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.chat.steps': { path: '/api/v1/chat.steps', scope: 'read', risk: 'safe', mutates: false },
   'xbot.chat.stop': { path: '/api/v1/chat.stop', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.chat.wait_until_settled': { path: '/api/v1/chat.wait_until_settled', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.inbox.counts': { path: '/api/v1/inbox.counts', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.inbox.dismiss': { path: '/api/v1/inbox.dismiss', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.inbox.list': { path: '/api/v1/inbox.list', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.inbox.mark_read': { path: '/api/v1/inbox.mark_read', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.inbox.undo': { path: '/api/v1/inbox.undo', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.models.get': { path: '/api/v1/models.get', scope: 'read', risk: 'safe', mutates: false },
   'xbot.models.set_default': { path: '/api/v1/models.set_default', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.models.set_provider': { path: '/api/v1/models.set_provider', scope: 'admin', risk: 'safe', mutates: true },
