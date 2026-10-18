@@ -5,6 +5,7 @@ import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
 import type { Bot } from '../data/bots'
 import { useNow } from '../data/ui'
+import { AnsweredChip, AskCard } from './AskCard'
 import { formatElapsed, isActive, workSummary, type Activity, type Step } from './assemble'
 
 const STATE_TITLE: Record<string, string> = {
@@ -73,10 +74,19 @@ export function WorkSteps({ a, bot }: { a: Activity; bot?: Bot }) {
   const now = useNow(active)
   const name = bot?.name ?? 'Bot'
 
+  const answered = a.answered?.length ? (
+    <div className="flex flex-wrap gap-1.5">
+      {a.answered.map((x) => (
+        <AnsweredChip key={x.inboxId} a={x} />
+      ))}
+    </div>
+  ) : null
+
   if (!active) {
-    if (a.steps.length === 0) return null
+    if (a.steps.length === 0) return answered
     return (
       <section aria-label={`${name}的工作步驟`} className="flex flex-col gap-1.5">
+        {answered}
         <button
           type="button"
           aria-expanded={openDone}
@@ -117,12 +127,16 @@ export function WorkSteps({ a, bot }: { a: Activity; bot?: Bot }) {
         )}
       </button>
       {open && a.steps.length > 0 && <StepList steps={a.steps} now={now} />}
-      {a.request && (
-        <p className="m-0 ml-[34px] rounded-menu bg-card px-3.5 py-2.5 text-ui-sm">
-          <span className="text-warning-ink">{name}在等你：</span>
-          {a.request.prompt}
-          <span className="block text-meta text-ink-3">在對話裡回覆的功能還在做；可以先停止，再重新交代。</span>
-        </p>
+      {answered}
+      {a.request?.inboxId ? (
+        <AskCard ask={a.request} bot={bot ? { name: bot.name, shape: bot.shape, color: bot.color } : undefined} />
+      ) : (
+        a.request && (
+          <p className="m-0 ml-[34px] rounded-menu bg-card px-3.5 py-2.5 text-ui-sm">
+            <span className="text-warning-ink">{name}在等你：</span>
+            {a.request.prompt}
+          </p>
+        )
       )}
     </section>
   )

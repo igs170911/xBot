@@ -384,8 +384,8 @@ func TestApprovalsAndInbox(t *testing.T) {
 		t.Fatalf("待核准應該清空：%d", len(ps))
 	}
 
-	if n := must[int64](t)(db.ResolveInboxByRef(ctx, a.ID, "owner")); n != 1 {
-		t.Fatalf("依 ref 結掉：%d", n)
+	if n := must[[]InboxItem](t)(db.ResolveInboxByRef(ctx, a.ID, "allow", "owner")); len(n) != 1 || n[0].Resolution != "allow" || n[0].ReadAt == 0 {
+		t.Fatalf("依 ref 結掉：%+v", n)
 	}
 	if err := db.ResolveInboxItem(ctx, item.ID, "dismissed", "owner"); !errors.Is(err, ErrAlreadyDecided) {
 		t.Fatalf("已結掉的卡：%v", err)
@@ -455,5 +455,94 @@ func TestSettings(t *testing.T) {
 	check(t, db.DeleteSetting(ctx, "x"))
 	if _, err := db.GetSetting(ctx, "x"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("刪掉後：%v", err)
+	}
+}
+
+func TestInboxFilterReadReopen(t *testing.T) {
+	db := openTest(t)
+	b := newBot(t, db, "小秘")
+	th := must[Thread](t)(db.CreateThread(ctx, Thread{BotID: b.ID, Title: "t"}))
+	task := must[Task](t)(db.CreateTask(ctx, Task{BotID: b.ID, ThreadID: th.ID, Source: "owner"}))
+	q := must[InboxItem](t)(db.CreateInboxItem(ctx, InboxItem{Kind: "question", BotID: b.ID, TaskID: task.ID, ThreadID: th.ID, ExpiresAt: 99}))
+	done := must[InboxItem](t)(db.CreateInboxItem(ctx, InboxItem{Kind: "done", BotID: b.ID, ThreadID: th.ID, Status: InboxResolved, Resolution: "info"}))
+	must[InboxItem](t)(db.CreateInboxItem(ctx, InboxItem{Kind: "budget"}))
+	if got := must[InboxItem](t)(db.GetInboxItem(ctx, q.ID)); got.TaskID != task.ID || got.ThreadID != th.ID || got.ExpiresAt != 99 || got.ReadAt != 0 {
+		t.Fatalf("欄位：%+v", got)
+	}
+	if l := must[[]InboxItem](t)(db.ListInboxFiltered(ctx, InboxFilter{Kinds: []string{"question", "done"}})); len(l) != 2 {
+		t.Fatalf("依種類：%d", len(l))
+	}
+	if l := must[[]InboxItem](t)(db.ListInboxFiltered(ctx, InboxFilter{TaskID: task.ID})); len(l) != 1 || l[0].ID != q.ID {
+		t.Fatalf("依工作：%+v", l)
+	}
+	if ids := must[[]string](t)(db.MarkInboxRead(ctx, nil, th.ID)); len(ids) != 2 {
+		t.Fatalf("依對話串標已讀：%v", ids)
+	}
+	if ids := must[[]string](t)(db.MarkInboxRead(ctx, nil, th.ID)); len(ids) != 0 {
+		t.Fatalf("已讀的不再算：%v", ids)
+	}
+	if l := must[[]InboxItem](t)(db.ListInboxFiltered(ctx, InboxFilter{Unread: true})); len(l) != 1 || l[0].Kind != "budget" {
+		t.Fatalf("未讀：%+v", l)
+	}
+	if ids := must[[]string](t)(db.MarkInboxRead(ctx, nil, "")); len(ids) != 1 {
+		t.Fatalf("全部標已讀：%v", ids)
+	}
+	if ids := must[[]string](t)(db.MarkInboxRead(ctx, []string{done.ID}, "")); len(ids) != 0 {
+		t.Fatalf("%v", ids)
+	}
+
+	check(t, db.SettleInboxItem(ctx, q.ID, InboxExpired, "expired", "system", json.RawMessage(`{"answer":"x"}`)))
+	got := must[InboxItem](t)(db.GetInboxItem(ctx, q.ID))
+	if got.Status != InboxExpired || got.Resolution != "expired" || string(got.Payload) != `{"answer":"x"}` {
+		t.Fatalf("過期：%+v", got)
+	}
+	if err := db.SettleInboxItem(ctx, q.ID, InboxResolved, "answered", "owner", nil); !errors.Is(err, ErrAlreadyDecided) {
+		t.Fatalf("過期的不能再回：%v", err)
+	}
+	check(t, db.SetInboxResolution(ctx, q.ID, "asked_again"))
+	check(t, db.ReopenInboxItem(ctx, q.ID))
+	if got := must[InboxItem](t)(db.GetInboxItem(ctx, q.ID)); got.Status != InboxOpen || got.Resolution != "" || got.ResolvedAt != 0 {
+		t.Fatalf("復原：%+v", got)
+	}
+	if err := db.ReopenInboxItem(ctx, q.ID); !errors.Is(err, ErrAlreadyDecided) {
+		t.Fatalf("open 的不能復原：%v", err)
+	}
+	if _, err := db.CreateInboxItem(ctx, InboxItem{Kind: "done", Status: "weird"}); err == nil {
+		t.Fatal("不合法的狀態應該失敗")
+	}
+}
+
+func TestApprovalErrorAndReopen(t *testing.T) {
+	db := openTest(t)
+	b := newBot(t, db, "x")
+	a := must[Approval](t)(db.CreateApproval(ctx, Approval{BotID: b.ID, Action: "x"}))
+	check(t, db.SetApprovalError(ctx, a.ID, `{"code":"internal"}`))
+	if got := must[Approval](t)(db.GetApproval(ctx, a.ID)); got.Error != `{"code":"internal"}` {
+		t.Fatalf("錯誤：%+v", got)
+	}
+	if err := db.ReopenApproval(ctx, a.ID); !errors.Is(err, ErrAlreadyDecided) {
+		t.Fatalf("pending 的不能改回：%v", err)
+	}
+	check(t, db.DecideApproval(ctx, a.ID, "denied", "owner"))
+	check(t, db.ReopenApproval(ctx, a.ID))
+	if got := must[Approval](t)(db.GetApproval(ctx, a.ID)); got.Status != "pending" || got.DecidedBy != "" {
+		t.Fatalf("改回：%+v", got)
+	}
+}
+
+func TestEventThread(t *testing.T) {
+	db := openTest(t)
+	b := newBot(t, db, "x")
+	th := must[Thread](t)(db.CreateThread(ctx, Thread{BotID: b.ID}))
+	for _, k := range []string{"chat.tool_call", "chat.usage", "chat.tool_call"} {
+		must[Event](t)(db.AppendEvent(ctx, Event{BotID: b.ID, ThreadID: th.ID, TaskID: "t1", Kind: k}))
+	}
+	must[Event](t)(db.AppendEvent(ctx, Event{BotID: b.ID, TaskID: "t2", Kind: "chat.tool_call"}))
+	evs := must[[]Event](t)(db.ListThreadEvents(ctx, th.ID, "", []string{"chat.tool_call"}, 0, 0))
+	if len(evs) != 2 || evs[0].ThreadID != th.ID {
+		t.Fatalf("%+v", evs)
+	}
+	if evs := must[[]Event](t)(db.ListThreadEvents(ctx, th.ID, "t1", nil, evs[0].ID, 1)); len(evs) != 1 || evs[0].Kind != "chat.usage" {
+		t.Fatalf("%+v", evs)
 	}
 }

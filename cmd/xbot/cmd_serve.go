@@ -49,6 +49,10 @@ func cmdServe(args []string) error {
 		}
 	}()
 
+	// 上次留下的 Bot 提問卡：引擎連線換過了，Bot 不會再等那些回覆，收掉。
+	if err := st.runtime.Recover(context.Background()); err != nil {
+		slog.Warn("收掉舊的提問卡失敗", "err", err)
+	}
 	// 只有一條事件匯流排：runtime（對話串流）與操作登錄表都發布到它，SSE 從它訂閱。
 	bus := st.runtime.Bus()
 	pairing := auth.NewPairing(st.db)

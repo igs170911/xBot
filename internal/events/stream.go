@@ -10,7 +10,7 @@ import (
 
 // FromStore 把 event 表的一筆轉成匯流排事件（帶流水號）。
 func FromStore(e store.Event) Event {
-	return Event{ID: e.ID, Kind: e.Kind, BotID: e.BotID, TaskID: e.TaskID, Payload: e.Payload, At: e.CreatedAt}
+	return Event{ID: e.ID, Kind: e.Kind, BotID: e.BotID, ThreadID: e.ThreadID, TaskID: e.TaskID, Payload: e.Payload, At: e.CreatedAt}
 }
 
 // Stream 是可以斷線續傳的訂閱（SSE 用）：

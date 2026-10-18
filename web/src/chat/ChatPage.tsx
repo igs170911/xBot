@@ -1,8 +1,8 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Activity as ActivityIcon, Cpu, Ellipsis, Monitor, Plus, Settings, X } from 'lucide-react'
-import { ApiError, chatListThreads, chatSend, chatStop, modelsGet, type ModelsGetOutput } from '../api/generated'
+import { ApiError, chatListThreads, chatSend, chatStop, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
 import { botsStore, type Bot } from '../data/bots'
-import { onReconnect } from '../data/events'
+import { onEvent, onReconnect } from '../data/events'
 import { useStore } from '../data/store'
 import { stampLabel } from '../data/ui'
 import { navigate } from '../router'
@@ -224,6 +224,16 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
     void load()
     return onReconnect(() => void load())
   }, [threadId, setNotice])
+
+  // 打開對話就把這條對話串的通知標成已讀（B04 未讀數）；看著對話時新來的也一樣。
+  useEffect(() => {
+    if (!threadId) return
+    const read = () => void inboxMarkRead({ thread_id: threadId }).catch(() => {})
+    read()
+    return onEvent((e) => {
+      if (e.kind === 'inbox.created' && e.thread_id === threadId) read()
+    })
+  }, [threadId])
 
   const items = threadId ? threadItems(chat, threadId) : []
   const th = threadId ? chat.threads[threadId] : undefined

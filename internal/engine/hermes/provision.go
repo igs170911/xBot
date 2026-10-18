@@ -64,6 +64,24 @@ type Profile struct {
 	WorkerKey string
 	// UID、GID 是容器內 Bot 使用者；寫入的檔案交給它。
 	UID, GID int
+	// ApprovalMode 是 Bot 的權限等級（ask／edits／auto／full），對到 Hermes 的 approvals.mode（見 ApprovalsMode）。
+	ApprovalMode string
+}
+
+// ApprovalsMode 把 Bot 的權限等級對到 Hermes 的 approvals.mode（manual／smart／off）。
+//
+// Hermes 只對它認為危險的終端機指令發 approval（tools/approval.py 的 DANGEROUS_PATTERNS；HARDLINE 那些任何模式都直接擋）。
+// SEC-2 安全底線：危險指令在任何等級都不能自動核准，所以永遠不用 off（LazyBoy 用 off，是 XBot 刻意不同的地方）：
+//   - ask（先問我，SEC-1 預設）、edits（一般的事自己做）→ manual：每個危險指令都送到「待我處理」等你。
+//   - auto（放手做）、full（完全放手）→ smart：Hermes 先請審核模型看，明顯安全的才放行，其餘一樣送到「待我處理」。
+//
+// 不認得的值當成 ask（寧可多問）。
+func ApprovalsMode(mode string) string {
+	switch mode {
+	case "auto", "full":
+		return "smart"
+	}
+	return "manual"
 }
 
 // ModelBaseURL 回傳容器內 Hermes 使用的模型網址。
@@ -179,7 +197,7 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 		effort = "medium"
 	}
 	approvals := sub("approvals")
-	approvals["mode"] = "off" // 容器是隔離的電腦：每個指令再請另一個模型審核只會變慢（LazyBoy）。
+	approvals["mode"] = ApprovalsMode(p.ApprovalMode)
 	web := sub("web")
 	delete(web, "provider") // Hermes 讀 web.backend（LazyBoy 同樣清掉 web.provider）。
 	cfg["model"] = map[string]any{"default": p.Model, "provider": Provider, "base_url": base, "supports_vision": false}

@@ -1,4 +1,5 @@
-import type { ChatReadOutput, XBotEvent } from '../api/generated'
+import type { ChatReadOutput, ChatStepsOutput, XBotEvent } from '../api/generated'
+import { askFromEvent, type Answered, type Ask } from './ask'
 
 // 把 chat.read 的快照和 SSE 事件組成畫面要的對話（純函式，好測）。
 //
@@ -8,7 +9,8 @@ import type { ChatReadOutput, XBotEvent } from '../api/generated'
 //   chat.thinking     即時；payload {message_id, text}
 //   chat.tool_call    payload engine.Event {tool:{id,name,context,summary}}
 //   chat.tool_result  payload engine.Event {tool:{id,ok,summary,duration_s}}
-//   chat.needs_approval payload engine.Event {request:{kind,prompt,choices}}
+//   chat.needs_approval payload engine.Event {request:{id,kind,method,prompt,choices,params}}＋inbox_id、expires_at
+//   chat.answered     payload {inbox_id, kind, resolution, text}（C12：回覆、過期、Bot 不等了）
 //   chat.error        payload engine.Event {text, fatal}
 //   chat.done         payload {message_id, status, verdict, text}（text 是完整的最後回覆）
 //   task.state        payload {state, verdict}
@@ -53,7 +55,10 @@ export type Activity = {
   startedAt?: number
   endedAt?: number
   error?: string
-  request?: { kind: string; prompt: string; choices?: string[] }
+  /** Bot 正在等你回覆的問題（C12）。 */
+  request?: Ask
+  /** 這件工作裡回覆過的問題（一行結果）。 */
+  answered?: Answered[]
 }
 
 export type ThreadState = {
@@ -100,7 +105,6 @@ type EngineEvent = {
   status?: string
   fatal?: boolean
   tool?: { id?: string; name?: string; context?: string; summary?: string; ok?: boolean; duration_s?: number }
-  request?: { kind?: string; prompt?: string; choices?: string[] }
 }
 
 function parseMeta(raw: unknown): MessageMeta {
@@ -292,10 +296,25 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
     }
     case 'chat.needs_approval': {
       if (!e.task_id) return s
-      const ev = p as EngineEvent
       const a = activity(s, e.task_id)
-      const r = ev.request
-      return putActivity(s, { ...a, request: r ? { kind: r.kind ?? 'clarify', prompt: r.prompt ?? '', choices: r.choices } : undefined })
+      const ask = askFromEvent(p)
+      // 同一張卡又問一次（回覆沒送出去）：拿掉那一行結果
+      const answered = ask ? a.answered?.filter((x) => x.inboxId !== ask.inboxId) : a.answered
+      return putActivity(s, { ...a, request: ask, answered, threadId: a.threadId ?? e.thread_id })
+    }
+    case 'chat.answered': {
+      if (!e.task_id) return s
+      const a = activity(s, e.task_id)
+      const ans: Answered = {
+        inboxId: (p.inbox_id as string | undefined) ?? '',
+        kind: (p.kind as string | undefined) ?? '',
+        resolution: (p.resolution as string | undefined) ?? '',
+        text: (p.text as string | undefined) ?? '',
+        at: e.at,
+      }
+      const answered = [...(a.answered ?? []).filter((x) => x.inboxId !== ans.inboxId), ans]
+      const request = a.request?.inboxId === ans.inboxId ? undefined : a.request
+      return putActivity(s, { ...a, answered, request })
     }
     case 'chat.error': {
       if (!e.task_id) return s
@@ -335,6 +354,43 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
       if (!tid) return next
       return updateMessage(next, tid, id, (m) => ({ ...m, content: text ?? m.content, streaming: false, status: status ?? m.status, updatedAt: e.at }))
     }
+  }
+  return s
+}
+
+type StepEvent = ChatStepsOutput['events'][number]
+
+/**
+ * 套用 chat.steps 讀回來的歷史事件（重新整理後補回工作步驟）。
+ * 比已處理過的事件新的照一般事件套用；舊的只補「加上去」的內容（步驟、回覆結果、錯誤），
+ * 狀態只補還不知道的（unknown），不會把即時事件更新過的狀態倒回去。
+ */
+export function applySteps(s: ChatState, evs: StepEvent[]): ChatState {
+  for (const raw of evs) {
+    const e: XBotEvent = { ...raw }
+    if (!e.id || e.id > s.lastId) {
+      s = applyEvent(s, e)
+      continue
+    }
+    const tid = e.task_id
+    if (!tid) continue
+    const a = s.tasks[tid]
+    const replay = (): ChatState => ({ ...applyEvent({ ...s, lastId: 0 }, e), lastId: s.lastId })
+    switch (e.kind) {
+      case 'chat.tool_call':
+      case 'chat.tool_result':
+      case 'chat.error':
+      case 'chat.answered':
+        s = replay()
+        break
+      case 'task.state':
+        if (!a || a.state === 'unknown') s = replay()
+        break
+      case 'chat.needs_approval':
+        if (a && (a.state === 'waiting_input' || a.state === 'waiting_approval') && !a.request) s = replay()
+        break
+    }
+    if (e.thread_id && !s.taskThread[tid]) s = { ...s, taskThread: { ...s.taskThread, [tid]: e.thread_id } }
   }
   return s
 }

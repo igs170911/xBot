@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"xbot/internal/notify"
 	"xbot/internal/store"
 )
 
@@ -259,12 +260,16 @@ func (b *Budgets) Exceeded(ctx context.Context, e *BudgetError) (bool, error) {
 			return false, err
 		}
 	}
-	var ev store.Event
+	var ev, card store.Event
 	err = b.DB.Tx(ctx, func(q *store.Queries) error {
 		item, err := q.CreateInboxItem(ctx, store.InboxItem{Kind: "budget", BotID: cardBot, Ref: ref, Title: e.Title(),
 			Body:    "已花 " + USD(e.SpentMicros) + "，上限 " + USD(e.LimitMicros) + "。工作已經停下。要繼續請提高上限，或等下一期。",
 			Payload: payload})
 		if err != nil {
+			return err
+		}
+		// 待我處理卡片的通用事件（C12，徽章與通知中心用）。
+		if card, err = q.AppendEvent(ctx, notify.Event(notify.KindCreated, item)); err != nil {
 			return err
 		}
 		ep, err := json.Marshal(map[string]any{"inbox_id": item.ID, "budget": e})
@@ -278,6 +283,7 @@ func (b *Budgets) Exceeded(ctx context.Context, e *BudgetError) (bool, error) {
 		return false, err
 	}
 	if b.Notify != nil {
+		b.Notify(card)
 		b.Notify(ev)
 	}
 	if b.OnExceeded != nil {

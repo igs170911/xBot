@@ -498,7 +498,7 @@ func TestBudgetsCapsAndCardOnce(t *testing.T) {
 	if len(items) != 1 || items[0].Kind != "budget" || items[0].BotID != bot.ID || !strings.Contains(items[0].Title, "小秘") {
 		t.Fatalf("卡片只發一次：%+v", items)
 	}
-	if stopped.Load() != 1 || notified.Load() != 1 {
+	if stopped.Load() != 1 || notified.Load() != 2 { // inbox.created＋budget.exceeded
 		t.Fatalf("停止 %d 次、通知 %d 次", stopped.Load(), notified.Load())
 	}
 	// 月上限、全域上限、供應商上限。

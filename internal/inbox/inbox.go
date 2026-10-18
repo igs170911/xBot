@@ -1,5 +1,6 @@
 // Package inbox 是「待我處理」、核准與稽核的操作（PRD §6.11 IN-*、MCP-9、MCP-10、MCP-13）：
-// approvals.list、approvals.wait、approvals.decide、inbox.list、audit.list。
+// approvals.list、approvals.wait、approvals.decide、inbox.list、inbox.counts、inbox.mark_read、inbox.dismiss、inbox.undo、audit.list。
+// Bot 在對話裡的提問（核准指令、補充問題、密碼）由 xbot.chat.respond 回覆（internal/chat），卡片一樣在這裡列出。
 package inbox
 
 import (
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"xbot/internal/limits"
+	"xbot/internal/notify"
 	"xbot/internal/ops"
 	"xbot/internal/store"
 )
@@ -59,11 +61,12 @@ type WaitIn struct {
 // Outcome 是核准的結果與（允許後）動作的執行結果。
 type Outcome struct {
 	Approval Approval `json:"approval"`
-	// Settled：已經決定了（允許時還要等動作執行完）。false 表示等到逾時、還沒決定。
+	// Settled：已經決定了（允許時還要等動作執行完或失敗）。false 表示等到逾時、還沒決定。
 	Settled  bool            `json:"settled"`
 	Executed bool            `json:"executed" desc:"允許後動作已經執行完成"`
+	Failed   bool            `json:"failed" desc:"允許了但執行失敗（error 是原因；你可以再按一次允許重試）"`
 	Output   json.RawMessage `json:"output,omitempty" desc:"動作的輸出（executed 時）"`
-	Error    *ops.Error      `json:"error,omitempty" desc:"允許了但執行失敗時的錯誤（可以再允許一次重試）"`
+	Error    *ops.Error      `json:"error,omitempty" desc:"允許了但執行失敗時的錯誤"`
 }
 
 // DecideIn 是 xbot.approvals.decide 的輸入。
@@ -76,34 +79,92 @@ type DecideIn struct {
 type InboxStatus string
 
 // EnumValues 讓 JSON Schema 列出可用值。
-func (InboxStatus) EnumValues() []string { return []string{"open", "resolved", "dismissed", "all"} }
+func (InboxStatus) EnumValues() []string {
+	return []string{"open", "resolved", "dismissed", "expired", "all"}
+}
 
-// Item 是一張待我處理。
+// Group 是通知中心的篩選分類（B04、L14）。
+type Group string
+
+// EnumValues 讓 JSON Schema 列出可用值。
+func (Group) EnumValues() []string { return notify.Groups }
+
+// Item 是一張待我處理（或通知）。
 type Item struct {
 	ID         string          `json:"id"`
-	Kind       string          `json:"kind" desc:"approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget"`
+	Kind       string          `json:"kind" desc:"approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention"`
+	Group      string          `json:"group" desc:"decide（要你決定）、done（完成）、mention（提到你）、error（出錯）"`
 	BotID      string          `json:"bot_id,omitempty"`
+	TaskID     string          `json:"task_id,omitempty" desc:"Bot 在對話裡問的：是哪件工作"`
+	ThreadID   string          `json:"thread_id,omitempty" desc:"Bot 在對話裡問的：是哪條對話串"`
 	Ref        string          `json:"ref,omitempty" desc:"例：核准的 id"`
 	Title      string          `json:"title"`
 	Body       string          `json:"body"`
-	Payload    json.RawMessage `json:"payload"`
-	Status     string          `json:"status"`
+	Payload    json.RawMessage `json:"payload" desc:"卡片內容（選項、指令、輸入欄…）；不含任何密碼類的值"`
+	Status     string          `json:"status" desc:"open、resolved、dismissed、expired"`
+	Resolution string          `json:"resolution,omitempty" desc:"怎麼處理的：once、always、deny、allow、answered、provided、declined、expired、gone、canceled、asked_again、dismissed、info"`
 	ResolvedBy string          `json:"resolved_by,omitempty"`
 	ResolvedAt int64           `json:"resolved_at,omitempty"`
+	Read       bool            `json:"read"`
+	ExpiresAt  int64           `json:"expires_at,omitempty" desc:"無人在場的提問：這個時間沒回就過期（0 表示不會過期）"`
+	UndoUntil  int64           `json:"undo_until,omitempty" desc:"這個時間之前可以用 xbot.inbox.undo 復原（0 表示不能復原）"`
 	CreatedAt  int64           `json:"created_at"`
 }
 
 // InboxListIn 是 xbot.inbox.list 的輸入。
 type InboxListIn struct {
-	Status InboxStatus `json:"status,omitempty" desc:"預設 open（還沒處理的）"`
-	Kind   string      `json:"kind,omitempty" max:"32" desc:"只列這一種"`
-	BotID  string      `json:"bot_id,omitempty" resource:"bot" max:"64"`
-	Limit  int         `json:"limit,omitempty" min:"1" max:"200" desc:"最多幾筆；預設 50"`
+	Status   InboxStatus `json:"status,omitempty" desc:"預設 open（還沒處理的）；通知中心用 all"`
+	Group    Group       `json:"group,omitempty" desc:"只列這一類：decide（要你決定）、done（完成）、mention（提到你）、error（出錯）"`
+	Kind     string      `json:"kind,omitempty" max:"32" desc:"只列這一種"`
+	BotID    string      `json:"bot_id,omitempty" resource:"bot" max:"64"`
+	ThreadID string      `json:"thread_id,omitempty" max:"64" desc:"只列這條對話串的"`
+	Unread   bool        `json:"unread,omitempty" desc:"只列未讀的"`
+	Limit    int         `json:"limit,omitempty" min:"1" max:"200" desc:"最多幾筆；預設 50"`
 }
 
 // InboxListOut 是 xbot.inbox.list 的輸出。
 type InboxListOut struct {
 	Items []Item `json:"items" desc:"新到舊"`
+}
+
+// CountsIn 是 xbot.inbox.counts 的輸入。
+type CountsIn struct {
+	BotID string `json:"bot_id,omitempty" resource:"bot" max:"64" desc:"只算這個 Bot 的"`
+}
+
+// GroupCount 是一個分類的數量。
+type GroupCount struct {
+	Open   int `json:"open" desc:"還沒處理的"`
+	Unread int `json:"unread" desc:"未讀的"`
+}
+
+// CountsOut 是 xbot.inbox.counts 的輸出（側欄與 Dock 徽章、篩選膠囊上的數字）。
+type CountsOut struct {
+	Open   int                   `json:"open" desc:"待我處理：還沒處理的卡（側欄徽章）"`
+	Unread int                   `json:"unread" desc:"通知中心的未讀數"`
+	Groups map[string]GroupCount `json:"groups" desc:"各分類：decide、done、mention、error"`
+}
+
+// MarkReadIn 是 xbot.inbox.mark_read 的輸入：ids、thread_id、all 擇一。
+type MarkReadIn struct {
+	IDs      []string `json:"ids,omitempty" max:"200" desc:"這幾張"`
+	ThreadID string   `json:"thread_id,omitempty" max:"64" desc:"這條對話串的全部（打開對話時）"`
+	All      bool     `json:"all,omitempty" desc:"全部標為已讀"`
+}
+
+// MarkReadOut 是 xbot.inbox.mark_read 的輸出。
+type MarkReadOut struct {
+	Marked int `json:"marked" desc:"這次從未讀變成已讀的張數"`
+}
+
+// ItemIn 是只帶一張卡的輸入（dismiss、undo）。
+type ItemIn struct {
+	InboxID string `json:"inbox_id" required:"true" max:"64"`
+}
+
+// ItemOut 是處理後的卡。
+type ItemOut struct {
+	Item Item `json:"item"`
 }
 
 // AuditListIn 是 xbot.audit.list 的輸入。
@@ -121,6 +182,7 @@ type AuditListOut struct {
 }
 
 // Register 登錄核准、待我處理與稽核的操作。approvals.decide 允許時用 reg.ExecuteApproved 執行原本的動作。
+// 卡片有變化時在交易裡寫 inbox.* 事件，提交後用 reg.Notify 推給 SSE。
 func Register(reg *ops.Registry) {
 	ops.Register(reg, ops.Op[ApprovalsListIn, ApprovalsListOut]{
 		Name: "xbot.approvals.list", Summary: "列出等你核准的動作",
@@ -129,8 +191,8 @@ func Register(reg *ops.Registry) {
 	})
 	ops.Register(reg, ops.Op[WaitIn, Outcome]{
 		Name: "xbot.approvals.wait", Summary: "等一個核准的結果",
-		Description: "收到 pending_approval 後用它等：使用者允許並執行完、退回、或逾時（settled=false，可以再呼叫）。" +
-			"代理只能等自己要求的核准。",
+		Description: "收到 pending_approval 後用它等：使用者允許並執行完（executed）、允許了但執行失敗（failed）、退回、" +
+			"或逾時（settled=false，可以再呼叫）。代理只能等自己要求的核准。",
 		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
 		Handle: wait,
 	})
@@ -143,9 +205,40 @@ func Register(reg *ops.Registry) {
 		},
 	})
 	ops.Register(reg, ops.Op[InboxListIn, InboxListOut]{
-		Name: "xbot.inbox.list", Summary: "列出「待我處理」",
-		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
+		Name: "xbot.inbox.list", Summary: "列出「待我處理」與通知",
+		Description: "預設只列還沒處理的（待我處理）；通知中心用 status=all 加 group 篩選。",
+		Scope:       ops.ScopeRead, Risk: ops.RiskSafe,
 		Handle: listInbox,
+	})
+	ops.Register(reg, ops.Op[CountsIn, CountsOut]{
+		Name: "xbot.inbox.counts", Summary: "待我處理與通知的數量（徽章用）",
+		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
+		Handle: counts,
+	})
+	ops.Register(reg, ops.Op[MarkReadIn, MarkReadOut]{
+		Name: "xbot.inbox.mark_read", Summary: "把通知標為已讀",
+		Description: "ids、thread_id、all 擇一。只有你本人能用（已讀是你的狀態）。",
+		Scope:       ops.ScopeOperate, Risk: ops.RiskSafe,
+		Handle: func(ctx context.Context, call *ops.Call, in MarkReadIn) (MarkReadOut, error) {
+			return markRead(ctx, reg, call, in)
+		},
+	})
+	ops.Register(reg, ops.Op[ItemIn, ItemOut]{
+		Name: "xbot.inbox.dismiss", Summary: "略過一張不用處理的卡",
+		Description: "操作的核准請用 xbot.approvals.decide；Bot 在對話裡的提問請用 xbot.chat.respond（decline）。10 分鐘內可以復原。",
+		Scope:       ops.ScopeOperate, Risk: ops.RiskSafe,
+		Handle: func(ctx context.Context, call *ops.Call, in ItemIn) (ItemOut, error) {
+			return dismiss(ctx, reg, call, in)
+		},
+	})
+	ops.Register(reg, ops.Op[ItemIn, ItemOut]{
+		Name: "xbot.inbox.undo", Summary: "復原剛剛的決定",
+		Description: "10 分鐘內可以復原：退回的核准會回到等你決定，略過的卡會回到待我處理。" +
+			"已經執行的動作、已經交給 Bot 的回答不能復原（undo_until 是 0）。",
+		Scope: ops.ScopeOperate, Risk: ops.RiskSafe,
+		Handle: func(ctx context.Context, call *ops.Call, in ItemIn) (ItemOut, error) {
+			return undo(ctx, reg, call, in)
+		},
 	})
 	ops.Register(reg, ops.Op[AuditListIn, AuditListOut]{
 		Name: "xbot.audit.list", Summary: "列出稽核紀錄（誰、從哪裡、做了什麼）",
@@ -208,21 +301,25 @@ func getApproval(ctx context.Context, call *ops.Call, id string) (store.Approval
 	return a, err
 }
 
-// outcome 整理核准目前的結果；允許了的話看動作有沒有執行完（op_request 是 ok）。
+// outcome 整理核准目前的結果；允許了的話看動作有沒有執行完（op_request 是 ok），或執行失敗（approval.error）。
 func outcome(ctx context.Context, db *store.DB, a store.Approval) (Outcome, error) {
 	o := Outcome{Approval: approvalView(a), Settled: a.Status != "pending"}
 	if a.Status != "approved" {
 		return o, nil
 	}
 	req, err := db.GetOpRequestByApproval(ctx, a.ID)
-	if errors.Is(err, store.ErrNotFound) {
-		return o, nil
-	}
-	if err != nil {
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		return o, err
 	}
-	if req.Status == "ok" {
+	if err == nil && req.Status == "ok" {
 		o.Executed, o.Output = true, req.Result
+		return o, nil
+	}
+	if a.Error != "" {
+		var oe ops.Error
+		if json.Unmarshal([]byte(a.Error), &oe) == nil && oe.Code != "" {
+			o.Failed, o.Error = true, &oe
+		}
 	}
 	return o, nil
 }
@@ -244,8 +341,8 @@ func wait(ctx context.Context, call *ops.Call, in WaitIn) (Outcome, error) {
 		if err != nil {
 			return o, err
 		}
-		// 允許了但還沒執行完（使用者那邊正在執行）就再等一下。
-		done := o.Settled && (a.Status != "approved" || o.Executed)
+		// 允許了但還沒執行完（使用者那邊正在執行）就再等一下；執行失敗也算有結果。
+		done := o.Settled && (a.Status != "approved" || o.Executed || o.Failed)
 		if done || call.DryRun || !time.Now().Before(deadline) {
 			if !done {
 				o.Settled = false
@@ -298,20 +395,26 @@ func decide(ctx context.Context, reg *ops.Registry, call *ops.Call, in DecideIn)
 		return o, nil
 	}
 	if a.Status == "pending" {
-		status := "denied"
+		status, resolution := "denied", "deny"
 		if allow {
-			status = "approved"
+			status, resolution = "approved", "allow"
 		}
+		var evs []store.Event
 		err := call.DB.Tx(ctx, func(q *store.Queries) error {
 			if err := q.DecideApproval(ctx, a.ID, status, call.Identity.Actor()); err != nil {
 				return err
 			}
-			_, err := q.ResolveInboxByRef(ctx, a.ID, call.Identity.Actor())
+			items, err := q.ResolveInboxByRef(ctx, a.ID, resolution, call.Identity.Actor())
+			if err != nil {
+				return err
+			}
+			evs, err = appendUpdated(ctx, q, items...)
 			return err
 		})
 		if err != nil {
 			return Outcome{}, err
 		}
+		reg.Notify(evs...)
 	}
 	if !allow {
 		a, err = call.DB.GetApproval(ctx, a.ID)
@@ -330,47 +433,298 @@ func decide(ctx context.Context, reg *ops.Registry, call *ops.Call, in DecideIn)
 		o.Approval.Status, o.Approval.DecidedBy = "approved", call.Identity.Actor()
 	}
 	if execErr != nil {
-		o.Error = ops.AsError(execErr)
+		o.Failed, o.Error = true, ops.AsError(execErr)
 		return o, nil
 	}
 	o.Executed, o.Output = true, res.Output
 	return o, nil
 }
 
+// ── 待我處理 ─────────────────────────────────────────
+
 func listInbox(ctx context.Context, call *ops.Call, in InboxListIn) (InboxListOut, error) {
-	status := string(in.Status)
-	switch status {
+	f := store.InboxFilter{Status: string(in.Status), BotID: in.BotID, Unread: in.Unread}
+	switch f.Status {
 	case "":
-		status = "open"
+		f.Status = store.InboxOpen
 	case "all":
-		status = ""
+		f.Status = ""
 	}
-	all, err := call.DB.ListInbox(ctx, status)
+	if in.Group != "" {
+		f.Kinds = notify.KindsOf(string(in.Group))
+	}
+	if in.Kind != "" {
+		f.Kinds = []string{in.Kind}
+	}
+	all, err := call.DB.ListInboxFiltered(ctx, f)
 	if err != nil {
 		return InboxListOut{}, err
 	}
 	limit := pageLimit(in.Limit)
-	id := call.Identity
 	out := InboxListOut{Items: []Item{}}
+	now := clock().UnixMilli()
 	for _, i := range all {
 		if len(out.Items) == limit {
 			break
 		}
-		if (in.Kind != "" && i.Kind != in.Kind) || (in.BotID != "" && i.BotID != in.BotID) {
+		if (in.Group != "" && notify.Group(i.Kind) != string(in.Group)) || (in.ThreadID != "" && i.ThreadID != in.ThreadID) || !visible(call.Identity, i) {
 			continue
 		}
-		// 受資源範圍限制的身分只看得到它能碰的 Bot 的卡；不屬於任何 Bot 的卡只有不受限的身分看得到。
-		if i.BotID != "" && !id.CanAccess(ops.ResourceBot, i.BotID) {
-			continue
+		v, err := itemView(ctx, call.DB, i, now)
+		if err != nil {
+			return out, err
 		}
-		if i.BotID == "" && id.Kind != ops.KindOwner && id.Resources.Bots != nil {
-			continue
-		}
-		out.Items = append(out.Items, Item{ID: i.ID, Kind: i.Kind, BotID: i.BotID, Ref: i.Ref, Title: i.Title, Body: i.Body,
-			Payload: i.Payload, Status: i.Status, ResolvedBy: i.ResolvedBy, ResolvedAt: i.ResolvedAt, CreatedAt: i.CreatedAt})
+		out.Items = append(out.Items, v)
 	}
 	return out, nil
 }
+
+// visible：受資源範圍限制的身分只看得到它能碰的 Bot 的卡；不屬於任何 Bot 的卡只有不受限的身分看得到。
+func visible(id ops.Identity, i store.InboxItem) bool {
+	if i.BotID != "" {
+		return id.CanAccess(ops.ResourceBot, i.BotID)
+	}
+	return id.Kind == ops.KindOwner || id.Resources.Bots == nil
+}
+
+func itemView(ctx context.Context, db *store.DB, i store.InboxItem, now int64) (Item, error) {
+	v := Item{ID: i.ID, Kind: i.Kind, Group: notify.Group(i.Kind), BotID: i.BotID, TaskID: i.TaskID, ThreadID: i.ThreadID, Ref: i.Ref,
+		Title: i.Title, Body: i.Body, Payload: i.Payload, Status: i.Status, Resolution: i.Resolution, ResolvedBy: i.ResolvedBy,
+		ResolvedAt: i.ResolvedAt, Read: i.ReadAt != 0, ExpiresAt: i.ExpiresAt, CreatedAt: i.CreatedAt}
+	if len(v.Payload) == 0 {
+		v.Payload = json.RawMessage("{}")
+	}
+	ok, err := undoable(ctx, db, i)
+	if err != nil {
+		return v, err
+	}
+	if until := i.ResolvedAt + limits.UndoWindow.Milliseconds(); ok && until > now {
+		v.UndoUntil = until
+	}
+	return v, nil
+}
+
+const resolutionDismissed = "dismissed"
+
+// clock 是現在時間（測試可以換，檢查復原時限）。
+var clock = time.Now
+
+// undoable：退回的操作核准（Bot 還在）和你略過的卡可以復原；已經執行的動作、交給 Bot 的回答不行。
+func undoable(ctx context.Context, db *store.DB, i store.InboxItem) (bool, error) {
+	if i.Status == store.InboxOpen || i.ResolvedBy == "" || i.ResolvedBy == "system" {
+		return false, nil
+	}
+	switch {
+	case i.Resolution == resolutionDismissed:
+		return true, nil
+	case i.Kind == "approval" && i.TaskID == "" && i.Ref != "" && i.Resolution == "deny":
+		a, err := db.GetApproval(ctx, i.Ref)
+		if errors.Is(err, store.ErrNotFound) {
+			return false, nil
+		}
+		return err == nil && a.Status == "denied", err
+	}
+	return false, nil
+}
+
+func counts(ctx context.Context, call *ops.Call, in CountsIn) (CountsOut, error) {
+	all, err := call.DB.ListInboxFiltered(ctx, store.InboxFilter{BotID: in.BotID})
+	if err != nil {
+		return CountsOut{}, err
+	}
+	out := CountsOut{Groups: map[string]GroupCount{}}
+	for _, g := range notify.Groups {
+		out.Groups[g] = GroupCount{}
+	}
+	for _, i := range all {
+		g := notify.Group(i.Kind)
+		if g == "" || !visible(call.Identity, i) {
+			continue
+		}
+		c := out.Groups[g]
+		if i.Status == store.InboxOpen {
+			c.Open++
+			out.Open++
+		}
+		if i.ReadAt == 0 {
+			c.Unread++
+			out.Unread++
+		}
+		out.Groups[g] = c
+	}
+	return out, nil
+}
+
+// ownerOnly：已讀、略過、復原是你本人的決定，代理和 Bot 不能代勞（SEC-8）。
+func ownerOnly(call *ops.Call) error {
+	if call.Identity.Kind != ops.KindOwner {
+		return ops.Forbidden("只有你本人能處理待我處理的卡")
+	}
+	return nil
+}
+
+// appendUpdated 在交易裡為每張卡寫一筆 inbox.updated 事件。
+func appendUpdated(ctx context.Context, q *store.Queries, items ...store.InboxItem) ([]store.Event, error) {
+	var evs []store.Event
+	for _, it := range items {
+		e, err := q.AppendEvent(ctx, notify.Event(notify.KindUpdated, it))
+		if err != nil {
+			return nil, err
+		}
+		evs = append(evs, e)
+	}
+	return evs, nil
+}
+
+func markRead(ctx context.Context, reg *ops.Registry, call *ops.Call, in MarkReadIn) (MarkReadOut, error) {
+	if err := ownerOnly(call); err != nil {
+		return MarkReadOut{}, err
+	}
+	n := 0
+	for _, set := range []bool{len(in.IDs) > 0, in.ThreadID != "", in.All} {
+		if set {
+			n++
+		}
+	}
+	if n != 1 {
+		return MarkReadOut{}, ops.InvalidInput(ops.FieldError{Message: "ids、thread_id、all 要擇一"})
+	}
+	if call.DryRun {
+		return MarkReadOut{}, nil
+	}
+	var evs []store.Event
+	var marked []string
+	err := call.DB.Tx(ctx, func(q *store.Queries) error {
+		var err error
+		if marked, err = q.MarkInboxRead(ctx, in.IDs, in.ThreadID); err != nil {
+			return err
+		}
+		for _, id := range marked {
+			it, err := q.GetInboxItem(ctx, id)
+			if err != nil {
+				return err
+			}
+			e, err := appendUpdated(ctx, q, it)
+			if err != nil {
+				return err
+			}
+			evs = append(evs, e...)
+		}
+		return nil
+	})
+	if err != nil {
+		return MarkReadOut{}, err
+	}
+	reg.Notify(evs...)
+	return MarkReadOut{Marked: len(marked)}, nil
+}
+
+func getItem(ctx context.Context, call *ops.Call, id string) (store.InboxItem, error) {
+	it, err := call.DB.GetInboxItem(ctx, id)
+	if errors.Is(err, store.ErrNotFound) || (err == nil && !visible(call.Identity, it)) {
+		return it, ops.NotFound("找不到這張卡")
+	}
+	return it, err
+}
+
+func dismiss(ctx context.Context, reg *ops.Registry, call *ops.Call, in ItemIn) (ItemOut, error) {
+	if err := ownerOnly(call); err != nil {
+		return ItemOut{}, err
+	}
+	it, err := getItem(ctx, call, in.InboxID)
+	if err != nil {
+		return ItemOut{}, err
+	}
+	switch {
+	case it.Status != store.InboxOpen:
+		return ItemOut{}, ops.Conflict(store.ErrAlreadyDecided.Error())
+	case it.TaskID != "" && (it.Kind == "approval" || it.Kind == "question" || it.Kind == "secret"):
+		return ItemOut{}, ops.Conflict("Bot 正在等這個回覆：請用 xbot.chat.respond 回答，或選不回答（decline）")
+	case it.Kind == "approval" && it.Ref != "":
+		return ItemOut{}, ops.Conflict("這是要你核准的動作：請用 xbot.approvals.decide 允許或退回")
+	}
+	if call.DryRun {
+		now := clock().UnixMilli()
+		it.Status, it.Resolution, it.ResolvedBy, it.ResolvedAt = store.InboxDismissed, resolutionDismissed, call.Identity.Actor(), now
+		v, err := itemView(ctx, call.DB, it, now)
+		return ItemOut{Item: v}, err
+	}
+	var evs []store.Event
+	err = call.DB.Tx(ctx, func(q *store.Queries) error {
+		if err := q.SettleInboxItem(ctx, it.ID, store.InboxDismissed, resolutionDismissed, call.Identity.Actor(), nil); err != nil {
+			return err
+		}
+		cur, err := q.GetInboxItem(ctx, it.ID)
+		if err != nil {
+			return err
+		}
+		it = cur
+		evs, err = appendUpdated(ctx, q, cur)
+		return err
+	})
+	if errors.Is(err, store.ErrAlreadyDecided) {
+		return ItemOut{}, ops.Conflict(err.Error())
+	}
+	if err != nil {
+		return ItemOut{}, err
+	}
+	reg.Notify(evs...)
+	v, err := itemView(ctx, call.DB, it, clock().UnixMilli())
+	return ItemOut{Item: v}, err
+}
+
+func undo(ctx context.Context, reg *ops.Registry, call *ops.Call, in ItemIn) (ItemOut, error) {
+	if err := ownerOnly(call); err != nil {
+		return ItemOut{}, err
+	}
+	it, err := getItem(ctx, call, in.InboxID)
+	if err != nil {
+		return ItemOut{}, err
+	}
+	v, err := itemView(ctx, call.DB, it, clock().UnixMilli())
+	if err != nil {
+		return ItemOut{}, err
+	}
+	if v.UndoUntil == 0 {
+		if ok, _ := undoable(ctx, call.DB, it); ok {
+			return ItemOut{}, ops.Conflict("已經超過 10 分鐘，不能復原了")
+		}
+		return ItemOut{}, ops.Conflict("這個決定不能復原（動作已經執行，或回答已經交給 Bot）")
+	}
+	if call.DryRun {
+		v.Status, v.Resolution, v.ResolvedBy, v.ResolvedAt, v.UndoUntil = store.InboxOpen, "", "", 0, 0
+		return ItemOut{Item: v}, nil
+	}
+	var evs []store.Event
+	err = call.DB.Tx(ctx, func(q *store.Queries) error {
+		if it.Kind == "approval" && it.Ref != "" && it.TaskID == "" {
+			if err := q.ReopenApproval(ctx, it.Ref); err != nil {
+				return err
+			}
+		}
+		if err := q.ReopenInboxItem(ctx, it.ID); err != nil {
+			return err
+		}
+		cur, err := q.GetInboxItem(ctx, it.ID)
+		if err != nil {
+			return err
+		}
+		it = cur
+		evs, err = appendUpdated(ctx, q, cur)
+		return err
+	})
+	if errors.Is(err, store.ErrAlreadyDecided) {
+		return ItemOut{}, ops.Conflict("這個決定已經改過了，不能復原")
+	}
+	if err != nil {
+		return ItemOut{}, err
+	}
+	reg.Notify(evs...)
+	v, err = itemView(ctx, call.DB, it, clock().UnixMilli())
+	return ItemOut{Item: v}, err
+}
+
+// ── 稽核 ─────────────────────────────────────────────
 
 func listAudit(ctx context.Context, call *ops.Call, in AuditListIn) (AuditListOut, error) {
 	f := store.AuditFilter{Actor: in.Actor, Target: in.Target, Before: in.Before, Limit: pageLimit(in.Limit)}

@@ -39,7 +39,7 @@ test('/dev/components 截圖', async ({ page }, info) => {
 
 test('版型截圖：側欄＋待我處理', async ({ page }, info) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1, name: '早安，有 5 件事等你' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: '早安，事情都處理完了' })).toBeVisible()
   await expect(page.getByTestId('health')).toContainText('服務正常')
   await ready(page)
   await page.screenshot({ path: shot(`${info.project.name}-shell`), fullPage: info.project.name === 'mobile' })

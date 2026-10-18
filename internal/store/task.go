@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
 )
 
 // ── task ─────────────────────────────────────────────
@@ -99,20 +100,21 @@ func (q *Queries) SetTaskState(ctx context.Context, id, state, verdict string) e
 type Event struct {
 	ID        int64           `json:"id"`
 	BotID     string          `json:"bot_id"`
+	ThreadID  string          `json:"thread_id"`
 	TaskID    string          `json:"task_id"`
 	Kind      string          `json:"kind"`
 	Payload   json.RawMessage `json:"payload"`
 	CreatedAt int64           `json:"created_at"`
 }
 
-const eventCols = `id, bot_id, task_id, kind, payload, created_at`
+const eventCols = `id, bot_id, thread_id, task_id, kind, payload, created_at`
 
 func scanEvent(s scanner) (Event, error) {
 	var e Event
-	var bot, task sql.NullString
+	var bot, thread, task sql.NullString
 	var payload string
-	err := s.Scan(&e.ID, &bot, &task, &e.Kind, &payload, &e.CreatedAt)
-	e.BotID, e.TaskID, e.Payload = bot.String, task.String, json.RawMessage(payload)
+	err := s.Scan(&e.ID, &bot, &thread, &task, &e.Kind, &payload, &e.CreatedAt)
+	e.BotID, e.ThreadID, e.TaskID, e.Payload = bot.String, thread.String, task.String, json.RawMessage(payload)
 	return e, err
 }
 
@@ -120,8 +122,8 @@ func scanEvent(s scanner) (Event, error) {
 func (q *Queries) AppendEvent(ctx context.Context, e Event) (Event, error) {
 	e.CreatedAt = nowMS()
 	e.Payload = json.RawMessage(jsonOr(e.Payload, "{}"))
-	res, err := q.w.ExecContext(ctx, `INSERT INTO event(bot_id, task_id, kind, payload, created_at) VALUES (?,?,?,?,?)`,
-		nullStr(e.BotID), nullStr(e.TaskID), e.Kind, string(e.Payload), e.CreatedAt)
+	res, err := q.w.ExecContext(ctx, `INSERT INTO event(bot_id, thread_id, task_id, kind, payload, created_at) VALUES (?,?,?,?,?,?)`,
+		nullStr(e.BotID), nullStr(e.ThreadID), nullStr(e.TaskID), e.Kind, string(e.Payload), e.CreatedAt)
 	if err != nil {
 		return e, err
 	}
@@ -158,6 +160,24 @@ func (q *Queries) LatestTaskEvent(ctx context.Context, botID, taskID, kind strin
 	e, err := scanEvent(q.r.QueryRowContext(ctx, `SELECT `+eventCols+` FROM event
 		WHERE bot_id = ? AND task_id = ? AND kind = ? ORDER BY id DESC LIMIT 1`, botID, taskID, kind))
 	return e, notFound(err)
+}
+
+// ListThreadEvents 讀一條對話串的事件（由舊到新，最多 limit 筆，id 大於 after）；kinds 不是空的時只讀那些種類，
+// taskID 不是空白時只讀那件工作的。
+func (q *Queries) ListThreadEvents(ctx context.Context, threadID, taskID string, kinds []string, after int64, limit int) ([]Event, error) {
+	if limit <= 0 {
+		limit = -1
+	}
+	query := `SELECT ` + eventCols + ` FROM event WHERE thread_id = ? AND id > ? AND (? = '' OR task_id = ?)`
+	args := []any{threadID, after, taskID, taskID}
+	if len(kinds) > 0 {
+		query += ` AND kind IN (?` + strings.Repeat(",?", len(kinds)-1) + `)`
+		for _, k := range kinds {
+			args = append(args, k)
+		}
+	}
+	rows, err := q.r.QueryContext(ctx, query+` ORDER BY id LIMIT ?`, append(args, limit)...)
+	return collect(rows, err, scanEvent)
 }
 
 // LatestTaskInThread 回傳對話串裡最新的任務；沒有時回 ErrNotFound。

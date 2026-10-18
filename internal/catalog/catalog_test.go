@@ -42,6 +42,7 @@ func TestRegisterWithoutDeps(t *testing.T) {
 		"xbot.bots.list", "xbot.bots.get", "xbot.bots.create", "xbot.bots.update", "xbot.bots.archive", "xbot.bots.delete",
 		"xbot.chat.send", "xbot.chat.stop", "xbot.chat.read", "xbot.chat.list_threads", "xbot.chat.wait_until_settled",
 		"xbot.approvals.list", "xbot.approvals.wait", "xbot.approvals.decide", "xbot.inbox.list", "xbot.audit.list",
+		"xbot.chat.respond", "xbot.chat.ask_again", "xbot.chat.steps", "xbot.inbox.counts", "xbot.inbox.mark_read", "xbot.inbox.dismiss", "xbot.inbox.undo",
 		"xbot.models.get", "xbot.models.set_provider", "xbot.models.set_default",
 	} {
 		if _, ok := reg.Get(name); !ok {

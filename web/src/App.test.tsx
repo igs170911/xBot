@@ -39,40 +39,91 @@ afterEach(() => {
 
 it('首頁是待我處理，並顯示服務版本', async () => {
   render(<App />)
-  expect(await screen.findByRole('heading', { level: 1, name: '早安，有 5 件事等你' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { level: 1, name: '早安，事情都處理完了' })).toBeInTheDocument()
+  expect(screen.getByTestId('inbox-empty')).toHaveTextContent('都處理完了')
   expect(await screen.findByText('服務正常 · v-test')).toBeInTheDocument()
   const nav = screen.getByRole('navigation', { name: '側欄' })
   expect(within(nav).getByRole('link', { name: /待我處理/ })).toHaveAttribute('aria-current', 'page')
 })
 
-it('核定卡就地處理：件數減 1，可以復原', async () => {
-  render(<App />)
-  fireEvent.click(await screen.findByRole('button', { name: '允許這次' }))
-  expect(screen.getByRole('heading', { level: 1, name: '早安，有 4 件事等你' })).toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: '復原' }))
-  expect(screen.getByRole('heading', { level: 1, name: '早安，有 5 件事等你' })).toBeInTheDocument()
-  await screen.findByText('服務正常 · v-test')
-})
+const APPROVAL = { id: 'i1', kind: 'approval', group: 'decide', bot_id: 'b1', ref: 'ap1', title: 'Claude Code 想要：刪除 Bot', body: '要允許嗎？', payload: { op: 'xbot.bots.delete' }, status: 'open', read: false, created_at: 1 }
 
 it('真的待我處理：核准可以允許，送出 approvals.decide 後重讀', async () => {
   let open = true
-  api.ops['inbox.list'] = () => ({
-    items: open ? [{ id: 'i1', kind: 'approval', bot_id: 'b1', ref: 'ap1', title: '刪除 Bot「舊的」', body: 'Claude Code 要刪除', payload: {}, status: 'open', created_at: 1 }] : [],
-  })
+  api.ops['inbox.list'] = (input) => ({ items: open && input.status === 'open' ? [APPROVAL] : [] })
   api.ops['bots.list'] = () => ({ bots: [BOT] })
   api.ops['approvals.decide'] = () => {
     open = false
-    return { approval: { id: 'ap1', op: 'xbot.bots.delete', summary: '', params: {}, requested_by: 'agent:a', status: 'approved', created_at: 1 }, settled: true, executed: true }
+    return { approval: { id: 'ap1', op: 'xbot.bots.delete', summary: '', params: {}, requested_by: 'agent:a', status: 'approved', created_at: 1 }, settled: true, executed: true, failed: false }
   }
   render(<App />)
   const card = await screen.findByTestId('inbox-item')
-  expect(within(card).getByText('刪除 Bot「舊的」')).toBeInTheDocument()
-  expect(screen.getByRole('heading', { level: 1, name: '早安，有 6 件事等你' })).toBeInTheDocument()
+  expect(within(card).getByText('Claude Code 想要：刪除 Bot')).toBeInTheDocument()
+  expect(screen.getByRole('heading', { level: 1, name: '早安，有 1 件事等你' })).toBeInTheDocument()
   const nav = screen.getByRole('navigation', { name: '側欄' })
   expect(within(nav).getByLabelText('1 件等你')).toBeInTheDocument()
-  fireEvent.click(within(card).getByRole('button', { name: '允許這次' }))
+  // 刪除類用危險樣式（F08）
+  fireEvent.click(within(card).getByRole('button', { name: '允許刪除' }))
   await waitFor(() => expect(screen.queryByTestId('inbox-item')).toBeNull())
   expect(api.calls.find((c) => c.path === 'approvals.decide')?.input).toEqual({ approval_id: 'ap1', decision: 'allow' })
+})
+
+it('退回後跳出可以復原的提示，按復原呼叫 inbox.undo', async () => {
+  let open = true
+  api.ops['inbox.list'] = (input) => ({ items: open && input.status === 'open' ? [{ ...APPROVAL, payload: { op: 'xbot.mail.send' } }] : [] })
+  api.ops['approvals.decide'] = () => {
+    open = false
+    return { approval: { id: 'ap1', op: 'xbot.mail.send', summary: '', params: {}, requested_by: 'agent:a', status: 'denied', created_at: 1 }, settled: true, executed: false, failed: false }
+  }
+  api.ops['inbox.undo'] = () => {
+    open = true
+    return { item: { ...APPROVAL } }
+  }
+  render(<App />)
+  const card = await screen.findByTestId('inbox-item')
+  fireEvent.click(within(card).getByRole('button', { name: '退回' }))
+  await waitFor(() => expect(screen.queryByTestId('inbox-item')).toBeNull())
+  fireEvent.click(await screen.findByRole('button', { name: '復原' }))
+  expect(await screen.findByTestId('inbox-item')).toBeInTheDocument()
+  expect(api.calls.find((c) => c.path === 'inbox.undo')?.input).toEqual({ inbox_id: 'i1' })
+})
+
+it('Bot 在對話裡的提問：在待我處理就地回答（chat.respond）', async () => {
+  let open = true
+  api.ops['bots.list'] = () => ({ bots: [BOT] })
+  api.ops['inbox.list'] = (input) => ({
+    items:
+      open && input.status === 'open'
+        ? [{ id: 'q1', kind: 'question', group: 'decide', bot_id: 'b1', task_id: 't1', thread_id: 'th1', title: '抓蟲有問題問你', body: '要比日本賣場嗎？', payload: { prompt: '要比日本賣場嗎？', choices: ['要', '不用'] }, status: 'open', read: false, created_at: 1, expires_at: Date.now() + 7 * 60_000 }]
+        : [],
+  })
+  api.ops['chat.respond'] = () => {
+    open = false
+    return { inbox_id: 'q1', task_id: 't1', thread_id: 'th1', status: 'resolved', resolution: 'answered' }
+  }
+  render(<App />)
+  const card = await screen.findByTestId('ask-card')
+  expect(within(card).getByTestId('ask-expiry')).toHaveTextContent('還有 7 分鐘')
+  fireEvent.click(within(card).getByRole('button', { name: /不用/ }))
+  await waitFor(() => expect(screen.queryByTestId('ask-card')).toBeNull())
+  expect(api.calls.find((c) => c.path === 'chat.respond')?.input).toEqual({ inbox_id: 'q1', text: '不用' })
+})
+
+it('過期的提問可以請它再問一次', async () => {
+  let asked = false
+  api.ops['inbox.list'] = (input) => ({
+    items: input.status === 'expired' && !asked ? [{ id: 'x1', kind: 'question', group: 'decide', bot_id: 'b1', task_id: 't1', thread_id: 'th1', title: '信差有問題問你', body: '要不要退訂這 12 份電子報？', payload: {}, status: 'expired', resolution: 'expired', read: true, created_at: 1 }] : [],
+  })
+  api.ops['chat.ask_again'] = () => {
+    asked = true
+    return { bot_id: 'b1', thread_id: 'th1', task_id: 't2', message_id: 'm' }
+  }
+  render(<App />)
+  const card = await screen.findByTestId('inbox-expired')
+  expect(card).toHaveTextContent('要不要退訂這 12 份電子報？')
+  fireEvent.click(within(card).getByRole('button', { name: '請它再問一次' }))
+  await waitFor(() => expect(screen.queryByTestId('inbox-expired')).toBeNull())
+  expect(api.calls.find((c) => c.path === 'chat.ask_again')?.input).toEqual({ inbox_id: 'x1' })
 })
 
 it('側欄連結用前端路由換頁', async () => {
@@ -82,7 +133,7 @@ it('側欄連結用前端路由換頁', async () => {
   expect(window.location.pathname).toBe('/office')
   expect(screen.getByRole('heading', { level: 1, name: '辦公室' })).toBeInTheDocument()
   act(() => navigate('/'))
-  expect(screen.getByRole('heading', { level: 1, name: '早安，有 5 件事等你' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { level: 1, name: '早安，事情都處理完了' })).toBeInTheDocument()
   await screen.findByText('服務正常 · v-test')
 })
 

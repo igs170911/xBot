@@ -191,7 +191,7 @@ func (c *Computers) Prepare(ctx context.Context, h hosts.Host, botID, containerI
 	return hermes.Provision(ctx, h.Docker(), containerID, hermes.Profile{
 		BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul,
 		ProviderID: ref.Provider, Model: ref.Model, Transport: ref.Transport, Effort: b.Effort,
-		WorkerKey: string(key), UID: box.BotUID, GID: box.BotGID,
+		WorkerKey: string(key), UID: box.BotUID, GID: box.BotGID, ApprovalMode: b.ApprovalMode,
 	})
 }
 

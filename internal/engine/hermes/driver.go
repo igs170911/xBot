@@ -269,8 +269,11 @@ func (d *Driver) Respond(ctx context.Context, s engine.Session, requestID string
 		}
 		_ = json.Unmarshal(p.params, &params)
 		answers := map[string]string{}
-		for _, q := range params.Questions {
+		for i, q := range params.Questions {
 			answers[q.QID] = a.Text
+			if i < len(a.Answers) && a.Answers[i] != "" {
+				answers[q.QID] = a.Answers[i]
+			}
 		}
 		result = map[string]any{"answers": answers, "outcome": "answered"}
 	case "approval":
@@ -379,7 +382,7 @@ func (d *Driver) request(bc *botConn, r serverRequest) {
 	bc.requests[id] = pending{id: r.ID, method: r.Method, params: r.Params, session: s.id}
 	bc.mu.Unlock()
 	s.q.push(engine.Event{Type: engine.EventNeedsApproval, Session: s.id, Request: &engine.Request{
-		ID: id, Kind: kind, Prompt: prompt, Choices: choices, Params: r.Params,
+		ID: id, Kind: kind, Method: r.Method, Prompt: prompt, Choices: choices, Params: r.Params,
 	}})
 }
 
@@ -413,9 +416,14 @@ func (bc *botConn) event(p eventParams) {
 			ID any `json:"id"`
 		}
 		if json.Unmarshal(p.Payload, &c) == nil {
+			id := fmt.Sprint(c.ID)
 			bc.mu.Lock()
-			delete(bc.requests, fmt.Sprint(c.ID))
+			_, had := bc.requests[id]
+			delete(bc.requests, id)
 			bc.mu.Unlock()
+			if had {
+				s.q.push(engine.Event{Type: engine.EventRequestClosed, Session: s.id, Request: &engine.Request{ID: id}})
+			}
 		}
 	}
 }
