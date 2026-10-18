@@ -14,6 +14,7 @@ import {
 } from '../api/generated'
 import { botsStore, type Bot } from '../data/bots'
 import { useStore } from '../data/store'
+import { useNetwork } from '../data/network'
 import { useCopy } from '../chat/useCopy'
 import { linkClick, navigate } from '../router'
 import { Button, IconButton } from '../ui/Button'
@@ -73,6 +74,7 @@ function meta(r: Routine, bot?: Bot): string {
 }
 
 function HookRow({ r }: { r: Routine }) {
+  useNetwork() // 對外網址讀到後重畫
   const [copied, copy] = useCopy()
   const [busy, act] = useAction()
   if (!r.hook) return null
@@ -172,6 +174,7 @@ function HookSection({ r }: { r: Routine }) {
   const [copiedURL, copyURL] = useCopy()
   const [copiedCurl, copyCurl] = useCopy()
   const [busy, act] = useAction()
+  const net = useNetwork().status
   if (!r.hook)
     return (
       <section className="flex flex-col gap-2 rounded-group bg-inset px-4 py-3.5">
@@ -186,6 +189,15 @@ function HookSection({ r }: { r: Routine }) {
   return (
     <section className="flex flex-col gap-3 rounded-group bg-inset px-4 py-3.5" data-testid="hook-section">
       <h3 className="m-0 text-ui font-normal">網址與金鑰</h3>
+      {net && !net.public_url && (
+        <p className="m-0 text-meta text-ink-3" data-testid="hook-private">
+          這個網址只有這台電腦{net.tailscale.url ? '和你的 tailnet' : ''}連得到；要讓外部服務呼叫，到
+          <a href="/settings/advanced/network" onClick={linkClick('/settings/advanced/network')} className="mx-1 text-accent-ink">
+            網路與 Tailscale
+          </a>
+          開外部入口。
+        </p>
+      )}
       <div className="flex flex-col divide-y divide-line rounded-field border border-line">
         <div className="flex items-center gap-3 px-3 py-2">
           <span className="w-10 flex-none text-meta text-ink-3">網址</span>

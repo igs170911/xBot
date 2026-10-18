@@ -103,6 +103,9 @@ export interface AuthStatus {
   local: boolean
   kind?: 'owner' | 'agent' | 'bot'
   name?: string
+  /** 經內建 Tailscale 的 tailnet 連進來（C35）；tailscale_user 是查到的 Tailscale 帳號（只是提示，一樣要登入）。 */
+  tailnet?: boolean
+  tailscale_user?: string
 }
 
 async function authCall<T>(path: string, init: RequestInit, opts: CallOptions): Promise<T> {
@@ -1026,6 +1029,1124 @@ export interface ApprovalsWaitOutput {
  */
 export function approvalsWait(input: ApprovalsWaitInput, opts?: CallOptions): Promise<ApprovalsWaitOutput> {
   return invoke('xbot.approvals.wait', input, opts).then((r) => r.output)
+}
+
+// xbot.apps.add_mcp_server
+
+export interface AppsAddMcpServerInput {
+  /** 名字（英文小寫、數字、- _），Bot 的工具會叫 mcp__<name>__<工具> */
+  name: string
+  /** 顯示的名稱；不填用 name */
+  title?: string
+  /** http：遠端網址（XBot 代為轉送，權杖不進 Bot 的電腦）；stdio：在 Bot 電腦裡執行的本機程式 */
+  transport: 'http' | 'stdio'
+  /** 遠端網址（Streamable HTTP） */
+  url?: string
+  /** 本機程式的指令，例：npx */
+  command?: string
+  /** 本機程式的參數，例：["-y", "@acme/mcp-server"] */
+  args?: string[]
+  /** 遠端網址的驗證方式；預設 none */
+  auth?: 'none' | 'api_key' | 'oauth2'
+  /** auth 是 api_key 時的 Token（密鑰：只能寫、不能讀） */
+  token?: string
+  /** Token 放哪個標頭；預設 Authorization（自動加 Bearer） */
+  token_header?: string
+  /** 其他標頭（遠端網址）；值加密存放，畫面只看得到名字（密鑰：只能寫、不能讀） */
+  headers?: Record<string, string>
+  /** 本機程式的環境變數；值是空的表示還缺（連接會停用並標出缺哪個）（密鑰：只能寫、不能讀） */
+  env?: Record<string, string>
+  /** auth 是 oauth2、而且服務不開放自動註冊時，你的 OAuth 用戶端 ID */
+  client_id?: string
+  /** （密鑰：只能寫、不能讀） */
+  client_secret?: string
+  /** 只給這些 Bot 用；不填是所有 Bot */
+  bot_ids?: string[]
+  /** 先加進來但不啟用 */
+  disabled?: boolean
+  /** OAuth 登入完成後回到的 XBot 網址開頭 */
+  redirect_base?: string
+}
+
+export interface AppsAddMcpServerOutput {
+  connection: {
+    id: string
+    /** 目錄 id；自訂的是 custom */
+    app_id: string
+    /** 在 Bot 設定裡的名字（工具叫 mcp__<name>__<工具>） */
+    name: string
+    title: string
+    description: string
+    icon: string
+    custom: boolean
+    transport: 'http' | 'stdio'
+    url: string
+    command: string
+    args: string[]
+    auth: 'none' | 'api_key' | 'oauth2'
+    account: string
+    /** ok、needs_signin、expired、error、disabled、checking、signing_in */
+    status: string
+    error: string
+    /** 已存的權杖或金鑰末四碼；空白表示沒存 */
+    secret_hint: string
+    header_names: string[]
+    env_names: string[]
+    missing_env: string[]
+    tools: {
+      name: string
+      description?: string
+    }[]
+    disabled_tools: string[]
+    all_bots: boolean
+    /** 只給指定的 Bot 時，是哪些 Bot */
+    bot_ids: string[]
+    enabled: boolean
+    checked_at: number
+    last_used_at: number
+    created_at: number
+    signin?: {
+      flow_id: string
+      /** 要你打開的登入頁 */
+      auth_url: string
+      /** 登入完成後回到的網址；打不開時把網址列整串貼回來 */
+      redirect_uri: string
+      expires_at: number
+      /** 登入頁開在這個 Bot 的電腦上 */
+      bot_id?: string
+    }
+    /** 最近使用（xbot.apps.get 才有） */
+    uses?: {
+      id: string
+      connection_id: string
+      bot_id: string
+      tool: string
+      ok: boolean
+      created_at: number
+    }[]
+  }
+  /** 要登入時：打開 auth_url 登入，完成後用 xbot.apps.signin_status 查結果 */
+  signin?: {
+    flow_id: string
+    /** 要你打開的登入頁 */
+    auth_url: string
+    /** 登入完成後回到的網址；打不開時把網址列整串貼回來 */
+    redirect_uri: string
+    expires_at: number
+    /** 登入頁開在這個 Bot 的電腦上 */
+    bot_id?: string
+  }
+}
+
+/**
+ * 加一個自訂 MCP 服務
+ *
+ * 清單外的服務：遠端網址（Streamable HTTP，XBot 代為轉送，Token 不進 Bot 的電腦）或在 Bot 電腦裡執行的本機程式（環境變數只寫進有授權的 Bot）。只加你信任的服務。
+ *
+ * `xbot.apps.add_mcp_server`：權限 admin、風險 safe
+ */
+export function appsAddMcpServer(input: AppsAddMcpServerInput, opts?: CallOptions): Promise<AppsAddMcpServerOutput> {
+  return invoke('xbot.apps.add_mcp_server', input, opts).then((r) => r.output)
+}
+
+// xbot.apps.cancel_signin
+
+export interface AppsCancelSigninInput {
+  flow_id: string
+}
+
+export interface AppsCancelSigninOutput {
+  canceled: boolean
+}
+
+/**
+ * 取消一次登入
+ *
+ * `xbot.apps.cancel_signin`：權限 admin、風險 safe
+ */
+export function appsCancelSignin(input: AppsCancelSigninInput, opts?: CallOptions): Promise<AppsCancelSigninOutput> {
+  return invoke('xbot.apps.cancel_signin', input, opts).then((r) => r.output)
+}
+
+// xbot.apps.catalog
+
+export interface AppsCatalogInput {
+  /** 關鍵字（名稱、說明、網站） */
+  query?: string
+  category?: string
+  /** 只列已連接的 */
+  connected?: boolean
+}
+
+export interface AppsCatalogOutput {
+  apps: {
+    id: string
+    title: string
+    description: string
+    category: string
+    site: string
+    /** Lucide 圖示名稱（中性圓形圖示，不放品牌標誌） */
+    icon: string
+    transport: string
+    url: string
+    auth: 'none' | 'api_key' | 'oauth2'
+    /** 預設關掉的工具（Hermes manifest 的 default_excluded） */
+    exclude?: string[]
+    token_header?: string
+    token_hint?: string
+    token_url?: string
+    /** 授權伺服器不開放動態註冊：要你自己的 OAuth 用戶端 ID */
+    needs_client?: boolean
+    client_hint?: string
+    featured?: boolean
+    source?: string
+    /** available：還沒連接；其他是第一個帳號的狀態（ok、needs_signin、expired、error、disabled、checking、signing_in） */
+    state: string
+    /** 這個應用程式的連接 id（一個帳號一個） */
+    connections: string[]
+  }[]
+  categories: string[]
+  /** 已連接的應用程式數（含自訂連接） */
+  connected: number
+  total: number
+}
+
+/**
+ * 列出可以連接的應用程式
+ *
+ * 常用的在前；每個應用程式有驗證方式（none：不用登入；api_key：要貼金鑰；oauth2：要登入）與目前狀態。清單外的服務用 xbot.apps.add_mcp_server。
+ *
+ * `xbot.apps.catalog`：權限 read、風險 safe
+ */
+export function appsCatalog(input: AppsCatalogInput = {}, opts?: CallOptions): Promise<AppsCatalogOutput> {
+  return invoke('xbot.apps.catalog', input, opts).then((r) => r.output)
+}
+
+// xbot.apps.connect
+
+export interface AppsConnectInput {
+  /** 目錄裡的應用程式 id（xbot.apps.catalog） */
+  app_id: string
+  /** 重新連接（重新登入、換金鑰）已有的這個帳號；不填是新增一個帳號 */
+  connection_id?: string
+  /** auth 是 api_key 的應用程式要的金鑰或權杖（例：GitHub Personal Access Token）（密鑰：只能寫、不能讀） */
+  api_key?: string
+  /** 授權伺服器不開放自動註冊時，你自己的 OAuth 用戶端 ID */
+  client_id?: string
+  /** 你自己的 OAuth 用戶端密鑰（有的話）（密鑰：只能寫、不能讀） */
+  client_secret?: string
+  /** XBot 的網址開頭（登入完成後回到這裡）；網頁會帶目前的網址，不填用服務設定的網址 */
+  redirect_base?: string
+  /** 只給這些 Bot 用；不填是所有 Bot（XBot 預設） */
+  bot_ids?: string[]
+  /** 把登入頁開在這個 Bot 的電腦上（你在即時畫面登入）；不填是在你自己的裝置登入 */
+  signin_on_bot?: string
+}
+
+export interface AppsConnectOutput {
+  connection: {
+    id: string
+    /** 目錄 id；自訂的是 custom */
+    app_id: string
+    /** 在 Bot 設定裡的名字（工具叫 mcp__<name>__<工具>） */
+    name: string
+    title: string
+    description: string
+    icon: string
+    custom: boolean
+    transport: 'http' | 'stdio'
+    url: string
+    command: string
+    args: string[]
+    auth: 'none' | 'api_key' | 'oauth2'
+    account: string
+    /** ok、needs_signin、expired、error、disabled、checking、signing_in */
+    status: string
+    error: string
+    /** 已存的權杖或金鑰末四碼；空白表示沒存 */
+    secret_hint: string
+    header_names: string[]
+    env_names: string[]
+    missing_env: string[]
+    tools: {
+      name: string
+      description?: string
+    }[]
+    disabled_tools: string[]
+    all_bots: boolean
+    /** 只給指定的 Bot 時，是哪些 Bot */
+    bot_ids: string[]
+    enabled: boolean
+    checked_at: number
+    last_used_at: number
+    created_at: number
+    signin?: {
+      flow_id: string
+      /** 要你打開的登入頁 */
+      auth_url: string
+      /** 登入完成後回到的網址；打不開時把網址列整串貼回來 */
+      redirect_uri: string
+      expires_at: number
+      /** 登入頁開在這個 Bot 的電腦上 */
+      bot_id?: string
+    }
+    /** 最近使用（xbot.apps.get 才有） */
+    uses?: {
+      id: string
+      connection_id: string
+      bot_id: string
+      tool: string
+      ok: boolean
+      created_at: number
+    }[]
+  }
+  /** 要登入時：打開 auth_url 登入，完成後用 xbot.apps.signin_status 查結果 */
+  signin?: {
+    flow_id: string
+    /** 要你打開的登入頁 */
+    auth_url: string
+    /** 登入完成後回到的網址；打不開時把網址列整串貼回來 */
+    redirect_uri: string
+    expires_at: number
+    /** 登入頁開在這個 Bot 的電腦上 */
+    bot_id?: string
+  }
+}
+
+/**
+ * 連接一個應用程式
+ *
+ * 目錄裡的應用程式：不用登入的直接連好；要金鑰的帶 api_key；要登入的回傳 signin.auth_url，請使用者打開登入，用 xbot.apps.signin_status 查結果。預設所有 Bot 都能用、工具全開。權杖由 XBot 保管，不會進 Bot 的電腦。
+ *
+ * `xbot.apps.connect`：權限 admin、風險 safe
+ */
+export function appsConnect(input: AppsConnectInput, opts?: CallOptions): Promise<AppsConnectOutput> {
+  return invoke('xbot.apps.connect', input, opts).then((r) => r.output)
+}
+
+// xbot.apps.disconnect
+
+export interface AppsDisconnectInput {
+  /** 連接 id */
+  id: string
+}
+
+export interface AppsDisconnectOutput {
+  id: string
+  /** 目錄 id；自訂的是 custom */
+  app_id: string
+  /** 在 Bot 設定裡的名字（工具叫 mcp__<name>__<工具>） */
+  name: string
+  title: string
+  description: string
+  icon: string
+  custom: boolean
+  transport: 'http' | 'stdio'
+  url: string
+  command: string
+  args: string[]
+  auth: 'none' | 'api_key' | 'oauth2'
+  account: string
+  /** ok、needs_signin、expired、error、disabled、checking、signing_in */
+  status: string
+  error: string
+  /** 已存的權杖或金鑰末四碼；空白表示沒存 */
+  secret_hint: string
+  header_names: string[]
+  env_names: string[]
+  missing_env: string[]
+  tools: {
+    name: string
+    description?: string
+  }[]
+  disabled_tools: string[]
+  all_bots: boolean
+  /** 只給指定的 Bot 時，是哪些 Bot */
+  bot_ids: string[]
+  enabled: boolean
+  checked_at: number
+  last_used_at: number
+  created_at: number
+  signin?: {
+    flow_id: string
+    /** 要你打開的登入頁 */
+    auth_url: string
+    /** 登入完成後回到的網址；打不開時把網址列整串貼回來 */
+    redirect_uri: string
+    expires_at: number
+    /** 登入頁開在這個 Bot 的電腦上 */
+    bot_id?: string
+  }
+  /** 最近使用（xbot.apps.get 才有） */
+  uses?: {
+    id: string
+    connection_id: string
+    bot_id: string
+    tool: string
+    ok: boolean
+    created_at: number
+  }[]
+}
+
+/**
+ * 中斷一個連接
+ *
+ * 刪掉這個帳號的權杖與設定，所有 Bot 都不能再用。要你本人核准。
+ *
+ * `xbot.apps.disconnect`：權限 admin、風險 confirm
+ */
+export function appsDisconnect(input: AppsDisconnectInput, opts?: CallOptions): Promise<AppsDisconnectOutput> {
+  return invoke('xbot.apps.disconnect', input, opts).then((r) => r.output)
+}
+
+// xbot.apps.finish_signin
+
+export interface AppsFinishSigninInput {
+  /** 登入後停住（打不開）那一頁網址列的整串網址 */
+  url: string
+}
+
+export interface AppsFinishSigninOutput {
+  /** pending：還在等你登入；done：完成；error：失敗；gone：找不到（過期或已取消） */
+  status: string
+  error?: string
+  connection?: {
+    id: string
+    /** 目錄 id；自訂的是 custom */
+    app_id: string
+    /** 在 Bot 設定裡的名字（工具叫 mcp__<name>__<工具>） */
+    name: string
+    title: string
+    description: string
+    icon: string
+    custom: boolean
+    transport: 'http' | 'stdio'
+    url: string
+    command: string
+    args: string[]
+    auth: 'none' | 'api_key' | 'oauth2'
+    account: string
+    /** ok、needs_signin、expired、error、disabled、checking、signing_in */
+    status: string
+    error: string
+    /** 已存的權杖或金鑰末四碼；空白表示沒存 */
+    secret_hint: string
+    header_names: string[]
+    env_names: string[]
+    missing_env: string[]
+    tools: {
+      name: string
+      description?: string
+    }[]
+    disabled_tools: string[]
+    all_bots: boolean
+    /** 只給指定的 Bot 時，是哪些 Bot */
+    bot_ids: string[]
+    enabled: boolean
+    checked_at: number
+    last_used_at: number
+    created_at: number
+    signin?: {
+      flow_id: string
+      /** 要你打開的登入頁 */
+      auth_url: string
+      /** 登入完成後回到的網址；打不開時把網址列整串貼回來 */
+      redirect_uri: string
+      expires_at: number
+      /** 登入頁開在這個 Bot 的電腦上 */
+      bot_id?: string
+    }
+    /** 最近使用（xbot.apps.get 才有） */
+    uses?: {
+      id: string
+      connection_id: string
+      bot_id: string
+      tool: string
+      ok: boolean
+      created_at: number
+    }[]
+  }
+}
+
+/**
+ * 用貼上的網址完成登入
+ *
+ * 在別的裝置或 Bot 的電腦登入時，最後會停在打不開的頁面（正常）；把網址列整串貼上就能完成。
+ *
+ * `xbot.apps.finish_signin`：權限 admin、風險 safe
+ */
+export function appsFinishSignin(input: AppsFinishSigninInput, opts?: CallOptions): Promise<AppsFinishSigninOutput> {
+  return invoke('xbot.apps.finish_signin', input, opts).then((r) => r.output)
+}
+
+// xbot.apps.get
+
+export interface AppsGetInput {
+  /** 連接 id */
+  id: string
+}
+
+export interface AppsGetOutput {
+  id: string
+  /** 目錄 id；自訂的是 custom */
+  app_id: string
+  /** 在 Bot 設定裡的名字（工具叫 mcp__<name>__<工具>） */
+  name: string
+  title: string
+  description: string
+  icon: string
+  custom: boolean
+  transport: 'http' | 'stdio'
+  url: string
+  command: string
+  args: string[]
+  auth: 'none' | 'api_key' | 'oauth2'
+  account: string
+  /** ok、needs_signin、expired、error、disabled、checking、signing_in */
+  status: string
+  error: string
+  /** 已存的權杖或金鑰末四碼；空白表示沒存 */
+  secret_hint: string
+  header_names: string[]
+  env_names: string[]
+  missing_env: string[]
+  tools: {
+    name: string
+    description?: string
+  }[]
+  disabled_tools: string[]
+  all_bots: boolean
+  /** 只給指定的 Bot 時，是哪些 Bot */
+  bot_ids: string[]
+  enabled: boolean
+  checked_at: number
+  last_used_at: number
+  created_at: number
+  signin?: {
+    flow_id: string
+    /** 要你打開的登入頁 */
+    auth_url: string
+    /** 登入完成後回到的網址；打不開時把網址列整串貼回來 */
+    redirect_uri: string
+    expires_at: number
+    /** 登入頁開在這個 Bot 的電腦上 */
+    bot_id?: string
+  }
+  /** 最近使用（xbot.apps.get 才有） */
+  uses?: {
+    id: string
+    connection_id: string
+    bot_id: string
+    tool: string
+    ok: boolean
+    created_at: number
+  }[]
+}
+
+/**
+ * 看一個連接的詳細
+ *
+ * 帳號、狀態、誰能用、工具、最近使用（哪個 Bot 用了哪個工具）。
+ *
+ * `xbot.apps.get`：權限 read、風險 safe
+ */
+export function appsGet(input: AppsGetInput, opts?: CallOptions): Promise<AppsGetOutput> {
+  return invoke('xbot.apps.get', input, opts).then((r) => r.output)
+}
+
+// xbot.apps.grant_to_bot
+
+export interface AppsGrantToBotInput {
+  /** 連接 id */
+  id: string
+  /** 授權給這個 Bot */
+  bot_id?: string
+  /** 改成所有 Bot 都能用 */
+  all_bots?: boolean
+}
+
+export interface AppsGrantToBotOutput {
+  id: string
+  /** 目錄 id；自訂的是 custom */
+  app_id: string
+  /** 在 Bot 設定裡的名字（工具叫 mcp__<name>__<工具>） */
+  name: string
+  title: string
+  description: string
+  icon: string
+  custom: boolean
+  transport: 'http' | 'stdio'
+  url: string
+  command: string
+  args: string[]
+  auth: 'none' | 'api_key' | 'oauth2'
+  account: string
+  /** ok、needs_signin、expired、error、disabled、checking、signing_in */
+  status: string
+  error: string
+  /** 已存的權杖或金鑰末四碼；空白表示沒存 */
+  secret_hint: string
+  header_names: string[]
+  env_names: string[]
+  missing_env: string[]
+  tools: {
+    name: string
+    description?: string
+  }[]
+  disabled_tools: string[]
+  all_bots: boolean
+  /** 只給指定的 Bot 時，是哪些 Bot */
+  bot_ids: string[]
+  enabled: boolean
+  checked_at: number
+  last_used_at: number
+  created_at: number
+  signin?: {
+    flow_id: string
+    /** 要你打開的登入頁 */
+    auth_url: string
+    /** 登入完成後回到的網址；打不開時把網址列整串貼回來 */
+    redirect_uri: string
+    expires_at: number
+    /** 登入頁開在這個 Bot 的電腦上 */
+    bot_id?: string
+  }
+  /** 最近使用（xbot.apps.get 才有） */
+  uses?: {
+    id: string
+    connection_id: string
+    bot_id: string
+    tool: string
+    ok: boolean
+    created_at: number
+  }[]
+}
+
+/**
+ * 讓一個 Bot 可以用這個連接
+ *
+ * 或用 all_bots 改成所有 Bot 都能用。Hermes 的 Bot 立刻重新載入（正在工作時下一個對話生效）；Claude Code、Codex 下一個對話生效。
+ *
+ * `xbot.apps.grant_to_bot`：權限 admin、風險 safe
+ */
+export function appsGrantToBot(input: AppsGrantToBotInput, opts?: CallOptions): Promise<AppsGrantToBotOutput> {
+  return invoke('xbot.apps.grant_to_bot', input, opts).then((r) => r.output)
+}
+
+// xbot.apps.list
+
+export interface AppsListInput {
+  /** 只列這個 Bot 能用的；Bot 自己呼叫時就是自己 */
+  bot_id?: string
+}
+
+export interface AppsListOutput {
+  connections: {
+    id: string
+    /** 目錄 id；自訂的是 custom */
+    app_id: string
+    /** 在 Bot 設定裡的名字（工具叫 mcp__<name>__<工具>） */
+    name: string
+    title: string
+    description: string
+    icon: string
+    custom: boolean
+    transport: 'http' | 'stdio'
+    url: string
+    command: string
+    args: string[]
+    auth: 'none' | 'api_key' | 'oauth2'
+    account: string
+    /** ok、needs_signin、expired、error、disabled、checking、signing_in */
+    status: string
+    error: string
+    /** 已存的權杖或金鑰末四碼；空白表示沒存 */
+    secret_hint: string
+    header_names: string[]
+    env_names: string[]
+    missing_env: string[]
+    tools: {
+      name: string
+      description?: string
+    }[]
+    disabled_tools: string[]
+    all_bots: boolean
+    /** 只給指定的 Bot 時，是哪些 Bot */
+    bot_ids: string[]
+    enabled: boolean
+    checked_at: number
+    last_used_at: number
+    created_at: number
+    signin?: {
+      flow_id: string
+      /** 要你打開的登入頁 */
+      auth_url: string
+      /** 登入完成後回到的網址；打不開時把網址列整串貼回來 */
+      redirect_uri: string
+      expires_at: number
+      /** 登入頁開在這個 Bot 的電腦上 */
+      bot_id?: string
+    }
+    /** 最近使用（xbot.apps.get 才有） */
+    uses?: {
+      id: string
+      connection_id: string
+      bot_id: string
+      tool: string
+      ok: boolean
+      created_at: number
+    }[]
+  }[]
+}
+
+/**
+ * 列出已連接的應用程式
+ *
+ * 每個連接的狀態（可以使用、需要登入、授權過期…）、誰能用、工具。不會回傳任何權杖或金鑰（只有末四碼）。Bot 自己呼叫時只看得到自己能用的。
+ *
+ * `xbot.apps.list`：權限 read、風險 safe
+ */
+export function appsList(input: AppsListInput = {}, opts?: CallOptions): Promise<AppsListOutput> {
+  return invoke('xbot.apps.list', input, opts).then((r) => r.output)
+}
+
+// xbot.apps.request
+
+export interface AppsRequestInput {
+  /** 想用的應用程式（xbot.apps.catalog 的 id）；清單外的服務寫 custom */
+  app_id: string
+  /** 為什麼需要（一句話，給使用者看） */
+  reason?: string
+}
+
+export interface AppsRequestOutput {
+  item_id?: string
+  /** pending：已請使用者連接；ready：你已經可以用了 */
+  status: string
+  note: string
+}
+
+/**
+ * 請使用者連接一個應用程式
+ *
+ * 你需要某個應用程式（例：Notion）但還不能用時呼叫：在「待我處理」出一張卡，使用者連接並授權給你之後，下一個對話就有它的工具。不要自己去登入或要密碼。
+ *
+ * `xbot.apps.request`：權限 operate、風險 safe
+ */
+export function appsRequest(input: AppsRequestInput, opts?: CallOptions): Promise<AppsRequestOutput> {
+  return invoke('xbot.apps.request', input, opts).then((r) => r.output)
+}
+
+// xbot.apps.revoke_from_bot
+
+export interface AppsRevokeFromBotInput {
+  /** 連接 id */
+  id: string
+  /** 不再給這個 Bot 用；原本是所有 Bot 時，改成「其他 Bot 都能用」 */
+  bot_id?: string
+  /** 改成只有指定的 Bot（目前沒有任何 Bot） */
+  all?: boolean
+}
+
+export interface AppsRevokeFromBotOutput {
+  id: string
+  /** 目錄 id；自訂的是 custom */
+  app_id: string
+  /** 在 Bot 設定裡的名字（工具叫 mcp__<name>__<工具>） */
+  name: string
+  title: string
+  description: string
+  icon: string
+  custom: boolean
+  transport: 'http' | 'stdio'
+  url: string
+  command: string
+  args: string[]
+  auth: 'none' | 'api_key' | 'oauth2'
+  account: string
+  /** ok、needs_signin、expired、error、disabled、checking、signing_in */
+  status: string
+  error: string
+  /** 已存的權杖或金鑰末四碼；空白表示沒存 */
+  secret_hint: string
+  header_names: string[]
+  env_names: string[]
+  missing_env: string[]
+  tools: {
+    name: string
+    description?: string
+  }[]
+  disabled_tools: string[]
+  all_bots: boolean
+  /** 只給指定的 Bot 時，是哪些 Bot */
+  bot_ids: string[]
+  enabled: boolean
+  checked_at: number
+  last_used_at: number
+  created_at: number
+  signin?: {
+    flow_id: string
+    /** 要你打開的登入頁 */
+    auth_url: string
+    /** 登入完成後回到的網址；打不開時把網址列整串貼回來 */
+    redirect_uri: string
+    expires_at: number
+    /** 登入頁開在這個 Bot 的電腦上 */
+    bot_id?: string
+  }
+  /** 最近使用（xbot.apps.get 才有） */
+  uses?: {
+    id: string
+    connection_id: string
+    bot_id: string
+    tool: string
+    ok: boolean
+    created_at: number
+  }[]
+}
+
+/**
+ * 不再讓一個 Bot 用這個連接
+ *
+ * `xbot.apps.revoke_from_bot`：權限 admin、風險 safe
+ */
+export function appsRevokeFromBot(input: AppsRevokeFromBotInput, opts?: CallOptions): Promise<AppsRevokeFromBotOutput> {
+  return invoke('xbot.apps.revoke_from_bot', input, opts).then((r) => r.output)
+}
+
+// xbot.apps.signin
+
+export interface AppsSigninInput {
+  /** 連接 id */
+  id: string
+  /** XBot 的網址開頭（登入完成後回到這裡） */
+  redirect_base?: string
+  /** 把登入頁開在這個 Bot 的電腦上 */
+  signin_on_bot?: string
+}
+
+export interface AppsSigninOutput {
+  connection: {
+    id: string
+    /** 目錄 id；自訂的是 custom */
+    app_id: string
+    /** 在 Bot 設定裡的名字（工具叫 mcp__<name>__<工具>） */
+    name: string
+    title: string
+    description: string
+    icon: string
+    custom: boolean
+    transport: 'http' | 'stdio'
+    url: string
+    command: string
+    args: string[]
+    auth: 'none' | 'api_key' | 'oauth2'
+    account: string
+    /** ok、needs_signin、expired、error、disabled、checking、signing_in */
+    status: string
+    error: string
+    /** 已存的權杖或金鑰末四碼；空白表示沒存 */
+    secret_hint: string
+    header_names: string[]
+    env_names: string[]
+    missing_env: string[]
+    tools: {
+      name: string
+      description?: string
+    }[]
+    disabled_tools: string[]
+    all_bots: boolean
+    /** 只給指定的 Bot 時，是哪些 Bot */
+    bot_ids: string[]
+    enabled: boolean
+    checked_at: number
+    last_used_at: number
+    created_at: number
+    signin?: {
+      flow_id: string
+      /** 要你打開的登入頁 */
+      auth_url: string
+      /** 登入完成後回到的網址；打不開時把網址列整串貼回來 */
+      redirect_uri: string
+      expires_at: number
+      /** 登入頁開在這個 Bot 的電腦上 */
+      bot_id?: string
+    }
+    /** 最近使用（xbot.apps.get 才有） */
+    uses?: {
+      id: string
+      connection_id: string
+      bot_id: string
+      tool: string
+      ok: boolean
+      created_at: number
+    }[]
+  }
+  /** 要登入時：打開 auth_url 登入，完成後用 xbot.apps.signin_status 查結果 */
+  signin?: {
+    flow_id: string
+    /** 要你打開的登入頁 */
+    auth_url: string
+    /** 登入完成後回到的網址；打不開時把網址列整串貼回來 */
+    redirect_uri: string
+    expires_at: number
+    /** 登入頁開在這個 Bot 的電腦上 */
+    bot_id?: string
+  }
+}
+
+/**
+ * 重新登入一個連接
+ *
+ * 授權過期或需要登入時用：回傳新的 signin.auth_url。
+ *
+ * `xbot.apps.signin`：權限 admin、風險 safe
+ */
+export function appsSignin(input: AppsSigninInput, opts?: CallOptions): Promise<AppsSigninOutput> {
+  return invoke('xbot.apps.signin', input, opts).then((r) => r.output)
+}
+
+// xbot.apps.signin_status
+
+export interface AppsSigninStatusInput {
+  flow_id: string
+}
+
+export interface AppsSigninStatusOutput {
+  /** pending：還在等你登入；done：完成；error：失敗；gone：找不到（過期或已取消） */
+  status: string
+  error?: string
+  connection?: {
+    id: string
+    /** 目錄 id；自訂的是 custom */
+    app_id: string
+    /** 在 Bot 設定裡的名字（工具叫 mcp__<name>__<工具>） */
+    name: string
+    title: string
+    description: string
+    icon: string
+    custom: boolean
+    transport: 'http' | 'stdio'
+    url: string
+    command: string
+    args: string[]
+    auth: 'none' | 'api_key' | 'oauth2'
+    account: string
+    /** ok、needs_signin、expired、error、disabled、checking、signing_in */
+    status: string
+    error: string
+    /** 已存的權杖或金鑰末四碼；空白表示沒存 */
+    secret_hint: string
+    header_names: string[]
+    env_names: string[]
+    missing_env: string[]
+    tools: {
+      name: string
+      description?: string
+    }[]
+    disabled_tools: string[]
+    all_bots: boolean
+    /** 只給指定的 Bot 時，是哪些 Bot */
+    bot_ids: string[]
+    enabled: boolean
+    checked_at: number
+    last_used_at: number
+    created_at: number
+    signin?: {
+      flow_id: string
+      /** 要你打開的登入頁 */
+      auth_url: string
+      /** 登入完成後回到的網址；打不開時把網址列整串貼回來 */
+      redirect_uri: string
+      expires_at: number
+      /** 登入頁開在這個 Bot 的電腦上 */
+      bot_id?: string
+    }
+    /** 最近使用（xbot.apps.get 才有） */
+    uses?: {
+      id: string
+      connection_id: string
+      bot_id: string
+      tool: string
+      ok: boolean
+      created_at: number
+    }[]
+  }
+}
+
+/**
+ * 查一次登入的結果
+ *
+ * `xbot.apps.signin_status`：權限 read、風險 safe
+ */
+export function appsSigninStatus(input: AppsSigninStatusInput, opts?: CallOptions): Promise<AppsSigninStatusOutput> {
+  return invoke('xbot.apps.signin_status', input, opts).then((r) => r.output)
+}
+
+// xbot.apps.test
+
+export interface AppsTestInput {
+  /** 連接 id */
+  id: string
+}
+
+export interface AppsTestOutput {
+  id: string
+  /** 目錄 id；自訂的是 custom */
+  app_id: string
+  /** 在 Bot 設定裡的名字（工具叫 mcp__<name>__<工具>） */
+  name: string
+  title: string
+  description: string
+  icon: string
+  custom: boolean
+  transport: 'http' | 'stdio'
+  url: string
+  command: string
+  args: string[]
+  auth: 'none' | 'api_key' | 'oauth2'
+  account: string
+  /** ok、needs_signin、expired、error、disabled、checking、signing_in */
+  status: string
+  error: string
+  /** 已存的權杖或金鑰末四碼；空白表示沒存 */
+  secret_hint: string
+  header_names: string[]
+  env_names: string[]
+  missing_env: string[]
+  tools: {
+    name: string
+    description?: string
+  }[]
+  disabled_tools: string[]
+  all_bots: boolean
+  /** 只給指定的 Bot 時，是哪些 Bot */
+  bot_ids: string[]
+  enabled: boolean
+  checked_at: number
+  last_used_at: number
+  created_at: number
+  signin?: {
+    flow_id: string
+    /** 要你打開的登入頁 */
+    auth_url: string
+    /** 登入完成後回到的網址；打不開時把網址列整串貼回來 */
+    redirect_uri: string
+    expires_at: number
+    /** 登入頁開在這個 Bot 的電腦上 */
+    bot_id?: string
+  }
+  /** 最近使用（xbot.apps.get 才有） */
+  uses?: {
+    id: string
+    connection_id: string
+    bot_id: string
+    tool: string
+    ok: boolean
+    created_at: number
+  }[]
+}
+
+/**
+ * 測試一個連接
+ *
+ * XBot 連一次遠端、列出工具（本機程式要在 Bot 的電腦裡執行，第一次使用時才知道）。
+ *
+ * `xbot.apps.test`：權限 admin、風險 safe
+ */
+export function appsTest(input: AppsTestInput, opts?: CallOptions): Promise<AppsTestOutput> {
+  return invoke('xbot.apps.test', input, opts).then((r) => r.output)
+}
+
+// xbot.apps.update
+
+export interface AppsUpdateInput {
+  id: string
+  title?: string
+  enabled?: boolean
+  /** 關掉的工具（整份換掉；給空陣列表示全開） */
+  disabled_tools?: string[]
+  /** 工具全開（清掉 disabled_tools） */
+  reset_tools?: boolean
+  /** 自訂遠端網址 */
+  url?: string
+  command?: string
+  args?: string[]
+  /** 換新的 Token；空白不改（密鑰：只能寫、不能讀） */
+  token?: string
+  token_header?: string
+  /** 整份換掉其他標頭；不給不改（密鑰：只能寫、不能讀） */
+  headers?: Record<string, string>
+  /** 整份換掉環境變數；值空白保留原本的值（密鑰：只能寫、不能讀） */
+  env?: Record<string, string>
+}
+
+export interface AppsUpdateOutput {
+  id: string
+  /** 目錄 id；自訂的是 custom */
+  app_id: string
+  /** 在 Bot 設定裡的名字（工具叫 mcp__<name>__<工具>） */
+  name: string
+  title: string
+  description: string
+  icon: string
+  custom: boolean
+  transport: 'http' | 'stdio'
+  url: string
+  command: string
+  args: string[]
+  auth: 'none' | 'api_key' | 'oauth2'
+  account: string
+  /** ok、needs_signin、expired、error、disabled、checking、signing_in */
+  status: string
+  error: string
+  /** 已存的權杖或金鑰末四碼；空白表示沒存 */
+  secret_hint: string
+  header_names: string[]
+  env_names: string[]
+  missing_env: string[]
+  tools: {
+    name: string
+    description?: string
+  }[]
+  disabled_tools: string[]
+  all_bots: boolean
+  /** 只給指定的 Bot 時，是哪些 Bot */
+  bot_ids: string[]
+  enabled: boolean
+  checked_at: number
+  last_used_at: number
+  created_at: number
+  signin?: {
+    flow_id: string
+    /** 要你打開的登入頁 */
+    auth_url: string
+    /** 登入完成後回到的網址；打不開時把網址列整串貼回來 */
+    redirect_uri: string
+    expires_at: number
+    /** 登入頁開在這個 Bot 的電腦上 */
+    bot_id?: string
+  }
+  /** 最近使用（xbot.apps.get 才有） */
+  uses?: {
+    id: string
+    connection_id: string
+    bot_id: string
+    tool: string
+    ok: boolean
+    created_at: number
+  }[]
+}
+
+/**
+ * 修改一個連接
+ *
+ * 名稱、啟用、關掉哪些工具；自訂連接還可以改網址、指令、Token、標頭、環境變數。變更立刻生效。
+ *
+ * `xbot.apps.update`：權限 admin、風險 safe
+ */
+export function appsUpdate(input: AppsUpdateInput, opts?: CallOptions): Promise<AppsUpdateOutput> {
+  return invoke('xbot.apps.update', input, opts).then((r) => r.output)
 }
 
 // xbot.audit.list
@@ -2190,6 +3311,73 @@ export function collabStopRoom(input: CollabStopRoomInput, opts?: CallOptions): 
   return invoke('xbot.collab.stop_room', input, opts).then((r) => r.output)
 }
 
+// xbot.computers.handback
+
+export interface ComputersHandbackInput {
+  /** Bot id */
+  bot_id: string
+  /** 告訴 Bot 你做了什麼（選填）；不填送出「我剛剛在電腦上操作過，請從目前畫面繼續。」 */
+  note?: string
+}
+
+export interface ComputersHandbackOutput {
+  /** 送給 Bot 的說明 */
+  note: string
+  resumed_task_id?: string
+  thread_id?: string
+  screen: {
+    bot_id: string
+    /** Bot 名稱 */
+    name: string
+    /** 電腦所在的主機；還沒有電腦時是 Bot 指定的主機（空白＝第一次開機時自動擺放） */
+    host_id: string
+    /** none 還沒建立、creating 建立中、running 開機中、sleeping 休眠中、updating 更新中、error 出錯 */
+    box: string
+    /** box=error 時的原因 */
+    error?: string
+    /** 主機名稱；還沒擺放時空白 */
+    host_name: string
+    /** 主機狀態：online、offline、unknown、updating、failed */
+    host_status: string
+    /** Bot 正在做事 */
+    working: boolean
+    /** Bot 因為接手而暫停 */
+    paused: boolean
+    /** 電腦最後被使用的時間（毫秒） */
+    last_active_at: number
+    takeover?: {
+      /** 誰在操作：owner 或 agent:<權杖 id> */
+      by: string
+      /** 顯示名稱 */
+      by_name: string
+      since: number
+      thread_id?: string
+      task_id?: string
+    }
+    request?: {
+      inbox_id: string
+      /** Bot 寫的原因，例：需要輸入簡訊驗證碼 */
+      reason: string
+      thread_id?: string
+      at: number
+    }
+    /** 正在看畫面的連線數 */
+    viewers: number
+    /** 正在操作的是你（呼叫者） */
+    you: boolean
+    vnc: string
+  }
+}
+
+/**
+ * 把電腦交還給 Bot，可以附一句說明；Bot 會從目前的畫面接著做原本的工作
+ *
+ * `xbot.computers.handback`：權限 operate、風險 safe
+ */
+export function computersHandback(input: ComputersHandbackInput, opts?: CallOptions): Promise<ComputersHandbackOutput> {
+  return invoke('xbot.computers.handback', input, opts).then((r) => r.output)
+}
+
 // xbot.computers.purge
 
 export interface ComputersPurgeInput {
@@ -2280,6 +3468,31 @@ export function computersRebuild(input: ComputersRebuildInput, opts?: CallOption
   return invoke('xbot.computers.rebuild', input, opts).then((r) => r.output)
 }
 
+// xbot.computers.request_takeover
+
+export interface ComputersRequestTakeoverInput {
+  /** 一兩句話說明要使用者在電腦上做什麼，例：Threads 要輸入簡訊驗證碼 */
+  reason: string
+}
+
+export interface ComputersRequestTakeoverOutput {
+  inbox_id: string
+  /** 已經請過了，還在等使用者 */
+  already_pending?: boolean
+  note: string
+}
+
+/**
+ * 請使用者接手你的電腦（登入、驗證碼、付款這類一定要真人做的步驟）
+ *
+ * 使用者的「待我處理」會出現一張接手卡。送出後在這一輪的回覆裡用一兩句話說明要使用者做什麼，然後結束這一輪，不要再操作電腦。使用者交還時你會收到一則訊息（含使用者寫的說明），再從當時的畫面接著做。
+ *
+ * `xbot.computers.request_takeover`：權限 operate、風險 safe
+ */
+export function computersRequestTakeover(input: ComputersRequestTakeoverInput, opts?: CallOptions): Promise<ComputersRequestTakeoverOutput> {
+  return invoke('xbot.computers.request_takeover', input, opts).then((r) => r.output)
+}
+
 // xbot.computers.restart
 
 export interface ComputersRestartInput {
@@ -2323,6 +3536,125 @@ export interface ComputersRestartOutput {
  */
 export function computersRestart(input: ComputersRestartInput, opts?: CallOptions): Promise<ComputersRestartOutput> {
   return invoke('xbot.computers.restart', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.screen
+
+export interface ComputersScreenInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface ComputersScreenOutput {
+  bot_id: string
+  /** Bot 名稱 */
+  name: string
+  /** 電腦所在的主機；還沒有電腦時是 Bot 指定的主機（空白＝第一次開機時自動擺放） */
+  host_id: string
+  /** none 還沒建立、creating 建立中、running 開機中、sleeping 休眠中、updating 更新中、error 出錯 */
+  box: string
+  /** box=error 時的原因 */
+  error?: string
+  /** 主機名稱；還沒擺放時空白 */
+  host_name: string
+  /** 主機狀態：online、offline、unknown、updating、failed */
+  host_status: string
+  /** Bot 正在做事 */
+  working: boolean
+  /** Bot 因為接手而暫停 */
+  paused: boolean
+  /** 電腦最後被使用的時間（毫秒） */
+  last_active_at: number
+  takeover?: {
+    /** 誰在操作：owner 或 agent:<權杖 id> */
+    by: string
+    /** 顯示名稱 */
+    by_name: string
+    since: number
+    thread_id?: string
+    task_id?: string
+  }
+  request?: {
+    inbox_id: string
+    /** Bot 寫的原因，例：需要輸入簡訊驗證碼 */
+    reason: string
+    thread_id?: string
+    at: number
+  }
+  /** 正在看畫面的連線數 */
+  viewers: number
+  /** 正在操作的是你（呼叫者） */
+  you: boolean
+  vnc: string
+}
+
+/**
+ * 看一台電腦的畫面狀態：開機或休眠、有沒有人在接手、Bot 有沒有請你接手、幾個人在看
+ *
+ * 畫面本身用 WebSocket 連 vnc 欄位的路徑（noVNC，預設只能看）。接手前先呼叫 xbot.computers.takeover。
+ *
+ * `xbot.computers.screen`：權限 read、風險 safe
+ */
+export function computersScreen(input: ComputersScreenInput, opts?: CallOptions): Promise<ComputersScreenOutput> {
+  return invoke('xbot.computers.screen', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.screens
+
+export type ComputersScreensInput = Record<string, never>
+
+export interface ComputersScreensOutput {
+  screens: {
+    bot_id: string
+    /** Bot 名稱 */
+    name: string
+    /** 電腦所在的主機；還沒有電腦時是 Bot 指定的主機（空白＝第一次開機時自動擺放） */
+    host_id: string
+    /** none 還沒建立、creating 建立中、running 開機中、sleeping 休眠中、updating 更新中、error 出錯 */
+    box: string
+    /** box=error 時的原因 */
+    error?: string
+    /** 主機名稱；還沒擺放時空白 */
+    host_name: string
+    /** 主機狀態：online、offline、unknown、updating、failed */
+    host_status: string
+    /** Bot 正在做事 */
+    working: boolean
+    /** Bot 因為接手而暫停 */
+    paused: boolean
+    /** 電腦最後被使用的時間（毫秒） */
+    last_active_at: number
+    takeover?: {
+      /** 誰在操作：owner 或 agent:<權杖 id> */
+      by: string
+      /** 顯示名稱 */
+      by_name: string
+      since: number
+      thread_id?: string
+      task_id?: string
+    }
+    request?: {
+      inbox_id: string
+      /** Bot 寫的原因，例：需要輸入簡訊驗證碼 */
+      reason: string
+      thread_id?: string
+      at: number
+    }
+    /** 正在看畫面的連線數 */
+    viewers: number
+    /** 正在操作的是你（呼叫者） */
+    you: boolean
+    vnc: string
+  }[]
+}
+
+/**
+ * 列出所有 Bot 的電腦（辦公室）：在哪台主機、開機或休眠、誰在工作、誰在等你接手
+ *
+ * `xbot.computers.screens`：權限 read、風險 safe
+ */
+export function computersScreens(input: ComputersScreensInput = {}, opts?: CallOptions): Promise<ComputersScreensOutput> {
+  return invoke('xbot.computers.screens', input, opts).then((r) => r.output)
 }
 
 // xbot.computers.set_network
@@ -2417,6 +3749,31 @@ export function computersSleep(input: ComputersSleepInput, opts?: CallOptions): 
   return invoke('xbot.computers.sleep', input, opts).then((r) => r.output)
 }
 
+// xbot.computers.snapshot
+
+export interface ComputersSnapshotInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface ComputersSnapshotOutput {
+  bot_id: string
+  available: boolean
+  /** JPEG（base64） */
+  image?: string
+  media_type?: string
+  taken_at?: number
+}
+
+/**
+ * 擷取一台電腦目前畫面的小縮圖（JPEG）；電腦沒開機時 available=false，不會叫醒它
+ *
+ * `xbot.computers.snapshot`：權限 operate、風險 safe
+ */
+export function computersSnapshot(input: ComputersSnapshotInput, opts?: CallOptions): Promise<ComputersSnapshotOutput> {
+  return invoke('xbot.computers.snapshot', input, opts).then((r) => r.output)
+}
+
 // xbot.computers.status
 
 export interface ComputersStatusInput {
@@ -2458,6 +3815,67 @@ export interface ComputersStatusOutput {
  */
 export function computersStatus(input: ComputersStatusInput, opts?: CallOptions): Promise<ComputersStatusOutput> {
   return invoke('xbot.computers.status', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.takeover
+
+export interface ComputersTakeoverInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface ComputersTakeoverOutput {
+  bot_id: string
+  /** Bot 名稱 */
+  name: string
+  /** 電腦所在的主機；還沒有電腦時是 Bot 指定的主機（空白＝第一次開機時自動擺放） */
+  host_id: string
+  /** none 還沒建立、creating 建立中、running 開機中、sleeping 休眠中、updating 更新中、error 出錯 */
+  box: string
+  /** box=error 時的原因 */
+  error?: string
+  /** 主機名稱；還沒擺放時空白 */
+  host_name: string
+  /** 主機狀態：online、offline、unknown、updating、failed */
+  host_status: string
+  /** Bot 正在做事 */
+  working: boolean
+  /** Bot 因為接手而暫停 */
+  paused: boolean
+  /** 電腦最後被使用的時間（毫秒） */
+  last_active_at: number
+  takeover?: {
+    /** 誰在操作：owner 或 agent:<權杖 id> */
+    by: string
+    /** 顯示名稱 */
+    by_name: string
+    since: number
+    thread_id?: string
+    task_id?: string
+  }
+  request?: {
+    inbox_id: string
+    /** Bot 寫的原因，例：需要輸入簡訊驗證碼 */
+    reason: string
+    thread_id?: string
+    at: number
+  }
+  /** 正在看畫面的連線數 */
+  viewers: number
+  /** 正在操作的是你（呼叫者） */
+  you: boolean
+  vnc: string
+}
+
+/**
+ * 接手一台電腦：Bot 先暫停（正在做的那一輪中斷、排隊的先等），你可以直接操作畫面
+ *
+ * 接手後用畫面 WebSocket 加 mode=control 操作。做完用 xbot.computers.handback 交還，Bot 會在同一條對話接著做。別人正在操作時回 conflict。接手中沒有人連著畫面超過 30 分鐘會自動交還。
+ *
+ * `xbot.computers.takeover`：權限 operate、風險 safe
+ */
+export function computersTakeover(input: ComputersTakeoverInput, opts?: CallOptions): Promise<ComputersTakeoverOutput> {
+  return invoke('xbot.computers.takeover', input, opts).then((r) => r.output)
 }
 
 // xbot.computers.update
@@ -4187,14 +5605,14 @@ export type JudgeSettingsGetInput = Record<string, never>
 
 export interface JudgeSettingsGetOutput {
   settings: {
-    /** 第一層 · 選擇題（預設 opencode-zen / jev-1.13） */
+    /** 第一層 · 選擇題（預設 opencode-go / deepseek-v4.1-flash；Jev 需 Zen 儲值） */
     tier1: {
       /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
       provider: string
       /** 模型 */
       model: string
     }
-    /** 第二層 · 短文字（預設 opencode-go / deepseek-v4-flash） */
+    /** 第二層 · 短文字（預設 opencode-go / deepseek-v4.1-flash） */
     tier2: {
       /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
       provider: string
@@ -4266,7 +5684,7 @@ export interface JudgeSettingsGetOutput {
 /**
  * 看快判模型的設定與今天的用量
  *
- * 第一層（選擇題，預設 OpenCode Zen 的 jev-1.13）、第二層（短文字，預設 OpenCode Go 的 deepseek-v4-flash）、本機小模型，每個用途的開關（off 只用規則、shadow 只記錄、live 生效）、每日呼叫上限與今天的次數和花費。
+ * 第一層（選擇題）與第二層（短文字）預設都是 OpenCode Go 的 deepseek-v4.1-flash（可改用 Zen 的 jev-1.13）、本機小模型，每個用途的開關（off 只用規則、shadow 只記錄、live 生效）、每日呼叫上限與今天的次數和花費。
  *
  * `xbot.judge.settings_get`：權限 read、風險 safe
  */
@@ -4308,14 +5726,14 @@ export interface JudgeSettingsSetInput {
 
 export interface JudgeSettingsSetOutput {
   settings: {
-    /** 第一層 · 選擇題（預設 opencode-zen / jev-1.13） */
+    /** 第一層 · 選擇題（預設 opencode-go / deepseek-v4.1-flash；Jev 需 Zen 儲值） */
     tier1: {
       /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
       provider: string
       /** 模型 */
       model: string
     }
-    /** 第二層 · 短文字（預設 opencode-go / deepseek-v4-flash） */
+    /** 第二層 · 短文字（預設 opencode-go / deepseek-v4.1-flash） */
     tier2: {
       /** 供應商 id（xbot.models.get 看）；空白表示這一層不用 */
       provider: string
@@ -4481,6 +5899,114 @@ export interface JudgeStatsOutput {
  */
 export function judgeStats(input: JudgeStatsInput = {}, opts?: CallOptions): Promise<JudgeStatsOutput> {
   return invoke('xbot.judge.stats', input, opts).then((r) => r.output)
+}
+
+// xbot.logins.forget
+
+export interface LoginsForgetInput {
+  bot_id: string
+  /** 要移除登入的網站，例：shopee.tw */
+  sites: string[]
+}
+
+export interface LoginsForgetOutput {
+  sites: string[]
+  /** 移除了幾個 cookie */
+  removed: number
+}
+
+/**
+ * 移除 Bot 瀏覽器裡某些網站的登入
+ *
+ * Bot 下次打開這些網站要重新登入。要你本人核准。
+ *
+ * `xbot.logins.forget`：權限 manage、風險 confirm
+ */
+export function loginsForget(input: LoginsForgetInput, opts?: CallOptions): Promise<LoginsForgetOutput> {
+  return invoke('xbot.logins.forget', input, opts).then((r) => r.output)
+}
+
+// xbot.logins.list
+
+export interface LoginsListInput {
+  bot_id: string
+}
+
+export interface LoginsListOutput {
+  bot_id: string
+  /** 登入的網站與 cookie 數（值不會回傳） */
+  sites: {
+    site: string
+    cookies: number
+  }[]
+}
+
+/**
+ * 列出 Bot 的瀏覽器登入了哪些網站
+ *
+ * 只有網站名稱與 cookie 數，不會回傳登入資料本身。電腦沒開機時會先開機。
+ *
+ * `xbot.logins.list`：權限 read、風險 safe
+ */
+export function loginsList(input: LoginsListInput, opts?: CallOptions): Promise<LoginsListOutput> {
+  return invoke('xbot.logins.list', input, opts).then((r) => r.output)
+}
+
+// xbot.logins.share
+
+export interface LoginsShareInput {
+  /** 登入來源的 Bot */
+  from_bot_id: string
+  /** 要分享給哪些 Bot（它們原本同網站的登入會被取代） */
+  to_bot_ids: string[]
+  /** 網站，例：shopee.tw（xbot.logins.list 列出的名稱） */
+  sites: string[]
+}
+
+export interface LoginsShareOutput {
+  /** 10 分鐘內可以用 xbot.logins.undo_share 復原 */
+  share_id: string
+  sites: string[]
+  targets: string[]
+  /** 每個 Bot 寫入了幾個 cookie */
+  copied: Record<string, number>
+}
+
+/**
+ * 把一個 Bot 的網站登入分享給其他 Bot
+ *
+ * 複製選定網站的登入狀態（cookies），對方打開同一個網站就不用再登入；對方原本的登入會被取代。密碼不會被看到。要你本人核准；10 分鐘內可以復原。
+ *
+ * `xbot.logins.share`：權限 manage、風險 confirm
+ */
+export function loginsShare(input: LoginsShareInput, opts?: CallOptions): Promise<LoginsShareOutput> {
+  return invoke('xbot.logins.share', input, opts).then((r) => r.output)
+}
+
+// xbot.logins.undo_share
+
+export interface LoginsUndoShareInput {
+  share_id: string
+}
+
+export interface LoginsUndoShareOutput {
+  /** 10 分鐘內可以用 xbot.logins.undo_share 復原 */
+  share_id: string
+  sites: string[]
+  targets: string[]
+  /** 每個 Bot 寫入了幾個 cookie */
+  copied: Record<string, number>
+}
+
+/**
+ * 復原一次分享登入
+ *
+ * 把對方的登入換回分享前的樣子（分享後 10 分鐘內）。
+ *
+ * `xbot.logins.undo_share`：權限 manage、風險 safe
+ */
+export function loginsUndoShare(input: LoginsUndoShareInput, opts?: CallOptions): Promise<LoginsUndoShareOutput> {
+  return invoke('xbot.logins.undo_share', input, opts).then((r) => r.output)
 }
 
 // xbot.memory.add
@@ -5205,6 +6731,233 @@ export interface ModelsUpdateProviderOutput {
  */
 export function modelsUpdateProvider(input: ModelsUpdateProviderInput, opts?: CallOptions): Promise<ModelsUpdateProviderOutput> {
   return invoke('xbot.models.update_provider', input, opts).then((r) => r.output)
+}
+
+// xbot.network.funnel_set
+
+export interface NetworkFunnelSetInput {
+  /** 開啟或關閉外部入口（Tailscale Funnel） */
+  enabled: boolean
+  /** IP 白名單（IP 或 CIDR，例：203.0.113.7、198.51.100.0/24）；空白表示不限。Funnel 與反向代理都適用 */
+  allow_ips?: string[]
+}
+
+export interface NetworkFunnelSetOutput {
+  local_url: string
+  tailscale: {
+    enabled: boolean
+    state: 'off' | 'starting' | 'needs_login' | 'running' | 'error'
+    /** 給人看的說明（例：要去 Tailscale 後台開什麼） */
+    message?: string
+    /** 互動登入網址（needs_login 時；只給有 admin 的身分） */
+    login_url?: string
+    hostname: string
+    /** tailnet 網址，例：https://xbot.tail3a9e.ts.net */
+    url?: string
+    tailnet?: string
+    /** 這台 XBot 登入的 Tailscale 帳號 */
+    user?: string
+    ips: string[]
+    magic_dns: boolean
+    /** tailnet 有沒有開 HTTPS 憑證 */
+    https: boolean
+    cert: 'none' | 'missing' | 'pending' | 'ready' | 'error'
+    cert_message?: string
+    /** tailnet 上其他裝置數 */
+    devices: number
+    /** 其中在線上的 */
+    online: number
+    /** 有沒有存登入金鑰（不回傳金鑰本身） */
+    has_auth_key: boolean
+    /** tailnet 網址的 QR（每列一個字串，1 是黑點） */
+    qr: string[]
+  }
+  funnel: {
+    /** 設定上有沒有開 */
+    enabled: boolean
+    state: 'off' | 'starting' | 'on' | 'error' | 'unavailable'
+    message?: string
+    /** 網際網路上連得到的網址（開著時） */
+    url?: string
+    /** tailnet 的存取規則有沒有允許這台用 Funnel */
+    allowed: boolean
+    /** IP 白名單；空白表示不限 */
+    allow_ips: string[]
+  }
+  proxy: {
+    enabled: boolean
+    url?: string
+    trusted_proxies: string[]
+  }
+  /** 外部連得到的網址；網址觸發與代理配對說明用它 */
+  public_url: string
+  base_url: string
+  /** 外部入口開放的路徑 */
+  external_paths: string[]
+  /** 外部入口代理每分鐘呼叫上限 */
+  external_rate_per_min: number
+}
+
+/**
+ * 開啟或關閉外部入口（Tailscale Funnel）：讓 tailnet 外的代理與網址觸發連得到 XBot
+ *
+ * 外部入口只開放 /mcp（一律要代理權杖）、/api/v1/agents.pair（配對碼）與 /hooks/<id>（網址觸發的金鑰），其他路徑一律 404；可設 IP 白名單，速率上限比 tailnet 內嚴。要先開啟內建 Tailscale，tailnet 也要允許 Funnel。開啟要你本人核准、不能代為核准；關閉不用。
+ *
+ * `xbot.network.funnel_set`：權限 admin、風險 confirm（依輸入可能需要核准）
+ */
+export function networkFunnelSet(input: NetworkFunnelSetInput, opts?: CallOptions): Promise<NetworkFunnelSetOutput> {
+  return invoke('xbot.network.funnel_set', input, opts).then((r) => r.output)
+}
+
+// xbot.network.status
+
+export type NetworkStatusInput = Record<string, never>
+
+export interface NetworkStatusOutput {
+  local_url: string
+  tailscale: {
+    enabled: boolean
+    state: 'off' | 'starting' | 'needs_login' | 'running' | 'error'
+    /** 給人看的說明（例：要去 Tailscale 後台開什麼） */
+    message?: string
+    /** 互動登入網址（needs_login 時；只給有 admin 的身分） */
+    login_url?: string
+    hostname: string
+    /** tailnet 網址，例：https://xbot.tail3a9e.ts.net */
+    url?: string
+    tailnet?: string
+    /** 這台 XBot 登入的 Tailscale 帳號 */
+    user?: string
+    ips: string[]
+    magic_dns: boolean
+    /** tailnet 有沒有開 HTTPS 憑證 */
+    https: boolean
+    cert: 'none' | 'missing' | 'pending' | 'ready' | 'error'
+    cert_message?: string
+    /** tailnet 上其他裝置數 */
+    devices: number
+    /** 其中在線上的 */
+    online: number
+    /** 有沒有存登入金鑰（不回傳金鑰本身） */
+    has_auth_key: boolean
+    /** tailnet 網址的 QR（每列一個字串，1 是黑點） */
+    qr: string[]
+  }
+  funnel: {
+    /** 設定上有沒有開 */
+    enabled: boolean
+    state: 'off' | 'starting' | 'on' | 'error' | 'unavailable'
+    message?: string
+    /** 網際網路上連得到的網址（開著時） */
+    url?: string
+    /** tailnet 的存取規則有沒有允許這台用 Funnel */
+    allowed: boolean
+    /** IP 白名單；空白表示不限 */
+    allow_ips: string[]
+  }
+  proxy: {
+    enabled: boolean
+    url?: string
+    trusted_proxies: string[]
+  }
+  /** 外部連得到的網址；網址觸發與代理配對說明用它 */
+  public_url: string
+  base_url: string
+  /** 外部入口開放的路徑 */
+  external_paths: string[]
+  /** 外部入口代理每分鐘呼叫上限 */
+  external_rate_per_min: number
+}
+
+/**
+ * 看網路狀態：本機網址、內建 Tailscale（tailnet 網址、憑證、裝置數）、外部入口（Funnel／反向代理）
+ *
+ * 網址觸發與代理配對說明用 public_url（外部連得到的網址）。登入網址只給有 admin 的身分。
+ *
+ * `xbot.network.status`：權限 read、風險 safe
+ */
+export function networkStatus(input: NetworkStatusInput = {}, opts?: CallOptions): Promise<NetworkStatusOutput> {
+  return invoke('xbot.network.status', input, opts).then((r) => r.output)
+}
+
+// xbot.network.tailscale_set
+
+export interface NetworkTailscaleSetInput {
+  /** 開啟或關閉內建 Tailscale */
+  enabled: boolean
+  /** 在 tailnet 上的名字（小寫英數字與 -）；預設 xbot，網址就是 https://<名字>.<tailnet>.ts.net */
+  hostname?: string
+  /** Tailscale 登入金鑰（tskey-auth-…，加密後存在服務端）；空白就用互動登入（狀態會給登入網址）（密鑰：只能寫、不能讀） */
+  auth_key?: string
+  /** 刪掉存著的登入金鑰 */
+  clear_auth_key?: boolean
+}
+
+export interface NetworkTailscaleSetOutput {
+  local_url: string
+  tailscale: {
+    enabled: boolean
+    state: 'off' | 'starting' | 'needs_login' | 'running' | 'error'
+    /** 給人看的說明（例：要去 Tailscale 後台開什麼） */
+    message?: string
+    /** 互動登入網址（needs_login 時；只給有 admin 的身分） */
+    login_url?: string
+    hostname: string
+    /** tailnet 網址，例：https://xbot.tail3a9e.ts.net */
+    url?: string
+    tailnet?: string
+    /** 這台 XBot 登入的 Tailscale 帳號 */
+    user?: string
+    ips: string[]
+    magic_dns: boolean
+    /** tailnet 有沒有開 HTTPS 憑證 */
+    https: boolean
+    cert: 'none' | 'missing' | 'pending' | 'ready' | 'error'
+    cert_message?: string
+    /** tailnet 上其他裝置數 */
+    devices: number
+    /** 其中在線上的 */
+    online: number
+    /** 有沒有存登入金鑰（不回傳金鑰本身） */
+    has_auth_key: boolean
+    /** tailnet 網址的 QR（每列一個字串，1 是黑點） */
+    qr: string[]
+  }
+  funnel: {
+    /** 設定上有沒有開 */
+    enabled: boolean
+    state: 'off' | 'starting' | 'on' | 'error' | 'unavailable'
+    message?: string
+    /** 網際網路上連得到的網址（開著時） */
+    url?: string
+    /** tailnet 的存取規則有沒有允許這台用 Funnel */
+    allowed: boolean
+    /** IP 白名單；空白表示不限 */
+    allow_ips: string[]
+  }
+  proxy: {
+    enabled: boolean
+    url?: string
+    trusted_proxies: string[]
+  }
+  /** 外部連得到的網址；網址觸發與代理配對說明用它 */
+  public_url: string
+  base_url: string
+  /** 外部入口開放的路徑 */
+  external_paths: string[]
+  /** 外部入口代理每分鐘呼叫上限 */
+  external_rate_per_min: number
+}
+
+/**
+ * 開啟或關閉內建 Tailscale（手機、筆電經 tailnet 用正式 HTTPS 連 XBot）
+ *
+ * 開啟後這台 XBot 會成為你 tailnet 上的一台機器（預設名字 xbot），網址 https://xbot.<tailnet>.ts.net。tailnet 來的連線一樣要登入或權杖。可以給登入金鑰（tskey-auth-…），或不給、用狀態裡的登入網址核准。開啟要你本人核准、不能代為核准；關閉不用。
+ *
+ * `xbot.network.tailscale_set`：權限 admin、風險 confirm（依輸入可能需要核准）
+ */
+export function networkTailscaleSet(input: NetworkTailscaleSetInput, opts?: CallOptions): Promise<NetworkTailscaleSetOutput> {
+  return invoke('xbot.network.tailscale_set', input, opts).then((r) => r.output)
 }
 
 // xbot.push.config
@@ -8419,6 +10172,21 @@ export interface Ops {
   'xbot.approvals.list': { input: ApprovalsListInput; output: ApprovalsListOutput }
   'xbot.approvals.request': { input: ApprovalsRequestInput; output: ApprovalsRequestOutput }
   'xbot.approvals.wait': { input: ApprovalsWaitInput; output: ApprovalsWaitOutput }
+  'xbot.apps.add_mcp_server': { input: AppsAddMcpServerInput; output: AppsAddMcpServerOutput }
+  'xbot.apps.cancel_signin': { input: AppsCancelSigninInput; output: AppsCancelSigninOutput }
+  'xbot.apps.catalog': { input: AppsCatalogInput; output: AppsCatalogOutput }
+  'xbot.apps.connect': { input: AppsConnectInput; output: AppsConnectOutput }
+  'xbot.apps.disconnect': { input: AppsDisconnectInput; output: AppsDisconnectOutput }
+  'xbot.apps.finish_signin': { input: AppsFinishSigninInput; output: AppsFinishSigninOutput }
+  'xbot.apps.get': { input: AppsGetInput; output: AppsGetOutput }
+  'xbot.apps.grant_to_bot': { input: AppsGrantToBotInput; output: AppsGrantToBotOutput }
+  'xbot.apps.list': { input: AppsListInput; output: AppsListOutput }
+  'xbot.apps.request': { input: AppsRequestInput; output: AppsRequestOutput }
+  'xbot.apps.revoke_from_bot': { input: AppsRevokeFromBotInput; output: AppsRevokeFromBotOutput }
+  'xbot.apps.signin': { input: AppsSigninInput; output: AppsSigninOutput }
+  'xbot.apps.signin_status': { input: AppsSigninStatusInput; output: AppsSigninStatusOutput }
+  'xbot.apps.test': { input: AppsTestInput; output: AppsTestOutput }
+  'xbot.apps.update': { input: AppsUpdateInput; output: AppsUpdateOutput }
   'xbot.audit.list': { input: AuditListInput; output: AuditListOutput }
   'xbot.bots.archive': { input: BotsArchiveInput; output: BotsArchiveOutput }
   'xbot.bots.create': { input: BotsCreateInput; output: BotsCreateOutput }
@@ -8445,12 +10213,18 @@ export interface Ops {
   'xbot.collab.start_group': { input: CollabStartGroupInput; output: CollabStartGroupOutput }
   'xbot.collab.stop_chain': { input: CollabStopChainInput; output: CollabStopChainOutput }
   'xbot.collab.stop_room': { input: CollabStopRoomInput; output: CollabStopRoomOutput }
+  'xbot.computers.handback': { input: ComputersHandbackInput; output: ComputersHandbackOutput }
   'xbot.computers.purge': { input: ComputersPurgeInput; output: ComputersPurgeOutput }
   'xbot.computers.rebuild': { input: ComputersRebuildInput; output: ComputersRebuildOutput }
+  'xbot.computers.request_takeover': { input: ComputersRequestTakeoverInput; output: ComputersRequestTakeoverOutput }
   'xbot.computers.restart': { input: ComputersRestartInput; output: ComputersRestartOutput }
+  'xbot.computers.screen': { input: ComputersScreenInput; output: ComputersScreenOutput }
+  'xbot.computers.screens': { input: ComputersScreensInput; output: ComputersScreensOutput }
   'xbot.computers.set_network': { input: ComputersSetNetworkInput; output: ComputersSetNetworkOutput }
   'xbot.computers.sleep': { input: ComputersSleepInput; output: ComputersSleepOutput }
+  'xbot.computers.snapshot': { input: ComputersSnapshotInput; output: ComputersSnapshotOutput }
   'xbot.computers.status': { input: ComputersStatusInput; output: ComputersStatusOutput }
+  'xbot.computers.takeover': { input: ComputersTakeoverInput; output: ComputersTakeoverOutput }
   'xbot.computers.update': { input: ComputersUpdateInput; output: ComputersUpdateOutput }
   'xbot.computers.wake': { input: ComputersWakeInput; output: ComputersWakeOutput }
   'xbot.devices.pair_start': { input: DevicesPairStartInput; output: DevicesPairStartOutput }
@@ -8488,6 +10262,10 @@ export interface Ops {
   'xbot.judge.settings_get': { input: JudgeSettingsGetInput; output: JudgeSettingsGetOutput }
   'xbot.judge.settings_set': { input: JudgeSettingsSetInput; output: JudgeSettingsSetOutput }
   'xbot.judge.stats': { input: JudgeStatsInput; output: JudgeStatsOutput }
+  'xbot.logins.forget': { input: LoginsForgetInput; output: LoginsForgetOutput }
+  'xbot.logins.list': { input: LoginsListInput; output: LoginsListOutput }
+  'xbot.logins.share': { input: LoginsShareInput; output: LoginsShareOutput }
+  'xbot.logins.undo_share': { input: LoginsUndoShareInput; output: LoginsUndoShareOutput }
   'xbot.memory.add': { input: MemoryAddInput; output: MemoryAddOutput }
   'xbot.memory.history': { input: MemoryHistoryInput; output: MemoryHistoryOutput }
   'xbot.memory.read': { input: MemoryReadInput; output: MemoryReadOutput }
@@ -8506,6 +10284,9 @@ export interface Ops {
   'xbot.models.set_price': { input: ModelsSetPriceInput; output: ModelsSetPriceOutput }
   'xbot.models.set_provider': { input: ModelsSetProviderInput; output: ModelsSetProviderOutput }
   'xbot.models.update_provider': { input: ModelsUpdateProviderInput; output: ModelsUpdateProviderOutput }
+  'xbot.network.funnel_set': { input: NetworkFunnelSetInput; output: NetworkFunnelSetOutput }
+  'xbot.network.status': { input: NetworkStatusInput; output: NetworkStatusOutput }
+  'xbot.network.tailscale_set': { input: NetworkTailscaleSetInput; output: NetworkTailscaleSetOutput }
   'xbot.push.config': { input: PushConfigInput; output: PushConfigOutput }
   'xbot.push.subscribe': { input: PushSubscribeInput; output: PushSubscribeOutput }
   'xbot.push.test': { input: PushTestInput; output: PushTestOutput }
@@ -8583,6 +10364,21 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.approvals.list': { path: '/api/v1/approvals.list', scope: 'read', risk: 'safe', mutates: false },
   'xbot.approvals.request': { path: '/api/v1/approvals.request', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.approvals.wait': { path: '/api/v1/approvals.wait', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.apps.add_mcp_server': { path: '/api/v1/apps.add_mcp_server', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.apps.cancel_signin': { path: '/api/v1/apps.cancel_signin', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.apps.catalog': { path: '/api/v1/apps.catalog', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.apps.connect': { path: '/api/v1/apps.connect', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.apps.disconnect': { path: '/api/v1/apps.disconnect', scope: 'admin', risk: 'confirm', mutates: true },
+  'xbot.apps.finish_signin': { path: '/api/v1/apps.finish_signin', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.apps.get': { path: '/api/v1/apps.get', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.apps.grant_to_bot': { path: '/api/v1/apps.grant_to_bot', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.apps.list': { path: '/api/v1/apps.list', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.apps.request': { path: '/api/v1/apps.request', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.apps.revoke_from_bot': { path: '/api/v1/apps.revoke_from_bot', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.apps.signin': { path: '/api/v1/apps.signin', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.apps.signin_status': { path: '/api/v1/apps.signin_status', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.apps.test': { path: '/api/v1/apps.test', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.apps.update': { path: '/api/v1/apps.update', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.audit.list': { path: '/api/v1/audit.list', scope: 'read', risk: 'safe', mutates: false },
   'xbot.bots.archive': { path: '/api/v1/bots.archive', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.bots.create': { path: '/api/v1/bots.create', scope: 'manage', risk: 'safe', mutates: true },
@@ -8609,12 +10405,18 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.collab.start_group': { path: '/api/v1/collab.start_group', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.collab.stop_chain': { path: '/api/v1/collab.stop_chain', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.collab.stop_room': { path: '/api/v1/collab.stop_room', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.computers.handback': { path: '/api/v1/computers.handback', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.computers.purge': { path: '/api/v1/computers.purge', scope: 'manage', risk: 'confirm', mutates: true },
   'xbot.computers.rebuild': { path: '/api/v1/computers.rebuild', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.computers.request_takeover': { path: '/api/v1/computers.request_takeover', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.computers.restart': { path: '/api/v1/computers.restart', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.computers.screen': { path: '/api/v1/computers.screen', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.computers.screens': { path: '/api/v1/computers.screens', scope: 'read', risk: 'safe', mutates: false },
   'xbot.computers.set_network': { path: '/api/v1/computers.set_network', scope: 'admin', risk: 'confirm', mutates: true },
   'xbot.computers.sleep': { path: '/api/v1/computers.sleep', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.computers.snapshot': { path: '/api/v1/computers.snapshot', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.computers.status': { path: '/api/v1/computers.status', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.computers.takeover': { path: '/api/v1/computers.takeover', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.computers.update': { path: '/api/v1/computers.update', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.computers.wake': { path: '/api/v1/computers.wake', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.devices.pair_start': { path: '/api/v1/devices.pair_start', scope: 'admin', risk: 'safe', mutates: true },
@@ -8652,6 +10454,10 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.judge.settings_get': { path: '/api/v1/judge.settings_get', scope: 'read', risk: 'safe', mutates: false },
   'xbot.judge.settings_set': { path: '/api/v1/judge.settings_set', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.judge.stats': { path: '/api/v1/judge.stats', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.logins.forget': { path: '/api/v1/logins.forget', scope: 'manage', risk: 'confirm', mutates: true },
+  'xbot.logins.list': { path: '/api/v1/logins.list', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.logins.share': { path: '/api/v1/logins.share', scope: 'manage', risk: 'confirm', mutates: true },
+  'xbot.logins.undo_share': { path: '/api/v1/logins.undo_share', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.memory.add': { path: '/api/v1/memory.add', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.memory.history': { path: '/api/v1/memory.history', scope: 'read', risk: 'safe', mutates: false },
   'xbot.memory.read': { path: '/api/v1/memory.read', scope: 'read', risk: 'safe', mutates: false },
@@ -8670,6 +10476,9 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.models.set_price': { path: '/api/v1/models.set_price', scope: 'admin', risk: 'confirm', mutates: true },
   'xbot.models.set_provider': { path: '/api/v1/models.set_provider', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.models.update_provider': { path: '/api/v1/models.update_provider', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.network.funnel_set': { path: '/api/v1/network.funnel_set', scope: 'admin', risk: 'confirm', mutates: true },
+  'xbot.network.status': { path: '/api/v1/network.status', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.network.tailscale_set': { path: '/api/v1/network.tailscale_set', scope: 'admin', risk: 'confirm', mutates: true },
   'xbot.push.config': { path: '/api/v1/push.config', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.push.subscribe': { path: '/api/v1/push.subscribe', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.push.test': { path: '/api/v1/push.test', scope: 'admin', risk: 'safe', mutates: true },

@@ -11,6 +11,8 @@ import { SettingsPage } from './settings/SettingsPage'
 import { NewRoutineDialog } from './routines/NewRoutineDialog'
 import { ROUTINES_PATH, RoutinesPage } from './routines/RoutinesPage'
 import { ChatPage } from './chat/ChatPage'
+import { ComputerPage } from './computer/ComputerPage'
+import { OfficePage } from './computer/OfficePage'
 import { registerActivityCard, registerPeerCard } from './chat/peer'
 import { registerChatCards } from './files/register'
 import { BOT_FILES_PATH, BotFilesPage } from './files/BotFilesPage'
@@ -21,6 +23,9 @@ import { NewTeamDialog } from './teams/NewTeamDialog'
 import { TeamMapPage } from './teams/TeamMapPage'
 import { OrgPage } from './teams/OrgPage'
 import { AgendaPage } from './agenda/AgendaPage'
+import { APPS_PATH, AppsPage } from './apps/AppsPage'
+import { McpPage } from './apps/McpPage'
+import { LoginsPage } from './apps/LoginsPage'
 import { startTeams } from './data/teams'
 import { roomsStore, startRooms } from './data/rooms'
 import { startChat } from './chat/chatStore'
@@ -32,12 +37,11 @@ import { ToastProvider } from './ui/Toast'
 import { Icon } from './ui/Icon'
 import { ChatListPage } from './mobile/ChatListPage'
 import { NotificationsPage } from './mobile/NotificationsPage'
-import { OfficePage } from './mobile/OfficePage'
 import { PairPage } from './mobile/PairPage'
 import { BotProfilePage } from './mobile/BotProfilePage'
 import { NewBotPage, NewRoomPage } from './mobile/NewPages'
 import { SharePage } from './mobile/SharePage'
-import { CallPage, ComputerPage } from './mobile/CallPage'
+import { CallPage } from './mobile/CallPage'
 import { WelcomePage } from './mobile/WelcomePage'
 
 const TITLES: Record<string, string> = {
@@ -51,6 +55,8 @@ const TITLES: Record<string, string> = {
   '/agenda': '等你的事',
   '/teams': '團隊地圖',
   '/apps': '連接應用程式',
+  '/apps/mcp': '自訂連接（MCP）',
+  '/apps/logins': '網站登入',
   '/org': '組織架構',
   '/files': '全部檔案',
   '/settings': '設定',
@@ -137,6 +143,8 @@ function Main() {
   else if (path === '/teams') page = <TeamMapPage />
   else if (path === '/org') page = <OrgPage />
   else if (path === '/agenda') page = <AgendaPage />
+  else if (APPS_PATH.test(path))
+    page = path.startsWith('/apps/mcp') ? <McpPage /> : path.startsWith('/apps/logins') ? <LoginsPage /> : <AppsPage />
   else if (path === '/settings' || path.startsWith('/settings/'))
     page = <SettingsPage path={path === '/settings/agents' ? '/settings/advanced/agents' : path} />
   else page = <Placeholder title={title} />

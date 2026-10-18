@@ -34,6 +34,10 @@ const (
 	ProductPath = "/internal/product"
 )
 
+// AppsPrefix 是連接的應用程式（C34）在 socket 上的路徑：/internal/apps/<連接名字>。
+// 容器裡的 XBot MCP 橋接（XBOT_MCP_PATH）把 MCP 轉到這裡，XBot 檢查這個 Bot 有沒有授權、帶上權杖再轉給遠端 MCP。
+const AppsPrefix = "/internal/apps/"
+
 // ModelPrefix 是 Model Proxy 的掛載點（internal/proxy.Prefix）；收到的請求改寫成這個開頭再交給它。
 const ModelPrefix = "/model/"
 
@@ -61,7 +65,12 @@ type Server struct {
 	bots map[string]*listener
 	// product 產生每個 Bot 的 XBot MCP 處理器（SetProduct）；還沒設定時回 503。
 	product atomic.Pointer[func(botID string) http.Handler]
+	// apps 是連接的應用程式的轉送（SetApps，C34）；還沒設定時回 503。
+	apps atomic.Pointer[func(botID string) http.Handler]
 }
+
+// SetApps 接上連接的應用程式的轉送（apps.Service.Proxy）。worker-key 由這裡先驗證過，處理器拿到的 botID 就是呼叫的 Bot。
+func (s *Server) SetApps(f func(botID string) http.Handler) { s.apps.Store(&f) }
 
 // SetProduct 接上 XBot MCP（mcpserver.BotHandler）。操作登錄表在 socket 之後才建好，所以另外設定。
 // 處理器自己驗證 worker-key，身分固定是這個 socket 的 Bot。
@@ -177,6 +186,21 @@ func (s *Server) handler(botID string) http.Handler {
 	}
 	mux.HandleFunc(MCPPath, mcp)
 	mux.HandleFunc(ProductPath, mcp)
+	var appsOnce sync.Once
+	var apps http.Handler
+	mux.HandleFunc(AppsPrefix, func(w http.ResponseWriter, r *http.Request) {
+		f := s.apps.Load()
+		if f == nil {
+			fail(w, http.StatusServiceUnavailable, "apps_disabled", "連接應用程式還沒啟用")
+			return
+		}
+		if !s.ownKey(botID, r) {
+			fail(w, http.StatusUnauthorized, "invalid_worker_key", "需要這個 Bot 的 worker-key")
+			return
+		}
+		appsOnce.Do(func() { apps = (*f)(botID) })
+		apps.ServeHTTP(w, r)
+	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		fail(w, http.StatusNotFound, "not_found", "product.sock 沒有這個路徑")
 	})
@@ -190,14 +214,7 @@ func (s *Server) model(botID string, w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusServiceUnavailable, "proxy_disabled", "模型代理還沒啟用")
 		return
 	}
-	key := ""
-	if auth := r.Header.Get("Authorization"); auth != "" {
-		key, _ = strings.CutPrefix(auth, "Bearer ")
-	} else {
-		key = r.Header.Get("X-Api-Key")
-	}
-	owner, err := s.o.Keys.Verify(r.Context(), strings.TrimSpace(key))
-	if err != nil || owner != botID {
+	if !s.ownKey(botID, r) {
 		fail(w, http.StatusUnauthorized, "invalid_worker_key", "需要這個 Bot 的 worker-key")
 		return
 	}
@@ -206,6 +223,18 @@ func (s *Server) model(botID string, w http.ResponseWriter, r *http.Request) {
 	r2.URL.RawPath = ""
 	r2.RequestURI = ""
 	s.o.Model.ServeHTTP(w, r2)
+}
+
+// ownKey 確認請求帶的是這個 socket 所屬 Bot 的 worker-key（Authorization: Bearer 或 X-Api-Key）。
+func (s *Server) ownKey(botID string, r *http.Request) bool {
+	key := ""
+	if auth := r.Header.Get("Authorization"); auth != "" {
+		key, _ = strings.CutPrefix(auth, "Bearer ")
+	} else {
+		key = r.Header.Get("X-Api-Key")
+	}
+	owner, err := s.o.Keys.Verify(r.Context(), strings.TrimSpace(key))
+	return err == nil && owner == botID
 }
 
 func fail(w http.ResponseWriter, status int, code, message string) {

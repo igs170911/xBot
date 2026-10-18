@@ -158,7 +158,7 @@ func Register(reg *ops.Registry, s *Service) {
 	}
 	ops.Register(reg, ops.Op[SettingsIn, SettingsOut]{
 		Name: "xbot.judge.settings_get", Summary: "看快判模型的設定與今天的用量",
-		Description: "第一層（選擇題，預設 OpenCode Zen 的 jev-1.13）、第二層（短文字，預設 OpenCode Go 的 deepseek-v4-flash）、本機小模型，" +
+		Description: "第一層（選擇題）與第二層（短文字）預設都是 OpenCode Go 的 deepseek-v4.1-flash（可改用 Zen 的 jev-1.13）、本機小模型，" +
 			"每個用途的開關（off 只用規則、shadow 只記錄、live 生效）、每日呼叫上限與今天的次數和花費。",
 		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
 		Handle: func(ctx context.Context, call *ops.Call, _ SettingsIn) (SettingsOut, error) {

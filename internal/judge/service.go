@@ -46,8 +46,10 @@ const UsageEngine = "judge"
 // 預設的模型（PRD §20：第一層 OpenCode Zen 的 Jev 付費版；第二層 OpenCode Go flash）。
 // 免費版 jev-1.13-free 只給 OpenCode 自己的程式用（2026-10-18 實測），XBot 不能用。
 var (
-	DefaultTier1 = TierModel{Provider: "opencode-zen", Model: "jev-1.13"}
-	DefaultTier2 = TierModel{Provider: "opencode-go", Model: "deepseek-v4-flash"}
+	// 使用者決定（2026-10-18）：用 OpenCode Go；Go 沒有 Jev 類的分類模型，兩層都用 deepseek-v4.1-flash
+	// （實測分類正確、約 2 秒；比 mimo-v2.6-flash 的 5.4 秒快）。要用 Jev 可在 J10 改成 opencode-zen/jev-1.13（需 Zen 儲值）。
+	DefaultTier1 = TierModel{Provider: "opencode-go", Model: "deepseek-v4.1-flash"}
+	DefaultTier2 = TierModel{Provider: "opencode-go", Model: "deepseek-v4.1-flash"}
 )
 
 // TierModel 是一層用哪個供應商的哪個模型；Provider 空白表示這一層不用。
@@ -61,8 +63,8 @@ func (t TierModel) On() bool { return t.Provider != "" && t.Model != "" }
 
 // Settings 是快判的設定（設定 → AI 模型 → 快判模型，J10）。
 type Settings struct {
-	Tier1 TierModel `json:"tier1" desc:"第一層 · 選擇題（預設 opencode-zen / jev-1.13）"`
-	Tier2 TierModel `json:"tier2" desc:"第二層 · 短文字（預設 opencode-go / deepseek-v4-flash）"`
+	Tier1 TierModel `json:"tier1" desc:"第一層 · 選擇題（預設 opencode-go / deepseek-v4.1-flash；Jev 需 Zen 儲值）"`
+	Tier2 TierModel `json:"tier2" desc:"第二層 · 短文字（預設 opencode-go / deepseek-v4.1-flash）"`
 	Local TierModel `json:"local" desc:"本機小模型（LM Studio／Ollama 等，設成一個供應商）；空白不用"`
 	// Modes 是每個用途的開關；沒寫的用用途的預設（選擇題影子、要寫字的關）。
 	Modes    map[string]Mode `json:"modes" desc:"每個用途的開關：off 只用規則、shadow 只記錄、live 生效"`

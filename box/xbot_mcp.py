@@ -7,7 +7,7 @@ and the socket decides who is calling, so nothing in this file can widen what th
 library, so it runs on any Python in the image.
 
   stdin/stdout: newline-delimited JSON-RPC (MCP stdio transport)
-  socket:       POST /internal/mcp on $XBOT_PRODUCT_SOCK (stateless Streamable HTTP, JSON responses)
+  socket:       POST /internal/mcp (or $XBOT_MCP_PATH, a connected app) on $XBOT_PRODUCT_SOCK (stateless Streamable HTTP)
   auth:         Authorization: Bearer <worker key> ($XBOT_WORKER_KEY, or $HERMES_HOME/.worker-key)
 """
 import http.client
@@ -19,7 +19,11 @@ import sys
 import threading
 
 SOCKET = os.environ.get("XBOT_PRODUCT_SOCK", "/product-ipc/product.sock")
-PATH = "/internal/mcp"
+# XBOT_MCP_PATH points the same bridge at a connected app (/internal/apps/<name>, C34): XBot checks the bot's grant,
+# adds the app's token on the service side and relays to the remote MCP, so the token never enters this computer.
+PATH = os.environ.get("XBOT_MCP_PATH", "/internal/mcp")
+if not PATH.startswith("/internal/"):
+    PATH = "/internal/mcp"
 # approvals.wait may hold a request for up to 300 seconds.
 TIMEOUT = 330
 

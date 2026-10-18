@@ -196,6 +196,9 @@ var forwardedHeaders = []string{"Forwarded", "X-Forwarded-For", "X-Forwarded-Hos
 // IsLocal 回答請求是不是從這台機器直接來的：對方是 loopback、沒有經過反向代理、Host 是 localhost。
 // 檢查 Host 是為了擋 DNS rebinding（惡意網頁把自己的網域指到 127.0.0.1）。同 LazyBoy server/main.py local_client。
 func IsLocal(r *http.Request) bool {
+	if remote(r) { // 內建 Tailscale 或外部入口來的，永遠不算本機（C35）
+		return false
+	}
 	for _, h := range forwardedHeaders {
 		if r.Header.Get(h) != "" {
 			return false

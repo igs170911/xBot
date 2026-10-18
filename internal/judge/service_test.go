@@ -128,8 +128,22 @@ func newEnv(t *testing.T) *env {
 		}
 		return resp.Status, resp.Body, err
 	}}
+	// 這些測試驗證「Jev 第一層 → Go 第二層」的分層機制，所以明確設定兩層（不依賴預設值）。
+	set, err := e.svc.Settings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set.Tier1, set.Tier2 = jevTier, goTier
+	if err := e.svc.SaveSettings(ctx, set); err != nil {
+		t.Fatal(err)
+	}
 	return e
 }
+
+var (
+	jevTier = TierModel{Provider: "opencode-zen", Model: "jev-1.13"}
+	goTier  = TierModel{Provider: "opencode-go", Model: "deepseek-v4-flash"}
+)
 
 func (e *env) modes(t *testing.T, m map[string]Mode) {
 	t.Helper()
@@ -499,7 +513,7 @@ func TestStatsAndSettings(t *testing.T) {
 	}
 	// 設定：沒存過的層用預設；存成空白表示不用；沒寫的用途用預設開關。
 	set, _ := e.svc.Settings(ctx)
-	if set.Tier1 != DefaultTier1 || set.Tier2 != DefaultTier2 || set.Local.On() || set.Modes[UseSummary] != ModeOff || set.Modes[UsePreClarity] != ModeShadow {
+	if set.Tier1 != jevTier || set.Tier2 != goTier || set.Local.On() || set.Modes[UseSummary] != ModeOff || set.Modes[UsePreClarity] != ModeShadow {
 		t.Fatalf("預設：%+v", set)
 	}
 	set.Tier1 = TierModel{}
@@ -528,5 +542,12 @@ func TestRuleFallbacks(t *testing.T) {
 		if u.Wait < 300*time.Millisecond || u.Wait > 2*time.Second {
 			t.Errorf("%s 等待上限要在 0.3–2 秒：%v", u.ID, u.Wait)
 		}
+	}
+}
+
+// 使用者決定（2026-10-18）：快判預設用 OpenCode Go 的 deepseek-v4.1-flash（Go 沒有 Jev 類模型）。
+func TestDefaultTiersUseOpenCodeGo(t *testing.T) {
+	if DefaultTier1.Provider != "opencode-go" || DefaultTier2.Provider != "opencode-go" || DefaultTier1.Model != "deepseek-v4.1-flash" {
+		t.Fatalf("預設應為 OpenCode Go：%+v %+v", DefaultTier1, DefaultTier2)
 	}
 }

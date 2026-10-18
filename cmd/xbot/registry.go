@@ -52,11 +52,14 @@ func coreDeps(st *stack) catalog.Deps {
 		Hosts:     st.hosts,
 		Collab:    st.collab,
 		Computers: st.computers,
+		Apps:      st.apps,
 		Org:       st.org,
+		Screen:    st.screen,
 		Skills:    st.skills,
 		Memory:    st.memory,
 		Files:     st.files,
 		Judge:     st.judge,
+		Network:   st.network,
 		SoulChanged: func(ctx context.Context, botID string) {
 			if err := st.comp.RefreshSoul(ctx, botID); err != nil {
 				slog.Warn("更新 Bot 電腦裡的 SOUL.md 失敗，下次開機前會再寫", "bot", botID, "err", err)

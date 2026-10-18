@@ -272,7 +272,7 @@ function ProviderRow({ p, presets, isDefault, isFallback, onChanged }: { p: Prov
             <span className="text-[15px]">{name}</span>
             {isDefault && <StatusChip tone="accent" size="sm">預設</StatusChip>}
             {isFallback && <StatusChip size="sm">備援</StatusChip>}
-            {oauth && <StatusChip tone="warning" size="sm">實驗性</StatusChip>}
+            {oauth && <StatusChip size="sm">訂閱登入</StatusChip>}
           </span>
           <span className="block truncate text-[13px] text-ink-2">{sub}</span>
         </span>

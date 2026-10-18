@@ -174,6 +174,9 @@ export interface AuthStatus {
   local: boolean
   kind?: 'owner' | 'agent' | 'bot'
   name?: string
+  /** 經內建 Tailscale 的 tailnet 連進來（C35）；tailscale_user 是查到的 Tailscale 帳號（只是提示，一樣要登入）。 */
+  tailnet?: boolean
+  tailscale_user?: string
 }
 
 async function authCall<T>(path: string, init: RequestInit, opts: CallOptions): Promise<T> {

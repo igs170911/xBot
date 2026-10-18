@@ -11,6 +11,7 @@ import { useToast } from '../ui/toast-context'
 import { cx } from '../ui/cx'
 import { errText } from './format'
 import { Block, Group, Note, Row, SectionHeader } from './parts'
+import { DevicesEntry } from './NetworkPage'
 import { STATUS_LABEL, hostSub, loadHosts, useHosts, type HostView, type HostsState } from './hostsData'
 import { PairPhoneDialog } from '../mobile/PhoneSettings'
 import { connectionKind } from '../mobile/pwa'
@@ -221,9 +222,10 @@ export function ComputersSection() {
           </Group>
         </Block>
       )}
-      <Block title="手機" aside={<Button variant="primary" size="sm" icon={Smartphone} onClick={() => setPairing(true)}>連手機</Button>}>
+      <DevicesEntry />
+      <Block title="掃 QR 連手機" aside={<Button variant="primary" size="sm" icon={Smartphone} onClick={() => setPairing(true)}>連手機</Button>}>
         <Group>
-          <Row title="掃一個 QR 就登入" sub="手機裝 Tailscale、登入同一個帳號，掃電腦上的 QR（網址＋一次性配對碼，5 分鐘內有效、只能用一次）。不用安裝憑證。" />
+          <Row title="不用輸入登入碼" sub="手機裝 Tailscale、登入同一個帳號，掃電腦上的 QR（網址＋一次性配對碼，5 分鐘內有效、只能用一次）就登入了。不用安裝憑證。" />
           <Row title="這個瀏覽器" sub={`連線方式：${connectionKind()}`} />
         </Group>
       </Block>

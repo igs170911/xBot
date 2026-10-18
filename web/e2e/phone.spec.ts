@@ -95,6 +95,23 @@ function seed(api: MockServer) {
     const h = b.id === xin.id ? 'pc' : (b as unknown as { host_id: string }).host_id
     return { computer: { bot_id: b.id, host_id: h, container_id: 'c', state: off.has(b.id) ? 'stopped' : 'running', running: !off.has(b.id), novnc_port: 0, hermes_port: 0 }, bot_name: b.name, host_name: h === 'local' ? '這台主機' : h, idle_minutes: 30, last_active_at: now, sleeps_at: 0, busy: false, outdated: false, allow_private: [] }
   }
+  const screen = (b: { id: string; name: string }) => {
+    const h = b.id === xin.id ? 'pc' : (b as unknown as { host_id: string }).host_id
+    const waiting = b.id === bian.id || b.id === zf.id
+    return {
+      bot_id: b.id, name: b.name, host_id: h, host_name: h === 'local' ? '這台主機' : h === 'cloud' ? 'cloud-01（雲端）' : 'office-pc', box: off.has(b.id) ? 'stopped' : 'running',
+      host_status: h === 'pc' ? 'offline' : 'online', working: !off.has(b.id) && !waiting, paused: false, last_active_at: now - 20 * min, viewers: 0, you: false,
+      vnc: `/api/v1/computers/vnc?bot=${b.id}`, ...(b.id === bian.id ? { request: { reason: '要輸入簡訊驗證碼', since: now - 8 * min } } : {}),
+    }
+  }
+  api.override['computers.screen'] = (i) => screen(api.bots.find((x) => x.id === i.bot_id)!)
+  api.override['computers.screens'] = () => ({ screens: api.bots.map(screen) })
+  api.override['apps.list'] = () => ({
+    connections: [
+      { id: 'a1', app_id: 'shopee', name: 'shopee', title: '蝦皮賣家中心', description: '', icon: '', custom: false, transport: 'http', url: '', command: '', args: [], auth: 'oauth2', account: '', status: 'ok', error: '', secret_hint: '', header_names: [], env_names: [], missing_env: [], tools: [] },
+      { id: 'a2', app_id: 'gsheets', name: 'gsheets', title: 'Google 試算表', description: '', icon: '', custom: false, transport: 'http', url: '', command: '', args: [], auth: 'oauth2', account: '', status: 'ok', error: '', secret_hint: '', header_names: [], env_names: [], missing_env: [], tools: [] },
+    ],
+  })
   api.override['computers.wake'] = (i) => {
     off.delete(i.bot_id as string)
     return api.override['computers.status'](i)
@@ -197,12 +214,12 @@ test('L03 對話：手機頁首（不重複上方列）、工作中、輸入框�
   await snap(page, info, 'L03')
 })
 
-test('L04 電腦：狀態與叫醒（即時畫面等 B14）', async ({ page }, info) => {
-  const { kai } = await open(page, '/chats')
-  await page.goto(`/bots/${kai.id}/computer`)
-  await expect(page.getByRole('heading', { name: '阿凱的電腦' })).toHaveCount(1) // 只有一條頁首
-  await page.getByRole('button', { name: '叫醒' }).click()
-  await expect(page.getByText(/電腦開著/)).toBeVisible()
+test('L04 電腦（B14 的接手頁）：手機全螢幕、交還鈕', async ({ page }, info) => {
+  const { bian } = await open(page, '/chats')
+  await page.goto(`/bots/${bian.id}/computer`)
+  await expect(page.getByRole('heading', { name: '小編的電腦' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '小編的電腦' })).toHaveCount(1) // 只有一條頁首
+  await page.waitForTimeout(500)
   await snap(page, info, 'L04')
 })
 
@@ -332,14 +349,13 @@ test('L14 通知中心：篩選、就地允許、過期提問、全部標為已�
   expect(api.calls.find((c) => c.op === 'inbox.mark_read')?.input).toEqual({ all: true })
 })
 
-test('L15 辦公室：依主機分組、叫醒、接手', async ({ page }, info) => {
-  const { api, bian, zf, kai } = await open(page, '/office')
+test('L15 辦公室（B14）：依主機分組、等你的用主要按鈕、分頁列', async ({ page }, info) => {
+  const { api, bian, zf } = await open(page, '/office')
   await working(api, { [bian.id]: 'waiting_input', [zf.id]: 'waiting_approval' })
-  await expect(page.getByRole('region', { name: 'office-pc' })).toContainText('離線')
-  await expect(page.getByTestId('office-row')).toHaveCount(8)
+  await expect(page.getByRole('navigation', { name: '分頁', exact: true }).getByRole('link', { name: /辦公室/ })).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByTestId('office')).toContainText('小編')
+  await page.waitForTimeout(500)
   await snap(page, info, 'L15')
-  await page.getByTestId('office-row').filter({ hasText: '阿凱' }).getByRole('button', { name: '叫醒' }).click()
-  await expect.poll(() => api.calls.some((c) => c.op === 'computers.wake' && c.input.bot_id === kai.id)).toBe(true)
 })
 
 test('L18 通話（語音在 E32）：全螢幕畫面、掛斷回到對話', async ({ page }, info) => {
@@ -369,6 +385,7 @@ test('L20 @ 提到選單與停止鈕', async ({ page }, info) => {
   await expect(menu).toContainText('@阿哲')
   await expect(menu).toContainText('@新品上架專案')
   await expect(menu).not.toContainText('@小秘')
+  await expect(menu).toContainText('@蝦皮賣家中心')
   await snap(page, info, 'L20')
   await menu.getByRole('option', { name: /@阿哲/ }).click()
   await expect(page.getByRole('textbox')).toHaveValue('也請 @阿哲 ')

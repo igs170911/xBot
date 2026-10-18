@@ -25,9 +25,10 @@ type Config struct {
 	Dev bool
 	// LocalNoAuth 為 true 時，從本機（localhost）來的請求不用登入（SEC-7）。XBOT_LOCAL_NOAUTH=0 關掉。
 	LocalNoAuth bool
-	// PublicURL 是手機連得到的網址（XBOT_PUBLIC_URL，例：https://xbot.tail3a9c.ts.net），放進連手機的 QR；
-	// 空白時用你打開網頁的網址。
+	// PublicURL 是反向代理模式的對外網址（XBOT_PUBLIC_URL，例：https://xbot.example.com）。空白表示沒有用反向代理（C35）。
 	PublicURL string
+	// TrustedProxies 是可以標 X-Forwarded-For 的反向代理位址（XBOT_TRUSTED_PROXIES，逗號分隔的 IP 或 CIDR）；空白是 127.0.0.1、::1。
+	TrustedProxies string
 }
 
 // Addr 回傳 host:port。
@@ -42,13 +43,16 @@ func (c Config) URL() string {
 	return fmt.Sprintf("http://%s:%d", host, c.Port)
 }
 
-// Load 從環境變數讀設定：XBOT_BIND、XBOT_PORT、XBOT_DATA_DIR、XBOT_DEV、XBOT_LOCAL_NOAUTH、XBOT_PUBLIC_URL。
+// Load 從環境變數讀設定：XBOT_BIND、XBOT_PORT、XBOT_DATA_DIR、XBOT_DEV、XBOT_LOCAL_NOAUTH、XBOT_PUBLIC_URL、XBOT_TRUSTED_PROXIES。
 func Load() (Config, error) {
 	c := Config{
 		Bind:    envOr("XBOT_BIND", "127.0.0.1"),
 		Port:    DefaultPort,
 		DataDir: os.Getenv("XBOT_DATA_DIR"),
 		Dev:     os.Getenv("XBOT_DEV") == "1",
+
+		PublicURL:      os.Getenv("XBOT_PUBLIC_URL"),
+		TrustedProxies: os.Getenv("XBOT_TRUSTED_PROXIES"),
 	}
 	if v := strings.TrimRight(strings.TrimSpace(os.Getenv("XBOT_PUBLIC_URL")), "/"); v != "" {
 		u, err := url.Parse(v)

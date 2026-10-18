@@ -231,6 +231,12 @@ func (s *server) pairLogin(w http.ResponseWriter, r *http.Request) {
 func (s *server) authStatus(w http.ResponseWriter, r *http.Request) {
 	id, err := s.auth.Identify(r)
 	body := map[string]any{"authenticated": err == nil, "local": auth.IsLocal(r)}
+	if auth.IsTailnet(r.Context()) { // 經內建 Tailscale 來的：登入畫面提示是哪個 Tailscale 使用者（C35）
+		body["tailnet"] = true
+		if u := auth.TailnetUser(r.Context()); u != "" {
+			body["tailscale_user"] = u
+		}
+	}
 	if err == nil {
 		body["kind"] = id.Kind
 		body["name"] = id.DisplayName()

@@ -35,7 +35,7 @@ export default defineConfig({
     port: Number(process.env.XBOT_WEB_PORT ?? 5181),
     strictPort: true,
     proxy: {
-      '/api': { target: api, changeOrigin: false },
+      '/api': { target: api, changeOrigin: false, ws: true },
       '/healthz': { target: api, changeOrigin: false },
     },
   },

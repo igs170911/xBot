@@ -167,7 +167,7 @@ test('一般：主題切換立刻生效、重新整理後還在', async ({ page 
   await expect(main(page).getByRole('heading', { name: '一般', level: 2 })).toBeVisible()
   if (info.project.name === 'desktop') {
     const nav = page.getByRole('navigation', { name: '設定分類' })
-    await expect(nav.getByRole('link')).toHaveText(['一般', 'AI 模型', '電腦與裝置', '用量與花費', '進階', '備份與更新', '成員與紀錄', '技能庫與實驗', '外部代理與 MCP'])
+    await expect(nav.getByRole('link')).toHaveText(['一般', 'AI 模型', '電腦與裝置', '用量與花費', '進階', '備份與更新', '成員與紀錄', '技能庫與實驗', '網路與 Tailscale', '外部代理與 MCP'])
     await expect(nav.getByRole('link', { name: '一般' })).toHaveAttribute('aria-current', 'page')
   }
   const themes = page.getByRole('radiogroup', { name: '主題' })
@@ -227,16 +227,13 @@ test('AI 模型：探測、貼金鑰認出供應商、換預設模型、移除�
   expect(api.calls.filter((c) => c.op === 'models.remove_provider')).toHaveLength(1)
 })
 
-test('ChatGPT 方案登入：標實驗性、先同意風險，再走裝置代碼', async ({ page }, info) => {
+test('ChatGPT 方案登入：說明條款風險，直接走裝置代碼（使用者決定正式使用）', async ({ page }, info) => {
   const { api } = await open(page, '/settings/models')
   const m = main(page)
   const block = m.getByRole('region', { name: '用 ChatGPT 方案登入' })
-  await expect(block.getByText('實驗性')).toBeVisible()
   await block.getByRole('button', { name: '登入' }).click()
   const dlg = page.getByRole('dialog', { name: /ChatGPT 方案登入/ })
   await expect(dlg).toContainText('使用條款')
-  await expect(dlg.getByRole('button', { name: '開始登入' })).toBeDisabled()
-  await dlg.getByText('我了解風險').click()
   await dlg.getByRole('button', { name: '開始登入' }).click()
   await expect(dlg.getByTestId('oauth-code')).toHaveText('WXYZ-1234')
   await settle(page)

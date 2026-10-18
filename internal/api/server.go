@@ -6,11 +6,13 @@
 //	POST /api/v1/<領域>.<動作>   每個操作一條（xbot.bots.create → /api/v1/bots.create）
 //	GET  /api/v1/ops             列出所有操作與 JSON Schema
 //	GET  /api/v1/events          SSE 事件流
+//	GET  /api/v1/computers/vnc   Bot 電腦畫面（noVNC WebSocket，B14）
 //	POST /api/v1/auth/login      用登入碼換 session cookie；auth/logout 登出；GET auth/status 看登入狀態
 //	POST /api/v1/auth/pair       手機用 QR 裡的一次性配對碼換 session cookie（W31，不需要登入）
 //	POST /api/v1/agents.pair     代理用配對碼換權杖（C04，不需要登入）
 //	/mcp                         MCP Streamable HTTP（C04）
 //	POST /hooks/<id>             定時任務的網址觸發（C32，不需要登入，帶金鑰）
+//	GET  /api/v1/apps/oauth/callback  連接應用程式的 OAuth 回呼（C34，不需要登入，一次性 state）
 //	POST /api/v1/files.upload    檔案上傳（multipart，C33）；GET /api/v1/files.download 檔案下載（Streams）
 package api
 
@@ -45,6 +47,9 @@ type Options struct {
 	DevicePair *auth.DevicePairing
 	// Hooks 掛在 /hooks/（定時任務的網址觸發，C32）：不需要登入，網址 id＋金鑰就是憑證。nil 表示不提供。
 	Hooks http.Handler
+	// AppsCallback 掛在 GET /api/v1/apps/oauth/callback（連接應用程式的 OAuth 回呼，C34）：不需要登入，
+	// 一次性的 state 就是憑證。nil 表示不提供。
+	AppsCallback http.Handler
 	// Registry 是操作登錄表；nil 表示不提供 /api/v1 的操作路由。要在呼叫 New 之前登錄好所有操作。
 	Registry *ops.Registry
 	// Bus 是事件匯流排（SSE 用）；Registry 不是 nil 時必填。
@@ -53,6 +58,8 @@ type Options struct {
 	DB *store.DB
 	// Auth 驗證請求的身分；Registry 不是 nil 時必填。
 	Auth *auth.HTTP
+	// VNC 是 GET /api/v1/computers/vnc（Bot 電腦畫面的 WebSocket，B14）；身分由 guard 驗過再交給它。nil 表示不提供。
+	VNC func(w http.ResponseWriter, r *http.Request, id ops.Identity)
 	// Streams 是內容不走 JSON 的出口（檔案上傳下載，C33）：「方法 路徑」→ 處理器，例："GET /api/v1/files.download"。
 	// 和操作同路徑時（POST /api/v1/files.upload），Content-Type 是 application/json 的請求仍交給操作。
 	// 處理器在寫出任何內容前回傳錯誤時，由這裡寫成一般的錯誤回應。
@@ -94,6 +101,12 @@ func New(o Options) http.Handler {
 		for k, v := range o.Streams {
 			streams[k] = v
 		}
+		if o.VNC != nil {
+			vnc := o.VNC
+			mux.HandleFunc("GET "+Prefix+"computers/vnc", s.guard(func(w http.ResponseWriter, r *http.Request) {
+				vnc(w, r, identityFrom(r.Context()))
+			}))
+		}
 		for _, info := range s.reg.List() {
 			pattern := "POST " + Route(info.Name)
 			h := s.opHandler(info)
@@ -123,6 +136,9 @@ func New(o Options) http.Handler {
 	}
 	if o.Hooks != nil {
 		mux.Handle("/hooks/", o.Hooks)
+	}
+	if o.AppsCallback != nil {
+		mux.Handle("GET "+Prefix+"apps/oauth/callback", o.AppsCallback)
 	}
 	// Android 分享目標（W31）：平常由 service worker 攔下；service worker 還沒啟用時退回分享頁，
 	// 請使用者再分享一次（內容沒辦法在這裡保存）。

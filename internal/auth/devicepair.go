@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"rsc.io/qr"
+	qrcode "github.com/skip2/go-qrcode"
 
 	"xbot/internal/limits"
 	"xbot/internal/ops"
@@ -39,9 +39,12 @@ type deviceCode struct {
 // 一次性、5 分鐘有效、換錯太多次會鎖住（和代理配對同一套數字）。只放在記憶體：服務重開就失效。
 type DevicePairing struct {
 	DB *store.DB
-	// PublicURL 是手機連得到的網址（XBOT_PUBLIC_URL，例：https://xbot.tail3a9c.ts.net）；空白時用瀏覽器傳來的 origin。
+	// PublicURL 是固定的手機網址（例：https://xbot.tail3a9c.ts.net）；空白時看 BaseURL，再沒有就用瀏覽器傳來的 origin。
 	PublicURL string
-	Now       func() time.Time // 測試用；空白用 time.Now
+	// BaseURL 回傳目前手機連得到的網址（服務用內建 Tailscale 的 tailnet 網址，C35）；空白表示沒有。可為 nil。
+	// 注意：XBOT_PUBLIC_URL（反向代理）與 Funnel 只開放 MCP 入口，不能拿來給手機用。
+	BaseURL func() string
+	Now     func() time.Time // 測試用；空白用 time.Now
 
 	mu    sync.Mutex
 	codes map[string]*deviceCode
@@ -150,9 +153,12 @@ func (p *DevicePairing) Redeem(ctx context.Context, code, source string) *ops.Er
 }
 
 // LinkFor 是手機要打開的網址：<base>/pair#<配對碼>（放在 # 後面，不會進伺服器紀錄）。
-// base 用 PublicURL；沒設時用瀏覽器傳來的 origin。localOnly 表示網址是 localhost，手機連不到。
+// base 用 PublicURL，再來是 BaseURL()（tailnet 網址）；都沒有時用瀏覽器傳來的 origin。localOnly 表示網址是 localhost，手機連不到。
 func (p *DevicePairing) LinkFor(origin, code string) (link string, localOnly bool, err error) {
 	base := p.PublicURL
+	if base == "" && p.BaseURL != nil {
+		base = strings.TrimRight(p.BaseURL(), "/")
+	}
 	if base == "" {
 		base = strings.TrimRight(strings.TrimSpace(origin), "/")
 	}
@@ -172,26 +178,30 @@ func (p *DevicePairing) LinkFor(origin, code string) (link string, localOnly boo
 // QRPath 把文字編成 QR（含四格白邊），回傳邊長（格數）和黑格的 SVG path（每列連續的黑格合併成一段）。
 // 前端直接畫 <svg viewBox="0 0 size size"><path d=…/></svg>，不用 innerHTML。
 func QRPath(text string) (size int, path string, err error) {
-	c, err := qr.Encode(text, qr.M)
+	q, err := qrcode.New(text, qrcode.Medium)
 	if err != nil {
 		return 0, "", err
 	}
 	const quiet = 4
+	q.DisableBorder = true
+	bm := q.Bitmap()
+	n := len(bm)
 	var b strings.Builder
-	for y := 0; y < c.Size; y++ {
-		for x := 0; x < c.Size; {
-			if !c.Black(x, y) {
+	for y := 0; y < n; y++ {
+		row := bm[y]
+		for x := 0; x < len(row); {
+			if !row[x] {
 				x++
 				continue
 			}
 			start := x
-			for x < c.Size && c.Black(x, y) {
+			for x < len(row) && row[x] {
 				x++
 			}
 			b.WriteString("M" + strconv.Itoa(start+quiet) + " " + strconv.Itoa(y+quiet) + "h" + strconv.Itoa(x-start) + "v1h-" + strconv.Itoa(x-start) + "z")
 		}
 	}
-	return c.Size + 2*quiet, b.String(), nil
+	return n + 2*quiet, b.String(), nil
 }
 
 // RegisterDeviceOps 登錄手機配對的操作：xbot.devices.pair_start、xbot.devices.pair_status。

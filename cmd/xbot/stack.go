@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"xbot/internal/apps"
 	"xbot/internal/box"
 	"xbot/internal/collab"
 	"xbot/internal/computers"
@@ -24,10 +25,12 @@ import (
 	"xbot/internal/judge"
 	"xbot/internal/limits"
 	"xbot/internal/memory"
+	"xbot/internal/network"
 	"xbot/internal/org"
 	"xbot/internal/proxy"
 	"xbot/internal/routines"
 	"xbot/internal/runtime"
+	"xbot/internal/screen"
 	"xbot/internal/skills"
 	"xbot/internal/store"
 )
@@ -59,8 +62,12 @@ type stack struct {
 	org       *org.Service
 	judge     *judge.Service // 快判（X05）：經 Model Proxy 呼叫 Jev／OpenCode Go，規則兜底
 	computers *computers.Service
+	// apps 是連接應用程式與登入（C34）。
+	apps    *apps.Service
+	network *network.Service // 內建 Tailscale 與外部入口（C35）：serve 才建立
 	// stopIdle 停掉閒置休眠的背景檢查（startBackground 開始）。
 	stopIdle context.CancelFunc
+	screen   *screen.Service // 看畫面與接手（B14）
 }
 
 func openStack(cfg config.Config) (*stack, error) {
@@ -148,7 +155,8 @@ func openStack(cfg config.Config) (*stack, error) {
 	home, _ := os.UserHomeDir()
 	s.creds = &engines.Service{DB: db, HostHome: home, Locate: comp.Locate, UID: box.BotUID, GID: box.BotGID, Logger: logger}
 	comp.Creds = s.creds
-	drivers := []engine.Driver{hermes.New(comp.Connect, logger)}
+	hermesDriver := hermes.New(comp.Connect, logger)
+	drivers := []engine.Driver{hermesDriver}
 	for _, name := range []string{acp.EngineClaude, acp.EngineCodex} {
 		drivers = append(drivers, acp.New(acp.Options{Agent: acp.Agents[name], Launch: comp.LaunchACP, Authorize: s.creds.Authorize,
 			MCPServers: comp.MCPServers, Logger: logger}))
@@ -204,13 +212,63 @@ func openStack(cfg config.Config) (*stack, error) {
 		soul, err := s.org.SoulText(ctx, botID)
 		return team + soul, err
 	}
+	// 連接應用程式與登入（C34）：權杖加密存在服務端（和模型金鑰同一把主金鑰），Bot 經 product.sock 由 XBot 轉送。
+	browser := &apps.DockerBrowser{Locate: comp.BotFS, User: fmt.Sprintf("%d:%d", box.BotUID, box.BotGID), UID: box.BotUID, GID: box.BotGID}
+	s.apps = apps.New(apps.Options{DB: db, Keys: s.keyring, BaseURL: cfg.URL(), Logger: logger, Browser: browser,
+		// I03 主要流程：登入頁開在 Bot 的電腦上，並在「待我處理」出一張接手卡（B14），你在即時畫面登入。
+		OpenOnBot: func(ctx context.Context, botID, url string) error {
+			if err := browser.OpenURL(ctx, botID, url); err != nil {
+				return err
+			}
+			if s.screen == nil {
+				return nil
+			}
+			_, err := s.screen.RequestTakeover(ctx, botID, "請在這台電腦的瀏覽器登入並按「允許存取」，完成後 XBot 會自動繼續。")
+			return err
+		},
+		OnChange: func(ctx context.Context, botIDs []string) {
+			go s.refreshApps(ctx, hermesDriver, botIDs)
+		}})
+	comp.Apps = s.apps.Servers
+	s.sockets.SetApps(s.apps.Proxy)
 	// 電腦的生命週期操作與「更新電腦」（B13）。
 	s.computers = &computers.Service{DB: db, Boxes: s.boxes, Hosts: s.hosts, Activity: s.runtime, Bus: bus, Logger: logger}
+	// 看畫面與接手（B14）：noVNC 經服務代理、接手時暫停 Bot、辦公室縮圖。
+	s.screen = screen.New(screen.Options{DB: db, Boxes: s.boxes, Hosts: registry, Runtime: s.runtime, Bus: bus, Logger: logger})
 	if err := s.hosts.Start(context.Background()); err != nil {
 		s.Close()
 		return nil, err
 	}
 	return s, nil
+}
+
+// refreshApps 把 Bot 能用的連接寫進它的電腦（botIDs 是 nil 表示所有 Bot），沒在工作的 Hermes 立刻重新載入 MCP；
+// 正在工作的等下一個對話（同 LazyBoy connectors.apply）。ACP 引擎在下一個 session 拿到新的清單。
+func (s *stack) refreshApps(ctx context.Context, hd *hermes.Driver, botIDs []string) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	if botIDs == nil {
+		bots, err := s.db.ListBots(ctx, true)
+		if err != nil {
+			slog.Warn("更新 Bot 的應用程式失敗", "err", err)
+			return
+		}
+		for _, b := range bots {
+			botIDs = append(botIDs, b.ID)
+		}
+	}
+	for _, id := range botIDs {
+		if err := s.comp.RefreshApps(ctx, id); err != nil {
+			slog.Warn("把應用程式寫進 Bot 的電腦失敗，下次開機前會再寫", "bot", id, "err", err)
+			continue
+		}
+		if thread, _ := s.runtime.Active(id); thread != "" {
+			continue
+		}
+		if _, err := hd.ReloadMCP(ctx, id); err != nil {
+			slog.Warn("請 Hermes 重新載入 MCP 失敗，下一個對話生效", "bot", id, "err", err)
+		}
+	}
 }
 
 // startBackground 開始服務才需要的背景工作：閒置休眠（BX-12、CL-9）。
@@ -230,6 +288,9 @@ func (s *stack) Close() error {
 	}
 	if s.routines != nil {
 		s.routines.Close()
+	}
+	if s.network != nil {
+		errs = append(errs, s.network.Close())
 	}
 	if s.hosts != nil {
 		errs = append(errs, s.hosts.Close())

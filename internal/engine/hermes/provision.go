@@ -77,6 +77,9 @@ type Profile struct {
 	MemoryOff bool
 	// Team 是隊友名冊與協作規則（X02，AA-1）；空白時不寫。名冊是使用者寫的分工資料，不是指令。
 	Team string
+	// ManageApps 為 true 時，mcp_servers 裡 XBot 管理的連接換成 Apps（C34）；false 時不動（沒有接上應用程式服務）。
+	ManageApps bool
+	Apps       []AppServer
 }
 
 // ApprovalsMode 把 Bot 的權限等級對到 Hermes 的 approvals.mode（manual／smart／off）。
@@ -121,7 +124,12 @@ func Provision(ctx context.Context, api Files, containerID string, p Profile) er
 			cfg = nil
 		}
 	}
-	cfgOut, err := yaml.Marshal(Config(cfg, p))
+	cfg = Config(cfg, p)
+	var appsOut []file
+	if p.ManageApps {
+		appsOut = appFiles(p.Apps, applyApps(cfg, p.Apps))
+	}
+	cfgOut, err := yaml.Marshal(cfg)
 	if err != nil {
 		return err
 	}
@@ -129,12 +137,12 @@ func Provision(ctx context.Context, api Files, containerID string, p Profile) er
 	if err != nil {
 		return err
 	}
-	return writeFiles(ctx, api, containerID, p, []file{
+	return writeFiles(ctx, api, containerID, p, append([]file{
 		{ConfigFile, cfgOut, 0o600},
 		{EnvFile, Env(env, p.WorkerKey), 0o600},
 		{WorkerKeyFile, []byte(p.WorkerKey + "\n"), 0o600},
 		{SoulFile, []byte(Soul(p)), 0o644},
-	})
+	}, appsOut...))
 }
 
 // WriteSoul 只更新 SOUL.md（改了 Bot 的名稱、職稱、介紹或人設時，C31）。Hermes 開新的對話時讀它。

@@ -30,8 +30,8 @@ func TestZenNoFunds(t *testing.T) {
 	}
 
 	// 一鍵改用 Go flash 做選擇題：第一層＝第二層的模型，不重複呼叫，也不帶 json_schema。
-	set.Tier1 = DefaultTier2
-	set.Tier2 = DefaultTier2
+	set.Tier1 = goTier
+	set.Tier2 = goTier
 	_ = e.svc.SaveSettings(ctx, set)
 	e.up.set(jsonReply("chat", 0.9, ""))
 	n := len(e.up.calls())

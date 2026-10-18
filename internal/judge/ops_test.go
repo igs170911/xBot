@@ -47,7 +47,7 @@ func TestJudgeOps(t *testing.T) {
 	agent := ops.Identity{Kind: ops.KindAgent, ID: "a1", Name: "代理", Via: "mcp", Scopes: []ops.Scope{ops.ScopeRead, ops.ScopeAdmin, ops.ScopeOperate, ops.ScopeManage}}
 
 	got, err := invoke[SettingsOut](t, reg, owner, "xbot.judge.settings_get", SettingsIn{})
-	if err != nil || got.Settings.Tier1 != DefaultTier1 || len(got.Uses) != len(Uses) || got.Today.DailyCap != 300 || got.MinP != 0.6 {
+	if err != nil || got.Settings.Tier1 != jevTier || len(got.Uses) != len(Uses) || got.Today.DailyCap != 300 || got.MinP != 0.6 {
 		t.Fatalf("設定：%+v %v", got, err)
 	}
 	// 免費模型不能用；不認得的用途、開關要擋。

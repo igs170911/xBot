@@ -1,14 +1,10 @@
-import { useEffect, useState } from 'react'
 import { ChevronDown, Captions, Hand, Mic, PhoneOff } from 'lucide-react'
-import { ApiError, computersStatus, computersWake, type ComputersStatusOutput } from '../api/generated'
 import { botsStore } from '../data/bots'
 import { useStore } from '../data/store'
 import { goBack, navigate } from '../router'
 import { Avatar } from '../ui/Avatar'
-import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
-import { PhoneBar } from './Phone'
 
 // L18 和 Bot 通話：語音在 E32 做；這裡先放全螢幕的通話畫面與說明，按鈕停用，掛斷回到對話。
 export function CallPage({ botId }: { botId: string }) {
@@ -52,48 +48,6 @@ export function CallPage({ botId }: { botId: string }) {
           </button>
           掛斷
         </span>
-      </div>
-    </main>
-  )
-}
-
-// L04 手機看 Bot 的電腦：即時畫面與接手在 B14 做；這裡先顯示電腦狀態，可以叫醒。
-export function ComputerPage({ botId }: { botId: string }) {
-  const bot = useStore(botsStore).bots?.find((b) => b.id === botId)
-  const [c, setC] = useState<ComputersStatusOutput | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  useEffect(() => {
-    computersStatus({ bot_id: botId })
-      .then(setC)
-      .catch((e: unknown) => setError(e instanceof ApiError || e instanceof Error ? e.message : String(e)))
-  }, [botId])
-  const wake = async () => {
-    setBusy(true)
-    try {
-      setC(await computersWake({ bot_id: botId }))
-    } catch (e) {
-      setError(e instanceof ApiError || e instanceof Error ? e.message : String(e))
-    } finally {
-      setBusy(false)
-    }
-  }
-  const running = !!c?.computer.running
-  return (
-    <main className="flex min-h-dvh flex-1 flex-col bg-app" aria-label={`${bot?.name ?? 'Bot'}的電腦`}>
-      <PhoneBar title={`${bot?.name ?? 'Bot'}的電腦`} sub={c ? `${c.host_name} · ${running ? '開機中' : '休眠中'}` : undefined} back={`/bots/${botId}`} center right={<span className="size-11" />} />
-      <div className="mx-auto flex w-full max-w-[880px] flex-1 flex-col gap-3 px-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-        <div className="flex aspect-[16/10] w-full flex-col items-center justify-center gap-3 rounded-card bg-panel text-center">
-          <Avatar shape={bot?.shape} color={bot?.color} state={running ? 'working' : 'sleeping'} dot="none" size={56} ring="#111111" />
-          <p className="m-0 px-6 text-ui text-ink-2">{running ? '電腦開著。即時畫面與接手操作還在做，之後會出現在這裡。' : '電腦休眠中。有工作時會自動開機，也可以先叫醒。'}</p>
-          {!running && c && (
-            <Button variant="primary" className="min-h-11" loading={busy} onClick={() => void wake()}>
-              叫醒
-            </Button>
-          )}
-        </div>
-        {error && <p className="m-0 text-sub text-danger">{error}</p>}
-        {c?.outdated && <p className="m-0 rounded-field bg-warning-soft px-3 py-2 text-sub text-warning-ink">這台電腦要更新（資料保留），到「設定 › 電腦與裝置」更新。</p>}
       </div>
     </main>
   )

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -68,6 +69,8 @@ type Computers struct {
 	XBotMCP *acp.MCPServer
 	// Roster 是 Bot 系統提示裡的隊友段落（X02，collab.RosterText）；nil 時不寫。
 	Roster func(ctx context.Context, botID string) (string, error)
+	// Apps 回傳 Bot 能用的連接在電腦裡怎麼啟動（C34，apps.Service.Servers）；nil 時不管 mcp_servers 裡的連接。
+	Apps func(ctx context.Context, botID string) ([]hermes.AppServer, error)
 }
 
 // ResolveModel 決定 Bot 要用的模型：bot.model 寫成「<供應商>/<模型>」且供應商已設定時用它；
@@ -229,11 +232,21 @@ func (c *Computers) Prepare(ctx context.Context, h hosts.Host, botID, containerI
 			return err
 		}
 	}
-	return hermes.Provision(ctx, h.Docker(), containerID, hermes.Profile{
+	p := hermes.Profile{
 		BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul, Team: team,
 		ProviderID: ref.Provider, Model: ref.Model, Transport: ref.Transport, Effort: b.Effort,
 		WorkerKey: string(key), UID: box.BotUID, GID: box.BotGID, ApprovalMode: b.ApprovalMode, MemoryOff: !b.MemoryEnabled,
-	})
+	}
+	if c.Apps != nil {
+		apps, err := c.Apps(ctx, botID)
+		if err != nil {
+			// 讀不到連接不擋開機：這次先不動 mcp_servers 裡的連接。
+			slog.Warn("讀不到 Bot 能用的應用程式", "bot", botID, "err", err)
+		} else {
+			p.ManageApps, p.Apps = true, apps
+		}
+	}
+	return hermes.Provision(ctx, h.Docker(), containerID, p)
 }
 
 func (c *Computers) fs(h hosts.Host, containerID string, running bool) *boxfs.Docker {
@@ -369,7 +382,42 @@ func (c *Computers) MCPServers(botID string) []acp.MCPServer {
 		}
 		out = append(out, x)
 	}
+	if c.Apps != nil {
+		apps, err := c.Apps(context.Background(), botID)
+		if err != nil {
+			slog.Warn("讀不到 Bot 能用的應用程式", "bot", botID, "err", err)
+		}
+		for _, a := range apps {
+			cmd, args := a.Launch()
+			env := []acp.EnvVar{}
+			for _, k := range slices.Sorted(maps.Keys(a.Env)) {
+				env = append(env, acp.EnvVar{Name: k, Value: a.Env[k]})
+			}
+			out = append(out, acp.MCPServer{Name: a.Name, Command: cmd, Args: args, Env: env})
+		}
+	}
 	return out
+}
+
+// RefreshApps 在 Bot 能用的連接改變後（C34）：有電腦就重寫 config.yaml 的連接與 env 檔（沒開機也可以）。
+// 本機程式的祕密 env 檔只在這裡與開機前寫；ACP 引擎在下一個 session 拿到新的清單。
+func (c *Computers) RefreshApps(ctx context.Context, botID string) error {
+	if c.Apps == nil {
+		return nil
+	}
+	loc, err := c.Locate(ctx, botID)
+	if err != nil || loc.ID == "" {
+		return err
+	}
+	apps, err := c.Apps(ctx, botID)
+	if err != nil {
+		return err
+	}
+	h, err := c.hostOf(ctx, botID)
+	if err != nil {
+		return err
+	}
+	return hermes.WriteApps(ctx, h.Docker(), loc.ID, botID, box.BotUID, box.BotGID, apps)
 }
 
 // XBotMCPServer 是給 ACP 引擎的 XBot MCP（C11）：Bot 電腦裡的 stdio 橋接 box/xbot_mcp.py，經 product.sock 以這個 Bot 的身分呼叫。

@@ -5,12 +5,14 @@ package doctor
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -57,6 +59,8 @@ type Env struct {
 	Healthy     func(url string) bool
 	ReadFile    func(string) ([]byte, error)
 	InContainer func() bool
+	// NetworkStatus 向執行中的服務要 xbot.network.status（本機免登入）；nil 表示不檢查內建 Tailscale。
+	NetworkStatus func(url string) ([]byte, error)
 }
 
 // SystemEnv 回傳使用真實系統的 Env。
@@ -102,6 +106,22 @@ func SystemEnv() Env {
 		},
 		ReadFile:    os.ReadFile,
 		InContainer: inContainer,
+		NetworkStatus: func(url string) ([]byte, error) {
+			c := http.Client{Timeout: 3 * time.Second}
+			resp, err := c.Post(url, "application/json", strings.NewReader("{}"))
+			if err != nil {
+				return nil, err
+			}
+			defer resp.Body.Close()
+			b, err := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
+			if err != nil {
+				return nil, err
+			}
+			if resp.StatusCode != http.StatusOK {
+				return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+			}
+			return b, nil
+		},
 	}
 }
 
@@ -133,6 +153,9 @@ func Check(env Env, o Options) []Result {
 		toolCheck(env, "ssh（連遠端主機用）", "ssh", false, d.install("openssh-client"), "-V"),
 		tailscaleCheck(env, d),
 	)
+	if r, ok := embeddedTailscaleCheck(env, o); ok {
+		rs = append(rs, r)
+	}
 	rs = append(rs, subscriptionChecks(env)...)
 	rs = append(rs,
 		diskCheck(env, o.DataDir),
@@ -244,6 +267,77 @@ func tailscaleCheck(env Env, d distroInfo) Result {
 	}
 	r.Status, r.Detail = OK, firstLine(out)
 	return r
+}
+
+// embeddedTailscaleCheck 顯示內建 Tailscale（C35）的狀態；沒開就不顯示。服務要在執行才查得到。
+func embeddedTailscaleCheck(env Env, o Options) (Result, bool) {
+	r := Result{Name: "內建 Tailscale", Required: false, Fix: "設定 → 進階 → 網路與 Tailscale"}
+	if env.NetworkStatus == nil || o.Addr == "" {
+		return r, false
+	}
+	host, port, err := net.SplitHostPort(o.Addr)
+	if err != nil {
+		return r, false
+	}
+	if host == "" || host == "0.0.0.0" {
+		host = "127.0.0.1"
+	}
+	base := "http://" + net.JoinHostPort(host, port)
+	if !env.Healthy(base + "/healthz") {
+		if _, err := env.ReadFile(filepath.Join(o.DataDir, "tailscale", "tailscaled.state")); err == nil {
+			r.Status, r.Detail, r.Fix = Warn, "設定過，但服務沒在執行，看不到狀態", "make start"
+			return r, true
+		}
+		return r, false
+	}
+	b, err := env.NetworkStatus(base + "/api/v1/network.status")
+	if err != nil {
+		return r, false // 舊版服務、或關掉了本機免登入
+	}
+	var res struct {
+		Output struct {
+			Tailscale struct {
+				Enabled     bool   `json:"enabled"`
+				State       string `json:"state"`
+				Message     string `json:"message"`
+				URL         string `json:"url"`
+				Cert        string `json:"cert"`
+				CertMessage string `json:"cert_message"`
+				Devices     int    `json:"devices"`
+			} `json:"tailscale"`
+			Funnel struct {
+				Enabled bool   `json:"enabled"`
+				State   string `json:"state"`
+				Message string `json:"message"`
+			} `json:"funnel"`
+		} `json:"output"`
+	}
+	if json.Unmarshal(b, &res) != nil || !res.Output.Tailscale.Enabled {
+		return r, false
+	}
+	t, f := res.Output.Tailscale, res.Output.Funnel
+	switch t.State {
+	case "running":
+		r.Status, r.Detail = OK, fmt.Sprintf("已連上 %s（tailnet 上 %d 台其他裝置）", t.URL, t.Devices)
+		if t.Cert == "missing" || t.Cert == "error" {
+			r.Status, r.Detail, r.Fix = Warn, t.URL+"：HTTPS 憑證沒好", t.CertMessage
+		}
+		if f.Enabled {
+			if f.State == "on" {
+				r.Detail += "；外部入口（Funnel）開著"
+			} else if f.Message != "" {
+				r.Status, r.Fix = Warn, "外部入口（Funnel）："+f.Message
+			}
+		}
+	case "needs_login":
+		r.Status, r.Detail = Warn, "還沒登入 tailnet"
+		r.Fix = "到 設定 → 進階 → 網路與 Tailscale 打開登入網址，或給登入金鑰"
+	case "starting":
+		r.Status, r.Detail = Warn, "正在連線…"
+	default:
+		r.Status, r.Detail = Warn, firstLine(t.Message)
+	}
+	return r, true
 }
 
 // subscriptionChecks 看這台電腦上有沒有 Claude Code／Codex CLI 的登入（選用，EN-2b）：

@@ -314,6 +314,9 @@ func remoteIP(r *http.Request) string {
 // IsLoopbackRequest 回答請求是不是從這台機器直接連進來（來源與 Host 都是 localhost；
 // 經過反向代理或 Tailscale serve 的請求 Host 不是 localhost，不算）。
 func IsLoopbackRequest(r *http.Request) bool {
+	if remote(r) { // 內建 Tailscale 或外部入口來的，永遠不算本機（C35）
+		return false
+	}
 	ip := net.ParseIP(remoteIP(r))
 	if ip == nil || !ip.IsLoopback() {
 		return false
