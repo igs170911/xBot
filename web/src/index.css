@@ -210,3 +210,47 @@
     box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
   }
 }
+
+/* 程式碼高亮（design/C07）：關鍵字粉、名稱藍、數字橘、註解灰、字串綠 */
+@layer components {
+  .hl .hljs-keyword,
+  .hl .hljs-literal,
+  .hl .hljs-selector-tag,
+  .hl .hljs-doctag {
+    color: #ff8fb1;
+  }
+  .hl .hljs-title,
+  .hl .hljs-built_in,
+  .hl .hljs-name,
+  .hl .hljs-section,
+  .hl .hljs-selector-class,
+  .hl .hljs-selector-id {
+    color: #7fc0ff;
+  }
+  .hl .hljs-number,
+  .hl .hljs-attr,
+  .hl .hljs-attribute,
+  .hl .hljs-variable,
+  .hl .hljs-template-variable,
+  .hl .hljs-type,
+  .hl .hljs-symbol {
+    color: #ffb547;
+  }
+  .hl .hljs-string,
+  .hl .hljs-regexp,
+  .hl .hljs-addition,
+  .hl .hljs-bullet {
+    color: #8fdcb4;
+  }
+  .hl .hljs-comment,
+  .hl .hljs-quote,
+  .hl .hljs-meta {
+    color: #8a8a8a;
+  }
+  .hl .hljs-deletion {
+    color: #ff5667;
+  }
+  .hl .hljs-emphasis {
+    font-style: italic;
+  }
+}

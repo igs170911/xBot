@@ -41,7 +41,7 @@ function StepIcon({ s }: { s: Step }) {
   )
 }
 
-function StepList({ steps, compact }: { steps: Step[]; compact?: boolean }) {
+function StepList({ steps, compact, now }: { steps: Step[]; compact?: boolean; now?: number }) {
   return (
     <ol
       className={cx(
@@ -57,6 +57,7 @@ function StepList({ steps, compact }: { steps: Step[]; compact?: boolean }) {
             {s.status === 'ok' && <Icon icon={Check} size={14} strokeWidth={2.25} color="var(--color-success)" />}
             {s.name}
           </span>
+          {now && s.status === 'running' && <span className="text-meta text-ink-3">{formatElapsed(Math.max(0, now - s.at))}</span>}
         </li>
       ))}
     </ol>
@@ -115,7 +116,7 @@ export function WorkSteps({ a, bot }: { a: Activity; bot?: Bot }) {
           </span>
         )}
       </button>
-      {open && a.steps.length > 0 && <StepList steps={a.steps} />}
+      {open && a.steps.length > 0 && <StepList steps={a.steps} now={now} />}
       {a.request && (
         <p className="m-0 ml-[34px] rounded-menu bg-card px-3.5 py-2.5 text-ui-sm">
           <span className="text-warning-ink">{name}在等你：</span>

@@ -1,14 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { ChevronDown, CircleX, Cpu, Monitor, MessageSquare, OctagonPause, Plus, ShieldCheck, X } from 'lucide-react'
-import {
-  ApiError,
-  chatListThreads,
-  chatSend,
-  chatStop,
-  modelsGet,
-  type ChatListThreadsOutput,
-  type ModelsGetOutput,
-} from '../api/generated'
+import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { Activity as ActivityIcon, Cpu, Ellipsis, Monitor, Plus, Settings, X } from 'lucide-react'
+import { ApiError, chatListThreads, chatSend, chatStop, modelsGet, type ModelsGetOutput } from '../api/generated'
 import { botsStore, type Bot } from '../data/bots'
 import { onReconnect } from '../data/events'
 import { useStore } from '../data/store'
@@ -17,17 +9,19 @@ import { navigate } from '../router'
 import { Avatar } from '../ui/Avatar'
 import { Button, IconButton } from '../ui/Button'
 import { Icon } from '../ui/Icon'
-import { MenuButton, type MenuItem } from '../ui/Menu'
+import { MenuButton } from '../ui/Menu'
 import { cx } from '../ui/cx'
 import { ModelSettingsDialog } from '../pages/ModelSettings'
-import { activeTask, isActive, threadItems, type Activity, type ChatItem, type ChatMsg } from './assemble'
-import { ChatComposer, type ComposerMode } from './ChatComposer'
-import { chatStore, loadThread } from './chatStore'
+import { activeTask, isActive, threadItems, type Activity, type ChatItem } from './assemble'
+import { cardFor } from './cards'
+import { ChatComposer, type ComposerHandle, type ComposerMode } from './ChatComposer'
+import { chatStore, loadOlder, loadThread } from './chatStore'
+import { EmptyState } from './EmptyState'
+import { BotMessage, OutcomeRow, OwnerMessage } from './Message'
+import { ModelPicker } from './ModelPicker'
+import { ProgressDialog } from './ProgressDialog'
+import { ThreadMenu, type Thread } from './ThreadMenu'
 import { WorkSteps } from './WorkSteps'
-
-type Thread = ChatListThreadsOutput['threads'][number]
-
-const APPROVAL_LABEL: Record<string, string> = { ask: '先問我', edits: '一般的事自己做', auto: '放手做', full: '完全放手' }
 
 const GAP = 30 * 60 * 1000
 
@@ -37,51 +31,13 @@ function Stamp({ at }: { at: number }) {
   return <span className="self-center pt-1.5 text-meta text-ink-3">{stampLabel(at)}</span>
 }
 
-function Bubble({ msg }: { msg: ChatMsg }) {
-  const mine = msg.sender === 'owner'
-  return (
-    <div
-      data-testid={mine ? 'msg-owner' : 'msg-bot'}
-      data-streaming={msg.streaming || undefined}
-      className={cx(
-        'whitespace-pre-wrap break-words rounded-bubble px-4 py-2.5 text-[15px] leading-[1.6]',
-        mine ? 'max-w-[75%] self-end bg-bubble-user text-white' : 'max-w-[85%] self-start bg-bubble-bot',
-      )}
-    >
-      {msg.content}
-    </div>
-  )
-}
-
-function OutcomeRow({ msg, activity }: { msg: ChatMsg; activity?: Activity }) {
-  if (msg.status === 'error') {
-    return (
-      <div className="-mt-1 flex flex-wrap items-center gap-2">
-        <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-control pl-2.5 pr-3 text-[13px] text-danger">
-          <Icon icon={CircleX} size={14} />
-          工作未完成
-        </span>
-        {activity?.error && activity.error !== msg.content && <span className="text-meta text-ink-3">{activity.error}</span>}
-      </div>
-    )
-  }
-  if (msg.status === 'interrupted') {
-    return (
-      <div className="-mt-1 flex flex-wrap items-center gap-2">
-        <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-control pl-2.5 pr-3 text-[13px] text-warning-ink">
-          <Icon icon={OctagonPause} size={14} />
-          已停止
-        </span>
-        <span className="text-meta text-ink-3">做到一半的檔案都還在</span>
-      </div>
-    )
-  }
-  return null
-}
-
-function Messages({ items, bot }: { items: ChatItem[]; bot?: Bot }) {
+function Messages({ items, bot, threadId, onRetry, canRetry }: { items: ChatItem[]; bot?: Bot; threadId: string; onRetry: (text: string) => void; canRetry: boolean }) {
   const out: ReactNode[] = []
   let last = 0
+  // 每件工作是哪句話交代的（重試時再送一次）
+  const asked = new Map<string, string>()
+  for (const it of items) if (it.type === 'message' && it.msg.sender === 'owner' && it.msg.taskId) asked.set(it.msg.taskId, it.msg.content)
+  const lastBot = items.findLast((it) => it.type === 'message' && it.msg.sender !== 'owner')
   for (const it of items) {
     if (it.type === 'activity') {
       out.push(<WorkSteps key={'a' + it.activity.taskId} a={it.activity} bot={bot} />)
@@ -93,34 +49,17 @@ function Messages({ items, bot }: { items: ChatItem[]; bot?: Bot }) {
     // 進行中：進度接在回覆下面（C01，最新的動態靠近輸入框）；做完：摺疊的步驟放在回答上面（C02）
     const live = it.activity && isActive(it.activity)
     if (it.activity && !live) out.push(<WorkSteps key={'a' + it.activity.taskId} a={it.activity} bot={bot} />)
-    if (m.content || (!m.streaming && m.sender === 'owner')) out.push(<Bubble key={m.id} msg={m} />)
+    const Card = cardFor(m.kind)
+    const isLast = it === lastBot
+    if (Card) out.push(createElement(Card, { key: m.id, msg: m, bot, threadId, activity: it.activity }))
+    else if (m.sender === 'owner') {
+      if (m.content || !m.streaming) out.push(<OwnerMessage key={m.id} msg={m} />)
+    } else if (m.content) out.push(<BotMessage key={m.id} msg={m} last={isLast} />)
     if (it.activity && live) out.push(<WorkSteps key={'a' + it.activity.taskId} a={it.activity} bot={bot} />)
-    out.push(<OutcomeRow key={'o' + m.id} msg={m} activity={it.activity} />)
+    const retryText = m.taskId ? asked.get(m.taskId) : undefined
+    out.push(<OutcomeRow key={'o' + m.id} msg={m} activity={it.activity} onRetry={isLast && canRetry && retryText ? () => onRetry(retryText) : undefined} />)
   }
   return <>{out}</>
-}
-
-// ── 空狀態（design/C03）──────────────────────────────
-
-function Intro({ bot }: { bot: Bot }) {
-  const sub = [bot.title, bot.description].filter(Boolean).join(' · ')
-  return (
-    <div className="flex flex-col items-center gap-1.5 pb-3 text-center" data-testid="chat-empty">
-      <Avatar shape={bot.shape} color={bot.color} state="happy" dot="none" size={72} />
-      <h1 className="m-0 mt-1.5 text-[24px] leading-[1.35]">{bot.name}</h1>
-      {sub && <span className="text-ui-sm text-ink-2">{sub}</span>}
-      <span className="mt-1.5 flex flex-wrap justify-center gap-1.5 text-meta text-ink-2">
-        <span className="inline-flex h-[26px] items-center gap-1.5 rounded-full border border-line px-2.5">
-          <Icon icon={ShieldCheck} size={14} />
-          {APPROVAL_LABEL[bot.approval_mode] ?? bot.approval_mode}
-        </span>
-        <span className="inline-flex h-[26px] items-center gap-1.5 rounded-full border border-line px-2.5">
-          <Icon icon={Monitor} size={14} />
-          這台主機 · 第一次交辦時開機
-        </span>
-      </span>
-    </div>
-  )
 }
 
 // ── 提示卡 ───────────────────────────────────────────
@@ -169,66 +108,58 @@ function statusOf(bot: Bot, act: Activity | undefined, busyElsewhere: boolean): 
   return { text: bot.archived ? '已封存' : '待命' }
 }
 
+
 function Header({
   bot,
   act,
   busyElsewhere,
   threads,
   threadId,
-  model,
-  onModel,
+  models,
+  onSetupModels,
+  onProgress,
 }: {
   bot: Bot
   act?: Activity
   busyElsewhere: boolean
   threads: Thread[] | null
   threadId?: string
-  model: string
-  onModel: () => void
+  models: ModelsGetOutput | null
+  onSetupModels: () => void
+  onProgress: () => void
 }) {
   const st = statusOf(bot, act, busyElsewhere)
-  const current = threads?.find((t) => t.id === threadId)
-  const items: MenuItem[] = [
-    ...(threads ?? []).map((t) => ({ label: (t.id === threadId ? '✓ ' : '') + (t.title || '新的對話'), icon: MessageSquare, onSelect: () => navigate(`/bots/${bot.id}/threads/${t.id}`) })),
-    { label: '新對話串', icon: Plus, separator: !!threads?.length, onSelect: () => navigate(`/bots/${bot.id}/threads/new`) },
-  ]
   return (
-    <header className="flex h-14 flex-none items-center gap-2 pl-5 pr-3 max-md:h-12 max-md:pl-3">
+    <header className="flex h-14 flex-none items-center gap-2 pl-5 pr-3 max-md:h-12 max-md:gap-1.5 max-md:pl-3 max-md:pr-1.5">
       <span className="flex items-center gap-2 max-md:hidden">
         <Avatar shape={bot.shape} color={bot.color} state={act ? 'working' : 'idle'} dot="none" ring="#070707" size={26} />
         <span className="text-[16px]">{bot.name}</span>
       </span>
       <span className="flex items-center gap-1.5 whitespace-nowrap text-[13px] text-ink-3" data-testid="bot-status">
         {st.color && <span className={cx('size-1.5 rounded-full', st.pulse && 'animate-pulse')} style={{ background: st.color }} />}
-        {st.text}
+        <span className="max-sm:sr-only-text">{st.text}</span>
       </span>
       <span className="mx-1 h-5 w-px bg-line max-sm:hidden" />
-      <MenuButton
-        label="對話串"
-        items={items}
-        trigger={(p) => (
-          <button
-            {...p}
-            type="button"
-            className="relative flex h-8 min-w-0 max-w-[220px] items-center gap-1.5 rounded-full border border-line bg-transparent pl-3 pr-2 text-sub text-ink touch-target hover:bg-control"
-          >
-            <Icon icon={MessageSquare} size={16} className="text-ink-2" />
-            <span className="truncate">{threadId ? current?.title || '對話' : '新對話串'}</span>
-            {!!threads?.length && <span className="text-[12px] text-ink-3">{threads.length}</span>}
-            <Icon icon={ChevronDown} size={16} className="text-ink-2" />
-          </button>
-        )}
+      <ThreadMenu
+        botName={bot.name}
+        threads={threads}
+        threadId={threadId}
+        onPick={(id) => navigate(`/bots/${bot.id}/threads/${id}`)}
+        onNew={() => navigate(`/bots/${bot.id}/threads/new`)}
       />
       <span className="flex-1" />
-      <button
-        type="button"
-        onClick={onModel}
-        aria-label={`模型：${model}（設定）`}
-        className="relative flex h-8 min-w-0 max-w-[200px] items-center gap-1.5 whitespace-nowrap rounded-full bg-card pl-3.5 pr-2.5 text-sub text-ink touch-target hover:bg-control max-sm:hidden"
-      >
-        <span className="truncate">{model}</span>
-        <Icon icon={ChevronDown} size={16} className="text-ink-2" />
-      </button>
+      <ModelPicker bot={bot} models={models} onSetup={onSetupModels} className="max-sm:max-w-[124px]" />
+      <IconButton icon={Monitor} label={`${bot.name}的電腦`} onClick={() => navigate(`/bots/${bot.id}/computer`)} />
+      <MenuButton
+        label="更多"
+        align="end"
+        items={[
+          { label: '目前進度', icon: ActivityIcon, onSelect: onProgress },
+          { label: '新對話串', icon: Plus, onSelect: () => navigate(`/bots/${bot.id}/threads/new`) },
+          { label: '模型與金鑰設定', icon: Settings, separator: true, onSelect: () => navigate('/settings') },
+        ]}
+        trigger={(p) => <IconButton {...p} icon={Ellipsis} label="更多" />}
+      />
     </header>
   )
 }
@@ -251,7 +182,7 @@ function useThreads(botId: string) {
   return [threads, reload] as const
 }
 
-/** 對話頁（design/C01～C03）：/bots/:id 與 /bots/:id/threads/:threadId（new 表示開新的對話串）。 */
+/** 對話頁（design/C01～C07）：/bots/:id 與 /bots/:id/threads/:threadId（new 表示開新的對話串）。 */
 export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: string }) {
   const { bots, activity } = useStore(botsStore)
   const bot = bots?.find((b) => b.id === botId)
@@ -259,10 +190,14 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   const chat = useStore(chatStore)
   const [models, setModels] = useState<ModelsGetOutput | null>(null)
   const [modelDialog, setModelDialog] = useState(false)
+  const [progress, setProgress] = useState(false)
   const [noticeState, setNoticeState] = useState<{ n: Notice; thread: string } | null>(null)
   const [stopRequested, setStopRequested] = useState<string | null>(null)
+  const [olderBusy, setOlderBusy] = useState(false)
   const scroller = useRef<HTMLDivElement>(null)
+  const composer = useRef<ComposerHandle>(null)
   const stick = useRef(true)
+  const keepFromBottom = useRef<number | null>(null)
 
   const isNew = threadParam === 'new'
   const threadId = isNew ? undefined : (threadParam ?? threads?.[0]?.id)
@@ -284,12 +219,14 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
 
   useEffect(() => {
     if (!threadId) return
+    stick.current = true
     const load = () => loadThread(threadId).catch((err: unknown) => setNotice({ kind: 'error', text: err instanceof Error ? err.message : String(err) }))
     void load()
     return onReconnect(() => void load())
   }, [threadId, setNotice])
 
   const items = threadId ? threadItems(chat, threadId) : []
+  const th = threadId ? chat.threads[threadId] : undefined
   const act = threadId ? activeTask(chat, threadId) : undefined
   const botAct = activity[botId]
   const busyElsewhere = !act && !!botAct && botAct.state !== 'done' && botAct.threadId !== threadId
@@ -298,16 +235,36 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   const noModel = models !== null && !models.ready && !bot?.model
   const name = bot?.name ?? 'Bot'
 
-  // 新內容進來時，如果本來就在最下面，就跟著捲到底
-  const lastLen = items.length ? (items[items.length - 1].type === 'message' ? (items[items.length - 1] as { msg: ChatMsg }).msg.content.length : 0) : 0
+  // 新內容進來時，如果本來就在最下面，就跟著捲到底；載入更早的訊息時保持畫面不跳
+  const lastItem = items[items.length - 1]
+  const lastLen = lastItem?.type === 'message' ? lastItem.msg.content.length : 0
   useLayoutEffect(() => {
     const el = scroller.current
-    if (el && stick.current) el.scrollTop = el.scrollHeight
+    if (!el) return
+    if (keepFromBottom.current !== null) {
+      el.scrollTop = el.scrollHeight - keepFromBottom.current
+      keepFromBottom.current = null
+    } else if (stick.current) el.scrollTop = el.scrollHeight
   }, [items.length, lastLen, act?.steps.length, noModel, notice])
 
   const onScroll = () => {
     const el = scroller.current
     if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+  }
+
+  const older = async () => {
+    if (!threadId || olderBusy) return
+    const el = scroller.current
+    setOlderBusy(true)
+    try {
+      if (el) keepFromBottom.current = el.scrollHeight - el.scrollTop
+      await loadOlder(threadId)
+    } catch (err) {
+      keepFromBottom.current = null
+      setNotice({ kind: 'error', text: err instanceof Error ? err.message : String(err) })
+    } finally {
+      setOlderBusy(false)
+    }
   }
 
   const send = async (text: string): Promise<boolean> => {
@@ -355,34 +312,45 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   }
   if (!bot) return <main className="flex-1" aria-busy="true" />
 
-  const loading = !!threadId && !chat.threads[threadId]?.loaded && items.length === 0
+  const loading = !!threadId && !th?.loaded && items.length === 0
   const empty = !loading && items.length === 0
-  const model = bot.model || (models?.default ? models.default.model : models ? '還沒設定模型' : '')
 
   return (
     <main className="flex h-[calc(100dvh-56px)] min-w-0 flex-1 flex-col bg-app md:h-dvh" aria-label={`和${name}的對話`}>
-      <Header bot={bot} act={act} busyElsewhere={busyElsewhere} threads={threads} threadId={threadId} model={model} onModel={() => setModelDialog(true)} />
+      <Header
+        bot={bot}
+        act={act}
+        busyElsewhere={busyElsewhere}
+        threads={threads}
+        threadId={threadId}
+        models={models}
+        onSetupModels={() => setModelDialog(true)}
+        onProgress={() => setProgress(true)}
+      />
       <div ref={scroller} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto">
         <div
-          className={cx(
-            'mx-auto box-border flex min-h-full max-w-[828px] flex-col gap-3.5 px-6 pb-2 pt-3 max-sm:px-4',
-            empty ? 'justify-center' : 'justify-end',
-          )}
+          className={cx('mx-auto box-border flex min-h-full max-w-[828px] flex-col gap-3.5 px-6 pb-2 pt-3 max-sm:px-3', empty ? 'justify-center' : 'justify-end')}
           aria-live="polite"
           aria-busy={loading || undefined}
         >
-          {empty && <Intro bot={bot} />}
-          <Messages items={items} bot={bot} />
+          {th?.hasMore && (
+            <Button size="sm" variant="ghost" className="self-center" loading={olderBusy} onClick={() => void older()}>
+              載入更早的訊息
+            </Button>
+          )}
+          {empty && <EmptyState bot={bot} onPick={(t) => composer.current?.fill(t)} onFree={() => composer.current?.fill()} />}
+          {threadId && <Messages items={items} bot={bot} threadId={threadId} canRetry={!act} onRetry={(t) => void send(t)} />}
         </div>
       </div>
       <div className="flex-none px-6 pb-4 pt-2 max-sm:px-3 max-sm:pb-[max(12px,env(safe-area-inset-bottom))]">
         <div className="mx-auto flex max-w-[780px] flex-col gap-2">
           {noModel && <NoModelCard name={name} onSetup={() => setModelDialog(true)} />}
           {notice && <NoticeRow notice={notice} onStop={() => void stop(false)} onClose={() => setNotice(null)} />}
-          <ChatComposer name={name} mode={mode} onSend={send} onStop={() => void stop()} />
+          <ChatComposer handle={composer} name={name} mode={mode} onSend={send} onStop={() => void stop()} />
         </div>
       </div>
       <ModelSettingsDialog open={modelDialog} onClose={() => setModelDialog(false)} onSaved={(m) => setModels(m)} />
+      <ProgressDialog open={progress} onClose={() => setProgress(false)} bot={bot} chat={chat} threadId={threadId} act={act} botAct={botAct} />
     </main>
   )
 }
