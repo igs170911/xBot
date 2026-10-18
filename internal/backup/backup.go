@@ -30,12 +30,14 @@ import (
 
 	_ "modernc.org/sqlite" // 純 Go 的 SQLite driver
 
-	"xbot/internal/store"
 	"xbot/internal/version"
 )
 
 // ManifestName 是備份檔裡描述內容的檔案。
 const ManifestName = "xbot-backup.json"
+
+// DBFile 是資料目錄裡的資料庫檔名（同 store.FileName；store 的測試會用到這個套件，所以不能反過來引用 store）。
+const DBFile = "xbot.db"
 
 // FormatVersion 是現在寫出的備份檔格式（見套件說明）。v1 的備份檔沒有 format 欄位（讀成 0，當成 1）。
 const FormatVersion = 2
@@ -206,7 +208,7 @@ func CreateContext(ctx context.Context, o Options) (Manifest, error) {
 		return m, err
 	}
 	if o.Computers != nil {
-		snap := filepath.Join(snapDir, store.FileName)
+		snap := filepath.Join(snapDir, DBFile)
 		if _, err := os.Stat(snap); err == nil {
 			if m.Computers, err = backupComputers(ctx, tw, snap, o, report); err != nil {
 				return m, err
@@ -383,10 +385,10 @@ func RestoreDB(file, dataDir string) (string, error) {
 	if err := readManifest(file, &m); err != nil {
 		return "", err
 	}
-	tmp := filepath.Join(dataDir, store.FileName+".restoring")
+	tmp := filepath.Join(dataDir, DBFile+".restoring")
 	found := false
 	err := walkTar(file, func(h *tar.Header, r io.Reader) error {
-		if path.Clean(h.Name) != store.FileName || h.Typeflag != tar.TypeReg {
+		if path.Clean(h.Name) != DBFile || h.Typeflag != tar.TypeReg {
 			return nil
 		}
 		found = true
@@ -407,7 +409,7 @@ func RestoreDB(file, dataDir string) (string, error) {
 	if !found {
 		return "", errors.New("備份檔裡沒有資料庫")
 	}
-	db := filepath.Join(dataDir, store.FileName)
+	db := filepath.Join(dataDir, DBFile)
 	kept := ""
 	if _, err := os.Stat(db); err == nil {
 		kept = fmt.Sprintf("%s.replaced-%s", db, time.Now().Format("20060102-150405"))

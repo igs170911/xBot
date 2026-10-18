@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"xbot/internal/backup"
+	"xbot/internal/backup/dockervol"
 	"xbot/internal/box"
 	"xbot/internal/config"
 	"xbot/internal/hosts"
@@ -156,7 +157,7 @@ func cmdBackup(args []string) error {
 	opts := backup.Options{DataDir: cfg.DataDir, Out: *out, IncludeLogins: *logins,
 		Report: func(f string, a ...any) { fmt.Printf(f+"\n", a...) }}
 	if !*noComputers {
-		comps := &backup.DockerComputers{DataDir: cfg.DataDir, Image: boxImage()}
+		comps := &dockervol.Computers{DataDir: cfg.DataDir, Image: boxImage()}
 		defer comps.Close()
 		opts.Computers = comps
 		fmt.Println("▶ 備份資料目錄與每個 Bot 電腦的資料…")
@@ -285,7 +286,7 @@ func restoreComputers(file string, cfg config.Config, only []string) error {
 		return nil
 	}
 	fmt.Println("▶ 還原 Bot 電腦的資料…")
-	comps := &backup.DockerComputers{DataDir: cfg.DataDir, Image: boxImage()}
+	comps := &dockervol.Computers{DataDir: cfg.DataDir, Image: boxImage()}
 	defer comps.Close()
 	res, err := backup.RestoreComputers(context.Background(), file, cfg.DataDir, comps, only)
 	if err != nil {

@@ -16,8 +16,6 @@ import (
 	"strings"
 	"testing"
 
-	"xbot/internal/box"
-	"xbot/internal/hosts"
 	"xbot/internal/store"
 )
 
@@ -39,16 +37,16 @@ type fakeComputers struct {
 
 func (f *fakeComputers) Export(_ context.Context, ref ComputerRef, logins bool, emit func(string, *tar.Header, io.Reader) error) error {
 	if f.offline[ref.Host.ID] {
-		return fmt.Errorf("%w：%s", hosts.ErrHostOffline, ref.Host.Name)
+		return fmt.Errorf("主機離線：%s", ref.Host.Name)
 	}
 	items, ok := f.data[ref.BotID]
 	if !ok {
-		return box.ErrNoData
+		return ErrNoData
 	}
 	files := 0
 	for _, it := range items {
 		kind, rel, _ := strings.Cut(it.name, "/")
-		if !logins && box.IsLoginPath(kind, rel) {
+		if !logins && kind == "home" && strings.HasPrefix(rel, "chrome-profile") {
 			continue
 		}
 		h := &tar.Header{Name: it.name, Uid: it.uid, Gid: it.uid, Mode: 0o600}
@@ -106,7 +104,7 @@ func (s *fakeSink) Close(_ context.Context, cause error) ([]string, error) {
 
 func (f *fakeComputers) Import(_ context.Context, ref ComputerRef, _ string) (VolumeSink, error) {
 	if f.offline[ref.Host.ID] {
-		return nil, fmt.Errorf("%w：%s", hosts.ErrHostOffline, ref.Host.Name)
+		return nil, fmt.Errorf("主機離線：%s", ref.Host.Name)
 	}
 	return &fakeSink{f: f, botID: ref.BotID}, nil
 }

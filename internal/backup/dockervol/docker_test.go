@@ -1,18 +1,24 @@
 //go:build docker
 
-package backup
+package dockervol
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
+	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/moby/moby/client"
 
+	"xbot/internal/backup"
 	"xbot/internal/box"
 	"xbot/internal/hosts"
 	"xbot/internal/hosts/sshtesthost"
@@ -196,8 +202,8 @@ chown -R 1000:1000 /v/home /v/workspace /v/hermes`
 	})
 
 	file := filepath.Join(t.TempDir(), "b.tar.gz")
-	comps := &DockerComputers{DataDir: dir, Image: image}
-	m, err := CreateContext(ctx, Options{DataDir: dir, Out: file, Computers: comps})
+	comps := &Computers{DataDir: dir, Image: image}
+	m, err := backup.CreateContext(ctx, backup.Options{DataDir: dir, Out: file, Computers: comps})
 	comps.Close()
 	if err != nil {
 		t.Fatal(err)
@@ -209,7 +215,7 @@ chown -R 1000:1000 /v/home /v/workspace /v/hermes`
 	}
 	names := archiveNames(t, file)
 	for _, b := range []string{botL.ID, botR.ID} {
-		p := ComputersDir + "/" + b + "/"
+		p := backup.ComputersDir + "/" + b + "/"
 		h := names[p+"home/note.txt"]
 		if h == nil || names[p+"workspace/成果/報告.md"] == nil || names[p+"hermes/config.yaml"] == nil {
 			t.Fatalf("%s 的資料不在備份裡：%v", b, keys(names))
@@ -232,8 +238,8 @@ chown -R 1000:1000 /v/home /v/workspace /v/hermes`
 		}
 		sh(remote, b, `echo 改過 > /v/home/note.txt && echo 新檔 > /v/workspace/new.txt`)
 	}
-	comps = &DockerComputers{DataDir: dir, Image: image}
-	res, err := RestoreComputers(ctx, file, dir, comps, nil)
+	comps = &Computers{DataDir: dir, Image: image}
+	res, err := backup.RestoreComputers(ctx, file, dir, comps, nil)
 	comps.Close()
 	if err != nil {
 		t.Fatal(err)
@@ -259,4 +265,39 @@ chown -R 1000:1000 /v/home /v/workspace /v/hermes`
 			t.Fatalf("原本的資料要完整保留：%s", kept)
 		}
 	}
+}
+
+func archiveNames(t *testing.T, file string) map[string]*tar.Header {
+	t.Helper()
+	f, err := os.Open(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr := tar.NewReader(gz)
+	out := map[string]*tar.Header{}
+	for {
+		h, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			return out
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		hh := *h
+		out[h.Name] = &hh
+	}
+}
+
+func keys(m map[string]*tar.Header) []string {
+	var out []string
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }

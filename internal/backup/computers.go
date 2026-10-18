@@ -11,18 +11,23 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"xbot/internal/box"
-	"xbot/internal/hosts"
-	"xbot/internal/limits"
-	"xbot/internal/store"
 )
+
+// Host 是一台 Docker 主機的連線資料（host 資料表的一部分）。
+type Host struct {
+	ID, Name, Kind, Address string
+	Port                    int
+	SSHUser, KnownHosts     string
+}
 
 // ComputerRef 是一個 Bot 與它的電腦所在的主機。
 type ComputerRef struct {
 	BotID, BotName string
-	Host           store.Host
+	Host           Host
 }
+
+// ErrNoData 表示這個 Bot 還沒有電腦資料（不算問題）。Computers.Export 回傳它（或包著它的錯誤）。
+var ErrNoData = errors.New("這個 Bot 還沒有電腦資料")
 
 // VolumeSink 收一個 Bot 的電腦資料（還原用）。
 type VolumeSink interface {
@@ -33,10 +38,10 @@ type VolumeSink interface {
 
 // Computers 讀寫 Bot 電腦的資料（Docker volume）。DockerComputers 是真的實作，測試用假的。
 type Computers interface {
-	// Export 把 ref 的電腦資料串流出來（name 是「kind/相對路徑」）。沒有資料時回傳 box.ErrNoData；
-	// 主機連不上時回傳 hosts.ErrHostOffline。
+	// Export 把 ref 的電腦資料串流出來（name 是「kind/相對路徑」）。沒有資料時回傳 ErrNoData；
+	// 主機連不上時回傳說明原因的錯誤。
 	Export(ctx context.Context, ref ComputerRef, includeLogins bool, emit func(name string, h *tar.Header, r io.Reader) error) error
-	// Import 開始還原 ref 的電腦資料；主機連不上時回傳 hosts.ErrHostOffline。
+	// Import 開始還原 ref 的電腦資料；主機連不上時回傳說明原因的錯誤。
 	Import(ctx context.Context, ref ComputerRef, stamp string) (VolumeSink, error)
 	// Close 關掉所有主機連線。
 	Close() error
@@ -54,10 +59,10 @@ func ListComputers(ctx context.Context, dbFile string) ([]ComputerRef, error) {
 	if err != nil {
 		return nil, fmt.Errorf("讀主機清單失敗：%w", err)
 	}
-	byID := map[string]store.Host{}
-	local := store.Host{}
+	byID := map[string]Host{}
+	local := Host{}
 	for hostRows.Next() {
-		var h store.Host
+		var h Host
 		if err := hostRows.Scan(&h.ID, &h.Name, &h.Kind, &h.Address, &h.Port, &h.SSHUser, &h.KnownHosts); err != nil {
 			hostRows.Close()
 			return nil, err
@@ -140,7 +145,7 @@ func backupComputers(ctx context.Context, tw *tar.Writer, dbSnap string, o Optio
 		switch {
 		case errors.As(err, &we):
 			return nil, fmt.Errorf("寫入 %s 的電腦資料失敗：%w", ref.BotName, we.err)
-		case errors.Is(err, box.ErrNoData):
+		case errors.Is(err, ErrNoData):
 			e.Empty = true
 		case err != nil:
 			e.Skipped = err.Error()
@@ -225,7 +230,7 @@ func RestoreComputers(ctx context.Context, file, dataDir string, comps Computers
 	if len(m.Computers) == 0 {
 		return nil, nil
 	}
-	refs, err := ListComputers(ctx, filepath.Join(dataDir, store.FileName))
+	refs, err := ListComputers(ctx, filepath.Join(dataDir, DBFile))
 	if err != nil {
 		return nil, err
 	}
@@ -316,87 +321,4 @@ func RestoreComputers(ctx context.Context, file, dataDir string, comps Computers
 		out = append(out, *r)
 	}
 	return out, err
-}
-
-// DockerComputers 經 Docker API 讀寫 Bot 電腦的 volume（本機與遠端主機）。
-type DockerComputers struct {
-	// DataDir 是 XBot 的資料目錄（連遠端主機用的 SSH 金鑰與 known_hosts）。
-	DataDir string
-	// Image 是 Bot 電腦映像（輔助容器用）。
-	Image string
-	// Open 連上一台主機；nil 時用 hosts.Open。
-	Open func(ctx context.Context, row store.Host) (hosts.Host, error)
-
-	conns map[string]hostConn
-}
-
-type hostConn struct {
-	h   hosts.Host
-	err error
-}
-
-func (d *DockerComputers) host(ctx context.Context, row store.Host) (hosts.Host, error) {
-	if d.conns == nil {
-		d.conns = map[string]hostConn{}
-	}
-	if c, ok := d.conns[row.ID]; ok {
-		return c.h, c.err
-	}
-	open := d.Open
-	if open == nil {
-		open = func(ctx context.Context, row store.Host) (hosts.Host, error) {
-			return hosts.Open(ctx, d.DataDir, row, hosts.OpenOptions{Wait: limits.BackupHostWait})
-		}
-	}
-	h, err := open(ctx, row)
-	if err != nil {
-		err = fmt.Errorf("%w：%s（%v）", hosts.ErrHostOffline, row.Name, err)
-	}
-	d.conns[row.ID] = hostConn{h, err}
-	return h, err
-}
-
-// Export 實作 Computers。
-func (d *DockerComputers) Export(ctx context.Context, ref ComputerRef, includeLogins bool, emit func(string, *tar.Header, io.Reader) error) error {
-	h, err := d.host(ctx, ref.Host)
-	if err != nil {
-		return err
-	}
-	return box.ExportVolumes(ctx, h.Docker(), d.Image, ref.BotID, includeLogins, emit)
-}
-
-// Import 實作 Computers。
-func (d *DockerComputers) Import(ctx context.Context, ref ComputerRef, stamp string) (VolumeSink, error) {
-	h, err := d.host(ctx, ref.Host)
-	if err != nil {
-		return nil, err
-	}
-	vi, err := box.OpenImport(ctx, h.Docker(), d.Image, ref.BotID, stamp)
-	if err != nil {
-		return nil, err
-	}
-	return importSink{vi}, nil
-}
-
-type importSink struct{ vi *box.VolumeImport }
-
-func (s importSink) Write(name string, h *tar.Header, r io.Reader) error {
-	return s.vi.Write(name, h, r)
-}
-
-func (s importSink) Close(ctx context.Context, cause error) ([]string, error) {
-	res, err := s.vi.Close(ctx, cause)
-	return res.Kept, err
-}
-
-// Close 實作 Computers。
-func (d *DockerComputers) Close() error {
-	var errs []error
-	for _, c := range d.conns {
-		if c.h != nil {
-			errs = append(errs, c.h.Close())
-		}
-	}
-	d.conns = nil
-	return errors.Join(errs...)
 }
