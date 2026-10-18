@@ -148,3 +148,6 @@ func filename(name string) string {
 	}
 	return name
 }
+
+// Plain 把空白壓成一個空格，超過 limit 個字時截斷並加「…」（LazyBoy plain；給 org 用）。
+func Plain(text string, limit int) string { return plain(text, limit) }

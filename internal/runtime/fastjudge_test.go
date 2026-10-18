@@ -23,7 +23,9 @@ func TestFastJudgeNamesThreadAndSummarizesNotice(t *testing.T) {
 			return "查好了：週二最便宜", text != "" && taskID != "" && botID != ""
 		}
 	})
-	f.g.OnPrompt = func(tr *hermestest.Turn) { tr.Complete("我查好了。最便宜是週二，3,280 元。\n\n細節如下…", "complete", nil) }
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Complete("我查好了。最便宜是週二，3,280 元。\n\n細節如下…", "complete", nil)
+	}
 	res, err := f.rt.Chat(ctx, f.bot.ID, "", "幫我查這週台北飛東京最便宜的是哪一天，要含稅價")
 	if err != nil {
 		t.Fatal(err)

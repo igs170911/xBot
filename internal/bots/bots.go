@@ -70,6 +70,8 @@ type Deps struct {
 	Stop func(ctx context.Context, botID string)
 	// Teardown 收掉 Bot 的電腦與引擎連線（刪除時呼叫；連資料區一起刪）。
 	Teardown func(ctx context.Context, botID string) error
+	// Active 回傳 Bot 正在進行的對話串與工作（Bot 建幫手、改自己資料時在那條對話記一行）；nil 時不記。
+	Active func(botID string) (threadID, taskID string)
 	// SoulChanged 在名稱、職稱、介紹或人設改了以後呼叫：把新的 SOUL.md 寫進 Bot 的電腦（C31）。可為 nil。
 	SoulChanged func(ctx context.Context, botID string)
 }
@@ -91,6 +93,10 @@ type View struct {
 	MemoryEnabled bool         `json:"memory_enabled" desc:"記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶"`
 	Archived      bool         `json:"archived"`
 	HostID        string       `json:"host_id" desc:"放在哪台主機（xbot.hosts.list）；空白＝第一次開機時自動擺放"`
+	TeamID        string       `json:"team_id" desc:"所在團隊；空白是未分區"`
+	ReportsTo     string       `json:"reports_to" desc:"向哪個 Bot 報告；空白是直接向你報告"`
+	CanManage     bool         `json:"can_manage" desc:"團隊管理權限：可以替你建團隊、調整別的 Bot；每天可建 20 個 Bot"`
+	Primary       bool         `json:"primary" desc:"你的主要 Bot（is_chief）"`
 	CreatedBy     string       `json:"created_by,omitempty" desc:"誰建立的：owner、agent:<id>、bot:<id>"`
 	UpdatedBy     string       `json:"updated_by,omitempty" desc:"最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」"`
 	CreatedAt     int64        `json:"created_at"`
@@ -107,7 +113,8 @@ func ViewOf(b store.Bot) View {
 	_ = json.Unmarshal(b.Avatar, &a)
 	return View{ID: b.ID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul,
 		Color: Color(b.Color), Shape: Shape(a.Shape), Engine: b.Engine, Model: b.Model, Fallback: first(b.Fallback), Effort: b.Effort,
-		ApprovalMode: ApprovalMode(b.ApprovalMode), MemoryEnabled: b.MemoryEnabled, Archived: b.Archived, HostID: b.HostID, CreatedBy: b.CreatedBy, UpdatedBy: b.UpdatedBy,
+		ApprovalMode: ApprovalMode(b.ApprovalMode), MemoryEnabled: b.MemoryEnabled, Archived: b.Archived, HostID: b.HostID,
+		TeamID: b.TeamID, ReportsTo: b.ReportsTo, CanManage: b.CanManage, Primary: b.IsChief, CreatedBy: b.CreatedBy, UpdatedBy: b.UpdatedBy,
 		CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt}
 }
 
@@ -158,6 +165,7 @@ type UpdateIn struct {
 	ApprovalMode  *ApprovalMode `json:"approval_mode,omitempty" desc:"改成 ask 以外的等級要你核准"`
 	MemoryEnabled *bool         `json:"memory_enabled,omitempty" desc:"打開或關掉記憶（下次開機生效）"`
 	HostID        *string       `json:"host_id,omitempty" resource:"host" max:"64" desc:"放在哪台主機（CL-1）；空白字串＝自動擺放。已經有電腦的 Bot 換主機要等搬家（CL-5）"`
+	CanManage     *bool         `json:"can_manage,omitempty" desc:"團隊管理權限；打開要你核准"`
 }
 
 // ArchiveIn 是 xbot.bots.archive 的輸入。
@@ -202,11 +210,27 @@ func Register(reg *ops.Registry, d Deps) {
 	ops.Register(reg, ops.Op[CreateIn, View]{
 		Name: "xbot.bots.create", Summary: "建立一個 Bot",
 		Description: "新 Bot 的權限等級預設是「先問我」（SEC-1）。它的電腦在第一次對話時才開機。" +
-			"代理建立的 Bot 記在它名下：只能碰自己建立的東西的代理（預設）也能碰它（MCP-8）。",
-		Scope: ops.ScopeManage, Risk: ops.RiskSafe,
+			"代理建立的 Bot 記在它名下：只能碰自己建立的東西的代理（預設）也能碰它（MCP-8）。" +
+			"Bot 自己也能建立幫手 Bot（LP-9）：缺少某種專長、使用者也同意時才建，一次一個；每 24 小時最多 3 個" +
+			"（有團隊管理權限 20 個），全部最多 50 個；名字不能和現有的 Bot 重複。",
+		Scope: ops.ScopeManage, Risk: ops.RiskSafe, ForBot: true,
 		RiskOf: func(in CreateIn) ops.Risk { return modeRisk(in.ApprovalMode) },
 		Handle: func(ctx context.Context, call *ops.Call, in CreateIn) (View, error) {
+			if call.Identity.Kind == ops.KindBot {
+				return d.createByBot(ctx, reg, call, in)
+			}
+			if err := CheckQuota(ctx, call.DB, nil, 1); err != nil {
+				return View{}, err
+			}
 			return create(ctx, call, in)
+		},
+	})
+	ops.Register(reg, ops.Op[ProfileIn, ProfileOut]{
+		Name: "xbot.bots.update_my_profile", Summary: "改自己的職稱或頭像",
+		Description: "Bot 調整自己的職稱（60 字內）、頭像顏色或形狀。名字、人設、權限只有使用者能改。",
+		Scope:       ops.ScopeOperate, Risk: ops.RiskSafe, ForBot: true,
+		Handle: func(ctx context.Context, call *ops.Call, in ProfileIn) (ProfileOut, error) {
+			return d.updateProfile(ctx, reg, call, in)
 		},
 	})
 	ops.Register(reg, ops.Op[UpdateIn, View]{
@@ -214,6 +238,9 @@ func Register(reg *ops.Registry, d Deps) {
 		Description: "只改有給的欄位。把權限等級改成 ask 以外要你核准。",
 		Scope:       ops.ScopeManage, Risk: ops.RiskSafe,
 		RiskOf: func(in UpdateIn) ops.Risk {
+			if in.CanManage != nil && *in.CanManage {
+				return ops.RiskConfirm // 讓 Bot 管理別的 Bot 是放寬權限
+			}
 			if in.ApprovalMode == nil {
 				return ops.RiskSafe
 			}
@@ -445,6 +472,9 @@ func apply(b *store.Bot, in UpdateIn) error {
 	}
 	if in.MemoryEnabled != nil {
 		b.MemoryEnabled = *in.MemoryEnabled
+	}
+	if in.CanManage != nil {
+		b.CanManage = *in.CanManage
 	}
 	return nil
 }

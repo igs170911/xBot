@@ -104,6 +104,8 @@ func cmdServe(args []string) error {
 	srv.RegisterOnShutdown(cancelBase)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	// 提案到期視同同意、討論時間到叫醒 Bot（X03，LazyBoy agenda tick）。
+	go st.org.Run(ctx)
 
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()

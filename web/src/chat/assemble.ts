@@ -72,6 +72,8 @@ export type PeerLine = {
   chain?: string
   room_id?: string
   files?: number
+  /** X03：提案與討論的 id（event=proposal／discussion）。 */
+  agenda_id?: string
 }
 
 export type Step = {

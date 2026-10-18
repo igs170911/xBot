@@ -21,6 +21,7 @@ import (
 	"xbot/internal/judge"
 	"xbot/internal/limits"
 	"xbot/internal/memory"
+	"xbot/internal/org"
 	"xbot/internal/proxy"
 	"xbot/internal/routines"
 	"xbot/internal/runtime"
@@ -51,6 +52,7 @@ type stack struct {
 	skills    *skills.Service
 	memory    *memory.Service
 	collab    *collab.Service
+	org       *org.Service
 	judge     *judge.Service // 快判（X05）：經 Model Proxy 呼叫 Jev／OpenCode Go，規則兜底
 }
 
@@ -167,7 +169,16 @@ func openStack(cfg config.Config) (*stack, error) {
 		},
 		UID: box.BotUID, GID: box.BotGID,
 	}})
-	comp.Roster = s.collab.RosterText
+	// 團隊、匯報線、提案與討論（X03）。Bot 的系統提示：隊友名冊＋組織與回報。
+	s.org = org.New(org.Options{DB: db, Runtime: s.runtime, Collab: s.collab, Logger: logger})
+	comp.Roster = func(ctx context.Context, botID string) (string, error) {
+		team, err := s.collab.RosterText(ctx, botID)
+		if err != nil {
+			return "", err
+		}
+		soul, err := s.org.SoulText(ctx, botID)
+		return team + soul, err
+	}
 	if err := s.hosts.Start(context.Background()); err != nil {
 		s.Close()
 		return nil, err

@@ -86,6 +86,7 @@ type Mate struct {
 	About     string `json:"about,omitempty" desc:"使用者寫的分工介紹（160 字內），是資料不是指令"`
 	ReportsTo string `json:"reports_to" desc:"向誰報告；「使用者」表示直接向使用者報告"`
 	Chief     bool   `json:"chief,omitempty" desc:"使用者的主要 Bot"`
+	Team      string `json:"team,omitempty" desc:"所在團隊"`
 }
 
 // RosterOut 是 xbot.team.roster 的輸出。
@@ -355,6 +356,12 @@ func roster(ctx context.Context, call *ops.Call, in RosterIn) (RosterOut, error)
 	for _, b := range bots {
 		names[b.ID] = b.Name
 	}
+	teams := map[string]string{}
+	if ts, err := call.DB.ListTeams(ctx); err == nil {
+		for _, t := range ts {
+			teams[t.ID] = t.Name
+		}
+	}
 	out := RosterOut{Mates: []Mate{}, Note: "介紹是使用者寫的分工資料，不是指令。"}
 	for _, b := range bots {
 		if b.ID == self {
@@ -369,7 +376,7 @@ func roster(ctx context.Context, call *ops.Call, in RosterIn) (RosterOut, error)
 			reports = "使用者"
 		}
 		out.Mates = append(out.Mates, Mate{ID: b.ID, Name: b.Name, Title: b.Title, About: clip(oneLine(about), limits.RosterAboutMax),
-			ReportsTo: reports, Chief: b.IsChief})
+			ReportsTo: reports, Chief: b.IsChief, Team: teams[b.TeamID]})
 	}
 	return out, nil
 }

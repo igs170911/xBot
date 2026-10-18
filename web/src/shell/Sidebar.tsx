@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Bell, CalendarDays, ChevronDown, Crown, Inbox, Monitor, Network, Plus, Puzzle, Search, Settings, X } from 'lucide-react'
+import { Bell, CalendarClock, CalendarDays, ChevronDown, Crown, Inbox, LayoutGrid, Monitor, Network, Plus, Puzzle, Search, Settings, UsersRound, X } from 'lucide-react'
 import { Avatar, Mascot } from '../ui/Avatar'
 import { Button, IconButton } from '../ui/Button'
 import { CountBadge } from '../ui/Pill'
@@ -10,6 +10,7 @@ import { botsStore, type Bot } from '../data/bots'
 import { inboxStore } from '../data/inbox'
 import { openNewRoom, roomsStore, type Room } from '../data/rooms'
 import { useStore } from '../data/store'
+import { openNewTeam, sectionsOf, teamsStore } from '../data/teams'
 import { openNewBot } from '../data/ui'
 
 type NavProps = { path: string; onNavigate?: () => void }
@@ -30,7 +31,7 @@ function NavRow({ to, path, icon, children, aside, onNavigate }: NavProps & { to
   )
 }
 
-function BotRow({ bot, path, onNavigate }: NavProps & { bot: Bot }) {
+function BotRow({ bot, path, onNavigate, chief }: NavProps & { bot: Bot; chief?: boolean }) {
   const to = `/bots/${bot.id}`
   const active = path === to || path.startsWith(to + '/')
   const ring = active ? '#2F2F2F' : '#111111'
@@ -47,7 +48,7 @@ function BotRow({ bot, path, onNavigate }: NavProps & { bot: Bot }) {
       className={cx('flex min-h-[58px] items-center gap-2.5 rounded-menu px-2.5 py-[3px] text-ink', active ? 'bg-control' : 'hover:bg-control/60')}
     >
       <Avatar shape={bot.shape} color={bot.color} state={waiting ? 'notifying' : working ? 'working' : 'idle'} dot={waiting ? 'waiting' : 'none'} ring={ring} size={40} />
-      <RowText label={bot.name} sub={sub} subClass={waiting ? 'text-warning-ink' : 'text-ink-2'} />
+      <RowText label={bot.name} star={chief} starLabel="主管" sub={sub} subClass={waiting ? 'text-warning-ink' : 'text-ink-2'} />
     </a>
   )
 }
@@ -78,14 +79,14 @@ function RoomRow({ room, path, onNavigate }: NavProps & { room: Room }) {
   )
 }
 
-function RowText({ label, star, time, sub, subClass, unread }: { label: string; star?: boolean; time?: string; sub: string; subClass: string; unread?: boolean }) {
+function RowText({ label, star, starLabel = '幕僚長', time, sub, subClass, unread }: { label: string; star?: boolean; starLabel?: string; time?: string; sub: string; subClass: string; unread?: boolean }) {
   return (
     <span className="flex min-w-0 flex-1 flex-col leading-[1.45]">
       <span className="flex items-baseline gap-1.5">
         <span className="truncate text-body">{label}</span>
         {star && (
           <span className="self-center text-ink-3">
-            <Icon icon={Crown} size={13} strokeWidth={2} label="幕僚長" />
+            <Icon icon={Crown} size={13} strokeWidth={2} label={starLabel} />
           </span>
         )}
         {time && <span className="ml-auto flex-none text-meta text-ink-3">{time}</span>}
@@ -98,14 +99,15 @@ function RowText({ label, star, time, sub, subClass, unread }: { label: string; 
   )
 }
 
-function Section({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
+function Section({ title, children, action, team }: { title: string; children: ReactNode; action?: ReactNode; team?: string }) {
   const [open, setOpen] = useState(true)
   return (
-    <div className="flex flex-col gap-px">
+    <div className="flex flex-col gap-px" role="group" aria-label={title} data-team={team}>
       <div className="flex items-center justify-between pr-1">
       <button
         type="button"
         aria-expanded={open}
+        data-section-toggle="1"
         onClick={() => setOpen((o) => !o)}
         className="relative flex min-h-7 items-center gap-1.5 self-start rounded-seg bg-transparent pb-0 pl-3 pr-2 pt-1 text-[13px] text-ink-3 touch-target hover:text-ink-2"
       >
@@ -123,7 +125,9 @@ function Section({ title, children, action }: { title: string; children: ReactNo
 
 const FOOT = [
   { to: '/calendar', label: '定時任務與行事曆', icon: CalendarDays },
+  { to: '/agenda', label: '等你的事（提案與討論）', icon: CalendarClock },
   { to: '/apps', label: '連接應用程式', icon: Puzzle },
+  { to: '/teams', label: '團隊地圖', icon: LayoutGrid },
   { to: '/org', label: '組織架構', icon: Network },
 ]
 
@@ -137,6 +141,8 @@ export function Sidebar({ path, onNavigate, onClose }: SidebarProps) {
   const { bots, error } = useStore(botsStore)
   const inbox = useStore(inboxStore).items
   const rooms = useStore(roomsStore).rooms
+  const teams = useStore(teamsStore).teams
+  const sections = bots ? sectionsOf(bots, teams) : []
   const count = inbox?.length ?? 0
   const newBot = () => {
     onNavigate?.()
@@ -174,18 +180,40 @@ export function Sidebar({ path, onNavigate, onClose }: SidebarProps) {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto">
-        <Section title="Bot">
-          {bots?.map((b) => <BotRow key={b.id} bot={b} path={path} onNavigate={onNavigate} />)}
-          {bots && bots.length === 0 && (
-            <div className="flex flex-col items-start gap-2 px-3 py-2 text-sub text-ink-2">
-              還沒有 Bot。建一個，交代它第一件事。
-              <Button icon={Plus} onClick={newBot}>
-                新增 Bot
-              </Button>
-            </div>
-          )}
-          {!bots && error && <p className="m-0 px-3 py-2 text-sub text-danger">讀不到 Bot 清單：{error}</p>}
-        </Section>
+        {!bots && error && <p className="m-0 px-3 py-2 text-sub text-danger">讀不到 Bot 清單：{error}</p>}
+        {sections.map((sec, i) => (
+          <Section
+            key={sec.key}
+            title={sec.title}
+            team={sec.team?.id}
+            action={
+              i === 0 ? (
+                <IconButton
+                  icon={UsersRound}
+                  label="建立團隊"
+                  className="size-[30px] max-sm:size-11"
+                  onClick={() => {
+                    onNavigate?.()
+                    openNewTeam()
+                  }}
+                />
+              ) : undefined
+            }
+          >
+            {sec.bots.map((b) => (
+              <BotRow key={b.id} bot={b} chief={!!sec.team && sec.team.chief_id === b.id} path={path} onNavigate={onNavigate} />
+            ))}
+            {sec.team && sec.bots.length === 0 && <p className="m-0 px-3 py-1 text-sub text-ink-3">這個團隊還沒有成員。</p>}
+            {!sec.team && bots && bots.length === 0 && (
+              <div className="flex flex-col items-start gap-2 px-3 py-2 text-sub text-ink-2">
+                還沒有 Bot。建一個，交代它第一件事。
+                <Button icon={Plus} onClick={newBot}>
+                  新增 Bot
+                </Button>
+              </div>
+            )}
+          </Section>
+        ))}
         <Section
           title="群組對話"
           action={

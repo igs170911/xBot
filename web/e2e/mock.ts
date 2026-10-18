@@ -156,6 +156,8 @@ export class MockServer {
     'collab.stop_room': () => ({ stopped: [] }),
     'collab.peer_history': () => this.peerHistory,
     'collab.stop_chain': () => ({ stopped: 1 }),
+    'teams.list': () => ({ teams: [] }),
+    'agenda.list': () => ({ from: 0, to: 0, pending: [], decided: [], calendar: [], approvals: [], open_max: 3 }),
   }
 
   addRoom(memberIds: string[], name: string, rule = 'auto', seats: Record<string, string> = {}) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeftRight, ArrowRight, Clock, FileText, Inbox as InboxIcon, OctagonPause, Users } from 'lucide-react'
+import { ArrowLeftRight, ArrowRight, Bot as BotIcon, CalendarClock, Clock, FileText, Inbox as InboxIcon, MessageCircle, OctagonPause, PencilLine, Users, UsersRound, type LucideIcon } from 'lucide-react'
 import { collabPeerHistory, collabStopChain, type CollabPeerHistoryOutput } from '../api/generated'
 import { botsStore } from '../data/bots'
 import { onEvent } from '../data/events'
@@ -51,6 +51,21 @@ export function PeerCard({ msg, bot }: CardProps) {
       </div>
     )
   }
+  const org = orgLine(p.event, msg.content, p)
+  if (org) {
+    return (
+      <div data-testid="peer-line" data-event={p.event} className="flex items-center gap-2 self-start rounded-full bg-inset py-1 pl-2.5 pr-3 text-meta text-ink-2">
+        <Icon icon={org.icon} size={14} />
+        {org.to ? (
+          <a href={org.to} onClick={linkClick(org.to)} className="text-ink-2 hover:text-accent-ink">
+            {org.text}
+          </a>
+        ) : (
+          org.text
+        )}
+      </div>
+    )
+  }
   const out = p.event === 'message_out'
   const intent = p.intent ?? 'request'
   return (
@@ -84,6 +99,23 @@ export function PeerCard({ msg, bot }: CardProps) {
       {open && bot && p.peer_id && <PeerDialog a={bot.id} b={p.peer_id} onClose={() => setOpen(false)} />}
     </div>
   )
+}
+
+/** X03 的事件行：Bot 建了幫手、改了資料、建了團隊、送出提案或討論（一行膠囊，不是傳話）。 */
+function orgLine(event: string, content: string, p: { peer_id?: string; room_id?: string }): { icon: LucideIcon; text: string; to?: string } | null {
+  switch (event) {
+    case 'bot_created':
+      return { icon: BotIcon, text: `建立了 Bot「${content}」`, to: p.peer_id ? `/bots/${p.peer_id}` : undefined }
+    case 'profile_updated':
+      return { icon: PencilLine, text: content }
+    case 'team_created':
+      return { icon: UsersRound, text: `建立了團隊「${content}」`, to: p.room_id ? `/rooms/${p.room_id}` : '/teams' }
+    case 'proposal':
+      return { icon: CalendarClock, text: `送出提案：${content}`, to: '/agenda' }
+    case 'discussion':
+      return { icon: MessageCircle, text: `想找你討論：${content}`, to: '/agenda' }
+  }
+  return null
 }
 
 type History = CollabPeerHistoryOutput
