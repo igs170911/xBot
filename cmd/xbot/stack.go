@@ -20,6 +20,7 @@ import (
 	"xbot/internal/ipc"
 	"xbot/internal/memory"
 	"xbot/internal/proxy"
+	"xbot/internal/routines"
 	"xbot/internal/runtime"
 	"xbot/internal/skills"
 	"xbot/internal/store"
@@ -43,6 +44,7 @@ type stack struct {
 	creds     *engines.Service
 	hosts     *hosts.Service
 	runtime   *runtime.Runtime
+	routines  *routines.Service // 定時任務排程器（serve 才啟動；Notify 由 serve 接上 SSE）
 	comp      *runtime.Computers
 	skills    *skills.Service
 	memory    *memory.Service
@@ -137,6 +139,7 @@ func openStack(cfg config.Config) (*stack, error) {
 			return s.budgets.CheckProvider(ctx, botID, providerID)
 		}})
 	s.pstore.Attribute = s.runtime.Active
+	s.routines = routines.New(routines.Options{DB: db, Runtime: s.runtime, Logger: logger})
 	s.comp = comp
 	s.skills = &skills.Service{Locate: comp.BotFS, Library: &skills.Library{Dir: filepath.Join(cfg.DataDir, "skills")}}
 	s.memory = &memory.Service{DB: db, Locate: comp.BotFS}
@@ -161,6 +164,9 @@ func openStack(cfg config.Config) (*stack, error) {
 
 func (s *stack) Close() error {
 	var errs []error
+	if s.routines != nil {
+		s.routines.Close()
+	}
 	if s.hosts != nil {
 		errs = append(errs, s.hosts.Close())
 	}

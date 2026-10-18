@@ -49,6 +49,23 @@ const (
 	RoutineTick = 2 * time.Second
 )
 
+// RoutineCatchupAfter 是到期多久之後才交辦算「補跑」（停機或休眠錯過的那一次，執行紀錄標「補跑」）。
+// 不管錯過幾次都只補跑一次（LazyBoy server/scheduling.py：missed occurrences catch up once）；這個值只影響標示。
+const RoutineCatchupAfter = time.Minute
+
+// 網址觸發的標頭：金鑰用 Authorization: Bearer <金鑰>，或 X-XBot-Signature: sha256=<用金鑰對內容算的 HMAC-SHA256>
+// （GitHub 式簽章）；帶 X-XBot-Test: 1 是測試請求，只記一筆、不開始工作（H06）。
+const (
+	RoutineHookSigHeader  = "X-XBot-Signature"
+	RoutineHookTestHeader = "X-XBot-Test"
+)
+
+// RoutineHookSecretBytes 是網址觸發金鑰的長度（位元組）。LazyBoy secrets.token_urlsafe(24)
+const RoutineHookSecretBytes = 24
+
+// RoutineCalendarDays 是行事曆一次最多展開幾天（H01 週檢視＋前後）。
+const RoutineCalendarDays = 42
+
 // RoutineStartRetryDelays 是定時任務啟動失敗後的退避時間，依失敗次數取用，第 4 次以後都是最後一個。
 // （和模型暫時出錯的 ProviderRetryDelays 是兩回事。）LazyBoy server/scheduling.py:24 RETRY_MINUTES（1, 5, 15, 60）
 func RoutineStartRetryDelays() []time.Duration {
@@ -60,3 +77,6 @@ func RoutineStartRetryDelays() []time.Duration {
 func RoutineJitterChoices() []int {
 	return []int{15, 30, 60, 90, 120}
 }
+
+// RoutineCalendarPerRoutine 是行事曆裡一個定時任務最多展開幾格（每 5 分鐘一次的不會塞爆畫面）。
+const RoutineCalendarPerRoutine = 100

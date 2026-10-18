@@ -8,6 +8,8 @@ import { DevComponentsPage } from './pages/DevComponentsPage'
 import { LoginPage } from './pages/LoginPage'
 import { NewBotDialog } from './pages/NewBotDialog'
 import { SettingsPage } from './settings/SettingsPage'
+import { NewRoutineDialog } from './routines/NewRoutineDialog'
+import { ROUTINES_PATH, RoutinesPage } from './routines/RoutinesPage'
 import { ChatPage } from './chat/ChatPage'
 import { registerPeerCard } from './chat/peer'
 import { NewRoomDialog } from './rooms/NewRoomDialog'
@@ -79,11 +81,12 @@ function Main() {
   const computer = path.match(COMPUTER_PATH)
   const room = path.match(ROOM_PATH)
   const botName = (id: string) => bots?.find((b) => b.id === id)?.name
-  const title = path === '/' ? '待我處理' : bot ? (botName(bot[1]) ?? '對話') : computer ? `${botName(computer[1]) ?? 'Bot'}的電腦` : room ? (rooms?.find((r) => r.id === room[1])?.name ?? '群組對話') : (TITLES[path] ?? (path.startsWith('/settings') ? '設定' : 'XBot'))
+  const title = path === '/' ? '待我處理' : bot ? (botName(bot[1]) ?? '對話') : computer ? `${botName(computer[1]) ?? 'Bot'}的電腦` : room ? (rooms?.find((r) => r.id === room[1])?.name ?? '群組對話') : (TITLES[path] ?? (path.startsWith('/settings') ? '設定' : path.startsWith('/calendar') ? '定時任務與行事曆' : 'XBot'))
 
   let page
   if (path === '/') page = <InboxPage />
   else if (bot) page = <ChatPage key={bot[1]} botId={bot[1]} threadParam={bot[2]} />
+  else if (ROUTINES_PATH.test(path)) page = <RoutinesPage path={path} />
   else if (room) page = <RoomPage key={room[1]} roomId={room[1]} />
   else if (path === '/settings' || path.startsWith('/settings/'))
     page = <SettingsPage path={path === '/settings/agents' ? '/settings/advanced/agents' : path} />
@@ -93,6 +96,7 @@ function Main() {
     <AppShell path={path} title={title}>
       {page}
       <NewBotDialog />
+      <NewRoutineDialog />
       <NewRoomDialog />
     </AppShell>
   )
