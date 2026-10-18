@@ -540,13 +540,20 @@ func (r *Runtime) notifyDone(t *turn, verdict, final string) {
 		}
 		it = store.InboxItem{Kind: "done", Title: t.botName + "完成了工作"}
 	case VerdictFailed:
+		if t.source == SourceRoutine || t.source == SourceWebhook {
+			return // 定時任務的失敗由排程器發 routine_failed 卡（internal/routines），不重複發
+		}
 		it = store.InboxItem{Kind: "error", Title: t.botName + "的工作沒有完成"}
 	default:
 		return
 	}
 	it.BotID, it.TaskID, it.ThreadID, it.Status, it.Resolution = t.botID, t.taskID, t.threadID, store.InboxResolved, ResolutionInfo
 	it.Body = clip(firstLine(final), 120)
-	raw, _ := json.Marshal(map[string]any{"bot_name": t.botName, "input": clip(t.input, 120)})
+	input := t.input
+	if t.source == SourceRoutine || t.source == SourceWebhook {
+		input = "" // 送給引擎的是加了「使用者不在旁邊」說明的版本，卡片上不顯示
+	}
+	raw, _ := json.Marshal(map[string]any{"bot_name": t.botName, "input": clip(input, 120)})
 	it.Payload = raw
 	created, err := r.o.DB.CreateInboxItem(context.Background(), it)
 	if err != nil {

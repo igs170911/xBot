@@ -9,7 +9,7 @@ import { SimplifiedTag, StatusChip, type Tone } from '../ui/Pill'
 import { useToast } from '../ui/toast-context'
 import { BOTS } from '../shell/sample'
 import { fetchHealth, type Health } from '../health'
-import { ApiError, approvalsDecide, chatAskAgain, inboxDismiss, inboxUndo } from '../api/generated'
+import { ApiError, approvalsDecide, chatAskAgain, inboxDismiss, inboxUndo, routinesRunNow } from '../api/generated'
 import { botsStore, type Bot } from '../data/bots'
 import { inboxStore, loadInbox, type InboxItem } from '../data/inbox'
 import { useStore } from '../data/store'
@@ -225,6 +225,20 @@ function InfoItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
   const undoToast = useUndoToast()
   const toast = useToast()
   const chip = item.kind === 'budget' ? '預算用完，已暫停' : item.kind === 'routine_failed' ? '定時任務沒有完成' : '等你處理'
+  // 定時任務失敗卡（C32）：重跑一次，然後收掉這張卡。
+  const rerun = async () => {
+    setBusy(true)
+    try {
+      await routinesRunNow({ id: (item.payload as { routine_id: string }).routine_id })
+      await inboxDismiss({ inbox_id: item.id })
+      toast.show({ kind: 'done', text: '已開始重跑' })
+      await loadInbox()
+    } catch (err) {
+      toast.show({ kind: 'error', text: errText(err) })
+    } finally {
+      setBusy(false)
+    }
+  }
   const dismiss = async () => {
     setBusy(true)
     try {
@@ -243,6 +257,11 @@ function InfoItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
         <Head bot={bot} chip={chip} tone="warning" sub={item.title} />
         {item.body && <p className="m-0 pl-11 text-sub text-ink-2">{item.body}</p>}
       </div>
+      {item.kind === 'routine_failed' && typeof (item.payload as { routine_id?: unknown } | null)?.routine_id === 'string' && (
+        <Button icon={RotateCcw} onClick={() => void rerun()} loading={busy}>
+          重跑一次
+        </Button>
+      )}
       <Button onClick={() => void dismiss()} loading={busy}>
         知道了
       </Button>
