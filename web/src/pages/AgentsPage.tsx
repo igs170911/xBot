@@ -36,6 +36,8 @@ import {
 } from '../data/agents'
 import { botsStore } from '../data/bots'
 import { useStore } from '../data/store'
+import { useNetwork } from '../data/network'
+import { useFunnelSwitch } from '../settings/useFunnelSwitch'
 import { linkClick } from '../router'
 import { Avatar } from '../ui/Avatar'
 import { Button } from '../ui/Button'
@@ -86,8 +88,16 @@ const SNIPPET = {
 function Entrances() {
   const [copied, copy] = useCopied()
   const [snip, setSnip] = useState<'http' | 'stdio'>('http')
-  const url = `${window.location.origin}/mcp`
+  const net = useNetwork().status
+  const funnel = useFunnelSwitch()
+  // tailnet 網址有的話給它（其他電腦上的代理用）；沒有就用目前這個網站（C35）。
+  const url = `${net?.tailscale.url || window.location.origin}/mcp`
+  const ext = net?.funnel
+  const extURL = net?.public_url ? `${net.public_url}/mcp` : ''
   const snippet = snip === 'http' ? SNIPPET.http(url) : SNIPPET.stdio()
+  const tsOn = !!net?.tailscale.enabled
+  const extState = !ext || !ext.enabled ? (net?.proxy.enabled ? '反向代理' : '關閉') : ext.state === 'on' ? '開放中' : ext.state === 'error' ? '開不起來' : '等 Tailscale'
+  const extOn = !!ext?.enabled || !!net?.proxy.enabled
   return (
     <section aria-label="XBot MCP 入口" className="flex flex-col gap-3 rounded-card bg-panel px-5 py-4">
       <div className="flex items-center gap-3">
@@ -97,25 +107,39 @@ function Entrances() {
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="text-body">XBot MCP</span>
           <span className="text-meta text-ink-3">
-            一個伺服器：tailnet、本機；工具名稱 <code className="font-mono">xbot.領域.動作</code>，這一版是 <code className="font-mono">xbot.v1</code>
+            一個伺服器：tailnet、本機{extOn ? '、外部' : ''}；工具名稱 <code className="font-mono">xbot.領域.動作</code>，這一版是 <code className="font-mono">xbot.v1</code>
           </span>
         </span>
         <StatusChip tone="success">運作中</StatusChip>
       </div>
       <div className="grid gap-3 min-[900px]:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <EntranceRow title="Streamable HTTP" tag="tailnet 內" sub="其他電腦上的代理" value={url} action={<CopyButton k="http" text={url} copied={copied} copy={copy} label="Streamable HTTP" />} />
+          <EntranceRow title="Streamable HTTP" tag={net?.tailscale.url ? 'tailnet 內' : '這個網址'} sub="其他電腦上的代理" value={url} action={<CopyButton k="http" text={url} copied={copied} copy={copy} label="Streamable HTTP" />} />
           <EntranceRow title="stdio（這台電腦）" tag="本機" sub="裝在這台電腦的代理" value="xbot mcp" action={<CopyButton k="stdio" text="xbot mcp" copied={copied} copy={copy} label="stdio" />} />
-          <div className="flex flex-col gap-1.5 rounded-group bg-inset px-3.5 py-2.5 opacity-70">
+          <div data-testid="external-entry" className={cx('flex flex-col gap-1.5 rounded-group bg-inset px-3.5 py-2.5', !extOn && 'opacity-70')}>
             <span className="flex flex-wrap items-center gap-2">
               <span className="text-ui-sm">外部入口</span>
-              <StatusChip size="sm">關閉</StatusChip>
+              <StatusChip size="sm" tone={extOn ? 'warning' : 'neutral'}>
+                {extState}
+              </StatusChip>
               <span className="text-meta text-ink-3">tailnet 外的代理</span>
-              <Switch className="ml-auto" checked={false} onChange={() => undefined} label="開啟外部入口" disabled />
+              <Switch className="ml-auto" checked={!!ext?.enabled} onChange={funnel.toggle} label="開啟外部入口" disabled={!tsOn || funnel.busy} />
             </span>
+            {extURL ? (
+              <span className="flex items-center gap-2">
+                <code className="min-w-0 flex-1 truncate font-mono text-[13px] text-ink-2">{extURL}</code>
+                <CopyButton k="ext" text={extURL} copied={copied} copy={copy} label="外部入口" />
+              </span>
+            ) : null}
             <span className="flex items-center gap-1.5 text-meta text-ink-3">
               <Icon icon={Globe} size={14} />
-              Funnel／反向代理之後開放；一律要權杖，速率上限比 tailnet 內嚴
+              <span className="min-w-0 flex-1">
+                {tsOn ? 'Tailscale Funnel 或反向代理' : '先開內建 Tailscale，或用反向代理'}；一律要權杖，每分鐘最多 {net?.external_rate_per_min ?? 20} 次，比 tailnet 內嚴
+                {ext && ext.allow_ips.length > 0 ? ` · 白名單 ${ext.allow_ips.length} 筆` : ''}
+              </span>
+              <a href="/settings/advanced/network" onClick={linkClick('/settings/advanced/network')} className="whitespace-nowrap text-accent-ink">
+                設定
+              </a>
             </span>
           </div>
         </div>
@@ -136,6 +160,7 @@ function Entrances() {
           <pre className="m-0 overflow-x-auto whitespace-pre rounded-field bg-app px-3 py-2 font-mono text-[12.5px] leading-[1.5] text-ink-2">{snippet}</pre>
         </div>
       </div>
+      {funnel.dialog}
     </section>
   )
 }

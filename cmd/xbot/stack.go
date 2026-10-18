@@ -25,6 +25,7 @@ import (
 	"xbot/internal/judge"
 	"xbot/internal/limits"
 	"xbot/internal/memory"
+	"xbot/internal/network"
 	"xbot/internal/org"
 	"xbot/internal/proxy"
 	"xbot/internal/routines"
@@ -62,7 +63,8 @@ type stack struct {
 	judge     *judge.Service // 快判（X05）：經 Model Proxy 呼叫 Jev／OpenCode Go，規則兜底
 	computers *computers.Service
 	// apps 是連接應用程式與登入（C34）。
-	apps *apps.Service
+	apps    *apps.Service
+	network *network.Service // 內建 Tailscale 與外部入口（C35）：serve 才建立
 	// stopIdle 停掉閒置休眠的背景檢查（startBackground 開始）。
 	stopIdle context.CancelFunc
 	screen   *screen.Service // 看畫面與接手（B14）
@@ -286,6 +288,9 @@ func (s *stack) Close() error {
 	}
 	if s.routines != nil {
 		s.routines.Close()
+	}
+	if s.network != nil {
+		errs = append(errs, s.network.Close())
 	}
 	if s.hosts != nil {
 		errs = append(errs, s.hosts.Close())

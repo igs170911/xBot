@@ -18,6 +18,7 @@ import (
 	"xbot/internal/config"
 	"xbot/internal/events"
 	"xbot/internal/mcpserver"
+	"xbot/internal/network"
 	"xbot/internal/store"
 	"xbot/internal/version"
 	"xbot/web"
@@ -69,6 +70,20 @@ func cmdServe(args []string) error {
 	if err := st.judge.Prune(context.Background()); err != nil {
 		slog.Warn("清掉太舊的快判紀錄失敗", "err", err)
 	}
+	// 內建 Tailscale 與外部入口（C35）：預設關閉；反向代理模式由 XBOT_PUBLIC_URL 打開。
+	publicURL, err := network.CheckPublicURL(cfg.PublicURL)
+	if err != nil {
+		return err
+	}
+	trusted, err := network.ParseTrustedProxies(cfg.TrustedProxies)
+	if err != nil {
+		return err
+	}
+	st.network = network.New(network.Options{DB: st.db, Sealer: st.keyring, DataDir: cfg.DataDir, LocalURL: cfg.URL(),
+		PublicURL: publicURL, TrustedProxies: trusted, AccessToken: accessToken, Logger: slog.Default()})
+	if publicURL != "" {
+		slog.Info("反向代理模式：從反向代理進來的請求只開放 /mcp、/api/v1/agents.pair、/hooks/*", "public_url", publicURL)
+	}
 	reg := buildRegistry(st.db, pairing, notify, st)
 	// Bot 經自己的 product.sock 用 XBot MCP（C11）：身分就是那個 Bot。
 	st.sockets.SetProduct(mcpserver.BotHandler(reg, mcpserver.BotOptions{Keys: st.keys, DB: st.db, Logger: slog.Default()}))
@@ -101,6 +116,11 @@ func cmdServe(args []string) error {
 		DB:       st.db,
 		Auth:     auth.NewHTTP(auth.HTTPConfig{Tokens: tokens, AccessToken: accessToken, LocalNoAuth: cfg.LocalNoAuth}),
 	})
+	// tailnet 與 Funnel 用同一個處理器；本機入口另外包一層：反向代理進來的請求走外部入口的限制。
+	if err := st.network.Start(context.Background(), handler); err != nil {
+		slog.Warn("內建 Tailscale 沒有啟動", "err", err)
+	}
+	handler = st.network.Front(handler)
 	// 關機時先結束 SSE 這類長連線，Shutdown 才不會一直等。
 	baseCtx, cancelBase := context.WithCancel(context.Background())
 	defer cancelBase()

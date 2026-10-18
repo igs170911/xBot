@@ -167,7 +167,7 @@ test('一般：主題切換立刻生效、重新整理後還在', async ({ page 
   await expect(main(page).getByRole('heading', { name: '一般', level: 2 })).toBeVisible()
   if (info.project.name === 'desktop') {
     const nav = page.getByRole('navigation', { name: '設定分類' })
-    await expect(nav.getByRole('link')).toHaveText(['一般', 'AI 模型', '電腦與裝置', '用量與花費', '進階', '備份與更新', '成員與紀錄', '技能庫與實驗', '外部代理與 MCP'])
+    await expect(nav.getByRole('link')).toHaveText(['一般', 'AI 模型', '電腦與裝置', '用量與花費', '進階', '備份與更新', '成員與紀錄', '技能庫與實驗', '網路與 Tailscale', '外部代理與 MCP'])
     await expect(nav.getByRole('link', { name: '一般' })).toHaveAttribute('aria-current', 'page')
   }
   const themes = page.getByRole('radiogroup', { name: '主題' })

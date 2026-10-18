@@ -50,8 +50,13 @@ func (l *Limiter) Check(ctx context.Context, id ops.Identity, info *ops.Info) *o
 	if rate <= 0 {
 		rate = limits.AgentRatePerMin
 	}
-	if !l.allow(id.ID, rate, now) {
-		e := ops.Limit(fmt.Sprintf("%s 呼叫太頻繁：每分鐘最多 %d 次，請等一下再試", id.DisplayName(), rate))
+	bucket, where := id.ID, ""
+	if id.Via == ViaExternal { // 外部入口（Funnel／反向代理）：另一個計數、上限比較嚴（MCP-2）
+		bucket, where = "ext:"+id.ID, "經外部入口"
+		rate = min(rate, limits.ExternalAgentRatePerMin)
+	}
+	if !l.allow(bucket, rate, now) {
+		e := ops.Limit(fmt.Sprintf("%s %s呼叫太頻繁：每分鐘最多 %d 次，請等一下再試", id.DisplayName(), where, rate))
 		e.Retryable = true
 		return e
 	}

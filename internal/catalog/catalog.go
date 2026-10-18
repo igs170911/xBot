@@ -20,6 +20,7 @@ import (
 	"xbot/internal/judge"
 	"xbot/internal/memory"
 	"xbot/internal/models"
+	"xbot/internal/network"
 	"xbot/internal/ops"
 	"xbot/internal/org"
 	"xbot/internal/proxy"
@@ -62,9 +63,11 @@ type Deps struct {
 	Apps *apps.Service
 	// Screen 是看畫面與接手（B14）；nil 時只登錄定義。
 	Screen *screen.Service
+	// Network 是內建 Tailscale 與外部入口（C35）；nil 時只登錄定義。
+	Network *network.Service
 }
 
-// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines、files、computers（生命週期、看畫面與接手）、judge（快判）各領域的操作。
+// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines、files、computers（生命週期、看畫面與接手）、judge（快判）、network（內建 Tailscale、外部入口）各領域的操作。
 func Register(reg *ops.Registry, d Deps) {
 	bd := bots.Deps{Teardown: d.Teardown, SoulChanged: d.SoulChanged}
 	if d.Collab != nil {
@@ -120,6 +123,7 @@ func Register(reg *ops.Registry, d Deps) {
 	computers.Register(reg, d.Computers)
 	apps.Register(reg, d.Apps)
 	screen.Register(reg, d.Screen)
+	network.Register(reg, d.Network)
 }
 
 // Teardown 產生刪除 Bot 時用的收尾函式：先關引擎連線，再刪電腦與資料區（remove）。

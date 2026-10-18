@@ -42,8 +42,12 @@ func Handler(reg *ops.Registry, o HTTPOptions) http.Handler {
 		MaxRequestBodyBytes:        limits.MCPBodyBytes,
 		Logger:                     o.Logger,
 	})
-	verify := func(ctx context.Context, token string, _ *http.Request) (*sdkauth.TokenInfo, error) {
-		id, err := o.Auth.Identify(ctx, token, "mcp")
+	verify := func(ctx context.Context, token string, r *http.Request) (*sdkauth.TokenInfo, error) {
+		via := "mcp"
+		if r != nil && auth.IsExternal(r.Context()) {
+			via = auth.ViaExternal // 經外部入口：稽核看得出來，速率上限也比較嚴（C35）
+		}
+		id, err := o.Auth.Identify(ctx, token, via)
 		if errors.Is(err, auth.ErrInvalidToken) {
 			return nil, fmt.Errorf("%w：權杖無效、已撤銷或已過期，請重新配對", sdkauth.ErrInvalidToken)
 		}

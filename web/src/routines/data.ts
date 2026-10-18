@@ -1,3 +1,4 @@
+import { publicBase } from '../data/network'
 import { routinesList, type RoutinesListOutput, type RoutinesLogsOutput, type RoutinesProposeOutput, type XBotEvent } from '../api/generated'
 import { onEvent, onReconnect } from '../data/events'
 import { createStore } from '../data/store'
@@ -136,7 +137,7 @@ export function jitterText(m: number): string {
   return m === 0 ? '不飄移' : `隨機延後 ${m} 分鐘內`
 }
 
-/** 網址觸發的完整網址（接在目前這個網站後面）。 */
+/** 網址觸發的完整網址：有外部入口（Funnel／反向代理）時接在對外網址後面，否則接在目前這個網站後面（C35）。 */
 export function hookURL(path: string): string {
-  return window.location.origin + path
+  return publicBase() + path
 }
