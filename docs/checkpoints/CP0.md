@@ -1,7 +1,7 @@
 # CP0：環境、建置與安裝（C00＋C06）
 
 > 狀態：等待使用者檢查。回覆「通過」、「通過但要改 X」或「不通過」後才開始 M0 其他卡（C01、B01、E01、W01）。
-> Git：tag `cp0`（commit `910491d`），分支 `task/C00-skeleton` 已合併回 `master`。
+> Git：tag `cp0`（`master` 上的合併點），分支 `task/C00-skeleton` 已合併。
 
 ---
 
