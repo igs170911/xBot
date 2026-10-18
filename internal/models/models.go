@@ -59,6 +59,7 @@ type Provider struct {
 	Transport Transport `json:"transport,omitempty" desc:"預設的呼叫方式；空白是 chat_completions"`
 	Preset    string    `json:"preset,omitempty" desc:"從哪個內建範本建立"`
 	APIKeySet bool      `json:"api_key_set" desc:"有沒有設定金鑰；金鑰本身永遠不會回傳"`
+	Auth      string    `json:"auth,omitempty" desc:"登入方式：空白是金鑰；oauth_codex 是 ChatGPT 方案的訂閱登入（權杖只在服務端）"`
 	Models    []string  `json:"models,omitempty" desc:"探測時供應商列出的模型（沒探測過時是範本的常用模型）"`
 	ProbedAt  int64     `json:"probed_at,omitempty" desc:"上次探測的時間；0 表示還沒探測"`
 }
@@ -125,6 +126,7 @@ func Register(reg *ops.Registry, d Deps) {
 	})
 	registerProviders(reg, d)
 	registerProbe(reg, d)
+	registerOAuth(reg, d)
 	registerPricing(reg)
 }
 
@@ -155,13 +157,16 @@ func (d Deps) provider(ctx context.Context, id string) (Provider, bool, error) {
 	if len(out.Models) == 0 {
 		if pre, ok := proxy.PresetByID(p.Preset); ok {
 			out.Models = pre.Models
+		} else if p.Auth == proxy.AuthOAuthCodex {
+			out.Models = proxy.CodexModels
 		}
 	}
 	return out, true, nil
 }
 
 func viewOf(p proxy.Provider) Provider {
-	return Provider{ID: p.ID, Label: p.Label, BaseURL: p.BaseURL, Transport: Transport(p.Transport), Preset: p.Preset, APIKeySet: p.APIKey != ""}
+	return Provider{ID: p.ID, Label: p.Label, BaseURL: p.BaseURL, Transport: Transport(p.Transport), Preset: p.Preset, APIKeySet: p.APIKey != "",
+		Auth: p.Auth}
 }
 
 func (d Deps) get(ctx context.Context, call *ops.Call, _ GetIn) (GetOut, error) {
@@ -219,6 +224,9 @@ func (d Deps) setProvider(ctx context.Context, call *ops.Call, in SetProviderIn)
 	old, err := d.Providers.Get(ctx, id)
 	if err != nil && !errors.Is(err, proxy.ErrNotFound) {
 		return SetProviderOut{}, err
+	}
+	if old.Auth != "" {
+		return SetProviderOut{}, ops.Conflict("這個供應商用訂閱登入，要換帳號請用 xbot.models.oauth_start")
 	}
 	key := proxy.Secret(strings.TrimSpace(in.APIKey))
 	if key == "" {

@@ -21,6 +21,7 @@ type providerSetting struct {
 	Label     string `json:"label,omitempty"`
 	Transport string `json:"transport,omitempty"`
 	Preset    string `json:"preset,omitempty"`
+	Auth      string `json:"auth,omitempty"`
 	UpdatedAt int64  `json:"updated_at"`
 }
 
@@ -56,7 +57,7 @@ func (s *DBStore) GetProvider(ctx context.Context, id string) (ProviderRecord, e
 
 func (v providerSetting) record(id string) ProviderRecord {
 	return ProviderRecord{ID: id, BaseURL: v.BaseURL, SealedKey: v.SealedKey, Label: v.Label, Transport: v.Transport,
-		Preset: v.Preset, UpdatedAt: time.UnixMilli(v.UpdatedAt)}
+		Preset: v.Preset, Auth: v.Auth, UpdatedAt: time.UnixMilli(v.UpdatedAt)}
 }
 
 // DeleteProvider 實作 ProviderStore；探測結果一起刪。
@@ -97,7 +98,7 @@ func (s *DBStore) ListProviders(ctx context.Context) ([]ProviderRecord, error) {
 func (s *DBStore) PutProvider(ctx context.Context, rec ProviderRecord) error {
 	return s.db.SetSetting(ctx, ProviderSettingPrefix+rec.ID, providerSetting{
 		BaseURL: rec.BaseURL, SealedKey: rec.SealedKey, Label: rec.Label, Transport: rec.Transport, Preset: rec.Preset,
-		UpdatedAt: rec.UpdatedAt.UnixMilli(),
+		Auth: rec.Auth, UpdatedAt: rec.UpdatedAt.UnixMilli(),
 	})
 }
 

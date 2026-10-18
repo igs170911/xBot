@@ -238,6 +238,9 @@ func (d Deps) updateProvider(ctx context.Context, call *ops.Call, in UpdateProvi
 		p.Transport = string(*in.Transport)
 	}
 	if in.APIKey != nil {
+		if p.Auth != "" {
+			return Provider{}, ops.InvalidInput(ops.FieldError{Field: "api_key", Message: "這個供應商用訂閱登入，要換帳號請用 xbot.models.oauth_start"})
+		}
 		p.APIKey = proxy.Secret(strings.TrimSpace(*in.APIKey))
 	}
 	if call.DryRun {

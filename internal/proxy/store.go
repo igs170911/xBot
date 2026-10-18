@@ -19,6 +19,7 @@ type ProviderRecord struct {
 	Label     string
 	Transport string
 	Preset    string
+	Auth      string // 空白是 API 金鑰；AuthOAuthCodex 時 SealedKey 是整組 OAuth 權杖
 	UpdatedAt time.Time
 }
 
