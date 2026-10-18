@@ -69,6 +69,15 @@ var defaultPrices = map[string]Price{
 	"deepseek-reasoner": {Input: 0.28, Output: 0.42, CacheRead: 0.028},
 	// xAI
 	"grok-4": {Input: 3, Output: 15, CacheRead: 0.75},
+	// 語音（E32）。合成（audio/speech）回應裡沒有用量，照請求的字數算：Input 是「每百萬字」的價格；
+	// gpt-4o-mini-tts 官方以 token 計價（約每分鐘 0.015 美元），這裡用每百萬字 15 美元估算，不準時請自行覆寫。
+	// 辨識（audio/transcriptions）回報 token 時照 token 算；whisper-1 回報秒數，Input 是「每百萬秒」（每分鐘 0.006 美元）。
+	"tts-1":                  {Input: 15},
+	"tts-1-hd":               {Input: 30},
+	"gpt-4o-mini-tts":        {Input: 15},
+	"whisper-1":              {Input: 100},
+	"gpt-4o-transcribe":      {Input: 2.5, Output: 10},
+	"gpt-4o-mini-transcribe": {Input: 1.25, Output: 5},
 }
 
 // providerDefaultPrices 是只適用某個供應商的預設價格（key：<供應商>/<模型>，模型名照原樣）。

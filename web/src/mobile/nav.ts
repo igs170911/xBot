@@ -22,7 +22,7 @@ export function isTabPath(path: string): boolean {
 export function ownsPhoneHeader(path: string): boolean {
   return (
     isTabPath(path) ||
-    /^\/bots\/[^/]+(\/threads\/[^/]+|\/files|\/profile|\/call|\/computer)?\/?$/.test(path) ||
+    /^\/bots\/[^/]+(\/threads\/[^/]+|\/files|\/profile|\/call|\/voice|\/computer)?\/?$/.test(path) ||
     /^\/rooms\/[^/]+\/?$/.test(path) ||
     path.startsWith('/settings') ||
     path.startsWith('/calendar') ||
@@ -37,7 +37,7 @@ export function ownsPhoneHeader(path: string): boolean {
 
 /** 手機上按返回（或從左邊緣滑）要去哪裡：直接打開這一頁時用。 */
 export function backFallback(path: string): string {
-  const bot = path.match(/^\/bots\/([^/]+)\/(files|computer|profile|call)/)
+  const bot = path.match(/^\/bots\/([^/]+)\/(files|computer|profile|call|voice)/)
   if (bot) return `/bots/${bot[1]}`
   if (path.startsWith('/settings/')) return '/settings'
   if (path.startsWith('/calendar/')) return '/calendar'

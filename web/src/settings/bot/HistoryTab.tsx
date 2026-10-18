@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Mic, Users } from 'lucide-react'
+import { Users } from 'lucide-react'
 import { auditList, type AuditListOutput, type BotsGetOutput } from '../../api/generated'
 import { botsStore } from '../../data/bots'
 import { useStore } from '../../data/store'
@@ -9,8 +9,9 @@ import { StatusChip } from '../../ui/Pill'
 import { errText } from '../format'
 import { MODE_LABEL } from '../botModes'
 import { Block, Group, Row } from '../parts'
+import { BotVoiceBlock } from '../../voice/BotVoiceBlock'
 
-// Bot 設定 · 進階 › 聲音（G11，語音在 E32 才做，先放說明）與 歷史（G12：這個 Bot 的設定改過什麼、誰改的，從稽核紀錄來，BT-9）。
+// Bot 設定 · 進階 › 聲音（G10 的聲音區塊，E32）與 歷史（G12：這個 Bot 的設定改過什麼、誰改的，從稽核紀錄來，BT-9）。
 
 type Bot = BotsGetOutput
 type Entry = AuditListOutput['entries'][number]
@@ -140,12 +141,8 @@ export function HistoryTab({ bot }: { bot: Bot }) {
 export function VoiceTab({ bot }: { bot: Bot }) {
   return (
     <>
-      <Block title="聲音" sub="語音通話和朗讀時用的聲音。">
-        <Group>
-          <Row title={<span className="flex items-center gap-2"><Icon icon={Mic} size={16} />語音還沒開放</span>} sub={`之後可以替${bot.name}挑聲音、語速，並用語音交代事情。`}>
-            <StatusChip size="sm">之後開放</StatusChip>
-          </Row>
-        </Group>
+      <Block title="聲音" sub="語音通話和朗讀時用的聲音；通話時隨時可以打斷它。">
+        <BotVoiceBlock botId={bot.id} botName={bot.name} />
       </Block>
       <Block title="誰看得到" sub={`哪些人可以找${bot.name}說話。`}>
         <Group>
