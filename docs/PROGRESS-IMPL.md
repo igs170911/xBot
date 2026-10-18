@@ -12,3 +12,4 @@
 | W01 前端殼與設計系統 | ✅ 完成 | `task/W01-design-system` | 多了淺色主題 token（N01 有定義，尚無切換）；自建輕量路由；字型自帶後執行檔約 20 MB | 待確認：手機抽屜斷點 768px 與頂列設計；送出鈕空白時是否停用；是否要做字型子集縮小體積；Main 右欄電腦縮圖目前是灰色佔位 |
 | B02 本機 Box Manager | ✅ 完成 | `task/B02-boxmgr` | Docker client 改用 `moby/moby/client`（舊路徑已停止維護）；新增 migration 0002（box.hermes_port）；XBOT_UID 固定 1000；SEC-3 唯讀根目錄與 SEC-4 私有網段封鎖延到 B13 | compose 模式（make up）下服務連不到 127.0.0.1 的 Bot 埠，需要網路模式（B12/B13）；pids-limit 4096 待確認；Manager 尚未接進服務（E02／ops） |
 | C02 操作登錄表與中介層 | ✅ 完成 | `task/C02-ops` | dry_run 不寫稽核；owner 的讀取不寫稽核（避免輪詢灌爆）；pending_approval 以 MCP-5 錯誤格式回傳；migration 0003 | 待確認：權限範圍是疊加還是巢狀；MCP-8「預設只能碰自己建立的」需要 created_by；刪除 Bot 時核准紀錄會連帶刪除（建議改 SET NULL）；核准逾期、approvals.wait、速率限制留給後續卡 |
+| E02 Hermes 驅動最小版 | ✅ 完成 | `task/E02-hermes` | Bot 經 hermes_host.py → product.sock → Model Proxy 取模型（真金鑰不進容器，Docker 測試驗證）；migration 0004；每個 Bot 一次只跑一個工作（第二則回 busy） | 待確認：模型設定格式 `<provider>/<model>`；needs_approval 尚無人回應（C12）；沒有看門狗，回合卡住會一直等（CH-12）；遠端主機的 socket 留給 B11 |
