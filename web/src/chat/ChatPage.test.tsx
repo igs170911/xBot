@@ -1,0 +1,185 @@
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import App from '../App'
+import type { XBotEvent } from '../api/generated'
+import { resetBots } from '../data/bots'
+import { dispatchEvent } from '../data/events'
+import { resetInbox } from '../data/inbox'
+import { fakeApi, opError, type FakeApi } from '../test-api'
+import { resetChat } from './chatStore'
+
+const BOT = {
+  id: 'b1',
+  name: '小秘',
+  title: '幕僚長',
+  description: '',
+  soul: '',
+  color: 'blue',
+  shape: 'cursor',
+  engine: 'hermes',
+  model: '',
+  effort: 'medium',
+  approval_mode: 'ask',
+  archived: false,
+  created_at: 1,
+  updated_at: 1,
+}
+const THREAD = { id: 't1', bot_id: 'b1', title: '比價', pinned: false, archived: false, unread: 0, last_message_at: 1, created_at: 1 }
+
+let api: FakeApi
+let messages: unknown[]
+beforeEach(() => {
+  messages = []
+  api = fakeApi({
+    'bots.list': () => ({ bots: [BOT] }),
+    'chat.list_threads': () => ({ threads: [THREAD] }),
+    'chat.read': () => ({ thread: THREAD, messages, has_more: false }),
+    'chat.send': () => ({ bot_id: 'b1', thread_id: 't1', task_id: 'k1', message_id: 'm1' }),
+    'chat.stop': () => ({ stopped: true, task_id: 'k1' }),
+  })
+  window.history.replaceState(null, '', '/bots/b1')
+})
+afterEach(() => {
+  resetBots()
+  resetInbox()
+  resetChat()
+  vi.unstubAllGlobals()
+})
+
+const ev = (e: Partial<XBotEvent> & { kind: string }): XBotEvent => ({ bot_id: 'b1', thread_id: 't1', task_id: 'k1', at: Date.now(), ...e })
+const emit = (...es: XBotEvent[]) => act(() => es.forEach(dispatchEvent))
+const storeMsg = (id: string, seq: number, sender: string, meta: object, content = '') => ({
+  id,
+  seq,
+  scope: 'thread',
+  scope_id: 't1',
+  sender,
+  kind: 'text',
+  content,
+  meta,
+  created_at: Date.now(),
+  updated_at: Date.now(),
+})
+
+it('送出訊息 → 串流回覆一段段出現 → 工具步驟 → 完成後摺疊成「工作了 N · M 步」', async () => {
+  render(<App />)
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
+  await waitFor(() => expect(window.location.pathname).toBe('/bots/b1/threads/t1'))
+  const input = within(main).getByRole('textbox')
+  fireEvent.change(input, { target: { value: '幫我比價' } })
+  fireEvent.keyDown(input, { key: 'Enter' })
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'chat.send')?.input).toEqual({ bot_id: 'b1', text: '幫我比價', thread_id: 't1' }))
+
+  emit(
+    ev({ id: 1, kind: 'message.created', payload: storeMsg('m1', 1, 'owner', { task_id: 'k1' }, '幫我比價') }),
+    ev({ id: 2, kind: 'task.state', payload: { state: 'waiting_box' } }),
+  )
+  expect(within(main).getByText('幫我比價')).toBeInTheDocument()
+  expect(within(main).getByText('電腦開機中')).toBeInTheDocument()
+  expect(within(main).getByTestId('bot-status')).toHaveTextContent('開機中')
+  // 工作中：停止鈕
+  expect(within(main).getByRole('button', { name: '停止小秘' })).toBeInTheDocument()
+
+  emit(
+    ev({ id: 3, kind: 'message.created', payload: storeMsg('m2', 2, 'bot:b1', { task_id: 'k1', streaming: true }) }),
+    ev({ id: 4, kind: 'task.state', payload: { state: 'running' } }),
+    ev({ kind: 'chat.thinking', payload: { message_id: 'm2', text: '…' } }),
+  )
+  expect(within(main).getByText('思考中')).toBeInTheDocument()
+  emit(ev({ id: 5, kind: 'chat.tool_call', payload: { type: 'tool_call', tool: { id: 'x1', name: 'browser_open', context: '打開蝦皮' } } }))
+  expect(within(main).getByText('browser_open')).toBeInTheDocument()
+  expect(within(main).getByText('打開蝦皮')).toBeInTheDocument()
+  emit(ev({ id: 6, kind: 'chat.tool_result', payload: { type: 'tool_result', tool: { id: 'x1', ok: true } } }), ev({ kind: 'chat.text', payload: { message_id: 'm2', text: '三家' } }))
+  expect(within(main).getByTestId('msg-bot')).toHaveTextContent('三家')
+  emit(ev({ kind: 'chat.text', payload: { message_id: 'm2', text: '都比完了。' } }))
+  expect(within(main).getByTestId('msg-bot')).toHaveTextContent('三家都比完了。')
+
+  emit(ev({ id: 7, kind: 'task.state', payload: { state: 'done', verdict: 'answer' } }), ev({ id: 8, kind: 'chat.done', payload: { message_id: 'm2', status: 'complete', verdict: 'answer', text: '三家都比完了。' } }))
+  expect(within(main).queryByRole('button', { name: '停止小秘' })).toBeNull()
+  const summary = within(main).getByRole('button', { name: /工作了 .* · 1 步/ })
+  expect(summary).toHaveAttribute('aria-expanded', 'false')
+  expect(within(main).queryByText('browser_open')).toBeNull()
+  fireEvent.click(summary)
+  expect(within(main).getByText('browser_open')).toBeInTheDocument()
+  expect(within(main).getByTestId('bot-status')).toHaveTextContent('待命')
+})
+
+it('停止：呼叫 chat.stop，輸入框變成正在停止；收到 cancelled 後顯示已停止', async () => {
+  messages = [
+    { id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '整理出貨單', task_id: 'k1', created_at: Date.now(), updated_at: Date.now() },
+    { id: 'm2', seq: 2, sender: 'bot:b1', kind: 'text', content: '正在整理', task_id: 'k1', streaming: true, created_at: Date.now(), updated_at: Date.now() },
+  ]
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
+  fireEvent.click(await within(main).findByRole('button', { name: '停止小秘' }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'chat.stop')?.input).toEqual({ bot_id: 'b1', thread_id: 't1' }))
+  expect(await within(main).findByRole('button', { name: '正在停止' })).toBeDisabled()
+  emit(ev({ id: 1, kind: 'task.state', payload: { state: 'stopping' } }), ev({ id: 2, kind: 'task.state', payload: { state: 'done', verdict: 'cancelled' } }), ev({ id: 3, kind: 'chat.done', payload: { message_id: 'm2', status: 'interrupted', verdict: 'cancelled', text: '正在整理' } }))
+  expect(within(main).getByText('已停止')).toBeInTheDocument()
+  expect(within(main).getByRole('button', { name: '送出' })).toBeInTheDocument()
+})
+
+it('新 Bot 沒有對話串：顯示空狀態（C03），送出後開新的對話串', async () => {
+  api.ops['chat.list_threads'] = () => ({ threads: [] })
+  api.ops['chat.send'] = () => ({ bot_id: 'b1', thread_id: 't9', task_id: 'k9', message_id: 'm9' })
+  render(<App />)
+  const empty = await screen.findByTestId('chat-empty')
+  expect(empty).toHaveTextContent('小秘')
+  expect(empty).toHaveTextContent('先問我')
+  const input = screen.getByRole('textbox')
+  expect(input).toHaveAttribute('placeholder', '交代小秘…')
+  fireEvent.change(input, { target: { value: '嗨' } })
+  fireEvent.keyDown(input, { key: 'Enter' })
+  await waitFor(() => expect(window.location.pathname).toBe('/bots/b1/threads/t9'))
+  expect(api.calls.find((c) => c.path === 'chat.send')?.input).toEqual({ bot_id: 'b1', text: '嗨' })
+})
+
+it('還沒設定模型：顯示提示卡，填好模型設定後消失', async () => {
+  let ready = false
+  api.ops['models.get'] = () => (ready ? { providers: [{ id: 'openai', base_url: 'https://x/v1', api_key_set: true }], default: { provider: 'openai', model: 'gpt-x' }, ready } : { providers: [], ready })
+  api.ops['models.set_provider'] = (input) => {
+    ready = true
+    return { provider: { id: input.id, base_url: input.base_url, api_key_set: true }, default: { provider: input.id, model: input.default_model } }
+  }
+  render(<App />)
+  const card = await screen.findByRole('region', { name: '還沒設定模型' })
+  fireEvent.click(within(card).getByRole('button', { name: '設定模型' }))
+  const dlg = await screen.findByRole('dialog', { name: '設定模型' })
+  fireEvent.change(within(dlg).getByLabelText('金鑰'), { target: { value: 'sk-test' } })
+  fireEvent.change(within(dlg).getByLabelText('預設模型'), { target: { value: 'gpt-x' } })
+  fireEvent.click(within(dlg).getByRole('button', { name: '儲存' }))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: '設定模型' })).toBeNull())
+  expect(api.calls.find((c) => c.path === 'models.set_provider')?.input).toEqual({ id: 'openai', base_url: 'https://api.openai.com/v1', api_key: 'sk-test', default_model: 'gpt-x' })
+  expect(screen.queryByRole('region', { name: '還沒設定模型' })).toBeNull()
+})
+
+it('Bot 在忙別的事：送出時提示，可以直接停止它', async () => {
+  api.ops['chat.send'] = () => opError(409, 'conflict', '這個 Bot 正在忙另一件事', true)
+  render(<App />)
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
+  const input = within(main).getByRole('textbox')
+  fireEvent.change(input, { target: { value: '再做一件' } })
+  fireEvent.keyDown(input, { key: 'Enter' })
+  const alert = await within(main).findByRole('alert')
+  expect(alert).toHaveTextContent('小秘正在忙另一件事')
+  expect(input).toHaveValue('再做一件')
+  fireEvent.click(within(alert).getByRole('button', { name: '停止它' }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'chat.stop')?.input).toEqual({ bot_id: 'b1' }))
+})
+
+it('Bot 回報錯誤：顯示工作未完成與原因', async () => {
+  render(<App />)
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
+  await waitFor(() => expect(window.location.pathname).toBe('/bots/b1/threads/t1'))
+  emit(
+    ev({ id: 1, kind: 'message.created', payload: storeMsg('m1', 1, 'owner', { task_id: 'k1' }, '嗨') }),
+    ev({ id: 2, kind: 'task.state', payload: { state: 'waiting_box' } }),
+    ev({ id: 3, kind: 'chat.error', payload: { type: 'error', text: '開不了機' } }),
+    ev({ id: 4, kind: 'message.created', payload: storeMsg('m2', 2, 'bot:b1', { task_id: 'k1', status: 'error' }, '工作未完成：開不了機') }),
+    ev({ id: 5, kind: 'task.state', payload: { state: 'done', verdict: 'failed' } }),
+    ev({ id: 6, kind: 'chat.done', payload: { message_id: 'm2', status: 'error', verdict: 'failed', text: '工作未完成：開不了機' } }),
+  )
+  expect(within(main).getByTestId('msg-bot')).toHaveTextContent('工作未完成：開不了機')
+  expect(within(main).getByText('工作未完成')).toBeInTheDocument()
+})

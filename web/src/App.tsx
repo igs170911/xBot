@@ -1,11 +1,21 @@
+import { useEffect, useState } from 'react'
 import { Construction } from 'lucide-react'
+import { authStatus } from './api/generated'
 import { usePath } from './router'
 import { AppShell } from './shell/AppShell'
 import { InboxPage } from './pages/InboxPage'
 import { DevComponentsPage } from './pages/DevComponentsPage'
+import { LoginPage } from './pages/LoginPage'
+import { NewBotDialog } from './pages/NewBotDialog'
+import { SettingsPage } from './pages/ModelSettings'
+import { ChatPage } from './chat/ChatPage'
+import { startChat } from './chat/chatStore'
+import { botsStore, startBots } from './data/bots'
+import { startEvents } from './data/events'
+import { startInbox } from './data/inbox'
+import { useStore } from './data/store'
 import { ToastProvider } from './ui/Toast'
 import { Icon } from './ui/Icon'
-import { BOTS } from './shell/sample'
 
 const TITLES: Record<string, string> = {
   '/office': '辦公室',
@@ -15,13 +25,7 @@ const TITLES: Record<string, string> = {
   '/settings': '設定',
 }
 
-function titleFor(path: string): string {
-  if (path === '/') return '待我處理'
-  const bot = path.match(/^\/bots\/([^/]+)/)
-  if (bot) return BOTS[bot[1]]?.name ?? '對話'
-  if (path.startsWith('/rooms/')) return '群組對話'
-  return TITLES[path] ?? 'XBot'
-}
+const BOT_PATH = /^\/bots\/([^/]+)(?:\/threads\/([^/]+))?\/?$/
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -35,8 +39,50 @@ function Placeholder({ title }: { title: string }) {
   )
 }
 
+type Auth = 'checking' | 'ok' | 'login'
+
+/** 先問服務有沒有登入（本機開啟不用登入）；沒登入就顯示登入頁。 */
+function useAuth(): [Auth, () => void] {
+  const [auth, setAuth] = useState<Auth>('checking')
+  useEffect(() => {
+    authStatus()
+      .then((s) => setAuth(s.authenticated ? 'ok' : 'login'))
+      // 連不到服務：照樣顯示畫面，各頁會顯示連不到
+      .catch(() => setAuth('ok'))
+  }, [])
+  return [auth, () => setAuth('ok')]
+}
+
+function Main() {
+  const path = usePath()
+  const bots = useStore(botsStore).bots
+  useEffect(() => {
+    startEvents()
+    startBots()
+    startInbox()
+    startChat()
+  }, [])
+
+  const bot = path.match(BOT_PATH)
+  const title = path === '/' ? '待我處理' : bot ? (bots?.find((b) => b.id === bot[1])?.name ?? '對話') : path.startsWith('/rooms/') ? '群組對話' : (TITLES[path] ?? 'XBot')
+
+  let page
+  if (path === '/') page = <InboxPage />
+  else if (bot) page = <ChatPage key={bot[1]} botId={bot[1]} threadParam={bot[2]} />
+  else if (path === '/settings') page = <SettingsPage />
+  else page = <Placeholder title={title} />
+
+  return (
+    <AppShell path={path} title={title}>
+      {page}
+      <NewBotDialog />
+    </AppShell>
+  )
+}
+
 export default function App() {
   const path = usePath()
+  const [auth, loggedIn] = useAuth()
   if (path === '/dev/components') {
     return (
       <ToastProvider>
@@ -44,12 +90,11 @@ export default function App() {
       </ToastProvider>
     )
   }
-  const title = titleFor(path)
+  if (auth === 'checking') return null
+  if (auth === 'login') return <LoginPage onLoggedIn={loggedIn} />
   return (
     <ToastProvider>
-      <AppShell path={path} title={title}>
-        {path === '/' ? <InboxPage /> : <Placeholder title={title} />}
-      </AppShell>
+      <Main />
     </ToastProvider>
   )
 }

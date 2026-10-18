@@ -7,8 +7,67 @@ import { Icon } from '../ui/Icon'
 import { SimplifiedTag, StatusChip, type Tone } from '../ui/Pill'
 import { BOTS } from '../shell/sample'
 import { fetchHealth, type Health } from '../health'
+import { approvalsDecide } from '../api/generated'
+import { botsStore } from '../data/bots'
+import { inboxStore, loadInbox, type InboxItem } from '../data/inbox'
+import { useStore } from '../data/store'
 
-// 待我處理（design/Main.dc.html）的版型示範。資料是寫死的示範內容；真正的清單與核准在 C12 接上。
+// 待我處理（design/Main.dc.html）。最上面是真的「待我處理」（xbot.inbox.list，核准可以直接允許／退回）；
+// 下面其他卡片還是 W01 的示範內容，真正的提問、接手、提案在 C12 接上。
+
+function RealItem({ item }: { item: InboxItem }) {
+  const bots = useStore(botsStore).bots
+  const bot = bots?.find((b) => b.id === item.bot_id)
+  const [busy, setBusy] = useState<'allow' | 'deny' | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const approval = item.kind === 'approval' && !!item.ref
+  const decide = async (decision: 'allow' | 'deny') => {
+    if (!item.ref) return
+    setBusy(decision)
+    setError(null)
+    try {
+      const out = await approvalsDecide({ approval_id: item.ref, decision })
+      if (out.error) setError(out.error.message)
+      await loadInbox()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(null)
+    }
+  }
+  return (
+    <Card data-testid="inbox-item">
+      <div className="flex items-center gap-3">
+        <Avatar shape={bot?.shape} color={bot?.color} state="notifying" dot="waiting" ring="#262626" size={32} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="flex items-center gap-2">
+            <span className="text-body">{bot?.name ?? (item.bot_id ? 'Bot' : 'XBot')}</span>
+            <StatusChip size="sm" tone="warning">
+              {approval ? '等你允許' : '等你處理'}
+            </StatusChip>
+          </span>
+          <span className="text-[13px] text-ink-2">{item.title}</span>
+        </div>
+      </div>
+      {item.body && <p className="m-0 whitespace-pre-wrap">{item.body}</p>}
+      {error && (
+        <p role="alert" className="m-0 text-sub text-danger">
+          {error}
+        </p>
+      )}
+      {approval && (
+        <div className="flex flex-wrap gap-2">
+          <Button variant="primary" onClick={() => decide('allow')} loading={busy === 'allow'} disabled={!!busy}>
+            允許這次
+          </Button>
+          <Button variant="outline" onClick={() => decide('deny')} loading={busy === 'deny'} disabled={!!busy}>
+            退回
+          </Button>
+        </div>
+      )}
+    </Card>
+  )
+}
 
 function CardHead({ bot, state, dot, chip, tone, sub, aside }: { bot: string; state?: string; dot?: 'waiting' | 'none' | 'queued'; chip: ReactNode; tone: Tone; sub: ReactNode; aside?: ReactNode }) {
   const b = BOTS[bot]
@@ -75,7 +134,8 @@ export function InboxPage() {
     fetchHealth().then(setHealth)
   }, [])
 
-  const left = 5 - (decision ? 1 : 0) - (answer ? 1 : 0)
+  const real = useStore(inboxStore).items ?? []
+  const left = real.length + 5 - (decision ? 1 : 0) - (answer ? 1 : 0)
   const d = decision ? DECISION[decision] : null
   const answered = OPTIONS.find((o) => o.key === answer)
 
@@ -101,6 +161,11 @@ export function InboxPage() {
               </span>
             </a>
           </header>
+
+          {real.map((it) => (
+            <RealItem key={it.id} item={it} />
+          ))}
+          {real.length > 0 && <p className="m-0 pt-1 text-meta text-ink-3">以下是示範卡片</p>}
 
           <Card>
             <CardHead

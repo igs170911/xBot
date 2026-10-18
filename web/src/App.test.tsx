@@ -1,20 +1,45 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import App from './App'
 import { navigate } from './router'
+import { fakeApi, type FakeApi } from './test-api'
+import { resetBots } from './data/bots'
+import { resetInbox } from './data/inbox'
+import { resetChat } from './chat/chatStore'
+import { dispatchEvent } from './data/events'
 
+const BOT = {
+  id: 'b1',
+  name: '抓蟲',
+  title: 'Bug 重現',
+  description: '照你的描述重做一次',
+  soul: '',
+  color: 'red',
+  shape: 'shield',
+  engine: 'hermes',
+  model: '',
+  effort: 'medium',
+  approval_mode: 'ask',
+  archived: false,
+  created_at: 1,
+  updated_at: 1,
+}
+
+let api: FakeApi
 beforeEach(() => {
-  vi.stubGlobal(
-    'fetch',
-    async () => new Response(JSON.stringify({ op: 'xbot.system.ping', output: { pong: true, api: 'xbot.v1', build: 'v-test', caller: 'owner' } })),
-  )
+  api = fakeApi()
   window.history.replaceState(null, '', '/')
 })
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  resetBots()
+  resetInbox()
+  resetChat()
+  vi.unstubAllGlobals()
+})
 
 it('首頁是待我處理，並顯示服務版本', async () => {
   render(<App />)
-  expect(screen.getByRole('heading', { level: 1, name: '早安，有 5 件事等你' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { level: 1, name: '早安，有 5 件事等你' })).toBeInTheDocument()
   expect(await screen.findByText('服務正常 · v-test')).toBeInTheDocument()
   const nav = screen.getByRole('navigation', { name: '側欄' })
   expect(within(nav).getByRole('link', { name: /待我處理/ })).toHaveAttribute('aria-current', 'page')
@@ -22,16 +47,37 @@ it('首頁是待我處理，並顯示服務版本', async () => {
 
 it('核定卡就地處理：件數減 1，可以復原', async () => {
   render(<App />)
-  fireEvent.click(screen.getByRole('button', { name: '允許這次' }))
+  fireEvent.click(await screen.findByRole('button', { name: '允許這次' }))
   expect(screen.getByRole('heading', { level: 1, name: '早安，有 4 件事等你' })).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: '復原' }))
   expect(screen.getByRole('heading', { level: 1, name: '早安，有 5 件事等你' })).toBeInTheDocument()
   await screen.findByText('服務正常 · v-test')
 })
 
+it('真的待我處理：核准可以允許，送出 approvals.decide 後重讀', async () => {
+  let open = true
+  api.ops['inbox.list'] = () => ({
+    items: open ? [{ id: 'i1', kind: 'approval', bot_id: 'b1', ref: 'ap1', title: '刪除 Bot「舊的」', body: 'Claude Code 要刪除', payload: {}, status: 'open', created_at: 1 }] : [],
+  })
+  api.ops['bots.list'] = () => ({ bots: [BOT] })
+  api.ops['approvals.decide'] = () => {
+    open = false
+    return { approval: { id: 'ap1', op: 'xbot.bots.delete', summary: '', params: {}, requested_by: 'agent:a', status: 'approved', created_at: 1 }, settled: true, executed: true }
+  }
+  render(<App />)
+  const card = await screen.findByTestId('inbox-item')
+  expect(within(card).getByText('刪除 Bot「舊的」')).toBeInTheDocument()
+  expect(screen.getByRole('heading', { level: 1, name: '早安，有 6 件事等你' })).toBeInTheDocument()
+  const nav = screen.getByRole('navigation', { name: '側欄' })
+  expect(within(nav).getByLabelText('1 件等你')).toBeInTheDocument()
+  fireEvent.click(within(card).getByRole('button', { name: '允許這次' }))
+  await waitFor(() => expect(screen.queryByTestId('inbox-item')).toBeNull())
+  expect(api.calls.find((c) => c.path === 'approvals.decide')?.input).toEqual({ approval_id: 'ap1', decision: 'allow' })
+})
+
 it('側欄連結用前端路由換頁', async () => {
   render(<App />)
-  const nav = screen.getByRole('navigation', { name: '側欄' })
+  const nav = await screen.findByRole('navigation', { name: '側欄' })
   fireEvent.click(within(nav).getByRole('link', { name: /辦公室/ }))
   expect(window.location.pathname).toBe('/office')
   expect(screen.getByRole('heading', { level: 1, name: '辦公室' })).toBeInTheDocument()
@@ -40,9 +86,63 @@ it('側欄連結用前端路由換頁', async () => {
   await screen.findByText('服務正常 · v-test')
 })
 
+it('側欄的 Bot 清單來自 bots.list，有人改了 Bot 就重讀', async () => {
+  let bots = [BOT]
+  api.ops['bots.list'] = () => ({ bots })
+  render(<App />)
+  const nav = await screen.findByRole('navigation', { name: '側欄' })
+  expect(await within(nav).findByRole('link', { name: /抓蟲/ })).toHaveAttribute('href', '/bots/b1')
+  bots = [BOT, { ...BOT, id: 'b2', name: '小秘', shape: 'cursor', color: 'blue' }]
+  act(() => dispatchEvent({ id: 9, kind: 'op', at: 1, payload: { op: 'xbot.bots.create', actor: 'agent:a', status: 'ok' } }))
+  expect(await within(nav).findByRole('link', { name: /小秘/ })).toBeInTheDocument()
+  // 工作中的 Bot：副標變「工作中…」
+  act(() => dispatchEvent({ id: 10, kind: 'task.state', bot_id: 'b2', thread_id: 't', task_id: 'k', at: 2, payload: { state: 'running' } }))
+  expect(within(within(nav).getByRole('link', { name: /小秘/ })).getByText('工作中…')).toBeInTheDocument()
+})
+
+it('沒有 Bot 時側欄有新增按鈕；新增 Bot 表單呼叫 bots.create 並打開對話', async () => {
+  let created = false
+  api.ops['bots.list'] = () => ({ bots: created ? [BOT] : [] })
+  api.ops['bots.create'] = (input) => {
+    created = true
+    return { ...BOT, name: input.name, description: input.description ?? '', shape: input.shape, color: input.color }
+  }
+  render(<App />)
+  const nav = await screen.findByRole('navigation', { name: '側欄' })
+  await within(nav).findByText(/還沒有 Bot/)
+  const adds = within(nav).getAllByRole('button', { name: '新增 Bot' })
+  expect(adds).toHaveLength(2) // 標題列的＋與空清單的按鈕
+  fireEvent.click(adds[1])
+  const dlg = await screen.findByRole('dialog', { name: '新增 Bot' })
+  fireEvent.click(within(dlg).getByRole('button', { name: '建立' }))
+  expect(await within(dlg).findByText('請填名字')).toBeInTheDocument()
+  fireEvent.change(within(dlg).getByLabelText('名字'), { target: { value: '抓蟲' } })
+  fireEvent.change(within(dlg).getByLabelText('它負責什麼（一句話）'), { target: { value: '重現 Bug' } })
+  fireEvent.click(within(dlg).getByRole('radio', { name: '盾牌' }))
+  fireEvent.click(within(dlg).getByRole('radio', { name: '紅' }))
+  fireEvent.click(within(dlg).getByRole('button', { name: '建立「抓蟲」' }))
+  await waitFor(() => expect(window.location.pathname).toBe('/bots/b1'))
+  expect(api.calls.find((c) => c.path === 'bots.create')?.input).toEqual({ name: '抓蟲', description: '重現 Bug', shape: 'shield', color: 'red' })
+  expect(screen.queryByRole('dialog', { name: '新增 Bot' })).toBeNull()
+  expect(await screen.findByTestId('chat-empty')).toHaveTextContent('抓蟲')
+})
+
+it('沒登入（從別的裝置打開）時顯示登入頁，輸入登入碼後進入', async () => {
+  api.auth = { authenticated: false, local: false }
+  render(<App />)
+  const input = await screen.findByLabelText('登入碼')
+  fireEvent.change(input, { target: { value: 'bad' } })
+  fireEvent.click(screen.getByRole('button', { name: '登入' }))
+  expect(await screen.findByText('登入碼或權杖不正確')).toBeInTheDocument()
+  fireEvent.change(input, { target: { value: 'good' } })
+  fireEvent.click(screen.getByRole('button', { name: '登入' }))
+  expect(await screen.findByRole('heading', { level: 1, name: /早安/ })).toBeInTheDocument()
+  await screen.findByText('服務正常 · v-test')
+})
+
 it('手機抽屜：打開後焦點在關閉鈕，Esc 關掉並回到選單鈕', async () => {
   render(<App />)
-  const opener = screen.getByRole('button', { name: '打開側欄' })
+  const opener = await screen.findByRole('button', { name: '打開側欄' })
   opener.focus()
   fireEvent.click(opener)
   const drawer = screen.getByRole('dialog', { name: '側欄' })

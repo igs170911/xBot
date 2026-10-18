@@ -73,7 +73,7 @@ test('版型截圖：側欄＋待我處理', async ({ page }, info) => {
     }
   }
   // 群組標題（收合鈕）用 touch-target 撐大可點範圍，量不到 ::before，所以排除
-  expect(small.filter((s) => !/已釘選|群組對話|營運部|後勤|工程/.test(s))).toEqual([])
+  expect(small.filter((s) => !/^Bot /.test(s))).toEqual([])
 
   await page.keyboard.press('Escape')
   await expect(drawer).toBeHidden()

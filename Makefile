@@ -15,7 +15,7 @@ XBOT    := bin/xbot
 # 管理已安裝服務時，優先用裝好的執行檔；還沒安裝就用剛建出來的。
 XBOT_INSTALLED = $(shell command -v $(HOME)/.local/bin/xbot 2>/dev/null || echo $(XBOT))
 
-.PHONY: help doctor setup deps dev check fmt gen test test-docker e2e box box-latest box-test build web-build install start stop restart \
+.PHONY: help doctor setup deps dev check fmt gen test test-docker e2e e2e-docker box box-latest box-test build web-build install start stop restart \
         status logs token up down update backup restore clean uninstall
 
 help: ## 列出所有指令
@@ -64,6 +64,12 @@ test-docker: ## Docker 整合測試（真的開 Bot 電腦，含對話端對端�
 e2e: ## Playwright 端對端測試（會先 make build）
 	@$(MAKE) --no-print-directory build
 	cd web && $(RUN) pnpm e2e
+
+e2e-docker: ## 真的開 Bot 電腦的端對端測試（網頁建 Bot → 對話 → Hermes 回覆；要 Docker 與 make box）
+	@docker info >/dev/null 2>&1 || { echo "❌ 無法連線到 Docker（make doctor 會告訴你怎麼修）"; exit 1; }
+	@docker image inspect $(BOX_IMAGE) >/dev/null 2>&1 || { echo "❌ 沒有映像 $(BOX_IMAGE)，先執行 make box"; exit 1; }
+	@$(MAKE) --no-print-directory build
+	cd web && XBOT_E2E_DOCKER=1 BOX_IMAGE=$(BOX_IMAGE) $(RUN) pnpm e2e:docker
 
 # Bot 電腦映像：box/Dockerfile（桌面＋Chromium＋noVNC＋Hermes，Hermes 版本固定在 box/HERMES_VERSION）。
 # DEBIAN_MIRROR=<網址> 改用較快的 Debian 鏡像站（當成建置密鑰傳入，不影響快取）。
