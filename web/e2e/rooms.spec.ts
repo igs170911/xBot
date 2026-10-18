@@ -22,8 +22,11 @@ async function team(page: Page) {
 test('新增群組（D03）：勾 2 個以上才能建立，建好進到開場建議（D04）', async ({ page }, info) => {
   const { m } = await team(page)
   await page.goto('/')
-  if (info.project.name === 'mobile') await page.getByRole('button', { name: '打開側欄' }).click()
-  await page.getByRole('button', { name: '新增群組' }).click()
+  if (info.project.name === 'mobile') {
+    await page.goto('/chats')
+    await page.getByRole('button', { name: '打開側欄' }).click()
+  }
+  await page.getByRole('navigation', { name: '側欄' }).getByRole('button', { name: '新增群組' }).click()
   const dialog = page.getByRole('dialog', { name: '新增群組對話' })
   await expect(dialog).toBeVisible()
   const create = dialog.getByRole('button', { name: /建立群組/ })
@@ -68,7 +71,7 @@ test('群組對話（D01）：交棒分隔線、輪數上限、成員狀態，�
   await expect(page.getByTestId('room-notice')).toContainText('已經來回 4 輪')
   await expect(page.getByText('小編 在自己的對話等你')).toBeVisible()
   await expect(page.getByRole('link', { name: '前往' })).toHaveAttribute('href', `/bots/${bian.id}/threads/seat-${bian.id}`)
-  await expect(page.getByRole('combobox', { name: '回應規則' })).toHaveValue('auto')
+  if (info.project.name !== 'mobile') await expect(page.getByRole('combobox', { name: '回應規則' })).toHaveValue('auto')
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-D01-room`), fullPage: info.project.name === 'mobile' })
   if (info.project.name === 'mobile') {

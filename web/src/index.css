@@ -259,3 +259,15 @@
     font-style: italic;
   }
 }
+
+/* 手機的待我處理（L02）：卡片裡的動作鈕撐滿一列、至少 44 高。 */
+@media (width < 48rem) {
+  [data-phone-inbox] [data-card-actions] > button {
+    flex: 1 1 0;
+    min-height: 44px;
+    border-radius: 9999px;
+  }
+  [data-phone-inbox] [data-card-actions] > span:empty {
+    display: none;
+  }
+}

@@ -9,7 +9,13 @@ test.beforeEach(async ({ page }, info) => {
 })
 
 async function openSidebarIfMobile(page: Page, mobile: boolean) {
-  if (mobile) await page.getByRole('button', { name: '打開側欄' }).click()
+  // 手機（W31）：側欄抽屜從「對話」分頁左上的吉祥物打開
+  if (mobile) {
+    const tab = page.getByRole('navigation', { name: '分頁', exact: true }).getByRole('link', { name: '對話' })
+    if (await tab.isVisible()) await tab.click()
+    else await page.goto('/chats')
+    await page.getByRole('button', { name: '打開側欄' }).click()
+  }
 }
 
 test('建 Bot → 送訊息 → 看到串流回覆與工作步驟', async ({ page }, info) => {
@@ -35,9 +41,13 @@ test('建 Bot → 送訊息 → 看到串流回覆與工作步驟', async ({ pag
   const main = page.getByRole('main', { name: '和抓蟲的對話' })
   await expect(main.getByTestId('chat-empty')).toContainText('抓蟲')
   await expect(main.getByTestId('chat-empty')).toContainText('先問我')
-  if (mobile) await page.getByRole('button', { name: '打開側欄' }).click()
+  await openSidebarIfMobile(page, mobile)
   await expect(nav.getByRole('link', { name: /抓蟲/ })).toBeVisible()
-  if (mobile) await page.keyboard.press('Escape')
+  if (mobile) {
+    await page.keyboard.press('Escape')
+    await page.goBack()
+    await expect(main.getByTestId('chat-empty')).toBeVisible()
+  }
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-chat-empty`) })
 
@@ -115,7 +125,7 @@ test('截圖 C01：工作中（步驟展開）與停止', async ({ page }, info)
   )
   await expect(main.getByText('4 個步驟', { exact: false })).toBeVisible()
   await expect(main.getByRole('button', { name: '停止小秘' })).toBeVisible()
-  await expect(main.getByText('小秘工作中 · 要改做別的事，先按停止')).toBeVisible()
+  if (info.project.name !== 'mobile') await expect(main.getByText('小秘工作中 · 要改做別的事，先按停止')).toBeVisible()
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-chat-working`) })
 

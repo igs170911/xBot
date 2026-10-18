@@ -218,6 +218,15 @@ func (s *server) logout(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
+// pairLogin：POST /api/v1/auth/pair，手機用一次性配對碼（QR 網址裡的）換 session cookie。
+func (s *server) pairLogin(w http.ResponseWriter, r *http.Request) {
+	if !auth.SameOrigin(r) {
+		writeError(w, 0, ops.Forbidden("不接受從其他網站來的請求"))
+		return
+	}
+	s.pair.RedeemHTTP(w, r, s.auth.StartSession)
+}
+
 // authStatus：GET /api/v1/auth/status，前端用它決定要不要顯示登入畫面。
 func (s *server) authStatus(w http.ResponseWriter, r *http.Request) {
 	id, err := s.auth.Identify(r)

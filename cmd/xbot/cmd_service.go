@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -82,7 +83,32 @@ func cmdService(args []string) error {
 
 func printWelcome(m *service.Manager, cfg config.Config) {
 	tokenPath := filepath.Join(cfg.DataDir, "access-token")
-	fmt.Printf("\n🎉 XBot 已安裝並啟動\n   打開：%s\n   其他裝置登入碼：%s（用 make token 顯示）\n   常用：make status｜make logs｜make stop｜make backup\n", m.URL(), tokenPath)
+	fmt.Printf("\n🎉 XBot 已安裝並啟動\n   打開：%s\n", m.URL())
+	if cfg.Bind == "0.0.0.0" || cfg.Bind == "::" || cfg.Bind == "" {
+		for _, ip := range lanIPs() {
+			fmt.Printf("   區網其他裝置：http://%s:%d\n", ip, cfg.Port)
+		}
+	}
+	fmt.Printf("   其他裝置登入碼：%s（用 make token 顯示）\n   常用：make status｜make logs｜make stop｜make backup\n", tokenPath)
+}
+
+// lanIPs 列出這台機器的私有 IPv4 位址（排除 loopback 與 link-local），給區網其他裝置連線用。
+func lanIPs() []string {
+	var out []string
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return nil
+	}
+	for _, a := range addrs {
+		n, ok := a.(*net.IPNet)
+		if !ok || n.IP.To4() == nil || n.IP.IsLoopback() || n.IP.IsLinkLocalUnicast() {
+			continue
+		}
+		if n.IP.IsPrivate() {
+			out = append(out, n.IP.String())
+		}
+	}
+	return out
 }
 
 // cmdBackup：xbot backup [--out 檔案] [--include-logins]

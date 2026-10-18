@@ -1,4 +1,4 @@
-import { Check, ChevronDown, MessageSquare, Plus } from 'lucide-react'
+import { Check, ChevronDown, MessageSquare, MessagesSquare, Plus } from 'lucide-react'
 import type { ChatListThreadsOutput } from '../api/generated'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
@@ -9,12 +9,39 @@ export type Thread = ChatListThreadsOutput['threads'][number]
 
 // 對話串選單（CH-2，design/C03）：列出和這個 Bot 的對話串（目前的打勾），最下面開新的。
 // 重新命名、釘選、刪除對話串還沒有操作（chat.* 只有 list_threads），先不放。
-export function ThreadMenu({ botName, threads, threadId, onPick, onNew }: { botName: string; threads: Thread[] | null; threadId?: string; onPick: (id: string) => void; onNew: () => void }) {
+export function ThreadMenu({
+  botName,
+  threads,
+  threadId,
+  onPick,
+  onNew,
+  look = 'default',
+}: {
+  botName: string
+  threads: Thread[] | null
+  threadId?: string
+  onPick: (id: string) => void
+  onNew: () => void
+  /** phone：手機頁首右上的「對話串」膠囊（L03）。 */
+  look?: 'default' | 'phone'
+}) {
   const current = threads?.find((t) => t.id === threadId)
   const title = threadId ? current?.title || '對話' : '新對話串'
   return (
     <Popover
-      trigger={(p) => (
+      align={look === 'phone' ? 'end' : 'start'}
+      trigger={(p) =>
+        look === 'phone' ? (
+          <button
+            {...p}
+            type="button"
+            aria-label={`對話串：${title}`}
+            className="flex h-11 flex-none items-center gap-1.5 rounded-full border border-divider bg-panel px-3.5 text-ui text-ink active:bg-control aria-expanded:bg-control"
+          >
+            <Icon icon={MessagesSquare} size={20} />
+            對話串
+          </button>
+        ) : (
         <button
           {...p}
           type="button"
@@ -26,7 +53,8 @@ export function ThreadMenu({ botName, threads, threadId, onPick, onNew }: { botN
           {!!threads?.length && <span className="text-[12px] text-ink-3">{threads.length}</span>}
           <Icon icon={ChevronDown} size={16} className="text-ink-2" />
         </button>
-      )}
+        )
+      }
     >
       {(close) => (
         <div role="menu" aria-label={`${botName}的對話串`} className="flex w-[248px] flex-col rounded-menu bg-card p-1.5 shadow-pop max-sm:w-[min(300px,calc(100vw-24px))]">

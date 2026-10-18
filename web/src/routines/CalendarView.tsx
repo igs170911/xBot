@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Moon, TriangleAlert } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Moon, Plus, TriangleAlert } from 'lucide-react'
 import { routinesCalendar, type RoutinesCalendarOutput } from '../api/generated'
 import { botsStore, type Bot } from '../data/bots'
 import { useStore } from '../data/store'
@@ -256,9 +256,24 @@ export function CalendarView() {
   const step = narrow ? 1 : 7
   const shownItems = (items ?? []).filter((i) => !narrow || mode === 'list' || sameDay(new Date(i.at), days[0]))
 
+  const dayCount = shownItems.length
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2.5">
+      {narrow && (
+        // 手機（L16）：月份大標＋「今天」＋「＋」，下面一週日期列
+        <div className="flex items-center gap-1 pt-[max(6px,env(safe-area-inset-top))]">
+          <h1 className="m-0 min-w-0 flex-1 whitespace-nowrap text-[22px] font-normal" data-testid="cal-range">
+            {days[0].getFullYear()} 年 {days[0].getMonth() + 1} 月
+          </h1>
+          <IconButton icon={ChevronLeft} label="上一週" className="size-11" onClick={() => setAnchor((a) => addDays(a, -7))} />
+          <IconButton icon={ChevronRight} label="下一週" className="size-11" onClick={() => setAnchor((a) => addDays(a, 7))} />
+          <Button className="min-h-11 rounded-full px-4" onClick={() => setAnchor(new Date())}>
+            今天
+          </Button>
+          <IconButton icon={Plus} label="新增定時任務" className="size-11 rounded-full border border-divider bg-panel text-ink" onClick={() => openNewRoutine()} />
+        </div>
+      )}
+      <div className={cx('flex flex-wrap items-center gap-2.5', narrow && 'hidden')}>
         <div className="flex h-10 items-center rounded-field border border-line px-1">
           <IconButton icon={ChevronLeft} label={narrow ? '前一天' : '上一週'} onClick={() => setAnchor((a) => addDays(a, -step))} />
           <Button variant="ghost" size="sm" className="text-ink" onClick={() => setAnchor(new Date())}>
@@ -266,9 +281,11 @@ export function CalendarView() {
           </Button>
           <IconButton icon={ChevronRight} label={narrow ? '後一天' : '下一週'} onClick={() => setAnchor((a) => addDays(a, step))} />
         </div>
-        <h2 className="m-0 text-[17px] font-normal" data-testid="cal-range">
-          {range}
-        </h2>
+        {!narrow && (
+          <h2 className="m-0 text-[17px] font-normal" data-testid="cal-range">
+            {range}
+          </h2>
+        )}
         <span className="flex-1" />
         {failed > 0 && (
           <StatusChip tone="danger" icon={TriangleAlert}>
@@ -295,7 +312,7 @@ export function CalendarView() {
         />
       </div>
       {narrow && mode === 'week' && (
-        <div className="grid grid-cols-7 gap-1" role="tablist" aria-label="這一週">
+        <div className="-mx-4 grid grid-cols-7 gap-1 border-b border-divider px-2 pb-2" role="tablist" aria-label="這一週">
           {Array.from({ length: 7 }, (_, i) => addDays(week, i)).map((d, i) => {
             const on = sameDay(d, days[0])
             const has = (items ?? []).some((it) => sameDay(new Date(it.at), d))
@@ -306,15 +323,21 @@ export function CalendarView() {
                 role="tab"
                 aria-selected={on}
                 onClick={() => setAnchor(d)}
-                className={cx('flex flex-col items-center gap-0.5 rounded-field py-1.5', on ? 'bg-ink text-on-ink' : 'bg-transparent text-ink')}
+                className="flex min-h-[64px] flex-col items-center gap-1 bg-transparent py-1 text-ink"
               >
-                <span className={cx('text-[11px]', on ? 'text-on-ink' : 'text-ink-3')}>{WD[i]}</span>
-                <span className={cx('text-ui', !on && sameDay(d, now) && 'text-accent-ink')}>{d.getDate()}</span>
-                <span className={cx('size-1 rounded-full', has ? (on ? 'bg-on-ink' : 'bg-ink-3') : 'bg-transparent')} />
+                <span className="text-[11px] text-ink-3">{WD[i]}</span>
+                <span className={cx('flex size-9 items-center justify-center rounded-full text-[17px]', on ? 'bg-ink text-on-ink' : sameDay(d, now) ? 'text-accent-ink' : 'text-ink-2')}>{d.getDate()}</span>
+                <span className={cx('size-1 rounded-full', has ? 'bg-ink-3' : 'bg-transparent')} />
               </button>
             )
           })}
         </div>
+      )}
+      {narrow && mode === 'week' && (
+        <p className="m-0 text-ui">
+          {days[0].getMonth() + 1} 月 {days[0].getDate()} 日（{WD[(days[0].getDay() + 6) % 7]}）{sameDay(days[0], now) && ' · 今天'}
+          <span className="pl-2 text-sub text-ink-3">{dayCount} 件</span>
+        </p>
       )}
       {error && (
         <p role="alert" className="m-0 text-sub text-danger">
@@ -332,7 +355,7 @@ export function CalendarView() {
       ) : (
         <ListView items={items ?? []} bots={bots} />
       )}
-      <div className="flex items-center gap-3 rounded-card bg-panel px-5 py-3.5 text-sub text-ink-2">
+      <div className="flex items-center gap-3 rounded-card bg-panel px-5 py-3.5 text-sub text-ink-2 max-md:hidden">
         <Icon icon={Moon} size={18} />
         這台主機要開著，定時任務才會跑。休眠或關機時錯過的，恢復後合併補跑一次。
       </div>

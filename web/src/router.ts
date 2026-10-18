@@ -12,11 +12,24 @@ function subscribe(fn: () => void) {
   }
 }
 
+/** 這一頁之前還有幾頁是在 XBot 裡面走過來的（返回鈕、滑動返回用；0 表示是直接打開的）。 */
+export function historyDepth(): number {
+  const d = (window.history.state as { d?: number } | null)?.d
+  return typeof d === 'number' ? d : 0
+}
+
 export function navigate(to: string, opts: { replace?: boolean } = {}) {
   if (to === window.location.pathname + window.location.search) return
-  if (opts.replace) window.history.replaceState(null, '', to)
-  else window.history.pushState(null, '', to)
+  const d = historyDepth()
+  if (opts.replace) window.history.replaceState({ d }, '', to)
+  else window.history.pushState({ d: d + 1 }, '', to)
   listeners.forEach((fn) => fn())
+}
+
+/** 返回上一頁：是從 XBot 裡面走過來的就用瀏覽器的上一頁，否則（直接打開、從通知點進來）到 fallback。 */
+export function goBack(fallback: string) {
+  if (historyDepth() > 0) window.history.back()
+  else navigate(fallback, { replace: true })
 }
 
 export function usePath(): string {

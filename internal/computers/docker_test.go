@@ -16,6 +16,7 @@ import (
 	"github.com/moby/moby/client"
 
 	"xbot/internal/box"
+	"xbot/internal/box/guardlock"
 	"xbot/internal/events"
 	"xbot/internal/hosts"
 	"xbot/internal/ops"
@@ -76,6 +77,8 @@ func TestDockerComputerOps(t *testing.T) {
 	bus := events.New()
 	sub := bus.Subscribe(nil, 0)
 	defer sub.Close()
+	// 和其他套件共用本機的網路防護（xbot-netguard）；網路防護測試在跑時先等它做完（見 guardlock）。
+	guardlock.Shared(t)
 	boxes := box.New(db, hosts.NewRegistry(host), box.Options{Image: image,
 		Notify: func(s box.Status) { Publish(db, bus, KindStatus, s.BotID, s, true) }})
 	svc := &Service{DB: db, Boxes: boxes, Bus: bus}

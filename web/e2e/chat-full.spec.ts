@@ -147,6 +147,7 @@ test('模型選擇器（C06）：換這個 Bot 的模型與推理強度', async 
   api.addMessage(t.id, { sender: 'bot:' + bot.id, content: '收到。我請阿哲去抓三家的價格。', status: 'complete' })
   await page.goto(`/bots/${bot.id}/threads/${t.id}`)
   const main = page.getByRole('main', { name: '和小秘的對話' })
+  test.skip(info.project.name === 'mobile', '手機頁首照 L03（沒有模型膠囊）；手機在 Bot 資料 › 進階 › 引擎與模型改')
   const pill = main.getByRole('button', { name: /^模型：gpt-4.1-mini/ })
   await pill.click()
   const picker = page.getByRole('dialog', { name: '選擇模型' })
@@ -222,8 +223,11 @@ test('目前進度（C12）與電腦按鈕；載入更早的訊息', async ({ pa
     { ...base, kind: 'chat.tool_result', at: started, payload: { type: 'tool_result', tool: { id: 's1', ok: true } } },
     { ...base, kind: 'chat.tool_call', at: Date.now() - 12_000, payload: { type: 'tool_call', tool: { id: 's2', name: 'browser_open', context: '打開蝦皮搜尋「保溫瓶」' } } },
   )
-  await main.getByRole('button', { name: '更多' }).click()
-  await page.getByRole('menuitem', { name: '目前進度' }).click()
+  if (info.project.name === 'mobile') await main.getByRole('button', { name: '目前進度' }).click()
+  else {
+    await main.getByRole('button', { name: '更多' }).click()
+    await page.getByRole('menuitem', { name: '目前進度' }).click()
+  }
   const dlg = page.getByRole('dialog', { name: '小秘的目前進度' })
   await expect(dlg).toContainText('有工作正在進行')
   await expect(dlg).toContainText('幫我比較蝦皮上三家競品的定價')

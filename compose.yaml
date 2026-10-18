@@ -8,8 +8,8 @@ services:
     image: xbot:local
     restart: unless-stopped
     ports:
-      # 只對本機開放；手機等其他裝置之後透過 Tailscale 連線（PRD §17）。
-      - "127.0.0.1:${XBOT_PORT:-8780}:8780"
+      # 預設對所有網路介面開放（0.0.0.0）；非本機連線要登入碼。只想本機用：XBOT_HOST_BIND=127.0.0.1。
+      - "${XBOT_HOST_BIND:-0.0.0.0}:${XBOT_PORT:-8780}:8780"
     volumes:
       - xbot-data:/data
       # 服務要用 Docker 開 Bot 的電腦。注意：能用 Docker 等於有主機 root 權限（PRD SEC-9）。

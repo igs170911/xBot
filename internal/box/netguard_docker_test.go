@@ -17,6 +17,7 @@ import (
 
 	"github.com/moby/moby/client"
 
+	"xbot/internal/box/guardlock"
 	"xbot/internal/hosts"
 	"xbot/internal/store"
 )
@@ -71,6 +72,8 @@ func TestDockerNetguard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// 獨占網路防護：這個測試改白名單並驗證規則，別的套件同時開電腦會用基本規則蓋掉它（見 guardlock）。
+	guardlock.Exclusive(t)
 	m := New(db, hosts.NewRegistry(host), Options{Image: image})
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)

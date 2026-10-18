@@ -1,5 +1,8 @@
 import { useImperativeHandle, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type Ref } from 'react'
 import { ArrowUp, LoaderCircle } from 'lucide-react'
+import { MentionMenu } from './MentionMenu'
+import { mentionQuery } from './mentionQuery'
+import { usePhone } from '../mobile/nav'
 import { IconButton } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
@@ -34,8 +37,17 @@ export function ChatComposer({ name, mode, onSend, onStop, hint, handle }: ChatC
   const [sending, setSending] = useState(false)
   const input = useRef<HTMLTextAreaElement>(null)
   const empty = text.trim() === ''
+  const phone = usePhone()
+  const query = mentionQuery(text)
+  const [closedAt, setClosedAt] = useState<string | null>(null)
+  const showMention = query !== null && closedAt !== text
 
   const caretToEnd = useRef(false)
+  const pickMention = (who: string) => {
+    setText(text.replace(/@([^\s@]*)$/, '@' + who + ' '))
+    caretToEnd.current = true
+    input.current?.focus()
+  }
   useImperativeHandle(handle, () => ({
     fill: (t) => {
       if (t !== undefined) setText(t)
@@ -70,17 +82,23 @@ export function ChatComposer({ name, mode, onSend, onStop, hint, handle }: ChatC
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // 中文輸入法選字時的 Enter 不是送出
+    if (e.key === 'Escape' && showMention) {
+      e.preventDefault()
+      setClosedAt(text)
+      return
+    }
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) {
       e.preventDefault()
       void submit()
     }
   }
 
-  const placeholder = mode === 'stopping' ? `正在停止${name}…` : mode === 'working' ? `補充說明給${name}…` : `交代${name}…`
+  const placeholder = mode === 'stopping' ? `正在停止${name}…` : mode === 'working' ? (phone ? '這輪做完才會送出' : `補充說明給${name}…`) : `交代${name}…`
   const line = hint ?? (mode === 'working' ? `${name}工作中 · 要改做別的事，先按停止` : mode === 'stopping' ? '正在停止 · 做到一半的檔案會保留' : '')
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="relative flex flex-col gap-2">
+      {showMention && <MentionMenu query={query ?? ''} exclude={name} onPick={pickMention} />}
       <form onSubmit={submit} className="flex min-h-[52px] items-center gap-0.5 rounded-[26px] bg-control py-[8px] pl-4 pr-[9px]">
         <label className="flex min-w-0 flex-1">
           <span className="sr-only-text">{placeholder.replace(/…$/, '')}</span>
@@ -113,7 +131,7 @@ export function ChatComposer({ name, mode, onSend, onStop, hint, handle }: ChatC
           </button>
         )}
       </form>
-      {line && <span className="self-center text-center text-meta text-ink-3">{line}</span>}
+      {line && !phone && <span className="self-center text-center text-meta text-ink-3">{line}</span>}
     </div>
   )
 }
