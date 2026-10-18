@@ -1,0 +1,10 @@
+.git
+.data
+bin
+tmp
+design
+design-work
+docs
+web/node_modules
+web/dist
+web/e2e-results

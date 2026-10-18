@@ -54,3 +54,6 @@ make host-add HOST=…   # 把一台機器加成 Bot 電腦主機
 make backup / restore / update
 ```
 新增任何需要外部工具的功能時，要同時更新 `make doctor` 和 `make setup`。
+
+埠號：安裝版服務 8780；`make dev` 用 8782（API）與 5181（前端）；`make e2e` 用 8799。
+驗證腳本：`scripts/test-clean-install.sh`（乾淨容器裡 make setup＋check）、`scripts/test-service.sh`（systemd 容器裡測安裝、備份還原、回滾、開機自動啟動）。

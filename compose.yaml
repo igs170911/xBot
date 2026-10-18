@@ -1,0 +1,19 @@
+# make up／make down：用 docker compose 跑 XBot 服務（另一種安裝方式，和 make install 二選一）。
+services:
+  xbot:
+    build:
+      context: .
+      args:
+        VERSION: ${XBOT_VERSION:-dev}
+    image: xbot:local
+    restart: unless-stopped
+    ports:
+      # 只對本機開放；手機等其他裝置之後透過 Tailscale 連線（PRD §17）。
+      - "127.0.0.1:${XBOT_PORT:-8780}:8780"
+    volumes:
+      - xbot-data:/data
+      # 服務要用 Docker 開 Bot 的電腦。注意：能用 Docker 等於有主機 root 權限（PRD SEC-9）。
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  xbot-data:
