@@ -190,7 +190,7 @@ func Register(reg *ops.Registry) {
 	ops.Register(reg, ops.Op[ApprovalsListIn, ApprovalsListOut]{
 		Name: "xbot.approvals.list", Summary: "列出等你核准的動作",
 		Description: "代理看得到自己要求的；有代為核准授權的代理也看得到授權類別內、它能碰的 Bot 的核准。",
-		Scope:       ops.ScopeRead, Risk: ops.RiskSafe,
+		Scope:       ops.ScopeRead, Risk: ops.RiskSafe, ForBot: true,
 		Handle: func(ctx context.Context, call *ops.Call, in ApprovalsListIn) (ApprovalsListOut, error) {
 			return listApprovals(ctx, reg, call, in)
 		},
@@ -199,7 +199,7 @@ func Register(reg *ops.Registry) {
 		Name: "xbot.approvals.wait", Summary: "等一個核准的結果",
 		Description: "收到 pending_approval 後用它等：使用者允許並執行完（executed）、允許了但執行失敗（failed）、退回、" +
 			"或逾時（settled=false，可以再呼叫）。代理只能等自己要求的核准。",
-		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
+		Scope: ops.ScopeRead, Risk: ops.RiskSafe, ForBot: true,
 		Handle: func(ctx context.Context, call *ops.Call, in WaitIn) (Outcome, error) {
 			return wait(ctx, reg, call, in)
 		},

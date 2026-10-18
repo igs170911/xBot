@@ -39,7 +39,13 @@ const (
 	RelayBase = "http://127.0.0.1:8642"
 	// DesktopMCP 是映像裡的桌面工具（box/Dockerfile 放在 /opt/xbot）。
 	DesktopMCP = "/opt/xbot/desktop_mcp.py"
-	python     = "/opt/hermes/.venv/bin/python"
+	// XBotMCP 是 XBot MCP 的 stdio 橋接（C11，box/xbot_mcp.py）：把 MCP 轉送到 /product-ipc/product.sock，
+	// 身分就是這個 Bot。映像裡也有 /usr/local/bin/xbot-mcp 指向它，給 ACP 引擎（Claude Code、Codex）註冊。
+	XBotMCP = "/opt/xbot/xbot_mcp.py"
+	// XBotMCPServer 是它在 Hermes mcp_servers 裡的名字（工具在 Hermes 的延遲目錄裡叫 mcp__xbot__xbot_<領域>_<動作>）。
+	XBotMCPServer = "xbot"
+	// Python 是映像裡 Hermes 的 Python（desktop_mcp 也用它跑）。
+	Python = "/opt/hermes/.venv/bin/python"
 )
 
 // webHint 取代 Hermes 對 cli 平台「終端機不顯示 Markdown」的提示（LazyBoy WEB_HINT）。
@@ -230,7 +236,8 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 	}
 	auto["enabled"] = false
 	mcp := sub("mcp_servers")
-	mcp["computer"] = map[string]any{"command": python, "args": []any{DesktopMCP}, "trust": "full"}
+	mcp["computer"] = map[string]any{"command": Python, "args": []any{DesktopMCP}, "trust": "full"}
+	mcp[XBotMCPServer] = map[string]any{"command": Python, "args": []any{XBotMCP}, "trust": "full"}
 	return cfg
 }
 

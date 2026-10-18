@@ -1,0 +1,22 @@
+# XBot 遠端主機需要的 sshd 設定（docs/spike-ssh-forward.md「主機需求」）。
+Port 22
+HostKey /etc/ssh/ssh_host_ed25519_key
+AllowUsers xbot
+PermitRootLogin no
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+AuthorizedKeysFile .ssh/authorized_keys
+# noVNC／Hermes 埠轉發（direct-tcpip 到遠端 127.0.0.1）
+AllowTcpForwarding yes
+# Docker socket（direct-streamlocal）與 product.sock（streamlocal-forward）
+AllowStreamLocalForwarding yes
+# 重連時換掉上一條連線留下的 socket 檔
+StreamLocalBindUnlink yes
+# socket 開成 0666：容器裡的 Bot 使用者（UID 1000）不是 xbot 帳號
+StreamLocalBindMask 0111
+# 預設值，寫出來是為了實測：轉發的 channel 不算 session
+MaxSessions 10
+ClientAliveInterval 15
+ClientAliveCountMax 3
+Subsystem sftp internal-sftp

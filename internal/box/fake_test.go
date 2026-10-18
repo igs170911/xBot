@@ -2,7 +2,9 @@ package box
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
 	"path/filepath"
 	"strconv"
@@ -29,6 +31,16 @@ type fakeDocker struct {
 	copies     []string
 	nextPort   int
 	seq        int
+	// execs 記下開過的行程；execRun 是行程本身（nil 時讀完 stdin 就以 0 結束）。
+	execs   map[string]*fakeExec
+	execRun func(cmd []string, stdin io.Reader, stdout io.Writer) int
+}
+
+type fakeExec struct {
+	container string
+	opts      client.ExecCreateOptions
+	running   bool
+	exit      int
 }
 
 func newFakeDocker() *fakeDocker {
@@ -36,6 +48,7 @@ func newFakeDocker() *fakeDocker {
 		images:     map[string]string{DefaultImage: "sha256:image1"},
 		containers: map[string]*container.InspectResponse{},
 		volumes:    map[string]volume.Volume{},
+		execs:      map[string]*fakeExec{},
 		nextPort:   40000,
 	}
 }
@@ -196,6 +209,71 @@ func (f *fakeDocker) CopyToContainer(_ context.Context, id string, o client.Copy
 
 func (f *fakeDocker) CopyFromContainer(context.Context, string, client.CopyFromContainerOptions) (client.CopyFromContainerResult, error) {
 	return client.CopyFromContainerResult{}, notFound("path")
+}
+
+// ExecCreate 只能在開機中的容器上開行程。
+func (f *fakeDocker) ExecCreate(_ context.Context, id string, o client.ExecCreateOptions) (client.ExecCreateResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c := f.find(id)
+	if c == nil {
+		return client.ExecCreateResult{}, notFound("container")
+	}
+	if c.State == nil || !c.State.Running {
+		return client.ExecCreateResult{}, cerrdefs.ErrConflict.WithMessage("container is not running")
+	}
+	f.seq++
+	eid := fmt.Sprintf("exec%d", f.seq)
+	f.execs[eid] = &fakeExec{container: c.ID, opts: o}
+	return client.ExecCreateResult{ID: eid}, nil
+}
+
+// ExecAttach 在記憶體裡跑 execRun，stdout 照 Docker 的多工格式送回。
+func (f *fakeDocker) ExecAttach(_ context.Context, id string, _ client.ExecAttachOptions) (client.ExecAttachResult, error) {
+	f.mu.Lock()
+	e, ok := f.execs[id]
+	run := f.execRun
+	if ok {
+		e.running = true
+	}
+	f.mu.Unlock()
+	if !ok {
+		return client.ExecAttachResult{}, notFound("exec")
+	}
+	if run == nil {
+		run = func(_ []string, stdin io.Reader, _ io.Writer) int { _, _ = io.Copy(io.Discard, stdin); return 0 }
+	}
+	ours, theirs := net.Pipe()
+	go func() {
+		code := run(e.opts.Cmd, theirs, muxWriter{theirs})
+		f.mu.Lock()
+		e.running, e.exit = false, code
+		f.mu.Unlock()
+		theirs.Close()
+	}()
+	return client.ExecAttachResult{HijackedResponse: client.NewHijackedResponse(ours, "")}, nil
+}
+
+func (f *fakeDocker) ExecInspect(_ context.Context, id string, _ client.ExecInspectOptions) (client.ExecInspectResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.execs[id]
+	if !ok {
+		return client.ExecInspectResult{}, notFound("exec")
+	}
+	return client.ExecInspectResult{ID: id, ContainerID: e.container, Running: e.running, ExitCode: e.exit}, nil
+}
+
+// muxWriter 用 Docker 的多工格式（8 bytes 標頭：串流 1＝stdout、長度）寫出 stdout。
+type muxWriter struct{ w io.Writer }
+
+func (m muxWriter) Write(b []byte) (int, error) {
+	hdr := []byte{1, 0, 0, 0, 0, 0, 0, 0}
+	binary.BigEndian.PutUint32(hdr[4:], uint32(len(b)))
+	if _, err := m.w.Write(append(hdr, b...)); err != nil {
+		return 0, err
+	}
+	return len(b), nil
 }
 
 // fakeHost 是接上 fakeDocker 的主機。

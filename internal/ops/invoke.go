@@ -67,6 +67,10 @@ func (r *Registry) invoke(ctx context.Context, id Identity, name string, raw jso
 	if !id.HasScope(info.Scope) {
 		return Result{}, audit.fail(ctx, Forbidden(fmt.Sprintf("%s 沒有「%s」權限，不能使用 %s", id.DisplayName(), scopeNames[info.Scope], name)))
 	}
+	// Bot 只能用開放給 Bot 的操作（C11）；product.sock 的 MCP 只列出這些，這裡再擋一次。
+	if id.Kind == KindBot && !info.ForBot {
+		return Result{}, audit.fail(ctx, Forbidden(fmt.Sprintf("Bot 不能使用 %s", name)))
+	}
 	// 輸入驗證（資源範圍要讀輸入，所以先驗證）
 	if fields := info.Input.Validate(raw); len(fields) > 0 {
 		return Result{}, audit.fail(ctx, InvalidInput(fields...))
@@ -197,9 +201,57 @@ type approvalPayload struct {
 
 // requestApproval 建立核准與待我處理卡片，回傳 pending_approval 錯誤（失敗時回其他錯誤）。
 func (r *Registry) requestApproval(ctx context.Context, call *Call, raw, masked json.RawMessage, botID, target string, claimed bool) *Error {
+	t, err := r.createApproval(ctx, call, raw, masked, botID, target, claimed, ApprovalCard{})
+	if err != nil {
+		return AsError(err)
+	}
+	return pendingError(t.ApprovalID)
+}
+
+// ApprovalCard 是核准卡片的顯示內容；空白欄位用預設（「<誰> 想要：<操作說明>」）。
+type ApprovalCard struct {
+	Title, Body string
+	// Params 是卡片上顯示的參數（已遮蔽）；空白用操作的輸入。
+	Params json.RawMessage
+	// ThreadID、TaskID：卡片屬於哪條對話串、哪件工作（Bot 在對話裡要求的核准）。
+	ThreadID, TaskID string
+}
+
+// ApprovalTicket 是建立好的核准與它的待我處理卡片。
+type ApprovalTicket struct {
+	ApprovalID string
+	InboxID    string
+}
+
+// RequestApproval 由操作自己建立一個核准（例：Bot 用 xbot.approvals.request 請你核准一件事，C11）：
+// 和 confirm 級操作走同一條路（approval、待我處理卡片、inbox.created 事件、稽核、op 事件）。
+// 你允許後，ExecuteApproved 會以 call.ApprovalID 不是空白再執行一次這個操作。
+// call 是目前這次呼叫；raw 是核准後執行時要用的輸入。DryRun 時不能呼叫。
+func (r *Registry) RequestApproval(ctx context.Context, call *Call, raw json.RawMessage, botID string, card ApprovalCard) (ApprovalTicket, error) {
+	if call.DryRun {
+		return ApprovalTicket{}, Internal(errors.New("預演時不能建立核准"))
+	}
+	masked := Mask(raw, call.Op.Input)
+	t, err := r.createApproval(ctx, call, raw, masked, botID, botID, false, card)
+	if err != nil {
+		return t, AsError(err)
+	}
+	return t, nil
+}
+
+func (r *Registry) createApproval(ctx context.Context, call *Call, raw, masked json.RawMessage, botID, target string, claimed bool, c ApprovalCard) (ApprovalTicket, error) {
 	id, info := call.Identity, call.Op
-	var approvalID string
+	var t ApprovalTicket
 	var ev, cardEv *store.Event
+	if c.Title == "" {
+		c.Title = fmt.Sprintf("%s 想要：%s", id.DisplayName(), info.Summary)
+	}
+	if c.Body == "" {
+		c.Body = "要允許嗎？按允許才會執行。"
+	}
+	if len(c.Params) == 0 {
+		c.Params = masked
+	}
 	err := r.cfg.DB.Tx(ctx, func(q *store.Queries) error {
 		bot, err := existingBot(ctx, q, botID)
 		if err != nil {
@@ -208,7 +260,7 @@ func (r *Registry) requestApproval(ctx context.Context, call *Call, raw, masked 
 		if botID != "" && bot == "" {
 			return NotFound("找不到這個 Bot")
 		}
-		payload, err := json.Marshal(approvalPayload{Op: info.Name, Summary: info.Summary, Params: masked, Identity: id, RequestID: call.RequestID})
+		payload, err := json.Marshal(approvalPayload{Op: info.Name, Summary: info.Summary, Params: c.Params, Identity: id, RequestID: call.RequestID})
 		if err != nil {
 			return err
 		}
@@ -217,20 +269,19 @@ func (r *Registry) requestApproval(ctx context.Context, call *Call, raw, masked 
 		if err != nil {
 			return err
 		}
-		approvalID = a.ID
-		card, err := json.Marshal(map[string]any{"op": info.Name, "params": masked, "approval_id": a.ID, "actor": id.Actor(),
+		t.ApprovalID = a.ID
+		card, err := json.Marshal(map[string]any{"op": info.Name, "params": c.Params, "approval_id": a.ID, "actor": id.Actor(),
 			"actor_name": id.DisplayName(), "via": id.Via, "request_id": call.RequestID, "category": info.Category,
 			"delegable": info.Delegable(), "reversible": info.Reversible})
 		if err != nil {
 			return err
 		}
-		item, err := q.CreateInboxItem(ctx, store.InboxItem{Kind: "approval", BotID: bot, Ref: a.ID,
-			Title:   fmt.Sprintf("%s 想要：%s", id.DisplayName(), info.Summary),
-			Body:    "要允許嗎？按允許才會執行。",
-			Payload: card})
+		item, err := q.CreateInboxItem(ctx, store.InboxItem{Kind: "approval", BotID: bot, Ref: a.ID, ThreadID: c.ThreadID, TaskID: c.TaskID,
+			Title: c.Title, Body: c.Body, Payload: card})
 		if err != nil {
 			return err
 		}
+		t.InboxID = item.ID
 		created, err := q.AppendEvent(ctx, notify.Event(notify.KindCreated, item))
 		if err != nil {
 			return err
@@ -256,11 +307,11 @@ func (r *Registry) requestApproval(ctx context.Context, call *Call, raw, masked 
 		return err
 	})
 	if err != nil {
-		return AsError(err)
+		return ApprovalTicket{}, err
 	}
 	r.notify(cardEv)
 	r.notify(ev)
-	return pendingError(approvalID)
+	return t, nil
 }
 
 // ExecuteApproved 在使用者允許之後執行原本被擋下的動作（approvals.decide 呼叫，C05）。

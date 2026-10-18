@@ -10,7 +10,10 @@ import (
 
 	"xbot/internal/box"
 	"xbot/internal/config"
+	"xbot/internal/engine"
+	"xbot/internal/engine/acp"
 	"xbot/internal/engine/hermes"
+	"xbot/internal/engines"
 	"xbot/internal/events"
 	"xbot/internal/hosts"
 	"xbot/internal/ipc"
@@ -19,7 +22,8 @@ import (
 	"xbot/internal/store"
 )
 
-// stack 是服務的核心元件：資料庫、本機主機、Model Proxy、product.sock、Box Manager、Hermes 驅動、runtime。
+// stack 是服務的核心元件：資料庫、本機主機、Model Proxy、product.sock、Box Manager、引擎驅動（Hermes、ACP）、
+// 訂閱憑證、runtime。
 // serve 與 dev 指令共用。
 type stack struct {
 	db        *store.DB
@@ -32,7 +36,8 @@ type stack struct {
 	budgets   *proxy.Budgets
 	sockets   *ipc.Server
 	boxes     *box.Manager
-	driver    *hermes.Driver
+	driver    *engine.Router
+	creds     *engines.Service
 	runtime   *runtime.Runtime
 }
 
@@ -89,9 +94,22 @@ func openStack(cfg config.Config) (*stack, error) {
 		Model: s.model, Keys: s.keys, Logger: logger,
 	})
 	comp.Keys, comp.Sockets = s.keys, s.sockets
-	s.boxes = box.New(db, hosts.NewRegistry(s.local), box.Options{Image: os.Getenv("XBOT_BOX_IMAGE"), Prepare: comp.Prepare})
+	comp.XBotMCP = runtime.XBotMCPServer() // Claude Code、Codex 也拿到 XBot MCP（C11）
+	registry := hosts.NewRegistry(s.local)
+	comp.Hosts = registry
+	s.boxes = box.New(db, registry, box.Options{Image: os.Getenv("XBOT_BOX_IMAGE"), Prepare: comp.Prepare})
 	comp.Boxes = s.boxes
-	s.driver = hermes.New(comp.Connect, logger)
+	// 訂閱 CLI 的憑證從執行 XBot 服務的使用者家目錄讀（EN-2b）。
+	home, _ := os.UserHomeDir()
+	s.creds = &engines.Service{DB: db, HostHome: home, Locate: comp.Locate, UID: box.BotUID, GID: box.BotGID, Logger: logger}
+	comp.Creds = s.creds
+	drivers := []engine.Driver{hermes.New(comp.Connect, logger)}
+	for _, name := range []string{acp.EngineClaude, acp.EngineCodex} {
+		drivers = append(drivers, acp.New(acp.Options{Agent: acp.Agents[name], Launch: comp.LaunchACP, Authorize: s.creds.Authorize,
+			MCPServers: comp.MCPServers, Logger: logger}))
+	}
+	s.driver = engine.NewRouter(hermes.Name, comp.EngineOf, drivers...)
+	s.creds.Close = s.driver.Close
 	s.runtime = runtime.New(runtime.Options{DB: db, Driver: s.driver, Bus: events.New(), Models: comp, Logger: logger,
 		Budget: func(ctx context.Context, botID, providerID string) error {
 			if err := s.budgets.Check(ctx, botID); err != nil {

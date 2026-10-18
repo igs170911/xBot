@@ -107,6 +107,16 @@ ARG GROK_CLI_VERSION=1.0.52
 RUN npm install -g "@xai-official/grok@${GROK_CLI_VERSION}" && npm cache clean --force \
     && rm -rf /root/.grok /usr/local/lib/node_modules/@xai-official/grok/node_modules/@xai-official/grok-linux-* \
     && grok --version
+# ACP adapters for the subscription CLIs (XBot's ACP driver, E12): Claude Code through
+# @agentclientprotocol/claude-agent-acp (formerly Zed's @zed-industries/claude-code-acp; bundles the Claude Agent SDK
+# and its Claude Code binary) and Codex CLI through @agentclientprotocol/codex-acp (formerly @zed-industries/codex-acp;
+# pulls @openai/codex). Pinned; both speak ACP on stdin/stdout and are started per bot with `docker exec`. Logins are
+# never baked in: the owner links one per bot (xbot.engines.link_credentials) into /opt/xbot/cred.
+ARG CLAUDE_AGENT_ACP_VERSION=0.85.1
+ARG CODEX_ACP_VERSION=2.1.1
+RUN npm install -g "@agentclientprotocol/claude-agent-acp@${CLAUDE_AGENT_ACP_VERSION}" "@agentclientprotocol/codex-acp@${CODEX_ACP_VERSION}" \
+    && npm cache clean --force \
+    && command -v claude-agent-acp codex-acp
 RUN mkdir -p /workspace /home/box /usr/share/xbot/xfce-skel /etc/xdg/xfce4 /usr/share/xfce4/helpers /etc/gtk-3.0 /etc/fonts/conf.d /usr/share/licenses/huninn \
     && chmod 1777 /workspace
 COPY --chmod=755 start-desktop.sh keep-desktop-awake desktop-probe.py stop-browser.py stop-browser.mjs restore-browser.mjs box-chrome box-terminal box-a11y box-teach-browser.mjs box-teach-desktop /usr/local/bin/
@@ -178,10 +188,15 @@ ENV PATH="/opt/hermes/.venv/bin:${PATH}" HOME=/home/box HERMES_HOME=/hermes BROW
     TERMINAL_CWD=/workspace PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 # LazyBoy also baked product_mcp.py (its product tools as an MCP server) in here. XBot replaces it with the XBot
 # MCP (internal/mcpserver), reached through the product socket the Box Manager mounts or forwards to
-# /product-ipc/product.sock; hermes_host.py already relays /product and /model/* to that socket.
+# /product-ipc/product.sock. xbot_mcp.py is a stdio bridge to it (Hermes registers it as MCP server "xbot";
+# ACP engines run `xbot-mcp`); hermes_host.py relays /product and /model/* to the same socket.
 ENV XBOT_PRODUCT_SOCK=/product-ipc/product.sock
-RUN mkdir -p /product-ipc
+# Subscription CLI logins the owner linked to this bot (EN-2b) are copied here, outside the home volume: root-owned
+# folders, 0400 files owned by the bot user; ~/.claude/.credentials.json and ~/.codex/auth.json link to them.
+RUN mkdir -p /product-ipc /opt/xbot/cred && chmod 755 /opt/xbot/cred
 COPY hermes_host.py desktop_mcp.py /opt/xbot/
+COPY --chmod=755 xbot_mcp.py /opt/xbot/xbot_mcp.py
+RUN ln -s /opt/xbot/xbot_mcp.py /usr/local/bin/xbot-mcp
 COPY --chmod=755 start-bot.sh /usr/local/bin/start-bot.sh
 EXPOSE 8642 6080
 WORKDIR /workspace

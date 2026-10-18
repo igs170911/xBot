@@ -218,18 +218,18 @@ func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error
 	t.taskID = task.ID
 	r.mu.Unlock()
 	r.emit(t, KindMessageCreated, msg, true)
-	go r.run(runCtx, t, th, b.Name, ref)
+	go r.run(runCtx, t, th, b.Name, b.ApprovalMode, ref)
 	return ChatResult{ThreadID: th.ID, TaskID: task.ID, MessageID: msg.ID}, nil
 }
 
 // run 在背景完成一輪：開（或接回）引擎 session（必要時開機）、送出訊息；之後由 consume 處理事件直到 done。
-func (r *Runtime) run(ctx context.Context, t *turn, th store.Thread, botName string, ref ModelRef) {
+func (r *Runtime) run(ctx context.Context, t *turn, th store.Thread, botName, mode string, ref ModelRef) {
 	r.setState(t, store.TaskWaitingBox)
 	title := botName
 	if th.Title != "" {
 		title = botName + " · " + th.Title
 	}
-	s, err := r.o.Driver.Start(ctx, engine.StartOptions{BotID: t.botID, ThreadID: t.threadID, Resume: th.EngineSession, Title: title, Model: ref.Model})
+	s, err := r.o.Driver.Start(ctx, engine.StartOptions{BotID: t.botID, ThreadID: t.threadID, Resume: th.EngineSession, Title: title, Model: ref.Model, Mode: mode})
 	if err != nil {
 		r.finishErr(t, err)
 		return

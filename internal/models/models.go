@@ -130,6 +130,12 @@ func Register(reg *ops.Registry, d Deps) {
 	registerPricing(reg)
 }
 
+// IsClaudeOAuth 判斷金鑰是不是 Claude 訂閱（Claude Code／claude.ai 登入）的 OAuth 權杖：
+// access token 是 sk-ant-oat…、refresh token 是 sk-ant-ort…；一般 API 金鑰是 sk-ant-api…。
+func IsClaudeOAuth(key string) bool {
+	return strings.HasPrefix(key, "sk-ant-oat") || strings.HasPrefix(key, "sk-ant-ort")
+}
+
 func (d Deps) ready() error {
 	if d.Providers == nil || d.Lister == nil {
 		return ops.Internal(errors.New("模型代理（Model Proxy）沒有啟動"))
@@ -229,6 +235,11 @@ func (d Deps) setProvider(ctx context.Context, call *ops.Call, in SetProviderIn)
 		return SetProviderOut{}, ops.Conflict("這個供應商用訂閱登入，要換帳號請用 xbot.models.oauth_start")
 	}
 	key := proxy.Secret(strings.TrimSpace(in.APIKey))
+	if IsClaudeOAuth(string(key)) {
+		// EN-2a：Claude 訂閱只經 Claude Code 本身使用，不讓 Hermes（經 Model Proxy）借用它的登入權杖。
+		return SetProviderOut{}, ops.InvalidInput(ops.FieldError{Field: "api_key",
+			Message: "這是 Claude 訂閱的登入權杖，不能給 Hermes 用。要用 Claude 訂閱，請把 Bot 的引擎改成 Claude Code，再同意連結訂閱（xbot.engines.link_credentials）；或改用 Anthropic API 金鑰"})
+	}
 	if key == "" {
 		// 沒給金鑰：保留原本的（只改網址）。
 		key = old.APIKey

@@ -59,6 +59,8 @@ func cmdServe(args []string) error {
 	notify := func(e store.Event) { bus.Publish(events.FromStore(e)) }
 	st.budgets.Notify = notify // 花費上限卡片也即時推給介面
 	reg := buildRegistry(st.db, pairing, notify, st)
+	// Bot 經自己的 product.sock 用 XBot MCP（C11）：身分就是那個 Bot。
+	st.sockets.SetProduct(mcpserver.BotHandler(reg, mcpserver.BotOptions{Keys: st.keys, DB: st.db, Logger: slog.Default()}))
 	// 權杖驗證 HTTP 與 MCP 共用（登入碼＝你本人，代理權杖＝那個代理）。
 	tokens := &auth.Authenticator{DB: st.db, AccessToken: accessToken}
 	localOwner := os.Getenv("XBOT_MCP_LOCAL_OWNER") == "1"

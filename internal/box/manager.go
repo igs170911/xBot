@@ -306,6 +306,10 @@ func (m *Manager) start(ctx context.Context, b store.Box, h hosts.Host) (Status,
 	if err != nil {
 		return Status{}, err
 	}
+	// 每次開機前都確保 product.sock 的資料夾就緒：遠端主機在服務重啟或重連後要重新建立反向轉發（B11）。
+	if _, err := h.PrepareIPC(b.BotID); err != nil {
+		return Status{}, m.fail(ctx, b, fmt.Errorf("準備 Bot 電腦失敗：%w", err))
+	}
 	if m.prepare != nil {
 		if err := m.prepare(ctx, h, b.BotID, c.ID); err != nil {
 			return Status{}, m.fail(ctx, b, fmt.Errorf("準備 Bot 電腦失敗：%w", err))

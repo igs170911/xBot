@@ -32,6 +32,10 @@ type DockerAPI interface {
 	// CopyToContainer、CopyFromContainer 用來在開機前把引擎設定寫進 Bot 的 volume（E02）。
 	CopyToContainer(ctx context.Context, id string, options client.CopyToContainerOptions) (client.CopyToContainerResult, error)
 	CopyFromContainer(ctx context.Context, id string, options client.CopyFromContainerOptions) (client.CopyFromContainerResult, error)
+	// ExecCreate、ExecAttach、ExecInspect 在 Bot 的電腦裡開行程並接上 stdin／stdout（E12：ACP 引擎、收回憑證）。
+	ExecCreate(ctx context.Context, containerID string, options client.ExecCreateOptions) (client.ExecCreateResult, error)
+	ExecAttach(ctx context.Context, execID string, options client.ExecAttachOptions) (client.ExecAttachResult, error)
+	ExecInspect(ctx context.Context, execID string, options client.ExecInspectOptions) (client.ExecInspectResult, error)
 }
 
 var _ DockerAPI = (*client.Client)(nil)
