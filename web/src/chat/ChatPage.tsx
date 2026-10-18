@@ -156,7 +156,8 @@ function Header({
         items={[
           { label: '目前進度', icon: ActivityIcon, onSelect: onProgress },
           { label: '新對話串', icon: Plus, onSelect: () => navigate(`/bots/${bot.id}/threads/new`) },
-          { label: '模型與金鑰設定', icon: Settings, separator: true, onSelect: () => navigate('/settings') },
+          { label: '引擎與權限', icon: Settings, separator: true, onSelect: () => navigate(`/settings/bots/${encodeURIComponent(bot.id)}`) },
+          { label: '模型與金鑰設定', icon: Settings, onSelect: () => navigate('/settings/models') },
         ]}
         trigger={(p) => <IconButton {...p} icon={Ellipsis} label="更多" />}
       />
