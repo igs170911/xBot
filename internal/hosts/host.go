@@ -183,3 +183,19 @@ func (r *Registry) Get(id string) (Host, error) {
 	}
 	return h, nil
 }
+
+// Remove 從登錄表拿掉一台主機（不會關掉它的連線）。預設主機不能拿掉。
+func (r *Registry) Remove(id string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if id != r.def {
+		delete(r.hosts, id)
+	}
+}
+
+// Default 回傳預設主機（本機）的 id。
+func (r *Registry) Default() string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.def
+}

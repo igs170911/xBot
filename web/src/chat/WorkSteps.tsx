@@ -6,7 +6,7 @@ import { cx } from '../ui/cx'
 import type { Bot } from '../data/bots'
 import { useNow } from '../data/ui'
 import { AnsweredChip, AskCard } from './AskCard'
-import { formatElapsed, isActive, workSummary, type Activity, type Step } from './assemble'
+import { formatElapsed, isActive, waitText, workSummary, type Activity, type Step } from './assemble'
 
 const STATE_TITLE: Record<string, string> = {
   queued: '排隊中',
@@ -17,6 +17,7 @@ const STATE_TITLE: Record<string, string> = {
 }
 
 function title(a: Activity): string {
+  if (a.state === 'waiting_box' && a.wait) return waitText(a.wait) ?? STATE_TITLE.waiting_box
   if (STATE_TITLE[a.state]) return STATE_TITLE[a.state]
   // C01：做事中的標題一律是「思考中」（步驟清單已經說明在做什麼）
   return '思考中'

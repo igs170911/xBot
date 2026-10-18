@@ -7,7 +7,7 @@ import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
-import { formatElapsed, isActive, type Activity, type ChatState } from './assemble'
+import { formatElapsed, isActive, waitText, type Activity, type ChatState } from './assemble'
 import { clockLabel, taskTitle } from './format'
 
 function Line({ label, tone, children }: { label: string; tone?: string; children: ReactNode }) {
@@ -47,7 +47,7 @@ export function ProgressDialog({ open, onClose, bot, chat, threadId, act, botAct
         {act ? (
           <div className={cx('my-2 flex h-11 items-center gap-2.5 rounded-menu px-3.5', waiting ? 'bg-warning-soft' : 'bg-success-soft')}>
             <span className={cx('size-2 rounded-full', waiting ? 'bg-warning' : 'bg-success')} />
-            <span className={cx('flex-1 text-ui', waiting && 'text-warning-ink')}>{STATE_TEXT[act.state] ?? '有工作正在進行'}</span>
+            <span className={cx('flex-1 text-ui', waiting && 'text-warning-ink')}>{(act.state === 'waiting_box' && waitText(act.wait)) || (STATE_TEXT[act.state] ?? '有工作正在進行')}</span>
             {act.startedAt && <span className="text-meta text-ink-2">已工作 {formatElapsed(now - act.startedAt)}</span>}
           </div>
         ) : (

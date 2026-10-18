@@ -14,9 +14,11 @@ XBOT    := bin/xbot
 , := ,
 # 管理已安裝服務時，優先用裝好的執行檔；還沒安裝就用剛建出來的。
 XBOT_INSTALLED = $(shell command -v $(HOME)/.local/bin/xbot 2>/dev/null || echo $(XBOT))
+# 主機指令（host-add、host-check）要新版的 xbot：有建好的 bin/xbot 就用它，否則用已安裝的。
+XBOT_CLI = $(shell test -x $(XBOT) && echo $(XBOT) || command -v $(HOME)/.local/bin/xbot 2>/dev/null || echo $(XBOT))
 
 .PHONY: help doctor setup deps dev check fmt gen test test-docker e2e e2e-docker box box-latest box-test build web-build install start stop restart \
-        status logs token up down update backup restore clean uninstall
+        status logs token up down update backup restore clean uninstall host-add host-check deploy test-host
 
 help: ## 列出所有指令
 	@echo "XBot 指令（完整說明見 docs/PLAN.md §2）："
@@ -24,6 +26,7 @@ help: ## 列出所有指令
 	@echo ""
 	@echo "常用參數：YES=1 不詢問直接執行｜WITH_TAILSCALE=1 也裝 Tailscale｜SKIP_BROWSERS=1 不下載測試瀏覽器"
 	@echo "　　　　　PURGE=1 移除時連資料一起刪｜INCLUDE_LOGINS=1 備份含登入資料｜FILE=… 還原用的備份檔"
+	@echo "　　　　　HOST=使用者@位址 主機與部署｜SSH_OPTS=\"-p 2222 -i 金鑰\" 額外的 ssh 參數"
 
 doctor: ## 檢查缺什麼，並告訴你怎麼修
 	@scripts/bootstrap.sh doctor
@@ -140,6 +143,28 @@ uninstall: ## 移除服務與執行檔（資料保留；PURGE=1 連資料一起�
 
 clean: ## 清掉建置產物（不動資料）
 	rm -rf bin tmp web/dist web/e2e-results
+
+# ── 其他機器：Bot 電腦主機與部署（B12）────────────────
+# HOST=使用者@位址（你自己能 ssh 的帳號）；SSH_OPTS="-p 2222 -i ~/.ssh/key" 額外的 ssh 參數；YES=1 不詢問。
+
+host-add: ## 把一台機器加成 Bot 電腦主機：make host-add HOST=root@位址 [NAME=名稱] [MAX=同時開機上限] [NO_TAILSCALE=1]
+	@test -n "$(HOST)" || { echo "用法：make host-add HOST=使用者@位址（要有 root 或 sudo）[NAME=名稱]"; exit 1; }
+	@test -x "$(XBOT_CLI)" || $(MAKE) --no-print-directory build
+	@YES=$(YES) SSH_OPTS="$(SSH_OPTS)" $(XBOT_CLI) host add --host "$(HOST)" $(if $(NAME),--name "$(NAME)",) $(if $(MAX),--max-running $(MAX),) $(if $(ADDRESS),--address "$(ADDRESS)",) $(if $(NO_TAILSCALE),--no-tailscale,)
+
+host-check: ## 檢查一台主機：make host-check HOST=名稱或位址 [UPDATE_IMAGE=1]
+	@test -n "$(HOST)" || { echo "用法：make host-check HOST=主機名稱或位址"; exit 1; }
+	@test -x "$(XBOT_CLI)" || $(MAKE) --no-print-directory build
+	@$(XBOT_CLI) host check --host "$(HOST)" $(if $(UPDATE_IMAGE),--update-image,)
+
+deploy: ## 部署到另一台機器（建置 → SSH 複製 → 安裝或更新服務 → 健康檢查，失敗自動回滾）：make deploy HOST=使用者@位址
+	@test -n "$(HOST)" || { echo "用法：make deploy HOST=使用者@位址"; exit 1; }
+	@$(MAKE) --no-print-directory build
+	@YES=$(YES) SSH_OPTS="$(SSH_OPTS)" $(XBOT) deploy --host "$(HOST)" $(if $(PORT),--port $(PORT),)
+
+test-host: ## 在 systemd＋sshd 容器裡驗證 make deploy（含回滾）與 make host-add（要 Docker，會先 make build）
+	@$(MAKE) --no-print-directory build
+	@scripts/test-host.sh
 
 # ── docker compose 版本（和 make install 二選一）──────────
 

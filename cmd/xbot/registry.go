@@ -34,6 +34,7 @@ func coreDeps(st *stack) catalog.Deps {
 		Providers: st.providers,
 		Lister:    st.pstore,
 		Budgets:   st.budgets,
+		Hosts:     st.hosts,
 		Teardown: catalog.Teardown(st.db, st.driver.Close, func(ctx context.Context, botID string) error {
 			_, err := st.boxes.Remove(ctx, botID, true)
 			return err

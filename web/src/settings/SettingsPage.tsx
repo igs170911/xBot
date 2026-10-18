@@ -8,6 +8,8 @@ import { cx } from '../ui/cx'
 import { GeneralSection } from './GeneralSection'
 import { ModelsSection } from './ModelsSection'
 import { UsageSection } from './UsageSection'
+import { ComputersSection } from './ComputersSection'
+import { AddHostPage, HostDetailPage } from './HostPages'
 import { BotSettingsPage } from './BotSettings'
 import { SettingsOverview } from './SettingsOverview'
 import { SectionHeader } from './parts'
@@ -78,7 +80,10 @@ function Content({ path }: { path: string }) {
   if (path === '/settings/general') return <GeneralSection />
   if (path.startsWith('/settings/models')) return <ModelsSection path={path} />
   if (path === '/settings/usage') return <UsageSection />
-  if (path === '/settings/computers') return <Placeholder title="電腦與裝置" sub="Bot 的電腦、主機和你的手機。" note="電腦主機、休眠時間、連手機會在電腦頁（B12～B14）完成後放在這裡。" />
+  if (path === '/settings/computers') return <ComputersSection />
+  if (path === '/settings/computers/add') return <AddHostPage />
+  const host = path.match(/^\/settings\/computers\/hosts\/([^/]+)\/?$/)
+  if (host) return <HostDetailPage hostId={decodeURIComponent(host[1])} />
   if (path === '/settings/advanced/agents') return <AgentsPage />
   if (path === '/settings/advanced/backup') return <Placeholder title="備份與更新" sub="備份資料、還原、更新 XBot。" note="目前請用 make backup／make update。" />
   if (path === '/settings/advanced/people') return <Placeholder title="成員與紀錄" sub="組織成員和操作紀錄。" note="之後的任務卡會做。" />
@@ -107,12 +112,14 @@ function AdvancedIndex() {
 function backTarget(path: string): string {
   if (path.startsWith('/settings/bots/')) return '/settings/models/bots'
   if (path.startsWith('/settings/advanced/')) return '/settings/advanced'
+  if (path.startsWith('/settings/computers/')) return '/settings/computers'
   return '/settings'
 }
 
 function simplified(path: string): string | null {
   if (path === '/settings/general' || path === '/settings') return '簡化：15 個區塊 → 5 個'
   if (path === '/settings/models') return '簡化：5 個欄位 → 1 個'
+  if (path === '/settings/computers/add') return '簡化：手動設定 Docker／SSH／防火牆 → 貼一行指令'
   return null
 }
 
@@ -126,7 +133,7 @@ export function SettingsPage({ path }: { path: string }) {
 
   const tag = simplified(path)
   const overview = narrow && (path === '/settings' || path === '/settings/')
-  const title = path.startsWith('/settings/bots/') ? 'Bot 的引擎與權限' : (TITLES[path] ?? (path.startsWith('/settings/models') ? 'AI 模型' : '設定'))
+  const title = path.startsWith('/settings/bots/') ? 'Bot 的引擎與權限' : path === '/settings/computers/add' ? '新增主機' : path.startsWith('/settings/computers/hosts/') ? '主機' : (TITLES[path] ?? (path.startsWith('/settings/models') ? 'AI 模型' : '設定'))
 
   let body: ReactNode
   if (overview) body = <SettingsOverview />
