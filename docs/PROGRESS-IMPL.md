@@ -16,3 +16,4 @@
 | C04 MCP 與 CLI 出口、代理配對 | ✅ 完成 | `task/C04-mcp` | 配對完成是無需登入的 HTTP 端點（不是 op）；配對碼存在記憶體（重啟失效）；admin 代理也不能自己配對或改權限；`/mcp` 也接受擁有者登入碼 | 待確認：Claude Code 是否接受含點的工具名稱 `xbot.system.ping`（CP1 實測，不行就加底線別名）；tools/list 是否依權限過濾；MCP-8 預設範圍 |
 | C03 HTTP 出口、SSE、前端型別 | ✅ 完成 | `task/C03-http` | 登入／登出／狀態是 HTTP 專用端點（處理 cookie，不是 op）；budget 用 402；CLI 不再需要 /mcp 備援 | 待確認：兩套「本機請求」判斷要不要合併；事件被清理後重連要不要送 reset；登出無法逐一撤銷 session |
 | C05 第一批核心操作 | ✅ 完成 | `task/C05-core-ops` | 多了 `models.set_default`；approval_mode 值 ask/edits/auto/full（取自 OMB）；代理只看到自己的核准與稽核 | Bot 等人回答時還沒有回答的操作（chat.respond，C12）；核准後執行失敗時 approvals.wait 分不出來；刪除 Bot 沒關閉 product.sock；`xbot dev chat` 可移除 |
+| W02 對話畫面最小版 | ✅ 完成 | `task/W02-chat` | 工作中再送訊息會顯示「忙碌中，先按停止」（伺服器不接受排隊）；Bot 的提問只顯示「在等你」（回答功能在 C12）；新增 `make e2e-docker`（真 Bot 電腦＋假模型） | 重新整理後看不到舊回合的步驟（需要 tasks.events 之類的 op）；開機中重新整理看不到進度；事件表沒存 thread_id |
