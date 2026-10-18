@@ -35,6 +35,7 @@ type dockerEnv struct {
 	keys    *proxy.WorkerKeys
 	rt      *Runtime
 	comp    *Computers
+	boxes   *box.Manager
 	bot     store.Bot
 	fake    *hermestest.FakeModel
 	realKey string
@@ -111,7 +112,7 @@ func newDockerEnv(ctx context.Context, t *testing.T) *dockerEnv {
 	boxes := box.New(db, hosts.NewRegistry(local), box.Options{Image: image, Prepare: comp.Prepare})
 	comp.Boxes = boxes
 	comp.Hosts = hosts.NewRegistry(local)
-	e.comp = comp
+	e.comp, e.boxes = comp, boxes
 	drv := hermes.New(comp.Connect, nil)
 	e.rt = New(Options{DB: db, Driver: drv, Bus: events.New(), Models: comp})
 	pstore.Attribute = e.rt.Active
@@ -277,5 +278,69 @@ func TestDockerBackToBack(t *testing.T) {
 		if !strings.Contains(strings.ToUpper(msgs[i].Content), "OK") {
 			t.Fatalf("第 %d 則回覆：%q", i, msgs[i].Content)
 		}
+	}
+}
+
+// BX-12、CL-9：閒置的電腦休眠後，有工作時自動叫醒（同一台電腦、同一條對話串接著做）；排隊中的工作也一樣。
+func TestDockerIdleSleepAndWake(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+	env := newDockerEnv(ctx, t)
+	wait := func(taskID string) {
+		t.Helper()
+		wctx, wcancel := context.WithTimeout(ctx, 3*time.Minute)
+		defer wcancel()
+		task, err := env.rt.Wait(wctx, taskID)
+		if err != nil || task.Verdict != VerdictAnswer {
+			t.Fatalf("工作：%+v %v\n%s", task, err, env.logs())
+		}
+	}
+	res, err := env.rt.Chat(ctx, env.bot.ID, "", "回覆 OK")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wait(res.TaskID)
+	first, err := env.boxes.Status(ctx, env.bot.ID)
+	if err != nil || !first.Running {
+		t.Fatalf("開機：%+v %v", first, err)
+	}
+
+	// 剛做完：還沒閒置夠久。
+	if slept, err := env.boxes.SleepIdle(ctx, env.rt, time.Now()); err != nil || len(slept) != 0 {
+		t.Fatalf("還不該休眠：%v %v", slept, err)
+	}
+	// 30 分鐘後：休眠（docker stop），Hermes 的連線先關掉。
+	slept, err := env.boxes.SleepIdle(ctx, env.rt, time.Now().Add(31*time.Minute))
+	if err != nil || len(slept) != 1 {
+		t.Fatalf("閒置休眠：%v %v", slept, err)
+	}
+	st, err := env.boxes.Status(ctx, env.bot.ID)
+	if err != nil || st.Running || st.State != box.StateSleeping {
+		t.Fatalf("休眠後：%+v %v", st, err)
+	}
+	got, err := env.cli.ContainerInspect(ctx, env.name, client.ContainerInspectOptions{})
+	if err != nil || got.Container.State.Running || got.Container.State.ExitCode != 0 {
+		t.Fatalf("容器應該正常停下：%+v %v", got.Container.State, err)
+	}
+
+	// 有工作：自動叫醒，同一台電腦，對話串接著做；後面排隊的工作也做完。
+	start := time.Now()
+	res2, err := env.rt.Chat(ctx, env.bot.ID, res.ThreadID, "再回覆一次 OK")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res3, err := env.rt.Start(ctx, ChatRequest{BotID: env.bot.ID, ThreadID: res.ThreadID, Text: "第三次回覆 OK", Queue: true})
+	if err != nil || !res3.Queued {
+		t.Fatalf("排隊：%+v %v", res3, err)
+	}
+	wait(res2.TaskID)
+	wait(res3.TaskID)
+	t.Logf("叫醒並做完兩件工作：%s", time.Since(start).Round(time.Millisecond))
+	again, err := env.boxes.Status(ctx, env.bot.ID)
+	if err != nil || !again.Running || again.ContainerID != first.ContainerID {
+		t.Fatalf("應該叫醒同一台電腦：%+v %v（原本 %s）", again, err, first.ContainerID)
+	}
+	if env.rt.HasWork(env.bot.ID) {
+		t.Fatal("做完了不該還有工作")
 	}
 }

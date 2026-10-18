@@ -63,7 +63,9 @@ type Resources struct {
 	Hostname       string `json:"hostname"`
 	RTTMillis      int64  `json:"rtt_ms"`
 	ImageID        string `json:"image_id,omitempty" desc:"主機上的電腦映像版本"`
-	Tailscale      bool   `json:"tailscale" desc:"經 Tailscale 連線"`
+	// ImageKey 是主機上電腦映像的內容指紋（各層 diff id 的雜湊）：不同 Docker 的映像 id 可能不同，比對新舊用它（B13）。
+	ImageKey  string `json:"image_key,omitempty"`
+	Tailscale bool   `json:"tailscale" desc:"經 Tailscale 連線"`
 }
 
 // Report 是一次主機檢查的結果。
@@ -236,12 +238,12 @@ func (s *SSH) Inspect(ctx context.Context, img ImageRef) (r Report) {
 		got, err := s.docker.ImageInspect(ctx, img.Name)
 		switch {
 		case err == nil && SameImage(got.InspectResponse, img):
-			r.Resources.ImageID = got.ID
+			r.Resources.ImageID, r.Resources.ImageKey = got.ID, layersKey(got.InspectResponse)
 			r.set(CheckImage, CheckOK, img.Name+" · 已是最新", "")
 		case err == nil || cerrdefs.IsNotFound(err):
 			r.NeedImage = true
 			if err == nil {
-				r.Resources.ImageID = got.ID
+				r.Resources.ImageID, r.Resources.ImageKey = got.ID, layersKey(got.InspectResponse)
 			}
 			r.set(CheckImage, CheckPending, fmt.Sprintf("%s · 要從 XBot 傳過去（約 %s）", img.Name, GB(img.Size)), "")
 		default:

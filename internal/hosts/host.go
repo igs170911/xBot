@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/moby/moby/client"
@@ -38,6 +39,11 @@ type DockerAPI interface {
 	ExecCreate(ctx context.Context, containerID string, options client.ExecCreateOptions) (client.ExecCreateResult, error)
 	ExecAttach(ctx context.Context, execID string, options client.ExecAttachOptions) (client.ExecAttachResult, error)
 	ExecInspect(ctx context.Context, execID string, options client.ExecInspectOptions) (client.ExecInspectResult, error)
+	// NetworkCreate、NetworkInspect、NetworkList、ContainerList 給 Bot 電腦的專用網路與網路防護（B13，SEC-4）。
+	NetworkCreate(ctx context.Context, name string, options client.NetworkCreateOptions) (client.NetworkCreateResult, error)
+	NetworkInspect(ctx context.Context, id string, options client.NetworkInspectOptions) (client.NetworkInspectResult, error)
+	NetworkList(ctx context.Context, options client.NetworkListOptions) (client.NetworkListResult, error)
+	ContainerList(ctx context.Context, options client.ContainerListOptions) (client.ContainerListResult, error)
 }
 
 var _ DockerAPI = (*client.Client)(nil)
@@ -140,6 +146,14 @@ func (h *Local) PrepareIPC(botID string) (string, error) {
 		return "", err
 	}
 	return dir, nil
+}
+
+// ForgetBot 刪掉 Bot 在資料目錄裡的資料夾 <data>/bots/<id>（刪除 Bot 時；product.sock 要先關掉）。
+func (h *Local) ForgetBot(_ context.Context, botID string) error {
+	if botID == "" || strings.ContainsAny(botID, `/\`) || botID == "." || botID == ".." {
+		return fmt.Errorf("不合法的 Bot id：%q", botID)
+	}
+	return os.RemoveAll(BotDir(h.dataDir, botID))
 }
 
 // Addr 實作 Host：本機發布的埠就在 127.0.0.1。

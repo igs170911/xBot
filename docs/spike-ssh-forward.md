@@ -115,7 +115,7 @@ StreamLocalBindMask 0111        # socket 開成 0666：容器裡的 Bot 使用�
 
 1. **E02 驅動的問題（不是 SSH 造成的，本機也重現）**：一輪的 `message.complete` 之後**立刻**在同一個 Bot 送下一個 prompt，Hermes 會回覆 `prompt.submit` 卻不執行，這一輪永遠等不到結束（只能等連線中斷）。隔 2 秒再送就正常。正式使用時人打字不會這麼快，但 Bot 之間互傳、排程工作可能會碰到。建議 E02 在送出前等 Hermes 這個 session 真的閒下來，或加上「送出後 N 秒沒有 message.start 就重送／報錯」。~~測試目前用 3 秒間隔避開（`turnGap`）。~~ **已修（task/E02-fix-backtoback）**：原因是 Hermes 在 `message.complete` 之後還沒放開 `running`（收尾完才送 `session.info` running=false），這時的 `prompt.submit` 依 `busy_input_mode: steer` 被當成插話（回 `{"status":"steered"}`），不會開新的一輪。驅動現在先等 session 閒下來、送出時帶 `queued: true`，並加了等不到 `message.start` 的看門狗；`turnGap` 已移除。
 2. 斷線那一瞬間的模型請求會失敗：要確認 Hermes 對 product.sock 回的錯誤會不會自己重試（目前看起來會在下一輪恢復）。
-3. 容器重建後舊埠的本機轉發埠不會自動關（`ReleaseAddr` 已有，還沒接上）；刪除 Bot 時要呼叫 `ReleaseIPC` 並刪遠端的 `bots/<id>` 資料夾。B13 處理。
+3. 容器重建後舊埠的本機轉發埠不會自動關（`ReleaseAddr` 已有，還沒接上）；刪除 Bot 時要呼叫 `ReleaseIPC` 並刪遠端的 `bots/<id>` 資料夾。B13 已處理：埠換了就放掉舊埠的轉發，刪除 Bot 時停掉反向轉發並刪遠端資料夾（`SSH.ForgetBot`）。
 4. 主機凍結要約 20 秒才發現；要更快就把 keepalive 調短（代價是網路抖動時容易誤判斷線）。
 5. 高延遲線路下 noVNC 頻寬受 SSH 視窗限制；如果之後要跨洲，可以考慮讓 noVNC 直接走 tailnet（仍只綁 tailnet IP）。
 6. 健康狀態寫回 `host.status`、主機離線時 Bot 顯示「主機離線」（CL-6）是 B12。

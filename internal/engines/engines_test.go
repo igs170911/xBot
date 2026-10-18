@@ -46,8 +46,10 @@ func (f *fakeFiles) CopyToContainer(_ context.Context, _ string, o client.CopyTo
 	if f.fail != nil {
 		return client.CopyToContainerResult{}, f.fail
 	}
-	if !o.CopyUIDGID {
-		return client.CopyToContainerResult{}, errors.New("要帶 uid/gid")
+	if o.CopyUIDGID {
+		// 擁有者照 tar 標頭（Bot 使用者或 root）；CopyUIDGID 會讓 Docker 把所有檔案改成容器的使用者（B13 起是 1000:1000，
+		// 而且是在主機的 passwd 裡找，遠端主機上找不到就失敗）。
+		return client.CopyToContainerResult{}, errors.New("不能用 CopyUIDGID")
 	}
 	tr := tar.NewReader(o.Content)
 	for {

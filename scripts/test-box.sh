@@ -2,7 +2,9 @@
 # Bot 電腦映像的冒煙測試（任務卡 B01）：開一台 Bot 電腦，確認
 #   桌面（Xvnc＋XFCE）、Chromium（含 CDP 9222）、noVNC（6080）、Hermes（執行檔＋8642 的 gateway 主機）都起得來，
 #   Claude Code／Codex CLI 的 ACP adapter 裝好且回應 initialize（E12），
-# 做完一定把容器刪掉。
+#   而且是用和 Box Manager 一樣的強化設定開機（SEC-3，B13）：Bot 使用者（1000）、沒有任何 capability、
+#   no-new-privileges、唯讀根檔案系統（只有 /tmp、/run、/var/tmp 與資料區可寫）、沒有 sudo。
+# 做完一定把容器（和它的匿名資料區）刪掉。
 # 用法：scripts/test-box.sh            （映像預設 xbot-box:dev，可用 BOX_IMAGE=… 換）
 #       KEEP=1 scripts/test-box.sh     （失敗時保留容器方便查）
 set -euo pipefail
@@ -19,7 +21,7 @@ cleanup() {
   if [ "$failed" = 1 ] && [ -n "${KEEP:-}" ]; then
     echo "（KEEP=1：保留容器 $name，看完用 docker rm -f $name 刪掉）"
   else
-    docker rm -f "$name" >/dev/null 2>&1 || true
+    docker rm -f -v "$name" >/dev/null 2>&1 || true
   fi
 }
 trap cleanup EXIT
@@ -30,10 +32,14 @@ in_box() { docker exec "$name" "$@"; }
 # 以 Bot 使用者身分執行（和正式開機一樣用 XBOT_UID 降權）。
 as_bot() { docker exec -u "$uid:$uid" "$name" "$@"; }
 
-# 和 LazyBoy server/computers.py 一樣的資源設定，並用一般使用者身分跑 Bot。
+# 和 Box Manager（internal/box/spec.go createOptions）一樣的強化設定；資料區用匿名 volume 代替。
 uid=1000
 echo "▶ 開機：$image"
-docker run -d --name "$name" --shm-size 512m -e XBOT_UID=$uid -e XBOT_GID=$uid \
+docker run -d --name "$name" --shm-size 512m --user "$uid:$uid" --read-only \
+  --tmpfs /tmp:rw,exec,nosuid,nodev,mode=1777,size=1g --tmpfs /run:rw,nosuid,nodev,mode=755,uid=1000,gid=1000,size=64m \
+  --tmpfs /var/tmp:rw,nosuid,nodev,mode=1777,size=256m \
+  --cap-drop ALL --security-opt no-new-privileges:true --pids-limit 4096 \
+  -v /home/box -v /workspace -v /hermes -v /opt/xbot/cred \
   -p 127.0.0.1::6080 "$image" >/dev/null
 
 echo "▶ 等桌面就緒（最多 ${timeout} 秒）"
@@ -102,6 +108,31 @@ mcp_init='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersi
 bridge=$(as_bot sh -c "echo '$mcp_init' | XBOT_WORKER_KEY=smoke timeout 10 xbot-mcp" 2>&1 || true)
 if printf '%s' "$bridge" | grep -q '"id":1,"error"'; then
   ok "XBot MCP 橋接 xbot-mcp 可執行（沒有 product.sock 時回錯誤）"; else fail "xbot-mcp 不正常：$bridge"; fi
+
+# 容器強化（SEC-3）：根檔案系統唯讀、Bot 使用者沒有任何 capability、沒有 sudo，可寫的只有 tmpfs 與資料區。
+if [ "$(docker inspect -f '{{.HostConfig.ReadonlyRootfs}}' "$name")" = true ]; then
+  ok "容器設定為唯讀根檔案系統"; else fail "容器沒有設定唯讀根檔案系統"; fi
+ro_ok=1
+for dir in / /etc /usr /opt /opt/xbot /usr/local/bin; do
+  out=$(docker exec -u 0 -e LC_ALL=C "$name" touch "$dir/.xbot-rw-test" 2>&1 || true)
+  case "$out" in
+    *"Read-only file system"*) ;;
+    *) ro_ok=0; echo "    $dir 可以寫入：${out:-（寫入成功）}" ;;
+  esac
+done
+if [ "$ro_ok" = 1 ]; then ok "根檔案系統唯讀（/、/etc、/usr、/opt 都寫不進去，連容器裡的 root 也不行）"; else fail "根檔案系統可以寫入"; fi
+rw_ok=1
+for dir in /tmp /run /var/tmp /home/box /workspace /hermes; do
+  if ! as_bot sh -c "touch '$dir/.xbot-rw-test' && rm -f '$dir/.xbot-rw-test'" 2>/dev/null; then rw_ok=0; echo "    $dir 寫不進去"; fi
+done
+if [ "$rw_ok" = 1 ]; then ok "Bot 可寫的只有 /tmp、/run、/var/tmp 與資料區"; else fail "Bot 需要的資料夾寫不進去"; fi
+pid1_user=$(in_box ps -o user= -p 1 | tr -d ' ')
+caps=$(in_box sh -c "grep -h '^CapEff' /proc/[0-9]*/status 2>/dev/null | sort -u | awk '{print \$2}' | tr '\n' ' '" || true)
+if [ "$pid1_user" = bot ] && [ "$(echo "$caps" | tr -d ' 0')" = "" ]; then
+  ok "所有行程都是 Bot 使用者、沒有任何 capability"; else fail "PID 1 是 ${pid1_user:-?}、capability：${caps:-?}"; fi
+if ! in_box sh -c 'command -v sudo' >/dev/null 2>&1; then ok "沒有 sudo"; else fail "映像裡還有 sudo"; fi
+if [ "$(docker inspect -f '{{.HostConfig.SecurityOpt}}' "$name")" = "[no-new-privileges:true]" ]; then
+  ok "no-new-privileges"; else fail "沒有 no-new-privileges"; fi
 
 if [ "$failed" = 1 ]; then
   echo "❌ Bot 電腦冒煙測試失敗。最後的紀錄："; docker logs --tail 40 "$name" || true

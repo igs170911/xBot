@@ -52,6 +52,8 @@ const (
 	HostCheckGrace = 3 * time.Second
 	// HostImageLoadTimeout 是把電腦映像傳到一台主機的時限。
 	HostImageLoadTimeout = 2 * time.Hour
+	// HostImageCacheTTL：主機清單比對「映像是不是舊了」（B13）時，這台的電腦映像資訊快取多久。XBot 新增。
+	HostImageCacheTTL = 15 * time.Second
 )
 
 // HostSSHUser 是遠端主機上 XBot 用的帳號（安裝指令會建立）。

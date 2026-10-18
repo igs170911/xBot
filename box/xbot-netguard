@@ -1,0 +1,155 @@
+#!/bin/bash
+# xbot-netguard: XBot's network guard for bot computers (PRD SEC-4).
+#
+# The Box Manager runs this image once per Docker host as the container `xbot-netguard`
+# (host network, NET_ADMIN + NET_RAW only, read-only root, restart always). Bot computers sit on the Docker network
+# `xbot-box` (bridge xbot-box0). The rules XBot computes (internal/box/netguard.go) go into two chains of their own:
+#   XBOT-FWD  jumped to first from DOCKER-USER (or FORWARD when Docker manages nftables): traffic the bridge routes
+#             elsewhere. Private, loopback, link-local and CGNAT/Tailscale ranges are dropped, as is box-to-box traffic;
+#             DNS and the per-bot allowlists are let through; the internet is left to Docker's own rules.
+#   XBOT-IN   jumped to first from INPUT: anything a box sends to the host itself (the bridge gateway, docker0, the host's
+#             LAN or tailnet address) is dropped unless it answers a connection the host opened (noVNC, Hermes).
+#
+# Commands:
+#   run    apply the rules, write the ready marker, then re-check every XBOT_NETGUARD_INTERVAL seconds (default 5) so
+#          the rules come back after a firewall reload and stay first in their parent chains.
+#   apply  apply once (XBot runs this with `docker exec` after writing new rules; exit 0 = in place).
+#   check  exit 0 when the rules are in place, 1 otherwise.
+#   ipt    run the iptables variant this host uses (tests and troubleshooting).
+#   remove take the chains out again (uninstall: `docker exec xbot-netguard xbot-netguard remove`, then remove the
+#          container, the xbot-box network and the xbot-netguard-* volumes).
+#
+# Bot computers mount the ready volume read-only at /opt/xbot/netguard and start-bot.sh waits until the marker holds
+# this boot's id, so after a host reboot no box reaches the network before the rules are back (fail closed).
+set -uo pipefail
+
+STATE=${XBOT_NETGUARD_STATE:-/var/lib/xbot-netguard}
+READY=${XBOT_NETGUARD_READY:-/var/lib/xbot-netguard-ready}
+RULES=$STATE/rules.v4
+APPLIED=$STATE/applied
+INTERVAL=${XBOT_NETGUARD_INTERVAL:-5}
+LOCK=/run/xbot-netguard.lock
+
+log() { printf '[xbot-netguard] %s\n' "$*" >&2; }
+
+# Docker's chains live in one of two iptables back ends; ours must sit next to them. Prefer the one that already
+# has DOCKER-USER (the legacy one only when nft has none), like Kubernetes' iptables-wrapper.
+variant() {
+  if iptables-nft -w -n -L DOCKER-USER >/dev/null 2>&1; then echo nft; return; fi
+  if iptables-legacy -w -n -L DOCKER-USER >/dev/null 2>&1; then echo legacy; return; fi
+  echo nft
+}
+V=$(variant)
+ipt() { "iptables-$V" -w "$@"; }
+restore() { "iptables-$V-restore" -w --noflush; }
+
+parent() { if ipt -n -L DOCKER-USER >/dev/null 2>&1; then echo DOCKER-USER; else echo FORWARD; fi; }
+
+# first_jump CHAIN TARGET: make "-j TARGET" the first rule of CHAIN (other software may insert above it).
+first_jump() {
+  local chain=$1 target=$2
+  if [ "$(ipt -S "$chain" 2>/dev/null | sed -n 2p)" = "-A $chain -j $target" ] \
+    && [ "$(ipt -S "$chain" | grep -c -- "-j $target\$")" = 1 ]; then
+    return 0
+  fi
+  while ipt -D "$chain" -j "$target" 2>/dev/null; do :; done
+  ipt -I "$chain" 1 -j "$target"
+}
+
+# snapshot: what the kernel holds now (iptables prints rules in its own normalized form) and the rules file's checksum.
+snapshot() {
+  sha256sum "$RULES" | cut -d' ' -f1
+  ipt -S XBOT-FWD 2>/dev/null
+  ipt -S XBOT-IN 2>/dev/null
+}
+
+# in_place: the rules file was applied, nothing changed the chains since, and both are jumped to first.
+in_place() {
+  [ -s "$RULES" ] && [ -s "$APPLIED" ] || return 1
+  local p
+  p=$(parent)
+  [ "$(ipt -S "$p" 2>/dev/null | sed -n 2p)" = "-A $p -j XBOT-FWD" ] || return 1
+  [ "$(ipt -S INPUT 2>/dev/null | sed -n 2p)" = "-A INPUT -j XBOT-IN" ] || return 1
+  [ "$(snapshot)" = "$(cat "$APPLIED")" ]
+}
+
+boot_id() { cat /proc/sys/kernel/random/boot_id; }
+
+mark_ready() {
+  mkdir -p "$READY"
+  boot_id >"$READY/ready.tmp" && chmod 644 "$READY/ready.tmp" && mv -f "$READY/ready.tmp" "$READY/ready"
+}
+
+unready() { rm -f "$READY/ready"; }
+
+apply() {
+  if [ ! -s "$RULES" ]; then
+    log "no rules yet ($RULES)"
+    unready
+    return 1
+  fi
+  if ! restore <"$RULES"; then
+    log "iptables-$V-restore failed"
+    unready
+    return 1
+  fi
+  first_jump "$(parent)" XBOT-FWD && first_jump INPUT XBOT-IN || { unready; return 1; }
+  if ! { snapshot >"$APPLIED.tmp" && mv -f "$APPLIED.tmp" "$APPLIED"; }; then
+    unready
+    return 1
+  fi
+  if ! in_place; then
+    log "rules did not stick"
+    unready
+    return 1
+  fi
+  mark_ready
+}
+
+locked() {
+  exec 8>"$LOCK"
+  flock -w 30 8 || { log "lock busy"; return 1; }
+  "$@"
+}
+
+case "${1:-run}" in
+  apply)
+    rm -f "$STATE/disabled"
+    locked apply
+    ;;
+  check)
+    in_place
+    ;;
+  ipt)
+    shift
+    ipt "$@"
+    ;;
+  remove)
+    # Take XBot's chains out of the host firewall (uninstall; run before removing the container and the network).
+    # The run loop leaves them out until XBot applies rules again.
+    touch "$STATE/disabled"
+    unready
+    rm -f "$APPLIED"
+    while ipt -D "$(parent)" -j XBOT-FWD 2>/dev/null; do :; done
+    while ipt -D INPUT -j XBOT-IN 2>/dev/null; do :; done
+    for chain in XBOT-FWD XBOT-IN; do ipt -F "$chain" 2>/dev/null; ipt -X "$chain" 2>/dev/null; done
+    ;;
+  run)
+    log "using iptables-$V"
+    while true; do
+      if [ -e "$STATE/disabled" ]; then
+        :
+      elif ! (locked in_place); then
+        (locked apply) && log "rules applied" || log "rules could not be applied; retrying"
+      elif [ "$(cat "$READY/ready" 2>/dev/null)" != "$(boot_id)" ]; then
+        mark_ready
+      fi
+      sleep "$INTERVAL" &
+      wait $!
+    done
+    ;;
+  *)
+    echo "usage: xbot-netguard run|apply|check|remove|ipt ..." >&2
+    exit 2
+    ;;
+esac

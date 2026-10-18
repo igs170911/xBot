@@ -10,6 +10,7 @@ import (
 	"xbot/internal/bots"
 	"xbot/internal/chat"
 	"xbot/internal/collab"
+	"xbot/internal/computers"
 	"xbot/internal/delegation"
 	"xbot/internal/engines"
 	"xbot/internal/files"
@@ -53,9 +54,11 @@ type Deps struct {
 	Files *files.Service
 	// Judge 是快判（X05）；nil 時只登錄定義。
 	Judge *judge.Service
+	// Computers 是 Bot 電腦的生命週期（B13）；nil 時只登錄定義。
+	Computers *computers.Service
 }
 
-// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines、files、judge（快判）各領域的操作。
+// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines、files、computers、judge（快判）各領域的操作。
 func Register(reg *ops.Registry, d Deps) {
 	bd := bots.Deps{Teardown: d.Teardown, SoulChanged: d.SoulChanged}
 	if d.Collab != nil {
@@ -96,6 +99,7 @@ func Register(reg *ops.Registry, d Deps) {
 	hosts.Register(reg, d.Hosts)
 	files.Register(reg, d.Files)
 	judge.Register(reg, d.Judge)
+	computers.Register(reg, d.Computers)
 }
 
 // Teardown 產生刪除 Bot 時用的收尾函式：先關引擎連線，再刪電腦與資料區（remove）。

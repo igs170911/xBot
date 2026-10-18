@@ -1,11 +1,14 @@
 package box
 
 import (
+	"archive/tar"
 	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
+	"path"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -29,8 +32,11 @@ type fakeDocker struct {
 	created    []client.ContainerCreateOptions
 	stops      []*int
 	copies     []string
-	nextPort   int
-	seq        int
+	// files 是 CopyToContainer 寫進去的檔案內容（目的資料夾/檔名 → 內容）。
+	files    map[string][]byte
+	networks map[string]network.Inspect
+	nextPort int
+	seq      int
 	// execs 記下開過的行程；execRun 是行程本身（nil 時讀完 stdin 就以 0 結束）。
 	execs   map[string]*fakeExec
 	execRun func(cmd []string, stdin io.Reader, stdout io.Writer) int
@@ -49,6 +55,8 @@ func newFakeDocker() *fakeDocker {
 		containers: map[string]*container.InspectResponse{},
 		volumes:    map[string]volume.Volume{},
 		execs:      map[string]*fakeExec{},
+		files:      map[string][]byte{},
+		networks:   map[string]network.Inspect{},
 		nextPort:   40000,
 	}
 }
@@ -98,15 +106,26 @@ func (f *fakeDocker) ContainerCreate(_ context.Context, o client.ContainerCreate
 			}
 		}
 	}
+	nets := map[string]*network.EndpointSettings{}
+	if o.NetworkingConfig != nil {
+		for name, ep := range o.NetworkingConfig.EndpointsConfig {
+			if _, ok := f.networks[name]; !ok {
+				return client.ContainerCreateResult{}, notFound("network " + name)
+			}
+			nets[name] = ep
+		}
+	}
 	f.seq++
 	f.created = append(f.created, o)
+	img := f.images[o.Config.Image]
 	f.containers[o.Name] = &container.InspectResponse{
 		ID:              "c" + strconv.Itoa(f.seq),
 		Name:            "/" + o.Name,
+		Image:           img,
 		State:           &container.State{Status: container.StateCreated},
 		Config:          o.Config,
 		HostConfig:      o.HostConfig,
-		NetworkSettings: &container.NetworkSettings{Ports: network.PortMap{}},
+		NetworkSettings: &container.NetworkSettings{Ports: network.PortMap{}, Networks: nets},
 	}
 	return client.ContainerCreateResult{ID: f.containers[o.Name].ID}, nil
 }
@@ -121,7 +140,7 @@ func (f *fakeDocker) ContainerInspect(_ context.Context, id string, _ client.Con
 	cp := *c
 	st := *c.State
 	cp.State = &st
-	ns := container.NetworkSettings{Ports: network.PortMap{}}
+	ns := container.NetworkSettings{Ports: network.PortMap{}, Networks: c.NetworkSettings.Networks}
 	for k, v := range c.NetworkSettings.Ports {
 		ns.Ports[k] = v
 	}
@@ -196,7 +215,7 @@ func (f *fakeDocker) VolumeRemove(_ context.Context, id string, _ client.VolumeR
 	return client.VolumeRemoveResult{}, nil
 }
 
-// CopyToContainer 記下寫入的路徑（Prepare 的測試用）。
+// CopyToContainer 記下寫入的路徑與檔案內容（Prepare、網路防護規則的測試用）。
 func (f *fakeDocker) CopyToContainer(_ context.Context, id string, o client.CopyToContainerOptions) (client.CopyToContainerResult, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -204,8 +223,95 @@ func (f *fakeDocker) CopyToContainer(_ context.Context, id string, o client.Copy
 		return client.CopyToContainerResult{}, notFound("container")
 	}
 	f.copies = append(f.copies, o.DestinationPath)
+	if o.Content != nil {
+		tr := tar.NewReader(o.Content)
+		for {
+			h, err := tr.Next()
+			if err != nil {
+				break
+			}
+			data, _ := io.ReadAll(tr)
+			f.files[path.Join(o.DestinationPath, h.Name)] = data
+		}
+	}
 	return client.CopyToContainerResult{}, nil
 }
+
+func (f *fakeDocker) NetworkCreate(_ context.Context, name string, o client.NetworkCreateOptions) (client.NetworkCreateResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.networks[name]; ok {
+		return client.NetworkCreateResult{}, cerrdefs.ErrConflict.WithMessage("network with name " + name + " already exists")
+	}
+	n := network.Inspect{Network: network.Network{Name: name, ID: "n-" + name, Driver: o.Driver, Options: o.Options, Labels: o.Labels}}
+	if o.IPAM != nil {
+		n.IPAM = *o.IPAM
+	}
+	f.networks[name] = n
+	return client.NetworkCreateResult{ID: n.ID}, nil
+}
+
+func (f *fakeDocker) NetworkInspect(_ context.Context, id string, _ client.NetworkInspectOptions) (client.NetworkInspectResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	n, ok := f.networks[id]
+	if !ok {
+		return client.NetworkInspectResult{}, notFound("network")
+	}
+	return client.NetworkInspectResult{Network: n}, nil
+}
+
+func (f *fakeDocker) NetworkList(context.Context, client.NetworkListOptions) (client.NetworkListResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out client.NetworkListResult
+	for _, n := range f.networks {
+		out.Items = append(out.Items, network.Summary{Network: n.Network})
+	}
+	return out, nil
+}
+
+// ContainerList 只支援 network 篩選（網路防護挑 IP 用）。
+func (f *fakeDocker) ContainerList(_ context.Context, o client.ContainerListOptions) (client.ContainerListResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out client.ContainerListResult
+	for _, c := range f.containers {
+		match := true
+		for name := range o.Filters["network"] {
+			if c.NetworkSettings == nil || c.NetworkSettings.Networks[name] == nil {
+				match = false
+			}
+		}
+		if !match || (!o.All && !c.State.Running) {
+			continue
+		}
+		out.Items = append(out.Items, container.Summary{ID: c.ID, Names: []string{c.Name},
+			NetworkSettings: &container.NetworkSettingsSummary{Networks: c.NetworkSettings.Networks}})
+	}
+	return out, nil
+}
+
+// ipOf 回傳容器在 xbot-box 網路上的固定 IP。
+func (f *fakeDocker) ipOf(name string) netip.Addr {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c := f.containers[name]
+	if c == nil || c.NetworkSettings.Networks[NetworkName] == nil || c.NetworkSettings.Networks[NetworkName].IPAMConfig == nil {
+		return netip.Addr{}
+	}
+	return c.NetworkSettings.Networks[NetworkName].IPAMConfig.IPv4Address
+}
+
+func (f *fakeDocker) file(p string) string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return string(f.files[p])
+}
+
+type eofReader struct{}
+
+func (eofReader) Read([]byte) (int, error) { return 0, io.EOF }
 
 func (f *fakeDocker) CopyFromContainer(context.Context, string, client.CopyFromContainerOptions) (client.CopyFromContainerResult, error) {
 	return client.CopyFromContainerResult{}, notFound("path")
@@ -247,6 +353,11 @@ func (f *fakeDocker) ExecAttach(_ context.Context, id string, _ client.ExecAttac
 	if run == nil {
 		run = func(_ []string, stdin io.Reader, _ io.Writer) int { _, _ = io.Copy(io.Discard, stdin); return 0 }
 	}
+	if !e.opts.AttachStdin {
+		// 沒接 stdin 的行程（xbot-netguard apply、rm）：照 execRun 跑，但 stdin 是空的。
+		inner := run
+		run = func(cmd []string, _ io.Reader, out io.Writer) int { return inner(cmd, eofReader{}, out) }
+	}
 	ours, theirs := net.Pipe()
 	go func() {
 		code := run(e.opts.Cmd, theirs, muxWriter{theirs})
@@ -280,11 +391,27 @@ func (m muxWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-// fakeHost 是接上 fakeDocker 的主機。
+// fakeHost 是接上 fakeDocker 的主機。released 記下 ReleaseAddr 放掉的埠（像遠端主機），forgot 記下 ForgetBot。
 type fakeHost struct {
-	id     string
-	dir    string
-	docker *fakeDocker
+	id       string
+	dir      string
+	docker   *fakeDocker
+	mu       sync.Mutex
+	released []int
+	forgot   []string
+}
+
+func (h *fakeHost) ReleaseAddr(port int) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.released = append(h.released, port)
+}
+
+func (h *fakeHost) ForgetBot(_ context.Context, botID string) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.forgot = append(h.forgot, botID)
+	return nil
 }
 
 func (h *fakeHost) ID() string              { return h.id }

@@ -35,3 +35,24 @@ const (
 	// BoxProbeTimeout 是單次就緒檢查（HTTP）的時限。出自 LazyBoy server/computers.py:341 status()（httpx timeout=2）。
 	BoxProbeTimeout = 2 * time.Second
 )
+
+// Bot 電腦的生命週期與強化（B13）。
+
+const (
+	// BoxTmpfsTmpBytes、BoxTmpfsRunBytes、BoxTmpfsVarTmpBytes 是唯讀根檔案系統（SEC-3）之下可寫的 tmpfs 大小。
+	// XBot 新增（LazyBoy 的根檔案系統可寫、沒有上限）：/tmp 放桌面的記錄檔、X 的 socket、下載與解壓的暫存，
+	// 1 GB 和 BX-14「暫存」清理的量級相當；tmpfs 算在容器的記憶體上限（BX-11 預設 3 GB）裡。
+	BoxTmpfsTmpBytes    int64 = 1 << 30
+	BoxTmpfsRunBytes    int64 = 64 << 20
+	BoxTmpfsVarTmpBytes int64 = 256 << 20
+
+	// BoxIdleCheckInterval 是閒置休眠（BX-12、CL-9）多久檢查一次。XBot 新增；閒置時間本身是 bot.idle_minutes
+	// （預設 BoxIdleMinutes，見 store.go）。
+	BoxIdleCheckInterval = time.Minute
+
+	// NetguardApplyTimeout 是把網路防護規則（SEC-4）套用到一台主機的上限（寫規則檔＋在 xbot-netguard 裡執行 apply）。XBot 新增。
+	NetguardApplyTimeout = 30 * time.Second
+
+	// NetAllowMax 是一個 Bot 的私有網路白名單（SEC-4 allow_private_urls）最多幾筆。XBot 新增。
+	NetAllowMax = 32
+)

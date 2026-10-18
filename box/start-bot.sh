@@ -2,21 +2,30 @@
 set -euo pipefail
 # Keep Hermes and its child tools on the same persistent home after dropping UID.
 export HOME=/home/box HERMES_REAL_HOME=/home/box XDG_CONFIG_HOME=/home/box/.config
-mkdir -p /hermes /workspace
+# XBot starts the box as the bot user (UID/GID 1000, created in the image) with no capabilities and a read-only root
+# filesystem (SEC-3): only /tmp, /run, /var/tmp (tmpfs) and the volumes are writable. Starting as root still works for
+# a plain `docker run` (older XBot, manual tests): hand the volumes to the bot user and drop privileges.
 if test "$(id -u)" = 0 && test -n "${XBOT_UID:-}" && test "$XBOT_UID" != 0; then
   bot_uid=$XBOT_UID
   bot_gid=${XBOT_GID:-$XBOT_UID}
-  if ! getent group "$bot_gid" >/dev/null; then groupadd --gid "$bot_gid" bot; fi
-  if ! getent passwd "$bot_uid" >/dev/null; then
-    useradd --uid "$bot_uid" --gid "$bot_gid" --home-dir /home/box --no-create-home --shell /bin/bash bot
-  fi
-  bot_user=$(getent passwd "$bot_uid" | cut -d: -f1)
-  printf '%s ALL=(ALL) NOPASSWD:ALL\n' "$bot_user" > /etc/sudoers.d/xbot-bot
-  chmod 440 /etc/sudoers.d/xbot-bot
   mkdir -p /tmp/.X11-unix
   chmod 1777 /tmp/.X11-unix
   chown -R "$bot_uid:$bot_gid" /hermes /home/box /workspace
   exec setpriv --reuid "$bot_uid" --regid "$bot_gid" --init-groups /usr/local/bin/start-bot.sh
+fi
+# Network guard (SEC-4): when XBot mounted the guard's marker, nothing here may touch the network before the host's
+# firewall rules for bot computers are in place for this boot (after a host reboot the box can come up before them).
+if test -d /opt/xbot/netguard && mountpoint -q /opt/xbot/netguard; then
+  boot=$(cat /proc/sys/kernel/random/boot_id)
+  waited=0
+  until test "$(cat /opt/xbot/netguard/ready 2>/dev/null)" = "$boot"; do
+    if test "$waited" -ge "${XBOT_NETGUARD_WAIT:-120}"; then
+      echo 'Network guard (xbot-netguard) is not running on this host; refusing to start' >&2
+      exit 1
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
 fi
 # /tmp survives `docker restart`; markers from the previous boot must not be
 # mistaken for this desktop's readiness or session bus.

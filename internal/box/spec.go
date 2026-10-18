@@ -21,40 +21,47 @@ const (
 
 	LabelBot     = "xbot.bot"
 	LabelManaged = "xbot.managed"
-	// LabelLimits 記下建立容器時的資源設定；設定變了就要重建（BX-11，B13 使用）。
+	// LabelLimits 記下建立容器時的資源設定；設定變了就要重建（BX-11）：沒開機時下次開機前自動重建。
 	LabelLimits = "xbot.limits"
+	// LabelSpec 是容器設定（強化、網路）的版本，和 specRevision 不同的舊容器下次開機前自動重建（資料保留）。
+	LabelSpec = "xbot.spec"
+	// specRevision：B13 起以 Bot 使用者、唯讀根目錄、沒有 capability 開機，接 xbot-box 網路。
+	specRevision = "b13"
 
 	// NoVNCPort 是容器內的 noVNC（websockify）埠。
 	NoVNCPort = "6080/tcp"
 	// HermesPort 是容器內的 Hermes 主機（hermes_host.py）埠。
 	HermesPort = "8642/tcp"
 
-	// 容器內的掛載點：引擎狀態、Bot 的家目錄（瀏覽器設定檔與登入）、工作資料夾、XBot 的 product.sock。
+	// 容器內的掛載點：引擎狀態、Bot 的家目錄（瀏覽器設定檔與登入）、工作資料夾、XBot 的 product.sock、
+	// 訂閱 CLI 的憑證（EN-2b；唯讀根檔案系統之下改放在自己的 volume，見 internal/engines）、網路防護的就緒標記（SEC-4）。
 	HermesDir    = "/hermes"
 	HomeDir      = "/home/box"
 	WorkspaceDir = "/workspace"
 	IPCDir       = "/product-ipc"
+	CredDir      = "/opt/xbot/cred"
+	NetguardDir  = "/opt/xbot/netguard"
 
-	// BotUID、BotGID 是容器內 Bot 使用者的身分（box/start-bot.sh 用 XBOT_UID／XBOT_GID 降權）。
+	// BotUID、BotGID 是容器內 Bot 使用者的身分（box/Dockerfile 建好的 bot 使用者，容器直接以它開機）。
 	// LazyBoy 用服務本身的 UID，因為它掛的是主機資料夾；XBot 用具名 volume，檔案只在容器裡被讀寫，
 	// 固定一個值，遠端主機也一樣。
 	BotUID = 1000
 	BotGID = 1000
 )
 
-// Volumes 是一台電腦的三個持久 volume（BX-3），重建容器時保留。
-type Volumes struct{ Home, Workspace, Hermes string }
+// Volumes 是一台電腦的持久 volume（BX-3），重建容器時保留：home／workspace／hermes，加上訂閱憑證（Cred）。
+type Volumes struct{ Home, Workspace, Hermes, Cred string }
 
 // ContainerName 回傳 Bot 的容器名稱。
 func ContainerName(botID string) string { return NamePrefix + botID }
 
-// VolumeNames 回傳 Bot 的三個 volume 名稱：xbot-box-<id>-home／-workspace／-hermes。
+// VolumeNames 回傳 Bot 的 volume 名稱：xbot-box-<id>-home／-workspace／-hermes／-cred。
 func VolumeNames(botID string) Volumes {
 	p := ContainerName(botID) + "-"
-	return Volumes{Home: p + "home", Workspace: p + "workspace", Hermes: p + "hermes"}
+	return Volumes{Home: p + "home", Workspace: p + "workspace", Hermes: p + "hermes", Cred: p + "cred"}
 }
 
-func (v Volumes) list() []string { return []string{v.Home, v.Workspace, v.Hermes} }
+func (v Volumes) list() []string { return []string{v.Home, v.Workspace, v.Hermes, v.Cred} }
 
 // Limits 是一台電腦的資源限制（BX-11）。存在 box.limits，沒寫的欄位用 internal/limits 的預設值。
 type Limits struct {
@@ -102,24 +109,53 @@ func (l Limits) signature() string {
 
 // 容器強化（SEC-3）。
 //
-// 先丟掉所有 capability，再只補 box/start-bot.sh 開機時以 root 身分要做的事：
-//   - CHOWN、DAC_OVERRIDE、FOWNER：把三個 volume 交給 Bot 使用者（chown -R）、建立 Bot 使用者（寫 /etc/passwd 等）、
-//     調整 /tmp/.X11-unix 權限。
-//   - SETUID、SETGID：setpriv 降權成 XBOT_UID／XBOT_GID。
-//   - KILL：PID 1 的 tini 以 root 身分把 docker stop 的 SIGTERM 轉給已降權的子行程；少了它，
-//     關機時 Chromium 沒機會存狀態，只能等逾時被強制結束。
+// 容器直接以 Bot 使用者（1000:1000，映像裡建好）開機，丟掉所有 capability、一個也不補回；no-new-privileges 讓 setuid
+// 程式無法提權（映像裡也沒有 sudo，SEC-3「容器內 sudo 預設關閉」）。根檔案系統唯讀，可寫的只有：
+//   - tmpfs：/tmp（桌面的 socket、記錄檔、暫存）、/run、/var/tmp；
+//   - volume：/home/box、/workspace、/hermes、/opt/xbot/cred。
 //
-// 降權之後 Bot 的行程沒有任何 capability；no-new-privileges 讓 sudo 和 setuid 程式無法再提權（SEC-3「容器內 sudo 預設關閉」）。
+// B02 的做法（以 root 開機，start-bot.sh 寫 /etc/passwd、chown volume、再 setpriv 降權）需要 CHOWN、DAC_OVERRIDE、
+// FOWNER、KILL、SETUID、SETGID 六個 capability；改成映像裡建好使用者、volume 一開始就屬於它之後全部不需要了。
 var (
 	capDrop = []string{"ALL"}
-	capAdd  = []string{"CHOWN", "DAC_OVERRIDE", "FOWNER", "KILL", "SETGID", "SETUID"}
 	secOpt  = []string{"no-new-privileges:true"}
 )
 
+// tmpfs 是唯讀根檔案系統之下可寫的地方（大小見 internal/limits）。/tmp 要能執行（Playwright、uv、Bot 自己的腳本）。
+func tmpfs() map[string]string {
+	owner := fmt.Sprintf("uid=%d,gid=%d", BotUID, BotGID)
+	return map[string]string{
+		"/tmp":     fmt.Sprintf("rw,exec,nosuid,nodev,mode=1777,size=%d", limits.BoxTmpfsTmpBytes),
+		"/run":     fmt.Sprintf("rw,noexec,nosuid,nodev,mode=755,%s,size=%d", owner, limits.BoxTmpfsRunBytes),
+		"/var/tmp": fmt.Sprintf("rw,noexec,nosuid,nodev,mode=1777,size=%d", limits.BoxTmpfsVarTmpBytes),
+	}
+}
+
+// netAttach 是電腦接上的網路（SEC-4）：xbot-box 網路上的固定 IP，以及網路防護的就緒標記 volume。
+type netAttach struct {
+	Network     string
+	IP          netip.Addr
+	ReadyVolume string
+}
+
+// spec 是建立一台電腦需要的設定。
+type spec struct {
+	BotID, Image, IPCDir string
+	// Revision 是寫在 LabelSpec 的版本；空白用 specRevision。
+	Revision string
+	Limits   Limits
+	// Net 是 nil 時接 Docker 預設的 bridge 網路（關掉網路防護時）。
+	Net *netAttach
+}
+
 // createOptions 組出建立容器的完整參數。對應 LazyBoy server/computers.py start() 的 docker run，
-// 差別：持久資料改用具名 volume、加上 SEC-3 強化、不加 host.docker.internal（SEC-4：容器不需要直接連主機，
-// 模型與 XBot 都經 /product-ipc 的 socket）。
-func createOptions(botID, image, ipcDir string, lim Limits) client.ContainerCreateOptions {
+// 差別：持久資料改用具名 volume、加上 SEC-3 強化、接上有網路防護的 xbot-box 網路、不加 host.docker.internal
+// （SEC-4：容器不需要直接連主機，模型與 XBot 都經 /product-ipc 的 socket）。
+func createOptions(sp spec) client.ContainerCreateOptions {
+	botID, lim, rev := sp.BotID, sp.Limits, sp.Revision
+	if rev == "" {
+		rev = specRevision
+	}
 	vols := VolumeNames(botID)
 	loopback := netip.MustParseAddr("127.0.0.1")
 	novnc, hermes := network.MustParsePort(NoVNCPort), network.MustParsePort(HermesPort)
@@ -129,10 +165,18 @@ func createOptions(botID, image, ipcDir string, lim Limits) client.ContainerCrea
 	volume := func(src, dst string) mount.Mount {
 		return mount.Mount{Type: mount.TypeVolume, Source: src, Target: dst}
 	}
-	return client.ContainerCreateOptions{
+	mounts := []mount.Mount{
+		{Type: mount.TypeBind, Source: sp.IPCDir, Target: IPCDir, ReadOnly: true},
+		volume(vols.Hermes, HermesDir),
+		volume(vols.Home, HomeDir),
+		volume(vols.Workspace, WorkspaceDir),
+		volume(vols.Cred, CredDir),
+	}
+	o := client.ContainerCreateOptions{
 		Name: ContainerName(botID),
 		Config: &container.Config{
-			Image: image,
+			Image: sp.Image,
+			User:  strconv.Itoa(BotUID) + ":" + strconv.Itoa(BotGID),
 			Env: []string{
 				"XBOT_UID=" + strconv.Itoa(BotUID),
 				"XBOT_GID=" + strconv.Itoa(BotGID),
@@ -141,6 +185,7 @@ func createOptions(botID, image, ipcDir string, lim Limits) client.ContainerCrea
 				LabelBot:     botID,
 				LabelManaged: "true",
 				LabelLimits:  lim.signature(),
+				LabelSpec:    rev,
 			},
 			ExposedPorts: network.PortSet{novnc: {}, hermes: {}},
 			StopTimeout:  &stop,
@@ -151,17 +196,12 @@ func createOptions(botID, image, ipcDir string, lim Limits) client.ContainerCrea
 				novnc:  {{HostIP: loopback, HostPort: ""}},
 				hermes: {{HostIP: loopback, HostPort: ""}},
 			},
-			RestartPolicy: container.RestartPolicy{Name: container.RestartPolicyUnlessStopped},
-			Mounts: []mount.Mount{
-				{Type: mount.TypeBind, Source: ipcDir, Target: IPCDir, ReadOnly: true},
-				volume(vols.Hermes, HermesDir),
-				volume(vols.Home, HomeDir),
-				volume(vols.Workspace, WorkspaceDir),
-			},
-			ShmSize:     lim.ShmMB << 20,
-			CapDrop:     capDrop,
-			CapAdd:      capAdd,
-			SecurityOpt: secOpt,
+			RestartPolicy:  container.RestartPolicy{Name: container.RestartPolicyUnlessStopped},
+			ShmSize:        lim.ShmMB << 20,
+			CapDrop:        capDrop,
+			SecurityOpt:    secOpt,
+			ReadonlyRootfs: true,
+			Tmpfs:          tmpfs(),
 			Resources: container.Resources{
 				Memory:    lim.MemoryMB << 20,
 				CPUPeriod: period,
@@ -170,4 +210,14 @@ func createOptions(botID, image, ipcDir string, lim Limits) client.ContainerCrea
 			},
 		},
 	}
+	if n := sp.Net; n != nil {
+		o.HostConfig.NetworkMode = container.NetworkMode(n.Network)
+		o.NetworkingConfig = &network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{
+			n.Network: {IPAMConfig: &network.EndpointIPAMConfig{IPv4Address: n.IP}},
+		}}
+		// 網路防護的就緒標記（唯讀）：start-bot.sh 等規則在這次開機生效後才開始（主機重開機時不會先連上網）。
+		mounts = append(mounts, mount.Mount{Type: mount.TypeVolume, Source: n.ReadyVolume, Target: NetguardDir, ReadOnly: true})
+	}
+	o.HostConfig.Mounts = mounts
+	return o
 }

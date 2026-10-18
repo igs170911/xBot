@@ -2,7 +2,8 @@
 
 // B12 主機管理的整合測試：一台「剛租來的主機」容器（Debian 13＋sshd 預設設定＋Docker 26，沒有 xbot 帳號），
 // 以 root 跑兩次安裝腳本（等同使用者貼那一行指令；第二次要不出錯）→ xbot.hosts.add 的邏輯（連線、記下主機金鑰、
-// 自動檢查、把電腦映像經 SSH 傳過去）→ 在那台開 Bot 的電腦並對話 → 主機離線（工作排隊）→ 回來（自動重連、排隊的工作開始）→ 移除。
+// 自動檢查、把電腦映像經 SSH 傳過去）→ 在那台開 Bot 的電腦並對話 → 映像換了（make box）：主機標成過期，「更新電腦」把新映像
+// 傳過去並重建上面的電腦（B13）→ 主機離線（工作排隊）→ 回來（自動重連、排隊的工作開始）→ 移除。
 // 需要 Docker 與 make box 的映像；沒有時略過。
 package hosts_test
 
@@ -13,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -20,6 +22,7 @@ import (
 	"github.com/moby/moby/client"
 
 	"xbot/internal/box"
+	"xbot/internal/computers"
 	"xbot/internal/engine/hermes"
 	"xbot/internal/engine/hermes/hermestest"
 	"xbot/internal/events"
@@ -46,6 +49,12 @@ func TestHostInstallAddAndRun(t *testing.T) {
 		t.Skipf("沒有映像 %s（先執行 make box）：%v", boxImage(), err)
 	}
 	th := sshtesthost.StartFresh(ctx, t)
+	// 這個測試自己的映像標籤：中途要把它換成新的映像（模擬 make box），不能動到其他測試用的那個。
+	image := "xbot-test-hostupd:" + strconv.Itoa(os.Getpid())
+	if out, err := exec.CommandContext(ctx, "docker", "tag", boxImage(), image).CombinedOutput(); err != nil {
+		t.Fatalf("標籤：%v %s", err, out)
+	}
+	t.Cleanup(func() { _ = exec.Command("docker", "rmi", "-f", image).Run() })
 
 	dir, err := os.MkdirTemp("", "xbadd")
 	if err != nil {
@@ -75,7 +84,7 @@ func TestHostInstallAddAndRun(t *testing.T) {
 	t.Cleanup(func() { sockets.Shutdown() })
 	bus := events.New()
 	registry := hosts.NewRegistry(local)
-	svc := hosts.NewService(hosts.Options{DB: db, Registry: registry, Local: local, DataDir: dir, Image: boxImage(), LocalSocket: sockets.Path, Bus: bus})
+	svc := hosts.NewService(hosts.Options{DB: db, Registry: registry, Local: local, DataDir: dir, Image: image, LocalSocket: sockets.Path, Bus: bus})
 	t.Cleanup(func() { svc.Close() })
 	if err := svc.Start(ctx); err != nil {
 		t.Fatal(err)
@@ -159,7 +168,7 @@ func TestHostInstallAddAndRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	comp := &runtime.Computers{DB: db, Keys: keys, Sockets: sockets, Providers: pstore, Hosts: registry}
-	boxes := box.New(db, registry, box.Options{Image: boxImage(), Prepare: comp.Prepare})
+	boxes := box.New(db, registry, box.Options{Image: image, Prepare: comp.Prepare})
 	comp.Boxes = boxes
 	drv := hermes.New(comp.Connect, nil)
 	rt := runtime.New(runtime.Options{DB: db, Driver: drv, Bus: bus, Models: comp,
@@ -202,8 +211,49 @@ func TestHostInstallAddAndRun(t *testing.T) {
 		t.Fatalf("Bot 的電腦應該在新主機上跑：%q %v", out, err)
 	}
 	v, _ := svc.Get(ctx, hostID)
-	if v.Running != 1 || len(v.Bots) != 1 {
-		t.Fatalf("主機清單：開機 %d、Bot %d", v.Running, len(v.Bots))
+	if v.Running != 1 || len(v.Bots) != 1 || v.ImageOutdated {
+		t.Fatalf("主機清單：開機 %d、Bot %d、映像過期 %v", v.Running, len(v.Bots), v.ImageOutdated)
+	}
+
+	// ③-1 映像換了（make box）：主機標成映像過期；「更新電腦」把新映像傳過去，再重建上面的電腦（資料保留）。
+	if _, err := th.Exec(ctx, "docker", "exec", "-u", "1000:1000", box.ContainerName(bot.ID), "sh", "-c", "echo 留著 > /workspace/keep.txt"); err != nil {
+		t.Fatal(err)
+	}
+	build := exec.CommandContext(ctx, "docker", "build", "-q", "-t", image, "-")
+	build.Stdin = strings.NewReader("FROM " + boxImage() + "\nLABEL xbot.test=host-update\n")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("新映像：%v %s", err, out)
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	for v, _ = svc.Get(ctx, hostID); !v.ImageOutdated; v, _ = svc.Get(ctx, hostID) {
+		if time.Now().After(deadline) {
+			t.Fatal("make box 之後主機應該標成映像過期")
+		}
+		time.Sleep(time.Second)
+	}
+	upd := &computers.Service{DB: db, Boxes: boxes, Hosts: svc, Activity: rt, Bus: bus}
+	start = time.Now()
+	plan, err := upd.Update(ctx, hostID)
+	if err != nil || plan.Total != 1 || !plan.Hosts[0].ImageOutdated {
+		t.Fatalf("更新電腦：%+v %v", plan, err)
+	}
+	upd.Wait()
+	final, _ := upd.Progress()
+	if final.Hosts[0].State != computers.StateDone || final.Hosts[0].Bots[0].State != computers.StateRebuilt {
+		t.Fatalf("更新電腦的結果：%+v", final)
+	}
+	t.Logf("更新電腦（傳新映像＋重建）：%s", time.Since(start).Round(time.Second))
+	if v, _ = svc.Get(ctx, hostID); v.ImageOutdated {
+		t.Fatal("更新後主機的映像應該是最新的")
+	}
+	if out, _ := th.Exec(ctx, "docker", "inspect", "-f", "{{index .Config.Labels \"xbot.test\"}} {{.State.Running}}", box.ContainerName(bot.ID)); out != "host-update true" {
+		t.Fatalf("遠端的電腦應該用新映像重建、開著：%q", out)
+	}
+	if out, _ := th.Exec(ctx, "docker", "exec", box.ContainerName(bot.ID), "cat", "/workspace/keep.txt"); out != "留著" {
+		t.Fatalf("更新後資料不見了：%q", out)
+	}
+	if task := chat(bot.ID, "回覆 OK"); task.Verdict != runtime.VerdictAnswer {
+		t.Fatalf("更新後對話：%+v", task)
 	}
 
 	// 上限 1 台：第二個 Bot 要排隊「等電腦空出來」，第一台休眠後開機。

@@ -206,7 +206,7 @@ func (d DockerFiles) Write(ctx context.Context, botID, rel string, data []byte) 
 	if err := tw.Close(); err != nil {
 		return err
 	}
-	if _, err := api.CopyToContainer(ctx, id, client.CopyToContainerOptions{DestinationPath: workspace, Content: &buf, CopyUIDGID: true}); err != nil {
+	if _, err := api.CopyToContainer(ctx, id, client.CopyToContainerOptions{DestinationPath: workspace, Content: &buf}); err != nil {
 		return fmt.Errorf("寫入 Bot 電腦的檔案失敗：%w", err)
 	}
 	return nil

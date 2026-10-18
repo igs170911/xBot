@@ -121,7 +121,7 @@ func (d *Docker) WriteStream(ctx context.Context, dir, rel string, size, mode in
 		}
 		pw.CloseWithError(tw.Close())
 	}()
-	_, err = d.API.CopyToContainer(ctx, d.ID, client.CopyToContainerOptions{DestinationPath: dir, Content: pr, CopyUIDGID: true})
+	_, err = d.API.CopyToContainer(ctx, d.ID, client.CopyToContainerOptions{DestinationPath: dir, Content: pr})
 	pr.CloseWithError(errors.New("寫入結束"))
 	if err != nil {
 		return fmt.Errorf("寫入 Bot 電腦的 %s 失敗：%w", path.Join(dir, name), err)
@@ -152,7 +152,7 @@ func (d *Docker) Mkdir(ctx context.Context, dir, rel string) error {
 	if err := tw.Close(); err != nil {
 		return err
 	}
-	if _, err := d.API.CopyToContainer(ctx, d.ID, client.CopyToContainerOptions{DestinationPath: dir, Content: &buf, CopyUIDGID: true}); err != nil {
+	if _, err := d.API.CopyToContainer(ctx, d.ID, client.CopyToContainerOptions{DestinationPath: dir, Content: &buf}); err != nil {
 		return fmt.Errorf("在 Bot 電腦建立資料夾失敗：%w", err)
 	}
 	return nil

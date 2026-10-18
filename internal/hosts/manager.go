@@ -84,6 +84,7 @@ type Service struct {
 	wg  sync.WaitGroup
 
 	mu       sync.Mutex
+	img      cachedRef // 這台的電腦映像（List 用，短暫快取）
 	ssh      map[string]*SSH
 	watching map[string]chan struct{}
 	status   map[string]string // 最後寫進 host.status 的值
@@ -270,6 +271,7 @@ func (s *Service) watchLocal() {
 				s.writeStatus(id, store.HostOffline, "連不上這台的 Docker："+err.Error(), nil)
 			} else {
 				s.writeStatus(id, store.HostOnline, "", nil)
+				s.watchImage()
 			}
 			select {
 			case <-s.ctx.Done():
@@ -625,7 +627,8 @@ func (s *Service) startLoad(id string, h *SSH) bool {
 		if row, err := s.o.DB.GetHost(ctx, id); err == nil {
 			var res Resources
 			_ = json.Unmarshal(row.Resources, &res)
-			res.ImageID = s.image(ctx).ID
+			img := s.image(ctx)
+			res.ImageID, res.ImageKey = img.ID, img.Layers
 			row.Resources, _ = json.Marshal(res)
 			_ = s.o.DB.UpdateHost(ctx, row)
 		}
@@ -762,7 +765,7 @@ func (s *Service) inspectLocal(ctx context.Context) (r Report) {
 	if img := s.image(ctx); img.ID == "" {
 		r.set(CheckImage, CheckFail, "沒有電腦映像 "+img.Name, "執行 make box")
 	} else {
-		r.Resources.ImageID = img.ID
+		r.Resources.ImageID, r.Resources.ImageKey = img.ID, img.Layers
 		r.set(CheckImage, CheckOK, img.Name, "")
 	}
 	return r
@@ -927,9 +930,11 @@ type View struct {
 	Default       bool        `json:"default" desc:"新 Bot 預設放這台"`
 	Bots          []BotRef    `json:"bots"`
 	// Queued 是在這台排隊等電腦的 Bot 數（主機離線或滿了）。
-	Queued    int            `json:"queued"`
-	Image     *ImageProgress `json:"image,omitempty" desc:"電腦映像傳輸中的進度"`
-	CreatedAt int64          `json:"created_at"`
+	Queued int            `json:"queued"`
+	Image  *ImageProgress `json:"image,omitempty" desc:"電腦映像傳輸中的進度"`
+	// ImageOutdated：這台遠端主機上的電腦映像不是這台 XBot 目前的版本（make box 重建過），要「更新電腦」（B13）。
+	ImageOutdated bool  `json:"image_outdated" desc:"主機上的電腦映像比這台 XBot 的舊，要更新電腦"`
+	CreatedAt     int64 `json:"created_at"`
 }
 
 // HealthView 是對外的 SSH 連線狀態（Health 的 JSON 友善版本，時間是毫秒）。
@@ -962,9 +967,11 @@ func (s *Service) List(ctx context.Context) ([]View, error) {
 		boxOf[b.BotID] = b
 	}
 	def := s.defaultHost(ctx)
+	local := s.cachedImage(ctx)
 	out := make([]View, 0, len(rows))
 	for _, row := range rows {
 		v := s.view(row, def)
+		v.ImageOutdated = row.Kind != "local" && imageOutdated(v.Resources, local)
 		for _, b := range bots {
 			box, has := boxOf[b.ID]
 			at := b.HostID

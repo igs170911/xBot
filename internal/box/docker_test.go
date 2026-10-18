@@ -96,9 +96,25 @@ func TestDockerLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	hc := got.Container.HostConfig
-	if len(hc.CapDrop) != 1 || hc.CapDrop[0] != "ALL" || hc.PidsLimit == nil || *hc.PidsLimit != DefaultLimits().Pids ||
-		hc.Memory != 3<<30 || hc.ShmSize != 512<<20 {
-		t.Fatalf("容器設定：%+v", hc)
+	if len(hc.CapDrop) != 1 || hc.CapDrop[0] != "ALL" || len(hc.CapAdd) != 0 || hc.PidsLimit == nil || *hc.PidsLimit != DefaultLimits().Pids ||
+		hc.Memory != 3<<30 || hc.ShmSize != 512<<20 || !hc.ReadonlyRootfs || hc.Privileged || len(hc.Tmpfs) != 3 ||
+		len(hc.SecurityOpt) != 1 || hc.SecurityOpt[0] != "no-new-privileges:true" || string(hc.NetworkMode) != NetworkName {
+		t.Fatalf("容器設定不符合 SEC-3／SEC-4：%+v", hc)
+	}
+	if got.Container.Config.User != "1000:1000" {
+		t.Fatalf("要以 Bot 使用者開機：%q", got.Container.Config.User)
+	}
+	// 根檔案系統唯讀：連容器裡的 root 也寫不進 /、/etc、/usr、/opt。
+	for _, dir := range []string{"/", "/etc", "/usr/local/bin", "/opt/xbot"} {
+		out, err := exec.CommandContext(ctx, "docker", "exec", "-u", "0", "-e", "LC_ALL=C", ContainerName(bot.ID), "touch", dir+"/.rw-test").CombinedOutput()
+		if err == nil || !strings.Contains(string(out), "Read-only file system") {
+			t.Fatalf("%s 應該唯讀：%v %s", dir, err, out)
+		}
+	}
+	// 所有行程都沒有任何 capability。
+	caps, _ := exec.CommandContext(ctx, "docker", "exec", ContainerName(bot.ID), "sh", "-c", "grep -h ^CapEff /proc/[0-9]*/status | sort -u").CombinedOutput()
+	if strings.TrimSpace(string(caps)) != "CapEff:\t0000000000000000" {
+		t.Fatalf("行程的 capability：%q", caps)
 	}
 
 	// 在 workspace 寫檔（以 Bot 使用者身分），桌面使用者也確實降權了。
@@ -115,7 +131,7 @@ func TestDockerLifecycle(t *testing.T) {
 	if s, err = m.Stop(ctx, bot.ID); err != nil || s.State != StateSleeping || s.Running {
 		t.Fatalf("停止：%+v %v", s, err)
 	}
-	// 正常收尾（exit 0）：tini 要有 KILL 才能把 SIGTERM 轉給已降權的子行程，否則會 FATAL 結束（exit 1）。
+	// 正常收尾（exit 0）：tini 和桌面都是 Bot 使用者，SIGTERM 轉得過去、Chromium 有機會存狀態。
 	if got, err := cli.ContainerInspect(ctx, s.ContainerID, client.ContainerInspectOptions{}); err != nil || got.Container.State.ExitCode != 0 {
 		t.Fatalf("停止應該正常收尾：%+v %v\n%s", got.Container.State, err, logs())
 	}

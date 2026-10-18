@@ -22,7 +22,8 @@ func TestCreateOnBotHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := ok[Status](t)(m.Create(ctx, e.bot))
-	if s.HostID != row.ID || len(remote.docker.containers) != 1 || len(e.docker.containers) != 0 {
+	// 電腦和那台主機的網路防護（xbot-netguard）都在 cloud-01。
+	if s.HostID != row.ID || len(remote.docker.containers) != 2 || remote.docker.containers[GuardName] == nil || len(e.docker.containers) != 0 {
 		t.Fatalf("電腦應該建在 cloud-01：%+v（本機 %d 台、cloud-01 %d 台）", s, len(e.docker.containers), len(remote.docker.containers))
 	}
 	// Bot 改回自動擺放後，電腦還是在 cloud-01（換主機要搬家）。

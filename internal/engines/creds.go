@@ -2,8 +2,8 @@
 //
 // 方案 A：Claude Code／Codex CLI 跑在 Bot 自己的電腦裡，要用你在這台電腦上的訂閱登入。
 // 只有你本人逐 Bot 同意（xbot.engines.link_credentials）後，才把這台電腦上的 CLI 憑證檔複製進那個 Bot 的電腦：
-//   - 放在容器自己的檔案層 /opt/xbot/cred/<引擎>/（不在 home／workspace volume 裡），權限 0400、擁有者是 Bot 使用者，
-//     所在資料夾屬於 root，Bot 不能換掉或刪掉它；重建容器就消失。
+//   - 放在 /opt/xbot/cred/<引擎>/（這個 Bot 專用的 xbot-box-<id>-cred volume；B13 起根檔案系統唯讀，不能再放在容器的檔案層），
+//     權限 0400、擁有者是 Bot 使用者，所在資料夾屬於 root，Bot 不能換掉或刪掉它；不在 home／workspace 裡，刪除電腦資料時一起刪。
 //   - Bot 家目錄裡的 ~/.claude/.credentials.json、~/.codex/auth.json 是指向它的連結，CLI 照常找得到。
 //   - 每次開機前（box Prepare）從這台電腦重新複製一次，換到最新的權杖。
 //
@@ -36,7 +36,7 @@ import (
 
 // 容器內的位置。
 const (
-	// CredDir 是憑證在容器檔案層裡的資料夾（box/Dockerfile 建好，屬於 root）。
+	// CredDir 是憑證所在的資料夾（xbot-box-<id>-cred volume 的掛載點，一開始是映像裡空的、屬於 root 的資料夾）。
 	CredDir = "/opt/xbot/cred"
 	// BoxHome 是 Bot 的家目錄。
 	BoxHome = "/home/box"
@@ -302,7 +302,7 @@ func (s *Service) write(ctx context.Context, c Container, sp Spec, data []byte) 
 	if err != nil {
 		return err
 	}
-	if _, err := c.API.CopyToContainer(ctx, c.ID, client.CopyToContainerOptions{DestinationPath: CredDir, Content: cred, CopyUIDGID: true}); err != nil {
+	if _, err := c.API.CopyToContainer(ctx, c.ID, client.CopyToContainerOptions{DestinationPath: CredDir, Content: cred}); err != nil {
 		return fmt.Errorf("寫入 Bot 電腦的 %s 憑證失敗：%w", sp.Label, err)
 	}
 	ln, err := tarball(
@@ -313,7 +313,7 @@ func (s *Service) write(ctx context.Context, c Container, sp Spec, data []byte) 
 	if err != nil {
 		return err
 	}
-	if _, err := c.API.CopyToContainer(ctx, c.ID, client.CopyToContainerOptions{DestinationPath: BoxHome, Content: ln, CopyUIDGID: true}); err != nil {
+	if _, err := c.API.CopyToContainer(ctx, c.ID, client.CopyToContainerOptions{DestinationPath: BoxHome, Content: ln}); err != nil {
 		return fmt.Errorf("寫入 Bot 電腦的 %s 設定失敗：%w", sp.Label, err)
 	}
 	return nil

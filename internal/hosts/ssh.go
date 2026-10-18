@@ -493,6 +493,23 @@ func (s *SSH) ReleaseIPC(botID string) {
 	}
 }
 
+// ForgetBot 在刪除 Bot 時呼叫：停掉它的 product.sock 反向轉發，並刪掉遠端的 /var/lib/xbot/bots/<id> 資料夾。
+// 主機離線時回傳錯誤（轉發已經停了；遠端的空資料夾留著無害，下次可以再清）。
+func (s *SSH) ForgetBot(ctx context.Context, botID string) error {
+	if botID == "" || strings.ContainsAny(botID, "/\\") || botID == "." || botID == ".." {
+		return fmt.Errorf("不合法的 Bot id：%q", botID)
+	}
+	s.ReleaseIPC(botID)
+	cl, err := s.client(ctx)
+	if err != nil {
+		return err
+	}
+	if err := run(cl, "rm -rf -- "+shellQuote(path.Join(s.o.RemoteDir, "bots", botID))); err != nil {
+		return fmt.Errorf("刪除遠端主機上 Bot 的資料夾失敗：%w", err)
+	}
+	return nil
+}
+
 // restore 在新連線上重新建立所有反向轉發（舊連線的 listener 已隨連線消失）。
 func (s *SSH) restore(cl *ssh.Client) {
 	s.fwdMu.Lock()
