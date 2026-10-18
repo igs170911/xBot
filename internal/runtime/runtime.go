@@ -59,7 +59,8 @@ type Options struct {
 	Logger *slog.Logger
 	// QuestionTTL 是無人在場的工作裡提問多久沒回就過期；0 用 limits.QuestionTTL（測試可以調短）。
 	QuestionTTL time.Duration
-	// Watchdog 是對話看門狗的時間（CH-12）；0 的欄位用 limits 的值（測試可以調短）。
+	// Watchdog 是對話看門狗的時間（CH-12）；0 的欄位用 limits.WatchdogIdle、WatchdogToolIdle、StopGrace、
+	// WatchInterval（測試可以調短）。
 	Watchdog Watchdog
 	// Budget 在交辦前檢查花費上限（Bot 與它的模型供應商）；超過時 Chat 回它的錯誤（*proxy.BudgetError）。可為 nil。
 	Budget func(ctx context.Context, botID, providerID string) error
@@ -104,7 +105,7 @@ func New(o Options) *Runtime {
 	for _, d := range []struct {
 		v   *time.Duration
 		def time.Duration
-	}{{&w.Idle, limits.TurnIdleLimit}, {&w.Tool, limits.TurnToolIdleLimit}, {&w.Grace, limits.TurnStopGrace}, {&w.Interval, limits.TurnWatchInterval}} {
+	}{{&w.Idle, limits.WatchdogIdle}, {&w.Tool, limits.WatchdogToolIdle}, {&w.Grace, limits.StopGrace}, {&w.Interval, limits.WatchInterval}} {
 		if *d.v <= 0 {
 			*d.v = d.def
 		}

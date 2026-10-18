@@ -334,7 +334,7 @@ func (d *Driver) Send(ctx context.Context, s engine.Session, m engine.Message) e
 		}
 		hs.mu.Unlock()
 		d.log.Warn("Hermes 沒有為這則訊息開新的一輪", "bot", hs.bc.botID, "session", hs.id, "status", res.Status)
-		return fmt.Errorf("Bot 還在收尾上一輪，這則訊息沒有開始（%s），請再送一次", res.Status)
+		return fmt.Errorf("這則訊息沒有開始：Bot 還在收尾上一輪（%s），請再送一次", res.Status)
 	}
 }
 

@@ -67,18 +67,3 @@ const (
 	// ACPToolPayloadBytes 是一個工具呼叫的輸入或輸出寫進事件的上限（截圖的 base64 不整包存）。
 	ACPToolPayloadBytes = 64 << 10
 )
-
-// 對話看門狗（CH-12）。出自 LazyBoy server/runtime.py Runtime.watch()。
-const (
-	// TurnIdleLimit 是一輪多久沒有任何進度（事件）就判定卡住、送出中斷。出自 IDLE_LIMIT（15*60）。
-	TurnIdleLimit = 15 * time.Minute
-
-	// TurnToolIdleLimit 是有工具正在執行（長的建置、下載）時的同一個時限。出自 TOOL_IDLE_LIMIT（40*60）。
-	TurnToolIdleLimit = 40 * time.Minute
-
-	// TurnStopGrace 是送出中斷（看門狗或使用者按停止）後，等引擎自己結束這一輪的時間；過了就直接結束。出自 STOP_GRACE（60）。
-	TurnStopGrace = 60 * time.Second
-
-	// TurnWatchInterval 是看門狗多久檢查一次。出自 WATCH_INTERVAL（5）。
-	TurnWatchInterval = 5 * time.Second
-)

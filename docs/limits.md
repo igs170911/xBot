@@ -152,6 +152,8 @@
 | `HermesPingInterval`／`HermesPingTimeout`／`HermesMaxFrameBytes` | 15 秒／30 秒／16 MiB | server/rpc.py:21 | 正確 |
 | `HermesMaxIterations`／`HermesTerminalTimeoutSeconds` | 200／120 秒 | server/computers.py:213、:202 | 正確 |
 | `HermesPruneTokens`／`HermesCompressTokens` | 48,000／100,000 | server/computers.py:222–223 | 正確 |
+| `HermesIdleWait` | 30 秒 | XBot 新增：送出前等 Hermes 收完上一輪的尾（`session.info` running=false）；LazyBoy 兩輪之間有路由與設定呼叫，碰不到這個時間差 | — |
+| `HermesStartTimeout` | 630 秒 | Hermes tui_gateway/server.py `_agent_build_wait_cap`（600 秒）＋30 秒：送出後等 `message.start` 的上限 | — |
 | `SessionTTL` | 30 天 | server/main.py:192 | 正確 |
 | `DBBusyTimeout` | 5 秒 | server/store.py:37 | 正確 |
 | `EventsKeepPerBot` | 5,000 筆 | server/store.py:221 | 正確 |
