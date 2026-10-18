@@ -11,3 +11,4 @@
 | C01 資料庫與 schema | ✅ 完成 | `task/C01-store` | 依 §16 等章節補了 PRD §10 沒列的欄位（host、box.host_id、usage 成本以百萬分之一美元存）；message 用自動遞增 seq 排序 | 待確認：approval／inbox／host 狀態值、memory_enabled 預設；事件清理尚未排程；request_id 去重表留給 C02 |
 | W01 前端殼與設計系統 | ✅ 完成 | `task/W01-design-system` | 多了淺色主題 token（N01 有定義，尚無切換）；自建輕量路由；字型自帶後執行檔約 20 MB | 待確認：手機抽屜斷點 768px 與頂列設計；送出鈕空白時是否停用；是否要做字型子集縮小體積；Main 右欄電腦縮圖目前是灰色佔位 |
 | B02 本機 Box Manager | ✅ 完成 | `task/B02-boxmgr` | Docker client 改用 `moby/moby/client`（舊路徑已停止維護）；新增 migration 0002（box.hermes_port）；XBOT_UID 固定 1000；SEC-3 唯讀根目錄與 SEC-4 私有網段封鎖延到 B13 | compose 模式（make up）下服務連不到 127.0.0.1 的 Bot 埠，需要網路模式（B12/B13）；pids-limit 4096 待確認；Manager 尚未接進服務（E02／ops） |
+| C02 操作登錄表與中介層 | ✅ 完成 | `task/C02-ops` | dry_run 不寫稽核；owner 的讀取不寫稽核（避免輪詢灌爆）；pending_approval 以 MCP-5 錯誤格式回傳；migration 0003 | 待確認：權限範圍是疊加還是巢狀；MCP-8「預設只能碰自己建立的」需要 created_by；刪除 Bot 時核准紀錄會連帶刪除（建議改 SET NULL）；核准逾期、approvals.wait、速率限制留給後續卡 |
