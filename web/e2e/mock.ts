@@ -15,6 +15,7 @@ export type Bot = {
   model: string
   effort: string
   approval_mode: string
+  memory_enabled: boolean
   archived: boolean
   created_at: number
   updated_at: number
@@ -70,7 +71,7 @@ export class MockServer {
 
   addBot(b: Partial<Bot> & { name: string }): Bot {
     const now = Date.now()
-    const bot: Bot = { id: this.id('bot'), title: '', description: '', soul: '', color: 'blue', shape: 'cursor', engine: 'hermes', model: '', effort: 'medium', approval_mode: 'ask', archived: false, created_at: now, updated_at: now, ...b }
+    const bot: Bot = { id: this.id('bot'), title: '', description: '', soul: '', color: 'blue', shape: 'cursor', engine: 'hermes', model: '', effort: 'medium', approval_mode: 'ask', memory_enabled: true, archived: false, created_at: now, updated_at: now, ...b }
     this.bots.push(bot)
     return bot
   }

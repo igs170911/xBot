@@ -14,9 +14,11 @@ import (
 	"xbot/internal/engines"
 	"xbot/internal/hosts"
 	"xbot/internal/inbox"
+	"xbot/internal/memory"
 	"xbot/internal/models"
 	"xbot/internal/ops"
 	"xbot/internal/proxy"
+	"xbot/internal/skills"
 	"xbot/internal/store"
 	"xbot/internal/usage"
 )
@@ -32,13 +34,18 @@ type Deps struct {
 	Hosts     *hosts.Service   // 主機管理（B12）
 	// Teardown 收掉 Bot 的電腦（含資料區）與引擎連線；刪除 Bot 時呼叫。可為 nil。
 	Teardown func(ctx context.Context, botID string) error
+	// Skills、Memory 是技能與記憶（C31）；nil 時只登錄定義。
+	Skills *skills.Service
+	Memory *memory.Service
+	// SoulChanged 把新的 SOUL.md 寫進 Bot 的電腦（C31）。可為 nil。
+	SoulChanged func(ctx context.Context, botID string)
 	// Collab 是 Bot 之間的傳話與群組（X02）；nil 時只登錄定義。
 	Collab *collab.Service
 }
 
-// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、models、usage、engines、hosts 各領域的操作。
+// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、models、usage、engines、skills、memory、hosts 各領域的操作。
 func Register(reg *ops.Registry, d Deps) {
-	bd := bots.Deps{Teardown: d.Teardown}
+	bd := bots.Deps{Teardown: d.Teardown, SoulChanged: d.SoulChanged}
 	if d.Collab != nil {
 		// 刪除 Bot 時，還在等它回覆的隊友會收到「已經被刪除」（AA-6）。
 		teardown, c := d.Teardown, d.Collab
@@ -69,6 +76,8 @@ func Register(reg *ops.Registry, d Deps) {
 	models.Register(reg, models.Deps{Providers: d.Providers, Lister: d.Lister, Prober: d.Prober})
 	usage.Register(reg, usage.Deps{Budgets: d.Budgets})
 	engines.Register(reg, d.Engines)
+	skills.Register(reg, d.Skills)
+	memory.Register(reg, d.Memory)
 	hosts.Register(reg, d.Hosts)
 }
 

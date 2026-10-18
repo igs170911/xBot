@@ -18,8 +18,10 @@ import (
 	"xbot/internal/events"
 	"xbot/internal/hosts"
 	"xbot/internal/ipc"
+	"xbot/internal/memory"
 	"xbot/internal/proxy"
 	"xbot/internal/runtime"
+	"xbot/internal/skills"
 	"xbot/internal/store"
 )
 
@@ -41,6 +43,9 @@ type stack struct {
 	creds     *engines.Service
 	hosts     *hosts.Service
 	runtime   *runtime.Runtime
+	comp      *runtime.Computers
+	skills    *skills.Service
+	memory    *memory.Service
 	collab    *collab.Service
 }
 
@@ -132,6 +137,9 @@ func openStack(cfg config.Config) (*stack, error) {
 			return s.budgets.CheckProvider(ctx, botID, providerID)
 		}})
 	s.pstore.Attribute = s.runtime.Active
+	s.comp = comp
+	s.skills = &skills.Service{Locate: comp.BotFS, Library: &skills.Library{Dir: filepath.Join(cfg.DataDir, "skills")}}
+	s.memory = &memory.Service{DB: db, Locate: comp.BotFS}
 	// Bot 之間的傳話與群組（X02）：接上 runtime 的 Hooks；帶檔經 Docker 讀寫兩邊電腦的 /workspace。
 	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Files: collab.DockerFiles{
 		Locate: func(ctx context.Context, botID string) (collab.CopyAPI, string, error) {

@@ -10,7 +10,8 @@ import { ModelsSection } from './ModelsSection'
 import { UsageSection } from './UsageSection'
 import { ComputersSection } from './ComputersSection'
 import { AddHostPage, HostDetailPage } from './HostPages'
-import { BotSettingsPage } from './BotSettings'
+import { BotSettingsPage, type BotTab } from './BotSettings'
+import { SkillsLabPage } from './SkillsLab'
 import { SettingsOverview } from './SettingsOverview'
 import { SectionHeader } from './parts'
 import { SETTINGS_NAV, activeNav } from './nav'
@@ -75,8 +76,8 @@ function Placeholder({ title, sub, note }: { title: string; sub: string; note: s
 }
 
 function Content({ path }: { path: string }) {
-  const bot = path.match(/^\/settings\/bots\/([^/]+)\/?$/)
-  if (bot) return <BotSettingsPage botId={decodeURIComponent(bot[1])} />
+  const bot = path.match(/^\/settings\/bots\/([^/]+)(?:\/(soul|skills|memory))?\/?$/)
+  if (bot) return <BotSettingsPage botId={decodeURIComponent(bot[1])} tab={bot[2] as BotTab | undefined} />
   if (path === '/settings/general') return <GeneralSection />
   if (path.startsWith('/settings/models')) return <ModelsSection path={path} />
   if (path === '/settings/usage') return <UsageSection />
@@ -87,7 +88,7 @@ function Content({ path }: { path: string }) {
   if (path === '/settings/advanced/agents') return <AgentsPage />
   if (path === '/settings/advanced/backup') return <Placeholder title="備份與更新" sub="備份資料、還原、更新 XBot。" note="目前請用 make backup／make update。" />
   if (path === '/settings/advanced/people') return <Placeholder title="成員與紀錄" sub="組織成員和操作紀錄。" note="之後的任務卡會做。" />
-  if (path === '/settings/advanced/lab') return <Placeholder title="技能庫與實驗" sub="技能庫和還在試的功能。" note="之後的任務卡會做。" />
+  if (path === '/settings/advanced/lab') return <SkillsLabPage />
   return <AdvancedIndex />
 }
 
@@ -133,7 +134,7 @@ export function SettingsPage({ path }: { path: string }) {
 
   const tag = simplified(path)
   const overview = narrow && (path === '/settings' || path === '/settings/')
-  const title = path.startsWith('/settings/bots/') ? 'Bot 的引擎與權限' : path === '/settings/computers/add' ? '新增主機' : path.startsWith('/settings/computers/hosts/') ? '主機' : (TITLES[path] ?? (path.startsWith('/settings/models') ? 'AI 模型' : '設定'))
+  const title = path.startsWith('/settings/bots/') ? 'Bot 設定' : path === '/settings/computers/add' ? '新增主機' : path.startsWith('/settings/computers/hosts/') ? '主機' : (TITLES[path] ?? (path.startsWith('/settings/models') ? 'AI 模型' : '設定'))
 
   let body: ReactNode
   if (overview) body = <SettingsOverview />
