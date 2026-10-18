@@ -641,7 +641,7 @@ XBot 服務（Go，單一執行檔）
 **用哪個模型（本機 OpenCode 實際列得出來的，`opencode models`，2026-10-17）**
 | 層 | 模型 | 用在 | 理由 |
 |---|---|---|---|
-| 第一層：選擇題 | `opencode/jev-1.13-free`（Jev：TypeSafe 的決策分類模型，經 OpenCode Zen 免費） | 所有「從幾個選項挑一個」的判斷 | 回傳校準過的機率；OpenMausBot 群組自動挑人已在用（門檻 0.6、等待 1.5 秒、失敗照原規則） |
+| 第一層：選擇題 | `opencode/jev-1.13`（Jev：TypeSafe 的決策分類模型，經 OpenCode Zen；約 $0.042／百萬輸入 token、輸出免費）。**注意（2026-10-18 實測）**：`jev-1.13-free` 等免費模型回「free tier can only be used from within OpenCode」，XBot 不能用免費版；OpenCode Go（`https://opencode.ai/zen/go/v1`）要帶 `x-opencode-session` 與自己的 User-Agent | 所有「從幾個選項挑一個」的判斷 | 回傳校準過的機率；OpenMausBot 群組自動挑人已在用（門檻 0.6、等待 1.5 秒、失敗照原規則） |
 | 第二層：短文字 | `opencode-go/qwen3.8-flash` 或 `opencode-go/deepseek-v4-flash`（OpenCode Go 訂閱） | 需要「寫一點字」的：一行摘要、命名、一句話建 Bot 的建議 | Jev 只會選、不會寫；Go 額度有限，預設省用 |
 | 退路 | 本機小模型（LM Studio／Ollama）→ 規則 | 離線或額度用完 | 不能卡住使用者 |
 
