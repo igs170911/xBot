@@ -1290,6 +1290,24 @@ export interface ChatReadOutput {
       /** 帶了幾個檔案 */
       files?: number
     }
+    /** kind=activity 時是哪一種：auto_continue（系統叫 Bot 自己接著做） */
+    activity?: string
+    /** 系統判斷這件工作做完了沒（Bot 的回覆才有） */
+    judge?: {
+      /** done 已完成、needs_person 需要你、handed_back 交回給你、only_promised 只說要做、stuck 卡住了 */
+      verdict: 'done' | 'needs_person' | 'handed_back' | 'only_promised' | 'stuck'
+      /** 介面上的白話，例：已完成 */
+      label: string
+      /** 一行原因 */
+      reason: string
+      /** rules（規則）或 model（快判模型） */
+      by: string
+      confidence?: number
+      /** 系統叫 Bot 自己接著做的那件工作 id */
+      continued_by?: string
+      /** 你按「不對？」改正成哪一種 */
+      corrected?: 'done' | 'needs_person' | 'handed_back' | 'only_promised' | 'stuck'
+    }
     created_at: number
     updated_at: number
   }[]
@@ -1463,8 +1481,22 @@ export interface ChatWaitUntilSettledOutput {
   thread_id: string
   /** 任務狀態：queued、running、waiting_input、waiting_approval、waiting_box、stopping、done */
   state: string
-  /** done 時的結果：answer、cancelled、failed */
+  /** done 時的結果：answer、cancelled、failed（answer 只代表這一輪結束，不代表目標達成；看 judge） */
   verdict?: string
+  /** 系統判斷做完了沒（done 時才有；你停掉的沒有） */
+  judge?: {
+    /** done 已完成、needs_person 需要你、handed_back 交回給你、only_promised 只說要做、stuck 卡住了 */
+    verdict: 'done' | 'needs_person' | 'handed_back' | 'only_promised' | 'stuck'
+    /** 介面上的白話，例：已完成 */
+    label: string
+    /** 一行原因 */
+    reason: string
+    /** rules（規則）或 model（快判模型） */
+    by: string
+    confidence?: number
+    /** 系統叫 Bot 自己接著做的那件工作 id */
+    continued_by?: string
+  }
   /** true：完成了，或在等人；false：等到逾時，還在做 */
   settled: boolean
   /** Bot 在等人回覆（核准、補充問題） */
@@ -2726,6 +2758,83 @@ export interface InboxUndoOutput {
  */
 export function inboxUndo(input: InboxUndoInput, opts?: CallOptions): Promise<InboxUndoOutput> {
   return invoke('xbot.inbox.undo', input, opts).then((r) => r.output)
+}
+
+// xbot.judge.correct
+
+export interface JudgeCorrectInput {
+  /** 被判斷的那件工作 */
+  task_id: string
+  /** 應該是哪一種 */
+  verdict: 'done' | 'needs_person' | 'handed_back' | 'only_promised' | 'stuck'
+  /** 補充說明（可空白） */
+  note?: string
+}
+
+export interface JudgeCorrectOutput {
+  correction: {
+    id: string
+    use: string
+    task_id: string
+    bot_id: string
+    judged: string
+    judged_by: string
+    reason: string
+    corrected: string
+    note: string
+    actor: string
+    created_at: number
+    updated_at: number
+  }
+}
+
+/**
+ * 改正系統對一件工作的判斷（不對？）
+ *
+ * 系統判斷（已完成、需要你、交回給你、只說要做、卡住了）不對時，告訴它應該是哪一種。只記下來用來校正規則與快判門檻，不會改變工作本身。同一件工作再改一次會換成新的。只有你本人能改正。
+ *
+ * `xbot.judge.correct`：權限 operate、風險 safe
+ */
+export function judgeCorrect(input: JudgeCorrectInput, opts?: CallOptions): Promise<JudgeCorrectOutput> {
+  return invoke('xbot.judge.correct', input, opts).then((r) => r.output)
+}
+
+// xbot.judge.corrections
+
+export interface JudgeCorrectionsInput {
+  /** 只看這個 Bot 的 */
+  bot_id?: string
+  /** 最多幾筆；預設 50 */
+  limit?: number
+}
+
+export interface JudgeCorrectionsOutput {
+  /** 新到舊 */
+  corrections: {
+    id: string
+    use: string
+    task_id: string
+    bot_id: string
+    judged: string
+    judged_by: string
+    reason: string
+    corrected: string
+    note: string
+    actor: string
+    created_at: number
+    updated_at: number
+  }[]
+}
+
+/**
+ * 列出你對系統判斷的改正
+ *
+ * 用來比對規則與快判（PRD §20 FJ-5）：每筆有系統當時的判斷、誰判的（rules／model）、原因，以及你改成哪一種。
+ *
+ * `xbot.judge.corrections`：權限 read、風險 safe
+ */
+export function judgeCorrections(input: JudgeCorrectionsInput = {}, opts?: CallOptions): Promise<JudgeCorrectionsOutput> {
+  return invoke('xbot.judge.corrections', input, opts).then((r) => r.output)
 }
 
 // xbot.memory.add
@@ -5537,6 +5646,103 @@ export function systemPing(input: SystemPingInput = {}, opts?: CallOptions): Pro
   return invoke('xbot.system.ping', input, opts).then((r) => r.output)
 }
 
+// xbot.tasks.progress
+
+export interface TasksProgressInput {
+  /** 要看哪個 Bot */
+  bot_id: string
+}
+
+export interface TasksProgressOutput {
+  bot_id: string
+  /** idle 沒在做事、queued 只有排隊中的、working 工作中、waiting 等你回覆 */
+  state: string
+  /** 有沒有任何人在為它的工作忙（自己或還在等的隊友）；false 而事情沒完成代表卡住了 */
+  busy: boolean
+  /** 正在做的那件工作 */
+  current?: {
+    task_id: string
+    thread_id: string
+    /** 交辦內容的第一行 */
+    title: string
+    /** 誰交辦的：你交辦、○○ 交辦、群組對話、定時任務、Webhook */
+    from: string
+    /** running、waiting_input、waiting_approval、waiting_box、stopping */
+    state: string
+    started_at: number
+    /** 開始到現在幾秒 */
+    elapsed_s: number
+    /** 做了幾步（呼叫工具的次數） */
+    steps: number
+    /** 正在執行的工具 */
+    step?: string
+    /** 計畫裡還沒做完的項目 */
+    plan?: string[]
+  }
+  /** 排隊中的工作數 */
+  queued: number
+  /** 卡在等你回覆的問題 */
+  waiting_for?: {
+    inbox_id: string
+    kind: string
+    prompt: string
+    since: number
+  }
+  /** 傳給隊友、還沒回來的請求 */
+  waiting_on: {
+    bot_id: string
+    /** 隊友的名字 */
+    bot: string
+    /** 請它做的事（開頭） */
+    task: string
+    since: number
+    /** 做完要回報給誰（轉派的工作） */
+    for?: string
+  }[]
+  /** 正在做（或最近結束）的那件工作最後一次出錯 */
+  last_error?: {
+    task_id: string
+    text: string
+    at: number
+  }
+  /** 最近一次結束的工作（不含你停掉的） */
+  last?: {
+    task_id: string
+    /** answer、failed、interrupted */
+    verdict: string
+    /** 做完了沒的判斷 */
+    judge?: {
+      /** done 已完成、needs_person 需要你、handed_back 交回給你、only_promised 只說要做、stuck 卡住了 */
+      verdict: 'done' | 'needs_person' | 'handed_back' | 'only_promised' | 'stuck'
+      /** 介面上的白話，例：已完成 */
+      label: string
+      /** 一行原因 */
+      reason: string
+      /** rules（規則）或 model（快判模型） */
+      by: string
+      confidence?: number
+      /** 系統叫 Bot 自己接著做的那件工作 id */
+      continued_by?: string
+    }
+    at: number
+    /** 回覆的開頭 */
+    result?: string
+  }
+  text: string
+  now: number
+}
+
+/**
+ * 看 Bot 的目前進度（正在做什麼、卡在哪、等誰）
+ *
+ * 系統查得的事實，不是 Bot 自己說的：正在做的工作與經過時間、做了幾步、正在執行的工具、排隊幾件、卡在等你的問題、傳給隊友還沒回來的請求（做完要回報給誰）、最後一次出錯、最近一次完成與系統判斷。busy=false 而交辦的事還沒完成，代表卡住了。text 是同一份事實寫成幾行字（你問 Bot「進度如何」時它拿到的就是這份）。
+ *
+ * `xbot.tasks.progress`：權限 read、風險 safe
+ */
+export function tasksProgress(input: TasksProgressInput, opts?: CallOptions): Promise<TasksProgressOutput> {
+  return invoke('xbot.tasks.progress', input, opts).then((r) => r.output)
+}
+
 // xbot.team.roster
 
 export interface TeamRosterInput {
@@ -5926,6 +6132,8 @@ export interface Ops {
   'xbot.inbox.list': { input: InboxListInput; output: InboxListOutput }
   'xbot.inbox.mark_read': { input: InboxMarkReadInput; output: InboxMarkReadOutput }
   'xbot.inbox.undo': { input: InboxUndoInput; output: InboxUndoOutput }
+  'xbot.judge.correct': { input: JudgeCorrectInput; output: JudgeCorrectOutput }
+  'xbot.judge.corrections': { input: JudgeCorrectionsInput; output: JudgeCorrectionsOutput }
   'xbot.memory.add': { input: MemoryAddInput; output: MemoryAddOutput }
   'xbot.memory.history': { input: MemoryHistoryInput; output: MemoryHistoryOutput }
   'xbot.memory.read': { input: MemoryReadInput; output: MemoryReadOutput }
@@ -5977,6 +6185,7 @@ export interface Ops {
   'xbot.skills.propose': { input: SkillsProposeInput; output: SkillsProposeOutput }
   'xbot.skills.update': { input: SkillsUpdateInput; output: SkillsUpdateOutput }
   'xbot.system.ping': { input: SystemPingInput; output: SystemPingOutput }
+  'xbot.tasks.progress': { input: TasksProgressInput; output: TasksProgressOutput }
   'xbot.team.roster': { input: TeamRosterInput; output: TeamRosterOutput }
   'xbot.usage.caps': { input: UsageCapsInput; output: UsageCapsOutput }
   'xbot.usage.export': { input: UsageExportInput; output: UsageExportOutput }
@@ -6039,6 +6248,8 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.inbox.list': { path: '/api/v1/inbox.list', scope: 'read', risk: 'safe', mutates: false },
   'xbot.inbox.mark_read': { path: '/api/v1/inbox.mark_read', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.inbox.undo': { path: '/api/v1/inbox.undo', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.judge.correct': { path: '/api/v1/judge.correct', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.judge.corrections': { path: '/api/v1/judge.corrections', scope: 'read', risk: 'safe', mutates: false },
   'xbot.memory.add': { path: '/api/v1/memory.add', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.memory.history': { path: '/api/v1/memory.history', scope: 'read', risk: 'safe', mutates: false },
   'xbot.memory.read': { path: '/api/v1/memory.read', scope: 'read', risk: 'safe', mutates: false },
@@ -6090,6 +6301,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.skills.propose': { path: '/api/v1/skills.propose', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.skills.update': { path: '/api/v1/skills.update', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.system.ping': { path: '/api/v1/system.ping', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.tasks.progress': { path: '/api/v1/tasks.progress', scope: 'read', risk: 'safe', mutates: false },
   'xbot.team.roster': { path: '/api/v1/team.roster', scope: 'read', risk: 'safe', mutates: false },
   'xbot.usage.caps': { path: '/api/v1/usage.caps', scope: 'read', risk: 'safe', mutates: false },
   'xbot.usage.export': { path: '/api/v1/usage.export', scope: 'read', risk: 'safe', mutates: false },

@@ -57,3 +57,18 @@ export function modelLabel(bot: Bot, m: ModelsGetOutput | null): string {
   return cur.model || '還沒設定模型'
 }
 
+
+/** 判斷的白話（和後端 judge.Verdict.Label 一樣）。 */
+export const VERDICT_LABEL: Record<string, string> = {
+  done: '已完成',
+  needs_person: '需要你',
+  handed_back: '交回給你',
+  only_promised: '只說要做',
+  stuck: '卡住了',
+}
+
+/** 誰判的：規則寫「規則」，快判模型寫機率（92%）。 */
+export function judgeBy(by: string, confidence?: number): string {
+  if (by === 'model' && confidence) return `${Math.round(confidence * 100)}%`
+  return by === 'model' ? '快判' : '規則'
+}

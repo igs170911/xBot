@@ -101,6 +101,9 @@
 | `FailureDetailMax` | 1,500 | 字元 | server/runtime.py:545 | — | — |
 | `ChatTextMax` | 64,000 | 字元 | server/runtime.py:333 `_submit` | §12 | 和 PRD 一致；**XBot 原本的常數錯了**（見第 10 節） |
 | `AnswerTextMax` | 64,000 | 字元 | XBot 新增（同 `ChatTextMax`） | — | — |
+| `StrandedGoalKey` | 80 | 字元 | server/runtime.py:722（`goal[:80]`） | — | PRD 沒寫（X04） |
+| `JudgeTaskDoneWait` | 1 | 秒 | XBot 新增（PRD §20.2 用途 2 等待 1 秒） | §20 FJ-2 | —（X04，`judge.go`） |
+| `JudgeReasonMax`／`JudgeAskMax`／`JudgeNoteMax` | 120／300／500 | 字元 | XBot 新增 | §20 FJ-1、FJ-7 | —（X04，`judge.go`） |
 
 ## 7. 定時任務（`routines.go`）
 

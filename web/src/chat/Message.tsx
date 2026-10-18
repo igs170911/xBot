@@ -1,11 +1,15 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Check, ChevronDown, CircleX, Code, Copy, OctagonPause, RotateCcw, Square, Volume2 } from 'lucide-react'
+import { Check, ChevronDown, CircleX, Code, Copy, OctagonPause, Repeat, RotateCcw, Square, Volume2 } from 'lucide-react'
+import { ApiError, judgeCorrect } from '../api/generated'
 import { AgentMark } from '../ui/AgentMark'
 import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
-import type { Activity, ChatMsg } from './assemble'
-import { clockLabel, isLong } from './format'
+import { JudgeTag } from '../ui/Pill'
+import { setCorrection, type Activity, type ChatMsg } from './assemble'
+import type { CardProps } from './cards'
+import { chatStore } from './chatStore'
+import { clockLabel, isLong, judgeBy, VERDICT_LABEL } from './format'
 import { Markdown } from './markdown/Markdown'
 import { isRich } from './markdown/parse'
 import { useCopy } from './useCopy'
@@ -160,5 +164,47 @@ export function OutcomeRow({ msg, activity, onRetry, busy }: { msg: ChatMsg; act
         </Button>
       )}
     </div>
+  )
+}
+
+// ── 系統判斷（X04，PRD §20 FJ-7：「系統判斷：已完成 · 規則 · 不對？」）────────────
+
+// Bot 回完一輪後的系統判斷；「不對？」選正確的那一種，記下來給快判校正（xbot.judge.correct）。只在正常結束的回覆下面顯示。
+export function JudgeRow({ msg, threadId }: { msg: ChatMsg; threadId: string }) {
+  const [error, setError] = useState<string | null>(null)
+  const j = msg.judge
+  if (!j || msg.streaming || msg.status !== 'complete' || !msg.taskId) return null
+  const taskId = msg.taskId
+  const pick = (verdict: string) => {
+    setError(null)
+    judgeCorrect({ task_id: taskId, verdict: verdict as 'done' })
+      .then(() => chatStore.set((s) => setCorrection(s, threadId, msg.id, verdict)))
+      .catch((err: unknown) => setError(err instanceof ApiError || err instanceof Error ? err.message : String(err)))
+  }
+  const menu = Object.entries(VERDICT_LABEL)
+    .filter(([v]) => v !== (j.corrected || j.verdict))
+    .map(([v, label]) => ({ label, onSelect: () => pick(v) }))
+  return (
+    <div className="-mt-1 flex flex-wrap items-center gap-2" data-testid="judge-row" title={j.reason}>
+      <JudgeTag menu={menu}>
+        {VERDICT_LABEL[j.verdict] ?? j.label} · {judgeBy(j.by, j.confidence)}
+        {j.corrected && <span className="text-ink"> · 你改成{VERDICT_LABEL[j.corrected] ?? j.corrected}</span>}
+      </JudgeTag>
+      {error && (
+        <span role="alert" className="text-meta text-danger">
+          {error}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// 系統在對話裡記的一行（kind=activity，sender=system）：例「自動繼續：剛才只說要做，現在真的去做」（X04）。
+export function ActivityLine({ msg }: CardProps) {
+  return (
+    <p className="m-0 flex items-center gap-1.5 self-center text-meta text-ink-3" data-testid="activity-line" data-activity={msg.activity}>
+      <Icon icon={Repeat} size={14} />
+      {msg.content}
+    </p>
   )
 }

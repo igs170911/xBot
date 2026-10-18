@@ -434,6 +434,14 @@ func (s *Service) watch(runID, routineID, taskID string) {
 			s.watchMu.Unlock()
 		}()
 		task, err := s.o.Runtime.Wait(s.ctx, taskID)
+		// 系統叫 Bot 自己接著做（X04 自動續做）：等接著做的那一輪，結果以它為準。
+		for err == nil && task.State == store.TaskDone {
+			j := runtime.TaskJudgment(task)
+			if j == nil || j.ContinuedBy == "" {
+				break
+			}
+			task, err = s.o.Runtime.Wait(s.ctx, j.ContinuedBy)
+		}
 		if err != nil || task.State != store.TaskDone {
 			return // 服務要關了：重開後 Reconcile 再看
 		}

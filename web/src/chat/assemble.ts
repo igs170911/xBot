@@ -12,7 +12,7 @@ import { askFromEvent, type Answered, type Ask } from './ask'
 //   chat.needs_approval payload engine.Event {request:{id,kind,method,prompt,choices,params}}＋inbox_id、expires_at
 //   chat.answered     payload {inbox_id, kind, resolution, text}（C12：回覆、過期、Bot 不等了）
 //   chat.error        payload engine.Event {text, fatal}
-//   chat.done         payload {message_id, status, verdict, text}（text 是完整的最後回覆）
+//   chat.done         payload {message_id, status, verdict, text, judge}（text 是完整的最後回覆；judge 是做完了沒的系統判斷，X04）
 //   task.state        payload {state, verdict}
 // 有 id 的事件斷線重連時會補送：id 不大於已處理過的就略過，所以不會重複。
 // 補送的事件沒有 thread_id，靠 task_id／message_id 對回對話串。
@@ -39,6 +39,26 @@ export type ChatMsg = {
   silent?: boolean
   /** kind=peer：和隊友往來的那一行（X02、C13）。 */
   peer?: PeerLine
+  /** kind=activity（sender=system）：哪一種系統紀錄，例：auto_continue（自動繼續，X04）。 */
+  activity?: string
+  /** Bot 回覆的完成判定（X04）：系統判斷做完了沒，與你的改正。 */
+  judge?: Judge
+}
+
+/** 系統判斷一件工作做完了沒（X04，PRD §20 用途 2）。 */
+export type Judge = {
+  /** done、needs_person、handed_back、only_promised、stuck */
+  verdict: string
+  /** 已完成、需要你、交回給你、只說要做、卡住了 */
+  label: string
+  reason: string
+  /** rules（規則）或 model（快判模型） */
+  by: string
+  confidence?: number
+  /** 系統叫 Bot 自己接著做的那件工作 */
+  continued_by?: string
+  /** 你按「不對？」改成哪一種 */
+  corrected?: string
 }
 
 /** 對話裡和隊友往來的一行（chat.read 的 peer）。 */
@@ -133,7 +153,18 @@ type StoreMessage = {
   updated_at: number
 }
 
-type MessageMeta = { task_id?: string; streaming?: boolean; status?: string; actor?: string; actor_name?: string; via?: string; silent?: boolean; peer?: PeerLine }
+type MessageMeta = {
+  task_id?: string
+  streaming?: boolean
+  status?: string
+  actor?: string
+  actor_name?: string
+  via?: string
+  silent?: boolean
+  peer?: PeerLine
+  activity?: string
+  judge?: Judge
+}
 
 type EngineEvent = {
   text?: string
@@ -212,6 +243,8 @@ export function applyRead(s: ChatState, out: ChatReadOutput): ChatState {
       ...(m.actor ? { actorName: m.actor_name || m.actor, via: m.via } : {}),
       ...(m.silent ? { silent: true } : {}),
       ...(m.peer ? { peer: m.peer } : {}),
+      ...(m.activity ? { activity: m.activity } : {}),
+      ...(m.judge ? { judge: m.judge as Judge } : {}),
     }
     if (local && server.streaming && local.content.length > server.content.length && local.content.startsWith(server.content)) {
       // 還在串流：本地已經接到比快照更多的字
@@ -279,6 +312,8 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
         ...(meta.actor ? { actorName: meta.actor_name || meta.actor, via: meta.via } : {}),
         ...(meta.silent ? { silent: true } : {}),
         ...(meta.peer ? { peer: meta.peer } : {}),
+        ...(meta.activity ? { activity: meta.activity } : {}),
+        ...(meta.judge ? { judge: meta.judge } : existing?.judge ? { judge: existing.judge } : {}),
       }
       const messages = existing ? th.messages.map((x) => (x.id === m.id ? msg : x)) : [...th.messages, msg]
       let next = putMessages(s, m.scope_id, messages)
@@ -386,6 +421,7 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
       const status = p.status as string | undefined
       const verdict = p.verdict as string | undefined
       const text = p.text as string | undefined
+      const judge = p.judge as Judge | undefined
       let next = s
       if (e.task_id) {
         const a = activity(next, e.task_id)
@@ -394,7 +430,7 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
       if (!id) return next
       const tid = threadOf(next, e, id)
       if (!tid) return next
-      return updateMessage(next, tid, id, (m) => ({ ...m, content: text ?? m.content, streaming: false, status: status ?? m.status, updatedAt: e.at }))
+      return updateMessage(next, tid, id, (m) => ({ ...m, content: text ?? m.content, streaming: false, status: status ?? m.status, updatedAt: e.at, ...(judge ? { judge } : {}) }))
     }
   }
   return s
@@ -457,7 +493,8 @@ export function threadItems(s: ChatState, threadId: string): ChatItem[] {
   const items: ChatItem[] = []
   const shown = new Set<string>()
   for (const m of th?.messages ?? []) {
-    const a = m.sender !== 'owner' && m.taskId ? s.tasks[m.taskId] : undefined
+    // 你的訊息、系統記的一行（自動繼續）不接工作進度：進度接在 Bot 的回覆上。
+    const a = m.sender !== 'owner' && m.kind !== 'activity' && m.taskId ? s.tasks[m.taskId] : undefined
     if (a) shown.add(a.taskId)
     items.push({ type: 'message', msg: m, activity: a })
   }
@@ -495,4 +532,9 @@ export function workSummary(a: Activity): string {
   const sec = Math.max(1, Math.round(ms / 1000))
   const dur = sec < 60 ? `${sec} 秒` : `${Math.round(sec / 60)} 分鐘`
   return `工作了 ${dur} · ${a.steps.length} 步`
+}
+
+/** 改正後更新本地的判斷（xbot.judge.correct 成功之後）。 */
+export function setCorrection(s: ChatState, threadId: string, messageId: string, verdict: string): ChatState {
+  return updateMessage(s, threadId, messageId, (m) => (m.judge ? { ...m, judge: { ...m.judge, corrected: verdict } } : m))
 }

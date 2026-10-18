@@ -78,6 +78,20 @@ func (q *Queries) ListTasks(ctx context.Context, botID string, openOnly bool) ([
 	return collect(rows, err, scanTask)
 }
 
+// ListTasksWithMeta 列出一個 Bot 的任務裡 meta 有 key 這個欄位（不是 null）的，由舊到新。key 是 JSON 路徑，例：$.deferred_reply。
+func (q *Queries) ListTasksWithMeta(ctx context.Context, botID, key string) ([]Task, error) {
+	rows, err := q.r.QueryContext(ctx, `SELECT `+taskCols+` FROM task WHERE bot_id = ? AND json_extract(meta, ?) IS NOT NULL
+		ORDER BY created_at, id`, botID, key)
+	return collect(rows, err, scanTask)
+}
+
+// LatestDoneTask 回傳一個 Bot 最近結束的一件工作（不含 skipVerdict 這種結果，例：cancelled）；沒有時回 ErrNotFound。
+func (q *Queries) LatestDoneTask(ctx context.Context, botID, skipVerdict string) (Task, error) {
+	t, err := scanTask(q.r.QueryRowContext(ctx, `SELECT `+taskCols+` FROM task WHERE bot_id = ? AND state = 'done' AND verdict <> ?
+		ORDER BY finished_at DESC, id DESC LIMIT 1`, botID, skipVerdict))
+	return t, notFound(err)
+}
+
 // ListOpenTasks 列出所有 Bot 還沒完成的任務（服務重開時接續用）。
 func (q *Queries) ListOpenTasks(ctx context.Context) ([]Task, error) {
 	rows, err := q.r.QueryContext(ctx, `SELECT `+taskCols+` FROM task WHERE state <> 'done' ORDER BY created_at, id`)

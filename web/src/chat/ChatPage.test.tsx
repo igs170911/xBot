@@ -210,3 +210,41 @@ it('Markdown 回覆與重試：工作未完成的最後一則可以再送一次�
   fireEvent.click(screen.getByRole('button', { name: '再試一次' }))
   await waitFor(() => expect(api.calls.find((c) => c.path === 'chat.send')?.input).toEqual({ bot_id: 'b1', text: '匯出訂單', thread_id: 't1' }))
 })
+
+it('X04：回覆下面有系統判斷「已完成 · 規則」；不對？選正確的一種會記下來；自動繼續是一行系統紀錄', async () => {
+  api.ops['judge.correct'] = (input) => ({ correction: { ...input, judged: 'done', corrected: input.verdict } })
+  messages = [
+    { id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '查價格', task_id: 'k1', created_at: Date.now(), updated_at: Date.now() },
+    {
+      id: 'm2',
+      seq: 2,
+      sender: 'bot:b1',
+      kind: 'text',
+      content: '我來查一下',
+      task_id: 'k1',
+      status: 'complete',
+      judge: { verdict: 'only_promised', label: '只說要做', reason: '只回了一句要去做的話', by: 'rules', continued_by: 'k2' },
+      created_at: Date.now(),
+      updated_at: Date.now(),
+    },
+    { id: 'm3', seq: 3, sender: 'system', kind: 'activity', activity: 'auto_continue', content: '自動繼續：剛才只說要做，現在真的去做', task_id: 'k2', created_at: Date.now(), updated_at: Date.now() },
+  ]
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
+  const tag = await within(main).findByTestId('judge-tag')
+  expect(tag).toHaveTextContent('系統判斷：只說要做 · 規則')
+  expect(within(main).getByTestId('activity-line')).toHaveTextContent('自動繼續：剛才只說要做，現在真的去做')
+  // 新的一輪做完：chat.done 帶判斷。
+  emit(
+    ev({ id: 1, task_id: 'k2', kind: 'message.created', payload: storeMsg('m4', 4, 'bot:b1', { task_id: 'k2', streaming: true }) }),
+    ev({ id: 2, task_id: 'k2', kind: 'chat.done', payload: { message_id: 'm4', status: 'complete', verdict: 'answer', text: 'A 店 120 元。', judge: { verdict: 'done', label: '已完成', reason: '', by: 'rules' } } }),
+  )
+  const tags = within(main).getAllByTestId('judge-tag')
+  expect(tags).toHaveLength(2)
+  expect(tags[1]).toHaveTextContent('系統判斷：已完成 · 規則')
+  fireEvent.click(within(tags[1]).getByRole('button', { name: '不對？' }))
+  fireEvent.click(await screen.findByRole('menuitem', { name: '卡住了' }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'judge.correct')?.input).toEqual({ task_id: 'k2', verdict: 'stuck' }))
+  await waitFor(() => expect(within(main).getAllByTestId('judge-tag')[1]).toHaveTextContent('你改成卡住了'))
+})

@@ -1,6 +1,9 @@
 package chat
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 // MCP-13：代理送的訊息記下是哪個代理，畫面標「由 ○○（MCP）傳送」；工作記在代理名下（MCP-12 每日花費）。
 func TestAgentMessageAttribution(t *testing.T) {
@@ -18,7 +21,10 @@ func TestAgentMessageAttribution(t *testing.T) {
 		t.Fatalf("Bot 的回覆不標代理：%+v", m)
 	}
 	task, err := e.db.GetTask(bg, sent.TaskID)
-	if err != nil || string(task.Meta) != `{"actor":"agent:ag"}` {
+	var tm struct {
+		Actor string `json:"actor"`
+	}
+	if err != nil || json.Unmarshal(task.Meta, &tm) != nil || tm.Actor != "agent:ag" {
 		t.Fatalf("工作記在代理名下：%s %v", task.Meta, err)
 	}
 	// 你自己送的不標。
