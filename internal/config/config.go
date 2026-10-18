@@ -14,7 +14,8 @@ const DefaultPort = 8780
 
 // Config 是服務啟動時需要的設定。
 type Config struct {
-	// Bind 是監聽位址；只想本機使用時設成 127.0.0.1。
+	// Bind 是監聽位址。預設 0.0.0.0（使用者決定 2026-10-18：部署後區網其他裝置也連得到；
+	// 非本機的連線一律要登入碼，見 auth）。只想本機使用時設 XBOT_BIND=127.0.0.1。
 	Bind string
 	// Port 是 HTTP 埠。
 	Port int
@@ -57,7 +58,7 @@ func (c Config) URL() string {
 // Load 從環境變數讀設定：XBOT_BIND、XBOT_PORT、XBOT_DATA_DIR、XBOT_DEV、XBOT_LOCAL_NOAUTH、XBOT_PUBLIC_URL、XBOT_TRUSTED_PROXIES、XBOT_FAKE_NOW（只在 XBOT_DEV=1 時）。
 func Load() (Config, error) {
 	c := Config{
-		Bind:    envOr("XBOT_BIND", "127.0.0.1"),
+		Bind:    envOr("XBOT_BIND", "0.0.0.0"),
 		Port:    DefaultPort,
 		DataDir: os.Getenv("XBOT_DATA_DIR"),
 		Dev:     os.Getenv("XBOT_DEV") == "1",

@@ -15,13 +15,13 @@ func TestLoadDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Port != DefaultPort || c.Bind != "127.0.0.1" {
+	if c.Port != DefaultPort || c.Bind != "0.0.0.0" {
 		t.Fatalf("預設值錯誤：%+v", c)
 	}
 	if c.DataDir != filepath.Join("/tmp/xdg", "xbot") {
 		t.Fatalf("資料目錄錯誤：%s", c.DataDir)
 	}
-	if c.URL() != "http://127.0.0.1:8780" {
+	if c.URL() != "http://localhost:8780" {
 		t.Fatalf("URL 錯誤：%s", c.URL())
 	}
 }

@@ -46,3 +46,4 @@
 | C35 tsnet 內建、Funnel 外部入口 | ✅ 完成 | `task/C35-tsnet` | Tailscale 內建於服務（tsnet），預設關；tailnet 請求永不當本機；外部入口只開 /mcp、/api/v1/agents.pair、/hooks/<id>，必須代理權杖（擁有者登入碼不收），每 IP 每分鐘 120、外部代理每分鐘 20；也支援反向代理（XBOT_PUBLIC_URL）；執行檔約 54 MB | 反向代理要不要做成設定頁開關；手機 QR 只帶網址（裝置配對在 W31）；未用真的 Tailscale 測（需 auth key） |
 | 使用者決定（2026-10-18） | ✅ 已套用 | master | 1) 快判預設改用 OpenCode Go `deepseek-v4.1-flash`（Go 沒有 Jev 類模型；實測約 2 秒）；2) 訂閱憑證先不放進 Bot 電腦真跑；3) ChatGPT 方案經 Hermes 正式使用（拿掉「實驗性」與強制勾選，保留條款說明） | — |
 | 修測試環境 | ✅ 完成 | `task/fix-test-env` | e2e 固定時鐘（XBOT_FAKE_NOW 只在 XBOT_DEV=1 生效）；排程測試結束會暫停自己建的排程；Docker 測試用跨套件檔案鎖避免守門規則互蓋；多種時區／日期壓力測試通過 | store 的時間不可注入，judge／org 兩個測試跨午夜那幾毫秒仍可能失敗 |
+| 使用者要求：部署聽 0.0.0.0 | ✅ 已套用 | master | 預設 XBOT_BIND 改 0.0.0.0（安裝、deploy、compose 都適用；Go 用雙協定 socket，IPv4／IPv6 都聽）；安裝完印出區網網址；非本機連線一律要登入碼；`XBOT_BIND=127.0.0.1` 可限本機；`scripts/test-service.sh` 加檢查 | — |
