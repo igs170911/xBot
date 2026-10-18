@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-// 0009 重建 host 與 box：舊的主機、電腦都要留著，外鍵照舊有效，Bot 多了 host_id。
-func TestMigration0009KeepsHostsAndBoxes(t *testing.T) {
+// 0010 重建 host 與 box：舊的主機、電腦都要留著，外鍵照舊有效，Bot 多了 host_id。
+func TestMigration0010KeepsHostsAndBoxes(t *testing.T) {
 	path := filepath.Join(t.TempDir(), FileName)
 	raw, err := sql.Open("sqlite", "file:"+path+"?_pragma=foreign_keys(1)")
 	check(t, err)
@@ -15,7 +15,7 @@ func TestMigration0009KeepsHostsAndBoxes(t *testing.T) {
 	ms := must[[]Migration](t)(Migrations())
 	var before []Migration
 	for _, m := range ms {
-		if m.Version < 9 {
+		if m.Version < 10 {
 			before = append(before, m)
 		}
 	}
