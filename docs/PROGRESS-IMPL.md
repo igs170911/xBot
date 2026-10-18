@@ -38,3 +38,4 @@
 | X03 團隊、匯報線、提案、議程 | ✅ 完成 | `task/X03-org` | 團隊主管放 team.chief_id，is_chief 維持「主要 Bot」；議程頁在 `/agenda`（`/calendar` 給 C32）；擁有者也受 50 個 Bot 上限；議程每 30 秒檢查一次（LazyBoy 2 秒）；LazyBoy 測試移植 22 個；migration 0012 | 改團隊後執行中的 Bot 要重開才吃到新提示；ICS 行事曆、每週學習、團隊記憶提案、主管刪 Bot 未做；提案無法復原 |
 | CP5＋CP6（關卡 G2） | ✅ 通過（自動測試） | tag `cp5`、`cp6` | 用假 Hermes 驗證；真模型群組情境尚未跑（省額度） | — |
 | C33 檔案 | ✅ 完成 | `task/C33-files` | 檔案是獨立頁面（電腦側欄還是佔位）；PDF 用瀏覽器檢視、Office 只能下載；XLSX 自己寫的小讀取器；列資料夾需要電腦開機（其餘操作關機也行）；傳給其他 Bot 是複製；順手修 memory_version 排序的偶發失敗 | E08 資料分頁（SQL）未做；列檔要不要自動開機；Bot 產生的 HTML 要不要沙箱預覽 |
+| X05 快判 | ✅ 完成 | `task/X05-fastjudge` | 16 個用途（含排程句子整理），接上 7 個；選擇題 Jev→Go flash→本機→規則；只能更嚴格；影子模式與準確率統計；每日 300 次、Go 另限 100 次；migration 0016；**真跑結果**：Zen `jev-1.13` 回「Insufficient account funds」（OpenCode Go 訂閱不含 Zen 餘額），已做成 J10 警告＋一鍵改用 Go flash | 待決定：要不要儲值 Zen 用 Jev，或直接用 Go flash；鎖定案例是否也跑影子 |
