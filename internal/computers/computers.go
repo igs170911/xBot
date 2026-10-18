@@ -36,9 +36,15 @@ type Service struct {
 	Bus      *events.Bus
 	Logger   *slog.Logger
 
+	// Sealer 加密「從家裡出去」的 Tailscale 登入金鑰（proxy.Keyring）；nil 時不能存金鑰。
+	Sealer Sealer
+	// TailscaleKey 讀內建 Tailscale（C35）存的登入金鑰，「從家裡出去」沒有自己的金鑰時用；可為 nil。
+	TailscaleKey func(ctx context.Context) (string, error)
+
 	mu  sync.Mutex
 	job *Progress
 	wg  sync.WaitGroup
+	mv  mover
 }
 
 func (s *Service) log() *slog.Logger {
@@ -79,6 +85,11 @@ type View struct {
 	// NetIP 是電腦在 xbot-box 網路上的 IP；AllowPrivate 是它能連的私有網路（白名單，SEC-4）。
 	NetIP        string   `json:"net_ip,omitempty"`
 	AllowPrivate []string `json:"allow_private"`
+	// Home：這個 Bot 的電腦連外從家裡出去（CL-7）。
+	Home bool `json:"home" desc:"電腦連外從家裡出去（Tailscale exit node）"`
+	// Moving：正在搬家；Move 是進行中或最近一次的搬家（CL-5）。
+	Moving bool     `json:"moving" desc:"電腦正在搬家（不能開機、重建或刪除）"`
+	Move   *MoveJob `json:"move,omitempty" desc:"進行中或最近一次的搬家"`
 }
 
 // ErrNoComputer 表示 Bot 還沒有電腦。
@@ -118,6 +129,10 @@ func (s *Service) Status(ctx context.Context, botID string) (View, error) {
 	for _, a := range allow {
 		v.AllowPrivate = append(v.AllowPrivate, a.String())
 	}
+	if v.Home, err = s.Boxes.EgressOn(ctx, botID); err != nil {
+		return v, err
+	}
+	v.Moving, v.Move = s.Boxes.Moving(botID), s.lastMove(ctx, botID)
 	return v, nil
 }
 

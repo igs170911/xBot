@@ -32,10 +32,15 @@ import { roomsStore, startRooms } from './data/rooms'
 import { startChat } from './chat/chatStore'
 import { botsStore, startBots } from './data/bots'
 import { startEvents } from './data/events'
-import { startInbox } from './data/inbox'
+import { inboxStore, startInbox } from './data/inbox'
 import { useStore } from './data/store'
 import { ToastProvider } from './ui/Toast'
 import { Icon } from './ui/Icon'
+import { Onboarding } from './onboard/Onboarding'
+import { WelcomePage as FirstBotPage } from './onboard/Welcome'
+import { Tour } from './onboard/Tour'
+import { loadOnboard, onboardStore } from './onboard/state'
+import { ImportBotDialog } from './settings/bot/share'
 import { ChatListPage } from './mobile/ChatListPage'
 import { NotificationsPage } from './mobile/NotificationsPage'
 import { PairPage } from './mobile/PairPage'
@@ -112,8 +117,11 @@ function Main() {
     startChat()
     startRooms()
     startTeams()
+    void loadOnboard()
   }, [])
   const rooms = useStore(roomsStore).rooms
+  const onboard = useStore(onboardStore)
+  const inbox = useStore(inboxStore).items
 
   const bot = path.match(BOT_PATH)
   const computer = path.match(COMPUTER_PATH)
@@ -124,8 +132,16 @@ function Main() {
   const botName = (id: string) => bots?.find((b) => b.id === id)?.name
   const title = path === '/' ? '待我處理' : botFiles ? `${botName(botFiles[1]) ?? 'Bot'}的檔案` : bot ? (botName(bot[1]) ?? '對話') : computer ? `${botName(computer[1]) ?? 'Bot'}的電腦` : room ? (rooms?.find((r) => r.id === room[1])?.name ?? '群組對話') : (TITLES[path] ?? (path.startsWith('/settings') ? '設定' : path.startsWith('/calendar') ? '定時任務與行事曆' : 'XBot'))
 
+  // 首次設定（A03、A04）：還沒有任何 Bot、也還沒做完首次設定時，整頁顯示；讀狀態的那一下先不畫，免得閃一下首頁。
+  if (onboard.status === null) return null
+  if (onboard.status !== 'off' && onboard.status.first_run && !onboard.skipped) {
+    return <Onboarding onDone={() => onboardStore.set((o) => ({ ...o, skipped: true }))} />
+  }
+  const noBots = !!bots && bots.every((b) => b.archived) && inbox !== null && inbox.length === 0
+
   let page
-  if (path === '/') page = <InboxPage />
+  if (path === '/' && noBots) page = <FirstBotPage />
+  else if (path === '/') page = <InboxPage />
   else if (path === '/chats') page = <ChatListPage />
   else if (path === '/office') page = <OfficePage />
   else if (path === '/notifications') page = <NotificationsPage />
@@ -157,6 +173,8 @@ function Main() {
       <NewRoutineDialog />
       <NewRoomDialog />
       <NewTeamDialog />
+      <ImportBotDialog />
+      <Tour />
       <TeachStartDialog />
     </AppShell>
   )

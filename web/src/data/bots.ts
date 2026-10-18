@@ -4,6 +4,11 @@ import { createStore } from './store'
 
 export type Bot = BotsListOutput['bots'][number]
 
+/** Bot 頭像的外觀（形狀、顏色、平常的眼睛、圖片），直接展開給 <Avatar {...look(bot)} />。 */
+export function look(b?: { shape?: string; color?: string; eyes?: string; image?: string } | null) {
+  return { shape: b?.shape, color: b?.color, eyes: b?.eyes || undefined, img: b?.image || undefined }
+}
+
 /** Bot 目前在做什麼（從 task.state 事件來；重新整理後要等下一個事件才知道）。 */
 export type BotActivity = { state: string; threadId?: string; taskId?: string }
 

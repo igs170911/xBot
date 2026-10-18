@@ -124,7 +124,8 @@ const main = (page: Page) => page.getByRole('main')
 test('技能：三個位置、就地編輯、放到技能庫、從工作區技能庫加入（G05）', async ({ page }, info) => {
   const { api, xm, state } = await open(page, `/settings/bots/${'bot1'}/skills`)
   const m = main(page)
-  await expect(m.getByRole('navigation', { name: 'Bot 設定分頁' }).getByRole('link', { name: '技能', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(m.getByRole('navigation', { name: 'Bot 設定分頁' }).getByRole('link', { name: '能力', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(m.getByRole('navigation', { name: '能力分頁' }).getByRole('link', { name: /^技能/ })).toHaveAttribute('aria-current', 'page')
   const group = m.getByRole('group', { name: '技能' })
   await expect(group.getByText('每日重點整理')).toBeVisible()
   await expect(group.getByText('從對話學到')).toBeVisible()
@@ -223,8 +224,9 @@ test('人設：改常駐指示並儲存', async ({ page }, info) => {
   await m.getByLabel('常駐指示').fill('說話簡短、先講結論。花錢前一定先問我。')
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-c31-soul`), fullPage: true })
-  await m.getByRole('button', { name: '儲存人設' }).click()
-  await expect.poll(() => api.calls.find((c) => c.op === 'bots.update')?.input).toEqual({ id: xm.id, soul: '說話簡短、先講結論。花錢前一定先問我。', description: '' })
+  // 自動儲存（G02）：離開欄位就存
+  await m.getByLabel('常駐指示').blur()
+  await expect.poll(() => api.calls.find((c) => c.op === 'bots.update')?.input).toEqual({ id: xm.id, soul: '說話簡短、先講結論。花錢前一定先問我。' })
 })
 
 test('技能庫：匯入的技能預設停用、警示列、檢視內容後打開、加給 Bot（J09）', async ({ page }, info) => {

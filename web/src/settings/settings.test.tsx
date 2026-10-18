@@ -100,7 +100,7 @@ it('Bot 的訂閱：同意前要勾選，同意後標示用你的訂閱', async 
   }
   render(
     <ToastProvider>
-      <BotSettingsPage botId="b1" />
+      <BotSettingsPage botId="b1" tab="advanced" />
     </ToastProvider>,
   )
   fireEvent.click(await screen.findByRole('button', { name: '同意使用我的訂閱' }))
@@ -111,7 +111,6 @@ it('Bot 的訂閱：同意前要勾選，同意後標示用你的訂閱', async 
   fireEvent.click(ok)
   await waitFor(() => expect(screen.getAllByText('這個 Bot 用你的 Claude 訂閱').length).toBeGreaterThan(0))
   expect(api.calls.find((c) => c.path === 'engines.link_credentials')?.input).toEqual({ bot_id: 'b1', engine: 'claude-code' })
-  expect(screen.getByText(/就算選「完全放手」/)).toBeInTheDocument()
 })
 
 it('Bot 的權限：要核准時說明已送到待我處理', async () => {
@@ -123,11 +122,12 @@ it('Bot 的權限：要核准時說明已送到待我處理', async () => {
   }
   render(
     <ToastProvider>
-      <BotSettingsPage botId="b1" />
+      <BotSettingsPage botId="b1" tab="permissions" />
     </ToastProvider>,
   )
   const modes = await screen.findByRole('radiogroup', { name: '權限等級' })
-  expect(within(modes).getAllByRole('radio').map((r) => r.textContent?.split(/[花讀大幾]/)[0])).toEqual(['先問我', '一般的事自己做', '放手做', '完全放手'])
+  expect(screen.getByText(/就算選「完全放手」/)).toBeInTheDocument()
+  expect(within(modes).getAllByRole('radio').map((r) => r.textContent?.split(/[花讀大幾]/)[0].replace(/預設|（風險較高）/, ''))).toEqual(['先問我', '一般的事自己做', '放手做', '完全放手'])
   fireEvent.click(within(modes).getByRole('radio', { name: /^完全放手/ }))
   expect(await screen.findByText(/已送到「待我處理」/)).toBeInTheDocument()
 })

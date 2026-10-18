@@ -56,3 +56,32 @@ const (
 	// NetAllowMax 是一個 Bot 的私有網路白名單（SEC-4 allow_private_urls）最多幾筆。XBot 新增。
 	NetAllowMax = 32
 )
+
+// 搬家（CL-5，B31）與「從家裡出去」（CL-7）。都是 XBot 新增。
+const (
+	// BoxMoveKeep：搬家成功後，原主機上的資料（home／workspace／hermes／cred volume）再留多久才刪（回復用）。
+	BoxMoveKeep = 24 * time.Hour
+	// BoxMoveCleanupEvery：多久檢查一次有沒有過了保留期的舊資料要刪。
+	BoxMoveCleanupEvery = 10 * time.Minute
+	// BoxMoveHelperTimeout：搬家時在主機上量資料大小、算檢查碼的輔助容器最多跑多久。
+	BoxMoveHelperTimeout = 30 * time.Minute
+	// BoxMoveTimeout：一個 Bot 搬家（不含把電腦映像傳到新主機）的上限。
+	BoxMoveTimeout = 6 * time.Hour
+	// BoxMoveProgressEvery：搬家進度事件最多多久發一次。
+	BoxMoveProgressEvery = 500 * time.Millisecond
+	// BoxMoveHistory：搬家紀錄（進度面板、xbot.computers.move_status）最多回傳幾筆。
+	BoxMoveHistory = 20
+	// BoxMoveManifestBytes：新主機上算出的檔案清單與檢查碼最大多少（約 100 萬個檔案）。
+	BoxMoveManifestBytes int64 = 256 << 20
+
+	// EgressImage 是「從家裡出去」每台主機上的 Tailscale 小容器的映像（固定版本）。
+	EgressImage = "tailscale/tailscale:v1.88.3"
+	// EgressProxyPort 是 Tailscale 小容器在 xbot-box 網路上提供的 HTTP proxy 埠。
+	EgressProxyPort = 1055
+	// EgressMemoryBytes 是 Tailscale 小容器的記憶體上限。
+	EgressMemoryBytes int64 = 256 << 20
+	// EgressStatusTimeout 是查 Tailscale 小容器狀態（tailscale status）的時限。
+	EgressStatusTimeout = 10 * time.Second
+	// EgressPullTimeout 是在主機上拉 Tailscale 映像的時限。
+	EgressPullTimeout = 10 * time.Minute
+)

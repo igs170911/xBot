@@ -18,14 +18,20 @@ func TestOpsDefinitions(t *testing.T) {
 		risk       ops.Risk
 		noDelegate bool
 	}{
-		"xbot.computers.status":      {ops.ScopeRead, ops.RiskSafe, false},
-		"xbot.computers.wake":        {ops.ScopeOperate, ops.RiskSafe, false},
-		"xbot.computers.sleep":       {ops.ScopeOperate, ops.RiskSafe, false},
-		"xbot.computers.restart":     {ops.ScopeOperate, ops.RiskSafe, false},
-		"xbot.computers.rebuild":     {ops.ScopeManage, ops.RiskSafe, false}, // 保留資料，不用核准
-		"xbot.computers.purge":       {ops.ScopeManage, ops.RiskConfirm, true},
-		"xbot.computers.set_network": {ops.ScopeAdmin, ops.RiskConfirm, true},
-		"xbot.computers.update":      {ops.ScopeAdmin, ops.RiskSafe, false},
+		"xbot.computers.status":        {ops.ScopeRead, ops.RiskSafe, false},
+		"xbot.computers.wake":          {ops.ScopeOperate, ops.RiskSafe, false},
+		"xbot.computers.sleep":         {ops.ScopeOperate, ops.RiskSafe, false},
+		"xbot.computers.restart":       {ops.ScopeOperate, ops.RiskSafe, false},
+		"xbot.computers.rebuild":       {ops.ScopeManage, ops.RiskSafe, false}, // 保留資料，不用核准
+		"xbot.computers.purge":         {ops.ScopeManage, ops.RiskConfirm, true},
+		"xbot.computers.set_network":   {ops.ScopeAdmin, ops.RiskConfirm, true},
+		"xbot.computers.update":        {ops.ScopeAdmin, ops.RiskSafe, false},
+		"xbot.computers.move":          {ops.ScopeManage, ops.RiskSafe, false},
+		"xbot.computers.move_all":      {ops.ScopeManage, ops.RiskSafe, false},
+		"xbot.computers.move_status":   {ops.ScopeRead, ops.RiskSafe, false},
+		"xbot.computers.move_cancel":   {ops.ScopeManage, ops.RiskSafe, false},
+		"xbot.computers.set_egress":    {ops.ScopeAdmin, ops.RiskConfirm, true},
+		"xbot.computers.egress_status": {ops.ScopeRead, ops.RiskSafe, false},
 	}
 	for name, w := range want {
 		info, ok := reg.Get(name)
@@ -39,6 +45,9 @@ func TestOpsDefinitions(t *testing.T) {
 	}
 	if info, _ := reg.Get("xbot.computers.set_network"); !info.DynamicRisk {
 		t.Error("全部關掉白名單不用核准（RiskOf）")
+	}
+	if info, _ := reg.Get("xbot.computers.set_egress"); !info.DynamicRisk {
+		t.Error("關掉「從家裡出去」不用核准（RiskOf）")
 	}
 }
 

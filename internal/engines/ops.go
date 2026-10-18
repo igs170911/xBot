@@ -180,12 +180,19 @@ func (s *Service) status(ctx context.Context, call *ops.Call, in StatusIn) (Stat
 		}
 		out.Bots = append(out.Bots, v)
 	}
+	out.Host = s.HostLogins()
+	return out, nil
+}
+
+// HostLogins 回傳這台電腦上各訂閱 CLI（Claude Code、Codex）有沒有登入；不讀任何憑證內容。首次設定（A03）也用它。
+func (s *Service) HostLogins() []HostLogin {
+	out := []HostLogin{}
 	for _, e := range (Engine("")).EnumValues() {
 		sp := Specs[e]
 		_, err := os.Stat(s.HostPath(sp))
-		out.Host = append(out.Host, HostLogin{Engine: e, Label: sp.Label, Plan: sp.Plan, LoggedIn: err == nil, Login: sp.Login})
+		out = append(out, HostLogin{Engine: e, Label: sp.Label, Plan: sp.Plan, LoggedIn: err == nil, Login: sp.Login})
 	}
-	return out, nil
+	return out
 }
 
 func (s *Service) link(ctx context.Context, call *ops.Call, in LinkIn) (BotStatus, error) {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, CircleCheck, Globe, History, ShieldCheck, X } from 'lucide-react'
 import { loginsForget, loginsList, loginsShare, loginsUndoShare, type LoginsListOutput } from '../api/generated'
-import { botsStore } from '../data/bots'
+import { botsStore, look } from '../data/bots'
 import { useStore } from '../data/store'
 import { navigate, useSearch } from '../router'
 import { Avatar } from '../ui/Avatar'
@@ -282,7 +282,7 @@ function ShareDialog({ from, sites, initial, bots, onClose }: { from: B; sites: 
                 className={cx('rounded-[12px] px-3 py-2.5', to.has(b.id) ? 'bg-control' : 'bg-card')}
               >
                 <span className="flex items-center gap-2.5">
-                  <Avatar shape={b.shape} color={b.color} size={30} />
+                  <Avatar {...look(b)} size={30} />
                   <span className="flex flex-col">
                     <span>{b.name}</span>
                     {b.title && <span className="text-meta text-ink-2">{b.title}</span>}

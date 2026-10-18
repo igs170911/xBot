@@ -10,6 +10,7 @@ import { ConfirmDialog } from '../ui/Dialog'
 import { Icon } from '../ui/Icon'
 import { StatusChip } from '../ui/Pill'
 import { groupsOf, stateOf, type Chart, type ChartBot } from './model'
+import { look } from '../data/bots'
 
 // 團隊地圖（design/F04，簡化）：每個團隊一個框，Bot 節點有頭像、職稱、狀態膠囊、模型；
 // 主管戴皇冠，不是向主管報告的成員註明向誰報告。資料來自 xbot.teams.chart。
@@ -27,7 +28,7 @@ function Node({ bot, chiefId }: { bot: ChartBot; chiefId?: string }) {
       className="flex w-[150px] flex-col gap-1 rounded-group border border-line bg-card px-3 py-2.5 text-ink hover:bg-control/60 max-sm:w-full"
     >
       <span className="flex items-center gap-2">
-        <Avatar shape={bot.shape} color={bot.color} state={st.avatar} dot={st.tone === 'warning' ? 'waiting' : 'none'} size={26} ring="#1A1A1A" />
+        <Avatar {...look(bot)} state={st.avatar} dot={st.tone === 'warning' ? 'waiting' : 'none'} size={26} ring="#1A1A1A" />
         <span className="min-w-0 flex-1 truncate text-ui-sm">{bot.name}</span>
         {chief && <Icon icon={Crown} size={14} label="主管" className="text-ink-3" />}
       </span>

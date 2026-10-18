@@ -2205,6 +2205,10 @@ export interface BotsArchiveOutput {
   soul: string
   color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
   shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  /** 平常的眼睛；空白是圓點 */
+  eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
+  /** 頭像圖片（裁成形狀的 data URL）；有圖片時不疊眼睛 */
+  image?: string
   engine: string
   /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
   model: string
@@ -2259,6 +2263,8 @@ export interface BotsCreateInput {
   color?: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
   /** 頭像形狀；不填自動挑 */
   shape?: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  /** 頭像平常的眼睛；不填是圓點 */
+  eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
   /** 引擎；預設 hermes。claude-code、codex 要再用 xbot.engines.link_credentials 同意使用你的訂閱 */
   engine?: 'hermes' | 'claude-code' | 'codex'
   /** 模型；不填用預設模型（xbot.models.get 看設定） */
@@ -2277,6 +2283,10 @@ export interface BotsCreateOutput {
   soul: string
   color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
   shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  /** 平常的眼睛；空白是圓點 */
+  eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
+  /** 頭像圖片（裁成形狀的 data URL）；有圖片時不疊眼睛 */
+  image?: string
   engine: string
   /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
   model: string
@@ -2343,6 +2353,42 @@ export function botsDelete(input: BotsDeleteInput, opts?: CallOptions): Promise<
   return invoke('xbot.bots.delete', input, opts).then((r) => r.output)
 }
 
+// xbot.bots.export
+
+export interface BotsExportInput {
+  /** Bot id */
+  id: string
+  /** 不帶技能 */
+  no_skills?: boolean
+  /** 不帶要連的應用程式 */
+  no_apps?: boolean
+  /** 不帶人設（只帶名字、職稱、頭像） */
+  no_soul?: boolean
+}
+
+export interface BotsExportOutput {
+  /** 建議的檔名，例：小秘.xbot */
+  filename: string
+  /** .xbot 檔的內容（JSON） */
+  content: string
+  bytes: number
+  skills: number
+  apps: number
+  /** 例：Bot 還沒有電腦，技能沒有帶上 */
+  note?: string
+}
+
+/**
+ * 把一個 Bot 做成可以分享的 .xbot 檔
+ *
+ * 帶名字、職稱、介紹、人設、頭像、它自己的技能（只有文字）與要連的應用程式名稱。一律不帶登入資料、密碼、API 金鑰、對話紀錄、電腦裡的檔案與記憶。
+ *
+ * `xbot.bots.export`：權限 manage、風險 safe
+ */
+export function botsExport(input: BotsExportInput, opts?: CallOptions): Promise<BotsExportOutput> {
+  return invoke('xbot.bots.export', input, opts).then((r) => r.output)
+}
+
 // xbot.bots.get
 
 export interface BotsGetInput {
@@ -2358,6 +2404,10 @@ export interface BotsGetOutput {
   soul: string
   color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
   shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  /** 平常的眼睛；空白是圓點 */
+  eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
+  /** 頭像圖片（裁成形狀的 data URL）；有圖片時不疊眼睛 */
+  image?: string
   engine: string
   /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
   model: string
@@ -2395,6 +2445,98 @@ export function botsGet(input: BotsGetInput, opts?: CallOptions): Promise<BotsGe
   return invoke('xbot.bots.get', input, opts).then((r) => r.output)
 }
 
+// xbot.bots.import
+
+export interface BotsImportInput {
+  /** .xbot 檔的內容（JSON 文字） */
+  content: string
+  /** 檔名（記在技能的來源） */
+  filename?: string
+  /** 匯入後的名字；不填用檔案裡的，和現有的重複時自動加編號 */
+  name?: string
+  /** 只檢查內容、不建立（G14 第 2 步） */
+  preview?: boolean
+}
+
+export interface BotsImportOutput {
+  preview: boolean
+  /** 建立的 Bot（預覽時是會建立的樣子，沒有 id） */
+  bot: {
+    id: string
+    name: string
+    title: string
+    description: string
+    soul: string
+    color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+    shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+    /** 平常的眼睛；空白是圓點 */
+    eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
+    /** 頭像圖片（裁成形狀的 data URL）；有圖片時不疊眼睛 */
+    image?: string
+    engine: string
+    /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
+    model: string
+    /** 備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback） */
+    fallback: string
+    effort: string
+    approval_mode: 'ask' | 'edits' | 'auto' | 'full'
+    /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
+    memory_enabled: boolean
+    archived: boolean
+    /** 放在哪台主機（xbot.hosts.list）；空白＝第一次開機時自動擺放 */
+    host_id: string
+    /** 所在團隊；空白是未分區 */
+    team_id: string
+    /** 向哪個 Bot 報告；空白是直接向你報告 */
+    reports_to: string
+    /** 團隊管理權限：可以替你建團隊、調整別的 Bot；每天可建 20 個 Bot */
+    can_manage: boolean
+    /** 你的主要 Bot（is_chief） */
+    primary: boolean
+    /** 誰建立的：owner、agent:<id>、bot:<id> */
+    created_by?: string
+    /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
+    updated_by?: string
+    created_at: number
+    updated_at: number
+  }
+  /** 和現有 Bot 同名，自動改了名字 */
+  renamed: boolean
+  original: string
+  items: {
+    /** persona、skills、apps、permissions */
+    kind: string
+    /** ok：直接帶入；action：要你處理；info：說明 */
+    status: string
+    title: string
+    detail?: string
+  }[]
+  /** 放進工作區技能庫（先停用）的技能 id */
+  skills_added: string[]
+  /** 技能庫已經有、合併掉的技能名稱 */
+  skills_merged: string[]
+  /** 還沒連接的應用程式（之後再登入） */
+  apps_missing: string[]
+  /** 還可以建立幾個 Bot（全部最多 50 個） */
+  remaining: number
+  can_create: boolean
+  /** 不能建立的原因 */
+  reason?: string
+  exported_at: number
+  bytes: number
+}
+
+/**
+ * 從 .xbot 檔匯入一個 Bot
+ *
+ * 匯入的 Bot 一律從「先問我」開始（SEC-1），引擎與模型用這裡的預設；技能放進工作區技能庫並先停用，要你看過再裝上；要連的應用程式只列名稱，之後再登入。和現有 Bot 同名時自動加編號。preview=true 只檢查不建立。建立數量照一般規則（全部最多 50 個）。
+ *
+ * `xbot.bots.import`：權限 manage、風險 safe
+ */
+export function botsImport(input: BotsImportInput, opts?: CallOptions): Promise<BotsImportOutput> {
+  return invoke('xbot.bots.import', input, opts).then((r) => r.output)
+}
+
 // xbot.bots.list
 
 export interface BotsListInput {
@@ -2411,6 +2553,10 @@ export interface BotsListOutput {
     soul: string
     color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
     shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+    /** 平常的眼睛；空白是圓點 */
+    eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
+    /** 頭像圖片（裁成形狀的 data URL）；有圖片時不疊眼睛 */
+    image?: string
     engine: string
     /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
     model: string
@@ -2491,6 +2637,10 @@ export interface BotsUpdateInput {
   soul?: string
   color?: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
   shape?: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  /** 頭像平常的眼睛 */
+  eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
+  /** 頭像圖片：裁成形狀、256×256 的 data URL（PNG、JPEG、GIF、WebP）；空白字串改回吉祥物 */
+  image?: string
   engine?: 'hermes' | 'claude-code' | 'codex'
   /** 空白字串表示改回預設模型 */
   model?: string
@@ -2515,6 +2665,10 @@ export interface BotsUpdateOutput {
   soul: string
   color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
   shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  /** 平常的眼睛；空白是圓點 */
+  eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
+  /** 頭像圖片（裁成形狀的 data URL）；有圖片時不疊眼睛 */
+  image?: string
   engine: string
   /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
   model: string
@@ -3311,6 +3465,44 @@ export function collabStopRoom(input: CollabStopRoomInput, opts?: CallOptions): 
   return invoke('xbot.collab.stop_room', input, opts).then((r) => r.output)
 }
 
+// xbot.computers.egress_status
+
+export interface ComputersEgressStatusInput {
+  /** 只看這台主機；不填＝有 Bot 用到的主機 */
+  host_id?: string
+}
+
+export interface ComputersEgressStatusOutput {
+  exit_node: string
+  has_auth_key: boolean
+  /** 沒有另外設金鑰，用內建 Tailscale（設定 → 網路）的 */
+  shared_key: boolean
+  bots: string[]
+  hosts: {
+    host_id: string
+    present: boolean
+    running: boolean
+    ip?: string
+    /** Tailscale 狀態：Running、NeedsLogin、Starting、Stopped */
+    backend?: string
+    exit_node?: string
+    exit_node_online: boolean
+    error?: string
+  }[]
+  rebuild?: boolean
+  rebuilt?: boolean
+  pending?: boolean
+}
+
+/**
+ * 看「從家裡出去」的設定與各主機上 Tailscale 小容器的狀態
+ *
+ * `xbot.computers.egress_status`：權限 read、風險 safe
+ */
+export function computersEgressStatus(input: ComputersEgressStatusInput = {}, opts?: CallOptions): Promise<ComputersEgressStatusOutput> {
+  return invoke('xbot.computers.egress_status', input, opts).then((r) => r.output)
+}
+
 // xbot.computers.handback
 
 export interface ComputersHandbackInput {
@@ -3378,6 +3570,204 @@ export function computersHandback(input: ComputersHandbackInput, opts?: CallOpti
   return invoke('xbot.computers.handback', input, opts).then((r) => r.output)
 }
 
+// xbot.computers.move
+
+export interface ComputersMoveInput {
+  /** Bot id */
+  bot_id: string
+  /** 搬到這台主機 */
+  host_id: string
+}
+
+export interface ComputersMoveOutput {
+  /** 有搬家正在進行或排隊 */
+  running: boolean
+  jobs: {
+    id: string
+    bot_id: string
+    bot_name: string
+    from: string
+    from_name: string
+    to: string
+    to_name: string
+    /** queued、running、done、failed、canceled */
+    state: string
+    /** image（傳映像）、stop（停止電腦）、measure（量資料）、copy（傳資料）、verify（驗證）、switch（切換）、start（在新主機開機） */
+    phase?: string
+    /** 正在傳的資料：home、workspace、hermes */
+    volume?: string
+    percent: number
+    done: number
+    total: number
+    files: number
+    error?: string
+    note?: string
+    keep_until?: number
+    /** 原主機上的舊資料已經刪掉 */
+    cleaned?: boolean
+    created_at: number
+    finished_at?: number
+  }[]
+}
+
+/**
+ * 搬家：把一個 Bot 的電腦搬到另一台主機，家目錄、工作資料夾、引擎紀錄與瀏覽器登入都跟著走
+ *
+ * 停止電腦 → 經 SSH 打包 home／workspace／hermes → 在新主機還原並逐檔驗證 → 切換過去（原本開著的會在新主機開機）。在背景進行，進度看 computers.move 事件或 xbot.computers.move_status；途中失敗或取消時 Bot 留在原主機，原資料不動。原主機上的舊資料保留 24 小時才刪。Bot 正在工作時不能搬（先停止工作）。兩台主機都要在線上。
+ *
+ * `xbot.computers.move`：權限 manage、風險 safe
+ */
+export function computersMove(input: ComputersMoveInput, opts?: CallOptions): Promise<ComputersMoveOutput> {
+  return invoke('xbot.computers.move', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.move_all
+
+export interface ComputersMoveAllInput {
+  /** 把這台主機上的 Bot */
+  from_host_id: string
+  /** 全部搬到這台主機 */
+  to_host_id: string
+}
+
+export interface ComputersMoveAllOutput {
+  /** 有搬家正在進行或排隊 */
+  running: boolean
+  jobs: {
+    id: string
+    bot_id: string
+    bot_name: string
+    from: string
+    from_name: string
+    to: string
+    to_name: string
+    /** queued、running、done、failed、canceled */
+    state: string
+    /** image（傳映像）、stop（停止電腦）、measure（量資料）、copy（傳資料）、verify（驗證）、switch（切換）、start（在新主機開機） */
+    phase?: string
+    /** 正在傳的資料：home、workspace、hermes */
+    volume?: string
+    percent: number
+    done: number
+    total: number
+    files: number
+    error?: string
+    note?: string
+    keep_until?: number
+    /** 原主機上的舊資料已經刪掉 */
+    cleaned?: boolean
+    created_at: number
+    finished_at?: number
+  }[]
+}
+
+/**
+ * 把一台主機上的 Bot 全部搬到另一台（一個做完再做下一個）
+ *
+ * 從驗證用的主機換到專用主機時用（16.1a）。每個 Bot 的搬法同 xbot.computers.move；輪到時正在工作的 Bot 會跳過（可以之後再搬）。dry_run 只列出會搬哪些。
+ *
+ * `xbot.computers.move_all`：權限 manage、風險 safe
+ */
+export function computersMoveAll(input: ComputersMoveAllInput, opts?: CallOptions): Promise<ComputersMoveAllOutput> {
+  return invoke('xbot.computers.move_all', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.move_cancel
+
+export interface ComputersMoveCancelInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface ComputersMoveCancelOutput {
+  /** 有搬家正在進行或排隊 */
+  running: boolean
+  jobs: {
+    id: string
+    bot_id: string
+    bot_name: string
+    from: string
+    from_name: string
+    to: string
+    to_name: string
+    /** queued、running、done、failed、canceled */
+    state: string
+    /** image（傳映像）、stop（停止電腦）、measure（量資料）、copy（傳資料）、verify（驗證）、switch（切換）、start（在新主機開機） */
+    phase?: string
+    /** 正在傳的資料：home、workspace、hermes */
+    volume?: string
+    percent: number
+    done: number
+    total: number
+    files: number
+    error?: string
+    note?: string
+    keep_until?: number
+    /** 原主機上的舊資料已經刪掉 */
+    cleaned?: boolean
+    created_at: number
+    finished_at?: number
+  }[]
+}
+
+/**
+ * 取消一個 Bot 排隊中或進行中的搬家（Bot 留在原主機，原資料不動）
+ *
+ * 已經切換到新主機的搬家不能取消（要搬回去請再搬一次）。
+ *
+ * `xbot.computers.move_cancel`：權限 manage、風險 safe
+ */
+export function computersMoveCancel(input: ComputersMoveCancelInput, opts?: CallOptions): Promise<ComputersMoveCancelOutput> {
+  return invoke('xbot.computers.move_cancel', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.move_status
+
+export interface ComputersMoveStatusInput {
+  /** 只看這個 Bot；不填＝全部 */
+  bot_id?: string
+}
+
+export interface ComputersMoveStatusOutput {
+  /** 有搬家正在進行或排隊 */
+  running: boolean
+  jobs: {
+    id: string
+    bot_id: string
+    bot_name: string
+    from: string
+    from_name: string
+    to: string
+    to_name: string
+    /** queued、running、done、failed、canceled */
+    state: string
+    /** image（傳映像）、stop（停止電腦）、measure（量資料）、copy（傳資料）、verify（驗證）、switch（切換）、start（在新主機開機） */
+    phase?: string
+    /** 正在傳的資料：home、workspace、hermes */
+    volume?: string
+    percent: number
+    done: number
+    total: number
+    files: number
+    error?: string
+    note?: string
+    keep_until?: number
+    /** 原主機上的舊資料已經刪掉 */
+    cleaned?: boolean
+    created_at: number
+    finished_at?: number
+  }[]
+}
+
+/**
+ * 看搬家的進度：進行中、排隊中與最近做完的搬家
+ *
+ * `xbot.computers.move_status`：權限 read、風險 safe
+ */
+export function computersMoveStatus(input: ComputersMoveStatusInput = {}, opts?: CallOptions): Promise<ComputersMoveStatusOutput> {
+  return invoke('xbot.computers.move_status', input, opts).then((r) => r.output)
+}
+
 // xbot.computers.purge
 
 export interface ComputersPurgeInput {
@@ -3410,6 +3800,37 @@ export interface ComputersPurgeOutput {
   outdated: boolean
   net_ip?: string
   allow_private: string[]
+  /** 電腦連外從家裡出去（Tailscale exit node） */
+  home: boolean
+  /** 電腦正在搬家（不能開機、重建或刪除） */
+  moving: boolean
+  /** 進行中或最近一次的搬家 */
+  move?: {
+    id: string
+    bot_id: string
+    bot_name: string
+    from: string
+    from_name: string
+    to: string
+    to_name: string
+    /** queued、running、done、failed、canceled */
+    state: string
+    /** image（傳映像）、stop（停止電腦）、measure（量資料）、copy（傳資料）、verify（驗證）、switch（切換）、start（在新主機開機） */
+    phase?: string
+    /** 正在傳的資料：home、workspace、hermes */
+    volume?: string
+    percent: number
+    done: number
+    total: number
+    files: number
+    error?: string
+    note?: string
+    keep_until?: number
+    /** 原主機上的舊資料已經刪掉 */
+    cleaned?: boolean
+    created_at: number
+    finished_at?: number
+  }
 }
 
 /**
@@ -3455,6 +3876,37 @@ export interface ComputersRebuildOutput {
   outdated: boolean
   net_ip?: string
   allow_private: string[]
+  /** 電腦連外從家裡出去（Tailscale exit node） */
+  home: boolean
+  /** 電腦正在搬家（不能開機、重建或刪除） */
+  moving: boolean
+  /** 進行中或最近一次的搬家 */
+  move?: {
+    id: string
+    bot_id: string
+    bot_name: string
+    from: string
+    from_name: string
+    to: string
+    to_name: string
+    /** queued、running、done、failed、canceled */
+    state: string
+    /** image（傳映像）、stop（停止電腦）、measure（量資料）、copy（傳資料）、verify（驗證）、switch（切換）、start（在新主機開機） */
+    phase?: string
+    /** 正在傳的資料：home、workspace、hermes */
+    volume?: string
+    percent: number
+    done: number
+    total: number
+    files: number
+    error?: string
+    note?: string
+    keep_until?: number
+    /** 原主機上的舊資料已經刪掉 */
+    cleaned?: boolean
+    created_at: number
+    finished_at?: number
+  }
 }
 
 /**
@@ -3525,6 +3977,37 @@ export interface ComputersRestartOutput {
   outdated: boolean
   net_ip?: string
   allow_private: string[]
+  /** 電腦連外從家裡出去（Tailscale exit node） */
+  home: boolean
+  /** 電腦正在搬家（不能開機、重建或刪除） */
+  moving: boolean
+  /** 進行中或最近一次的搬家 */
+  move?: {
+    id: string
+    bot_id: string
+    bot_name: string
+    from: string
+    from_name: string
+    to: string
+    to_name: string
+    /** queued、running、done、failed、canceled */
+    state: string
+    /** image（傳映像）、stop（停止電腦）、measure（量資料）、copy（傳資料）、verify（驗證）、switch（切換）、start（在新主機開機） */
+    phase?: string
+    /** 正在傳的資料：home、workspace、hermes */
+    volume?: string
+    percent: number
+    done: number
+    total: number
+    files: number
+    error?: string
+    note?: string
+    keep_until?: number
+    /** 原主機上的舊資料已經刪掉 */
+    cleaned?: boolean
+    created_at: number
+    finished_at?: number
+  }
 }
 
 /**
@@ -3657,6 +4140,52 @@ export function computersScreens(input: ComputersScreensInput = {}, opts?: CallO
   return invoke('xbot.computers.screens', input, opts).then((r) => r.output)
 }
 
+// xbot.computers.set_egress
+
+export interface ComputersSetEgressInput {
+  /** Bot id */
+  bot_id: string
+  /** true：這個 Bot 的電腦連外從家裡出去（經 Tailscale exit node）；false：關掉，直接從主機連外 */
+  home?: boolean
+  /** 家裡那台電腦在 Tailscale 上的名稱或 100.x IP（要在 Tailscale 設成 exit node）；不填沿用上次的 */
+  exit_node?: string
+  /** Tailscale 登入金鑰（tskey-auth-…），給主機上的小容器加入你的 tailnet；不填沿用存著的，或內建 Tailscale 的（密鑰：只能寫、不能讀） */
+  auth_key?: string
+}
+
+export interface ComputersSetEgressOutput {
+  exit_node: string
+  has_auth_key: boolean
+  /** 沒有另外設金鑰，用內建 Tailscale（設定 → 網路）的 */
+  shared_key: boolean
+  bots: string[]
+  hosts: {
+    host_id: string
+    present: boolean
+    running: boolean
+    ip?: string
+    /** Tailscale 狀態：Running、NeedsLogin、Starting、Stopped */
+    backend?: string
+    exit_node?: string
+    exit_node_online: boolean
+    error?: string
+  }[]
+  rebuild?: boolean
+  rebuilt?: boolean
+  pending?: boolean
+}
+
+/**
+ * 「從家裡出去」：讓一個 Bot 的電腦連外經過家裡那台電腦（Tailscale exit node）
+ *
+ * 雲端主機的機房 IP 容易被蝦皮、Threads 要求驗證；開了以後這個 Bot 的瀏覽器與工具經主機上的 Tailscale 小容器、從家裡的網路連外。家裡那台電腦要在 Tailscale 設成 exit node，並在 Tailscale 的存取控制只允許小容器（tag:xbot-egress）連網際網路（autogroup:internet），否則經家裡出去的連線也連得到家裡的區網。只對認得 proxy 設定的程式有效（瀏覽器、Python、curl 等）。電腦開著時會重建（資料保留）。打開要你本人核准、不能代為核准；關掉不用核准。
+ *
+ * `xbot.computers.set_egress`：權限 admin、風險 confirm（依輸入可能需要核准）
+ */
+export function computersSetEgress(input: ComputersSetEgressInput, opts?: CallOptions): Promise<ComputersSetEgressOutput> {
+  return invoke('xbot.computers.set_egress', input, opts).then((r) => r.output)
+}
+
 // xbot.computers.set_network
 
 export interface ComputersSetNetworkInput {
@@ -3691,6 +4220,37 @@ export interface ComputersSetNetworkOutput {
   outdated: boolean
   net_ip?: string
   allow_private: string[]
+  /** 電腦連外從家裡出去（Tailscale exit node） */
+  home: boolean
+  /** 電腦正在搬家（不能開機、重建或刪除） */
+  moving: boolean
+  /** 進行中或最近一次的搬家 */
+  move?: {
+    id: string
+    bot_id: string
+    bot_name: string
+    from: string
+    from_name: string
+    to: string
+    to_name: string
+    /** queued、running、done、failed、canceled */
+    state: string
+    /** image（傳映像）、stop（停止電腦）、measure（量資料）、copy（傳資料）、verify（驗證）、switch（切換）、start（在新主機開機） */
+    phase?: string
+    /** 正在傳的資料：home、workspace、hermes */
+    volume?: string
+    percent: number
+    done: number
+    total: number
+    files: number
+    error?: string
+    note?: string
+    keep_until?: number
+    /** 原主機上的舊資料已經刪掉 */
+    cleaned?: boolean
+    created_at: number
+    finished_at?: number
+  }
 }
 
 /**
@@ -3736,6 +4296,37 @@ export interface ComputersSleepOutput {
   outdated: boolean
   net_ip?: string
   allow_private: string[]
+  /** 電腦連外從家裡出去（Tailscale exit node） */
+  home: boolean
+  /** 電腦正在搬家（不能開機、重建或刪除） */
+  moving: boolean
+  /** 進行中或最近一次的搬家 */
+  move?: {
+    id: string
+    bot_id: string
+    bot_name: string
+    from: string
+    from_name: string
+    to: string
+    to_name: string
+    /** queued、running、done、failed、canceled */
+    state: string
+    /** image（傳映像）、stop（停止電腦）、measure（量資料）、copy（傳資料）、verify（驗證）、switch（切換）、start（在新主機開機） */
+    phase?: string
+    /** 正在傳的資料：home、workspace、hermes */
+    volume?: string
+    percent: number
+    done: number
+    total: number
+    files: number
+    error?: string
+    note?: string
+    keep_until?: number
+    /** 原主機上的舊資料已經刪掉 */
+    cleaned?: boolean
+    created_at: number
+    finished_at?: number
+  }
 }
 
 /**
@@ -3806,6 +4397,37 @@ export interface ComputersStatusOutput {
   outdated: boolean
   net_ip?: string
   allow_private: string[]
+  /** 電腦連外從家裡出去（Tailscale exit node） */
+  home: boolean
+  /** 電腦正在搬家（不能開機、重建或刪除） */
+  moving: boolean
+  /** 進行中或最近一次的搬家 */
+  move?: {
+    id: string
+    bot_id: string
+    bot_name: string
+    from: string
+    from_name: string
+    to: string
+    to_name: string
+    /** queued、running、done、failed、canceled */
+    state: string
+    /** image（傳映像）、stop（停止電腦）、measure（量資料）、copy（傳資料）、verify（驗證）、switch（切換）、start（在新主機開機） */
+    phase?: string
+    /** 正在傳的資料：home、workspace、hermes */
+    volume?: string
+    percent: number
+    done: number
+    total: number
+    files: number
+    error?: string
+    note?: string
+    keep_until?: number
+    /** 原主機上的舊資料已經刪掉 */
+    cleaned?: boolean
+    created_at: number
+    finished_at?: number
+  }
 }
 
 /**
@@ -3955,6 +4577,37 @@ export interface ComputersWakeOutput {
   outdated: boolean
   net_ip?: string
   allow_private: string[]
+  /** 電腦連外從家裡出去（Tailscale exit node） */
+  home: boolean
+  /** 電腦正在搬家（不能開機、重建或刪除） */
+  moving: boolean
+  /** 進行中或最近一次的搬家 */
+  move?: {
+    id: string
+    bot_id: string
+    bot_name: string
+    from: string
+    from_name: string
+    to: string
+    to_name: string
+    /** queued、running、done、failed、canceled */
+    state: string
+    /** image（傳映像）、stop（停止電腦）、measure（量資料）、copy（傳資料）、verify（驗證）、switch（切換）、start（在新主機開機） */
+    phase?: string
+    /** 正在傳的資料：home、workspace、hermes */
+    volume?: string
+    percent: number
+    done: number
+    total: number
+    files: number
+    error?: string
+    note?: string
+    keep_until?: number
+    /** 原主機上的舊資料已經刪掉 */
+    cleaned?: boolean
+    created_at: number
+    finished_at?: number
+  }
 }
 
 /**
@@ -6958,6 +7611,104 @@ export interface NetworkTailscaleSetOutput {
  */
 export function networkTailscaleSet(input: NetworkTailscaleSetInput, opts?: CallOptions): Promise<NetworkTailscaleSetOutput> {
   return invoke('xbot.network.tailscale_set', input, opts).then((r) => r.output)
+}
+
+// xbot.onboard.status
+
+export interface OnboardStatusInput {
+  /** 不偵測本機模型與電腦映像（只看狀態，比較快） */
+  skip_detect?: boolean
+}
+
+export interface OnboardStatusOutput {
+  /** 還沒有任何 Bot、也還沒做完首次設定：顯示首次設定 */
+  first_run: boolean
+  /** Bot 數（含封存） */
+  bots: number
+  state: {
+    /** 首次設定做完或跳過了 */
+    completed: boolean
+    completed_at?: number
+    /** 導覽看完或跳過了（A10） */
+    tour_done: boolean
+    /** 首頁「之後再做」關掉的卡片：import、phone、tour */
+    dismissed: string[]
+  }
+  /** 這台電腦上已登入的訂閱 CLI */
+  engines: {
+    /** claude-code 或 codex */
+    engine: string
+    label: string
+    /** 訂閱方案名稱，例：Claude */
+    plan: string
+    logged_in: boolean
+    /** 沒有登入時，在這台電腦上執行的指令 */
+    login: string
+  }[]
+  /** 偵測到的本機模型服務（LM Studio、Ollama） */
+  local: {
+    id: string
+    label: string
+    base_url: string
+    /** 內建範本代號；沒有時用自訂供應商（base_url、chat_completions） */
+    preset?: string
+    /** 服務列出的模型 */
+    models: string[]
+  }[]
+  computer: {
+    /** 這台的 Docker 連得上 */
+    docker: boolean
+    /** Bot 電腦映像名稱 */
+    image: string
+    /** 映像已經建好；Bot 第一次收到工作時就能開機 */
+    ready: boolean
+    /** 還沒好時該怎麼做 */
+    hint?: string
+    error?: string
+  }
+}
+
+/**
+ * 首次設定的狀態：已登入的 AI 工具、本機模型、Bot 電腦映像
+ *
+ * 偵測這台電腦上已登入的 Claude Code、Codex（只看有沒有登入，不讀憑證），本機的 LM Studio、Ollama 有哪些模型，以及 Bot 電腦映像建好了沒。還沒有任何 Bot、也還沒做完首次設定時 first_run 是 true。
+ *
+ * `xbot.onboard.status`：權限 read、風險 safe
+ */
+export function onboardStatus(input: OnboardStatusInput = {}, opts?: CallOptions): Promise<OnboardStatusOutput> {
+  return invoke('xbot.onboard.status', input, opts).then((r) => r.output)
+}
+
+// xbot.onboard.update
+
+export interface OnboardUpdateInput {
+  /** 首次設定做完（或跳過） */
+  completed?: boolean
+  /** 導覽看完（或跳過）；false 表示再看一次 */
+  tour_done?: boolean
+  /** 關掉首頁的一張「之後再做」卡片 */
+  dismiss?: string
+  /** 把關掉的卡片都放回來 */
+  restore?: boolean
+}
+
+export interface OnboardUpdateOutput {
+  /** 首次設定做完或跳過了 */
+  completed: boolean
+  completed_at?: number
+  /** 導覽看完或跳過了（A10） */
+  tour_done: boolean
+  /** 首頁「之後再做」關掉的卡片：import、phone、tour */
+  dismissed: string[]
+}
+
+/**
+ * 記下首次設定、導覽與首頁卡片的狀態
+ *
+ * `xbot.onboard.update`：權限 manage、風險 safe
+ */
+export function onboardUpdate(input: OnboardUpdateInput = {}, opts?: CallOptions): Promise<OnboardUpdateOutput> {
+  return invoke('xbot.onboard.update', input, opts).then((r) => r.output)
 }
 
 // xbot.push.config
@@ -11044,7 +11795,9 @@ export interface Ops {
   'xbot.bots.archive': { input: BotsArchiveInput; output: BotsArchiveOutput }
   'xbot.bots.create': { input: BotsCreateInput; output: BotsCreateOutput }
   'xbot.bots.delete': { input: BotsDeleteInput; output: BotsDeleteOutput }
+  'xbot.bots.export': { input: BotsExportInput; output: BotsExportOutput }
   'xbot.bots.get': { input: BotsGetInput; output: BotsGetOutput }
+  'xbot.bots.import': { input: BotsImportInput; output: BotsImportOutput }
   'xbot.bots.list': { input: BotsListInput; output: BotsListOutput }
   'xbot.bots.suggest': { input: BotsSuggestInput; output: BotsSuggestOutput }
   'xbot.bots.update': { input: BotsUpdateInput; output: BotsUpdateOutput }
@@ -11066,13 +11819,19 @@ export interface Ops {
   'xbot.collab.start_group': { input: CollabStartGroupInput; output: CollabStartGroupOutput }
   'xbot.collab.stop_chain': { input: CollabStopChainInput; output: CollabStopChainOutput }
   'xbot.collab.stop_room': { input: CollabStopRoomInput; output: CollabStopRoomOutput }
+  'xbot.computers.egress_status': { input: ComputersEgressStatusInput; output: ComputersEgressStatusOutput }
   'xbot.computers.handback': { input: ComputersHandbackInput; output: ComputersHandbackOutput }
+  'xbot.computers.move': { input: ComputersMoveInput; output: ComputersMoveOutput }
+  'xbot.computers.move_all': { input: ComputersMoveAllInput; output: ComputersMoveAllOutput }
+  'xbot.computers.move_cancel': { input: ComputersMoveCancelInput; output: ComputersMoveCancelOutput }
+  'xbot.computers.move_status': { input: ComputersMoveStatusInput; output: ComputersMoveStatusOutput }
   'xbot.computers.purge': { input: ComputersPurgeInput; output: ComputersPurgeOutput }
   'xbot.computers.rebuild': { input: ComputersRebuildInput; output: ComputersRebuildOutput }
   'xbot.computers.request_takeover': { input: ComputersRequestTakeoverInput; output: ComputersRequestTakeoverOutput }
   'xbot.computers.restart': { input: ComputersRestartInput; output: ComputersRestartOutput }
   'xbot.computers.screen': { input: ComputersScreenInput; output: ComputersScreenOutput }
   'xbot.computers.screens': { input: ComputersScreensInput; output: ComputersScreensOutput }
+  'xbot.computers.set_egress': { input: ComputersSetEgressInput; output: ComputersSetEgressOutput }
   'xbot.computers.set_network': { input: ComputersSetNetworkInput; output: ComputersSetNetworkOutput }
   'xbot.computers.sleep': { input: ComputersSleepInput; output: ComputersSleepOutput }
   'xbot.computers.snapshot': { input: ComputersSnapshotInput; output: ComputersSnapshotOutput }
@@ -11140,6 +11899,8 @@ export interface Ops {
   'xbot.network.funnel_set': { input: NetworkFunnelSetInput; output: NetworkFunnelSetOutput }
   'xbot.network.status': { input: NetworkStatusInput; output: NetworkStatusOutput }
   'xbot.network.tailscale_set': { input: NetworkTailscaleSetInput; output: NetworkTailscaleSetOutput }
+  'xbot.onboard.status': { input: OnboardStatusInput; output: OnboardStatusOutput }
+  'xbot.onboard.update': { input: OnboardUpdateInput; output: OnboardUpdateOutput }
   'xbot.push.config': { input: PushConfigInput; output: PushConfigOutput }
   'xbot.push.subscribe': { input: PushSubscribeInput; output: PushSubscribeOutput }
   'xbot.push.test': { input: PushTestInput; output: PushTestOutput }
@@ -11246,7 +12007,9 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.bots.archive': { path: '/api/v1/bots.archive', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.bots.create': { path: '/api/v1/bots.create', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.bots.delete': { path: '/api/v1/bots.delete', scope: 'manage', risk: 'confirm', mutates: true },
+  'xbot.bots.export': { path: '/api/v1/bots.export', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.bots.get': { path: '/api/v1/bots.get', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.bots.import': { path: '/api/v1/bots.import', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.bots.list': { path: '/api/v1/bots.list', scope: 'read', risk: 'safe', mutates: false },
   'xbot.bots.suggest': { path: '/api/v1/bots.suggest', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.bots.update': { path: '/api/v1/bots.update', scope: 'manage', risk: 'safe', mutates: true },
@@ -11268,13 +12031,19 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.collab.start_group': { path: '/api/v1/collab.start_group', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.collab.stop_chain': { path: '/api/v1/collab.stop_chain', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.collab.stop_room': { path: '/api/v1/collab.stop_room', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.computers.egress_status': { path: '/api/v1/computers.egress_status', scope: 'read', risk: 'safe', mutates: false },
   'xbot.computers.handback': { path: '/api/v1/computers.handback', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.computers.move': { path: '/api/v1/computers.move', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.computers.move_all': { path: '/api/v1/computers.move_all', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.computers.move_cancel': { path: '/api/v1/computers.move_cancel', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.computers.move_status': { path: '/api/v1/computers.move_status', scope: 'read', risk: 'safe', mutates: false },
   'xbot.computers.purge': { path: '/api/v1/computers.purge', scope: 'manage', risk: 'confirm', mutates: true },
   'xbot.computers.rebuild': { path: '/api/v1/computers.rebuild', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.computers.request_takeover': { path: '/api/v1/computers.request_takeover', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.computers.restart': { path: '/api/v1/computers.restart', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.computers.screen': { path: '/api/v1/computers.screen', scope: 'read', risk: 'safe', mutates: false },
   'xbot.computers.screens': { path: '/api/v1/computers.screens', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.computers.set_egress': { path: '/api/v1/computers.set_egress', scope: 'admin', risk: 'confirm', mutates: true },
   'xbot.computers.set_network': { path: '/api/v1/computers.set_network', scope: 'admin', risk: 'confirm', mutates: true },
   'xbot.computers.sleep': { path: '/api/v1/computers.sleep', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.computers.snapshot': { path: '/api/v1/computers.snapshot', scope: 'operate', risk: 'safe', mutates: true },
@@ -11342,6 +12111,8 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.network.funnel_set': { path: '/api/v1/network.funnel_set', scope: 'admin', risk: 'confirm', mutates: true },
   'xbot.network.status': { path: '/api/v1/network.status', scope: 'read', risk: 'safe', mutates: false },
   'xbot.network.tailscale_set': { path: '/api/v1/network.tailscale_set', scope: 'admin', risk: 'confirm', mutates: true },
+  'xbot.onboard.status': { path: '/api/v1/onboard.status', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.onboard.update': { path: '/api/v1/onboard.update', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.push.config': { path: '/api/v1/push.config', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.push.subscribe': { path: '/api/v1/push.subscribe', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.push.test': { path: '/api/v1/push.test', scope: 'admin', risk: 'safe', mutates: true },

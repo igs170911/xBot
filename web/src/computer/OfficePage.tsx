@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Cloud, Hourglass, House, LoaderCircle, Moon, Server, WifiOff } from 'lucide-react'
-import { botsStore, type Bot } from '../data/bots'
+import { botsStore, type Bot, look } from '../data/bots'
 import { inboxStore } from '../data/inbox'
 import { useStore } from '../data/store'
 import { linkClick, navigate } from '../router'
@@ -237,7 +237,7 @@ function ComputerCard({ row }: { row: Row }) {
     >
       <Thumb row={row} className="aspect-[16/10] w-full" />
       <div className="flex items-center gap-2.5 px-1.5">
-        {bot && <Avatar shape={bot.shape} color={bot.color} state={row.status === 'working' ? 'working' : row.status === 'sleeping' ? 'sleeping' : 'idle'} dot={waiting ? 'waiting' : 'none'} size={28} ring="#111111" />}
+        {bot && <Avatar {...look(bot)} state={row.status === 'working' ? 'working' : row.status === 'sleeping' ? 'sleeping' : 'idle'} dot={waiting ? 'waiting' : 'none'} size={28} ring="#111111" />}
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-ui">{screen.name}的電腦</span>
           <span className={cx('truncate text-meta', waiting ? 'text-warning-ink' : 'text-ink-2')}>{rowSub(row)}</span>
@@ -266,7 +266,7 @@ function PhoneRow({ row }: { row: Row }) {
       <Thumb row={row} className="h-[50px] w-[88px] flex-none" />
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="flex items-center gap-1.5 text-ui">
-          {bot && <Avatar shape={bot.shape} color={bot.color} state="idle" dot={waiting ? 'waiting' : 'none'} size={20} ring="#111111" />}
+          {bot && <Avatar {...look(bot)} state="idle" dot={waiting ? 'waiting' : 'none'} size={20} ring="#111111" />}
           {screen.name}
         </span>
         <span className={cx('truncate text-meta', waiting ? 'text-warning-ink' : 'text-ink-2')}>{rowSub(row)}</span>

@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test'
+import { pastOnboarding } from './real-helpers'
 
 // 對著真的執行檔（不攔截網路）：建 Bot 走真的 bots.create，側欄靠真的 SSE 事件更新；
 // 沒設定模型時會看到提示卡，在網頁上設定好就消失。不會真的開 Bot 電腦（那是 make e2e-docker）。
 test('真的服務：建 Bot、側欄即時出現、沒模型時引導設定', async ({ page, request }, info) => {
   test.skip(info.project.name !== 'desktop', '同一個服務只跑一次')
   await page.setViewportSize({ width: 1440, height: 960 })
+  await pastOnboarding(request)
   await page.goto('/')
   const nav = page.getByRole('navigation', { name: '側欄' })
   await expect(nav).toBeVisible()

@@ -37,7 +37,9 @@ type Schema struct {
 	MinItems             *int               `json:"minItems,omitempty"`
 	MaxItems             *int               `json:"maxItems,omitempty"`
 	Secret               bool               `json:"x-secret,omitempty"`
-	Resource             string             `json:"x-resource,omitempty"`
+	// Blob 是很長的內容（圖片 data URL、整個檔案）：稽核與待我處理只記長度，不記內容（標籤 blob:"true"）。
+	Blob     bool   `json:"x-blob,omitempty"`
+	Resource string `json:"x-resource,omitempty"`
 
 	// Order 是 Properties 依 struct 欄位宣告的順序（CLI 旗標、前端型別用）。
 	Order []string `json:"-"`
@@ -206,6 +208,7 @@ func (g *schemaGen) fields(t reflect.Type, s *Schema) error {
 func applyTags(p *Schema, f reflect.StructField) error {
 	p.Description = f.Tag.Get("desc")
 	p.Secret = f.Tag.Get("secret") == "true"
+	p.Blob = f.Tag.Get("blob") == "true"
 	p.Resource = f.Tag.Get("resource")
 	switch p.Resource {
 	case "", ResourceBot, ResourceTeam, ResourceHost:

@@ -263,6 +263,9 @@ func (s *Service) restart(ctx context.Context) error {
 	return nil
 }
 
+// AuthKey 回傳存著的 Tailscale 登入金鑰（沒有時空白）。「從家裡出去」（B31）沒有自己的金鑰時借用。
+func (s *Service) AuthKey(ctx context.Context) (string, error) { return s.authKey(ctx) }
+
 func (s *Service) authKey(ctx context.Context) (string, error) {
 	if s.o.DB == nil || s.o.Sealer == nil {
 		return "", nil

@@ -6,7 +6,7 @@ import { CountBadge } from '../ui/Pill'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
 import { linkClick } from '../router'
-import { botsStore, type Bot } from '../data/bots'
+import { botsStore, type Bot, look } from '../data/bots'
 import { inboxStore } from '../data/inbox'
 import { openNewRoom, roomsStore, type Room } from '../data/rooms'
 import { useStore } from '../data/store'
@@ -15,11 +15,12 @@ import { openNewBot } from '../data/ui'
 
 type NavProps = { path: string; onNavigate?: () => void }
 
-function NavRow({ to, path, icon, children, aside, onNavigate }: NavProps & { to: string; icon: typeof Inbox; children: ReactNode; aside?: ReactNode }) {
+function NavRow({ to, path, icon, children, aside, onNavigate, tour }: NavProps & { to: string; icon: typeof Inbox; children: ReactNode; aside?: ReactNode; tour?: string }) {
   const active = path === to
   return (
     <a
       href={to}
+      data-tour={tour}
       onClick={linkClick(to, onNavigate)}
       aria-current={active ? 'page' : undefined}
       className={cx('flex min-h-10 items-center gap-3 rounded-menu px-3 text-ink max-sm:min-h-11', active ? 'bg-control' : 'hover:bg-control/60')}
@@ -47,7 +48,7 @@ function BotRow({ bot, path, onNavigate, chief }: NavProps & { bot: Bot; chief?:
       aria-current={active ? 'page' : undefined}
       className={cx('flex min-h-[58px] items-center gap-2.5 rounded-menu px-2.5 py-[3px] text-ink', active ? 'bg-control' : 'hover:bg-control/60')}
     >
-      <Avatar shape={bot.shape} color={bot.color} state={waiting ? 'notifying' : working ? 'working' : 'idle'} dot={waiting ? 'waiting' : 'none'} ring={ring} size={40} />
+      <Avatar {...look(bot)} state={waiting ? 'notifying' : working ? 'working' : 'idle'} dot={waiting ? 'waiting' : 'none'} ring={ring} size={40} />
       <RowText label={bot.name} star={chief} starLabel="主管" sub={sub} subClass={waiting ? 'text-warning-ink' : 'text-ink-2'} />
     </a>
   )
@@ -172,7 +173,7 @@ export function Sidebar({ path, onNavigate, onClose }: SidebarProps) {
       </label>
 
       <div className="flex flex-col gap-0.5">
-        <NavRow to="/" path={path} icon={Inbox} onNavigate={onNavigate} aside={count > 0 ? <CountBadge count={count} label={`${count} 件等你`} /> : undefined}>
+        <NavRow to="/" path={path} icon={Inbox} onNavigate={onNavigate} tour="inbox" aside={count > 0 ? <CountBadge count={count} label={`${count} 件等你`} /> : undefined}>
           待我處理
         </NavRow>
         <NavRow to="/office" path={path} icon={Monitor} onNavigate={onNavigate}>
@@ -207,9 +208,10 @@ export function Sidebar({ path, onNavigate, onClose }: SidebarProps) {
             {sec.team && sec.bots.length === 0 && <p className="m-0 px-3 py-1 text-sub text-ink-3">這個團隊還沒有成員。</p>}
             {!sec.team && bots && bots.length === 0 && (
               <div className="flex flex-col items-start gap-2 px-3 py-2 text-sub text-ink-2">
-                還沒有 Bot。建一個，交代它第一件事。
-                <Button icon={Plus} onClick={newBot}>
-                  新增 Bot
+                <span className="text-meta text-ink-3">還沒有 Bot</span>
+                建立第一個 Bot 之後，它會出現在這裡，旁邊會顯示它正在做什麼。
+                <Button icon={Plus} variant="outline" onClick={newBot}>
+                  建立 Bot
                 </Button>
               </div>
             )}
