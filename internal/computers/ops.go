@@ -237,6 +237,21 @@ func registerMove(reg *ops.Registry, svc *Service, need func() error) {
 			return st, opErr(err)
 		},
 	})
+	ops.Register(reg, ops.Op[struct{}, Progress]{
+		Name: "xbot.computers.update_status", Summary: "看「更新電腦」的進度：正在進行或最近一次的結果（還沒更新過時 hosts 是空的）",
+		Description: "make update 之後用來等電腦更新完；網頁的「更新電腦」按鈕也用它顯示進度。",
+		Scope:       ops.ScopeRead, Risk: ops.RiskSafe,
+		Handle: func(ctx context.Context, _ *ops.Call, _ struct{}) (Progress, error) {
+			if err := need(); err != nil {
+				return Progress{}, err
+			}
+			p, ok := svc.Progress()
+			if !ok {
+				return Progress{Hosts: []HostUpdate{}}, nil
+			}
+			return p, nil
+		},
+	})
 	ops.Register(reg, ops.Op[MoveStatusIn, MoveStatus]{
 		Name: "xbot.computers.move_status", Summary: "看搬家的進度：進行中、排隊中與最近做完的搬家",
 		Scope: ops.ScopeRead, Risk: ops.RiskSafe,

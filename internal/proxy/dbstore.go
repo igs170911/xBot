@@ -60,6 +60,15 @@ func (v providerSetting) record(id string) ProviderRecord {
 		Preset: v.Preset, Auth: v.Auth, UpdatedAt: time.UnixMilli(v.UpdatedAt)}
 }
 
+// ProviderAuth 回傳供應商的登入方式（runtime.AuthSource）；沒有這個供應商時是空白。
+func (s *DBStore) ProviderAuth(ctx context.Context, id string) (string, error) {
+	rec, err := s.GetProvider(ctx, id)
+	if errors.Is(err, ErrNotFound) {
+		return "", nil
+	}
+	return rec.Auth, err
+}
+
 // DeleteProvider 實作 ProviderStore；探測結果一起刪。
 func (s *DBStore) DeleteProvider(ctx context.Context, id string) error {
 	if _, err := s.GetProvider(ctx, id); err != nil {

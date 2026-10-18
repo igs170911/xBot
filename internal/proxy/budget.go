@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"xbot/internal/limits"
 	"xbot/internal/notify"
 	"xbot/internal/store"
 )
@@ -294,3 +295,69 @@ func (b *Budgets) Exceeded(ctx context.Context, e *BudgetError) (bool, error) {
 
 // EventBudgetExceeded 是超過花費上限時寫進 event 表的事件。
 const EventBudgetExceeded = "budget.exceeded"
+
+// DefaultCapSetting 記下「預設全域月上限」已經處理過（值是處理的時間，毫秒）：只做一次，之後你拿掉上限也不會再自動加回。
+const DefaultCapSetting = "budget.default_applied"
+
+// DefaultCapRef 是舊安裝套用預設上限時那張通知卡的 ref。
+const DefaultCapRef = "budget:default_applied"
+
+// ScopeDefaultApplied 是「已套用預設上限」通知卡（kind budget）的 payload.scope：只是通知，沒有停下任何工作。
+const ScopeDefaultApplied = "default_applied"
+
+// EnsureDefaultCap 在服務啟動時呼叫一次：還沒有全域月上限時設成 limits.DefaultGlobalMonthlyMicros。
+// 已經有上限的安裝不動。已經有 Bot 的舊安裝（不是第一次啟動）套用時，在「待我處理」發一張通知卡。
+// 回傳這次有沒有套用。
+func (b *Budgets) EnsureDefaultCap(ctx context.Context) (bool, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	var done int64
+	if ok, err := b.DB.GetSettingInto(ctx, DefaultCapSetting, &done); err != nil || ok {
+		return false, err
+	}
+	var caps Caps
+	if _, err := b.DB.GetSettingInto(ctx, GlobalCapsSetting, &caps); err != nil {
+		return false, err
+	}
+	now := time.Now().UnixMilli()
+	if caps.MonthlyMicros > 0 {
+		return false, b.DB.SetSetting(ctx, DefaultCapSetting, now)
+	}
+	bots, err := b.DB.CountBots(ctx)
+	if err != nil {
+		return false, err
+	}
+	caps.MonthlyMicros = limits.DefaultGlobalMonthlyMicros
+	var card store.Event
+	err = b.DB.Tx(ctx, func(q *store.Queries) error {
+		if err := q.SetSetting(ctx, GlobalCapsSetting, caps); err != nil {
+			return err
+		}
+		if err := q.SetSetting(ctx, DefaultCapSetting, now); err != nil {
+			return err
+		}
+		if bots == 0 {
+			return nil // 新安裝：首次設定與用量頁會顯示這個上限，不另外發卡
+		}
+		payload, err := json.Marshal(map[string]any{"scope": ScopeDefaultApplied, "limit_micros": caps.MonthlyMicros})
+		if err != nil {
+			return err
+		}
+		item, err := q.CreateInboxItem(ctx, store.InboxItem{Kind: "budget", Ref: DefaultCapRef, Payload: payload,
+			Title: "已設定全部 Bot 每月花費上限 " + USD(caps.MonthlyMicros),
+			Body: "這一版開始預設有每月上限，避免 Bot 意外花太多。所有 Bot 合計這個月花到 " + USD(caps.MonthlyMicros) +
+				" 會先停下來。要調整或拿掉：設定 → 用量與花費。"})
+		if err != nil {
+			return err
+		}
+		card, err = q.AppendEvent(ctx, notify.Event(notify.KindCreated, item))
+		return err
+	})
+	if err != nil {
+		return false, err
+	}
+	if b.Notify != nil && card.Kind != "" {
+		b.Notify(card)
+	}
+	return true, nil
+}

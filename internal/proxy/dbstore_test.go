@@ -23,6 +23,22 @@ func openDB(t *testing.T) *store.DB {
 	return db
 }
 
+func TestDBStoreProviderAuth(t *testing.T) {
+	ctx := context.Background()
+	s := NewDBStore(openDB(t))
+	if a, err := s.ProviderAuth(ctx, "none"); a != "" || err != nil {
+		t.Fatalf("沒有的供應商：%q %v", a, err)
+	}
+	_ = s.PutProvider(ctx, ProviderRecord{ID: "key", BaseURL: "https://a/v1"})
+	_ = s.PutProvider(ctx, ProviderRecord{ID: "plan", BaseURL: "https://b/v1", Auth: AuthOAuthCodex})
+	if a, _ := s.ProviderAuth(ctx, "key"); a != "" {
+		t.Fatalf("金鑰供應商：%q", a)
+	}
+	if a, _ := s.ProviderAuth(ctx, "plan"); a != AuthOAuthCodex {
+		t.Fatalf("ChatGPT 方案：%q", a)
+	}
+}
+
 func TestDBStoreProvidersOnlyCiphertext(t *testing.T) {
 	ctx := context.Background()
 	db := openDB(t)

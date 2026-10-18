@@ -1,12 +1,21 @@
-// Package backup 把 XBot 的資料目錄打包成一個 .tar.gz，並能還原回來。
+// Package backup 把 XBot 的資料目錄與每個 Bot 電腦的資料（Docker volume）打包成一個 .tar.gz，並能還原回來。
 //
 // SQLite 資料庫用 VACUUM INTO 做一致的快照，所以服務執行中也能備份；
 // 瀏覽器登入資料（Bot 的 chrome-profile）預設不備份，要用 IncludeLogins 才會包含。
+//
+// 備份檔格式（Manifest.Format）：
+//   - 1（v1.0 之前）：只有資料目錄，檔案放在 tar 的根目錄，最後是 xbot-backup.json。
+//   - 2：資料目錄一樣放在根目錄；每個 Bot 電腦的 home／workspace／hermes 放在
+//     xbot-computers/<Bot id>/<home|workspace|hermes>/…（擁有者與權限照原樣）；xbot-backup.json 的 computers 列出每個 Bot
+//     有沒有備到、為什麼沒有。訂閱憑證（cred volume）永遠不備份。
+//
+// 還原兩種格式都可以；v1 沒有電腦資料就只還原資料目錄。
 package backup
 
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -21,18 +30,43 @@ import (
 
 	_ "modernc.org/sqlite" // 純 Go 的 SQLite driver
 
+	"xbot/internal/store"
 	"xbot/internal/version"
 )
 
 // ManifestName 是備份檔裡描述內容的檔案。
 const ManifestName = "xbot-backup.json"
 
+// FormatVersion 是現在寫出的備份檔格式（見套件說明）。v1 的備份檔沒有 format 欄位（讀成 0，當成 1）。
+const FormatVersion = 2
+
+// ComputersDir 是備份檔裡放 Bot 電腦資料的資料夾。
+const ComputersDir = "xbot-computers"
+
 // Manifest 記錄這份備份的資訊。
 type Manifest struct {
+	Format        int       `json:"format,omitempty"`
 	Version       string    `json:"version"`
 	CreatedAt     time.Time `json:"created_at"`
 	IncludeLogins bool      `json:"include_logins"`
 	Files         int       `json:"files"`
+	// Computers 是每個 Bot 電腦資料的備份情形（format 2）。
+	Computers []ComputerEntry `json:"computers,omitempty"`
+}
+
+// ComputerEntry 是一個 Bot 電腦資料的備份情形。
+type ComputerEntry struct {
+	BotID    string `json:"bot_id"`
+	BotName  string `json:"bot_name"`
+	HostID   string `json:"host_id"`
+	HostName string `json:"host_name"`
+	// Included：資料完整地在備份檔裡。
+	Included bool  `json:"included"`
+	Files    int   `json:"files"`
+	Bytes    int64 `json:"bytes"`
+	// Skipped 是沒有備到（或不完整）的原因；Empty 表示還沒有電腦資料（不算問題）。
+	Skipped string `json:"skipped,omitempty"`
+	Empty   bool   `json:"empty,omitempty"`
 }
 
 // loginPatterns 是登入資料的位置（相對於資料目錄）；預設不備份。
@@ -65,11 +99,24 @@ type Options struct {
 	DataDir       string
 	Out           string // 備份檔路徑
 	IncludeLogins bool
+	// Computers 讀 Bot 電腦的資料；nil 時只備份資料目錄（沒有 Docker 的環境、測試）。
+	Computers Computers
+	// Report 印出進度（可為 nil）。
+	Report func(format string, a ...any)
 }
 
 // Create 建立備份檔，回傳寫入的檔案數。
 func Create(o Options) (Manifest, error) {
-	m := Manifest{Version: version.Version, CreatedAt: time.Now().UTC(), IncludeLogins: o.IncludeLogins}
+	return CreateContext(context.Background(), o)
+}
+
+// CreateContext 同 Create，可以取消。
+func CreateContext(ctx context.Context, o Options) (Manifest, error) {
+	m := Manifest{Format: FormatVersion, Version: version.Version, CreatedAt: time.Now().UTC(), IncludeLogins: o.IncludeLogins}
+	report := o.Report
+	if report == nil {
+		report = func(string, ...any) {}
+	}
 	if _, err := os.Stat(o.DataDir); err != nil {
 		return m, fmt.Errorf("找不到資料目錄 %s：%w", o.DataDir, err)
 	}
@@ -99,6 +146,9 @@ func Create(o Options) (Manifest, error) {
 		rel = filepath.ToSlash(rel)
 		if rel == "." {
 			return nil
+		}
+		if rel == ComputersDir && d.IsDir() {
+			return filepath.SkipDir // 備份檔裡這個名字留給 Bot 電腦的資料
 		}
 		if !o.IncludeLogins && isLogin(rel) {
 			if d.IsDir() {
@@ -155,6 +205,14 @@ func Create(o Options) (Manifest, error) {
 	if err != nil {
 		return m, err
 	}
+	if o.Computers != nil {
+		snap := filepath.Join(snapDir, store.FileName)
+		if _, err := os.Stat(snap); err == nil {
+			if m.Computers, err = backupComputers(ctx, tw, snap, o, report); err != nil {
+				return m, err
+			}
+		}
+	}
 	mb, _ := json.MarshalIndent(m, "", "  ")
 	if err := tw.WriteHeader(&tar.Header{Name: ManifestName, Mode: 0o600, Size: int64(len(mb)), ModTime: m.CreatedAt}); err != nil {
 		return m, err
@@ -190,6 +248,9 @@ func Restore(file, dataDir string) (Manifest, string, error) {
 	if err := readManifest(file, &m); err != nil {
 		return m, "", err
 	}
+	if m.Format > FormatVersion {
+		return m, "", fmt.Errorf("這份備份是較新版的 XBot（%s）做的（格式 %d），請先更新 XBot 再還原", m.Version, m.Format)
+	}
 	parent := filepath.Dir(dataDir)
 	if err := os.MkdirAll(parent, 0o700); err != nil {
 		return m, "", err
@@ -203,6 +264,7 @@ func Restore(file, dataDir string) (Manifest, string, error) {
 		return m, "", err
 	}
 	_ = os.Remove(filepath.Join(staging, ManifestName))
+	_ = os.RemoveAll(filepath.Join(staging, ComputersDir))
 
 	kept := ""
 	if _, err := os.Stat(dataDir); err == nil {
@@ -244,6 +306,9 @@ func extract(file, dest string) error {
 		name := path.Clean(h.Name)
 		if path.IsAbs(name) || name == ".." || strings.HasPrefix(name, "../") {
 			return fmt.Errorf("備份檔裡有不安全的路徑：%s", h.Name)
+		}
+		if name == ComputersDir || strings.HasPrefix(name, ComputersDir+"/") {
+			return nil // Bot 電腦的資料另外還原（RestoreComputers）
 		}
 		target := filepath.Join(dest, filepath.FromSlash(name))
 		switch h.Typeflag {
@@ -302,4 +367,62 @@ func DefaultDir(dataDir string) string {
 // DefaultName 是備份檔的預設檔名。
 func DefaultName(now time.Time) string {
 	return "xbot-backup-" + now.Format("20060102-150405") + ".tar.gz"
+}
+
+// ReadManifest 讀備份檔的說明（不解開其他內容）。
+func ReadManifest(file string) (Manifest, error) {
+	var m Manifest
+	err := readManifest(file, &m)
+	return m, err
+}
+
+// RestoreDB 只把備份裡的資料庫（xbot.db）換回去，其他檔案不動（make update 換回舊版時用；服務要先停）。
+// 換下來的資料庫（連同 -wal、-shm）改名保留，回傳保留的位置。
+func RestoreDB(file, dataDir string) (string, error) {
+	var m Manifest
+	if err := readManifest(file, &m); err != nil {
+		return "", err
+	}
+	tmp := filepath.Join(dataDir, store.FileName+".restoring")
+	found := false
+	err := walkTar(file, func(h *tar.Header, r io.Reader) error {
+		if path.Clean(h.Name) != store.FileName || h.Typeflag != tar.TypeReg {
+			return nil
+		}
+		found = true
+		out, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+		if err != nil {
+			return err
+		}
+		if _, err := io.Copy(out, r); err != nil {
+			out.Close()
+			return err
+		}
+		return out.Close()
+	})
+	if err != nil {
+		_ = os.Remove(tmp)
+		return "", err
+	}
+	if !found {
+		return "", errors.New("備份檔裡沒有資料庫")
+	}
+	db := filepath.Join(dataDir, store.FileName)
+	kept := ""
+	if _, err := os.Stat(db); err == nil {
+		kept = fmt.Sprintf("%s.replaced-%s", db, time.Now().Format("20060102-150405"))
+		if err := os.Rename(db, kept); err != nil {
+			_ = os.Remove(tmp)
+			return "", fmt.Errorf("保留目前的資料庫失敗：%w", err)
+		}
+		for _, suf := range []string{"-wal", "-shm"} {
+			if _, err := os.Stat(db + suf); err == nil {
+				_ = os.Rename(db+suf, kept+suf)
+			}
+		}
+	}
+	if err := os.Rename(tmp, db); err != nil {
+		return kept, err
+	}
+	return kept, nil
 }

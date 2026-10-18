@@ -17,6 +17,7 @@ import (
 	"xbot/internal/auth"
 	"xbot/internal/config"
 	"xbot/internal/events"
+	"xbot/internal/limits"
 	"xbot/internal/mcpserver"
 	"xbot/internal/network"
 	"xbot/internal/push"
@@ -70,6 +71,12 @@ func cmdServe(args []string) error {
 	pairing := auth.NewPairing(st.db)
 	notify := func(e store.Event) { bus.Publish(events.FromStore(e)) }
 	st.budgets.Notify = notify // 花費上限卡片也即時推給介面
+	// 預設的全部 Bot 每月花費上限（V10）：還沒設過時套用一次；舊安裝會收到一張通知卡。
+	if applied, err := st.budgets.EnsureDefaultCap(context.Background()); err != nil {
+		slog.Warn("套用預設花費上限失敗", "err", err)
+	} else if applied {
+		slog.Info("已套用預設的每月花費上限（全部 Bot 合計）", "usd", float64(limits.DefaultGlobalMonthlyMicros)/1e6)
+	}
 	st.routines.SetNotify(notify)
 	st.judge.Notify = notify // 快判到每日上限的通知
 	if err := st.judge.Prune(context.Background()); err != nil {

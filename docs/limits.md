@@ -174,6 +174,7 @@
 | `NetAllowMax` | 32 筆 | XBot 新增（B13，SEC-4）：每個 Bot 的私有網路白名單上限 | — |
 | `BoxMoveKeep`／`BoxMoveCleanupEvery` | 24 小時／10 分鐘 | XBot 新增（B31，CL-5）：搬家後原主機上的舊資料保留多久、多久檢查一次 | — |
 | `BoxMoveHelperTimeout`／`BoxMoveTimeout`／`BoxMoveProgressEvery`／`BoxMoveHistory`／`BoxMoveManifestBytes` | 30 分鐘／6 小時／0.5 秒／20 筆／256 MiB | XBot 新增（B31）：量資料與驗證的輔助容器上限、一次搬家上限、進度事件間隔、紀錄筆數、驗證清單大小 | — |
+| `BackupKeepTimeout`／`BackupHostWait` | 6 小時／20 秒 | XBot 新增（V10）：還原前在主機上複製保留原本電腦資料的上限、備份與還原等遠端主機連上的上限 | — |
 | `EgressImage`／`EgressProxyPort`／`EgressMemoryBytes`／`EgressStatusTimeout`／`EgressPullTimeout` | tailscale/tailscale:v1.88.3／1055／256 MiB／10 秒／10 分鐘 | XBot 新增（B31，CL-7）：「從家裡出去」的 Tailscale 小容器 | — |
 | `HostImageCacheTTL` | 15 秒 | XBot 新增（B13）：主機清單比對映像是否過期時，本機映像資訊的快取 | — |
 | `HermesReadyTimeout`／`HermesCallTimeout` | 15／90 秒 | server/rpc.py:25、:31 | 正確 |
@@ -190,6 +191,7 @@
 | `ModelMaxConns`／`ModelMaxIdleConns`／`ModelIdleConnTimeout` | 100／32／60 秒 | server/main.py:1265 | 正確 |
 | `ModelProbeTimeout`／`ModelProbeDetailChars` | 20 秒／400 字元 | server/model_check.py:123、:118–120 | 正確 |
 | `UsageSummaryMaxDays`／`UsageSummaryDefaultDays` | 365／30 天 | server/usage.py:106、:104 | 正確 |
+| `DefaultGlobalMonthlyMicros` | 20 美元 | XBot 新增（V10）：全部 Bot 合計的預設每月花費上限；新安裝直接套用，舊安裝沒設上限時套用一次並發通知卡 | — |
 | `ChatTextMax` | 64,000 字元 | server/runtime.py:333 | **已更正**（見下） |
 
 其他常數（MCP 配對、登入限速、SSE、ACP、OAuth、分頁等）註明為「XBot 新增」或出自 OpenMausBot／Hermes，不在 LazyBoy 對照範圍。

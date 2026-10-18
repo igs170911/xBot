@@ -4568,6 +4568,46 @@ export function computersUpdate(input: ComputersUpdateInput = {}, opts?: CallOpt
   return invoke('xbot.computers.update', input, opts).then((r) => r.output)
 }
 
+// xbot.computers.update_status
+
+export type ComputersUpdateStatusInput = Record<string, never>
+
+export interface ComputersUpdateStatusOutput {
+  running: boolean
+  started_at?: number
+  finished_at?: number
+  hosts: {
+    host_id: string
+    name: string
+    /** 要先把新映像傳到這台主機 */
+    image_outdated: boolean
+    /** pending、image、running、done、failed、skipped */
+    state: string
+    error?: string
+    bots: {
+      bot_id: string
+      name: string
+      /** pending、running、rebuilt、skipped、failed */
+      state: string
+      reason?: string
+    }[]
+  }[]
+  total: number
+  done: number
+  current?: string
+}
+
+/**
+ * 看「更新電腦」的進度：正在進行或最近一次的結果（還沒更新過時 hosts 是空的）
+ *
+ * make update 之後用來等電腦更新完；網頁的「更新電腦」按鈕也用它顯示進度。
+ *
+ * `xbot.computers.update_status`：權限 read、風險 safe
+ */
+export function computersUpdateStatus(input: ComputersUpdateStatusInput = {}, opts?: CallOptions): Promise<ComputersUpdateStatusOutput> {
+  return invoke('xbot.computers.update_status', input, opts).then((r) => r.output)
+}
+
 // xbot.computers.wake
 
 export interface ComputersWakeInput {
@@ -12166,6 +12206,7 @@ export interface Ops {
   'xbot.computers.status': { input: ComputersStatusInput; output: ComputersStatusOutput }
   'xbot.computers.takeover': { input: ComputersTakeoverInput; output: ComputersTakeoverOutput }
   'xbot.computers.update': { input: ComputersUpdateInput; output: ComputersUpdateOutput }
+  'xbot.computers.update_status': { input: ComputersUpdateStatusInput; output: ComputersUpdateStatusOutput }
   'xbot.computers.wake': { input: ComputersWakeInput; output: ComputersWakeOutput }
   'xbot.devices.pair_start': { input: DevicesPairStartInput; output: DevicesPairStartOutput }
   'xbot.devices.pair_status': { input: DevicesPairStatusInput; output: DevicesPairStatusOutput }
@@ -12383,6 +12424,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.computers.status': { path: '/api/v1/computers.status', scope: 'read', risk: 'safe', mutates: false },
   'xbot.computers.takeover': { path: '/api/v1/computers.takeover', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.computers.update': { path: '/api/v1/computers.update', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.computers.update_status': { path: '/api/v1/computers.update_status', scope: 'read', risk: 'safe', mutates: false },
   'xbot.computers.wake': { path: '/api/v1/computers.wake', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.devices.pair_start': { path: '/api/v1/devices.pair_start', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.devices.pair_status': { path: '/api/v1/devices.pair_status', scope: 'admin', risk: 'safe', mutates: true },
