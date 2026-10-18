@@ -298,8 +298,9 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 		if e.Request != nil && e.Request.Kind == "approval" {
 			state = store.TaskWaitingApproval
 		}
-		r.setState(t, state)
+		// 先記下 Bot 在問什麼，再改狀態：看到「等你」的人一定查得到問題內容。
 		r.emit(t, KindNeedsApproval, e, true)
+		r.setState(t, state)
 	case engine.EventError:
 		t.mu.Lock()
 		t.lastErr = e.Text
