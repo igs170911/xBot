@@ -72,3 +72,31 @@ func TestChatChecksBudget(t *testing.T) {
 		t.Fatal("被擋時不能開對話串")
 	}
 }
+
+// C11：ACP 引擎也拿到 XBot MCP（和 Hermes 同一個橋接），帶著這個 Bot 的 worker-key。
+func TestMCPServersIncludeXBot(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t)
+	kr, _ := proxy.NewKeyring(bytes.Repeat([]byte{5}, 32))
+	keys := proxy.NewWorkerKeys(proxy.NewMemory(), kr)
+	c := &Computers{DB: f.db, Keys: keys}
+	if got := c.MCPServers("b1"); len(got) != 1 || got[0].Name != "computer" {
+		t.Fatalf("沒有 XBot MCP 時：%+v", got)
+	}
+	c.XBotMCP = XBotMCPServer()
+	got := c.MCPServers("b1")
+	key, _ := keys.Issue(ctx, "b1")
+	if len(got) != 2 || got[1].Name != "xbot" || got[1].Args[0] != "/opt/xbot/xbot_mcp.py" {
+		t.Fatalf("%+v", got)
+	}
+	env := map[string]string{}
+	for _, e := range got[1].Env {
+		env[e.Name] = e.Value
+	}
+	if env["XBOT_WORKER_KEY"] != string(key) || env["XBOT_PRODUCT_SOCK"] != "/product-ipc/product.sock" || env["HERMES_HOME"] != "/hermes" {
+		t.Fatalf("env：%v", env)
+	}
+	if len(c.XBotMCP.Env) != 2 {
+		t.Fatalf("不能改到共用的設定：%+v", c.XBotMCP.Env)
+	}
+}

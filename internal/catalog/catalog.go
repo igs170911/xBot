@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 
+	"xbot/internal/botops"
 	"xbot/internal/bots"
 	"xbot/internal/chat"
 	"xbot/internal/engines"
@@ -29,7 +30,7 @@ type Deps struct {
 	Teardown func(ctx context.Context, botID string) error
 }
 
-// Register 登錄 bots、chat、approvals、inbox、audit、models、usage、engines 各領域的操作。
+// Register 登錄 bots、chat、approvals、inbox、audit、cards、team、models、usage、engines 各領域的操作。
 func Register(reg *ops.Registry, d Deps) {
 	bd := bots.Deps{Teardown: d.Teardown}
 	if d.Runtime != nil {
@@ -39,6 +40,11 @@ func Register(reg *ops.Registry, d Deps) {
 	bots.Register(reg, bd)
 	chat.Register(reg, chat.Deps{Runtime: d.Runtime})
 	inbox.Register(reg)
+	var active func(string) (string, string)
+	if d.Runtime != nil {
+		active = d.Runtime.Active
+	}
+	botops.Register(reg, botops.Deps{Active: active})
 	models.Register(reg, models.Deps{Providers: d.Providers, Lister: d.Lister, Prober: d.Prober})
 	usage.Register(reg, usage.Deps{Budgets: d.Budgets})
 	engines.Register(reg, d.Engines)

@@ -32,6 +32,8 @@ type Op[In, Out any] struct {
 	Category    string // 代為核准的類別（MCP-10），例：send_external、spend；空白表示不能代為核准
 	// NoDelegate 表示永遠不能代為核准（刪除 Bot 或資料、移除主機、提高花費上限、修改代為核准授權）。
 	NoDelegate bool
+	// ForBot 表示 Bot 自己（經 product.sock 的 XBot MCP）可以用這個操作（C11）。Bot 只看得到、也只能呼叫這些。
+	ForBot bool
 	// RiskOf 依輸入決定風險（例：降低花費上限＝safe、提高＝confirm）。可空白。
 	RiskOf func(In) Risk
 	// Handle 執行操作。call.DryRun 為 true 時只能讀、回傳「會發生什麼」；這時 call.DB 是唯讀的。
@@ -50,7 +52,8 @@ type Info struct {
 	DynamicRisk bool    `json:"dynamic_risk,omitempty"`
 	Category    string  `json:"category,omitempty"`
 	NoDelegate  bool    `json:"no_delegate,omitempty"`
-	Mutates     bool    `json:"mutates"` // 不是 read：出口應該提供 request_id 與 dry_run（MCP-4）
+	ForBot      bool    `json:"for_bot,omitempty"` // Bot 經 product.sock 可以用（C11）
+	Mutates     bool    `json:"mutates"`           // 不是 read：出口應該提供 request_id 與 dry_run（MCP-4）
 	Input       *Schema `json:"input_schema"`
 	Output      *Schema `json:"output_schema"`
 }
@@ -185,7 +188,7 @@ func register[In, Out any](r *Registry, op Op[In, Out]) error {
 	parts := strings.Split(op.Name, ".")
 	e := &entry{info: Info{
 		Name: op.Name, Domain: parts[1], Action: parts[2], Summary: op.Summary, Description: op.Description,
-		Scope: op.Scope, Risk: op.Risk, DynamicRisk: op.RiskOf != nil, Category: op.Category, NoDelegate: op.NoDelegate,
+		Scope: op.Scope, Risk: op.Risk, DynamicRisk: op.RiskOf != nil, Category: op.Category, NoDelegate: op.NoDelegate, ForBot: op.ForBot,
 		Mutates: op.Scope != ScopeRead, Input: in, Output: out,
 	}}
 	decode := func(raw json.RawMessage) (In, error) {

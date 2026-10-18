@@ -49,10 +49,16 @@ const identityKey = "xbot.identity"
 
 // NewServer 由登錄表產生 MCP 伺服器：每個操作一個工具。
 func NewServer(reg *ops.Registry, identity IdentityFunc) *mcp.Server {
+	return newServer(reg, identity, Instructions, func(ops.Info) bool { return true })
+}
+
+func newServer(reg *ops.Registry, identity IdentityFunc, instructions string, keep func(ops.Info) bool) *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{Name: Name, Title: "XBot", Version: version.Version},
-		&mcp.ServerOptions{Instructions: Instructions, Capabilities: &mcp.ServerCapabilities{Tools: &mcp.ToolCapabilities{}}})
+		&mcp.ServerOptions{Instructions: instructions, Capabilities: &mcp.ServerCapabilities{Tools: &mcp.ToolCapabilities{}}})
 	for _, info := range reg.List() {
-		srv.AddTool(Tool(info), handler(reg, info, identity))
+		if keep(info) {
+			srv.AddTool(Tool(info), handler(reg, info, identity))
+		}
 	}
 	return srv
 }

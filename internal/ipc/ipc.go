@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -25,6 +26,13 @@ const SocketName = "product.sock"
 
 // ProvidersPrefix 是 hermes_host.py 轉送模型請求用的路徑：/internal/providers/<供應商>/v1/<路徑>。
 const ProvidersPrefix = "/internal/providers/"
+
+// MCPPath 是 XBot MCP（C11）在 socket 上的路徑（同 mcpserver.BotPath）；box/xbot_mcp.py 連這裡。
+// ProductPath 是 hermes_host.py 的 /product 轉送過來的路徑，接到同一個 MCP。
+const (
+	MCPPath     = "/internal/mcp"
+	ProductPath = "/internal/product"
+)
 
 // ModelPrefix 是 Model Proxy 的掛載點（internal/proxy.Prefix）；收到的請求改寫成這個開頭再交給它。
 const ModelPrefix = "/model/"
@@ -51,7 +59,13 @@ type Server struct {
 	mu sync.Mutex
 	// bots 是正在聽的 socket。
 	bots map[string]*listener
+	// product 產生每個 Bot 的 XBot MCP 處理器（SetProduct）；還沒設定時回 503。
+	product atomic.Pointer[func(botID string) http.Handler]
 }
+
+// SetProduct 接上 XBot MCP（mcpserver.BotHandler）。操作登錄表在 socket 之後才建好，所以另外設定。
+// 處理器自己驗證 worker-key，身分固定是這個 socket 的 Bot。
+func (s *Server) SetProduct(f func(botID string) http.Handler) { s.product.Store(&f) }
 
 type listener struct {
 	path string
@@ -150,10 +164,19 @@ func (s *Server) Shutdown() error {
 func (s *Server) handler(botID string) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc(ProvidersPrefix, func(w http.ResponseWriter, r *http.Request) { s.model(botID, w, r) })
-	mux.HandleFunc("/internal/product", func(w http.ResponseWriter, _ *http.Request) {
-		// XBot MCP（C11）還沒做。
-		fail(w, http.StatusNotImplemented, "not_implemented", "XBot 工具還沒開放")
-	})
+	var once sync.Once
+	var product http.Handler
+	mcp := func(w http.ResponseWriter, r *http.Request) {
+		f := s.product.Load()
+		if f == nil {
+			fail(w, http.StatusServiceUnavailable, "product_disabled", "XBot 工具還沒啟用")
+			return
+		}
+		once.Do(func() { product = (*f)(botID) })
+		product.ServeHTTP(w, r)
+	}
+	mux.HandleFunc(MCPPath, mcp)
+	mux.HandleFunc(ProductPath, mcp)
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		fail(w, http.StatusNotFound, "not_found", "product.sock 沒有這個路徑")
 	})

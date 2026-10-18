@@ -502,7 +502,7 @@ func (d Deps) wait(ctx context.Context, call *ops.Call, in WaitIn) (WaitOut, err
 		}
 		for i := len(msgs) - 1; i >= 0; i-- {
 			m := msgs[i]
-			if !strings.HasPrefix(m.Sender, "bot:") {
+			if !strings.HasPrefix(m.Sender, "bot:") || m.Kind != "text" { // Bot 發的卡片（C11）不是回覆
 				continue
 			}
 			if v := messageView(m); v.TaskID == task.ID {

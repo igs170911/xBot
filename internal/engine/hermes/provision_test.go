@@ -80,6 +80,9 @@ func TestProvisionWritesConfigWithoutRealKey(t *testing.T) {
 	if mcp := cfg["mcp_servers"].(map[string]any)["computer"].(map[string]any); mcp["args"].([]any)[0] != DesktopMCP {
 		t.Fatalf("mcp：%v", mcp)
 	}
+	if mcp := cfg["mcp_servers"].(map[string]any)[XBotMCPServer].(map[string]any); mcp["args"].([]any)[0] != XBotMCP {
+		t.Fatalf("xbot mcp：%v", mcp)
+	}
 	env := string(f.files["/hermes/.env"])
 	if env != "TAVILY_API_KEY=user-saved\nXBOT_MODEL_TOKEN=xbw_b1.sig\n" {
 		t.Fatalf(".env：%q", env)
