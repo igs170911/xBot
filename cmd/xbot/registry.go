@@ -40,6 +40,7 @@ func coreDeps(st *stack) catalog.Deps {
 		Collab:    st.collab,
 		Skills:    st.skills,
 		Memory:    st.memory,
+		Judge:     st.judge,
 		SoulChanged: func(ctx context.Context, botID string) {
 			if err := st.comp.RefreshSoul(ctx, botID); err != nil {
 				slog.Warn("更新 Bot 電腦裡的 SOUL.md 失敗，下次開機前會再寫", "bot", botID, "err", err)

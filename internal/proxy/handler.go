@@ -261,14 +261,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	model := requestModel(body)
 	start := h.o.Now()
-	resp, cancel, err := h.forward(r, botID, provider, apiPath, body)
+	resp, cancel, err := h.forward(r, h.session(botID), provider, apiPath, body)
 	// 訂閱登入：供應商回 401 表示存取權杖被撤銷或過期，換新一次再送（還沒送出任何位元組）。
 	if err == nil && resp.StatusCode == http.StatusUnauthorized && provider.Auth != "" {
 		if fresh, ferr := h.refresh(r.Context(), provider, true); ferr == nil {
 			_ = resp.Body.Close()
 			cancel()
 			provider = fresh
-			resp, cancel, err = h.forward(r, botID, provider, apiPath, body)
+			resp, cancel, err = h.forward(r, h.session(botID), provider, apiPath, body)
 		} else {
 			h.o.Logger.Warn("模型代理：訂閱登入換新權杖失敗", "provider", provider.ID, "err", ferr)
 		}
@@ -291,7 +291,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			cancel()
 			h.o.Logger.Warn("模型代理：改用備援模型", "bot", botID, "from", providerID+"/"+model, "to", fb.Provider+"/"+fb.Model, "reason", reason)
 			provider, model, fellBack = fp, fb.Model, true
-			resp, cancel, err = h.forward(r, botID, provider, apiPath, withModel(body, fb.Model))
+			resp, cancel, err = h.forward(r, h.session(botID), provider, apiPath, withModel(body, fb.Model))
 		} else {
 			h.o.Logger.Warn("模型代理：不能改用備援模型", "provider", fb.Provider, "err", ferr)
 		}
@@ -428,7 +428,7 @@ var errStreamIdle = errors.New("模型供應商太久沒有送資料（串流閒
 
 // forward 換上真金鑰把請求送給供應商。回傳的 cancel 要在讀完回應後呼叫。
 // 回應內容兩次讀取之間超過 IdleTimeout 就取消請求（LazyBoy httpx read timeout 300 秒）。
-func (h *Handler) forward(r *http.Request, botID string, provider Provider, apiPath string, body []byte) (*http.Response, context.CancelFunc, error) {
+func (h *Handler) forward(r *http.Request, session string, provider Provider, apiPath string, body []byte) (*http.Response, context.CancelFunc, error) {
 	realKey := string(provider.APIKey)
 	target := provider.BaseURL + "/" + apiPath
 	query := r.URL.RawQuery
@@ -466,10 +466,10 @@ func (h *Handler) forward(r *http.Request, botID string, provider Provider, apiP
 	// 一律用 XBot 自己的身分（OpenCode 等要求用戶端自報名稱）；容器送來的 User-Agent 不轉送。
 	up.Header.Set("User-Agent", "XBot/"+version.Version)
 	if name := SessionHeaderFor(provider); name != "" {
-		up.Header.Set(name, h.session(botID))
+		up.Header.Set(name, session)
 	}
 	if provider.Auth == AuthOAuthCodex {
-		setCodexHeaders(up.Header, provider.OAuth, h.session(botID), cacheKey)
+		setCodexHeaders(up.Header, provider.OAuth, session, cacheKey)
 		if up.Header.Get("Accept") == "" && r.Method == http.MethodPost {
 			up.Header.Set("Accept", "text/event-stream")
 		}

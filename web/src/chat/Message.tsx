@@ -108,7 +108,7 @@ function OwnerActions({ msg }: { msg: ChatMsg }) {
 // ── 泡泡 ─────────────────────────────────────────────
 
 /** 你的訊息：#5A5A5A 靠右；照原樣顯示（不轉 Markdown）。 */
-export function OwnerMessage({ msg }: { msg: ChatMsg }) {
+export function OwnerMessage({ msg, below }: { msg: ChatMsg; below?: ReactNode }) {
   return (
     <div className="group relative flex flex-col gap-2">
       <div data-testid="msg-owner" className="max-w-[75%] self-end whitespace-pre-wrap break-words rounded-bubble bg-bubble-user px-4 py-2.5 text-[15px] leading-[1.6] text-white">
@@ -117,6 +117,7 @@ export function OwnerMessage({ msg }: { msg: ChatMsg }) {
         </Collapsible>
       </div>
       {msg.actorName && <AgentMark name={msg.actorName} via={msg.via} verb="傳送" className="self-end" />}
+      {below}
       {msg.content && <OwnerActions msg={msg} />}
     </div>
   )

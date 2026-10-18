@@ -74,8 +74,12 @@ type Options struct {
 	Watchdog Watchdog
 	// Budget 在交辦前檢查花費上限（Bot 與它的模型供應商）；超過時 Chat 回它的錯誤（*proxy.BudgetError）。可為 nil。
 	Budget func(ctx context.Context, botID, providerID string) error
-	// Judge 判斷一輪做完了沒（X04，PRD §20 用途 2）；nil 用規則（judge.Rules）。X05 換成快判模型＋規則兜底。
+	// Judge 判斷一輪做完了沒（X04，PRD §20 用途 2）；nil 用規則（judge.Rules）。X05：快判模型＋規則兜底（judge.Service.TaskDoneJudge）。
 	Judge judge.Judge
+	// Namer 是對話串命名的快判（X05，§20 用途 10）：你開新對話串時在背景呼叫，生效時 ok=true，標題換成它回的（≤ 16 字）。可為 nil。
+	Namer func(ctx context.Context, text, botID string) (string, bool)
+	// Summarize 是一行摘要的快判（X05，§20 用途 8）：完成通知的內文。生效時 ok=true；可為 nil（第一行截斷）。
+	Summarize func(ctx context.Context, text, taskID, botID string) (string, bool)
 	// Stranded 回答這一輪是不是背景子任務回報後的那一輪，以及失敗後沒人接手的背景子任務（目標文字）。
 	// LazyBoy 用 Hermes 的 subagent 追蹤；XBot 還沒有這個來源，nil 時不叫醒（見 X04 待確認）。
 	Stranded func(ctx context.Context, task store.Task) (goals []string, background bool)
@@ -296,6 +300,9 @@ func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error
 		}
 		if th, err = r.o.DB.CreateThread(ctx, store.Thread{BotID: botID, Title: t}); err != nil {
 			return ChatResult{}, err
+		}
+		if req.Title == "" && source == SourceOwner && r.o.Namer != nil {
+			go r.nameThread(th.ID, botID, text, t)
 		}
 	} else {
 		if th, err = r.o.DB.GetThread(ctx, threadID); err != nil {
@@ -1082,6 +1089,25 @@ func (r *Runtime) Wait(ctx context.Context, taskID string) (store.Task, error) {
 			return store.Task{}, ctx.Err()
 		case <-time.After(20 * time.Millisecond):
 		}
+	}
+}
+
+// nameThread 在背景請快判幫新對話串取標題（§20 用途 10）；標題還是原本的（你沒改過）才換。
+func (r *Runtime) nameThread(threadID, botID, text, was string) {
+	ctx, cancel := context.WithTimeout(context.Background(), limits.JudgeWaitTitle+time.Second)
+	defer cancel()
+	name, ok := r.o.Namer(ctx, text, botID)
+	name = strings.TrimSpace(name)
+	if !ok || name == "" || name == was {
+		return
+	}
+	th, err := r.o.DB.GetThread(ctx, threadID)
+	if err != nil || th.Title != was {
+		return
+	}
+	th.Title = name
+	if err := r.o.DB.UpdateThread(ctx, th); err != nil {
+		r.log.Warn("快判命名對話串失敗", "thread", threadID, "err", err)
 	}
 }
 

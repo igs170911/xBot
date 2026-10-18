@@ -18,6 +18,8 @@ import (
 	"xbot/internal/events"
 	"xbot/internal/hosts"
 	"xbot/internal/ipc"
+	"xbot/internal/judge"
+	"xbot/internal/limits"
 	"xbot/internal/memory"
 	"xbot/internal/proxy"
 	"xbot/internal/routines"
@@ -49,6 +51,7 @@ type stack struct {
 	skills    *skills.Service
 	memory    *memory.Service
 	collab    *collab.Service
+	judge     *judge.Service // 快判（X05）：經 Model Proxy 呼叫 Jev／OpenCode Go，規則兜底
 }
 
 func openStack(cfg config.Config) (*stack, error) {
@@ -127,6 +130,15 @@ func openStack(cfg config.Config) (*stack, error) {
 			MCPServers: comp.MCPServers, Logger: logger}))
 	}
 	s.driver = engine.NewRouter(hermes.Name, comp.EngineOf, drivers...)
+	// 快判（X05）：服務自己經 Model Proxy 呼叫模型（金鑰只在 Model Proxy），用量標記 judge。
+	s.judge = &judge.Service{DB: db, Logger: logger, Call: func(ctx context.Context, provider string, body []byte, session string) (int, []byte, error) {
+		resp, err := s.model.Call(ctx, proxy.CallRequest{Provider: provider, Path: "chat/completions", Body: body, Engine: judge.UsageEngine,
+			Session: session, MaxBytes: limits.JudgeReplyBytes})
+		if errors.Is(err, proxy.ErrNotFound) {
+			return 0, nil, judge.ErrNotConfigured
+		}
+		return resp.Status, resp.Body, err
+	}}
 	s.creds.Close = s.driver.Close
 	s.runtime = runtime.New(runtime.Options{DB: db, Driver: s.driver, Bus: bus, Models: comp, Logger: logger,
 		Admit: func(ctx context.Context, botID string, wait func(any)) (func(), error) {
@@ -137,14 +149,15 @@ func openStack(cfg config.Config) (*stack, error) {
 				return err
 			}
 			return s.budgets.CheckProvider(ctx, botID, providerID)
-		}})
+		},
+		Judge: s.judge.TaskDoneJudge(), Namer: s.judge.Title, Summarize: s.judge.Summary})
 	s.pstore.Attribute = s.runtime.Active
-	s.routines = routines.New(routines.Options{DB: db, Runtime: s.runtime, Logger: logger})
+	s.routines = routines.New(routines.Options{DB: db, Runtime: s.runtime, Logger: logger, Rewrite: s.judge.Routine})
 	s.comp = comp
 	s.skills = &skills.Service{Locate: comp.BotFS, Library: &skills.Library{Dir: filepath.Join(cfg.DataDir, "skills")}}
 	s.memory = &memory.Service{DB: db, Locate: comp.BotFS}
 	// Bot 之間的傳話與群組（X02）：接上 runtime 的 Hooks；帶檔經 Docker 讀寫兩邊電腦的 /workspace。
-	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Files: collab.DockerFiles{
+	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Judge: s.judge.Responder, Files: collab.DockerFiles{
 		Locate: func(ctx context.Context, botID string) (collab.CopyAPI, string, error) {
 			api, id, err := comp.Docker(ctx, botID)
 			if api == nil {

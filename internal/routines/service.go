@@ -37,6 +37,9 @@ type Options struct {
 	Logger *slog.Logger
 	// Tick 是檢查到期任務的間隔；0 用 limits.RoutineTick。
 	Tick time.Duration
+	// Rewrite 是一句話建定時任務的快判（X05）：把你的話整理成規則解析器看得懂的說法（例：「每天早上9點 整理新聞給我」）。
+	// 生效而且模型有回答時 ok=true；可為 nil（只用規則）。
+	Rewrite func(ctx context.Context, text string) (string, bool)
 }
 
 // Service 是定時任務的排程器與操作共用的邏輯（PRD 6.8；LazyBoy server/scheduling.py Scheduler）。

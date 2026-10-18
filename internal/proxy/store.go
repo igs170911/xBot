@@ -44,6 +44,8 @@ type UsageEntry struct {
 	Status     int  // 供應商回的 HTTP 狀態碼
 	OK         bool
 	At         time.Time
+	// Engine 標記這筆用量是誰用的；空白時用 DBStore.Engine。XBot 自己（不是 Bot 的電腦）呼叫的模型記成 judge 等（Handler.Call）。
+	Engine string
 }
 
 // ProviderStore 存放供應商設定。

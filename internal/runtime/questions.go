@@ -17,6 +17,7 @@ import (
 	"xbot/internal/engine"
 	"xbot/internal/events"
 	"xbot/internal/judge"
+	"xbot/internal/limits"
 	"xbot/internal/notify"
 	"xbot/internal/store"
 )
@@ -577,11 +578,29 @@ func (r *Runtime) notifyDone(t *turn, verdict, final string, res *judge.Result, 
 		return
 	}
 	it.BotID, it.TaskID, it.ThreadID, it.Status, it.Resolution = t.botID, t.taskID, t.threadID, store.InboxResolved, ResolutionInfo
-	if it.Body == "" {
-		it.Body = clip(firstLine(final), 120)
-	}
 	raw, _ := json.Marshal(map[string]any{"bot_name": t.botName, "input": clip(t.shownInput(), 120)})
 	it.Payload = raw
+	if it.Body != "" || r.o.Summarize == nil || it.Kind != "done" {
+		if it.Body == "" {
+			it.Body = clip(firstLine(final), 120)
+		}
+		r.createNotice(t, it)
+		return
+	}
+	// 完成通知的一行摘要（§20 用途 8，背景最多等 2 秒）：快判生效時用它的摘要，否則第一行。
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), limits.JudgeWaitSummary+time.Second)
+		defer cancel()
+		if s, ok := r.o.Summarize(ctx, final, t.taskID, t.botID); ok && s != "" {
+			it.Body = s
+		} else {
+			it.Body = clip(firstLine(final), 120)
+		}
+		r.createNotice(t, it)
+	}()
+}
+
+func (r *Runtime) createNotice(t *turn, it store.InboxItem) {
 	created, err := r.o.DB.CreateInboxItem(context.Background(), it)
 	if err != nil {
 		r.log.Warn("寫入完成通知失敗", "task", t.taskID, "err", err)
