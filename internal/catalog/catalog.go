@@ -17,6 +17,7 @@ import (
 	"xbot/internal/memory"
 	"xbot/internal/models"
 	"xbot/internal/ops"
+	"xbot/internal/org"
 	"xbot/internal/proxy"
 	"xbot/internal/routines"
 	"xbot/internal/skills"
@@ -44,9 +45,11 @@ type Deps struct {
 	SoulChanged func(ctx context.Context, botID string)
 	// Collab 是 Bot 之間的傳話與群組（X02）；nil 時只登錄定義。
 	Collab *collab.Service
+	// Org 是團隊、匯報線、提案與討論（X03）；nil 時只登錄定義。
+	Org *org.Service
 }
 
-// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、models、usage、engines、skills、memory、hosts、routines 各領域的操作。
+// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines 各領域的操作。
 func Register(reg *ops.Registry, d Deps) {
 	bd := bots.Deps{Teardown: d.Teardown, SoulChanged: d.SoulChanged}
 	if d.Collab != nil {
@@ -65,6 +68,7 @@ func Register(reg *ops.Registry, d Deps) {
 	if d.Runtime != nil {
 		rt := d.Runtime
 		bd.Stop = func(ctx context.Context, botID string) { _, _ = rt.Stop(ctx, botID, "") }
+		bd.Active = rt.Active
 	}
 	bots.Register(reg, bd)
 	chat.Register(reg, chat.Deps{Runtime: d.Runtime})
@@ -76,6 +80,7 @@ func Register(reg *ops.Registry, d Deps) {
 	}
 	botops.Register(reg, botops.Deps{Active: active})
 	collab.Register(reg, d.Collab)
+	org.Register(reg, d.Org)
 	models.Register(reg, models.Deps{Providers: d.Providers, Lister: d.Lister, Prober: d.Prober})
 	usage.Register(reg, usage.Deps{Budgets: d.Budgets})
 	engines.Register(reg, d.Engines)

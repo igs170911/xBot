@@ -158,6 +158,16 @@ const (
 
 	// CalendarWeekItems 是行事曆一週最多列幾項。LazyBoy server/agenda.py:43 WEEK_ITEMS
 	CalendarWeekItems = 120
+
+	// AgendaZone 是 Bot 寫的時間（「2026-10-20 15:00」）與預設討論時間用的時區。LazyBoy server/agenda.py:45 ZONE
+	AgendaZone = "Asia/Taipei"
+
+	// AgendaTick 是檢查提案到期、討論時間到的間隔。LazyBoy server/scheduling.py:293 loop（每 2 秒跑一次 hooks）；
+	// XBot 改成每 30 秒（到期時間以分鐘計，不需要更密）。
+	AgendaTick = 30 * time.Second
+
+	// AgendaSubjectMax 是提案、討論主題的長度。LazyBoy server/agenda.py:90 submit（plain(subject, 120)）
+	AgendaSubjectMax = 120
 )
 
 // 執行中的工作：看門狗、重試、自動續做（PRD §12、§19；給 X04）。
