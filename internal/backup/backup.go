@@ -221,6 +221,13 @@ func Restore(file, dataDir string) (Manifest, string, error) {
 	return m, kept, nil
 }
 
+// ReadManifest 讀備份檔裡的描述（建立時間、含不含登入）。
+func ReadManifest(file string) (Manifest, error) {
+	var m Manifest
+	err := readManifest(file, &m)
+	return m, err
+}
+
 func readManifest(file string, m *Manifest) error {
 	found := false
 	err := walkTar(file, func(h *tar.Header, r io.Reader) error {

@@ -1,4 +1,5 @@
-package backup
+// Package backupops 是網頁的備份操作（xbot.backup.*）。和 backup 分開，backup 才不用相依 ops（store 的測試會用 backup）。
+package backupops
 
 import (
 	"context"
@@ -10,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"xbot/internal/backup"
 	"xbot/internal/limits"
 	"xbot/internal/ops"
 )
@@ -78,7 +80,7 @@ func Register(reg *ops.Registry, svc *Service) {
 			if err := need(); err != nil {
 				return CreateOut{}, err
 			}
-			out := filepath.Join(DefaultDir(svc.DataDir), DefaultName(time.Now()))
+			out := filepath.Join(backup.DefaultDir(svc.DataDir), backup.DefaultName(time.Now()))
 			if call.DryRun {
 				return CreateOut{File: File{Name: filepath.Base(out), Path: out}}, nil
 			}
@@ -89,7 +91,7 @@ func Register(reg *ops.Registry, svc *Service) {
 
 // List 列出備份資料夾裡的 .tar.gz，新到舊。資料夾不存在時回空的清單。
 func (s *Service) List() (ListOut, error) {
-	dir := DefaultDir(s.DataDir)
+	dir := backup.DefaultDir(s.DataDir)
 	out := ListOut{Dir: dir, DataDir: s.DataDir, Backups: []File{}}
 	entries, err := os.ReadDir(dir)
 	if errors.Is(err, os.ErrNotExist) {
@@ -126,7 +128,7 @@ func (s *Service) Create(_ context.Context, out string) (CreateOut, error) {
 		return CreateOut{}, ops.Conflict("已經在備份了，等它做完")
 	}
 	defer s.mu.Unlock()
-	m, err := Create(Options{DataDir: s.DataDir, Out: out})
+	m, err := backup.Create(backup.Options{DataDir: s.DataDir, Out: out})
 	if err != nil {
 		return CreateOut{}, err
 	}

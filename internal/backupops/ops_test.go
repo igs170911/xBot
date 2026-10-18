@@ -1,4 +1,4 @@
-package backup
+package backupops
 
 import (
 	"context"
@@ -10,9 +10,28 @@ import (
 	"testing"
 	"time"
 
+	"xbot/internal/backup"
 	"xbot/internal/ops"
 	"xbot/internal/store"
 )
+
+func write(t *testing.T, p, s string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte(s), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func makeData(t *testing.T) string {
+	t.Helper()
+	data := filepath.Join(t.TempDir(), "xbot")
+	write(t, filepath.Join(data, "access-token"), "secret")
+	write(t, filepath.Join(data, "bots", "b1", "workspace", "report.md"), "# 報告")
+	return data
+}
 
 func opsEnv(t *testing.T, dataDir string) *ops.Registry {
 	t.Helper()
@@ -42,15 +61,15 @@ func TestBackupOps(t *testing.T) {
 	owner := ops.Owner("http")
 
 	empty, err := invoke[ListOut](t, reg, owner, "xbot.backup.list", ops.Options{})
-	if err != nil || len(empty.Backups) != 0 || empty.Dir != DefaultDir(data) || empty.DataDir != data {
+	if err != nil || len(empty.Backups) != 0 || empty.Dir != backup.DefaultDir(data) || empty.DataDir != data {
 		t.Fatalf("還沒有備份：%+v %v", empty, err)
 	}
 
 	dry, err := invoke[CreateOut](t, reg, owner, "xbot.backup.create", ops.Options{DryRun: true})
-	if err != nil || !strings.HasPrefix(dry.File.Path, DefaultDir(data)) {
+	if err != nil || !strings.HasPrefix(dry.File.Path, backup.DefaultDir(data)) {
 		t.Fatalf("預演：%+v %v", dry, err)
 	}
-	if _, err := os.Stat(DefaultDir(data)); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(backup.DefaultDir(data)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("預演不能真的寫備份")
 	}
 
@@ -58,19 +77,18 @@ func TestBackupOps(t *testing.T) {
 	if err != nil || made.Files == 0 || made.File.Size == 0 {
 		t.Fatalf("立即備份：%+v %v", made, err)
 	}
-	var m Manifest
-	if err := readManifest(made.File.Path, &m); err != nil || m.IncludeLogins {
+	if m, err := backup.ReadManifest(made.File.Path); err != nil || m.IncludeLogins {
 		t.Fatalf("網頁備份不含登入：%+v %v", m, err)
 	}
 
 	// 舊的一份（修改時間較早）、不是備份的檔案不列
-	old := filepath.Join(DefaultDir(data), "xbot-backup-20250101-000000.tar.gz")
+	old := filepath.Join(backup.DefaultDir(data), "xbot-backup-20250101-000000.tar.gz")
 	write(t, old, "x")
 	past := time.Now().Add(-48 * time.Hour)
 	if err := os.Chtimes(old, past, past); err != nil {
 		t.Fatal(err)
 	}
-	write(t, filepath.Join(DefaultDir(data), "notes.txt"), "x")
+	write(t, filepath.Join(backup.DefaultDir(data), "notes.txt"), "x")
 	list, err := invoke[ListOut](t, reg, owner, "xbot.backup.list", ops.Options{})
 	if err != nil || len(list.Backups) != 2 || list.Backups[0].Name != made.File.Name || list.Backups[1].Path != old {
 		t.Fatalf("新到舊：%+v %v", list, err)
