@@ -27,20 +27,30 @@ type Gateway struct {
 	Key    string
 	// OnPrompt 在每次 prompt.submit 之後於背景執行；nil 時用 ReplyOK。
 	OnPrompt func(t *Turn)
+	// Settle 模擬 Hermes 在一輪結束（OnPrompt 回傳）之後的收尾時間：這段期間 session 還算在跑，
+	// 收完才送 session.info（running=false）。和真的 Hermes 一樣，跑的時候送來的 prompt.submit
+	// 帶 queued=true 就排隊、收完尾自己開下一輪；沒帶就當成插話（steered），收下卻不會開新的一輪。
+	Settle time.Duration
+	// IgnoreQueued 模擬不認得 queued 參數的 Hermes：跑的時候送來的 prompt 一律當成插話。
+	IgnoreQueued bool
 
 	mu       sync.Mutex
 	calls    []Call
 	conns    []*websocket.Conn
 	sessions int
-	stored   map[string]string // stored id → live session id
-	turns    map[string]*Turn  // session → 進行中的一輪
+	stored   map[string]string   // stored id → live session id
+	turns    map[string]*Turn    // session → 進行中的一輪
+	running  map[string]bool     // session → Hermes 那邊還在跑（含收尾）
+	queued   map[string][]string // session → 排隊的 prompt
+	steered  []string
 	answers  map[string]chan json.RawMessage
 	reqSeq   int
 }
 
 // New 啟動假的 gateway；key 是要求的 worker-key。
 func New(key string) *Gateway {
-	g := &Gateway{Key: key, stored: map[string]string{}, turns: map[string]*Turn{}, answers: map[string]chan json.RawMessage{}}
+	g := &Gateway{Key: key, stored: map[string]string{}, turns: map[string]*Turn{}, answers: map[string]chan json.RawMessage{},
+		running: map[string]bool{}, queued: map[string][]string{}}
 	g.Server = httptest.NewServer(http.HandlerFunc(g.serve))
 	return g
 }
@@ -70,6 +80,13 @@ func (g *Gateway) Calls() []Call {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	return append([]Call(nil), g.calls...)
+}
+
+// Steered 回傳被當成插話收下（不會開新的一輪）的 prompt。
+func (g *Gateway) Steered() []string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return append([]string(nil), g.steered...)
 }
 
 // Methods 回傳收到的方法名稱。
@@ -171,15 +188,20 @@ func (g *Gateway) handle(c *wconn, method string, p map[string]any) (any, string
 		return map[string]any{"session_id": id}, ""
 	case "prompt.submit":
 		text, _ := p["text"].(string)
-		t := &Turn{g: g, c: c, SessionID: sid, Text: text, interrupted: make(chan struct{})}
+		queued, _ := p["queued"].(bool)
 		g.mu.Lock()
-		g.turns[sid] = t
-		g.mu.Unlock()
-		fn := g.OnPrompt
-		if fn == nil {
-			fn = ReplyOK
+		if g.running[sid] {
+			defer g.mu.Unlock()
+			if queued && !g.IgnoreQueued {
+				g.queued[sid] = append(g.queued[sid], text)
+				return map[string]any{"status": "queued"}, ""
+			}
+			g.steered = append(g.steered, text)
+			return map[string]any{"status": "steered"}, ""
 		}
-		go fn(t)
+		g.running[sid] = true
+		g.mu.Unlock()
+		g.startTurn(c, sid, text)
 		return map[string]any{"status": "streaming"}, ""
 	case "session.interrupt":
 		g.mu.Lock()
@@ -192,6 +214,38 @@ func (g *Gateway) handle(c *wconn, method string, p map[string]any) (any, string
 		return map[string]any{"status": "interrupted", "interrupted": true}, ""
 	}
 	return nil, "unknown method " + method
+}
+
+// startTurn 在背景跑一輪；結束後照 Hermes 的順序收尾：等 Settle、放開 running、送 session.info，再接排隊的 prompt。
+func (g *Gateway) startTurn(c *wconn, sid, text string) {
+	t := &Turn{g: g, c: c, SessionID: sid, Text: text, interrupted: make(chan struct{})}
+	g.mu.Lock()
+	g.turns[sid] = t
+	g.mu.Unlock()
+	fn := g.OnPrompt
+	if fn == nil {
+		fn = ReplyOK
+	}
+	go func() {
+		fn(t)
+		time.Sleep(g.Settle)
+		g.mu.Lock()
+		g.running[sid] = false
+		g.mu.Unlock()
+		t.Event("session.info", map[string]any{"running": false})
+		g.mu.Lock()
+		var next string
+		q := g.queued[sid]
+		drain := len(q) > 0 && !g.running[sid]
+		if drain {
+			next, g.queued[sid] = q[0], q[1:]
+			g.running[sid] = true
+		}
+		g.mu.Unlock()
+		if drain {
+			g.startTurn(c, sid, next)
+		}
+	}()
 }
 
 // Turn 是假 gateway 上進行中的一輪，測試用它送事件。

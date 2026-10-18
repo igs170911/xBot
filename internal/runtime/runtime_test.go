@@ -31,6 +31,12 @@ type fixture struct {
 
 func setup(t *testing.T) *fixture {
 	t.Helper()
+	return setupWith(t, nil)
+}
+
+// setupWith 和 setup 一樣，但可以先改 Options（例：調短看門狗）。
+func setupWith(t *testing.T, opt func(*Options)) *fixture {
+	t.Helper()
 	ctx := context.Background()
 	db, err := store.Open(ctx, filepath.Join(t.TempDir(), store.FileName))
 	if err != nil {
@@ -45,7 +51,11 @@ func setup(t *testing.T) *fixture {
 		}
 		return hermes.Endpoint{Addr: f.g.Addr(), Key: "k"}, nil
 	}, nil)
-	f.rt = New(Options{DB: db, Driver: d, Bus: events.New(), Models: fixedModel{}})
+	o := Options{DB: db, Driver: d, Bus: events.New(), Models: fixedModel{}}
+	if opt != nil {
+		opt(&o)
+	}
+	f.rt = New(o)
 	if f.bot, err = db.CreateBot(ctx, store.Bot{Name: "小幫手"}); err != nil {
 		t.Fatal(err)
 	}

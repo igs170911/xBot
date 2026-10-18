@@ -53,27 +53,6 @@ type stack struct {
 	rt      *runtime.Runtime
 	fake    *hermestest.FakeModel
 	fakeURL string
-
-	turnMu   sync.Mutex
-	lastTurn map[string]time.Time
-}
-
-// turnGap 是同一個 Bot 兩輪對話之間至少隔多久。Hermes 在一輪的 message.complete 之後還在收尾（標題、記憶整理），
-// 這時立刻送下一個 prompt 會被收下卻不執行，這一輪就永遠等不到結束——本機（沒有 SSH）也一樣，
-// 是 E02 驅動的問題，記在 docs/spike-ssh-forward.md 的「後續」。測試先避開它，量的時間不含這段等待。
-const turnGap = 3 * time.Second
-
-func (s *stack) settle(botID string) {
-	s.turnMu.Lock()
-	last := s.lastTurn[botID]
-	s.turnMu.Unlock()
-	time.Sleep(time.Until(last.Add(turnGap)))
-}
-
-func (s *stack) turnDone(botID string) {
-	s.turnMu.Lock()
-	s.lastTurn[botID] = time.Now()
-	s.turnMu.Unlock()
 }
 
 // connLog 記下 SSH 用的 TCP 連線，測試用來從本機這端直接切斷。
@@ -119,7 +98,7 @@ func newStack(ctx context.Context, t *testing.T) *stack {
 		t.Skipf("沒有映像 %s（先執行 make box）：%v", boxImage(), err)
 	}
 	start := time.Now()
-	s := &stack{th: sshtesthost.Start(ctx, t, boxImage()), conns: &connLog{}, lastTurn: map[string]time.Time{}}
+	s := &stack{th: sshtesthost.Start(ctx, t, boxImage()), conns: &connLog{}}
 	t.Logf("測試主機 %s 就緒（%s，含載入映像）", s.th.Addr, time.Since(start).Round(time.Millisecond))
 
 	// 短一點的資料目錄：product.sock 的路徑不能超過 108 字元。
@@ -203,8 +182,6 @@ func (s *stack) newBot(ctx context.Context, t *testing.T, name string) store.Bot
 // chat 送一句話並等到完成，回傳花費時間。
 func (s *stack) chat(ctx context.Context, t *testing.T, botID, threadID, text string) (string, time.Duration) {
 	t.Helper()
-	s.settle(botID)
-	defer s.turnDone(botID)
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 	start := time.Now()

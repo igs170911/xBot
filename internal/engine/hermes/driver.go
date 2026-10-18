@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"time"
 
 	"xbot/internal/engine"
 	"xbot/internal/limits"
@@ -37,6 +38,10 @@ type Connector func(ctx context.Context, botID string) (Endpoint, error)
 type Driver struct {
 	connect Connector
 	log     *slog.Logger
+
+	// IdleWait、StartTimeout 為 0 時用 limits.HermesIdleWait、limits.HermesStartTimeout（測試可以調短）。
+	IdleWait     time.Duration
+	StartTimeout time.Duration
 
 	mu    sync.Mutex
 	bots  map[string]*botConn
@@ -81,7 +86,55 @@ type session struct {
 	resume string
 	// running：收到 message.start 到 message.complete 之間。
 	running bool
-	q       *queue
+	// busy：Hermes 那邊這個 session 還在忙。message.complete 之後 Hermes 還要收尾，收完才放開，
+	// 並送 session.info（running=false）；這之前送出的 prompt 會被當成插話，不會開新的一輪。
+	busy bool
+	idle chan struct{} // busy 時不是 nil；閒下來時關閉
+	// 等 message.start 的看門狗：seq 每送一次加一，舊的計時器就不算數。
+	seq      int
+	awaiting bool
+	timer    *time.Timer
+	q        *queue
+}
+
+func (s *session) setBusyLocked(busy bool) {
+	switch {
+	case busy && !s.busy:
+		s.busy, s.idle = true, make(chan struct{})
+	case !busy && s.busy:
+		s.busy = false
+		close(s.idle)
+		s.idle = nil
+	}
+}
+
+// waitIdle 等這個 session 閒下來，最多 d。逾時回傳 false；ctx 結束回傳 ctx 的錯誤。
+func (s *session) waitIdle(ctx context.Context, d time.Duration) (bool, error) {
+	s.mu.Lock()
+	idle := s.idle
+	s.mu.Unlock()
+	if idle == nil {
+		return true, nil
+	}
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-idle:
+		return true, nil
+	case <-t.C:
+		return false, nil
+	case <-ctx.Done():
+		return false, ctx.Err()
+	}
+}
+
+// stopAwaitingLocked 收起等 message.start 的看門狗。
+func (s *session) stopAwaitingLocked() {
+	s.awaiting = false
+	if s.timer != nil {
+		s.timer.Stop()
+		s.timer = nil
+	}
 }
 
 func (s *session) ID() string { return s.id }
@@ -214,22 +267,96 @@ func (d *Driver) own(s engine.Session) (*session, error) {
 }
 
 // Send 實作 engine.Driver（prompt.submit）。
+//
+// 先等 Hermes 把上一輪收完尾（見 session.busy），再送出。送出時一律帶 queued=true：萬一 Hermes 還在忙
+// （等太久、或它自己在跑別的），這則訊息會排在後面、等它忙完自己開一輪，而不是被當成插話併進已經結束的那一輪。
+// 回覆 streaming 之後開始等 message.start，超過 StartTimeout 就以錯誤結束這一輪。
 func (d *Driver) Send(ctx context.Context, s engine.Session, m engine.Message) error {
 	hs, err := d.own(s)
 	if err != nil {
 		return err
 	}
-	raw, err := hs.bc.c.call(ctx, "prompt.submit", map[string]any{"session_id": hs.id, "text": m.Text}, 0)
+	idle, err := hs.waitIdle(ctx, durationOr(d.IdleWait, limits.HermesIdleWait))
 	if err != nil {
 		return err
 	}
+	if !idle {
+		d.log.Warn("Hermes 的上一輪還沒收完尾，改成排隊送出", "bot", hs.bc.botID, "session", hs.id)
+	}
+	// 先標成忙、開始等 message.start：Hermes 的事件可能比 prompt.submit 的回覆先到。
+	hs.mu.Lock()
+	hs.setBusyLocked(true)
+	hs.stopAwaitingLocked()
+	hs.seq++
+	seq := hs.seq
+	hs.awaiting = true
+	hs.mu.Unlock()
+
+	raw, err := hs.bc.c.call(ctx, "prompt.submit", map[string]any{"session_id": hs.id, "text": m.Text, "queued": true}, 0)
+	if err != nil {
+		hs.mu.Lock()
+		if hs.seq == seq {
+			hs.stopAwaitingLocked()
+			if !hs.running {
+				hs.setBusyLocked(false)
+			}
+		}
+		hs.mu.Unlock()
+		return err
+	}
 	var res struct {
+		Status          string `json:"status"`
 		StoredSessionID string `json:"stored_session_id"`
 	}
-	if json.Unmarshal(raw, &res) == nil {
-		hs.setResume(res.StoredSessionID)
+	_ = json.Unmarshal(raw, &res)
+	hs.setResume(res.StoredSessionID)
+	switch res.Status {
+	case "streaming", "":
+		hs.mu.Lock()
+		if hs.seq == seq && hs.awaiting {
+			hs.timer = time.AfterFunc(durationOr(d.StartTimeout, limits.HermesStartTimeout), func() { d.startTimedOut(hs, seq) })
+		}
+		hs.mu.Unlock()
+		return nil
+	case "queued":
+		// Hermes 還在跑別的；忙完會自己開這一輪。可能等很久，交給 runtime 的看門狗。
+		hs.mu.Lock()
+		if hs.seq == seq {
+			hs.stopAwaitingLocked()
+		}
+		hs.mu.Unlock()
+		return nil
+	default:
+		// steered／redirected：訊息被併進正在收尾的那一輪，不會有自己的一輪。帶了 queued=true 不應該發生。
+		hs.mu.Lock()
+		if hs.seq == seq {
+			hs.stopAwaitingLocked()
+		}
+		hs.mu.Unlock()
+		d.log.Warn("Hermes 沒有為這則訊息開新的一輪", "bot", hs.bc.botID, "session", hs.id, "status", res.Status)
+		return fmt.Errorf("Bot 還在收尾上一輪，這則訊息沒有開始（%s），請再送一次", res.Status)
 	}
-	return nil
+}
+
+// startTimedOut：送出後一直等不到 message.start，以錯誤結束這一輪，不會永遠等下去。
+func (d *Driver) startTimedOut(hs *session, seq int) {
+	hs.mu.Lock()
+	if hs.seq != seq || !hs.awaiting {
+		hs.mu.Unlock()
+		return
+	}
+	hs.stopAwaitingLocked()
+	hs.mu.Unlock()
+	d.log.Warn("送出後等不到 Hermes 開始這一輪", "bot", hs.bc.botID, "session", hs.id)
+	hs.q.push(engine.Event{Type: engine.EventError, Session: hs.id, Text: "Bot 收下訊息後一直沒有開始，已結束這次工作；可以再送一次"})
+	hs.q.push(engine.Event{Type: engine.EventDone, Session: hs.id, Status: engine.StatusError})
+}
+
+func durationOr(d, def time.Duration) time.Duration {
+	if d > 0 {
+		return d
+	}
+	return def
 }
 
 // Interrupt 實作 engine.Driver（session.interrupt）。
@@ -397,8 +524,25 @@ func (bc *botConn) event(p eventParams) {
 	switch p.Type {
 	case "message.start":
 		s.running = true
+		s.setBusyLocked(true)
+		s.stopAwaitingLocked()
 	case "message.complete":
+		// busy 留著：Hermes 還在收尾，等 session.info。
 		s.running = false
+		s.stopAwaitingLocked()
+	case "session.info":
+		var info struct {
+			Running *bool `json:"running"`
+		}
+		if json.Unmarshal(p.Payload, &info) == nil && info.Running != nil {
+			s.setBusyLocked(*info.Running)
+		}
+	case "error":
+		if !s.running {
+			// 輪外的錯誤：這一輪沒開始就結束了，Hermes 那邊也不在跑。
+			s.stopAwaitingLocked()
+			s.setBusyLocked(false)
+		}
 	}
 	running := s.running
 	s.mu.Unlock()
