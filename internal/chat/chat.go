@@ -93,9 +93,27 @@ type Message struct {
 	// Activity：kind=activity（sender=system）時是哪一種系統紀錄，例：auto_continue（自動繼續，X04）。
 	Activity string `json:"activity,omitempty" desc:"kind=activity 時是哪一種：auto_continue（系統叫 Bot 自己接著做）"`
 	// Judge：Bot 這一輪回覆的完成判定（X04）。
-	Judge     *Judgment `json:"judge,omitempty" desc:"系統判斷這件工作做完了沒（Bot 的回覆才有）"`
-	CreatedAt int64     `json:"created_at"`
-	UpdatedAt int64     `json:"updated_at"`
+	Judge *Judgment `json:"judge,omitempty" desc:"系統判斷這件工作做完了沒（Bot 的回覆才有）"`
+	// Card：kind=card 時卡片的內容（Bot 用 xbot.cards.post 發的資訊、核准、檔案卡，C11）。
+	Card      *Card `json:"card,omitempty"`
+	CreatedAt int64 `json:"created_at"`
+	UpdatedAt int64 `json:"updated_at"`
+}
+
+// CardFile 是檔案卡上的一個檔案（Bot 電腦裡的完整路徑，C33 點了預覽或下載）。
+type CardFile struct {
+	Path string `json:"path"`
+	Name string `json:"name,omitempty"`
+}
+
+// Card 是對話裡的一張卡片（botops.card 的對外版本）。
+type Card struct {
+	Type       string     `json:"type" desc:"info、approval、file"`
+	Title      string     `json:"title"`
+	Body       string     `json:"body,omitempty"`
+	ApprovalID string     `json:"approval_id,omitempty"`
+	Category   string     `json:"category,omitempty"`
+	Files      []CardFile `json:"files,omitempty"`
 }
 
 // ReadOut 是 xbot.chat.read 的輸出。
@@ -463,6 +481,7 @@ type messageMeta struct {
 	Peer      *PeerLine         `json:"peer"`
 	Activity  string            `json:"activity"`
 	Judge     *runtime.Judgment `json:"judge"`
+	Card      *Card             `json:"card"`
 }
 
 func messageView(m store.Message) Message {
@@ -470,7 +489,7 @@ func messageView(m store.Message) Message {
 	_ = json.Unmarshal(m.Meta, &meta)
 	out := Message{ID: m.ID, Seq: m.Seq, Sender: m.Sender, Kind: m.Kind, Content: m.Content, TaskID: meta.TaskID,
 		Actor: meta.Actor, ActorName: meta.ActorName, Via: meta.Via, Streaming: meta.Streaming, Status: meta.Status, Silent: meta.Silent, Peer: meta.Peer,
-		Activity: meta.Activity, CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
+		Activity: meta.Activity, Card: meta.Card, CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
 	if meta.Judge != nil && meta.Judge.Verdict != "" {
 		out.Judge = &Judgment{Judgment: *meta.Judge}
 	}

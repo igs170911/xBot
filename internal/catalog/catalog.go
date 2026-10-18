@@ -13,6 +13,7 @@ import (
 	"xbot/internal/computers"
 	"xbot/internal/delegation"
 	"xbot/internal/engines"
+	"xbot/internal/files"
 	"xbot/internal/hosts"
 	"xbot/internal/inbox"
 	"xbot/internal/memory"
@@ -48,11 +49,13 @@ type Deps struct {
 	Collab *collab.Service
 	// Org 是團隊、匯報線、提案與討論（X03）；nil 時只登錄定義。
 	Org *org.Service
+	// Files 是檔案面板（C33）；nil 時只登錄定義。
+	Files *files.Service
 	// Computers 是 Bot 電腦的生命週期（B13）；nil 時只登錄定義。
 	Computers *computers.Service
 }
 
-// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines、computers 各領域的操作。
+// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines、files、computers 各領域的操作。
 func Register(reg *ops.Registry, d Deps) {
 	bd := bots.Deps{Teardown: d.Teardown, SoulChanged: d.SoulChanged}
 	if d.Collab != nil {
@@ -91,6 +94,7 @@ func Register(reg *ops.Registry, d Deps) {
 	skills.Register(reg, d.Skills)
 	memory.Register(reg, d.Memory)
 	hosts.Register(reg, d.Hosts)
+	files.Register(reg, d.Files)
 	computers.Register(reg, d.Computers)
 }
 

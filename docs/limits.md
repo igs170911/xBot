@@ -139,6 +139,16 @@
 | `AvatarPNGBytes` | 8 MiB | 位元組 | server/main.py:891 | — | — |
 | `FolderEntries` | 300 | 項 | server/main.py:681 `FOLDER_ENTRIES` | — | — |
 | `FileNameMax` | 180 | 字元 | server/files.py:18 `filename` | — | — |
+| `FilesScanMax` | 500 | 個 | server/runtime.py:1185 `scan_files` | — | — |
+| `FilesFolderScanMax`／`FilesWalkScanMax` | 10,000／20,000 | 項 | XBot 新增 | — | — |
+| `FilesListOutputBytes` | 8 MiB | 位元組 | XBot 新增 | — | — |
+| `FilePathDepth`／`FilePathMax` | 32 層／1,024 字元 | — | XBot 新增 | — | — |
+| `FilePreviewBytes`／`FilePreviewBytesMax` | 256 KiB／1 MiB | 位元組 | XBot 新增 | — | — |
+| `FilePreviewRows`／`FilePreviewColumns` | 1,000／100 | 列／欄 | XBot 新增（E07 大檔只預覽前 1,000 列） | — | — |
+| `FileSheetBytes`／`FileSheetXMLBytes` | 20／64 MiB | 位元組 | XBot 新增 | — | — |
+| `ThumbSize`／`ThumbPixelsMax` | 320 像素／5,000 萬像素 | — | XBot 新增 | — | — |
+| `FileWriteTextMax` | 512 KiB | 位元組 | XBot 新增 | — | — |
+| `ArchiveEntries`／`ArchiveCountLimit` | 2,000／100,000 | 項 | server/previews.py:20、:22 | — | — |
 | `TeachStepsMax` | 300 | 步 | server/teaching.py:16 `MAX_STEPS` | — | — |
 | `TeachStartTimeout`／`TeachStopTimeout` | 15／6 | 秒 | server/teaching.py:159、:160 | — | — |
 | `TeachGoalMax`／`TeachNoteMax` | 200／500 | 字元 | server/teaching.py:203、:254 | — | — |

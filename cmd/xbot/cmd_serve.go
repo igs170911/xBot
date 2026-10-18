@@ -85,10 +85,14 @@ func cmdServe(args []string) error {
 		MCP:        mcpHandler,
 		AgentPair:  pairing.Handler(),
 		Hooks:      st.routines.HookHandler(),
-		Registry:   reg,
-		Bus:        bus,
-		DB:         st.db,
-		Auth:       auth.NewHTTP(auth.HTTPConfig{Tokens: tokens, AccessToken: accessToken, LocalNoAuth: cfg.LocalNoAuth}),
+		Streams: map[string]api.StreamHandler{
+			"POST " + api.Route("xbot.files.upload"): st.files.UploadHandler(reg),
+			"GET /api/v1/files.download":             st.files.DownloadHandler(reg),
+		},
+		Registry: reg,
+		Bus:      bus,
+		DB:       st.db,
+		Auth:     auth.NewHTTP(auth.HTTPConfig{Tokens: tokens, AccessToken: accessToken, LocalNoAuth: cfg.LocalNoAuth}),
 	})
 	// 關機時先結束 SSE 這類長連線，Shutdown 才不會一直等。
 	baseCtx, cancelBase := context.WithCancel(context.Background())

@@ -31,7 +31,7 @@ func (q *Queries) AddMemoryVersion(ctx context.Context, v MemoryVersion, keep in
 		return v, err
 	}
 	_, err := q.w.ExecContext(ctx, `DELETE FROM memory_version WHERE bot_id = ? AND target = ? AND id NOT IN (
-		SELECT id FROM memory_version WHERE bot_id = ? AND target = ? ORDER BY created_at DESC, id DESC LIMIT ?)`,
+		SELECT id FROM memory_version WHERE bot_id = ? AND target = ? ORDER BY created_at DESC, rowid DESC LIMIT ?)`,
 		v.BotID, v.Target, v.BotID, v.Target, keep)
 	return v, err
 }
@@ -39,7 +39,7 @@ func (q *Queries) AddMemoryVersion(ctx context.Context, v MemoryVersion, keep in
 // ListMemoryVersions 列出一個 Bot 的記憶變更，新的在前；target 空白時兩份都列。
 func (q *Queries) ListMemoryVersions(ctx context.Context, botID, target string) ([]MemoryVersion, error) {
 	rows, err := q.r.QueryContext(ctx, `SELECT `+memoryCols+` FROM memory_version WHERE bot_id = ? AND (? = '' OR target = ?)
-		ORDER BY created_at DESC, id DESC`, botID, target, target)
+		ORDER BY created_at DESC, rowid DESC`, botID, target, target)
 	if err != nil {
 		return nil, err
 	}

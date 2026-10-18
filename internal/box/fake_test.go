@@ -317,6 +317,10 @@ func (f *fakeDocker) CopyFromContainer(context.Context, string, client.CopyFromC
 	return client.CopyFromContainerResult{}, notFound("path")
 }
 
+func (f *fakeDocker) ContainerStatPath(context.Context, string, client.ContainerStatPathOptions) (client.ContainerStatPathResult, error) {
+	return client.ContainerStatPathResult{}, notFound("path")
+}
+
 // ExecCreate 只能在開機中的容器上開行程。
 func (f *fakeDocker) ExecCreate(_ context.Context, id string, o client.ExecCreateOptions) (client.ExecCreateResult, error) {
 	f.mu.Lock()
