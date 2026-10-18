@@ -340,7 +340,7 @@ test('手機：設定總覽（L06）→ 點進一區 → 返回', async ({ page 
   await m.getByRole('link', { name: /用量與花費|本月花費/ }).click()
   await expect(page).toHaveURL(/\/settings\/usage$/)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-  await m.getByRole('link', { name: '返回' }).click()
+  await m.getByRole('button', { name: '返回' }).click()
   await expect(page).toHaveURL(/\/settings$/)
 })
 

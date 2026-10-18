@@ -4,6 +4,10 @@ import { modelsGet, usageCaps, type ModelsGetOutput, type UsageCapsOutput } from
 import { linkClick } from '../router'
 import { Icon } from '../ui/Icon'
 import { Select } from '../ui/Menu'
+import { Switch } from '../ui/Controls'
+import { InstallRow } from '../mobile/PhoneSettings'
+import { usePushSettings } from '../mobile/usePush'
+import { connectionKind, useInstall } from '../mobile/pwa'
 import { Meter } from './charts'
 import { usd } from './format'
 import { setTheme, useTheme, type ThemeChoice } from './theme'
@@ -45,8 +49,22 @@ export function SettingsOverview() {
       .catch(() => setCaps(null))
   }, [])
   const g = caps?.global
+  const push = usePushSettings()
+  const install = useInstall()
   return (
     <div className="flex flex-col gap-2.5">
+      <a href="/settings/advanced/people" onClick={linkClick('/settings/advanced/people')} className="flex items-center gap-3 rounded-group bg-card px-3.5 py-3 text-ink">
+        <span aria-hidden="true" className="flex size-10 items-center justify-center rounded-full bg-control text-ui text-ink-2">
+          你
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="text-ui">你</span>
+          <span className="truncate text-meta text-ink-2">擁有者 · {window.location.host}</span>
+        </span>
+        <span className="text-ink-3">
+          <Icon icon={ChevronRight} size={18} />
+        </span>
+      </a>
       <Label>一般</Label>
       <Card>
         <div className={ROW + ' py-1.5'}>
@@ -65,7 +83,23 @@ export function SettingsOverview() {
             className="w-[140px]"
           />
         </div>
-        <LinkRow to="/settings/general" title="語言與外觀" note="繁體中文" />
+        <LinkRow to="/settings/general" title="語言" note="繁體中文" />
+        <div className={ROW}>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="text-ui">等你的事推播到這支手機</span>
+            {!push.supported && <span className="text-meta text-ink-3">{install.ios ? '先「加入主畫面」，從主畫面打開才能收推播' : '這個瀏覽器不支援推播'}</span>}
+          </span>
+          <Switch label="等你的事推播到這支手機" checked={push.on} disabled={!push.supported || push.busy} onChange={push.setOn} />
+        </div>
+        <div className={ROW}>
+          <span className="flex-1 text-ui">工作完成也通知</span>
+          <Switch label="工作完成也通知" checked={push.on && push.notifyDone} disabled={!push.on || push.busy} onChange={push.setNotifyDone} />
+        </div>
+        {push.on && (
+          <button type="button" onClick={() => void push.test()} className={ROW + ' text-left text-ui text-accent-ink'}>
+            送一則測試推播
+          </button>
+        )}
       </Card>
       <Label>AI 模型</Label>
       <Card>
@@ -74,7 +108,18 @@ export function SettingsOverview() {
       </Card>
       <Label>電腦與裝置</Label>
       <Card>
-        <LinkRow to="/settings/computers" title="電腦與手機" />
+        <LinkRow to="/settings/computers" title="電腦與主機" note="閒置 30 分鐘休眠" />
+        <a href="/settings/computers" onClick={linkClick('/settings/computers')} className={ROW + ' text-ink'}>
+          <span className="flex-1 text-ui">這支手機</span>
+          <span className="flex items-center gap-1.5 text-[13px] text-ink-2">
+            <span className="size-2 rounded-full bg-success" />
+            已連線 · {connectionKind()}
+          </span>
+          <span className="text-ink-3">
+            <Icon icon={ChevronRight} size={18} />
+          </span>
+        </a>
+        <InstallRow className={ROW + ' py-2'} />
       </Card>
       <Label>用量與花費</Label>
       <Card>

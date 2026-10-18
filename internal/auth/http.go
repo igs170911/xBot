@@ -128,12 +128,17 @@ func (a *HTTP) Login(w http.ResponseWriter, r *http.Request, token string) error
 		return ErrBadToken
 	}
 	a.fail.reset(client)
+	a.StartSession(w, r)
+	return nil
+}
+
+// StartSession 發一個新的登入 cookie（30 天）。登入碼登入與手機配對碼登入（DevicePairing）共用。
+func (a *HTTP) StartSession(w http.ResponseWriter, r *http.Request) {
 	exp := a.cfg.Now().Add(limits.SessionTTL)
 	http.SetCookie(w, &http.Cookie{
 		Name: SessionCookie, Value: a.newSession(exp), Path: "/", Expires: exp, MaxAge: int(limits.SessionTTL.Seconds()),
 		HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: IsHTTPS(r),
 	})
-	return nil
 }
 
 // Logout 清掉 session cookie。

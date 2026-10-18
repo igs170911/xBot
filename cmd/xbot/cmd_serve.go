@@ -18,6 +18,7 @@ import (
 	"xbot/internal/config"
 	"xbot/internal/events"
 	"xbot/internal/mcpserver"
+	"xbot/internal/push"
 	"xbot/internal/store"
 	"xbot/internal/version"
 	"xbot/web"
@@ -69,7 +70,10 @@ func cmdServe(args []string) error {
 	if err := st.judge.Prune(context.Background()); err != nil {
 		slog.Warn("清掉太舊的快判紀錄失敗", "err", err)
 	}
-	reg := buildRegistry(st.db, pairing, notify, st)
+	// 手機掃 QR 登入（W31、§17）與 Web Push（新的待我處理卡推到手機）。
+	devices := auth.NewDevicePairing(st.db, cfg.PublicURL)
+	pusher := push.New(st.db)
+	reg := buildRegistry(st.db, pairing, notify, st, pwaDeps{devices: devices, push: pusher})
 	// Bot 經自己的 product.sock 用 XBot MCP（C11）：身分就是那個 Bot。
 	st.sockets.SetProduct(mcpserver.BotHandler(reg, mcpserver.BotOptions{Keys: st.keys, DB: st.db, Logger: slog.Default()}))
 	// 權杖驗證 HTTP 與 MCP 共用（登入碼＝你本人，代理權杖＝那個代理）。
@@ -88,6 +92,7 @@ func cmdServe(args []string) error {
 		ModelProxy: st.model,
 		MCP:        mcpHandler,
 		AgentPair:  pairing.Handler(),
+		DevicePair: devices,
 		Hooks:      st.routines.HookHandler(),
 		Streams: map[string]api.StreamHandler{
 			"POST " + api.Route("xbot.files.upload"): st.files.UploadHandler(reg),
@@ -112,6 +117,8 @@ func cmdServe(args []string) error {
 	defer stop()
 	// 提案到期視同同意、討論時間到叫醒 Bot（X03，LazyBoy agenda tick）。
 	go st.org.Run(ctx)
+	// 新的待我處理卡推播到訂閱的裝置。
+	go pusher.Run(ctx, bus)
 
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()

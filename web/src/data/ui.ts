@@ -5,6 +5,9 @@ import { createStore } from './store'
 export const newBotDialog = createStore(false)
 export const openNewBot = () => newBotDialog.set(true)
 
+/** 手機的側欄抽屜開著沒（L01 的吉祥物、分頁首頁從左邊緣滑都能打開）。 */
+export const drawerStore = createStore(false)
+
 /** 每秒更新一次的現在時間（只在需要時開計時器）。 */
 export function useNow(on: boolean): number {
   const [now, setNow] = useState(() => Date.now())

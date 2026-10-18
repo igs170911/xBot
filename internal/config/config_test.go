@@ -52,3 +52,17 @@ func TestURLForAnyBind(t *testing.T) {
 		t.Fatalf("URL 錯誤：%s", c.URL())
 	}
 }
+
+func TestPublicURL(t *testing.T) {
+	t.Setenv("XBOT_PUBLIC_URL", "https://xbot.tail3a9c.ts.net/")
+	c, err := Load()
+	if err != nil || c.PublicURL != "https://xbot.tail3a9c.ts.net" {
+		t.Fatalf("%q %v", c.PublicURL, err)
+	}
+	for _, bad := range []string{"xbot.ts.net", "ftp://x", "https://x/sub"} {
+		t.Setenv("XBOT_PUBLIC_URL", bad)
+		if _, err := Load(); err == nil {
+			t.Fatalf("%q 應該不接受", bad)
+		}
+	}
+}

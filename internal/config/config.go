@@ -3,9 +3,11 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 // DefaultPort 是 XBot 服務的預設 HTTP 埠。
@@ -23,6 +25,9 @@ type Config struct {
 	Dev bool
 	// LocalNoAuth 為 true 時，從本機（localhost）來的請求不用登入（SEC-7）。XBOT_LOCAL_NOAUTH=0 關掉。
 	LocalNoAuth bool
+	// PublicURL 是手機連得到的網址（XBOT_PUBLIC_URL，例：https://xbot.tail3a9c.ts.net），放進連手機的 QR；
+	// 空白時用你打開網頁的網址。
+	PublicURL string
 }
 
 // Addr 回傳 host:port。
@@ -37,13 +42,20 @@ func (c Config) URL() string {
 	return fmt.Sprintf("http://%s:%d", host, c.Port)
 }
 
-// Load 從環境變數讀設定：XBOT_BIND、XBOT_PORT、XBOT_DATA_DIR、XBOT_DEV、XBOT_LOCAL_NOAUTH。
+// Load 從環境變數讀設定：XBOT_BIND、XBOT_PORT、XBOT_DATA_DIR、XBOT_DEV、XBOT_LOCAL_NOAUTH、XBOT_PUBLIC_URL。
 func Load() (Config, error) {
 	c := Config{
 		Bind:    envOr("XBOT_BIND", "127.0.0.1"),
 		Port:    DefaultPort,
 		DataDir: os.Getenv("XBOT_DATA_DIR"),
 		Dev:     os.Getenv("XBOT_DEV") == "1",
+	}
+	if v := strings.TrimRight(strings.TrimSpace(os.Getenv("XBOT_PUBLIC_URL")), "/"); v != "" {
+		u, err := url.Parse(v)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.Path != "" {
+			return c, fmt.Errorf("XBOT_PUBLIC_URL 要像 https://主機名稱[:埠]：%q", v)
+		}
+		c.PublicURL = v
 	}
 	switch v := os.Getenv("XBOT_LOCAL_NOAUTH"); v {
 	case "", "1", "true":

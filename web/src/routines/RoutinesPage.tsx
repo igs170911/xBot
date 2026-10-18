@@ -1,7 +1,9 @@
 import { useEffect } from 'react'
 import { CalendarDays, Plus, Repeat } from 'lucide-react'
 import { linkClick } from '../router'
-import { Button } from '../ui/Button'
+import { Button, IconButton } from '../ui/Button'
+import { PhoneBar } from '../mobile/Phone'
+import { usePhone } from '../mobile/nav'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
 import { CalendarView } from './CalendarView'
@@ -31,11 +33,13 @@ export function RoutinesPage({ path }: { path: string }) {
   const m = path.match(ROUTINES_PATH)
   const list = path.startsWith('/calendar/routines')
   const selected = m?.[1]
+  const phone = usePhone()
   return (
     <div className="flex min-w-0 flex-1">
-      <main className="min-w-0 flex-1 px-6 pb-6 pt-4 max-sm:px-4">
+      <main className="min-w-0 flex-1 px-6 pb-6 pt-4 max-md:px-4 max-md:pt-0">
+        {phone && list && <PhoneBar title="定時任務" back="/calendar" className="-mx-4" right={<IconButton icon={Plus} label="新增定時任務" className="size-11" onClick={() => openNewRoutine()} />} />}
         <div className="mx-auto flex max-w-[1180px] flex-col gap-3">
-          <header className="flex flex-wrap items-start justify-between gap-3">
+          <header className="flex flex-wrap items-start justify-between gap-3 max-md:hidden">
             <div className="flex flex-col gap-0.5">
               <h1 className="m-0 flex items-center gap-2.5 text-[22px] font-normal">
                 <span className="text-accent">
@@ -49,7 +53,7 @@ export function RoutinesPage({ path }: { path: string }) {
               新增定時任務
             </Button>
           </header>
-          <nav aria-label="定時任務分頁" className="flex self-start rounded-field bg-inset p-[3px]">
+          <nav aria-label="定時任務分頁" className="flex self-start rounded-field bg-inset p-[3px] max-md:hidden">
             <Tab to="/calendar" on={!list} icon={CalendarDays}>
               行事曆
             </Tab>

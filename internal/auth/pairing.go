@@ -44,6 +44,46 @@ type failures struct {
 	lockedUntil time.Time
 }
 
+// failTracker 記錄配對碼換錯的次數：每個來源 PairMaxFailures 次、全部合計 PairGlobalMaxFailures 次就鎖 PairLockout。
+// 代理配對（Pairing）與手機登入（DevicePairing）共用。呼叫端要自己上鎖。
+type failTracker map[string]*failures // key：來源 IP；"*" 是全部合計
+
+func (t failTracker) sweep(now time.Time) {
+	for k, f := range t {
+		if f.count == 0 && now.After(f.lockedUntil) {
+			delete(t, k)
+		}
+	}
+}
+
+func (t failTracker) locked(now time.Time, source string) bool {
+	for _, k := range []string{source, "*"} {
+		if f := t[k]; f != nil && now.Before(f.lockedUntil) {
+			return true
+		}
+	}
+	return false
+}
+
+func (t failTracker) fail(now time.Time, source string) {
+	for _, k := range []string{source, "*"} {
+		limit := limits.PairMaxFailures
+		if k == "*" {
+			limit = limits.PairGlobalMaxFailures
+		}
+		f := t[k]
+		if f == nil {
+			f = &failures{}
+			t[k] = f
+		}
+		f.count++
+		if f.count >= limit {
+			f.count = 0
+			f.lockedUntil = now.Add(limits.PairLockout)
+		}
+	}
+}
+
 // Pairing 管理配對碼（MCP-6）：一次性、5 分鐘有效、換錯太多次會鎖住。
 // 配對碼只放在記憶體：服務重開就失效，請使用者重新產生即可。
 type Pairing struct {
@@ -52,7 +92,7 @@ type Pairing struct {
 
 	mu    sync.Mutex
 	codes map[string]pendingCode
-	fails map[string]*failures // key：來源 IP；"*" 是全部合計
+	fails failTracker
 }
 
 // NewPairing 建立配對管理。
@@ -125,11 +165,7 @@ func (p *Pairing) sweep(now time.Time) {
 			delete(p.codes, c)
 		}
 	}
-	for k, f := range p.fails {
-		if f.count == 0 && now.After(f.lockedUntil) {
-			delete(p.fails, k)
-		}
-	}
+	p.fails.sweep(now)
 }
 
 // PairResult 是換權杖成功的結果。Token 只會出現這一次。
@@ -153,7 +189,7 @@ func (p *Pairing) Complete(ctx context.Context, code, name, source string) (Pair
 	p.mu.Lock()
 	now := p.now()
 	p.sweep(now)
-	if p.lockedLocked(now, source) {
+	if p.fails.locked(now, source) {
 		p.mu.Unlock()
 		e := ops.Limit("換錯太多次，請一分鐘後再試")
 		e.Retryable = true
@@ -161,7 +197,10 @@ func (p *Pairing) Complete(ctx context.Context, code, name, source string) (Pair
 	}
 	pc, ok := p.codes[code]
 	if !ok {
-		p.failLocked(now, source)
+		if p.fails == nil {
+			p.fails = failTracker{}
+		}
+		p.fails.fail(now, source)
 		p.mu.Unlock()
 		return PairResult{}, ops.Forbidden("配對碼不對或已過期，請在 XBot 重新產生一個")
 	}
@@ -212,37 +251,6 @@ func (p *Pairing) Complete(ctx context.Context, code, name, source string) (Pair
 		res.Agent.Resources = *g.Resources
 	}
 	return res, nil
-}
-
-func (p *Pairing) lockedLocked(now time.Time, source string) bool {
-	for _, k := range []string{source, "*"} {
-		if f := p.fails[k]; f != nil && now.Before(f.lockedUntil) {
-			return true
-		}
-	}
-	return false
-}
-
-func (p *Pairing) failLocked(now time.Time, source string) {
-	if p.fails == nil {
-		p.fails = map[string]*failures{}
-	}
-	for _, k := range []string{source, "*"} {
-		limit := limits.PairMaxFailures
-		if k == "*" {
-			limit = limits.PairGlobalMaxFailures
-		}
-		f := p.fails[k]
-		if f == nil {
-			f = &failures{}
-			p.fails[k] = f
-		}
-		f.count++
-		if f.count >= limit {
-			f.count = 0
-			f.lockedUntil = now.Add(limits.PairLockout)
-		}
-	}
 }
 
 // pairRequest 是 POST /api/v1/agents.pair 的內容。

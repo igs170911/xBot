@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from 'react'
-import { ApiError, login } from '../api/generated'
+import { ApiError, login, pairLogin } from '../api/generated'
 import { Mascot } from '../ui/Avatar'
 import { Button } from '../ui/Button'
 import { TextInput } from '../ui/Field'
 
 // 登入（design/A01-Login 的登入碼部分）：從其他裝置打開 XBot 時要輸入登入碼。
-// 掃 QR 允許登入、區網兩步要等手機版（W31）與裝置管理（J05）。
+// 也接受電腦上「連手機」顯示的 8 碼配對碼（XXXX-XXXX，W31／L09）：一次性、5 分鐘內有效。
 export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
   const [token, setToken] = useState('')
   const [busy, setBusy] = useState(false)
@@ -20,7 +20,10 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
     setBusy(true)
     setError(null)
     try {
-      await login(token.trim())
+      const v = token.trim()
+      // 配對碼是 8 碼（可以有一條線）；登入碼長得多
+      if (/^[A-Za-z0-9]{4}-?[A-Za-z0-9]{4}$/.test(v)) await pairLogin(v)
+      else await login(v)
       onLoggedIn()
     } catch (err) {
       // 服務的錯誤訊息已經是給人看的白話（登入碼不對、試太多次…）
@@ -35,7 +38,7 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
         <div className="flex flex-col items-center gap-3 text-center">
           <Mascot size={48} />
           <h1 className="m-0 text-page">登入 XBot</h1>
-          <p className="m-0 text-sub text-ink-2">在主機上執行 make token（或 xbot token）取得登入碼。</p>
+          <p className="m-0 text-sub text-ink-2">在主機上執行 make token（或 xbot token）取得登入碼；或輸入電腦上「連手機」顯示的配對碼。</p>
         </div>
         <div className="flex items-start gap-2">
           <TextInput

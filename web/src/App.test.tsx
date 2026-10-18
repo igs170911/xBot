@@ -193,6 +193,10 @@ it('沒登入（從別的裝置打開）時顯示登入頁，輸入登入碼後�
 })
 
 it('手機抽屜：打開後焦點在關閉鈕，Esc 關掉並回到選單鈕', async () => {
+  // 手機寬度：對話分頁（L01）左上的吉祥物打開側欄
+  const mm = window.matchMedia
+  window.matchMedia = ((q: string) => ({ matches: q.includes('max-width'), media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
+  window.history.replaceState(null, '', '/chats')
   render(<App />)
   const opener = await screen.findByRole('button', { name: '打開側欄' })
   opener.focus()
@@ -203,7 +207,7 @@ it('手機抽屜：打開後焦點在關閉鈕，Esc 關掉並回到選單鈕', 
   fireEvent.keyDown(close, { key: 'Escape' })
   expect(screen.queryByRole('dialog', { name: '側欄' })).toBeNull()
   expect(opener).toHaveFocus()
-  await screen.findByText('服務正常 · v-test')
+  window.matchMedia = mm
 })
 
 it('/dev/components 列出元件與頭像矩陣（7 列 × 10 形狀）', () => {

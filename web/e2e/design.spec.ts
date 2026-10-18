@@ -39,7 +39,9 @@ test('/dev/components 截圖', async ({ page }, info) => {
 
 test('版型截圖：側欄＋待我處理', async ({ page }, info) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1, name: '早安，事情都處理完了' })).toBeVisible()
+  // 手機（L02）：標題「待我處理」，問候改成一行說明
+  if (info.project.name === 'mobile') await expect(page.getByText('事情都處理完了，Bot 照常工作')).toBeVisible()
+  else await expect(page.getByRole('heading', { level: 1, name: '早安，事情都處理完了' })).toBeVisible()
   await expect(page.getByTestId('health')).toContainText('服務正常')
   await ready(page)
   await page.screenshot({ path: shot(`${info.project.name}-shell`), fullPage: info.project.name === 'mobile' })
@@ -56,6 +58,8 @@ test('版型截圖：側欄＋待我處理', async ({ page }, info) => {
   // 手機：側欄變抽屜、沒有橫向捲動、可點的東西 ≥ 44
   await expect(nav).toBeHidden()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  // W31：手機的側欄抽屜在「對話」分頁（L01）左上的吉祥物
+  await page.getByRole('navigation', { name: '分頁', exact: true }).getByRole('link', { name: '對話' }).click()
   const opener = page.getByRole('button', { name: '打開側欄' })
   await expect(opener).toBeVisible()
   await opener.click()
