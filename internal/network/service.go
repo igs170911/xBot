@@ -130,11 +130,14 @@ type runner struct {
 	done   chan struct{}
 	kick   chan struct{}
 
-	state, message   string
-	st               NodeStatus
-	cert, certMsg    string
-	funnel, funMsg   string
-	funnelTried      bool
+	state, message string
+	st             NodeStatus
+	cert, certMsg  string
+	funnel, funMsg string
+	// funnelGen 每次改 Funnel 設定（kick）就加一；funnelTried 是最後一次試過的設定版本。
+	// 開失敗不自動重試，直到 funnelGen 又變（改設定）。
+	funnelGen        uint64
+	funnelTried      uint64
 	tailnetSrv       *http.Server
 	funnelSrv        *http.Server
 	tailnetLn        net.Listener
@@ -255,7 +258,7 @@ func (s *Service) restart(ctx context.Context) error {
 	node := s.o.NewNode(NodeConfig{Dir: dir, Hostname: set.Hostname, AuthKey: key, Logger: s.o.Logger})
 	rctx, cancel := context.WithCancel(context.Background())
 	r := &runner{node: node, cancel: cancel, done: make(chan struct{}), kick: make(chan struct{}, 1),
-		state: StateStarting, cert: CertNone, funnel: FunnelOff}
+		state: StateStarting, cert: CertNone, funnel: FunnelOff, funnelGen: 1}
 	s.mu.Lock()
 	s.run = r
 	s.mu.Unlock()
@@ -287,7 +290,7 @@ func (s *Service) kick() {
 	s.mu.Lock()
 	r := s.run
 	if r != nil {
-		r.funnelTried = false
+		r.funnelGen++
 	}
 	s.mu.Unlock()
 	if r != nil {
@@ -323,6 +326,11 @@ func (s *Service) loop(ctx context.Context, r *runner) {
 }
 
 func (s *Service) tick(ctx context.Context, r *runner) {
+	// 先記下設定版本再讀狀態：讀狀態（不鎖）的期間改了設定的話，這次讀到的狀態可能是改之前的，
+	// 不能拿它判定「這版設定試過了」（不然 kick 觸發的下一輪會被跳過）。
+	s.mu.Lock()
+	gen := r.funnelGen
+	s.mu.Unlock()
 	sctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	st, err := r.node.Status(sctx)
 	cancel()
@@ -353,7 +361,7 @@ func (s *Service) tick(ctx context.Context, r *runner) {
 	}
 	s.ensureTailnet(r)
 	s.ensureCert(ctx, r)
-	s.ensureFunnel(r)
+	s.ensureFunnel(r, gen)
 }
 
 func (s *Service) serverFor(h http.Handler, funnel bool) *http.Server {
@@ -419,15 +427,18 @@ func (s *Service) ensureCert(ctx context.Context, r *runner) {
 }
 
 // ensureFunnel 依設定開關 Funnel（s.mu 鎖著）。開失敗不自動重試，改設定時才再試。
-func (s *Service) ensureFunnel(r *runner) {
+// statusGen 是讀 r.st 之前的設定版本。
+func (s *Service) ensureFunnel(r *runner, statusGen uint64) {
 	want := s.set.Funnel
 	switch {
-	case want && r.funnelSrv == nil && !r.funnelTried:
-		r.funnelTried = true
+	case want && r.funnelSrv == nil && r.funnelTried < r.funnelGen:
 		if !r.st.Funnel {
+			// 這個判斷靠的是 r.st：只算它讀到時的那版設定試過了。
+			r.funnelTried = statusGen
 			r.funnel, r.funMsg = FunnelError, "tailnet 的存取規則沒有允許這台用 Funnel：在 Tailscale 管理後台的 Access controls 加上 nodeAttrs 的 funnel"
 			return
 		}
+		r.funnelTried = r.funnelGen // ListenFunnel 用的是現在的設定
 		r.funnel, r.funMsg = FunnelStarting, ""
 		node := r.node
 		s.mu.Unlock() // ListenFunnel 會改 Tailscale 的 serve 設定，可能要幾秒

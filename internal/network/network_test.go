@@ -247,6 +247,9 @@ type fakeNode struct {
 	st          NodeStatus
 	funnelCalls int
 	funnelErr   error
+	statusCalls int
+	// afterStatus 在 Status 讀完狀態、回傳之前呼叫（不鎖）：測試用來在「讀狀態」和「套用狀態」之間插入動作。
+	afterStatus func()
 	closed      bool
 	tailnet     net.Listener
 	funnel      net.Listener
@@ -255,8 +258,27 @@ type fakeNode struct {
 func (f *fakeNode) Start() error { return nil }
 func (f *fakeNode) Status(context.Context) (NodeStatus, error) {
 	f.mu.Lock()
+	st, hook := f.st, f.afterStatus
+	f.statusCalls++
+	f.mu.Unlock()
+	if hook != nil {
+		hook()
+	}
+	return st, nil
+}
+
+// polls 回傳 Status 被呼叫過幾次（每一輪檢查一次）。
+func (f *fakeNode) polls() int {
+	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.st, nil
+	return f.statusCalls
+}
+
+// waitPolls 等節點再被檢查 k 輪（確認背景迴圈真的又跑過，而不是睡固定時間）。
+func waitPolls(t *testing.T, f *fakeNode, k int) {
+	t.Helper()
+	start := f.polls()
+	eventually(t, fmt.Sprintf("%d more polls", k), func() bool { return f.polls() >= start+k })
 }
 func (f *fakeNode) set(fn func(*NodeStatus)) { f.mu.Lock(); fn(&f.st); f.mu.Unlock() }
 func (f *fakeNode) ListenTLS(string) (net.Listener, error) {
@@ -409,12 +431,20 @@ func TestServiceLifecycle(t *testing.T) {
 	if err := s.SetFunnel(ctx, false, nil); err != nil {
 		t.Fatal(err)
 	}
-	eventually(t, "funnel off", func() bool { return s.Status(true).Funnel.State == FunnelOff })
-	// 用新的連線試（前面請求留下的 keep-alive 連線不算：要確認的是 listener 收掉了）。
-	fresh := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
-	if _, err := fresh.Get("http://" + fa + "/hooks/h1"); err == nil {
-		t.Fatal("Funnel 關掉後連不到")
+	// 設定一關，狀態馬上就是 off；真正收掉 listener 是背景迴圈下一輪的事，所以等的是「連不到」本身。
+	if st := s.Status(true).Funnel.State; st != FunnelOff {
+		t.Fatalf("關掉後狀態：%s", st)
 	}
+	// 用新的連線試（前面請求留下的 keep-alive 連線不算：要確認的是 listener 收掉了）。
+	fresh := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}, Timeout: 2 * time.Second}
+	eventually(t, "Funnel 關掉後連不到", func() bool {
+		resp, err := fresh.Get("http://" + fa + "/hooks/h1")
+		if err != nil {
+			return true
+		}
+		resp.Body.Close()
+		return false
+	})
 	// 改名字：重開節點。
 	if err := s.SetTailscale(ctx, TailscaleChange{Enabled: true, Hostname: "home-xbot"}); err != nil {
 		t.Fatal(err)
@@ -464,12 +494,46 @@ func TestFunnelNotAllowedByACL(t *testing.T) {
 		t.Fatal(err)
 	}
 	eventually(t, "funnel error 2", func() bool { return strings.Contains(s.Status(true).Funnel.Message, "nope") })
-	time.Sleep(50 * time.Millisecond)
+	waitPolls(t, n, 3) // 要讓 tick 開始時看到的狀態一定是錯誤之後的：多等幾輪
 	n.mu.Lock()
 	calls := n.funnelCalls
 	n.mu.Unlock()
 	if calls != 1 {
 		t.Fatalf("失敗後不自動重試：%d", calls)
+	}
+}
+
+// 讀狀態（不鎖）的期間改了設定：那次讀到的舊狀態不能吃掉這次改設定該有的重試。
+func TestFunnelRetryAfterStaleStatus(t *testing.T) {
+	s, nodes, _ := newSvc(t)
+	ctx := context.Background()
+	if err := s.SetTailscale(ctx, TailscaleChange{Enabled: true}); err != nil {
+		t.Fatal(err)
+	}
+	n := (*nodes)[0]
+	n.set(func(st *NodeStatus) { *st = NodeStatus{BackendState: "Running", DNSName: "xbot.t.ts.net"} })
+	if err := s.SetFunnel(ctx, true, nil); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "funnel error", func() bool { return s.Status(true).Funnel.State == FunnelError })
+	// 下一次讀狀態時：舊狀態（沒允許 Funnel）已經讀走了，這時 ACL 改好、使用者再按一次開啟。
+	var once sync.Once
+	n.mu.Lock()
+	n.afterStatus = func() {
+		once.Do(func() {
+			n.set(func(st *NodeStatus) { st.Funnel = true })
+			if err := s.SetFunnel(ctx, true, nil); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+	n.mu.Unlock()
+	eventually(t, "funnel on", func() bool { return s.Status(true).Funnel.State == FunnelOn })
+	n.mu.Lock()
+	calls := n.funnelCalls
+	n.mu.Unlock()
+	if calls != 1 {
+		t.Fatalf("只該開一次：%d", calls)
 	}
 }
 
