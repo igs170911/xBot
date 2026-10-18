@@ -114,7 +114,7 @@ func TestMigrationsIdempotent(t *testing.T) {
 func TestMigrationsAllTables(t *testing.T) {
 	db := openTest(t)
 	for _, table := range []string{"bot", "box", "host", "thread", "message", "task", "event", "audit_log",
-		"agent_token", "approval", "inbox_item", "usage_entry", "setting"} {
+		"agent_token", "approval", "inbox_item", "usage_entry", "setting", "op_request"} {
 		var name string
 		if err := db.read.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name=?", table).Scan(&name); err != nil {
 			t.Errorf("少了資料表 %s：%v", table, err)

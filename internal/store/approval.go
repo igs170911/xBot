@@ -18,6 +18,7 @@ type Approval struct {
 	BotID       string          `json:"bot_id"`
 	Action      string          `json:"action"`
 	Payload     json.RawMessage `json:"payload"`
+	Input       json.RawMessage `json:"-"` // 核准後要執行的原始輸入，可能含密鑰，永遠不對外回傳
 	RequestedBy string          `json:"requested_by"`
 	RequestID   string          `json:"request_id"`
 	Status      string          `json:"status"` // pending / approved / denied / expired / canceled
@@ -27,14 +28,14 @@ type Approval struct {
 	UpdatedAt   int64           `json:"updated_at"`
 }
 
-const approvalCols = `id, bot_id, action, payload, requested_by, request_id, status, decided_by, decided_at, created_at, updated_at`
+const approvalCols = `id, bot_id, action, payload, input, requested_by, request_id, status, decided_by, decided_at, created_at, updated_at`
 
 func scanApproval(s scanner) (Approval, error) {
 	var a Approval
 	var bot sql.NullString
-	var payload string
-	err := s.Scan(&a.ID, &bot, &a.Action, &payload, &a.RequestedBy, &a.RequestID, &a.Status, &a.DecidedBy, &a.DecidedAt, &a.CreatedAt, &a.UpdatedAt)
-	a.BotID, a.Payload = bot.String, json.RawMessage(payload)
+	var payload, input string
+	err := s.Scan(&a.ID, &bot, &a.Action, &payload, &input, &a.RequestedBy, &a.RequestID, &a.Status, &a.DecidedBy, &a.DecidedAt, &a.CreatedAt, &a.UpdatedAt)
+	a.BotID, a.Payload, a.Input = bot.String, json.RawMessage(payload), json.RawMessage(input)
 	return a, err
 }
 
@@ -47,8 +48,9 @@ func (q *Queries) CreateApproval(ctx context.Context, a Approval) (Approval, err
 	a.CreatedAt = nowMS()
 	a.UpdatedAt = a.CreatedAt
 	a.Payload = json.RawMessage(jsonOr(a.Payload, "{}"))
-	_, err := q.w.ExecContext(ctx, `INSERT INTO approval(`+approvalCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-		a.ID, nullStr(a.BotID), a.Action, string(a.Payload), a.RequestedBy, a.RequestID, a.Status, a.DecidedBy, a.DecidedAt, a.CreatedAt, a.UpdatedAt)
+	a.Input = json.RawMessage(jsonOr(a.Input, "{}"))
+	_, err := q.w.ExecContext(ctx, `INSERT INTO approval(`+approvalCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+		a.ID, nullStr(a.BotID), a.Action, string(a.Payload), string(a.Input), a.RequestedBy, a.RequestID, a.Status, a.DecidedBy, a.DecidedAt, a.CreatedAt, a.UpdatedAt)
 	return a, err
 }
 

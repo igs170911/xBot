@@ -45,6 +45,8 @@ type DB struct {
 	write *sql.DB
 	read  *sql.DB
 	path  string
+
+	readOnly bool // ReadOnly() 給的副本：共用連線池，不能關
 }
 
 // Open 開啟（或建立）path 的資料庫，並套用所有還沒套用的 migration。
@@ -100,6 +102,9 @@ func (db *DB) Path() string { return db.path }
 
 // Close 關閉資料庫。
 func (db *DB) Close() error {
+	if db.readOnly {
+		return nil
+	}
 	return errors.Join(db.read.Close(), db.write.Close())
 }
 

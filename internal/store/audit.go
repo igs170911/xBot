@@ -124,7 +124,7 @@ func (q *Queries) FindAgentToken(ctx context.Context, hash string) (AgentToken, 
 
 // ListAgentTokens 列出所有權杖（含已撤銷的），依建立順序。
 func (q *Queries) ListAgentTokens(ctx context.Context) ([]AgentToken, error) {
-	rows, err := q.r.QueryContext(ctx, `SELECT `+tokenCols+` FROM agent_token ORDER BY created_at, id`)
+	rows, err := q.r.QueryContext(ctx, `SELECT `+tokenCols+` FROM agent_token ORDER BY created_at, rowid`)
 	return collect(rows, err, scanToken)
 }
 
