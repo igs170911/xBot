@@ -1,5 +1,7 @@
 # XBot 設計進度
 
+> **實作狀態（2026-10-19）**：v1.0 完成並打 tag `v1.0`。實作細節見 `docs/PROGRESS-IMPL.md`，驗收報告見 `docs/checkpoints/CP7-v1.0.md`，使用指南見 `docs/guide/`。
+
 畫布：https://claude.ai/artifact/DmfRHh7dM9EsSLsMVkHYS6（2026-10-18 第 31 版）
 
 ## 已完成
