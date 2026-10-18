@@ -17,7 +17,6 @@ import (
 	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
-	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/client"
 )
 
@@ -53,6 +52,7 @@ type API interface {
 	ExecCreate(ctx context.Context, containerID string, options client.ExecCreateOptions) (client.ExecCreateResult, error)
 	ExecAttach(ctx context.Context, execID string, options client.ExecAttachOptions) (client.ExecAttachResult, error)
 	ExecInspect(ctx context.Context, execID string, options client.ExecInspectOptions) (client.ExecInspectResult, error)
+	ContainerStatPath(ctx context.Context, id string, options client.ContainerStatPathOptions) (client.ContainerStatPathResult, error)
 }
 
 // Docker 是一台 Bot 電腦（容器）的檔案。
@@ -250,32 +250,7 @@ func (d *Docker) Remove(ctx context.Context, p string) error {
 
 // Run 在容器裡執行一個指令（不接 stdin），等它結束；結束碼不是 0 時回錯誤（附 stderr 的最後一段）。
 func Run(ctx context.Context, api API, containerID, user string, cmd ...string) error {
-	created, err := api.ExecCreate(ctx, containerID, client.ExecCreateOptions{User: user, AttachStdout: true, AttachStderr: true, Cmd: cmd})
-	if err != nil {
-		return fmt.Errorf("無法在 Bot 的電腦裡執行 %s：%w", cmd[0], err)
-	}
-	att, err := api.ExecAttach(ctx, created.ID, client.ExecAttachOptions{})
-	if err != nil {
-		return fmt.Errorf("無法在 Bot 的電腦裡執行 %s：%w", cmd[0], err)
-	}
-	var stderr bytes.Buffer
-	_, err = stdcopy.StdCopy(io.Discard, &stderr, att.Reader)
-	att.Close()
-	if err != nil {
-		return err
-	}
-	res, err := api.ExecInspect(ctx, created.ID, client.ExecInspectOptions{})
-	if err != nil {
-		return err
-	}
-	if res.ExitCode != 0 {
-		msg := strings.TrimSpace(stderr.String())
-		if len(msg) > 500 {
-			msg = msg[len(msg)-500:]
-		}
-		return fmt.Errorf("%s 失敗（%d）：%s", cmd[0], res.ExitCode, msg)
-	}
-	return nil
+	return run(ctx, api, containerID, user, io.Discard, cmd...)
 }
 
 // Mem 是記憶體裡的 FS（測試用；路徑是絕對路徑）。

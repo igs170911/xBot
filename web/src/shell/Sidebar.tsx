@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Bell, CalendarClock, CalendarDays, ChevronDown, Crown, Inbox, LayoutGrid, Monitor, Network, Plus, Puzzle, Search, Settings, UsersRound, X } from 'lucide-react'
+import { Bell, CalendarClock, CalendarDays, ChevronDown, Crown, FolderOpen, Inbox, LayoutGrid, Monitor, Network, Plus, Puzzle, Search, Settings, UsersRound, X } from 'lucide-react'
 import { Avatar, Mascot } from '../ui/Avatar'
 import { Button, IconButton } from '../ui/Button'
 import { CountBadge } from '../ui/Pill'
@@ -126,6 +126,7 @@ function Section({ title, children, action, team }: { title: string; children: R
 const FOOT = [
   { to: '/calendar', label: '定時任務與行事曆', icon: CalendarDays },
   { to: '/agenda', label: '等你的事（提案與討論）', icon: CalendarClock },
+  { to: '/files', label: '全部檔案', icon: FolderOpen },
   { to: '/apps', label: '連接應用程式', icon: Puzzle },
   { to: '/teams', label: '團隊地圖', icon: LayoutGrid },
   { to: '/org', label: '組織架構', icon: Network },

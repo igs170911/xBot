@@ -10,6 +10,7 @@
 //	POST /api/v1/agents.pair     代理用配對碼換權杖（C04，不需要登入）
 //	/mcp                         MCP Streamable HTTP（C04）
 //	POST /hooks/<id>             定時任務的網址觸發（C32，不需要登入，帶金鑰）
+//	POST /api/v1/files.upload    檔案上傳（multipart，C33）；GET /api/v1/files.download 檔案下載（Streams）
 package api
 
 import (
@@ -49,6 +50,10 @@ type Options struct {
 	DB *store.DB
 	// Auth 驗證請求的身分；Registry 不是 nil 時必填。
 	Auth *auth.HTTP
+	// Streams 是內容不走 JSON 的出口（檔案上傳下載，C33）：「方法 路徑」→ 處理器，例："GET /api/v1/files.download"。
+	// 和操作同路徑時（POST /api/v1/files.upload），Content-Type 是 application/json 的請求仍交給操作。
+	// 處理器在寫出任何內容前回傳錯誤時，由這裡寫成一般的錯誤回應。
+	Streams map[string]StreamHandler
 	// Heartbeat 是 SSE 心跳間隔；0 用 limits.SSEHeartbeat（測試可以調短）。
 	Heartbeat time.Duration
 }
@@ -78,8 +83,21 @@ func New(o Options) http.Handler {
 		mux.HandleFunc("GET "+Prefix+"auth/status", s.authStatus)
 		mux.HandleFunc("GET "+Prefix+"ops", s.guard(s.listOps))
 		mux.HandleFunc("GET "+Prefix+"events", s.guard(s.events))
+		streams := map[string]StreamHandler{}
+		for k, v := range o.Streams {
+			streams[k] = v
+		}
 		for _, info := range s.reg.List() {
-			mux.HandleFunc("POST "+Route(info.Name), s.guard(s.opHandler(info)))
+			pattern := "POST " + Route(info.Name)
+			h := s.opHandler(info)
+			if sh, ok := streams[pattern]; ok {
+				h = s.streamOrOp(sh, h)
+				delete(streams, pattern)
+			}
+			mux.HandleFunc(pattern, s.guard(h))
+		}
+		for pattern, sh := range streams {
+			mux.HandleFunc(pattern, s.guard(s.stream(sh)))
 		}
 		mux.HandleFunc(Prefix, s.guard(func(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, ops.NotFound("沒有這個 API："+r.Method+" "+r.URL.Path))

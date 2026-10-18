@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 	"xbot/internal/engine/hermes"
 	"xbot/internal/engines"
 	"xbot/internal/events"
+	"xbot/internal/files"
 	"xbot/internal/hosts"
 	"xbot/internal/ipc"
 	"xbot/internal/memory"
@@ -50,6 +52,7 @@ type stack struct {
 	skills    *skills.Service
 	memory    *memory.Service
 	collab    *collab.Service
+	files     *files.Service
 	org       *org.Service
 }
 
@@ -146,7 +149,7 @@ func openStack(cfg config.Config) (*stack, error) {
 	s.skills = &skills.Service{Locate: comp.BotFS, Library: &skills.Library{Dir: filepath.Join(cfg.DataDir, "skills")}}
 	s.memory = &memory.Service{DB: db, Locate: comp.BotFS}
 	// Bot 之間的傳話與群組（X02）：接上 runtime 的 Hooks；帶檔經 Docker 讀寫兩邊電腦的 /workspace。
-	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Files: collab.DockerFiles{
+	carry := collab.DockerFiles{
 		Locate: func(ctx context.Context, botID string) (collab.CopyAPI, string, error) {
 			api, id, err := comp.Docker(ctx, botID)
 			if api == nil {
@@ -155,7 +158,10 @@ func openStack(cfg config.Config) (*stack, error) {
 			return api, id, err
 		},
 		UID: box.BotUID, GID: box.BotGID,
-	}})
+	}
+	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Files: carry})
+	// 檔案面板（C33）：經 Docker 讀寫 Bot 電腦的 /workspace；在電腦裡執行的指令用 Bot 自己的使用者。傳給別的 Bot 沿用 X02 帶檔。
+	s.files = &files.Service{Locate: files.DockerLocator(comp.BotFS, fmt.Sprintf("%d:%d", box.BotUID, box.BotGID)), Carry: carry}
 	// 團隊、匯報線、提案與討論（X03）。Bot 的系統提示：隊友名冊＋組織與回報。
 	s.org = org.New(org.Options{DB: db, Runtime: s.runtime, Collab: s.collab, Logger: logger})
 	comp.Roster = func(ctx context.Context, botID string) (string, error) {

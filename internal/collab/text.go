@@ -140,8 +140,8 @@ var fileRef = regexp.MustCompile("/workspace/[^\\s`'\"<>()（）\\[\\]「」『�
 
 var badName = regexp.MustCompile(`[\x00-\x1f/\\]`)
 
-// filename 把名字變成可以當資料夾名稱的字（LazyBoy files.filename）。
-func filename(name string) string {
+// Filename 把名稱整理成可以當檔名的一段（LazyBoy files.filename）：控制字元與斜線換成 _、最多 FileNameMax 字、去掉頭尾的點與空白。
+func Filename(name string) string {
 	name = strings.Trim(headRunes(badName.ReplaceAllString(name, "_"), limits.FileNameMax), ". ")
 	if name == "" {
 		return "attachment"

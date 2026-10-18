@@ -12,6 +12,9 @@ import { NewRoutineDialog } from './routines/NewRoutineDialog'
 import { ROUTINES_PATH, RoutinesPage } from './routines/RoutinesPage'
 import { ChatPage } from './chat/ChatPage'
 import { registerActivityCard, registerPeerCard } from './chat/peer'
+import { registerChatCards } from './files/register'
+import { BOT_FILES_PATH, BotFilesPage } from './files/BotFilesPage'
+import { FilesPage } from './files/FilesPage'
 import { NewRoomDialog } from './rooms/NewRoomDialog'
 import { RoomPage } from './rooms/RoomPage'
 import { NewTeamDialog } from './teams/NewTeamDialog'
@@ -34,6 +37,7 @@ const TITLES: Record<string, string> = {
   '/teams': '團隊地圖',
   '/apps': '連接應用程式',
   '/org': '組織架構',
+  '/files': '全部檔案',
   '/settings': '設定',
   '/settings/agents': '已連線的代理',
 }
@@ -45,6 +49,8 @@ const ROOM_PATH = /^\/rooms\/([^/]+)\/?$/
 // 對話裡 kind=peer 的那一行（和隊友的往來，C13）。
 registerPeerCard()
 registerActivityCard()
+// 對話裡 kind=card 的卡片（Bot 發的資訊、核准、檔案卡，C11、C33）。
+registerChatCards()
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -88,11 +94,14 @@ function Main() {
   const bot = path.match(BOT_PATH)
   const computer = path.match(COMPUTER_PATH)
   const room = path.match(ROOM_PATH)
+  const botFiles = path.match(BOT_FILES_PATH)
   const botName = (id: string) => bots?.find((b) => b.id === id)?.name
-  const title = path === '/' ? '待我處理' : bot ? (botName(bot[1]) ?? '對話') : computer ? `${botName(computer[1]) ?? 'Bot'}的電腦` : room ? (rooms?.find((r) => r.id === room[1])?.name ?? '群組對話') : (TITLES[path] ?? (path.startsWith('/settings') ? '設定' : path.startsWith('/calendar') ? '定時任務與行事曆' : 'XBot'))
+  const title = path === '/' ? '待我處理' : botFiles ? `${botName(botFiles[1]) ?? 'Bot'}的檔案` : bot ? (botName(bot[1]) ?? '對話') : computer ? `${botName(computer[1]) ?? 'Bot'}的電腦` : room ? (rooms?.find((r) => r.id === room[1])?.name ?? '群組對話') : (TITLES[path] ?? (path.startsWith('/settings') ? '設定' : path.startsWith('/calendar') ? '定時任務與行事曆' : 'XBot'))
 
   let page
   if (path === '/') page = <InboxPage />
+  else if (botFiles) page = <BotFilesPage key={botFiles[1]} botId={botFiles[1]} />
+  else if (path === '/files') page = <FilesPage />
   else if (bot) page = <ChatPage key={bot[1]} botId={bot[1]} threadParam={bot[2]} />
   else if (ROUTINES_PATH.test(path)) page = <RoutinesPage path={path} />
   else if (room) page = <RoomPage key={room[1]} roomId={room[1]} />

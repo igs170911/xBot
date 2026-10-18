@@ -39,6 +39,8 @@ export type ChatMsg = {
   silent?: boolean
   /** kind=peer：和隊友往來的那一行（X02、C13）。 */
   peer?: PeerLine
+  /** kind=card：Bot 發的卡片（資訊、核准、檔案，C11；檔案卡點了預覽或下載，C33）。 */
+  card?: ChatCard
   /** kind=activity（sender=system）：哪一種系統紀錄，例：auto_continue（自動繼續，X04）。 */
   activity?: string
   /** Bot 回覆的完成判定（X04）：系統判斷做完了沒，與你的改正。 */
@@ -59,6 +61,16 @@ export type Judge = {
   continued_by?: string
   /** 你按「不對？」改成哪一種 */
   corrected?: string
+}
+
+/** Bot 用 xbot.cards.post 發的卡片（chat.read 的 card）。 */
+export type ChatCard = {
+  type: string
+  title: string
+  body?: string
+  approval_id?: string
+  category?: string
+  files?: { path: string; name?: string }[]
 }
 
 /** 對話裡和隊友往來的一行（chat.read 的 peer）。 */
@@ -166,6 +178,7 @@ type MessageMeta = {
   peer?: PeerLine
   activity?: string
   judge?: Judge
+  card?: ChatCard
 }
 
 type EngineEvent = {
@@ -247,6 +260,7 @@ export function applyRead(s: ChatState, out: ChatReadOutput): ChatState {
       ...(m.peer ? { peer: m.peer } : {}),
       ...(m.activity ? { activity: m.activity } : {}),
       ...(m.judge ? { judge: m.judge as Judge } : {}),
+      ...(m.card ? { card: m.card } : {}),
     }
     if (local && server.streaming && local.content.length > server.content.length && local.content.startsWith(server.content)) {
       // 還在串流：本地已經接到比快照更多的字
@@ -316,6 +330,7 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
         ...(meta.peer ? { peer: meta.peer } : {}),
         ...(meta.activity ? { activity: meta.activity } : {}),
         ...(meta.judge ? { judge: meta.judge } : existing?.judge ? { judge: existing.judge } : {}),
+        ...(meta.card ? { card: meta.card } : {}),
       }
       const messages = existing ? th.messages.map((x) => (x.id === m.id ? msg : x)) : [...th.messages, msg]
       let next = putMessages(s, m.scope_id, messages)
