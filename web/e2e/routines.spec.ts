@@ -1,7 +1,30 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { E2E_NOW } from './clock'
 
 // C32 定時任務：對著真的服務（真的 routines.propose／create／calendar 與網址觸發），截圖和 H01、H02、H03、H06、L16、L17 畫板比對。
 const shot = (name: string) => `e2e-results/screens/${name}.png`
+
+// 行事曆看的是瀏覽器的「這週」，排程是服務算的：兩邊都和今天星期幾、幾點有關（週日深夜時下一次已經在下週）。
+// 服務的時鐘固定在 E2E_NOW（見 clock.ts）；瀏覽器固定在台北時間、時鐘定在 E2E_NOW 的「下週三上午 10:00」
+// ——不管 E2E_NOW 是哪天幾點，那一週都在未來，每天都有每日的排程。
+test.use({ timezoneId: 'Asia/Taipei' })
+const DAY = 86_400_000
+const TAIPEI = 8 * 3_600_000 // 台北沒有日光節約時間
+function nextWeekWednesday(now: number): Date {
+  const local = now + TAIPEI
+  const monday = Math.floor(local / DAY) * DAY - ((new Date(local).getUTCDay() + 6) % 7) * DAY
+  return new Date(monday + 7 * DAY + 2 * DAY + 10 * 3_600_000 - TAIPEI)
+}
+
+// 測完把這個 Bot 的定時任務都暫停：不然服務的時鐘走到排定的時間會真的觸發，失敗卡會跑進別的測試的「待我處理」。
+const bots: string[] = []
+test.afterEach(async ({ request }) => {
+  for (const id of bots.splice(0)) await pauseAll(request, id)
+})
+async function pauseAll(request: APIRequestContext, botID: string) {
+  const list = (await (await request.post('/api/v1/routines.list', { data: { bot_id: botID } })).json()).output.routines as { id: string }[]
+  for (const r of list) expect((await request.post('/api/v1/routines.pause', { data: { id: r.id } })).ok()).toBe(true)
+}
 
 async function ready(page: Page) {
   await page.evaluate(() => document.fonts.ready)
@@ -10,9 +33,11 @@ async function ready(page: Page) {
 
 test('一句話建立定時任務、清單、行事曆、網址觸發', async ({ page, request }, info) => {
   const desktop = info.project.name === 'desktop'
+  await page.clock.setFixedTime(nextWeekWednesday(Date.parse(E2E_NOW)))
   if (desktop) await page.setViewportSize({ width: 1440, height: 960 })
   const name = `排程喵${info.project.name === 'desktop' ? 'D' : 'M'}${Date.now() % 1000}`
   const bot = (await (await request.post('/api/v1/bots.create', { data: { name, color: 'purple', shape: 'star' } })).json()).output
+  bots.push(bot.id)
 
   await page.goto('/calendar/routines')
   await expect(page.getByRole('heading', { level: 1, name: '定時任務' })).toBeVisible()
@@ -72,7 +97,7 @@ test('一句話建立定時任務、清單、行事曆、網址觸發', async ({
   await ready(page)
   await page.screenshot({ path: shot(`${info.project.name}-routine-list`), fullPage: !desktop })
 
-  // 行事曆：這週看得到排程，Bot 篩選。
+  // 行事曆：這週（下週三那週）看得到排程，Bot 篩選。
   await page.goto('/calendar')
   await expect(page.getByRole('heading', { level: 1, name: '行事曆' })).toBeVisible()
   await expect(page.getByTestId('cal-event').first()).toBeVisible()

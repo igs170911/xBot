@@ -19,6 +19,7 @@ import (
 	"xbot/internal/api"
 	"xbot/internal/auth"
 	"xbot/internal/box"
+	"xbot/internal/box/guardlock"
 	"xbot/internal/catalog"
 	"xbot/internal/engine/hermes"
 	"xbot/internal/engine/hermes/hermestest"
@@ -88,6 +89,8 @@ func TestDockerCLIFirstConversation(t *testing.T) {
 	sockets := ipc.New(ipc.Options{Dir: func(id string) string { return filepath.Join(hosts.BotDir(dir, id), "ipc") }, Model: mp, Keys: keys})
 	defer sockets.Shutdown()
 	comp := &runtime.Computers{DB: db, Keys: keys, Sockets: sockets, Providers: pstore}
+	// 和其他套件共用本機的網路防護（xbot-netguard）；網路防護測試在跑時先等它做完（見 guardlock）。
+	guardlock.Shared(t)
 	boxes := box.New(db, hosts.NewRegistry(local), box.Options{Image: image, Prepare: comp.Prepare})
 	comp.Boxes = boxes
 	drv := hermes.New(comp.Connect, nil)

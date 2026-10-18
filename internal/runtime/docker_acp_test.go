@@ -19,6 +19,7 @@ import (
 	"github.com/moby/moby/client"
 
 	"xbot/internal/box"
+	"xbot/internal/box/guardlock"
 	"xbot/internal/engine"
 	"xbot/internal/engine/acp"
 	"xbot/internal/engines"
@@ -83,6 +84,8 @@ func TestDockerACPClaudeCode(t *testing.T) {
 	}
 	creds := &engines.Service{DB: db, HostHome: home, Getenv: func(string) string { return "" }, Locate: comp.Locate, UID: box.BotUID, GID: box.BotGID}
 	comp.Creds = creds
+	// 和其他套件共用本機的網路防護（xbot-netguard）；網路防護測試在跑時先等它做完（見 guardlock）。
+	guardlock.Shared(t)
 	boxes := box.New(db, registry, box.Options{Image: image, Prepare: comp.Prepare})
 	comp.Boxes = boxes
 	claude := acp.New(acp.Options{Agent: acp.Agents[acp.EngineClaude], Launch: comp.LaunchACP, Authorize: creds.Authorize, MCPServers: comp.MCPServers})
