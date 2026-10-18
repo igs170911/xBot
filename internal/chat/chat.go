@@ -38,7 +38,7 @@ type Deps struct {
 // SendIn 是 xbot.chat.send 的輸入。
 type SendIn struct {
 	BotID    string `json:"bot_id" required:"true" resource:"bot" max:"64" desc:"要對哪個 Bot 說"`
-	Text     string `json:"text" required:"true" max:"100000" desc:"訊息內容"`
+	Text     string `json:"text" required:"true" max:"64000" desc:"訊息內容"`
 	ThreadID string `json:"thread_id,omitempty" max:"64" desc:"接續的對話串；不填開一條新的"`
 }
 
@@ -150,7 +150,7 @@ type RespondIn struct {
 	InboxID string            `json:"inbox_id,omitempty" max:"64" desc:"待我處理卡的 id（chat.needs_approval 事件或 wait_until_settled 的 request.inbox_id）"`
 	TaskID  string            `json:"task_id,omitempty" max:"64" desc:"或：這件工作目前在等的那個問題"`
 	Choice  string            `json:"choice,omitempty" enum:"once,always,deny" desc:"核准卡：once 允許這次、always 一律允許（卡片有給才行）、deny 拒絕"`
-	Text    string            `json:"text,omitempty" max:"100000" desc:"提問的回答（點選項就送選項的文字）"`
+	Text    string            `json:"text,omitempty" max:"64000" desc:"提問的回答（點選項就送選項的文字）"`
 	Answers []string          `json:"answers,omitempty" max:"20" desc:"多個問題時逐題的回答（依題目順序）"`
 	Value   string            `json:"value,omitempty" max:"16384" secret:"true" desc:"密碼、金鑰、驗證碼；只交給 Bot 的電腦，不寫進紀錄"`
 	Values  map[string]string `json:"values,omitempty" secret:"true" desc:"多欄位的密碼類輸入（例：identifier、password）"`

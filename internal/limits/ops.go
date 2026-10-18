@@ -6,21 +6,22 @@ import "time"
 // 操作輸入的 struct 標籤（max:"…"）寫的是同一個數字；internal/catalog 的測試會檢查兩邊一致。
 
 const (
-	// BotNameMax 是 Bot 名稱的長度上限（字）。出自 LazyBoy server/main.py update_agent（len(name) > 100 就拒絕）。
+	// BotNameMax 是 Bot 名稱的長度上限（字）。出自 LazyBoy server/main.py:100 update_agent（len(name) > 100 就拒絕）。
 	BotNameMax = 100
 
 	// BotTitleMax 是職稱的長度上限。XBot 新增（LazyBoy 沒有職稱上限；和名稱取一樣）。
 	BotTitleMax = 100
 
-	// BotDescriptionMax 是描述的長度上限。出自 LazyBoy server/org.py（description = plain(persona, 1000)）。
+	// BotDescriptionMax 是描述的長度上限。出自 LazyBoy server/org.py:386（description = plain(persona, 1000)）。
 	BotDescriptionMax = 1000
 
-	// BotSoulMax 是 Soul（常駐指示）的長度上限。出自 LazyBoy server/org.py（persona[:4000]）。
+	// BotSoulMax 是 Soul（常駐指示）的長度上限。出自 LazyBoy server/org.py:386（persona[:4000]）。
 	BotSoulMax = 4000
 
-	// ChatTextMax 是使用者一則訊息的長度上限。XBot 新增：LazyBoy 對使用者的訊息沒有設上限，
-	// 取 100,000 字，夠貼一大段文件，又不會讓單一請求失控（長資料請用檔案）。
-	ChatTextMax = 100000
+	// ChatTextMax 是你自己一則訊息的字元上限（長資料請用檔案）。
+	// LazyBoy server/runtime.py:333 _submit（len(text)>64000）；PRD §12 也是 64,000。
+	// （X01 更正：原本寫「LazyBoy 沒有上限」並取 100,000。）
+	ChatTextMax = 64000
 
 	// ChatWaitMax 是 chat.wait_until_settled、approvals.wait 一次最多等多久。出自任務卡 C05（timeout_s ≤ 300）。
 	ChatWaitMax = 300 * time.Second

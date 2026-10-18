@@ -4,7 +4,7 @@ import "time"
 
 // HTTP 出口、登入與 SSE（C03）。
 
-// SessionTTL 是登入後 cookie 的有效期。出自 LazyBoy server/main.py login（max_age=30*86400）。
+// SessionTTL 是登入後 cookie 的有效期。出自 LazyBoy server/main.py:192 login（max_age=30*86400）。
 const SessionTTL = 30 * 24 * time.Hour
 
 // LoginFailures 是同一個來源在 LoginWindow 內最多可以失敗幾次，超過就暫時擋下（SEC-7）。
