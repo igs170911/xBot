@@ -34,6 +34,7 @@ type dockerEnv struct {
 	db      *store.DB
 	keys    *proxy.WorkerKeys
 	rt      *Runtime
+	comp    *Computers
 	bot     store.Bot
 	fake    *hermestest.FakeModel
 	realKey string
@@ -109,6 +110,8 @@ func newDockerEnv(ctx context.Context, t *testing.T) *dockerEnv {
 	comp := &Computers{DB: db, Keys: e.keys, Sockets: sockets, Providers: pstore}
 	boxes := box.New(db, hosts.NewRegistry(local), box.Options{Image: image, Prepare: comp.Prepare})
 	comp.Boxes = boxes
+	comp.Hosts = hosts.NewRegistry(local)
+	e.comp = comp
 	drv := hermes.New(comp.Connect, nil)
 	e.rt = New(Options{DB: db, Driver: drv, Bus: events.New(), Models: comp})
 	pstore.Attribute = e.rt.Active

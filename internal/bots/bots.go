@@ -70,27 +70,30 @@ type Deps struct {
 	Stop func(ctx context.Context, botID string)
 	// Teardown 收掉 Bot 的電腦與引擎連線（刪除時呼叫；連資料區一起刪）。
 	Teardown func(ctx context.Context, botID string) error
+	// SoulChanged 在名稱、職稱、介紹或人設改了以後呼叫：把新的 SOUL.md 寫進 Bot 的電腦（C31）。可為 nil。
+	SoulChanged func(ctx context.Context, botID string)
 }
 
 // View 是對外的 Bot 資料。
 type View struct {
-	ID           string       `json:"id"`
-	Name         string       `json:"name"`
-	Title        string       `json:"title"`
-	Description  string       `json:"description"`
-	Soul         string       `json:"soul"`
-	Color        Color        `json:"color"`
-	Shape        Shape        `json:"shape"`
-	Engine       string       `json:"engine"`
-	Model        string       `json:"model" desc:"空白表示用預設模型；「<供應商>/<模型>」或只寫模型"`
-	Fallback     string       `json:"fallback" desc:"備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback）"`
-	Effort       string       `json:"effort"`
-	ApprovalMode ApprovalMode `json:"approval_mode"`
-	Archived     bool         `json:"archived"`
-	CreatedBy    string       `json:"created_by,omitempty" desc:"誰建立的：owner、agent:<id>、bot:<id>"`
-	UpdatedBy    string       `json:"updated_by,omitempty" desc:"最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」"`
-	CreatedAt    int64        `json:"created_at"`
-	UpdatedAt    int64        `json:"updated_at"`
+	ID            string       `json:"id"`
+	Name          string       `json:"name"`
+	Title         string       `json:"title"`
+	Description   string       `json:"description"`
+	Soul          string       `json:"soul"`
+	Color         Color        `json:"color"`
+	Shape         Shape        `json:"shape"`
+	Engine        string       `json:"engine"`
+	Model         string       `json:"model" desc:"空白表示用預設模型；「<供應商>/<模型>」或只寫模型"`
+	Fallback      string       `json:"fallback" desc:"備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback）"`
+	Effort        string       `json:"effort"`
+	ApprovalMode  ApprovalMode `json:"approval_mode"`
+	MemoryEnabled bool         `json:"memory_enabled" desc:"記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶"`
+	Archived      bool         `json:"archived"`
+	CreatedBy     string       `json:"created_by,omitempty" desc:"誰建立的：owner、agent:<id>、bot:<id>"`
+	UpdatedBy     string       `json:"updated_by,omitempty" desc:"最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」"`
+	CreatedAt     int64        `json:"created_at"`
+	UpdatedAt     int64        `json:"updated_at"`
 }
 
 type avatar struct {
@@ -103,7 +106,7 @@ func ViewOf(b store.Bot) View {
 	_ = json.Unmarshal(b.Avatar, &a)
 	return View{ID: b.ID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul,
 		Color: Color(b.Color), Shape: Shape(a.Shape), Engine: b.Engine, Model: b.Model, Fallback: first(b.Fallback), Effort: b.Effort,
-		ApprovalMode: ApprovalMode(b.ApprovalMode), Archived: b.Archived, CreatedBy: b.CreatedBy, UpdatedBy: b.UpdatedBy,
+		ApprovalMode: ApprovalMode(b.ApprovalMode), MemoryEnabled: b.MemoryEnabled, Archived: b.Archived, CreatedBy: b.CreatedBy, UpdatedBy: b.UpdatedBy,
 		CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt}
 }
 
@@ -140,18 +143,19 @@ type CreateIn struct {
 
 // UpdateIn 是 xbot.bots.update 的輸入：有給的欄位才改。
 type UpdateIn struct {
-	ID           string        `json:"id" required:"true" resource:"bot" max:"64" desc:"Bot id"`
-	Name         *string       `json:"name,omitempty" min:"1" max:"100"`
-	Title        *string       `json:"title,omitempty" max:"100"`
-	Description  *string       `json:"description,omitempty" max:"1000"`
-	Soul         *string       `json:"soul,omitempty" max:"4000"`
-	Color        *Color        `json:"color,omitempty"`
-	Shape        *Shape        `json:"shape,omitempty"`
-	Engine       *Engine       `json:"engine,omitempty"`
-	Model        *string       `json:"model,omitempty" max:"200" desc:"空白字串表示改回預設模型"`
-	Fallback     *string       `json:"fallback,omitempty" max:"200" desc:"備援模型「<供應商>/<模型>」：主要模型忙碌或出錯時改用；空白字串表示用全域備援"`
-	Effort       *Effort       `json:"effort,omitempty"`
-	ApprovalMode *ApprovalMode `json:"approval_mode,omitempty" desc:"改成 ask 以外的等級要你核准"`
+	ID            string        `json:"id" required:"true" resource:"bot" max:"64" desc:"Bot id"`
+	Name          *string       `json:"name,omitempty" min:"1" max:"100"`
+	Title         *string       `json:"title,omitempty" max:"100"`
+	Description   *string       `json:"description,omitempty" max:"1000"`
+	Soul          *string       `json:"soul,omitempty" max:"4000"`
+	Color         *Color        `json:"color,omitempty"`
+	Shape         *Shape        `json:"shape,omitempty"`
+	Engine        *Engine       `json:"engine,omitempty"`
+	Model         *string       `json:"model,omitempty" max:"200" desc:"空白字串表示改回預設模型"`
+	Fallback      *string       `json:"fallback,omitempty" max:"200" desc:"備援模型「<供應商>/<模型>」：主要模型忙碌或出錯時改用；空白字串表示用全域備援"`
+	Effort        *Effort       `json:"effort,omitempty"`
+	ApprovalMode  *ApprovalMode `json:"approval_mode,omitempty" desc:"改成 ask 以外的等級要你核准"`
+	MemoryEnabled *bool         `json:"memory_enabled,omitempty" desc:"打開或關掉記憶（下次開機生效）"`
 }
 
 // ArchiveIn 是 xbot.bots.archive 的輸入。
@@ -218,6 +222,7 @@ func Register(reg *ops.Registry, d Deps) {
 			if err != nil {
 				return View{}, err
 			}
+			before := soulOf(b)
 			if err := apply(&b, in); err != nil {
 				return View{}, err
 			}
@@ -226,6 +231,9 @@ func Register(reg *ops.Registry, d Deps) {
 				return ViewOf(b), nil
 			}
 			b, err = call.DB.UpdateBot(ctx, b)
+			if err == nil && d.SoulChanged != nil && soulOf(b) != before {
+				d.SoulChanged(ctx, b.ID)
+			}
 			return ViewOf(b), err
 		},
 	})
@@ -392,5 +400,11 @@ func apply(b *store.Bot, in UpdateIn) error {
 	if in.ApprovalMode != nil {
 		b.ApprovalMode = string(*in.ApprovalMode)
 	}
+	if in.MemoryEnabled != nil {
+		b.MemoryEnabled = *in.MemoryEnabled
+	}
 	return nil
 }
+
+// soulOf 是會寫進 SOUL.md 的欄位。
+func soulOf(b store.Bot) [4]string { return [4]string{b.Name, b.Title, b.Description, b.Soul} }

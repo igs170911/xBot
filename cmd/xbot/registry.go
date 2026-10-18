@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 
 	"xbot/internal/auth"
 	"xbot/internal/catalog"
@@ -35,6 +36,13 @@ func coreDeps(st *stack) catalog.Deps {
 		Lister:    st.pstore,
 		Budgets:   st.budgets,
 		Collab:    st.collab,
+		Skills:    st.skills,
+		Memory:    st.memory,
+		SoulChanged: func(ctx context.Context, botID string) {
+			if err := st.comp.RefreshSoul(ctx, botID); err != nil {
+				slog.Warn("更新 Bot 電腦裡的 SOUL.md 失敗，下次開機前會再寫", "bot", botID, "err", err)
+			}
+		},
 		Teardown: catalog.Teardown(st.db, st.driver.Close, func(ctx context.Context, botID string) error {
 			_, err := st.boxes.Remove(ctx, botID, true)
 			return err

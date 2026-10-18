@@ -9,6 +9,7 @@ import (
 	"io"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
@@ -72,6 +73,8 @@ type Profile struct {
 	UID, GID int
 	// ApprovalMode 是 Bot 的權限等級（ask／edits／auto／full），對到 Hermes 的 approvals.mode（見 ApprovalsMode）。
 	ApprovalMode string
+	// MemoryOff 表示使用者關掉了這個 Bot 的記憶（bot.memory_enabled＝false）：Hermes 不載入、也不寫 MEMORY.md／USER.md。
+	MemoryOff bool
 	// Team 是隊友名冊與協作規則（X02，AA-1）；空白時不寫。名冊是使用者寫的分工資料，不是指令。
 	Team string
 }
@@ -106,6 +109,7 @@ func Provision(ctx context.Context, api Files, containerID string, p Profile) er
 	if p.WorkerKey == "" || p.ProviderID == "" || p.Model == "" {
 		return errors.New("寫 Hermes 設定需要模型、供應商和 worker-key")
 	}
+	defer LockConfig(p.BotID)()
 	existing, err := readFile(ctx, api, containerID, path.Join(HomeDir, ConfigFile))
 	if err != nil {
 		return err
@@ -125,12 +129,20 @@ func Provision(ctx context.Context, api Files, containerID string, p Profile) er
 	if err != nil {
 		return err
 	}
-	files := []file{
+	return writeFiles(ctx, api, containerID, p, []file{
 		{ConfigFile, cfgOut, 0o600},
 		{EnvFile, Env(env, p.WorkerKey), 0o600},
 		{WorkerKeyFile, []byte(p.WorkerKey + "\n"), 0o600},
 		{SoulFile, []byte(Soul(p)), 0o644},
-	}
+	})
+}
+
+// WriteSoul 只更新 SOUL.md（改了 Bot 的名稱、職稱、介紹或人設時，C31）。Hermes 開新的對話時讀它。
+func WriteSoul(ctx context.Context, api Files, containerID string, p Profile) error {
+	return writeFiles(ctx, api, containerID, p, []file{{SoulFile, []byte(Soul(p)), 0o644}})
+}
+
+func writeFiles(ctx context.Context, api Files, containerID string, p Profile, files []file) error {
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
 	now := time.Now()
@@ -155,6 +167,17 @@ type file struct {
 	name string
 	data []byte
 	mode int64
+}
+
+// configLocks：同一個 Bot 的 config.yaml 一次只讓一個人讀改寫（開機前的 Provision、技能的開關）。
+var configLocks sync.Map
+
+// LockConfig 鎖住一個 Bot 的 config.yaml，回傳解鎖函式。
+func LockConfig(botID string) func() {
+	v, _ := configLocks.LoadOrStore(botID, &sync.Mutex{})
+	mu := v.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
 }
 
 // readFile 從容器讀一個小檔案；不存在時回傳 nil。
@@ -204,6 +227,9 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 	if effort == "" {
 		effort = "medium"
 	}
+	memory := sub("memory")
+	memory["memory_enabled"] = !p.MemoryOff
+	memory["user_profile_enabled"] = !p.MemoryOff
 	approvals := sub("approvals")
 	approvals["mode"] = ApprovalsMode(p.ApprovalMode)
 	web := sub("web")
