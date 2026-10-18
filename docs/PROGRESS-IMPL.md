@@ -39,3 +39,4 @@
 | CP5＋CP6（關卡 G2） | ✅ 通過（自動測試） | tag `cp5`、`cp6` | 用假 Hermes 驗證；真模型群組情境尚未跑（省額度） | — |
 | C33 檔案 | ✅ 完成 | `task/C33-files` | 檔案是獨立頁面（電腦側欄還是佔位）；PDF 用瀏覽器檢視、Office 只能下載；XLSX 自己寫的小讀取器；列資料夾需要電腦開機（其餘操作關機也行）；傳給其他 Bot 是複製；順手修 memory_version 排序的偶發失敗 | E08 資料分頁（SQL）未做；列檔要不要自動開機；Bot 產生的 HTML 要不要沙箱預覽 |
 | X05 快判 | ✅ 完成 | `task/X05-fastjudge` | 16 個用途（含排程句子整理），接上 7 個；選擇題 Jev→Go flash→本機→規則；只能更嚴格；影子模式與準確率統計；每日 300 次、Go 另限 100 次；migration 0016；**真跑結果**：Zen `jev-1.13` 回「Insufficient account funds」（OpenCode Go 訂閱不含 Zen 餘額），已做成 J10 警告＋一鍵改用 Go flash | 待決定：要不要儲值 Zen 用 Jev，或直接用 Go flash；鎖定案例是否也跑影子 |
+| B13 Box 生命週期與強化 | ✅ 完成 | `task/B13-box-lifecycle` | 閒置 30 分鐘休眠、有工作自動喚醒；SEC-3 唯讀根目錄、容器直接用 1000:1000、零 capability、無 sudo；SEC-4 專用網路＋守門容器（iptables）擋主機與私有網段、Bot 彼此不通，失敗即拒絕開機；憑證改放每 Bot 一個 volume；「更新電腦」逐台換新映像；DNS 對私有位址放行（否則查不到名字）；只支援 IPv4；migration 0014 | 本機 ufw 預設擋入，無法證明是守門容器擋的；rootless Docker 不支援（doctor 尚未提示）；忙碌的 Bot 會拒絕休眠／重開；電腦操作還沒有畫面 |
