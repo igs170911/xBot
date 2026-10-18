@@ -576,6 +576,8 @@ export interface BotsArchiveOutput {
   engine: string
   /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
   model: string
+  /** 備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback） */
+  fallback: string
   effort: string
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
   archived: boolean
@@ -630,6 +632,8 @@ export interface BotsCreateOutput {
   engine: string
   /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
   model: string
+  /** 備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback） */
+  fallback: string
   effort: string
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
   archived: boolean
@@ -693,6 +697,8 @@ export interface BotsGetOutput {
   engine: string
   /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
   model: string
+  /** 備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback） */
+  fallback: string
   effort: string
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
   archived: boolean
@@ -728,6 +734,8 @@ export interface BotsListOutput {
     engine: string
     /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
     model: string
+    /** 備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback） */
+    fallback: string
     effort: string
     approval_mode: 'ask' | 'edits' | 'auto' | 'full'
     archived: boolean
@@ -759,6 +767,8 @@ export interface BotsUpdateInput {
   engine?: 'hermes'
   /** 空白字串表示改回預設模型 */
   model?: string
+  /** 備援模型「<供應商>/<模型>」：主要模型忙碌或出錯時改用；空白字串表示用全域備援 */
+  fallback?: string
   effort?: 'low' | 'medium' | 'high'
   /** 改成 ask 以外的等級要你核准 */
   approval_mode?: 'ask' | 'edits' | 'auto' | 'full'
@@ -775,6 +785,8 @@ export interface BotsUpdateOutput {
   engine: string
   /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
   model: string
+  /** 備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback） */
+  fallback: string
   effort: string
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
   archived: boolean
@@ -1020,6 +1032,59 @@ export function inboxList(input: InboxListInput = {}, opts?: CallOptions): Promi
   return invoke('xbot.inbox.list', input, opts).then((r) => r.output)
 }
 
+// xbot.models.add_provider
+
+export interface ModelsAddProviderInput {
+  /** 內建範本代號（xbot.models.presets），例：openai-api；選了就只要再給金鑰 */
+  preset?: string
+  /** 供應商代號（小寫英文、數字、-）；用範本時預設和範本同名 */
+  id?: string
+  /** 顯示名稱 */
+  label?: string
+  /** 服務網址；用範本時可不填 */
+  base_url?: string
+  /** 預設的呼叫方式；用範本時可不填 */
+  transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+  /** 金鑰（只能寫、不能讀）（密鑰：只能寫、不能讀） */
+  api_key?: string
+  /** 順便把這個模型設成預設模型 */
+  default_model?: string
+}
+
+export interface ModelsAddProviderOutput {
+  provider: {
+    id: string
+    label?: string
+    base_url: string
+    /** 預設的呼叫方式；空白是 chat_completions */
+    transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+    /** 從哪個內建範本建立 */
+    preset?: string
+    /** 有沒有設定金鑰；金鑰本身永遠不會回傳 */
+    api_key_set: boolean
+    /** 探測時供應商列出的模型（沒探測過時是範本的常用模型） */
+    models?: string[]
+    /** 上次探測的時間；0 表示還沒探測 */
+    probed_at?: number
+  }
+  default?: {
+    provider: string
+    model: string
+    transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+  }
+}
+
+/**
+ * 新增一個模型供應商
+ *
+ * 可以從內建範本（preset）建立，只要再貼金鑰。金鑰加密存在 Model Proxy，不會進 Bot 的電腦，也不會再回傳。只有你本人能新增。
+ *
+ * `xbot.models.add_provider`：權限 admin、風險 safe
+ */
+export function modelsAddProvider(input: ModelsAddProviderInput = {}, opts?: CallOptions): Promise<ModelsAddProviderOutput> {
+  return invoke('xbot.models.add_provider', input, opts).then((r) => r.output)
+}
+
 // xbot.models.get
 
 export type ModelsGetInput = Record<string, never>
@@ -1027,12 +1092,27 @@ export type ModelsGetInput = Record<string, never>
 export interface ModelsGetOutput {
   providers: {
     id: string
+    label?: string
     base_url: string
+    /** 預設的呼叫方式；空白是 chat_completions */
+    transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+    /** 從哪個內建範本建立 */
+    preset?: string
     /** 有沒有設定金鑰；金鑰本身永遠不會回傳 */
     api_key_set: boolean
+    /** 探測時供應商列出的模型（沒探測過時是範本的常用模型） */
+    models?: string[]
+    /** 上次探測的時間；0 表示還沒探測 */
+    probed_at?: number
   }[]
   /** 沒設定預設模型時不出現 */
   default?: {
+    provider: string
+    model: string
+    transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+  }
+  /** 全域備援模型；沒設定時不出現 */
+  fallback?: {
     provider: string
     model: string
     transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
@@ -1048,6 +1128,149 @@ export interface ModelsGetOutput {
  */
 export function modelsGet(input: ModelsGetInput = {}, opts?: CallOptions): Promise<ModelsGetOutput> {
   return invoke('xbot.models.get', input, opts).then((r) => r.output)
+}
+
+// xbot.models.presets
+
+export type ModelsPresetsInput = Record<string, never>
+
+export interface ModelsPresetsOutput {
+  presets: {
+    id: string
+    label: string
+    base_url: string
+    transport: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+    /** 申請金鑰的網址 */
+    signup_url?: string
+    /** 本機模型（LM Studio 等），不需要金鑰 */
+    local: boolean
+    /** 常用模型 */
+    models: string[]
+    /** 建議先用的模型 */
+    default_model?: string
+    /** 供應商要求的對話識別標頭；Model Proxy 會自動帶上對話串 id */
+    session_header?: string
+    /** 已經用這個代號設定過 */
+    configured: boolean
+  }[]
+}
+
+/**
+ * 列出內建的模型供應商範本
+ *
+ * 選一個範本（名稱、網址、呼叫方式都填好了），用 xbot.models.add_provider 加上金鑰就能用。
+ *
+ * `xbot.models.presets`：權限 read、風險 safe
+ */
+export function modelsPresets(input: ModelsPresetsInput = {}, opts?: CallOptions): Promise<ModelsPresetsOutput> {
+  return invoke('xbot.models.presets', input, opts).then((r) => r.output)
+}
+
+// xbot.models.pricing
+
+export type ModelsPricingInput = Record<string, never>
+
+export interface ModelsPricingOutput {
+  /** 你設定的在前，內建的在後 */
+  prices: {
+    /** 模型名稱，或「<供應商>/<模型>」只套用在那個供應商 */
+    model: string
+    input: number
+    output: number
+    /** 快取命中；0 表示照輸入價 */
+    cache_read: number
+    /** 寫入快取；0 表示照輸入價 */
+    cache_write: number
+    /** custom：你設定的；default：內建 */
+    source: 'custom' | 'default'
+  }[]
+  /** 用過、但沒有價格的模型（花費記成 0），請補上價格 */
+  unpriced: {
+    provider: string
+    model: string
+    calls: number
+    last_at: number
+  }[]
+}
+
+/**
+ * 看模型價目表
+ *
+ * 用量的花費照這張表算（供應商自己回報花費時用回報的）。不在表上的模型花費記成 0，列在 unpriced。
+ *
+ * `xbot.models.pricing`：權限 read、風險 safe
+ */
+export function modelsPricing(input: ModelsPricingInput = {}, opts?: CallOptions): Promise<ModelsPricingOutput> {
+  return invoke('xbot.models.pricing', input, opts).then((r) => r.output)
+}
+
+// xbot.models.probe
+
+export interface ModelsProbeInput {
+  /** 已設定的供應商代號 */
+  provider: string
+  /** 要測的模型；不填時測預設模型（預設模型不是這個供應商的，就測範本建議的模型） */
+  model?: string
+}
+
+export interface ModelsProbeOutput {
+  provider: string
+  /** 供應商 /models 列出的模型 */
+  models: string[]
+  /** 列模型失敗的原因 */
+  list_error?: string
+  /** 這次測的模型能不能用、用哪種呼叫方式 */
+  check?: {
+    model: string
+    /** ok、protocol、unavailable、auth、busy、unknown */
+    status: string
+    /** 能用的呼叫方式（status=ok 時） */
+    transport?: string
+    message: string
+    /** 供應商回的錯誤（前 400 字） */
+    detail?: string
+    at: number
+  }
+  default_updated: boolean
+  at: number
+}
+
+/**
+ * 探測模型供應商：列出模型、找出能用的呼叫方式
+ *
+ * 讀供應商的模型清單，並對一個模型依序試 Chat Completions、Responses、Anthropic Messages（各送一個很小的請求），記下能用的那一種（EN-4）。之後 Bot 用這個模型時就照它設定。會花一點點 token。預演不會連到供應商。
+ *
+ * `xbot.models.probe`：權限 admin、風險 safe
+ */
+export function modelsProbe(input: ModelsProbeInput, opts?: CallOptions): Promise<ModelsProbeOutput> {
+  return invoke('xbot.models.probe', input, opts).then((r) => r.output)
+}
+
+// xbot.models.remove_provider
+
+export interface ModelsRemoveProviderInput {
+  id: string
+}
+
+export interface ModelsRemoveProviderOutput {
+  id: string
+  /** 預演時是 false */
+  removed: boolean
+  /** 模型或備援模型指定了這個供應商的 Bot（之後會改用預設模型） */
+  affected_bots: string[]
+  /** 全域備援模型用的是這個供應商，一起清掉 */
+  cleared_fallback: boolean
+}
+
+/**
+ * 移除一個模型供應商（連同金鑰）
+ *
+ * 預設模型用的供應商不能移除，先換預設模型。用到它的 Bot 之後會改用預設模型。
+ *
+ * `xbot.models.remove_provider`：權限 admin、風險 confirm
+ */
+export function modelsRemoveProvider(input: ModelsRemoveProviderInput, opts?: CallOptions): Promise<ModelsRemoveProviderOutput> {
+  return invoke('xbot.models.remove_provider', input, opts).then((r) => r.output)
 }
 
 // xbot.models.set_default
@@ -1078,6 +1301,75 @@ export function modelsSetDefault(input: ModelsSetDefaultInput, opts?: CallOption
   return invoke('xbot.models.set_default', input, opts).then((r) => r.output)
 }
 
+// xbot.models.set_fallback
+
+export interface ModelsSetFallbackInput {
+  /** 已設定的供應商代號 */
+  provider?: string
+  model?: string
+  /** 不填時依探測結果或供應商設定 */
+  transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+}
+
+export interface ModelsSetFallbackOutput {
+  /** 清掉時不出現 */
+  fallback?: {
+    provider: string
+    model: string
+    transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+  }
+}
+
+/**
+ * 設定備援模型
+ *
+ * 主要模型回 429／5xx 或連不上、而且還沒開始回應時，改用備援模型重試一次。Bot 自己的備援（bots.update fallback）優先。兩個欄位都空白表示不用備援。
+ *
+ * `xbot.models.set_fallback`：權限 admin、風險 safe
+ */
+export function modelsSetFallback(input: ModelsSetFallbackInput = {}, opts?: CallOptions): Promise<ModelsSetFallbackOutput> {
+  return invoke('xbot.models.set_fallback', input, opts).then((r) => r.output)
+}
+
+// xbot.models.set_price
+
+export interface ModelsSetPriceInput {
+  /** 模型名稱，或「<供應商>/<模型>」 */
+  model: string
+  /** 每百萬輸入 token 的美元 */
+  input?: number
+  /** 每百萬輸出 token 的美元 */
+  output?: number
+  cache_read?: number
+  cache_write?: number
+  /** 刪掉你設定的價格，改回內建（或沒有價格） */
+  remove?: boolean
+}
+
+export interface ModelsSetPriceOutput {
+  /** 模型名稱，或「<供應商>/<模型>」只套用在那個供應商 */
+  model: string
+  input: number
+  output: number
+  /** 快取命中；0 表示照輸入價 */
+  cache_read: number
+  /** 寫入快取；0 表示照輸入價 */
+  cache_write: number
+  /** custom：你設定的；default：內建 */
+  source: 'custom' | 'default'
+}
+
+/**
+ * 設定一個模型的價格
+ *
+ * 價格會影響花費上限的計算（把價格調低等於放寬上限），所以要你核准，也不能代為核准。之後的用量才會照新價格算。
+ *
+ * `xbot.models.set_price`：權限 admin、風險 confirm
+ */
+export function modelsSetPrice(input: ModelsSetPriceInput, opts?: CallOptions): Promise<ModelsSetPriceOutput> {
+  return invoke('xbot.models.set_price', input, opts).then((r) => r.output)
+}
+
 // xbot.models.set_provider
 
 export interface ModelsSetProviderInput {
@@ -1096,9 +1388,18 @@ export interface ModelsSetProviderInput {
 export interface ModelsSetProviderOutput {
   provider: {
     id: string
+    label?: string
     base_url: string
+    /** 預設的呼叫方式；空白是 chat_completions */
+    transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+    /** 從哪個內建範本建立 */
+    preset?: string
     /** 有沒有設定金鑰；金鑰本身永遠不會回傳 */
     api_key_set: boolean
+    /** 探測時供應商列出的模型（沒探測過時是範本的常用模型） */
+    models?: string[]
+    /** 上次探測的時間；0 表示還沒探測 */
+    probed_at?: number
   }
   default?: {
     provider: string
@@ -1116,6 +1417,44 @@ export interface ModelsSetProviderOutput {
  */
 export function modelsSetProvider(input: ModelsSetProviderInput, opts?: CallOptions): Promise<ModelsSetProviderOutput> {
   return invoke('xbot.models.set_provider', input, opts).then((r) => r.output)
+}
+
+// xbot.models.update_provider
+
+export interface ModelsUpdateProviderInput {
+  id: string
+  label?: string
+  base_url?: string
+  transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+  /** 新金鑰；空字串表示清掉金鑰（本機模型用）（密鑰：只能寫、不能讀） */
+  api_key?: string
+}
+
+export interface ModelsUpdateProviderOutput {
+  id: string
+  label?: string
+  base_url: string
+  /** 預設的呼叫方式；空白是 chat_completions */
+  transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+  /** 從哪個內建範本建立 */
+  preset?: string
+  /** 有沒有設定金鑰；金鑰本身永遠不會回傳 */
+  api_key_set: boolean
+  /** 探測時供應商列出的模型（沒探測過時是範本的常用模型） */
+  models?: string[]
+  /** 上次探測的時間；0 表示還沒探測 */
+  probed_at?: number
+}
+
+/**
+ * 修改一個模型供應商
+ *
+ * 只改有給的欄位；不給金鑰就保留原本的。只有你本人能修改。
+ *
+ * `xbot.models.update_provider`：權限 admin、風險 safe
+ */
+export function modelsUpdateProvider(input: ModelsUpdateProviderInput, opts?: CallOptions): Promise<ModelsUpdateProviderOutput> {
+  return invoke('xbot.models.update_provider', input, opts).then((r) => r.output)
 }
 
 // xbot.settings.get
@@ -1171,6 +1510,306 @@ export function systemPing(input: SystemPingInput = {}, opts?: CallOptions): Pro
   return invoke('xbot.system.ping', input, opts).then((r) => r.output)
 }
 
+// xbot.usage.caps
+
+export interface UsageCapsInput {
+  /** 只看這個 Bot */
+  bot_id?: string
+}
+
+export interface UsageCapsOutput {
+  /** 今天（本機時區） */
+  day: string
+  month: string
+  /** 全部 Bot 合計（只有月上限）；指定 bot_id 時不出現 */
+  global?: {
+    /** Bot id、供應商代號；全域是 all */
+    key: string
+    label?: string
+    /** 每日上限；0 表示不限（全域沒有每日上限） */
+    daily_usd: number
+    /** 每月上限；0 表示不限 */
+    monthly_usd: number
+    spent_today_usd: number
+    spent_month_usd: number
+    /** 已經到上限，模型請求會被擋下 */
+    exceeded: boolean
+    daily_micros: number
+    monthly_micros: number
+    spent_day_micros: number
+    spent_month_micros: number
+  }
+  bots: {
+    /** Bot id、供應商代號；全域是 all */
+    key: string
+    label?: string
+    /** 每日上限；0 表示不限（全域沒有每日上限） */
+    daily_usd: number
+    /** 每月上限；0 表示不限 */
+    monthly_usd: number
+    spent_today_usd: number
+    spent_month_usd: number
+    /** 已經到上限，模型請求會被擋下 */
+    exceeded: boolean
+    daily_micros: number
+    monthly_micros: number
+    spent_day_micros: number
+    spent_month_micros: number
+  }[]
+  /** 有設上限的模型供應商 */
+  providers: {
+    /** Bot id、供應商代號；全域是 all */
+    key: string
+    label?: string
+    /** 每日上限；0 表示不限（全域沒有每日上限） */
+    daily_usd: number
+    /** 每月上限；0 表示不限 */
+    monthly_usd: number
+    spent_today_usd: number
+    spent_month_usd: number
+    /** 已經到上限，模型請求會被擋下 */
+    exceeded: boolean
+    daily_micros: number
+    monthly_micros: number
+    spent_day_micros: number
+    spent_month_micros: number
+  }[]
+}
+
+/**
+ * 看花費上限與目前花費
+ *
+ * `xbot.usage.caps`：權限 read、風險 safe
+ */
+export function usageCaps(input: UsageCapsInput = {}, opts?: CallOptions): Promise<UsageCapsOutput> {
+  return invoke('xbot.usage.caps', input, opts).then((r) => r.output)
+}
+
+// xbot.usage.export
+
+export interface UsageExportInput {
+  /** 看最近幾天（含今天）；預設 30 */
+  days?: number
+  /** 從這個時間開始（毫秒）；給了就不看 days */
+  since?: number
+  /** 到這個時間之前（毫秒）；預設現在 */
+  until?: number
+  /** 只看這個 Bot */
+  bot_id?: string
+  /** 只看這個模型供應商 */
+  provider?: string
+}
+
+export interface UsageExportOutput {
+  /** 建議的檔名 */
+  filename: string
+  /** CSV（UTF-8，第一列是欄位名稱） */
+  csv: string
+  rows: number
+  /** 超過 100000 筆，只匯出前面的 */
+  truncated: boolean
+}
+
+/**
+ * 匯出用量明細（CSV）
+ *
+ * 每一次模型請求一列。最多 100000 筆。
+ *
+ * `xbot.usage.export`：權限 read、風險 safe
+ */
+export function usageExport(input: UsageExportInput = {}, opts?: CallOptions): Promise<UsageExportOutput> {
+  return invoke('xbot.usage.export', input, opts).then((r) => r.output)
+}
+
+// xbot.usage.set_caps
+
+export interface UsageSetCapsInput {
+  /** 設這個 Bot 的上限 */
+  bot_id?: string
+  /** 設這個模型供應商的上限（所有 Bot 合計；用來省著用某把金鑰的額度） */
+  provider?: string
+  /** 每日上限（美元）；0 表示不限。全域不能設 */
+  daily_usd?: number
+  /** 每月上限（美元）；0 表示不限 */
+  monthly_usd?: number
+}
+
+export interface UsageSetCapsOutput {
+  /** Bot id、供應商代號；全域是 all */
+  key: string
+  label?: string
+  /** 每日上限；0 表示不限（全域沒有每日上限） */
+  daily_usd: number
+  /** 每月上限；0 表示不限 */
+  monthly_usd: number
+  spent_today_usd: number
+  spent_month_usd: number
+  /** 已經到上限，模型請求會被擋下 */
+  exceeded: boolean
+  daily_micros: number
+  monthly_micros: number
+  spent_day_micros: number
+  spent_month_micros: number
+}
+
+/**
+ * 設定花費上限
+ *
+ * 到上限時，Bot 的模型請求會被擋下、正在做的工作會停下，並在「待我處理」出現一張卡（US-2）。降低上限直接生效；提高或取消上限要你核准，而且不能代為核准。
+ *
+ * `xbot.usage.set_caps`：權限 manage、風險 safe（依輸入可能需要核准）
+ */
+export function usageSetCaps(input: UsageSetCapsInput = {}, opts?: CallOptions): Promise<UsageSetCapsOutput> {
+  return invoke('xbot.usage.set_caps', input, opts).then((r) => r.output)
+}
+
+// xbot.usage.summary
+
+export interface UsageSummaryInput {
+  /** 看最近幾天（含今天）；預設 30 */
+  days?: number
+  /** 從這個時間開始（毫秒）；給了就不看 days */
+  since?: number
+  /** 到這個時間之前（毫秒）；預設現在 */
+  until?: number
+  /** 只看這個 Bot */
+  bot_id?: string
+  /** 只看這個模型供應商 */
+  provider?: string
+}
+
+export interface UsageSummaryOutput {
+  since: number
+  until: number
+  total: {
+    /** Bot id、供應商、「<供應商>/<模型>」或日期（2026-10-18） */
+    key: string
+    /** 顯示名稱（Bot 名稱） */
+    label?: string
+    calls: number
+    /** 含快取命中與寫入快取 */
+    input_tokens: number
+    output_tokens: number
+    cache_read_tokens: number
+    cache_write_tokens: number
+    /** 快取命中率：cache_read_tokens ÷ input_tokens（0～1） */
+    cache_hit_rate: number
+    /** 花費（百萬分之一美元） */
+    cost_micros: number
+    cost_usd: number
+    /** 沒有價格、花費記成 0 的次數 */
+    unpriced_calls: number
+    /** 改用備援模型的次數 */
+    fallback_calls: number
+  }
+  /** 花費多到少 */
+  by_bot: {
+    /** Bot id、供應商、「<供應商>/<模型>」或日期（2026-10-18） */
+    key: string
+    /** 顯示名稱（Bot 名稱） */
+    label?: string
+    calls: number
+    /** 含快取命中與寫入快取 */
+    input_tokens: number
+    output_tokens: number
+    cache_read_tokens: number
+    cache_write_tokens: number
+    /** 快取命中率：cache_read_tokens ÷ input_tokens（0～1） */
+    cache_hit_rate: number
+    /** 花費（百萬分之一美元） */
+    cost_micros: number
+    cost_usd: number
+    /** 沒有價格、花費記成 0 的次數 */
+    unpriced_calls: number
+    /** 改用備援模型的次數 */
+    fallback_calls: number
+  }[]
+  /** 花費多到少 */
+  by_provider: {
+    /** Bot id、供應商、「<供應商>/<模型>」或日期（2026-10-18） */
+    key: string
+    /** 顯示名稱（Bot 名稱） */
+    label?: string
+    calls: number
+    /** 含快取命中與寫入快取 */
+    input_tokens: number
+    output_tokens: number
+    cache_read_tokens: number
+    cache_write_tokens: number
+    /** 快取命中率：cache_read_tokens ÷ input_tokens（0～1） */
+    cache_hit_rate: number
+    /** 花費（百萬分之一美元） */
+    cost_micros: number
+    cost_usd: number
+    /** 沒有價格、花費記成 0 的次數 */
+    unpriced_calls: number
+    /** 改用備援模型的次數 */
+    fallback_calls: number
+  }[]
+  /** 花費多到少 */
+  by_model: {
+    /** Bot id、供應商、「<供應商>/<模型>」或日期（2026-10-18） */
+    key: string
+    /** 顯示名稱（Bot 名稱） */
+    label?: string
+    calls: number
+    /** 含快取命中與寫入快取 */
+    input_tokens: number
+    output_tokens: number
+    cache_read_tokens: number
+    cache_write_tokens: number
+    /** 快取命中率：cache_read_tokens ÷ input_tokens（0～1） */
+    cache_hit_rate: number
+    /** 花費（百萬分之一美元） */
+    cost_micros: number
+    cost_usd: number
+    /** 沒有價格、花費記成 0 的次數 */
+    unpriced_calls: number
+    /** 改用備援模型的次數 */
+    fallback_calls: number
+  }[]
+  /** 日期舊到新 */
+  by_day: {
+    /** Bot id、供應商、「<供應商>/<模型>」或日期（2026-10-18） */
+    key: string
+    /** 顯示名稱（Bot 名稱） */
+    label?: string
+    calls: number
+    /** 含快取命中與寫入快取 */
+    input_tokens: number
+    output_tokens: number
+    cache_read_tokens: number
+    cache_write_tokens: number
+    /** 快取命中率：cache_read_tokens ÷ input_tokens（0～1） */
+    cache_hit_rate: number
+    /** 花費（百萬分之一美元） */
+    cost_micros: number
+    cost_usd: number
+    /** 沒有價格、花費記成 0 的次數 */
+    unpriced_calls: number
+    /** 改用備援模型的次數 */
+    fallback_calls: number
+  }[]
+  /** 這段期間用過、但沒有價格的模型 */
+  unpriced: {
+    provider: string
+    model: string
+    calls: number
+    last_at: number
+  }[]
+}
+
+/**
+ * 看用量與花費
+ *
+ * 依 Bot、供應商、模型、日期合計 token、花費與快取命中率（US-1）。日期用本機時區切。
+ *
+ * `xbot.usage.summary`：權限 read、風險 safe
+ */
+export function usageSummary(input: UsageSummaryInput = {}, opts?: CallOptions): Promise<UsageSummaryOutput> {
+  return invoke('xbot.usage.summary', input, opts).then((r) => r.output)
+}
+
 // ── 操作清單 ─────────────────────────────────────────
 
 /** 每個操作的輸入與輸出型別，invoke 用它檢查型別。 */
@@ -1195,11 +1834,23 @@ export interface Ops {
   'xbot.chat.stop': { input: ChatStopInput; output: ChatStopOutput }
   'xbot.chat.wait_until_settled': { input: ChatWaitUntilSettledInput; output: ChatWaitUntilSettledOutput }
   'xbot.inbox.list': { input: InboxListInput; output: InboxListOutput }
+  'xbot.models.add_provider': { input: ModelsAddProviderInput; output: ModelsAddProviderOutput }
   'xbot.models.get': { input: ModelsGetInput; output: ModelsGetOutput }
+  'xbot.models.presets': { input: ModelsPresetsInput; output: ModelsPresetsOutput }
+  'xbot.models.pricing': { input: ModelsPricingInput; output: ModelsPricingOutput }
+  'xbot.models.probe': { input: ModelsProbeInput; output: ModelsProbeOutput }
+  'xbot.models.remove_provider': { input: ModelsRemoveProviderInput; output: ModelsRemoveProviderOutput }
   'xbot.models.set_default': { input: ModelsSetDefaultInput; output: ModelsSetDefaultOutput }
+  'xbot.models.set_fallback': { input: ModelsSetFallbackInput; output: ModelsSetFallbackOutput }
+  'xbot.models.set_price': { input: ModelsSetPriceInput; output: ModelsSetPriceOutput }
   'xbot.models.set_provider': { input: ModelsSetProviderInput; output: ModelsSetProviderOutput }
+  'xbot.models.update_provider': { input: ModelsUpdateProviderInput; output: ModelsUpdateProviderOutput }
   'xbot.settings.get': { input: SettingsGetInput; output: SettingsGetOutput }
   'xbot.system.ping': { input: SystemPingInput; output: SystemPingOutput }
+  'xbot.usage.caps': { input: UsageCapsInput; output: UsageCapsOutput }
+  'xbot.usage.export': { input: UsageExportInput; output: UsageExportOutput }
+  'xbot.usage.set_caps': { input: UsageSetCapsInput; output: UsageSetCapsOutput }
+  'xbot.usage.summary': { input: UsageSummaryInput; output: UsageSummaryOutput }
 }
 
 export type OpName = keyof Ops
@@ -1226,9 +1877,21 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.chat.stop': { path: '/api/v1/chat.stop', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.chat.wait_until_settled': { path: '/api/v1/chat.wait_until_settled', scope: 'read', risk: 'safe', mutates: false },
   'xbot.inbox.list': { path: '/api/v1/inbox.list', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.models.add_provider': { path: '/api/v1/models.add_provider', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.models.get': { path: '/api/v1/models.get', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.models.presets': { path: '/api/v1/models.presets', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.models.pricing': { path: '/api/v1/models.pricing', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.models.probe': { path: '/api/v1/models.probe', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.models.remove_provider': { path: '/api/v1/models.remove_provider', scope: 'admin', risk: 'confirm', mutates: true },
   'xbot.models.set_default': { path: '/api/v1/models.set_default', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.models.set_fallback': { path: '/api/v1/models.set_fallback', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.models.set_price': { path: '/api/v1/models.set_price', scope: 'admin', risk: 'confirm', mutates: true },
   'xbot.models.set_provider': { path: '/api/v1/models.set_provider', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.models.update_provider': { path: '/api/v1/models.update_provider', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.settings.get': { path: '/api/v1/settings.get', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.system.ping': { path: '/api/v1/system.ping', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.usage.caps': { path: '/api/v1/usage.caps', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.usage.export': { path: '/api/v1/usage.export', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.usage.set_caps': { path: '/api/v1/usage.set_caps', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.usage.summary': { path: '/api/v1/usage.summary', scope: 'read', risk: 'safe', mutates: false },
 }

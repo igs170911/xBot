@@ -16,6 +16,9 @@ type ProviderRecord struct {
 	ID        string
 	BaseURL   string
 	SealedKey []byte // Keyring.Seal 的結果，aad 是 providerAAD(ID)
+	Label     string
+	Transport string
+	Preset    string
 	UpdatedAt time.Time
 }
 
@@ -26,21 +29,28 @@ type UsageEntry struct {
 	Model    string
 	Endpoint string // chat/completions、responses、messages、embeddings
 	// InputTokens 一律包含快取命中的部分；CachedTokens 是其中命中快取的量（照 LazyBoy usage.normalize）。
-	InputTokens     int64
-	OutputTokens    int64
-	CachedTokens    int64
-	ReasoningTokens int64
+	InputTokens      int64
+	OutputTokens     int64
+	CachedTokens     int64
+	CacheWriteTokens int64 // Anthropic 的 cache_creation_input_tokens（也算在 InputTokens 裡）
+	ReasoningTokens  int64
 	// Cost 是供應商自己回報的花費（例：OpenRouter 的 usage.cost）；沒有回報時為 0。
-	Cost   float64
-	Status int // 供應商回的 HTTP 狀態碼
-	OK     bool
-	At     time.Time
+	Cost float64
+	// CostMicros 是記帳用的花費（百萬分之一美元）：供應商有回報就用回報的，否則照價目表算。
+	CostMicros int64
+	Unpriced   bool // 價目表沒有這個模型、供應商也沒回報花費
+	Fallback   bool // 改用了備援模型
+	Status     int  // 供應商回的 HTTP 狀態碼
+	OK         bool
+	At         time.Time
 }
 
 // ProviderStore 存放供應商設定。
 type ProviderStore interface {
 	GetProvider(ctx context.Context, id string) (ProviderRecord, error) // 沒有時回 ErrNotFound
 	PutProvider(ctx context.Context, rec ProviderRecord) error
+	DeleteProvider(ctx context.Context, id string) error // 沒有時回 ErrNotFound
+	ListProviders(ctx context.Context) ([]ProviderRecord, error)
 }
 
 // NonceStore 存放每個 Bot 目前的 worker-key 亂數；換掉它就讓舊的 worker-key 失效。
@@ -92,6 +102,27 @@ func (m *Memory) PutProvider(_ context.Context, rec ProviderRecord) error {
 	rec.SealedKey = slices.Clone(rec.SealedKey)
 	m.providers[rec.ID] = rec
 	return nil
+}
+
+func (m *Memory) DeleteProvider(_ context.Context, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.providers[id]; !ok {
+		return ErrNotFound
+	}
+	delete(m.providers, id)
+	return nil
+}
+
+func (m *Memory) ListProviders(_ context.Context) ([]ProviderRecord, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]ProviderRecord, 0, len(m.providers))
+	for _, rec := range m.providers {
+		rec.SealedKey = slices.Clone(rec.SealedKey)
+		out = append(out, rec)
+	}
+	return out, nil
 }
 
 func (m *Memory) WorkerNonce(_ context.Context, botID string) (string, error) {

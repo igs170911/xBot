@@ -11,7 +11,9 @@ import (
 	"xbot/internal/inbox"
 	"xbot/internal/models"
 	"xbot/internal/ops"
+	"xbot/internal/proxy"
 	"xbot/internal/store"
+	"xbot/internal/usage"
 )
 
 // Deps 是核心操作需要的服務元件。全部是 nil 時只登錄定義（指令列、gen ts），呼叫會回 internal。
@@ -19,11 +21,13 @@ type Deps struct {
 	Runtime   chat.Runtime     // *runtime.Runtime
 	Providers models.Providers // *proxy.Providers
 	Lister    models.Lister    // *proxy.DBStore
+	Prober    models.Prober    // 模型探測；nil 時用 &proxy.Prober{}
+	Budgets   *proxy.Budgets   // 花費上限（usage 操作）
 	// Teardown 收掉 Bot 的電腦（含資料區）與引擎連線；刪除 Bot 時呼叫。可為 nil。
 	Teardown func(ctx context.Context, botID string) error
 }
 
-// Register 登錄 bots、chat、approvals、inbox、audit、models 各領域的操作。
+// Register 登錄 bots、chat、approvals、inbox、audit、models、usage 各領域的操作。
 func Register(reg *ops.Registry, d Deps) {
 	bd := bots.Deps{Teardown: d.Teardown}
 	if d.Runtime != nil {
@@ -33,7 +37,8 @@ func Register(reg *ops.Registry, d Deps) {
 	bots.Register(reg, bd)
 	chat.Register(reg, chat.Deps{Runtime: d.Runtime})
 	inbox.Register(reg)
-	models.Register(reg, models.Deps{Providers: d.Providers, Lister: d.Lister})
+	models.Register(reg, models.Deps{Providers: d.Providers, Lister: d.Lister, Prober: d.Prober})
+	usage.Register(reg, usage.Deps{Budgets: d.Budgets})
 }
 
 // Teardown 產生刪除 Bot 時用的收尾函式：先關引擎連線，再刪電腦與資料區（remove）。

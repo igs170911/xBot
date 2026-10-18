@@ -79,6 +79,7 @@ type View struct {
 	Shape        Shape        `json:"shape"`
 	Engine       string       `json:"engine"`
 	Model        string       `json:"model" desc:"空白表示用預設模型；「<供應商>/<模型>」或只寫模型"`
+	Fallback     string       `json:"fallback" desc:"備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback）"`
 	Effort       string       `json:"effort"`
 	ApprovalMode ApprovalMode `json:"approval_mode"`
 	Archived     bool         `json:"archived"`
@@ -95,7 +96,7 @@ func ViewOf(b store.Bot) View {
 	var a avatar
 	_ = json.Unmarshal(b.Avatar, &a)
 	return View{ID: b.ID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul,
-		Color: Color(b.Color), Shape: Shape(a.Shape), Engine: b.Engine, Model: b.Model, Effort: b.Effort,
+		Color: Color(b.Color), Shape: Shape(a.Shape), Engine: b.Engine, Model: b.Model, Fallback: first(b.Fallback), Effort: b.Effort,
 		ApprovalMode: ApprovalMode(b.ApprovalMode), Archived: b.Archived, CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt}
 }
 
@@ -141,6 +142,7 @@ type UpdateIn struct {
 	Shape        *Shape        `json:"shape,omitempty"`
 	Engine       *Engine       `json:"engine,omitempty"`
 	Model        *string       `json:"model,omitempty" max:"200" desc:"空白字串表示改回預設模型"`
+	Fallback     *string       `json:"fallback,omitempty" max:"200" desc:"備援模型「<供應商>/<模型>」：主要模型忙碌或出錯時改用；空白字串表示用全域備援"`
 	Effort       *Effort       `json:"effort,omitempty"`
 	ApprovalMode *ApprovalMode `json:"approval_mode,omitempty" desc:"改成 ask 以外的等級要你核准"`
 }
@@ -357,6 +359,13 @@ func grantCreator(ctx context.Context, q *store.Queries, id ops.Identity, botID 
 	return q.UpdateAgentTokenScopes(ctx, t.ID, t.Scopes, raw)
 }
 
+func first(list []string) string {
+	if len(list) == 0 {
+		return ""
+	}
+	return list[0]
+}
+
 func apply(b *store.Bot, in UpdateIn) error {
 	if in.Name != nil {
 		n := strings.TrimSpace(*in.Name)
@@ -373,6 +382,15 @@ func apply(b *store.Bot, in UpdateIn) error {
 	set(&b.Title, in.Title)
 	set(&b.Description, in.Description)
 	set(&b.Model, in.Model)
+	if in.Fallback != nil {
+		b.Fallback = nil
+		if f := strings.TrimSpace(*in.Fallback); f != "" {
+			if p, m, ok := strings.Cut(f, "/"); !ok || p == "" || m == "" {
+				return ops.InvalidInput(ops.FieldError{Field: "fallback", Message: "要寫成「<供應商>/<模型>」"})
+			}
+			b.Fallback = []string{f}
+		}
+	}
 	if in.Soul != nil {
 		b.Soul = *in.Soul
 	}
