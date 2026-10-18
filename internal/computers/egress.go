@@ -123,7 +123,7 @@ func (s *Service) saveEgress(ctx context.Context, exitNode, authKey string) erro
 	}
 	if authKey != "" {
 		if !strings.HasPrefix(authKey, "tskey-") {
-			return errors.New("Tailscale 登入金鑰要以 tskey- 開頭")
+			return errors.New("登入金鑰要以 tskey- 開頭（Tailscale 的 auth key）")
 		}
 		if s.Sealer == nil {
 			return errors.New("這台 XBot 不能存金鑰（沒有主金鑰）")

@@ -15,6 +15,7 @@ import (
 	"github.com/moby/moby/client"
 
 	"xbot/internal/box"
+	"xbot/internal/box/guardlock"
 	"xbot/internal/events"
 	"xbot/internal/hosts"
 	"xbot/internal/hosts/sshtesthost"
@@ -22,7 +23,7 @@ import (
 	"xbot/internal/store"
 )
 
-// 搬家（CL-5，B31）的整合測試：一台「剛租來的主機」（sshtesthost fresh，跑安裡腳本後加入）。
+// 搬家（CL-5，B31）的整合測試：一台「剛租來的主機」（sshtesthost fresh，跑安裝腳本後加入）。
 // 這台電腦 → 遠端：資料、權限、瀏覽器登入（chrome-profile）都在，遠端開機；原主機的資料保留、留下標記。
 // 遠端 → 這台中途取消：Bot 留在遠端、資料不動、電腦開回來，這台沒有留下半套資料。
 // 遠端 → 這台：再搬回來，資料一樣；保留期過了以後遠端的舊資料被刪掉。
@@ -44,7 +45,7 @@ func TestDockerMoveLocalRemoteAndBack(t *testing.T) {
 	if _, err := cli.ImageInspect(ctx, image); err != nil {
 		t.Skipf("沒有映像 %s（先執行 make box）：%v", image, err)
 	}
-	th := sshtesthost.StartFresh(ctx, t)
+	th := sshtesthost.StartFreshAs(ctx, t, "move") // 自己的主機：和 hosts 套件的測試同時跑也不互相干擾
 
 	dir, err := os.MkdirTemp("", "xbmove")
 	if err != nil {
@@ -85,6 +86,8 @@ func TestDockerMoveLocalRemoteAndBack(t *testing.T) {
 	remoteID, localID := added.Host.ID, local.ID()
 	waitOnline(ctx, t, db, remoteID)
 
+	// 和其他套件共用本機的網路防護（xbot-netguard）；網路防護測試在跑時先等它做完（見 guardlock）。
+	guardlock.Shared(t)
 	boxes := box.New(db, registry, box.Options{Image: image})
 	svc := &Service{DB: db, Boxes: boxes, Hosts: hsvc, Bus: bus}
 	t.Cleanup(svc.Close)

@@ -108,7 +108,7 @@ func TestPlanMoveAll(t *testing.T) {
 	f := newMoveFixture(t)
 	a := f.bot(t, "阿凱", f.local.ID, true)
 	b := f.bot(t, "小秘", f.local.ID, false) // 指定放這台、還沒有電腦
-	f.bot(t, "沒擺放", "", false)              // 還沒擺放：之後自動擺放，不搬
+	f.bot(t, "沒擺放", "", false)             // 還沒擺放：之後自動擺放，不搬
 	f.bot(t, "雲端的", f.cloud.ID, true)
 	d := f.bot(t, "排隊中", f.local.ID, true)
 	f.svc.mv.jobs = []*MoveJob{{ID: "x", BotID: d.ID, State: MoveQueued}}

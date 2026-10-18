@@ -410,7 +410,9 @@ func TestServiceLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	eventually(t, "funnel off", func() bool { return s.Status(true).Funnel.State == FunnelOff })
-	if _, err := http.Get("http://" + fa + "/hooks/h1"); err == nil {
+	// 用新的連線試（前面請求留下的 keep-alive 連線不算：要確認的是 listener 收掉了）。
+	fresh := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
+	if _, err := fresh.Get("http://" + fa + "/hooks/h1"); err == nil {
 		t.Fatal("Funnel 關掉後連不到")
 	}
 	// 改名字：重開節點。

@@ -250,7 +250,7 @@ func (m *Manager) ensureEgress(ctx context.Context, h hosts.Host, hn *hostNet) (
 	hn.mu.Unlock()
 	ip := EgressAddr(subnet)
 	if !ip.IsValid() {
-		return ip, errors.New("Bot 電腦的網路還沒準備好")
+		return ip, errors.New("電腦的網路還沒準備好")
 	}
 	api := h.Docker()
 	hostname := egressHostname(cfg, h.ID())
