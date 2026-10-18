@@ -12,9 +12,11 @@ import (
 	"xbot/internal/delegation"
 	"xbot/internal/engines"
 	"xbot/internal/inbox"
+	"xbot/internal/memory"
 	"xbot/internal/models"
 	"xbot/internal/ops"
 	"xbot/internal/proxy"
+	"xbot/internal/skills"
 	"xbot/internal/store"
 	"xbot/internal/usage"
 )
@@ -29,11 +31,16 @@ type Deps struct {
 	Engines   *engines.Service // 訂閱 CLI 的憑證（EN-2b）
 	// Teardown 收掉 Bot 的電腦（含資料區）與引擎連線；刪除 Bot 時呼叫。可為 nil。
 	Teardown func(ctx context.Context, botID string) error
+	// Skills、Memory 是技能與記憶（C31）；nil 時只登錄定義。
+	Skills *skills.Service
+	Memory *memory.Service
+	// SoulChanged 把新的 SOUL.md 寫進 Bot 的電腦（C31）。可為 nil。
+	SoulChanged func(ctx context.Context, botID string)
 }
 
-// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、models、usage、engines 各領域的操作。
+// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、models、usage、engines、skills、memory 各領域的操作。
 func Register(reg *ops.Registry, d Deps) {
-	bd := bots.Deps{Teardown: d.Teardown}
+	bd := bots.Deps{Teardown: d.Teardown, SoulChanged: d.SoulChanged}
 	if d.Runtime != nil {
 		rt := d.Runtime
 		bd.Stop = func(ctx context.Context, botID string) { _, _ = rt.Stop(ctx, botID, "") }
@@ -50,6 +57,8 @@ func Register(reg *ops.Registry, d Deps) {
 	models.Register(reg, models.Deps{Providers: d.Providers, Lister: d.Lister, Prober: d.Prober})
 	usage.Register(reg, usage.Deps{Budgets: d.Budgets})
 	engines.Register(reg, d.Engines)
+	skills.Register(reg, d.Skills)
+	memory.Register(reg, d.Memory)
 }
 
 // Teardown 產生刪除 Bot 時用的收尾函式：先關引擎連線，再刪電腦與資料區（remove）。

@@ -4,17 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strconv"
 	"strings"
 
 	"xbot/internal/box"
+	"xbot/internal/boxfs"
 	"xbot/internal/engine/acp"
 	"xbot/internal/engine/hermes"
 	"xbot/internal/engines"
 	"xbot/internal/hosts"
 	"xbot/internal/ipc"
 	"xbot/internal/proxy"
+	"xbot/internal/skills"
 	"xbot/internal/store"
 )
 
@@ -200,6 +203,10 @@ func (c *Computers) Prepare(ctx context.Context, h hosts.Host, botID, containerI
 			return err
 		}
 	}
+	// XBot 內建技能只放一次（C31，SK-3）；放不進去不擋開機。
+	if err := skills.Seed(ctx, c.fs(h, containerID, false)); err != nil {
+		slog.Warn("放入內建技能失敗", "bot", botID, "err", err)
+	}
 	ref, err := c.resolveHermes(ctx, b)
 	if err != nil {
 		if acp.IsACP(b.Engine) && errors.Is(err, ErrNoModel) {
@@ -217,8 +224,70 @@ func (c *Computers) Prepare(ctx context.Context, h hosts.Host, botID, containerI
 	return hermes.Provision(ctx, h.Docker(), containerID, hermes.Profile{
 		BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul,
 		ProviderID: ref.Provider, Model: ref.Model, Transport: ref.Transport, Effort: b.Effort,
-		WorkerKey: string(key), UID: box.BotUID, GID: box.BotGID, ApprovalMode: b.ApprovalMode,
+		WorkerKey: string(key), UID: box.BotUID, GID: box.BotGID, ApprovalMode: b.ApprovalMode, MemoryOff: !b.MemoryEnabled,
 	})
+}
+
+func (c *Computers) fs(h hosts.Host, containerID string, running bool) *boxfs.Docker {
+	return &boxfs.Docker{API: h.Docker(), ID: containerID, UID: box.BotUID, GID: box.BotGID, Running: running}
+}
+
+// BotFS 實作 boxfs.Locator：Bot 電腦裡的檔案（技能、記憶，C31）。不開機；create 為 true 且還沒有電腦時先建立（不開機）。
+// 要刪檔時（Docker 沒有刪檔的 API）才開機。
+func (c *Computers) BotFS(ctx context.Context, botID string, create bool) (boxfs.FS, error) {
+	var s box.Status
+	var err error
+	if _, gerr := c.DB.GetBox(ctx, botID); errors.Is(gerr, store.ErrNotFound) && !create {
+		return nil, boxfs.ErrNoComputer
+	}
+	if create {
+		s, err = c.Boxes.Create(ctx, botID)
+	} else {
+		s, err = c.Boxes.Status(ctx, botID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if s.ContainerID == "" {
+		return nil, boxfs.ErrNoComputer
+	}
+	h, err := c.Hosts.Get(s.HostID)
+	if err != nil {
+		return nil, fmt.Errorf("這個 Bot 的電腦所在的主機連不上：%w", err)
+	}
+	f := c.fs(h, s.ContainerID, s.Running)
+	f.Wake = func(ctx context.Context) (string, error) {
+		st, err := c.Boxes.Start(ctx, botID)
+		return st.ContainerID, err
+	}
+	return f, nil
+}
+
+// RefreshSoul 在 Bot 的名稱、職稱、介紹或人設改了以後，把新的 SOUL.md 寫進它的電腦（有電腦才寫；沒開機也可以）。
+// Hermes 開新的對話時讀它；開機前的 Prepare 也會再寫一次。
+func (c *Computers) RefreshSoul(ctx context.Context, botID string) error {
+	loc, err := c.Locate(ctx, botID)
+	if err != nil || loc.ID == "" {
+		return err
+	}
+	b, err := c.DB.GetBot(ctx, botID)
+	if err != nil {
+		return err
+	}
+	h, err := c.hostOf(ctx, botID)
+	if err != nil {
+		return err
+	}
+	return hermes.WriteSoul(ctx, h.Docker(), loc.ID, hermes.Profile{BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description,
+		Soul: b.Soul, UID: box.BotUID, GID: box.BotGID})
+}
+
+func (c *Computers) hostOf(ctx context.Context, botID string) (hosts.Host, error) {
+	bx, err := c.DB.GetBox(ctx, botID)
+	if err != nil {
+		return nil, err
+	}
+	return c.Hosts.Get(bx.HostID)
 }
 
 // Connect 實作 hermes.Connector：開機（含 Prepare）、等桌面與 Hermes 就緒，回傳 Hermes 的位址與 worker-key。

@@ -166,6 +166,19 @@
 
 其他常數（MCP 配對、登入限速、SSE、ACP、OAuth、分頁等）註明為「XBot 新增」或出自 OpenMausBot／Hermes，不在 LazyBoy 對照範圍。
 
+### 技能與記憶（C31，`skills.go`）
+
+| 常數 | 值 | 出處 | 結果 |
+|---|---|---|---|
+| `MemoryCharsDefault`／`MemoryUserCharsDefault` | 2,200／1,375 字 | server/memory.py `TARGETS`；Hermes agent/agent_init.py | 正確 |
+| `MemoryEntryMax` | 2,000 字 | server/memory.py `ENTRY_LIMIT` | 正確 |
+| `SkillLibraryResults`／`SkillLibraryText` | 8／60,000 字 | server/skills.py `LIBRARY_RESULTS`、`LIBRARY_TEXT` | 正確 |
+| `SkillNameMax`／`SkillDescriptionMax`／`SkillContentMax`／`SkillFileBytes` | 64／1,024／100,000 字／1 MiB | Hermes tools/skill_manager_tool.py（LazyBoy 內容上限 200,000，比 Hermes 能讀的大，照 Hermes） | 照 Hermes |
+| `SkillImportBytes`／`SkillImportFilesMax`／`SkillTreeBytes` | 8 MiB／64 個／64 MiB | XBot 新增 | — |
+| `MemoryEntriesMax`／`MemoryVersionsKept` | 500 條／20 版 | XBot 新增（PRD MM-3 只說可復原） | — |
+
+PRD MM-1 的「每回合載入前 200 行／24 KB」是 OpenMausBot 的做法；Hermes 實際是兩份清單各有字數上限、每個對話開始時載入固定快照（tools/memory_tool_store.py），照 Hermes。
+
 ## 10. 這次更正的既有常數
 
 | 常數 | 原值 | 新值 | 原因 |

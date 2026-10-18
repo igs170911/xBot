@@ -17,8 +17,10 @@ import (
 	"xbot/internal/events"
 	"xbot/internal/hosts"
 	"xbot/internal/ipc"
+	"xbot/internal/memory"
 	"xbot/internal/proxy"
 	"xbot/internal/runtime"
+	"xbot/internal/skills"
 	"xbot/internal/store"
 )
 
@@ -39,6 +41,9 @@ type stack struct {
 	driver    *engine.Router
 	creds     *engines.Service
 	runtime   *runtime.Runtime
+	comp      *runtime.Computers
+	skills    *skills.Service
+	memory    *memory.Service
 }
 
 func openStack(cfg config.Config) (*stack, error) {
@@ -118,6 +123,9 @@ func openStack(cfg config.Config) (*stack, error) {
 			return s.budgets.CheckProvider(ctx, botID, providerID)
 		}})
 	s.pstore.Attribute = s.runtime.Active
+	s.comp = comp
+	s.skills = &skills.Service{Locate: comp.BotFS, Library: &skills.Library{Dir: filepath.Join(cfg.DataDir, "skills")}}
+	s.memory = &memory.Service{DB: db, Locate: comp.BotFS}
 	return s, nil
 }
 

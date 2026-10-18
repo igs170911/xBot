@@ -864,6 +864,8 @@ export interface BotsArchiveOutput {
   fallback: string
   effort: string
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
+  /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
+  memory_enabled: boolean
   archived: boolean
   /** 誰建立的：owner、agent:<id>、bot:<id> */
   created_by?: string
@@ -924,6 +926,8 @@ export interface BotsCreateOutput {
   fallback: string
   effort: string
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
+  /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
+  memory_enabled: boolean
   archived: boolean
   /** 誰建立的：owner、agent:<id>、bot:<id> */
   created_by?: string
@@ -993,6 +997,8 @@ export interface BotsGetOutput {
   fallback: string
   effort: string
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
+  /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
+  memory_enabled: boolean
   archived: boolean
   /** 誰建立的：owner、agent:<id>、bot:<id> */
   created_by?: string
@@ -1034,6 +1040,8 @@ export interface BotsListOutput {
     fallback: string
     effort: string
     approval_mode: 'ask' | 'edits' | 'auto' | 'full'
+    /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
+    memory_enabled: boolean
     archived: boolean
     /** 誰建立的：owner、agent:<id>、bot:<id> */
     created_by?: string
@@ -1072,6 +1080,8 @@ export interface BotsUpdateInput {
   effort?: 'low' | 'medium' | 'high'
   /** 改成 ask 以外的等級要你核准 */
   approval_mode?: 'ask' | 'edits' | 'auto' | 'full'
+  /** 打開或關掉記憶（下次開機生效） */
+  memory_enabled?: boolean
 }
 
 export interface BotsUpdateOutput {
@@ -1089,6 +1099,8 @@ export interface BotsUpdateOutput {
   fallback: string
   effort: string
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
+  /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
+  memory_enabled: boolean
   archived: boolean
   /** 誰建立的：owner、agent:<id>、bot:<id> */
   created_by?: string
@@ -1787,6 +1799,216 @@ export function inboxUndo(input: InboxUndoInput, opts?: CallOptions): Promise<In
   return invoke('xbot.inbox.undo', input, opts).then((r) => r.output)
 }
 
+// xbot.memory.add
+
+export interface MemoryAddInput {
+  /** user：關於使用者；memory：你的工作與環境 */
+  target: 'user' | 'memory'
+  /** 一條記憶，一兩句話；密碼和金鑰會被遮蔽 */
+  content: string
+}
+
+export interface MemoryAddOutput {
+  /** 關於你（USER.md） */
+  user: {
+    entries: string[]
+    /** 已用字數（含分隔） */
+    used: number
+    /** 上限字數 */
+    limit: number
+  }
+  /** Bot 記住的事（MEMORY.md） */
+  memory: {
+    entries: string[]
+    /** 已用字數（含分隔） */
+    used: number
+    /** 上限字數 */
+    limit: number
+  }
+  /** 記憶有沒有打開；關掉時不會帶進對話 */
+  enabled: boolean
+  /** Bot 已經有電腦（沒有時兩份都是空的） */
+  computer: boolean
+}
+
+/**
+ * 記住一件事
+ *
+ * 把一條記憶加進你自己的記憶（user：關於使用者；memory：你的工作與環境）。只記長期有用的事實，不記一次性的進度。超過上限時會被拒絕：先請使用者整理。密碼和金鑰會被遮蔽。下一個對話開始時生效。
+ *
+ * `xbot.memory.add`：權限 operate、風險 safe
+ */
+export function memoryAdd(input: MemoryAddInput, opts?: CallOptions): Promise<MemoryAddOutput> {
+  return invoke('xbot.memory.add', input, opts).then((r) => r.output)
+}
+
+// xbot.memory.history
+
+export interface MemoryHistoryInput {
+  /** Bot id */
+  bot_id: string
+  /** 只看這一份；不填兩份都看 */
+  target?: 'user' | 'memory'
+}
+
+export interface MemoryHistoryOutput {
+  changes: {
+    id: string
+    target: 'user' | 'memory'
+    /** 誰改的：owner、agent:<id>、bot:<id> */
+    actor: string
+    /** 新增的條目 */
+    added: string[]
+    /** 拿掉的條目 */
+    removed: string[]
+    created_at: number
+    /** 之後沒有再改過，可以復原 */
+    undoable: boolean
+  }[]
+}
+
+/**
+ * 看 Bot 記憶最近的變更
+ *
+ * 每次修改（你、代理、或 Bot 自己在電腦裡改的）都記一筆，每份最多留 20 筆。可以復原的會標 undoable。
+ *
+ * `xbot.memory.history`：權限 read、風險 safe
+ */
+export function memoryHistory(input: MemoryHistoryInput, opts?: CallOptions): Promise<MemoryHistoryOutput> {
+  return invoke('xbot.memory.history', input, opts).then((r) => r.output)
+}
+
+// xbot.memory.read
+
+export interface MemoryReadInput {
+  /** Bot id；Bot 自己呼叫時不用填（就是你自己） */
+  bot_id?: string
+}
+
+export interface MemoryReadOutput {
+  /** 關於你（USER.md） */
+  user: {
+    entries: string[]
+    /** 已用字數（含分隔） */
+    used: number
+    /** 上限字數 */
+    limit: number
+  }
+  /** Bot 記住的事（MEMORY.md） */
+  memory: {
+    entries: string[]
+    /** 已用字數（含分隔） */
+    used: number
+    /** 上限字數 */
+    limit: number
+  }
+  /** 記憶有沒有打開；關掉時不會帶進對話 */
+  enabled: boolean
+  /** Bot 已經有電腦（沒有時兩份都是空的） */
+  computer: boolean
+}
+
+/**
+ * 讀 Bot 的記憶
+ *
+ * 兩份清單：關於你（USER.md）、Bot 記住的事（MEMORY.md），各有用量與上限。Hermes 在每個新對話開始時載入。
+ *
+ * `xbot.memory.read`：權限 read、風險 safe
+ */
+export function memoryRead(input: MemoryReadInput = {}, opts?: CallOptions): Promise<MemoryReadOutput> {
+  return invoke('xbot.memory.read', input, opts).then((r) => r.output)
+}
+
+// xbot.memory.restore
+
+export interface MemoryRestoreInput {
+  /** Bot id */
+  bot_id: string
+  /** xbot.memory.history 的 id */
+  change_id: string
+}
+
+export interface MemoryRestoreOutput {
+  /** 關於你（USER.md） */
+  user: {
+    entries: string[]
+    /** 已用字數（含分隔） */
+    used: number
+    /** 上限字數 */
+    limit: number
+  }
+  /** Bot 記住的事（MEMORY.md） */
+  memory: {
+    entries: string[]
+    /** 已用字數（含分隔） */
+    used: number
+    /** 上限字數 */
+    limit: number
+  }
+  /** 記憶有沒有打開；關掉時不會帶進對話 */
+  enabled: boolean
+  /** Bot 已經有電腦（沒有時兩份都是空的） */
+  computer: boolean
+}
+
+/**
+ * 復原一次記憶的變更
+ *
+ * 把那一份記憶改回這次變更之前。之後又被改過的不能復原（回 conflict）。
+ *
+ * `xbot.memory.restore`：權限 manage、風險 safe
+ */
+export function memoryRestore(input: MemoryRestoreInput, opts?: CallOptions): Promise<MemoryRestoreOutput> {
+  return invoke('xbot.memory.restore', input, opts).then((r) => r.output)
+}
+
+// xbot.memory.write
+
+export interface MemoryWriteInput {
+  /** Bot id */
+  bot_id: string
+  /** user：關於你（USER.md）；memory：Bot 記住的事（MEMORY.md） */
+  target: 'user' | 'memory'
+  /** 整份清單（一條一項）；空陣列表示清空 */
+  entries: string[]
+  /** 你編輯的是哪一版（xbot.memory.read 讀到的 entries）；Bot 在這之間改過就不寫，回 conflict */
+  previous?: string[]
+}
+
+export interface MemoryWriteOutput {
+  /** 關於你（USER.md） */
+  user: {
+    entries: string[]
+    /** 已用字數（含分隔） */
+    used: number
+    /** 上限字數 */
+    limit: number
+  }
+  /** Bot 記住的事（MEMORY.md） */
+  memory: {
+    entries: string[]
+    /** 已用字數（含分隔） */
+    used: number
+    /** 上限字數 */
+    limit: number
+  }
+  /** 記憶有沒有打開；關掉時不會帶進對話 */
+  enabled: boolean
+  /** Bot 已經有電腦（沒有時兩份都是空的） */
+  computer: boolean
+}
+
+/**
+ * 改 Bot 的一份記憶
+ *
+ * 換掉整份清單。超過上限時拒絕（已經超過的可以一條一條縮小）。寫入前遮蔽密碼與金鑰，舊版本留著可以復原。帶 previous 時，Bot 在你編輯期間改過就不寫（回 conflict），請重讀再改。
+ *
+ * `xbot.memory.write`：權限 manage、風險 safe
+ */
+export function memoryWrite(input: MemoryWriteInput, opts?: CallOptions): Promise<MemoryWriteOutput> {
+  return invoke('xbot.memory.write', input, opts).then((r) => r.output)
+}
+
 // xbot.models.add_provider
 
 export interface ModelsAddProviderInput {
@@ -2327,6 +2549,515 @@ export function settingsGet(input: SettingsGetInput, opts?: CallOptions): Promis
   return invoke('xbot.settings.get', input, opts).then((r) => r.output)
 }
 
+// xbot.skills.create
+
+export interface SkillsCreateInput {
+  /** 加到這個 Bot；不填加到工作區技能庫 */
+  bot_id?: string
+  /** 技能名稱，例：週報彙整 */
+  name: string
+  /** 什麼時候使用（一句話） */
+  description: string
+  /** 怎麼做（步驟） */
+  instructions: string
+  /** Bot 的技能放哪裡；預設 list */
+  place?: 'list' | 'library' | 'off'
+}
+
+export interface SkillsCreateOutput {
+  /** 技能的資料夾（Bot 的技能：/hermes/skills 底下的相對路徑；技能庫：資料夾名稱） */
+  id: string
+  name: string
+  /** 什麼時候使用 */
+  description: string
+  /** 怎麼做（SKILL.md 的內文） */
+  instructions?: string
+  /** list：技能清單；library：技能庫（需要時才載入）；off：已停用 */
+  place: 'list' | 'library' | 'off'
+  enabled: boolean
+  /** hermes（Hermes 內建）、xbot（XBot 內建）、learned（從對話學到）、imported（匯入）、proposed（Bot 提議、你核准）、custom（自訂） */
+  source: string
+  /** 附帶的檔案（scripts/、references/…） */
+  files?: string[]
+  last_used_at?: string
+  /** 匯入時的檔名 */
+  origin?: string
+  created_by?: string
+  created_at: number
+  updated_at: number
+  review?: {
+    /** 內文裡會在電腦執行的指令（最多 10 條） */
+    commands: string[]
+    /** 附帶的程式檔 */
+    scripts: string[]
+  }
+}
+
+/**
+ * 新增一個技能
+ *
+ * 寫給 Bot 的做法：名稱、什麼時候使用、怎麼做。帶 bot_id 加到那個 Bot（下一個對話開始生效），不帶加到工作區技能庫。
+ *
+ * `xbot.skills.create`：權限 manage、風險 safe
+ */
+export function skillsCreate(input: SkillsCreateInput, opts?: CallOptions): Promise<SkillsCreateOutput> {
+  return invoke('xbot.skills.create', input, opts).then((r) => r.output)
+}
+
+// xbot.skills.delete
+
+export interface SkillsDeleteInput {
+  /** Bot 的技能；不填是工作區技能庫 */
+  bot_id?: string
+  id: string
+}
+
+export interface SkillsDeleteOutput {
+  /** 技能的資料夾（Bot 的技能：/hermes/skills 底下的相對路徑；技能庫：資料夾名稱） */
+  id: string
+  name: string
+  /** 什麼時候使用 */
+  description: string
+  /** 怎麼做（SKILL.md 的內文） */
+  instructions?: string
+  /** list：技能清單；library：技能庫（需要時才載入）；off：已停用 */
+  place: 'list' | 'library' | 'off'
+  enabled: boolean
+  /** hermes（Hermes 內建）、xbot（XBot 內建）、learned（從對話學到）、imported（匯入）、proposed（Bot 提議、你核准）、custom（自訂） */
+  source: string
+  /** 附帶的檔案（scripts/、references/…） */
+  files?: string[]
+  last_used_at?: string
+  /** 匯入時的檔名 */
+  origin?: string
+  created_by?: string
+  created_at: number
+  updated_at: number
+  review?: {
+    /** 內文裡會在電腦執行的指令（最多 10 條） */
+    commands: string[]
+    /** 附帶的程式檔 */
+    scripts: string[]
+  }
+}
+
+/**
+ * 刪除一個技能
+ *
+ * 連同附帶的檔案一起刪掉，無法復原（只想先不用請停用）。要你本人核准。刪 Bot 的技能時，它的電腦沒開會先開機。
+ *
+ * `xbot.skills.delete`：權限 manage、風險 confirm
+ */
+export function skillsDelete(input: SkillsDeleteInput, opts?: CallOptions): Promise<SkillsDeleteOutput> {
+  return invoke('xbot.skills.delete', input, opts).then((r) => r.output)
+}
+
+// xbot.skills.disable
+
+export interface SkillsDisableInput {
+  /** Bot 的技能；不填是工作區技能庫 */
+  bot_id?: string
+  id: string
+}
+
+export interface SkillsDisableOutput {
+  /** 技能的資料夾（Bot 的技能：/hermes/skills 底下的相對路徑；技能庫：資料夾名稱） */
+  id: string
+  name: string
+  /** 什麼時候使用 */
+  description: string
+  /** 怎麼做（SKILL.md 的內文） */
+  instructions?: string
+  /** list：技能清單；library：技能庫（需要時才載入）；off：已停用 */
+  place: 'list' | 'library' | 'off'
+  enabled: boolean
+  /** hermes（Hermes 內建）、xbot（XBot 內建）、learned（從對話學到）、imported（匯入）、proposed（Bot 提議、你核准）、custom（自訂） */
+  source: string
+  /** 附帶的檔案（scripts/、references/…） */
+  files?: string[]
+  last_used_at?: string
+  /** 匯入時的檔名 */
+  origin?: string
+  created_by?: string
+  created_at: number
+  updated_at: number
+  review?: {
+    /** 內文裡會在電腦執行的指令（最多 10 條） */
+    commands: string[]
+    /** 附帶的程式檔 */
+    scripts: string[]
+  }
+}
+
+/**
+ * 停用一個技能
+ *
+ * Bot 不會再用它；內容保留，可以再打開。
+ *
+ * `xbot.skills.disable`：權限 manage、風險 safe
+ */
+export function skillsDisable(input: SkillsDisableInput, opts?: CallOptions): Promise<SkillsDisableOutput> {
+  return invoke('xbot.skills.disable', input, opts).then((r) => r.output)
+}
+
+// xbot.skills.enable
+
+export interface SkillsEnableInput {
+  /** Bot 的技能；不填是工作區技能庫 */
+  bot_id?: string
+  id: string
+  /** Bot 的技能放哪裡：list（預設，每次對話都帶上）或 library（需要時才載入） */
+  place?: 'list' | 'library' | 'off'
+}
+
+export interface SkillsEnableOutput {
+  /** 技能的資料夾（Bot 的技能：/hermes/skills 底下的相對路徑；技能庫：資料夾名稱） */
+  id: string
+  name: string
+  /** 什麼時候使用 */
+  description: string
+  /** 怎麼做（SKILL.md 的內文） */
+  instructions?: string
+  /** list：技能清單；library：技能庫（需要時才載入）；off：已停用 */
+  place: 'list' | 'library' | 'off'
+  enabled: boolean
+  /** hermes（Hermes 內建）、xbot（XBot 內建）、learned（從對話學到）、imported（匯入）、proposed（Bot 提議、你核准）、custom（自訂） */
+  source: string
+  /** 附帶的檔案（scripts/、references/…） */
+  files?: string[]
+  last_used_at?: string
+  /** 匯入時的檔名 */
+  origin?: string
+  created_by?: string
+  created_at: number
+  updated_at: number
+  review?: {
+    /** 內文裡會在電腦執行的指令（最多 10 條） */
+    commands: string[]
+    /** 附帶的程式檔 */
+    scripts: string[]
+  }
+}
+
+/**
+ * 打開一個技能
+ *
+ * Bot 的技能可以放到技能清單（每次對話帶上名稱與用途）或技能庫（需要時才載入）。從外面匯入的技能請先看過內容再打開。
+ *
+ * `xbot.skills.enable`：權限 manage、風險 safe
+ */
+export function skillsEnable(input: SkillsEnableInput, opts?: CallOptions): Promise<SkillsEnableOutput> {
+  return invoke('xbot.skills.enable', input, opts).then((r) => r.output)
+}
+
+// xbot.skills.get
+
+export interface SkillsGetInput {
+  /** Bot 的技能；不填是工作區技能庫 */
+  bot_id?: string
+  /** 技能 id（也可以給名稱） */
+  id: string
+}
+
+export interface SkillsGetOutput {
+  /** 技能的資料夾（Bot 的技能：/hermes/skills 底下的相對路徑；技能庫：資料夾名稱） */
+  id: string
+  name: string
+  /** 什麼時候使用 */
+  description: string
+  /** 怎麼做（SKILL.md 的內文） */
+  instructions?: string
+  /** list：技能清單；library：技能庫（需要時才載入）；off：已停用 */
+  place: 'list' | 'library' | 'off'
+  enabled: boolean
+  /** hermes（Hermes 內建）、xbot（XBot 內建）、learned（從對話學到）、imported（匯入）、proposed（Bot 提議、你核准）、custom（自訂） */
+  source: string
+  /** 附帶的檔案（scripts/、references/…） */
+  files?: string[]
+  last_used_at?: string
+  /** 匯入時的檔名 */
+  origin?: string
+  created_by?: string
+  created_at: number
+  updated_at: number
+  review?: {
+    /** 內文裡會在電腦執行的指令（最多 10 條） */
+    commands: string[]
+    /** 附帶的程式檔 */
+    scripts: string[]
+  }
+}
+
+/**
+ * 讀一個技能的完整內容
+ *
+ * 名稱、什麼時候使用、怎麼做、附帶的檔案。Bot 用它載入技能庫裡的技能步驟。
+ *
+ * `xbot.skills.get`：權限 read、風險 safe
+ */
+export function skillsGet(input: SkillsGetInput, opts?: CallOptions): Promise<SkillsGetOutput> {
+  return invoke('xbot.skills.get', input, opts).then((r) => r.output)
+}
+
+// xbot.skills.import
+
+export interface SkillsImportInput {
+  /** 匯入到這個 Bot；不填匯入到工作區技能庫 */
+  bot_id?: string
+  /** 檔名：.md（SKILL.md）或 .zip（含 SKILL.md 與附帶的檔案） */
+  filename: string
+  /** .md 的內容（文字） */
+  content?: string
+  /** .zip（或 .md）的內容，base64 */
+  content_base64?: string
+}
+
+export interface SkillsImportOutput {
+  /** 技能的資料夾（Bot 的技能：/hermes/skills 底下的相對路徑；技能庫：資料夾名稱） */
+  id: string
+  name: string
+  /** 什麼時候使用 */
+  description: string
+  /** 怎麼做（SKILL.md 的內文） */
+  instructions?: string
+  /** list：技能清單；library：技能庫（需要時才載入）；off：已停用 */
+  place: 'list' | 'library' | 'off'
+  enabled: boolean
+  /** hermes（Hermes 內建）、xbot（XBot 內建）、learned（從對話學到）、imported（匯入）、proposed（Bot 提議、你核准）、custom（自訂） */
+  source: string
+  /** 附帶的檔案（scripts/、references/…） */
+  files?: string[]
+  last_used_at?: string
+  /** 匯入時的檔名 */
+  origin?: string
+  created_by?: string
+  created_at: number
+  updated_at: number
+  review?: {
+    /** 內文裡會在電腦執行的指令（最多 10 條） */
+    commands: string[]
+    /** 附帶的程式檔 */
+    scripts: string[]
+  }
+}
+
+/**
+ * 匯入一個技能（預設停用）
+ *
+ * 從 .md（SKILL.md）或 .zip 匯入。格式不對會說明哪裡有問題。匯入的技能一律先停用：看過內容（review 列出會執行的指令與附帶的程式）再打開。
+ *
+ * `xbot.skills.import`：權限 manage、風險 safe
+ */
+export function skillsImport(input: SkillsImportInput, opts?: CallOptions): Promise<SkillsImportOutput> {
+  return invoke('xbot.skills.import', input, opts).then((r) => r.output)
+}
+
+// xbot.skills.install_to_bot
+
+export interface SkillsInstallToBotInput {
+  /** 工作區技能庫的技能 id */
+  id: string
+  /** 裝到哪個 Bot */
+  bot_id: string
+}
+
+export interface SkillsInstallToBotOutput {
+  /** 技能的資料夾（Bot 的技能：/hermes/skills 底下的相對路徑；技能庫：資料夾名稱） */
+  id: string
+  name: string
+  /** 什麼時候使用 */
+  description: string
+  /** 怎麼做（SKILL.md 的內文） */
+  instructions?: string
+  /** list：技能清單；library：技能庫（需要時才載入）；off：已停用 */
+  place: 'list' | 'library' | 'off'
+  enabled: boolean
+  /** hermes（Hermes 內建）、xbot（XBot 內建）、learned（從對話學到）、imported（匯入）、proposed（Bot 提議、你核准）、custom（自訂） */
+  source: string
+  /** 附帶的檔案（scripts/、references/…） */
+  files?: string[]
+  last_used_at?: string
+  /** 匯入時的檔名 */
+  origin?: string
+  created_by?: string
+  created_at: number
+  updated_at: number
+  review?: {
+    /** 內文裡會在電腦執行的指令（最多 10 條） */
+    commands: string[]
+    /** 附帶的程式檔 */
+    scripts: string[]
+  }
+}
+
+/**
+ * 把技能庫的技能裝到一個 Bot 身上
+ *
+ * 複製一份到 Bot 的技能（之後各改各的）。技能庫裡停用的技能裝上去也是停用。
+ *
+ * `xbot.skills.install_to_bot`：權限 manage、風險 safe
+ */
+export function skillsInstallToBot(input: SkillsInstallToBotInput, opts?: CallOptions): Promise<SkillsInstallToBotOutput> {
+  return invoke('xbot.skills.install_to_bot', input, opts).then((r) => r.output)
+}
+
+// xbot.skills.list
+
+export interface SkillsListInput {
+  /** 看這個 Bot 的技能；不填看工作區技能庫（所有 Bot 共用）。Bot 自己呼叫時就是自己 */
+  bot_id?: string
+  /** 只列這個位置的技能；Bot 找技能庫裡的技能用 library */
+  place?: 'list' | 'library' | 'off'
+  /** 關鍵字（名稱、用途）；有給時最多回 8 個最相關的 */
+  query?: string
+}
+
+export interface SkillsListOutput {
+  skills: {
+    /** 技能的資料夾（Bot 的技能：/hermes/skills 底下的相對路徑；技能庫：資料夾名稱） */
+    id: string
+    name: string
+    /** 什麼時候使用 */
+    description: string
+    /** 怎麼做（SKILL.md 的內文） */
+    instructions?: string
+    /** list：技能清單；library：技能庫（需要時才載入）；off：已停用 */
+    place: 'list' | 'library' | 'off'
+    enabled: boolean
+    /** hermes（Hermes 內建）、xbot（XBot 內建）、learned（從對話學到）、imported（匯入）、proposed（Bot 提議、你核准）、custom（自訂） */
+    source: string
+    /** 附帶的檔案（scripts/、references/…） */
+    files?: string[]
+    last_used_at?: string
+    /** 匯入時的檔名 */
+    origin?: string
+    created_by?: string
+    created_at: number
+    updated_at: number
+    review?: {
+      /** 內文裡會在電腦執行的指令（最多 10 條） */
+      commands: string[]
+      /** 附帶的程式檔 */
+      scripts: string[]
+    }
+  }[]
+  /** 各位置的數量：list、library、off */
+  counts: Record<string, number>
+  /** Bot 已經有電腦（看 Bot 的技能時；沒有時清單是空的，第一次開機會帶入內建技能） */
+  computer: boolean
+  note?: string
+}
+
+/**
+ * 列出技能
+ *
+ * 帶 bot_id 是那個 Bot 的技能（技能清單／技能庫／已停用）；不帶是工作區技能庫（所有 Bot 共用，可裝到 Bot 身上）。Bot 自己呼叫時看自己的；技能庫裡的技能平常不帶進對話，用 place=library 加 query 找，再用 xbot.skills.get 載入步驟。
+ *
+ * `xbot.skills.list`：權限 read、風險 safe
+ */
+export function skillsList(input: SkillsListInput = {}, opts?: CallOptions): Promise<SkillsListOutput> {
+  return invoke('xbot.skills.list', input, opts).then((r) => r.output)
+}
+
+// xbot.skills.propose
+
+export interface SkillsProposeInput {
+  /** 技能名稱 */
+  name: string
+  /** 什麼時候使用（一句話） */
+  description: string
+  /** 怎麼做（步驟） */
+  instructions: string
+  /** 為什麼值得存成技能（例：這次做了 12 步才完成） */
+  reason?: string
+}
+
+export interface SkillsProposeOutput {
+  approval_id?: string
+  /** pending：等使用者決定；approved：已加進你的技能 */
+  status: string
+  skill?: {
+    /** 技能的資料夾（Bot 的技能：/hermes/skills 底下的相對路徑；技能庫：資料夾名稱） */
+    id: string
+    name: string
+    /** 什麼時候使用 */
+    description: string
+    /** 怎麼做（SKILL.md 的內文） */
+    instructions?: string
+    /** list：技能清單；library：技能庫（需要時才載入）；off：已停用 */
+    place: 'list' | 'library' | 'off'
+    enabled: boolean
+    /** hermes（Hermes 內建）、xbot（XBot 內建）、learned（從對話學到）、imported（匯入）、proposed（Bot 提議、你核准）、custom（自訂） */
+    source: string
+    /** 附帶的檔案（scripts/、references/…） */
+    files?: string[]
+    last_used_at?: string
+  }
+  note: string
+}
+
+/**
+ * 提議把一個做法存成你的技能
+ *
+ * 做完一件多步驟、以後還會再做的事時，把做法整理成技能提議給使用者。會出現在「待我處理」，使用者核准後才加進你的技能。不要用它改或刪使用者寫的技能。
+ *
+ * `xbot.skills.propose`：權限 operate、風險 safe
+ */
+export function skillsPropose(input: SkillsProposeInput, opts?: CallOptions): Promise<SkillsProposeOutput> {
+  return invoke('xbot.skills.propose', input, opts).then((r) => r.output)
+}
+
+// xbot.skills.update
+
+export interface SkillsUpdateInput {
+  /** Bot 的技能；不填是工作區技能庫 */
+  bot_id?: string
+  id: string
+  name?: string
+  description?: string
+  instructions?: string
+}
+
+export interface SkillsUpdateOutput {
+  /** 技能的資料夾（Bot 的技能：/hermes/skills 底下的相對路徑；技能庫：資料夾名稱） */
+  id: string
+  name: string
+  /** 什麼時候使用 */
+  description: string
+  /** 怎麼做（SKILL.md 的內文） */
+  instructions?: string
+  /** list：技能清單；library：技能庫（需要時才載入）；off：已停用 */
+  place: 'list' | 'library' | 'off'
+  enabled: boolean
+  /** hermes（Hermes 內建）、xbot（XBot 內建）、learned（從對話學到）、imported（匯入）、proposed（Bot 提議、你核准）、custom（自訂） */
+  source: string
+  /** 附帶的檔案（scripts/、references/…） */
+  files?: string[]
+  last_used_at?: string
+  /** 匯入時的檔名 */
+  origin?: string
+  created_by?: string
+  created_at: number
+  updated_at: number
+  review?: {
+    /** 內文裡會在電腦執行的指令（最多 10 條） */
+    commands: string[]
+    /** 附帶的程式檔 */
+    scripts: string[]
+  }
+}
+
+/**
+ * 修改一個技能
+ *
+ * 只改有給的欄位。SKILL.md 其他的設定（Hermes 的 platforms、tags 等）保留；位置不變。
+ *
+ * `xbot.skills.update`：權限 manage、風險 safe
+ */
+export function skillsUpdate(input: SkillsUpdateInput, opts?: CallOptions): Promise<SkillsUpdateOutput> {
+  return invoke('xbot.skills.update', input, opts).then((r) => r.output)
+}
+
 // xbot.system.ping
 
 export interface SystemPingInput {
@@ -2727,6 +3458,11 @@ export interface Ops {
   'xbot.inbox.list': { input: InboxListInput; output: InboxListOutput }
   'xbot.inbox.mark_read': { input: InboxMarkReadInput; output: InboxMarkReadOutput }
   'xbot.inbox.undo': { input: InboxUndoInput; output: InboxUndoOutput }
+  'xbot.memory.add': { input: MemoryAddInput; output: MemoryAddOutput }
+  'xbot.memory.history': { input: MemoryHistoryInput; output: MemoryHistoryOutput }
+  'xbot.memory.read': { input: MemoryReadInput; output: MemoryReadOutput }
+  'xbot.memory.restore': { input: MemoryRestoreInput; output: MemoryRestoreOutput }
+  'xbot.memory.write': { input: MemoryWriteInput; output: MemoryWriteOutput }
   'xbot.models.add_provider': { input: ModelsAddProviderInput; output: ModelsAddProviderOutput }
   'xbot.models.get': { input: ModelsGetInput; output: ModelsGetOutput }
   'xbot.models.oauth_complete': { input: ModelsOauthCompleteInput; output: ModelsOauthCompleteOutput }
@@ -2741,6 +3477,16 @@ export interface Ops {
   'xbot.models.set_provider': { input: ModelsSetProviderInput; output: ModelsSetProviderOutput }
   'xbot.models.update_provider': { input: ModelsUpdateProviderInput; output: ModelsUpdateProviderOutput }
   'xbot.settings.get': { input: SettingsGetInput; output: SettingsGetOutput }
+  'xbot.skills.create': { input: SkillsCreateInput; output: SkillsCreateOutput }
+  'xbot.skills.delete': { input: SkillsDeleteInput; output: SkillsDeleteOutput }
+  'xbot.skills.disable': { input: SkillsDisableInput; output: SkillsDisableOutput }
+  'xbot.skills.enable': { input: SkillsEnableInput; output: SkillsEnableOutput }
+  'xbot.skills.get': { input: SkillsGetInput; output: SkillsGetOutput }
+  'xbot.skills.import': { input: SkillsImportInput; output: SkillsImportOutput }
+  'xbot.skills.install_to_bot': { input: SkillsInstallToBotInput; output: SkillsInstallToBotOutput }
+  'xbot.skills.list': { input: SkillsListInput; output: SkillsListOutput }
+  'xbot.skills.propose': { input: SkillsProposeInput; output: SkillsProposeOutput }
+  'xbot.skills.update': { input: SkillsUpdateInput; output: SkillsUpdateOutput }
   'xbot.system.ping': { input: SystemPingInput; output: SystemPingOutput }
   'xbot.team.roster': { input: TeamRosterInput; output: TeamRosterOutput }
   'xbot.usage.caps': { input: UsageCapsInput; output: UsageCapsOutput }
@@ -2788,6 +3534,11 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.inbox.list': { path: '/api/v1/inbox.list', scope: 'read', risk: 'safe', mutates: false },
   'xbot.inbox.mark_read': { path: '/api/v1/inbox.mark_read', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.inbox.undo': { path: '/api/v1/inbox.undo', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.memory.add': { path: '/api/v1/memory.add', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.memory.history': { path: '/api/v1/memory.history', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.memory.read': { path: '/api/v1/memory.read', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.memory.restore': { path: '/api/v1/memory.restore', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.memory.write': { path: '/api/v1/memory.write', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.models.add_provider': { path: '/api/v1/models.add_provider', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.models.get': { path: '/api/v1/models.get', scope: 'read', risk: 'safe', mutates: false },
   'xbot.models.oauth_complete': { path: '/api/v1/models.oauth_complete', scope: 'admin', risk: 'safe', mutates: true },
@@ -2802,6 +3553,16 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.models.set_provider': { path: '/api/v1/models.set_provider', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.models.update_provider': { path: '/api/v1/models.update_provider', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.settings.get': { path: '/api/v1/settings.get', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.skills.create': { path: '/api/v1/skills.create', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.skills.delete': { path: '/api/v1/skills.delete', scope: 'manage', risk: 'confirm', mutates: true },
+  'xbot.skills.disable': { path: '/api/v1/skills.disable', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.skills.enable': { path: '/api/v1/skills.enable', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.skills.get': { path: '/api/v1/skills.get', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.skills.import': { path: '/api/v1/skills.import', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.skills.install_to_bot': { path: '/api/v1/skills.install_to_bot', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.skills.list': { path: '/api/v1/skills.list', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.skills.propose': { path: '/api/v1/skills.propose', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.skills.update': { path: '/api/v1/skills.update', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.system.ping': { path: '/api/v1/system.ping', scope: 'read', risk: 'safe', mutates: false },
   'xbot.team.roster': { path: '/api/v1/team.roster', scope: 'read', risk: 'safe', mutates: false },
   'xbot.usage.caps': { path: '/api/v1/usage.caps', scope: 'read', risk: 'safe', mutates: false },
