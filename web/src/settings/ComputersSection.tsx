@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, Cloud, House, Plus, RefreshCw, Server, ShieldCheck, TriangleAlert, WifiOff } from 'lucide-react'
+import { ChevronDown, Cloud, House, Plus, RefreshCw, Server, ShieldCheck, Smartphone, TriangleAlert, WifiOff } from 'lucide-react'
 import { hostsCheck, hostsSetDefault } from '../api/generated'
 import { linkClick, navigate } from '../router'
 import { Avatar } from '../ui/Avatar'
@@ -13,6 +13,8 @@ import { errText } from './format'
 import { Block, Group, Note, Row, SectionHeader } from './parts'
 import { DevicesEntry } from './NetworkPage'
 import { STATUS_LABEL, hostSub, loadHosts, useHosts, type HostView, type HostsState } from './hostsData'
+import { PairPhoneDialog } from '../mobile/PhoneSettings'
+import { connectionKind } from '../mobile/pwa'
 import { useRemoveHost } from './removeHost'
 
 // 設定 › 電腦與裝置（J06，PRD §16 CL-1、CL-3、CL-6、CL-8）：主機清單（狀態、資源、上面的 Bot、開機台數／上限）、
@@ -154,6 +156,7 @@ function DefaultHost({ hosts }: { hosts: HostView[] }) {
 export function ComputersSection() {
   const s = useHosts()
   const [open, setOpen] = useState(false)
+  const [pairing, setPairing] = useState(false)
   const remove = useRemoveHost()
   const hosts = s.hosts ?? []
   const local = hosts.find((h) => h.control_center)
@@ -220,6 +223,13 @@ export function ComputersSection() {
         </Block>
       )}
       <DevicesEntry />
+      <Block title="掃 QR 連手機" aside={<Button variant="primary" size="sm" icon={Smartphone} onClick={() => setPairing(true)}>連手機</Button>}>
+        <Group>
+          <Row title="不用輸入登入碼" sub="手機裝 Tailscale、登入同一個帳號，掃電腦上的 QR（網址＋一次性配對碼，5 分鐘內有效、只能用一次）就登入了。不用安裝憑證。" />
+          <Row title="這個瀏覽器" sub={`連線方式：${connectionKind()}`} />
+        </Group>
+      </Block>
+      <PairPhoneDialog open={pairing} onClose={() => setPairing(false)} />
       <Note tone="warning" icon={<Icon icon={TriangleAlert} size={18} />}>
         XBot 能控制每台主機的 Docker，等於有那台主機的最高權限：建議整台主機專給 XBot。
       </Note>

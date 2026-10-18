@@ -126,6 +126,11 @@ export function login(token: string, opts: CallOptions = {}): Promise<{ ok: true
   return authCall('login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) }, opts)
 }
 
+/** 手機用 QR 裡的一次性配對碼登入（W31）；成功後瀏覽器會記住（cookie）。 */
+export function pairLogin(code: string, opts: CallOptions = {}): Promise<{ ok: true }> {
+  return authCall('pair', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) }, opts)
+}
+
 /** 登出這個瀏覽器。 */
 export function logout(opts: CallOptions = {}): Promise<{ ok: true }> {
   return authCall('logout', { method: 'POST' }, opts)
@@ -3963,6 +3968,60 @@ export function computersWake(input: ComputersWakeInput, opts?: CallOptions): Pr
   return invoke('xbot.computers.wake', input, opts).then((r) => r.output)
 }
 
+// xbot.devices.pair_start
+
+export interface DevicesPairStartInput {
+  /** 目前網頁的網址（window.location.origin）；主機有設 XBOT_PUBLIC_URL 時用那個 */
+  origin?: string
+}
+
+export interface DevicesPairStartOutput {
+  /** 一次性配對碼（XXXX-XXXX）；也可以在手機的登入頁手動輸入。預演時是空白 */
+  code?: string
+  /** 手機要打開的網址（QR 的內容） */
+  url?: string
+  /** 到期時間（Unix 毫秒） */
+  expires_at: number
+  /** 網址是 localhost：手機連不到，要先設定 Tailscale 或 XBOT_PUBLIC_URL */
+  local_only: boolean
+  /** QR 邊長（格數，含白邊） */
+  qr_size: number
+  /** QR 黑格的 SVG path（viewBox 0 0 qr_size qr_size） */
+  qr_path: string
+}
+
+/**
+ * 產生連手機用的 QR（一次性配對碼）
+ *
+ * 手機掃 QR 打開網址就登入，不用輸入登入碼。配對碼一次性、5 分鐘內有效，換錯太多次會暫時鎖住。網址用主機的 XBOT_PUBLIC_URL（建議是 Tailscale 的 https://xbot.<tailnet>.ts.net），沒設時用 origin。只有你本人能產生。
+ *
+ * `xbot.devices.pair_start`：權限 admin、風險 safe
+ */
+export function devicesPairStart(input: DevicesPairStartInput = {}, opts?: CallOptions): Promise<DevicesPairStartOutput> {
+  return invoke('xbot.devices.pair_start', input, opts).then((r) => r.output)
+}
+
+// xbot.devices.pair_status
+
+export interface DevicesPairStatusInput {
+  /** pair_start 拿到的配對碼 */
+  code: string
+}
+
+export interface DevicesPairStatusOutput {
+  /** pending：還沒用；paired：手機已經登入；expired：過期或沒有這個碼 */
+  status: 'pending' | 'paired' | 'expired'
+}
+
+/**
+ * 看連手機的配對碼用掉了沒
+ *
+ * `xbot.devices.pair_status`：權限 admin、風險 safe
+ */
+export function devicesPairStatus(input: DevicesPairStatusInput, opts?: CallOptions): Promise<DevicesPairStatusOutput> {
+  return invoke('xbot.devices.pair_status', input, opts).then((r) => r.output)
+}
+
 // xbot.engines.link_credentials
 
 export interface EnginesLinkCredentialsInput {
@@ -6899,6 +6958,111 @@ export interface NetworkTailscaleSetOutput {
  */
 export function networkTailscaleSet(input: NetworkTailscaleSetInput, opts?: CallOptions): Promise<NetworkTailscaleSetOutput> {
   return invoke('xbot.network.tailscale_set', input, opts).then((r) => r.output)
+}
+
+// xbot.push.config
+
+export type PushConfigInput = Record<string, never>
+
+export interface PushConfigOutput {
+  /** VAPID 公鑰（base64url），給 pushManager.subscribe 的 applicationServerKey */
+  public_key: string
+  subscriptions: {
+    id: string
+    /** 裝置名稱，例：Pixel 7 */
+    label?: string
+    /** 工作完成也通知 */
+    notify_done: boolean
+    created_at: number
+    /** 推播服務，例：fcm.googleapis.com */
+    endpoint_host: string
+  }[]
+}
+
+/**
+ * 看推播設定：VAPID 公鑰與已訂閱的裝置
+ *
+ * 瀏覽器用 public_key 呼叫 pushManager.subscribe，再把結果交給 xbot.push.subscribe。
+ *
+ * `xbot.push.config`：權限 admin、風險 safe
+ */
+export function pushConfig(input: PushConfigInput = {}, opts?: CallOptions): Promise<PushConfigOutput> {
+  return invoke('xbot.push.config', input, opts).then((r) => r.output)
+}
+
+// xbot.push.subscribe
+
+export interface PushSubscribeInput {
+  /** PushSubscription.endpoint（https） */
+  endpoint: string
+  /** keys.p256dh */
+  p256dh: string
+  /** keys.auth */
+  auth: string
+  /** 裝置名稱，例：Pixel 7 */
+  label?: string
+  /** 工作完成也通知（預設只推要你決定的事） */
+  notify_done?: boolean
+}
+
+export interface PushSubscribeOutput {
+  id: string
+}
+
+/**
+ * 讓這個裝置接收推播
+ *
+ * 同一個 endpoint 再送一次會更新設定（例：改「工作完成也通知」）。要你決定的新卡一定推；notify_done 為 true 時工作完成也推。
+ *
+ * `xbot.push.subscribe`：權限 admin、風險 safe
+ */
+export function pushSubscribe(input: PushSubscribeInput, opts?: CallOptions): Promise<PushSubscribeOutput> {
+  return invoke('xbot.push.subscribe', input, opts).then((r) => r.output)
+}
+
+// xbot.push.test
+
+export interface PushTestInput {
+  /** 只送到這個裝置；不給就送到全部 */
+  endpoint?: string
+}
+
+export interface PushTestOutput {
+  sent: number
+  failed: number
+}
+
+/**
+ * 送一則測試推播
+ *
+ * 給 endpoint 時只送到那個裝置；不給就送到所有裝置。
+ *
+ * `xbot.push.test`：權限 admin、風險 safe
+ */
+export function pushTest(input: PushTestInput = {}, opts?: CallOptions): Promise<PushTestOutput> {
+  return invoke('xbot.push.test', input, opts).then((r) => r.output)
+}
+
+// xbot.push.unsubscribe
+
+export interface PushUnsubscribeInput {
+  /** 要關掉的裝置的 endpoint */
+  endpoint?: string
+  /** 或用 xbot.push.config 列出的 id */
+  id?: string
+}
+
+export interface PushUnsubscribeOutput {
+  removed: boolean
+}
+
+/**
+ * 讓一個裝置不再接收推播
+ *
+ * `xbot.push.unsubscribe`：權限 admin、風險 safe
+ */
+export function pushUnsubscribe(input: PushUnsubscribeInput = {}, opts?: CallOptions): Promise<PushUnsubscribeOutput> {
+  return invoke('xbot.push.unsubscribe', input, opts).then((r) => r.output)
 }
 
 // xbot.rooms.create
@@ -10063,6 +10227,8 @@ export interface Ops {
   'xbot.computers.takeover': { input: ComputersTakeoverInput; output: ComputersTakeoverOutput }
   'xbot.computers.update': { input: ComputersUpdateInput; output: ComputersUpdateOutput }
   'xbot.computers.wake': { input: ComputersWakeInput; output: ComputersWakeOutput }
+  'xbot.devices.pair_start': { input: DevicesPairStartInput; output: DevicesPairStartOutput }
+  'xbot.devices.pair_status': { input: DevicesPairStatusInput; output: DevicesPairStatusOutput }
   'xbot.engines.link_credentials': { input: EnginesLinkCredentialsInput; output: EnginesLinkCredentialsOutput }
   'xbot.engines.status': { input: EnginesStatusInput; output: EnginesStatusOutput }
   'xbot.engines.unlink_credentials': { input: EnginesUnlinkCredentialsInput; output: EnginesUnlinkCredentialsOutput }
@@ -10121,6 +10287,10 @@ export interface Ops {
   'xbot.network.funnel_set': { input: NetworkFunnelSetInput; output: NetworkFunnelSetOutput }
   'xbot.network.status': { input: NetworkStatusInput; output: NetworkStatusOutput }
   'xbot.network.tailscale_set': { input: NetworkTailscaleSetInput; output: NetworkTailscaleSetOutput }
+  'xbot.push.config': { input: PushConfigInput; output: PushConfigOutput }
+  'xbot.push.subscribe': { input: PushSubscribeInput; output: PushSubscribeOutput }
+  'xbot.push.test': { input: PushTestInput; output: PushTestOutput }
+  'xbot.push.unsubscribe': { input: PushUnsubscribeInput; output: PushUnsubscribeOutput }
   'xbot.rooms.create': { input: RoomsCreateInput; output: RoomsCreateOutput }
   'xbot.rooms.delete': { input: RoomsDeleteInput; output: RoomsDeleteOutput }
   'xbot.rooms.list': { input: RoomsListInput; output: RoomsListOutput }
@@ -10249,6 +10419,8 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.computers.takeover': { path: '/api/v1/computers.takeover', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.computers.update': { path: '/api/v1/computers.update', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.computers.wake': { path: '/api/v1/computers.wake', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.devices.pair_start': { path: '/api/v1/devices.pair_start', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.devices.pair_status': { path: '/api/v1/devices.pair_status', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.engines.link_credentials': { path: '/api/v1/engines.link_credentials', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.engines.status': { path: '/api/v1/engines.status', scope: 'read', risk: 'safe', mutates: false },
   'xbot.engines.unlink_credentials': { path: '/api/v1/engines.unlink_credentials', scope: 'admin', risk: 'safe', mutates: true },
@@ -10307,6 +10479,10 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.network.funnel_set': { path: '/api/v1/network.funnel_set', scope: 'admin', risk: 'confirm', mutates: true },
   'xbot.network.status': { path: '/api/v1/network.status', scope: 'read', risk: 'safe', mutates: false },
   'xbot.network.tailscale_set': { path: '/api/v1/network.tailscale_set', scope: 'admin', risk: 'confirm', mutates: true },
+  'xbot.push.config': { path: '/api/v1/push.config', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.push.subscribe': { path: '/api/v1/push.subscribe', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.push.test': { path: '/api/v1/push.test', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.push.unsubscribe': { path: '/api/v1/push.unsubscribe', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.rooms.create': { path: '/api/v1/rooms.create', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.rooms.delete': { path: '/api/v1/rooms.delete', scope: 'manage', risk: 'confirm', mutates: true },
   'xbot.rooms.list': { path: '/api/v1/rooms.list', scope: 'read', risk: 'safe', mutates: false },

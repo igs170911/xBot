@@ -197,6 +197,11 @@ export function login(token: string, opts: CallOptions = {}): Promise<{ ok: true
   return authCall('login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) }, opts)
 }
 
+/** 手機用 QR 裡的一次性配對碼登入（W31）；成功後瀏覽器會記住（cookie）。 */
+export function pairLogin(code: string, opts: CallOptions = {}): Promise<{ ok: true }> {
+  return authCall('pair', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) }, opts)
+}
+
 /** 登出這個瀏覽器。 */
 export function logout(opts: CallOptions = {}): Promise<{ ok: true }> {
   return authCall('logout', { method: 'POST' }, opts)

@@ -30,8 +30,11 @@ export function resolveTheme(choice: ThemeChoice): 'dark' | 'light' {
 
 function apply(choice: ThemeChoice) {
   const root = document.documentElement
-  if (resolveTheme(choice) === 'light') root.setAttribute('data-theme', 'light')
+  const light = resolveTheme(choice) === 'light'
+  if (light) root.setAttribute('data-theme', 'light')
   else root.removeAttribute('data-theme')
+  // 手機的狀態列與 PWA 視窗外框跟著主題（W31）
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', light ? '#ffffff' : '#070707')
 }
 
 export function setTheme(choice: ThemeChoice) {

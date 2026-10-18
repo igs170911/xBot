@@ -19,6 +19,7 @@ import (
 	"xbot/internal/events"
 	"xbot/internal/mcpserver"
 	"xbot/internal/network"
+	"xbot/internal/push"
 	"xbot/internal/store"
 	"xbot/internal/version"
 	"xbot/web"
@@ -84,7 +85,12 @@ func cmdServe(args []string) error {
 	if publicURL != "" {
 		slog.Info("反向代理模式：從反向代理進來的請求只開放 /mcp、/api/v1/agents.pair、/hooks/*", "public_url", publicURL)
 	}
-	reg := buildRegistry(st.db, pairing, notify, st)
+	// 手機掃 QR 登入（W31、§17）：QR 的網址優先用內建 Tailscale 的 tailnet 網址（反向代理／Funnel 的對外網址只開放 MCP 入口，不能用）；
+	// 沒有時用你打開網頁的網址。Web Push：新的待我處理卡推到手機。
+	devices := auth.NewDevicePairing(st.db, "")
+	devices.BaseURL = func() string { return st.network.Status(false).Tailscale.URL }
+	pusher := push.New(st.db)
+	reg := buildRegistry(st.db, pairing, notify, st, pwaDeps{devices: devices, push: pusher})
 	// Bot 經自己的 product.sock 用 XBot MCP（C11）：身分就是那個 Bot。
 	st.sockets.SetProduct(mcpserver.BotHandler(reg, mcpserver.BotOptions{Keys: st.keys, DB: st.db, Logger: slog.Default()}))
 	// 權杖驗證 HTTP 與 MCP 共用（登入碼＝你本人，代理權杖＝那個代理）。
@@ -103,6 +109,7 @@ func cmdServe(args []string) error {
 		ModelProxy: st.model,
 		MCP:        mcpHandler,
 		AgentPair:  pairing.Handler(),
+		DevicePair: devices,
 		Hooks:      st.routines.HookHandler(),
 		// 連接應用程式的 OAuth 回呼（C34）。
 		AppsCallback: st.apps.CallbackHandler(),
@@ -137,6 +144,8 @@ func cmdServe(args []string) error {
 	go st.org.Run(ctx)
 	// 接手後太久沒人操作的自動交還（B14）。
 	go st.screen.Run(ctx)
+	// 新的待我處理卡推播到訂閱的裝置。
+	go pusher.Run(ctx, bus)
 
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()

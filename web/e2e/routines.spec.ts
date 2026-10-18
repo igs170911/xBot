@@ -99,13 +99,16 @@ test('一句話建立定時任務、清單、行事曆、網址觸發', async ({
 
   // 行事曆：這週（下週三那週）看得到排程，Bot 篩選。
   await page.goto('/calendar')
-  await expect(page.getByRole('heading', { level: 1, name: '行事曆' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: desktop ? '行事曆' : /年 \d+ 月/ })).toBeVisible()
   await expect(page.getByTestId('cal-event').first()).toBeVisible()
   await ready(page)
   await page.screenshot({ path: shot(`${info.project.name}-calendar`), fullPage: !desktop })
-  await page.getByRole('radio', { name: '清單' }).click()
-  await expect(page.getByTestId('cal-list')).toContainText('整理新聞給我')
-  await page.screenshot({ path: shot(`${info.project.name}-calendar-list`), fullPage: !desktop })
+  if (desktop) {
+    // 手機（L16）只有日檢視；清單在「定時任務」頁
+    await page.getByRole('radio', { name: '清單' }).click()
+    await expect(page.getByTestId('cal-list')).toContainText('整理新聞給我')
+    await page.screenshot({ path: shot(`${info.project.name}-calendar-list`), fullPage: !desktop })
+  }
 
   // 點空格：帶著日期時間打開一句話建立。
   if (desktop) {
