@@ -26,6 +26,7 @@ const TITLES: Record<string, string> = {
 }
 
 const BOT_PATH = /^\/bots\/([^/]+)(?:\/threads\/([^/]+))?\/?$/
+const COMPUTER_PATH = /^\/bots\/([^/]+)\/computer\/?$/
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -64,7 +65,9 @@ function Main() {
   }, [])
 
   const bot = path.match(BOT_PATH)
-  const title = path === '/' ? '待我處理' : bot ? (bots?.find((b) => b.id === bot[1])?.name ?? '對話') : path.startsWith('/rooms/') ? '群組對話' : (TITLES[path] ?? 'XBot')
+  const computer = path.match(COMPUTER_PATH)
+  const botName = (id: string) => bots?.find((b) => b.id === id)?.name
+  const title = path === '/' ? '待我處理' : bot ? (botName(bot[1]) ?? '對話') : computer ? `${botName(computer[1]) ?? 'Bot'}的電腦` : path.startsWith('/rooms/') ? '群組對話' : (TITLES[path] ?? 'XBot')
 
   let page
   if (path === '/') page = <InboxPage />
