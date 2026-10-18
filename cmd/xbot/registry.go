@@ -41,6 +41,7 @@ func coreDeps(st *stack) catalog.Deps {
 		Org:       st.org,
 		Skills:    st.skills,
 		Memory:    st.memory,
+		Files:     st.files,
 		Judge:     st.judge,
 		SoulChanged: func(ctx context.Context, botID string) {
 			if err := st.comp.RefreshSoul(ctx, botID); err != nil {

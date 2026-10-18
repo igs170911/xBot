@@ -37,3 +37,4 @@
 | X04 任務完成判定 | ✅ 完成 | `task/X04-taskdone` | LazyBoy 規則逐字移植（PROMISE 因 Go 無 lookahead 改寫成等價列舉）；只承諾的隊友請求也會補做（LazyBoy 不會）；needs_person 比 LazyBoy 稍寬；`xbot.tasks.progress`、判定更正（給 X05 校正）；migration 0013；順手修 Wait 與 Send 取消的 bug | 「卡住的背景幫手」還沒有資料來源；needs_person 卡片要不要能直接回答；進度對話框尚未改用 tasks.progress |
 | X03 團隊、匯報線、提案、議程 | ✅ 完成 | `task/X03-org` | 團隊主管放 team.chief_id，is_chief 維持「主要 Bot」；議程頁在 `/agenda`（`/calendar` 給 C32）；擁有者也受 50 個 Bot 上限；議程每 30 秒檢查一次（LazyBoy 2 秒）；LazyBoy 測試移植 22 個；migration 0012 | 改團隊後執行中的 Bot 要重開才吃到新提示；ICS 行事曆、每週學習、團隊記憶提案、主管刪 Bot 未做；提案無法復原 |
 | CP5＋CP6（關卡 G2） | ✅ 通過（自動測試） | tag `cp5`、`cp6` | 用假 Hermes 驗證；真模型群組情境尚未跑（省額度） | — |
+| C33 檔案 | ✅ 完成 | `task/C33-files` | 檔案是獨立頁面（電腦側欄還是佔位）；PDF 用瀏覽器檢視、Office 只能下載；XLSX 自己寫的小讀取器；列資料夾需要電腦開機（其餘操作關機也行）；傳給其他 Bot 是複製；順手修 memory_version 排序的偶發失敗 | E08 資料分頁（SQL）未做；列檔要不要自動開機；Bot 產生的 HTML 要不要沙箱預覽 |

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"sync"
 	"time"
 
@@ -29,7 +30,12 @@ const (
 	OutcomeNotConfigured = "not_configured"
 	OutcomeLocked        = "locked"
 	OutcomeOff           = "off"
+	// OutcomeNoFunds：供應商說帳戶餘額不足（例：OpenCode Zen 沒有儲值，Jev 要 Zen 的隨用隨付餘額）。
+	OutcomeNoFunds = "no_funds"
 )
+
+// noFundsRe 認出「餘額不足」類的錯誤（OpenCode Zen：Upstream request failed: Insufficient account funds）。
+var noFundsRe = regexp.MustCompile(`(?i)insufficient (account )?(funds|balance|credits?)|out of credits|payment required|餘額不足`)
 
 // SettingKey 是快判設定在 setting 表的 key。
 const SettingKey = "judge.settings"
@@ -193,7 +199,7 @@ func chain(u *Use, set Settings) []tierTry {
 	if u.Tier == Tier1 && set.Tier1.On() {
 		out = append(out, tierTry{Tier1, set.Tier1})
 	}
-	if set.Tier2.On() {
+	if set.Tier2.On() && (len(out) == 0 || set.Tier2 != out[0].tm) {
 		out = append(out, tierTry{Tier2, set.Tier2})
 	}
 	if set.Local.On() {
@@ -297,6 +303,9 @@ func (s *Service) decide(ctx context.Context, u *Use, a Ask, force Mode) Decisio
 			}
 		}
 		outcome = oc
+		if v == nil && run.Provider == "" && oc != OutcomeNotConfigured {
+			run.Tier, run.Provider, run.Model = t.name, t.tm.Provider, t.tm.Model // 記下是哪一層出問題（J10 顯示）
+		}
 		if v != nil {
 			run.Tier, run.Provider, run.Model = t.name, t.tm.Provider, t.tm.Model
 			run.ModelLabel, run.P, run.Why = v.Label, v.P, v.Why
@@ -338,6 +347,9 @@ func (s *Service) ask(ctx context.Context, u *Use, a Ask, options []Option, t ti
 	case err != nil:
 		s.log().Info("快判：呼叫模型失敗，退回規則", "use", u.ID, "tier", t.name, "err", err)
 		return nil, OutcomeError
+	case noFundsRe.Match(resp) && (status >= 400 || parseOK(resp) != nil):
+		s.log().Info("快判：供應商餘額不足，退回規則", "use", u.ID, "tier", t.name, "provider", t.tm.Provider)
+		return nil, OutcomeNoFunds
 	case status == http.StatusTooManyRequests:
 		return nil, OutcomeRateLimited
 	case status >= 400:
@@ -432,4 +444,10 @@ func slicesContains(list []string, v string) bool {
 		}
 	}
 	return false
+}
+
+// parseOK 回答回應是不是合格的模型回答（nil 表示是）。
+func parseOK(resp []byte) error {
+	_, err := parseReply(resp)
+	return err
 }

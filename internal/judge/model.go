@@ -61,7 +61,8 @@ func buildRequest(u *Use, a Ask, options []Option, model string) []byte {
 			{"role": "user", "content": string(content)},
 		},
 	}
-	if u.Choice() {
+	// JSON schema 只給 Jev（決策模型，OpenMausBot 經 OpenRouter 用過）；其他模型（例：Go flash 代替 Jev 做選擇題）用 json_object。
+	if u.Choice() && strings.Contains(strings.ToLower(model), "jev") {
 		keys := make([]string, len(options))
 		for i, o := range options {
 			keys[i] = o.Key
@@ -74,7 +75,7 @@ func buildRequest(u *Use, a Ask, options []Option, model string) []byte {
 					"why": map[string]any{"type": "string"}},
 			}}}
 	} else {
-		req["max_tokens"] = limits.JudgeTextMaxTokens
+		req["max_tokens"] = limits.JudgeTextMaxTokens // flash 模型可能先用掉推理 token，選擇題也給多一點
 		req["response_format"] = map[string]any{"type": "json_object"}
 	}
 	b, _ := json.Marshal(req)

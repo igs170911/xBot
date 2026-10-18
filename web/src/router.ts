@@ -23,6 +23,12 @@ export function usePath(): string {
   return useSyncExternalStore(subscribe, () => window.location.pathname, () => '/')
 }
 
+/** 網址的查詢字串（?a=b），跟著 navigate 與上一頁更新。 */
+export function useSearch(): URLSearchParams {
+  const raw = useSyncExternalStore(subscribe, () => window.location.search, () => '')
+  return new URLSearchParams(raw)
+}
+
 // 給 <a href> 用：一般點擊交給前端路由，Ctrl／中鍵照瀏覽器原本的行為。
 export function linkClick(to: string, after?: () => void) {
   return (e: MouseEvent<HTMLAnchorElement>) => {

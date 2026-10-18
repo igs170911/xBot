@@ -34,6 +34,7 @@ function judgeState() {
     uses: USES.map(([n, id, name, tier, wait]) => ({ id, n, name, desc: '說明', tier, wait_ms: wait, wired: id !== 'approval', default_mode: 'shadow', mode: st.settings.modes[id] })),
     today: { calls: 128, tier2_calls: 23, daily_cap: st.settings.daily_cap, tier2_cap: 100, capped: false, cost_micros: 5400, requests: 128, input_tokens: 120000, output_tokens: 900 },
     min_p: 0.6,
+    problems: st.settings.tier1.provider === 'opencode-zen' ? [{ kind: 'no_funds', provider: 'opencode-zen', message: 'OpenCode Zen 餘額不足（Jev 需要 Zen 儲值）' }] : [],
   })
   return { st, view }
 }
@@ -81,9 +82,15 @@ test('J10 快判設定：逐項切換影子／生效、改每日上限、看一�
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-j10-fastjudge`), fullPage: true })
 
+  // Zen 沒儲值：顯示餘額不足，一鍵改用 Go flash 做選擇題。
+  await expect(m.getByText('OpenCode Zen 餘額不足（Jev 需要 Zen 儲值）；這段時間快判先照規則。')).toBeVisible()
+  await m.getByRole('button', { name: '改用 Go flash 做選擇題' }).click()
+  await expect.poll(() => api.calls.find((c) => c.op === 'judge.settings_set')?.input).toEqual({ tier1: { provider: 'opencode-go', model: 'deepseek-v4-flash' } })
+  await expect(m.getByText(/餘額不足/)).toHaveCount(0)
+
   // 逐項切換：立刻送出。
   await done.getByRole('radio', { name: '生效' }).click()
-  await expect.poll(() => api.calls.find((c) => c.op === 'judge.settings_set')?.input).toEqual({ modes: { task_done: 'live' } })
+  await expect.poll(() => api.calls.filter((c) => c.op === 'judge.settings_set').at(-1)?.input).toEqual({ modes: { task_done: 'live' } })
   await expect(done.getByRole('radio', { name: '生效' })).toHaveAttribute('aria-checked', 'true')
 
   // 每日上限。

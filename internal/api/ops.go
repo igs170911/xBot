@@ -144,6 +144,30 @@ func (s *server) opHandler(info ops.Info) http.HandlerFunc {
 	}
 }
 
+// StreamHandler 處理內容不走 JSON 的請求（檔案上傳下載）。id 是已經驗證過的身分。
+// 寫出任何內容前回傳的錯誤會寫成一般的錯誤回應（{"error": …}）。
+type StreamHandler func(w http.ResponseWriter, r *http.Request, id ops.Identity) error
+
+func (s *server) stream(h StreamHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := h(w, r, identityFrom(r.Context())); err != nil {
+			writeError(w, 0, ops.AsError(err))
+		}
+	}
+}
+
+// streamOrOp：JSON 請求交給操作，其他交給 h。
+func (s *server) streamOrOp(h StreamHandler, op http.HandlerFunc) http.HandlerFunc {
+	st := s.stream(h)
+	return func(w http.ResponseWriter, r *http.Request) {
+		if mt, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mt == "application/json" || r.ContentLength == 0 {
+			op(w, r)
+			return
+		}
+		st(w, r)
+	}
+}
+
 // listOps：GET /api/v1/ops，列出所有操作和它們的 JSON Schema。
 func (s *server) listOps(w http.ResponseWriter, _ *http.Request) {
 	type route struct {

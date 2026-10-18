@@ -128,6 +128,34 @@ export function logout(opts: CallOptions = {}): Promise<{ ok: true }> {
   return authCall('logout', { method: 'POST' }, opts)
 }
 
+// ── 檔案上傳下載（內容不走 JSON，C33）──────────────────
+
+/** Bot 電腦裡一個檔案的下載網址（GET，同一個登入）。inline：在瀏覽器裡直接顯示（圖片、PDF、純文字）；thumb：縮圖。 */
+export function filesDownloadUrl(botId: string, path: string, opts: { inline?: boolean; thumb?: boolean } = {}): string {
+  const q = new URLSearchParams({ bot_id: botId, path })
+  if (opts.inline) q.set('inline', '1')
+  if (opts.thumb) q.set('thumb', '1')
+  return '/api/v1/files.download?' + q.toString()
+}
+
+/** 上傳檔案到 Bot 電腦的資料夾（multipart，每個檔案經 xbot.files.upload）。dir 空白是 /workspace/uploads。 */
+export async function filesUploadForm(botId: string, files: File[], dir = '', opts: CallOptions = {}): Promise<FilesUploadOutput[]> {
+  const form = new FormData()
+  for (const f of files) form.append('file', f, f.name)
+  const q = new URLSearchParams({ bot_id: botId })
+  if (dir) q.set('dir', dir)
+  const res = await (opts.fetch ?? fetch)((opts.baseUrl ?? '') + '/api/v1/files.upload?' + q.toString(), {
+    method: 'POST',
+    body: form,
+    credentials: 'same-origin',
+    signal: opts.signal,
+  })
+  const body = (await res.json().catch(() => null)) as { files?: FilesUploadOutput[]; error?: ApiErrorBody } | null
+  if (body?.error) throw new ApiError(res.status, body.error)
+  if (!res.ok || !body?.files) throw new ApiError(res.status, { code: 'internal', message: '服務沒有正常回應，請稍後再試', retryable: true })
+  return body.files
+}
+
 // ── 事件（SSE）────────────────────────────────────────
 
 /** 一筆事件。沒有 id 的是即時事件（例：串流文字），斷線後不會補送。 */
@@ -1602,6 +1630,18 @@ export interface ChatReadOutput {
       /** 你按「不對？」改正成哪一種 */
       corrected?: 'done' | 'needs_person' | 'handed_back' | 'only_promised' | 'stuck'
     }
+    card?: {
+      /** info、approval、file */
+      type: string
+      title: string
+      body?: string
+      approval_id?: string
+      category?: string
+      files?: {
+        path: string
+        name?: string
+      }[]
+    }
     created_at: number
     updated_at: number
   }[]
@@ -2259,6 +2299,426 @@ export interface EnginesUnlinkCredentialsOutput {
  */
 export function enginesUnlinkCredentials(input: EnginesUnlinkCredentialsInput, opts?: CallOptions): Promise<EnginesUnlinkCredentialsOutput> {
   return invoke('xbot.engines.unlink_credentials', input, opts).then((r) => r.output)
+}
+
+// xbot.files.delete
+
+export interface FilesDeleteInput {
+  /** Bot id */
+  bot_id: string
+  /** 完整路徑，例：/workspace/報告 */
+  path: string
+}
+
+export interface FilesDeleteOutput {
+  path: string
+  deleted: boolean
+}
+
+/**
+ * 刪除 Bot 電腦裡的檔案
+ *
+ * 刪除一個檔案或整個資料夾，不能復原。代理或 Bot 呼叫時一律送到「待我處理」等你允許，不能代為核准。電腦沒開機時會先開機。
+ *
+ * `xbot.files.delete`：權限 operate、風險 confirm
+ */
+export function filesDelete(input: FilesDeleteInput, opts?: CallOptions): Promise<FilesDeleteOutput> {
+  return invoke('xbot.files.delete', input, opts).then((r) => r.output)
+}
+
+// xbot.files.download
+
+export interface FilesDownloadInput {
+  /** Bot id */
+  bot_id: string
+  /** 完整路徑，例：/workspace/報告 */
+  path: string
+}
+
+export interface FilesDownloadOutput {
+  name: string
+  /** 完整路徑，/workspace/… */
+  path: string
+  dir: boolean
+  /** 位元組；資料夾是 0 或檔案系統的值 */
+  size: number
+  /** 最後修改時間（Unix 毫秒） */
+  modified: number
+  kind: 'folder' | 'image' | 'pdf' | 'csv' | 'sheet' | 'markdown' | 'code' | 'text' | 'office' | 'archive' | 'audio' | 'video' | 'other'
+  mime?: string
+  /** all=true 時：result 成果、upload 你上傳的、lesson 示範教學、peer 從隊友來的 */
+  group?: 'result' | 'upload' | 'lesson' | 'peer'
+  /** group=peer 時：哪個隊友帶來的 */
+  from?: string
+  /** 是 Bot 做出的成果（不是建置產物、快取、鎖定檔） */
+  important: boolean
+  /** 下載網址（GET，同一個登入） */
+  url: string
+}
+
+/**
+ * 取得 Bot 電腦裡一個檔案的下載網址
+ *
+ * 回傳檔案資訊與下載網址（GET /api/v1/files.download?bot_id=…&path=…，用同一個登入或權杖）。
+ *
+ * `xbot.files.download`：權限 read、風險 safe
+ */
+export function filesDownload(input: FilesDownloadInput, opts?: CallOptions): Promise<FilesDownloadOutput> {
+  return invoke('xbot.files.download', input, opts).then((r) => r.output)
+}
+
+// xbot.files.list
+
+export interface FilesListInput {
+  /** Bot id；Bot 自己呼叫時不用填（就是你自己） */
+  bot_id?: string
+  /** 要看的資料夾，例：/workspace/報告；不填是 /workspace */
+  path?: string
+  /** true：列出所有檔案（略過隱藏檔與套件資料夾，最新的在前，最多 500 個），忽略 path */
+  all?: boolean
+  /** 資料夾裡以 . 開頭的也列出 */
+  hidden?: boolean
+  /** 從第幾項開始（分頁） */
+  offset?: number
+  /** 最多幾項；不填 300 */
+  limit?: number
+  /** 電腦沒開機時先開機（列檔案要在電腦裡執行指令） */
+  wake?: boolean
+}
+
+export interface FilesListOutput {
+  bot_id: string
+  /** 這個資料夾的完整路徑 */
+  path: string
+  /** ready：列好了；off：電腦沒開機（wake=true 再試）；none：Bot 還沒有電腦 */
+  state: 'ready' | 'off' | 'none'
+  /** 資料夾在前，再依名稱排序；all=true 時成果在前、再依修改時間新到舊 */
+  entries: {
+    name: string
+    /** 完整路徑，/workspace/… */
+    path: string
+    dir: boolean
+    /** 位元組；資料夾是 0 或檔案系統的值 */
+    size: number
+    /** 最後修改時間（Unix 毫秒） */
+    modified: number
+    kind: 'folder' | 'image' | 'pdf' | 'csv' | 'sheet' | 'markdown' | 'code' | 'text' | 'office' | 'archive' | 'audio' | 'video' | 'other'
+    mime?: string
+    /** all=true 時：result 成果、upload 你上傳的、lesson 示範教學、peer 從隊友來的 */
+    group?: 'result' | 'upload' | 'lesson' | 'peer'
+    /** group=peer 時：哪個隊友帶來的 */
+    from?: string
+    /** 是 Bot 做出的成果（不是建置產物、快取、鎖定檔） */
+    important: boolean
+  }[]
+  /** 總項數（分頁用） */
+  total: number
+  offset: number
+  /** 項目太多，只讀了前面一部分 */
+  truncated: boolean
+}
+
+/**
+ * 列出 Bot 電腦裡的檔案
+ *
+ * 看 /workspace 底下一個資料夾（資料夾在前、依名稱排序、分頁），或用 all=true 列出所有檔案（成果在前、新的在前）。電腦沒開機時回 state=off，帶 wake=true 會先開機。
+ *
+ * `xbot.files.list`：權限 read、風險 safe
+ */
+export function filesList(input: FilesListInput = {}, opts?: CallOptions): Promise<FilesListOutput> {
+  return invoke('xbot.files.list', input, opts).then((r) => r.output)
+}
+
+// xbot.files.mkdir
+
+export interface FilesMkdirInput {
+  /** Bot id */
+  bot_id: string
+  /** 完整路徑，例：/workspace/報告 */
+  path: string
+}
+
+export interface FilesMkdirOutput {
+  name: string
+  /** 完整路徑，/workspace/… */
+  path: string
+  dir: boolean
+  /** 位元組；資料夾是 0 或檔案系統的值 */
+  size: number
+  /** 最後修改時間（Unix 毫秒） */
+  modified: number
+  kind: 'folder' | 'image' | 'pdf' | 'csv' | 'sheet' | 'markdown' | 'code' | 'text' | 'office' | 'archive' | 'audio' | 'video' | 'other'
+  mime?: string
+  /** all=true 時：result 成果、upload 你上傳的、lesson 示範教學、peer 從隊友來的 */
+  group?: 'result' | 'upload' | 'lesson' | 'peer'
+  /** group=peer 時：哪個隊友帶來的 */
+  from?: string
+  /** 是 Bot 做出的成果（不是建置產物、快取、鎖定檔） */
+  important: boolean
+}
+
+/**
+ * 在 Bot 電腦裡建資料夾
+ *
+ * 可以一次建多層；已經有同名資料夾不算錯。
+ *
+ * `xbot.files.mkdir`：權限 operate、風險 safe
+ */
+export function filesMkdir(input: FilesMkdirInput, opts?: CallOptions): Promise<FilesMkdirOutput> {
+  return invoke('xbot.files.mkdir', input, opts).then((r) => r.output)
+}
+
+// xbot.files.move
+
+export interface FilesMoveInput {
+  /** Bot id */
+  bot_id: string
+  /** 原本的完整路徑 */
+  from: string
+  /** 新的完整路徑（改名或搬到別的資料夾）；已經存在時回 conflict */
+  to: string
+}
+
+export interface FilesMoveOutput {
+  name: string
+  /** 完整路徑，/workspace/… */
+  path: string
+  dir: boolean
+  /** 位元組；資料夾是 0 或檔案系統的值 */
+  size: number
+  /** 最後修改時間（Unix 毫秒） */
+  modified: number
+  kind: 'folder' | 'image' | 'pdf' | 'csv' | 'sheet' | 'markdown' | 'code' | 'text' | 'office' | 'archive' | 'audio' | 'video' | 'other'
+  mime?: string
+  /** all=true 時：result 成果、upload 你上傳的、lesson 示範教學、peer 從隊友來的 */
+  group?: 'result' | 'upload' | 'lesson' | 'peer'
+  /** group=peer 時：哪個隊友帶來的 */
+  from?: string
+  /** 是 Bot 做出的成果（不是建置產物、快取、鎖定檔） */
+  important: boolean
+}
+
+/**
+ * 搬移或改名 Bot 電腦裡的檔案
+ *
+ * 在同一台 Bot 電腦的 /workspace 裡搬移或改名（檔案或資料夾）。目的地已經存在時回 conflict，不會蓋掉。電腦沒開機時會先開機。
+ *
+ * `xbot.files.move`：權限 operate、風險 safe
+ */
+export function filesMove(input: FilesMoveInput, opts?: CallOptions): Promise<FilesMoveOutput> {
+  return invoke('xbot.files.move', input, opts).then((r) => r.output)
+}
+
+// xbot.files.move_between_bots
+
+export interface FilesMoveBetweenBotsInput {
+  /** 檔案在哪個 Bot 的電腦 */
+  bot_id: string
+  /** 傳給哪個 Bot */
+  to_bot_id: string
+  /** 要傳的檔案（完整路徑，最多 10 個） */
+  paths: string[]
+}
+
+export interface FilesMoveBetweenBotsOutput {
+  /** 傳過去的檔案：在對方電腦的 /workspace/from/<寄件者>/… */
+  files: {
+    from: string
+    to: string
+    size: number
+    /** 對方已經有內容相同的檔案，沒有再複製 */
+    reused: boolean
+  }[]
+  skipped: {
+    path: string
+    reason: string
+  }[]
+}
+
+/**
+ * 把檔案傳給另一個 Bot
+ *
+ * 複製到對方電腦的 /workspace/from/<寄件者>/（和 Bot 之間帶檔相同，X02）：對方已經有內容相同的檔案就不再複製。原本的檔案留著。一次最多 10 個、合計 50 MB；超過的略過並寫出原因。
+ *
+ * `xbot.files.move_between_bots`：權限 operate、風險 safe
+ */
+export function filesMoveBetweenBots(input: FilesMoveBetweenBotsInput, opts?: CallOptions): Promise<FilesMoveBetweenBotsOutput> {
+  return invoke('xbot.files.move_between_bots', input, opts).then((r) => r.output)
+}
+
+// xbot.files.read
+
+export interface FilesReadInput {
+  /** Bot id；Bot 自己呼叫時不用填（就是你自己） */
+  bot_id?: string
+  /** 檔案的完整路徑，例：/workspace/報告.md */
+  path: string
+  /** 文字最多讀幾個位元組；不填 256 KB */
+  max_bytes?: number
+  /** Excel：要看哪個工作表；不填第一個 */
+  sheet?: string
+}
+
+export interface FilesReadOutput {
+  name: string
+  /** 完整路徑，/workspace/… */
+  path: string
+  dir: boolean
+  /** 位元組；資料夾是 0 或檔案系統的值 */
+  size: number
+  /** 最後修改時間（Unix 毫秒） */
+  modified: number
+  kind: 'folder' | 'image' | 'pdf' | 'csv' | 'sheet' | 'markdown' | 'code' | 'text' | 'office' | 'archive' | 'audio' | 'video' | 'other'
+  mime?: string
+  /** all=true 時：result 成果、upload 你上傳的、lesson 示範教學、peer 從隊友來的 */
+  group?: 'result' | 'upload' | 'lesson' | 'peer'
+  /** group=peer 時：哪個隊友帶來的 */
+  from?: string
+  /** 是 Bot 做出的成果（不是建置產物、快取、鎖定檔） */
+  important: boolean
+  /** 文字內容（文字、Markdown、程式碼、CSV 原始內容） */
+  text?: string
+  /** 檔案比較大，只讀了前面 */
+  truncated: boolean
+  /** utf-8 或 big5 */
+  encoding?: string
+  /** 不是文字檔：只有資訊，請下載 */
+  binary: boolean
+  /** 程式碼的語言（副檔名） */
+  language?: string
+  /** CSV、Excel 的表格 */
+  table?: {
+    /** 第一列（欄名） */
+    columns: string[]
+    /** 之後的列，最多 1,000 列 */
+    rows: string[][]
+    /** 資料列總數（不含欄名）；-1 表示檔案太大沒有數完 */
+    total_rows: number
+    /** 只顯示前面幾列或幾欄 */
+    truncated: boolean
+    /** Excel 的工作表名稱 */
+    sheets?: string[]
+    /** 這是哪一個工作表 */
+    sheet?: string
+  }
+  /** 壓縮檔裡有什麼 */
+  archive?: {
+    entries: {
+      name: string
+      size: number
+      dir: boolean
+    }[]
+    /** 總項數（數到上限為止） */
+    total: number
+    truncated: boolean
+  }
+  /** 沒有預覽的原因，例：檔案太大 */
+  note?: string
+  /** 下載網址（GET） */
+  download_url: string
+  /** 在瀏覽器直接顯示的網址（圖片、PDF、音訊、影片） */
+  inline_url?: string
+  /** 縮圖網址（PNG、JPEG、GIF） */
+  thumb_url?: string
+}
+
+/**
+ * 預覽 Bot 電腦裡的一個檔案
+ *
+ * 文字、Markdown、程式碼回傳內容（大檔只讀前面）；CSV、Excel 回傳前 1,000 列的表格；壓縮檔列出裡面有什麼；圖片、PDF 與其他檔案回傳資訊與下載網址。經過連結（symlink）的路徑不開啟。
+ *
+ * `xbot.files.read`：權限 read、風險 safe
+ */
+export function filesRead(input: FilesReadInput, opts?: CallOptions): Promise<FilesReadOutput> {
+  return invoke('xbot.files.read', input, opts).then((r) => r.output)
+}
+
+// xbot.files.upload
+
+export interface FilesUploadInput {
+  /** Bot id */
+  bot_id: string
+  /** 放到哪個資料夾；不填是 /workspace/uploads */
+  dir?: string
+  /** 檔名；同名時自動加上 (2)、(3)… */
+  name: string
+  /** 檔案內容（base64）；大檔請用 HTTP multipart：POST /api/v1/files.upload?bot_id=…&dir=…（密鑰：只能寫、不能讀） */
+  content_base64?: string
+  /** multipart 上傳時由服務填入 */
+  size?: number
+}
+
+export interface FilesUploadOutput {
+  name: string
+  /** 完整路徑，/workspace/… */
+  path: string
+  dir: boolean
+  /** 位元組；資料夾是 0 或檔案系統的值 */
+  size: number
+  /** 最後修改時間（Unix 毫秒） */
+  modified: number
+  kind: 'folder' | 'image' | 'pdf' | 'csv' | 'sheet' | 'markdown' | 'code' | 'text' | 'office' | 'archive' | 'audio' | 'video' | 'other'
+  mime?: string
+  /** all=true 時：result 成果、upload 你上傳的、lesson 示範教學、peer 從隊友來的 */
+  group?: 'result' | 'upload' | 'lesson' | 'peer'
+  /** group=peer 時：哪個隊友帶來的 */
+  from?: string
+  /** 是 Bot 做出的成果（不是建置產物、快取、鎖定檔） */
+  important: boolean
+}
+
+/**
+ * 上傳檔案到 Bot 電腦
+ *
+ * 放到 /workspace 的資料夾（預設 uploads）。一個檔案最多 50 MB（圖片 20 MB），一次最多 10 個、合計 200 MB。大檔請用 HTTP：POST /api/v1/files.upload?bot_id=…&dir=…（multipart/form-data，欄位 file）。
+ *
+ * `xbot.files.upload`：權限 operate、風險 safe
+ */
+export function filesUpload(input: FilesUploadInput, opts?: CallOptions): Promise<FilesUploadOutput> {
+  return invoke('xbot.files.upload', input, opts).then((r) => r.output)
+}
+
+// xbot.files.write
+
+export interface FilesWriteInput {
+  /** Bot id */
+  bot_id: string
+  /** 檔案的完整路徑，例：/workspace/筆記.md；缺的資料夾會一起建 */
+  path: string
+  /** 文字內容（UTF-8） */
+  content?: string
+  /** 已經有這個檔案時換掉（要你核准）；不帶時遇到同名回 conflict */
+  overwrite?: boolean
+}
+
+export interface FilesWriteOutput {
+  name: string
+  /** 完整路徑，/workspace/… */
+  path: string
+  dir: boolean
+  /** 位元組；資料夾是 0 或檔案系統的值 */
+  size: number
+  /** 最後修改時間（Unix 毫秒） */
+  modified: number
+  kind: 'folder' | 'image' | 'pdf' | 'csv' | 'sheet' | 'markdown' | 'code' | 'text' | 'office' | 'archive' | 'audio' | 'video' | 'other'
+  mime?: string
+  /** all=true 時：result 成果、upload 你上傳的、lesson 示範教學、peer 從隊友來的 */
+  group?: 'result' | 'upload' | 'lesson' | 'peer'
+  /** group=peer 時：哪個隊友帶來的 */
+  from?: string
+  /** 是 Bot 做出的成果（不是建置產物、快取、鎖定檔） */
+  important: boolean
+}
+
+/**
+ * 在 Bot 電腦裡寫一個文字檔
+ *
+ * 建立文字檔（缺的資料夾一起建）。已經有同名檔案時回 conflict；帶 overwrite=true 換掉舊的，要你核准。
+ *
+ * `xbot.files.write`：權限 operate、風險 safe（依輸入可能需要核准）
+ */
+export function filesWrite(input: FilesWriteInput, opts?: CallOptions): Promise<FilesWriteOutput> {
+  return invoke('xbot.files.write', input, opts).then((r) => r.output)
 }
 
 // xbot.hosts.add
@@ -3358,6 +3818,13 @@ export interface JudgeSettingsGetOutput {
   }
   /** 第一層採用的機率門檻 */
   min_p: number
+  /** 今天遇到的供應商問題（已自動退回規則） */
+  problems: {
+    /** no_funds 餘額不足 */
+    kind: string
+    provider: string
+    message: string
+  }[]
 }
 
 /**
@@ -3472,6 +3939,13 @@ export interface JudgeSettingsSetOutput {
   }
   /** 第一層採用的機率門檻 */
   min_p: number
+  /** 今天遇到的供應商問題（已自動退回規則） */
+  problems: {
+    /** no_funds 餘額不足 */
+    kind: string
+    provider: string
+    message: string
+  }[]
 }
 
 /**
@@ -7433,6 +7907,15 @@ export interface Ops {
   'xbot.engines.link_credentials': { input: EnginesLinkCredentialsInput; output: EnginesLinkCredentialsOutput }
   'xbot.engines.status': { input: EnginesStatusInput; output: EnginesStatusOutput }
   'xbot.engines.unlink_credentials': { input: EnginesUnlinkCredentialsInput; output: EnginesUnlinkCredentialsOutput }
+  'xbot.files.delete': { input: FilesDeleteInput; output: FilesDeleteOutput }
+  'xbot.files.download': { input: FilesDownloadInput; output: FilesDownloadOutput }
+  'xbot.files.list': { input: FilesListInput; output: FilesListOutput }
+  'xbot.files.mkdir': { input: FilesMkdirInput; output: FilesMkdirOutput }
+  'xbot.files.move': { input: FilesMoveInput; output: FilesMoveOutput }
+  'xbot.files.move_between_bots': { input: FilesMoveBetweenBotsInput; output: FilesMoveBetweenBotsOutput }
+  'xbot.files.read': { input: FilesReadInput; output: FilesReadOutput }
+  'xbot.files.upload': { input: FilesUploadInput; output: FilesUploadOutput }
+  'xbot.files.write': { input: FilesWriteInput; output: FilesWriteOutput }
   'xbot.hosts.add': { input: HostsAddInput; output: HostsAddOutput }
   'xbot.hosts.check': { input: HostsCheckInput; output: HostsCheckOutput }
   'xbot.hosts.get': { input: HostsGetInput; output: HostsGetOutput }
@@ -7574,6 +8057,15 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.engines.link_credentials': { path: '/api/v1/engines.link_credentials', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.engines.status': { path: '/api/v1/engines.status', scope: 'read', risk: 'safe', mutates: false },
   'xbot.engines.unlink_credentials': { path: '/api/v1/engines.unlink_credentials', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.files.delete': { path: '/api/v1/files.delete', scope: 'operate', risk: 'confirm', mutates: true },
+  'xbot.files.download': { path: '/api/v1/files.download', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.files.list': { path: '/api/v1/files.list', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.files.mkdir': { path: '/api/v1/files.mkdir', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.files.move': { path: '/api/v1/files.move', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.files.move_between_bots': { path: '/api/v1/files.move_between_bots', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.files.read': { path: '/api/v1/files.read', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.files.upload': { path: '/api/v1/files.upload', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.files.write': { path: '/api/v1/files.write', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.hosts.add': { path: '/api/v1/hosts.add', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.hosts.check': { path: '/api/v1/hosts.check', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.hosts.get': { path: '/api/v1/hosts.get', scope: 'read', risk: 'safe', mutates: false },

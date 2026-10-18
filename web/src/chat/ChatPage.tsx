@@ -1,5 +1,5 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Activity as ActivityIcon, Cpu, Ellipsis, Monitor, Plus, Settings, X } from 'lucide-react'
+import { Activity as ActivityIcon, Cpu, Ellipsis, FolderOpen, Monitor, Plus, Settings, X } from 'lucide-react'
 import { ApiError, chatListThreads, chatSend, chatStop, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
 import { botsStore, type Bot } from '../data/bots'
 import { onEvent, onReconnect } from '../data/events'
@@ -14,6 +14,7 @@ import { cx } from '../ui/cx'
 import { ModelSettingsDialog } from '../pages/ModelSettings'
 import { activeTask, isActive, threadItems, type Activity, type ChatItem } from './assemble'
 import { cardFor } from './cards'
+import { takeMention } from '../files/mention'
 import { ChatComposer, type ComposerHandle, type ComposerMode } from './ChatComposer'
 import { chatStore, loadOlder, loadThread } from './chatStore'
 import { EmptyState } from './EmptyState'
@@ -160,6 +161,7 @@ function Header({
       />
       <span className="flex-1" />
       <ModelPicker bot={bot} models={models} onSetup={onSetupModels} className="max-sm:max-w-[124px]" />
+      <IconButton icon={FolderOpen} label={`${bot.name}的檔案`} onClick={() => navigate(`/bots/${bot.id}/files`)} />
       <IconButton icon={Monitor} label={`${bot.name}的電腦`} onClick={() => navigate(`/bots/${bot.id}/computer`)} />
       <MenuButton
         label="更多"
@@ -208,6 +210,13 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   const [olderBusy, setOlderBusy] = useState(false)
   const scroller = useRef<HTMLDivElement>(null)
   const composer = useRef<ComposerHandle>(null)
+  // 從檔案頁按「在對話中提到」：把檔案路徑放進輸入框（C33、L19）。
+  const hasBot = !!bot
+  useEffect(() => {
+    if (!hasBot) return
+    const t = takeMention(botId)
+    if (t) composer.current?.fill(t)
+  }, [hasBot, botId])
   const stick = useRef(true)
   const keepFromBottom = useRef<number | null>(null)
 

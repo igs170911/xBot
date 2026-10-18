@@ -91,7 +91,7 @@ type JudgeUseStats struct {
 func (q *Queries) JudgeStats(ctx context.Context, since int64) ([]JudgeUseStats, error) {
 	rows, err := q.r.QueryContext(ctx, `SELECT r.use, COUNT(*), COALESCE(SUM(r.calls),0),
 		COALESCE(SUM(r.model_label <> ''),0), COALESCE(SUM(r.model_label <> '' AND r.model_label = r.rule_label),0),
-		COALESCE(SUM(r.used = 'model'),0), COALESCE(SUM(r.outcome IN ('timeout','error','rate_limited','invalid')),0),
+		COALESCE(SUM(r.used = 'model'),0), COALESCE(SUM(r.outcome IN ('timeout','error','rate_limited','invalid','no_funds')),0),
 		COALESCE(SUM(c.corrected IS NOT NULL AND r.model_label <> ''),0),
 		COALESCE(SUM(c.corrected IS NOT NULL AND r.model_label <> '' AND r.model_label = c.corrected),0),
 		COALESCE(SUM(c.corrected IS NOT NULL AND r.model_label <> '' AND r.rule_label = c.corrected),0),
@@ -120,4 +120,15 @@ func (q *Queries) SumUsageEngine(ctx context.Context, engine string, since int64
 		FROM usage_entry WHERE engine = ? AND created_at >= ?`, engine, since).
 		Scan(&t.Calls, &t.InputTokens, &t.OutputTokens, &t.CacheReadTokens, &t.CacheWriteTokens, &t.CostMicros)
 	return t, err
+}
+
+// JudgeProblemProviders 回傳 since（毫秒）之後出現過某種結果（例：no_funds）的供應商，依最近的排前面。
+func (q *Queries) JudgeProblemProviders(ctx context.Context, outcome string, since int64) ([]string, error) {
+	rows, err := q.r.QueryContext(ctx, `SELECT provider FROM judge_run WHERE outcome = ? AND created_at >= ? AND provider <> ''
+		GROUP BY provider ORDER BY MAX(created_at) DESC`, outcome, since)
+	return collect(rows, err, func(s scanner) (string, error) {
+		var p string
+		err := s.Scan(&p)
+		return p, err
+	})
 }

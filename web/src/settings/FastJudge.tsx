@@ -119,12 +119,30 @@ export function FastJudge({ providers }: { providers: Provider[] }) {
   const zen = providers.find((p) => p.id === 'opencode-zen')
   const go = providers.find((p) => p.id === 'opencode-go')
   const today = data.today
+  // Jev 用不了時（例：Zen 沒儲值），選擇題改用第二層的 Go flash（Go 訂閱額度）。
+  const goFlash: Tier = s.tier2.provider ? s.tier2 : TIER2_SUGGEST[0]
   const capNum = Number(cap)
   const capValid = Number.isInteger(capNum) && capNum >= 1 && capNum <= 100000
 
   return (
     <>
       <Note icon={<Icon icon={ShieldCheck} />}>快判先用 OpenCode 的 Jev 做選擇題，只判斷、給建議；永遠不能自己刪除、花錢、對外發送或核准。</Note>
+      {data.problems.map((p) => (
+        <Note
+          key={p.provider + p.kind}
+          tone="warning"
+          icon={<Icon icon={Info} />}
+          action={
+            p.provider === s.tier1.provider && goFlash.provider ? (
+              <Button size="sm" variant="secondary" onClick={() => void save({ tier1: goFlash }, '選擇題改用 ' + ref(goFlash))}>
+                改用 Go flash 做選擇題
+              </Button>
+            ) : undefined
+          }
+        >
+          {p.message}；這段時間快判先照規則。
+        </Note>
+      ))}
       {today.capped && (
         <Note tone="warning" icon={<Icon icon={Info} />}>
           今天已經到每日上限（{today.daily_cap} 次），全部先照規則；明天自動恢復。

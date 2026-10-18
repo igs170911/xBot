@@ -571,10 +571,6 @@ func (s *Service) carryFiles(ctx context.Context, senderID, targetID, senderName
 	if s.o.Files == nil {
 		return text, nil
 	}
-	back := ""
-	if targetName != "" {
-		back = "from/" + filename(targetName) + "/"
-	}
 	moved := map[string]string{}
 	var order []string
 	var total int64
@@ -584,35 +580,18 @@ func (s *Service) carryFiles(ctx context.Context, senderID, targetID, senderName
 			continue
 		}
 		rel := strings.TrimPrefix(p, "/workspace/")
-		size, err := s.o.Files.Stat(ctx, senderID, rel)
+		c, err := CarryFile(ctx, s.o.Files, senderID, senderName, targetID, targetName, rel, limits.CarryBytesMax-total)
 		if err != nil {
+			if !errors.Is(err, ErrNoFile) && !errors.Is(err, ErrCarryLimit) {
+				s.log.Warn("複製檔案給隊友失敗", "from", senderID, "to", targetID, "path", rel, "err", err)
+			}
 			continue
 		}
-		// 收件者自己的檔案、內容沒變：指向收件者放它的地方。
-		home := rel
-		if back != "" && strings.HasPrefix(rel, back) {
-			home = rel[len(back):]
-		}
-		if s.sameFile(ctx, senderID, rel, targetID, home, size) {
-			moved[p] = "/workspace/" + home
-			order = append(order, p)
-			continue
-		}
-		if total+size > limits.CarryBytesMax {
-			continue
-		}
-		data, err := s.o.Files.Read(ctx, senderID, rel)
-		if err != nil {
-			continue
-		}
-		copyPath := "from/" + filename(senderName) + "/" + home
-		if err := s.o.Files.Write(ctx, targetID, copyPath, data); err != nil {
-			s.log.Warn("複製檔案給隊友失敗", "from", senderID, "to", targetID, "path", rel, "err", err)
-			continue
-		}
-		moved[p] = "/workspace/" + copyPath
+		moved[p] = c.To
 		order = append(order, p)
-		total += size
+		if !c.Reused {
+			total += c.Size
+		}
 	}
 	// 長的路徑先換，避免換到別的路徑的開頭。
 	keys := append([]string(nil), order...)
@@ -629,16 +608,62 @@ func (s *Service) carryFiles(ctx context.Context, senderID, targetID, senderName
 	return text, files
 }
 
-func (s *Service) sameFile(ctx context.Context, aBot, aRel, bBot, bRel string, size int64) bool {
-	other, err := s.o.Files.Stat(ctx, bBot, bRel)
+// ErrCarryLimit 表示這個檔案會超過這次帶檔的大小上限。
+var ErrCarryLimit = errors.New("檔案太大，超過一次帶檔的上限")
+
+// Carried 是帶給隊友的一個檔案。From、To 是完整路徑（/workspace/…）。
+type Carried struct {
+	From   string `json:"from"`
+	To     string `json:"to"`
+	Size   int64  `json:"size"`
+	Reused bool   `json:"reused" desc:"對方已經有內容相同的檔案，沒有再複製"`
+}
+
+// CarryFile 把寄件者 /workspace/<rel> 複製到收件者的 /workspace/from/<寄件者名稱>/<rel>（LazyBoy carry_files 的一個檔案）。
+// 收件者已經有內容相同（sha256）的檔案（常是它先前寄來、放在 from/<收件者名稱>/ 底下的）就不複製，指向它自己的那份。
+// budget 是這次還可以帶的位元組數；會超過時回 ErrCarryLimit。檔案不存在、是資料夾或連結時回 ErrNoFile。
+func CarryFile(ctx context.Context, f Files, senderID, senderName, targetID, targetName, rel string, budget int64) (Carried, error) {
+	rel, err := cleanRel(rel)
+	if err != nil {
+		return Carried{}, err
+	}
+	from := "/workspace/" + rel
+	size, err := f.Stat(ctx, senderID, rel)
+	if err != nil {
+		return Carried{}, err
+	}
+	// 收件者自己的檔案、內容沒變：指向收件者放它的地方。
+	home := rel
+	if back := "from/" + Filename(targetName) + "/"; targetName != "" && strings.HasPrefix(rel, back) {
+		home = rel[len(back):]
+	}
+	if sameFile(ctx, f, senderID, rel, targetID, home, size) {
+		return Carried{From: from, To: "/workspace/" + home, Size: size, Reused: true}, nil
+	}
+	if size > budget {
+		return Carried{}, ErrCarryLimit
+	}
+	data, err := f.Read(ctx, senderID, rel)
+	if err != nil {
+		return Carried{}, err
+	}
+	copyPath := "from/" + Filename(senderName) + "/" + home
+	if err := f.Write(ctx, targetID, copyPath, data); err != nil {
+		return Carried{}, err
+	}
+	return Carried{From: from, To: "/workspace/" + copyPath, Size: size}, nil
+}
+
+func sameFile(ctx context.Context, f Files, aBot, aRel, bBot, bRel string, size int64) bool {
+	other, err := f.Stat(ctx, bBot, bRel)
 	if err != nil || other != size {
 		return false
 	}
-	a, err := s.o.Files.Read(ctx, aBot, aRel)
+	a, err := f.Read(ctx, aBot, aRel)
 	if err != nil {
 		return false
 	}
-	b, err := s.o.Files.Read(ctx, bBot, bRel)
+	b, err := f.Read(ctx, bBot, bRel)
 	if err != nil {
 		return false
 	}
@@ -848,7 +873,7 @@ func (s *Service) longResult(ctx context.Context, fromID, toID, text string) str
 	if b, err := s.db.GetBot(ctx, fromID); err == nil {
 		name = b.Name
 	}
-	home := "from/" + filename(name) + "/result-" + s.o.Now().Format("20060102-150405") + ".md"
+	home := "from/" + Filename(name) + "/result-" + s.o.Now().Format("20060102-150405") + ".md"
 	preview := strings.TrimRight(headRunes(text, limits.ResultPreview), " \t\r\n")
 	if s.o.Files != nil {
 		if err := s.o.Files.Write(ctx, toID, home, []byte(text)); err == nil {

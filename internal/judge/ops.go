@@ -38,6 +38,23 @@ type SettingsOut struct {
 	Uses     []UseView `json:"uses" desc:"所有用途（依編號），含現在的開關"`
 	Today    Today     `json:"today"`
 	MinP     float64   `json:"min_p" desc:"第一層採用的機率門檻"`
+	// Problems 是今天遇到、要你處理的供應商問題（例：OpenCode Zen 餘額不足）；這些情況快判已經自動退回規則。
+	Problems []Problem `json:"problems" desc:"今天遇到的供應商問題（已自動退回規則）"`
+}
+
+// Problem 是一個供應商問題。
+type Problem struct {
+	Kind     string `json:"kind" desc:"no_funds 餘額不足"`
+	Provider string `json:"provider"`
+	Message  string `json:"message"`
+}
+
+// problemText 是介面上的白話。
+func problemText(kind, provider string) string {
+	if provider == "opencode-zen" {
+		return "OpenCode Zen 餘額不足（Jev 需要 Zen 儲值）"
+	}
+	return provider + " 餘額不足"
 }
 
 // SettingsIn 是 xbot.judge.settings_get 的輸入（沒有欄位）。
@@ -400,7 +417,15 @@ func (s *Service) view(ctx context.Context) (SettingsOut, error) {
 	for _, u := range Uses {
 		out.Uses = append(out.Uses, UseView{Use: *u, Mode: set.Modes[u.ID]})
 	}
-	out.Today, err = s.today(ctx, set)
+	if out.Today, err = s.today(ctx, set); err != nil {
+		return out, err
+	}
+	out.Problems = []Problem{}
+	day, _ := s.DayStart()
+	provs, err := s.DB.JudgeProblemProviders(ctx, OutcomeNoFunds, day)
+	for _, p := range provs {
+		out.Problems = append(out.Problems, Problem{Kind: OutcomeNoFunds, Provider: p, Message: problemText(OutcomeNoFunds, p)})
+	}
 	return out, err
 }
 

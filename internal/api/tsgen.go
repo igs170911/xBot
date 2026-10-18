@@ -199,6 +199,34 @@ export function logout(opts: CallOptions = {}): Promise<{ ok: true }> {
   return authCall('logout', { method: 'POST' }, opts)
 }
 
+// ── 檔案上傳下載（內容不走 JSON，C33）──────────────────
+
+/** Bot 電腦裡一個檔案的下載網址（GET，同一個登入）。inline：在瀏覽器裡直接顯示（圖片、PDF、純文字）；thumb：縮圖。 */
+export function filesDownloadUrl(botId: string, path: string, opts: { inline?: boolean; thumb?: boolean } = {}): string {
+  const q = new URLSearchParams({ bot_id: botId, path })
+  if (opts.inline) q.set('inline', '1')
+  if (opts.thumb) q.set('thumb', '1')
+  return '/api/v1/files.download?' + q.toString()
+}
+
+/** 上傳檔案到 Bot 電腦的資料夾（multipart，每個檔案經 xbot.files.upload）。dir 空白是 /workspace/uploads。 */
+export async function filesUploadForm(botId: string, files: File[], dir = '', opts: CallOptions = {}): Promise<FilesUploadOutput[]> {
+  const form = new FormData()
+  for (const f of files) form.append('file', f, f.name)
+  const q = new URLSearchParams({ bot_id: botId })
+  if (dir) q.set('dir', dir)
+  const res = await (opts.fetch ?? fetch)((opts.baseUrl ?? '') + '/api/v1/files.upload?' + q.toString(), {
+    method: 'POST',
+    body: form,
+    credentials: 'same-origin',
+    signal: opts.signal,
+  })
+  const body = (await res.json().catch(() => null)) as { files?: FilesUploadOutput[]; error?: ApiErrorBody } | null
+  if (body?.error) throw new ApiError(res.status, body.error)
+  if (!res.ok || !body?.files) throw new ApiError(res.status, { code: 'internal', message: '服務沒有正常回應，請稍後再試', retryable: true })
+  return body.files
+}
+
 // ── 事件（SSE）────────────────────────────────────────
 
 /** 一筆事件。沒有 id 的是即時事件（例：串流文字），斷線後不會補送。 */
