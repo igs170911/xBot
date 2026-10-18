@@ -1,9 +1,10 @@
 // xbot 是 XBot 的單一執行檔：服務、指令列、安裝與檢查工具都在這裡。
 //
-// 之後由操作登錄表產生的 CLI（xbot bots list …）也會掛在這個執行檔下（C04）。
+// 操作登錄表產生的指令（xbot <領域> <動作> …）也在這裡：不是內建指令的第一個參數會當成操作的領域。
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 )
@@ -23,6 +24,8 @@ func commands() []command {
 		{"backup", "備份資料（--out 檔案，--include-logins）", cmdBackup},
 		{"restore", "從備份還原資料", cmdRestore},
 		{"token", "顯示其他裝置用的登入碼", cmdToken},
+		{"mcp", "以 stdio 提供 XBot MCP；mcp pair <配對碼> 換代理權杖", cmdMCP},
+		{"ops", "列出所有操作（xbot <領域> <動作> 呼叫）", cmdOps},
 		{"dev", "開發用：dev chat --bot <名稱> \"訊息\"（對 Bot 說一句話並印出串流回覆）", cmdDev},
 		{"version", "顯示版本", cmdVersion},
 	}
@@ -35,16 +38,27 @@ func main() {
 	}
 	for _, c := range commands() {
 		if c.name == os.Args[1] {
-			if err := c.run(os.Args[2:]); err != nil {
-				fmt.Fprintln(os.Stderr, "xbot:", err)
-				os.Exit(1)
-			}
+			exit(c.run(os.Args[2:]))
 			return
 		}
+	}
+	if reg := cliRegistry(); isDomain(reg, os.Args[1]) {
+		exit(runOp(reg, os.Args[1], os.Args[2:]))
+		return
 	}
 	fmt.Fprintf(os.Stderr, "xbot：不認識的指令 %q\n\n", os.Args[1])
 	usage()
 	os.Exit(2)
+}
+
+func exit(err error) {
+	if err == nil {
+		return
+	}
+	if !errors.Is(err, errSilent) {
+		fmt.Fprintln(os.Stderr, "xbot:", err)
+	}
+	os.Exit(1)
 }
 
 func usage() {
@@ -52,4 +66,5 @@ func usage() {
 	for _, c := range commands() {
 		fmt.Printf("  %-10s %s\n", c.name, c.summary)
 	}
+	fmt.Println("\n操作（呼叫執行中的服務；xbot ops 看全部）：\n  xbot <領域> <動作> [--欄位 值 …] [--json '{…}'] [--dry-run] [--request-id ID]")
 }

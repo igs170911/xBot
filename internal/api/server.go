@@ -19,6 +19,10 @@ type Options struct {
 	Web fs.FS
 	// ModelProxy 掛在 /model/（internal/proxy.Handler）；nil 表示還沒啟用，回 503。
 	ModelProxy http.Handler
+	// MCP 掛在 /mcp（internal/mcpserver.Handler，Streamable HTTP）；nil 表示不提供。
+	MCP http.Handler
+	// AgentPair 掛在 /api/v1/agents.pair（internal/auth.Pairing.Handler）：代理用配對碼換權杖，不需要登入。
+	AgentPair http.Handler
 }
 
 // New 回傳整個服務的 HTTP 處理器。
@@ -29,6 +33,12 @@ func New(o Options) http.Handler {
 		mux.Handle("/model/", o.ModelProxy)
 	} else {
 		mux.HandleFunc("/model/", proxyDisabled)
+	}
+	if o.MCP != nil {
+		mux.Handle("/mcp", o.MCP)
+	}
+	if o.AgentPair != nil {
+		mux.Handle("/api/v1/agents.pair", o.AgentPair)
 	}
 	mux.Handle("/", spa(o.Web))
 	return mux

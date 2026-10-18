@@ -78,3 +78,17 @@ func TestModelProxyMount(t *testing.T) {
 		t.Fatalf("代理沒有掛上：%d %q", rec.Code, got)
 	}
 }
+
+func TestMountsMCPAndAgentPair(t *testing.T) {
+	mark := func(name string) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(name)) })
+	}
+	h := New(Options{MCP: mark("mcp"), AgentPair: mark("pair")})
+	for path, want := range map[string]string{"/mcp": "mcp", "/api/v1/agents.pair": "pair"} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest("POST", path, nil))
+		if rec.Body.String() != want {
+			t.Errorf("%s → %q", path, rec.Body.String())
+		}
+	}
+}
