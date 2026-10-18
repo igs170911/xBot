@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { Check, ChevronDown, CircleX, Code, Copy, GraduationCap, Hand, OctagonPause, Repeat, RotateCcw, Square, Volume2 } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { Check, ChevronDown, CircleX, Code, Copy, GraduationCap, Hand, OctagonPause, Phone, Repeat, RotateCcw, Square, Volume2 } from 'lucide-react'
 import { ApiError, judgeCorrect } from '../api/generated'
 import { AgentMark } from '../ui/AgentMark'
 import { Button } from '../ui/Button'
@@ -13,6 +13,8 @@ import { clockLabel, isLong, judgeBy, VERDICT_LABEL } from './format'
 import { Markdown } from './markdown/Markdown'
 import { isRich } from './markdown/parse'
 import { useCopy } from './useCopy'
+import { VoiceNoteBar } from '../voice/chatVoice'
+import { useReadAloud } from '../voice/useChatVoice'
 
 function Collapsible({ long, mine, children }: { long: boolean; mine: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false)
@@ -50,37 +52,10 @@ function ActionButton({ icon, label, onClick, pressed, tone }: { icon: typeof Co
   )
 }
 
-const canSpeak = () => typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined'
-
-function useSpeak(text: string): [boolean, () => void] {
-  const [on, setOn] = useState(false)
-  useEffect(
-    () => () => {
-      if (on) window.speechSynthesis.cancel()
-    },
-    [on],
-  )
-  const toggle = () => {
-    const s = window.speechSynthesis
-    if (on) {
-      s.cancel()
-      setOn(false)
-      return
-    }
-    s.cancel()
-    const u = new SpeechSynthesisUtterance(text.replace(/[`*#>|_~]/g, ''))
-    u.lang = 'zh-TW'
-    u.onend = () => setOn(false)
-    u.onerror = () => setOn(false)
-    s.speak(u)
-    setOn(true)
-  }
-  return [on, toggle]
-}
-
-function BotActions({ msg, raw, onRaw, always }: { msg: ChatMsg; raw: boolean; onRaw: () => void; always: boolean }) {
+function BotActions({ msg, raw, onRaw, always, botId }: { msg: ChatMsg; raw: boolean; onRaw: () => void; always: boolean; botId?: string }) {
   const [copied, copy] = useCopy()
-  const [speaking, speak] = useSpeak(msg.content)
+  const read = useReadAloud(botId, msg)
+  const speaking = read.state !== 'idle'
   return (
     <div
       role="toolbar"
@@ -89,7 +64,7 @@ function BotActions({ msg, raw, onRaw, always }: { msg: ChatMsg; raw: boolean; o
     >
       <ActionButton icon={copied ? Check : Copy} label={copied ? '已複製' : '複製'} tone={copied ? 'text-success' : undefined} onClick={() => void copy(msg.content)} />
       <ActionButton icon={Code} label="原始內容" pressed={raw} onClick={onRaw} />
-      {canSpeak() && <ActionButton icon={speaking ? Square : Volume2} label={speaking ? '停止朗讀' : '唸出來'} pressed={speaking} onClick={speak} />}
+      {botId && <ActionButton icon={speaking ? Square : Volume2} label={speaking ? '停止朗讀' : '唸出來'} pressed={speaking} onClick={read.toggle} />}
       <span className="pl-1.5 text-meta text-ink-3">{clockLabel(msg.updatedAt || msg.createdAt)}</span>
     </div>
   )
@@ -124,7 +99,7 @@ export function OwnerMessage({ msg, below }: { msg: ChatMsg; below?: ReactNode }
 }
 
 /** Bot 的回覆：Markdown 排版；有表格、程式碼、標題時泡泡放寬（C02、C07）。 */
-export function BotMessage({ msg, last }: { msg: ChatMsg; last: boolean }) {
+export function BotMessage({ msg, last, botId }: { msg: ChatMsg; last: boolean; botId?: string }) {
   const [raw, setRaw] = useState(false)
   const rich = isRich(msg.content)
   const done = !msg.streaming
@@ -135,11 +110,12 @@ export function BotMessage({ msg, last }: { msg: ChatMsg; last: boolean }) {
         data-streaming={msg.streaming || undefined}
         className={cx('min-w-0 self-start rounded-bubble bg-bubble-bot text-[15px]', rich ? 'w-full px-6 pb-[22px] pt-5 leading-[1.75] max-sm:px-4 max-sm:pb-4 max-sm:pt-3.5' : 'max-w-[85%] px-4 py-2.5 leading-[1.6]')}
       >
+        {msg.voice && done && <VoiceNoteBar botId={botId} msg={msg} note={msg.voice} />}
         <Collapsible long={isLong(msg)} mine={false}>
           {raw ? <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[13px] leading-[1.7] text-ink/85">{msg.content}</pre> : <Markdown text={msg.content} />}
         </Collapsible>
       </div>
-      {done && msg.content && <BotActions msg={msg} raw={raw} onRaw={() => setRaw((r) => !r)} always={last} />}
+      {done && msg.content && <BotActions msg={msg} raw={raw} onRaw={() => setRaw((r) => !r)} always={last} botId={botId} />}
     </div>
   )
 }
@@ -204,7 +180,7 @@ export function JudgeRow({ msg, threadId }: { msg: ChatMsg; threadId: string }) 
 export function ActivityLine({ msg }: CardProps) {
   return (
     <p className="m-0 flex items-center gap-1.5 self-center text-meta text-ink-3" data-testid="activity-line" data-activity={msg.activity}>
-      <Icon icon={msg.activity === 'teaching' ? GraduationCap : msg.activity === 'takeover' || msg.activity === 'handback' ? Hand : Repeat} size={14} />
+      <Icon icon={msg.activity === 'call' ? Phone : msg.activity === 'teaching' ? GraduationCap : msg.activity === 'takeover' || msg.activity === 'handback' ? Hand : Repeat} size={14} />
       {msg.content}
     </p>
   )

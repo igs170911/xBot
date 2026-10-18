@@ -14,6 +14,7 @@
 //	POST /hooks/<id>             定時任務的網址觸發（C32，不需要登入，帶金鑰）
 //	GET  /api/v1/apps/oauth/callback  連接應用程式的 OAuth 回呼（C34，不需要登入，一次性 state）
 //	POST /api/v1/files.upload    檔案上傳（multipart，C33）；GET /api/v1/files.download 檔案下載（Streams）
+//	POST /api/v1/voice.transcribe 錄音上傳辨識（multipart，E32）；GET /api/v1/voice.audio 合成好的音訊（Streams）
 package api
 
 import (

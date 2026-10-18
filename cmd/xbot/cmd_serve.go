@@ -122,6 +122,9 @@ func cmdServe(args []string) error {
 		Streams: map[string]api.StreamHandler{
 			"POST " + api.Route("xbot.files.upload"): st.files.UploadHandler(reg),
 			"GET /api/v1/files.download":             st.files.DownloadHandler(reg),
+			// 語音（E32）：合成好的音訊、錄音上傳辨識。
+			"GET /api/v1/voice.audio":                    st.voice.AudioHandler(reg),
+			"POST " + api.Route("xbot.voice.transcribe"): st.voice.TranscribeHandler(reg),
 		},
 		Registry: reg,
 		Bus:      bus,
