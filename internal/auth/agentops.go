@@ -1,0 +1,232 @@
+package auth
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"slices"
+	"time"
+
+	"xbot/internal/limits"
+	"xbot/internal/ops"
+	"xbot/internal/store"
+)
+
+// RegisterAgentOps 登錄「已連線的代理」相關操作（MCP-6）：pair_start、list、revoke、update_scopes。
+// 換權杖（pair_complete）不是操作：代理那時還沒有身分，走 POST /api/v1/agents.pair（Pairing.Handler）。
+func RegisterAgentOps(r *ops.Registry, p *Pairing) {
+	ops.Register(r, ops.Op[PairStartIn, PairStartOut]{
+		Name:    "xbot.agents.pair_start",
+		Summary: "產生一個配對碼，讓外部代理換到權杖",
+		Description: "配對碼一次性、5 分鐘內有效。把配對碼交給代理（Claude Code、Codex…），" +
+			"代理呼叫 POST " + PairPath + " 換到權杖，之後用 Authorization: Bearer <權杖> 連 /mcp。只有你本人能產生配對碼。",
+		Scope: ops.ScopeAdmin,
+		Risk:  ops.RiskSafe,
+		Handle: func(_ context.Context, call *ops.Call, in PairStartIn) (PairStartOut, error) {
+			if err := ownerOnly(call, "產生配對碼"); err != nil {
+				return PairStartOut{}, err
+			}
+			out := PairStartOut{Name: in.Name, Scopes: dedupScopes(in.Scopes), Resources: in.Resources, TokenDays: in.TokenDays, PairPath: PairPath}
+			if call.DryRun {
+				out.ExpiresAt = time.Now().Add(limits.PairCodeTTL).UnixMilli()
+				return out, nil
+			}
+			code, exp, err := p.Start(PairGrant{Name: in.Name, Scopes: out.Scopes, Resources: in.Resources, TokenDays: in.TokenDays})
+			if err != nil {
+				return PairStartOut{}, err
+			}
+			out.Code, out.ExpiresAt = code, exp.UnixMilli()
+			return out, nil
+		},
+	})
+	ops.Register(r, ops.Op[AgentsListIn, AgentsListOut]{
+		Name:    "xbot.agents.list",
+		Summary: "列出已連線的代理",
+		Scope:   ops.ScopeAdmin,
+		Risk:    ops.RiskSafe,
+		Handle: func(ctx context.Context, call *ops.Call, in AgentsListIn) (AgentsListOut, error) {
+			ts, err := call.DB.ListAgentTokens(ctx)
+			if err != nil {
+				return AgentsListOut{}, err
+			}
+			out := AgentsListOut{Agents: []AgentView{}}
+			now := time.Now().UnixMilli()
+			for _, t := range ts {
+				v := viewOf(t, now)
+				if v.Status != "active" && !in.IncludeRevoked {
+					continue
+				}
+				out.Agents = append(out.Agents, v)
+			}
+			return out, nil
+		},
+	})
+	ops.Register(r, ops.Op[AgentIDIn, AgentView]{
+		Name:        "xbot.agents.revoke",
+		Summary:     "撤銷一個代理的權杖",
+		Description: "撤銷後這個代理的下一個請求就會被拒絕，要重新配對才能再連線。",
+		Scope:       ops.ScopeAdmin,
+		Risk:        ops.RiskConfirm,
+		Handle: func(ctx context.Context, call *ops.Call, in AgentIDIn) (AgentView, error) {
+			if !call.DryRun {
+				if err := call.DB.RevokeAgentToken(ctx, in.ID); err != nil {
+					return AgentView{}, notFoundAgent(err)
+				}
+			}
+			t, err := call.DB.GetAgentToken(ctx, in.ID)
+			if err != nil {
+				return AgentView{}, notFoundAgent(err)
+			}
+			v := viewOf(t, time.Now().UnixMilli())
+			if call.DryRun {
+				v.Status = "revoked"
+			}
+			return v, nil
+		},
+	})
+	ops.Register(r, ops.Op[UpdateScopesIn, AgentView]{
+		Name:        "xbot.agents.update_scopes",
+		Summary:     "改一個代理的權限範圍",
+		Description: "scopes 整組取代原本的權限；resources 有給才取代資源範圍。只有你本人能改。",
+		Scope:       ops.ScopeAdmin,
+		Risk:        ops.RiskSafe,
+		Handle: func(ctx context.Context, call *ops.Call, in UpdateScopesIn) (AgentView, error) {
+			if err := ownerOnly(call, "改代理的權限"); err != nil {
+				return AgentView{}, err
+			}
+			t, err := call.DB.GetAgentToken(ctx, in.ID)
+			if err != nil {
+				return AgentView{}, notFoundAgent(err)
+			}
+			scopes := dedupScopes(in.Scopes)
+			var res json.RawMessage
+			if in.Resources != nil {
+				if res, err = json.Marshal(in.Resources); err != nil {
+					return AgentView{}, err
+				}
+			}
+			if call.DryRun {
+				t.Scopes = toStrings(scopes)
+				if res != nil {
+					t.Resources = res
+				}
+				return viewOf(t, time.Now().UnixMilli()), nil
+			}
+			if err := call.DB.UpdateAgentTokenScopes(ctx, in.ID, toStrings(scopes), res); err != nil {
+				return AgentView{}, notFoundAgent(err)
+			}
+			t, err = call.DB.GetAgentToken(ctx, in.ID)
+			if err != nil {
+				return AgentView{}, err
+			}
+			return viewOf(t, time.Now().UnixMilli()), nil
+		},
+	})
+}
+
+// ownerOnly：發權杖、改權限只有使用者本人能做，避免代理幫自己或別人升權。
+func ownerOnly(call *ops.Call, what string) error {
+	if call.Identity.Kind != ops.KindOwner {
+		return ops.Forbidden("只有你本人能" + what)
+	}
+	return nil
+}
+
+func notFoundAgent(err error) error {
+	if errors.Is(err, store.ErrNotFound) {
+		return ops.NotFound("找不到這個代理")
+	}
+	return err
+}
+
+func dedupScopes(in []ops.Scope) []ops.Scope {
+	var out []ops.Scope
+	for _, s := range ops.Scopes { // 依權限由小到大排好
+		if slices.Contains(in, s) {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+func toStrings(in []ops.Scope) []string {
+	out := make([]string, len(in))
+	for i, s := range in {
+		out[i] = string(s)
+	}
+	return out
+}
+
+func viewOf(t store.AgentToken, now int64) AgentView {
+	v := AgentView{ID: t.ID, Name: t.Name, LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt, RevokedAt: t.RevokedAt, CreatedAt: t.CreatedAt, Status: "active"}
+	for _, s := range t.Scopes {
+		v.Scopes = append(v.Scopes, ops.Scope(s))
+	}
+	if v.Scopes == nil {
+		v.Scopes = []ops.Scope{}
+	}
+	if len(t.Resources) > 0 {
+		_ = json.Unmarshal(t.Resources, &v.Resources)
+	}
+	switch {
+	case t.RevokedAt != 0:
+		v.Status = "revoked"
+	case t.ExpiresAt != 0 && t.ExpiresAt <= now:
+		v.Status = "expired"
+	}
+	return v
+}
+
+// PairStartIn 是 xbot.agents.pair_start 的輸入。
+type PairStartIn struct {
+	Name      string         `json:"name,omitempty" desc:"代理的名字，例：Claude Code；空白時用代理換權杖時報的名字" max:"100"`
+	Scopes    []ops.Scope    `json:"scopes" required:"true" min:"1" desc:"給這個代理的權限範圍（可疊加）：read、operate、manage、admin"`
+	Resources *ops.Resources `json:"resources,omitempty" desc:"限制只能碰哪些 Bot／團隊／主機；不填表示不限制"`
+	TokenDays int            `json:"token_days,omitempty" min:"0" max:"3650" desc:"權杖有效天數；0 或不填表示不過期（可隨時撤銷）"`
+}
+
+// PairStartOut 是 xbot.agents.pair_start 的輸出。
+type PairStartOut struct {
+	Code      string         `json:"code,omitempty" desc:"一次性配對碼（XXXX-XXXX）；預演時是空白"`
+	ExpiresAt int64          `json:"expires_at" desc:"配對碼到期時間（Unix 毫秒）"`
+	PairPath  string         `json:"pair_path" desc:"代理換權杖的端點：POST {code, name}"`
+	Name      string         `json:"name,omitempty"`
+	Scopes    []ops.Scope    `json:"scopes"`
+	Resources *ops.Resources `json:"resources,omitempty"`
+	TokenDays int            `json:"token_days,omitempty"`
+}
+
+// AgentsListIn 是 xbot.agents.list 的輸入。
+type AgentsListIn struct {
+	IncludeRevoked bool `json:"include_revoked,omitempty" desc:"也列出已撤銷、已過期的代理"`
+}
+
+// AgentsListOut 是 xbot.agents.list 的輸出。
+type AgentsListOut struct {
+	Agents []AgentView `json:"agents"`
+}
+
+// AgentView 是一個已連線的代理（不含權杖，MCP-11）。
+type AgentView struct {
+	ID         string        `json:"id"`
+	Name       string        `json:"name"`
+	Status     string        `json:"status" enum:"active,revoked,expired"`
+	Scopes     []ops.Scope   `json:"scopes"`
+	Resources  ops.Resources `json:"resources"`
+	LastUsedAt int64         `json:"last_used_at" desc:"最後使用時間（Unix 毫秒；0 表示還沒用過）"`
+	ExpiresAt  int64         `json:"expires_at" desc:"0 表示不過期"`
+	RevokedAt  int64         `json:"revoked_at" desc:"0 表示有效"`
+	CreatedAt  int64         `json:"created_at"`
+}
+
+// AgentIDIn 指定一個代理。
+type AgentIDIn struct {
+	ID string `json:"id" required:"true" desc:"代理 id（xbot.agents.list 的 id）" max:"64"`
+}
+
+// UpdateScopesIn 是 xbot.agents.update_scopes 的輸入。
+type UpdateScopesIn struct {
+	ID        string         `json:"id" required:"true" desc:"代理 id" max:"64"`
+	Scopes    []ops.Scope    `json:"scopes" required:"true" desc:"新的權限範圍（整組取代）；空陣列表示什麼都不能做"`
+	Resources *ops.Resources `json:"resources,omitempty" desc:"新的資源範圍；不填表示不變"`
+}

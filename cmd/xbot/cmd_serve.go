@@ -17,6 +17,7 @@ import (
 	"xbot/internal/auth"
 	"xbot/internal/config"
 	"xbot/internal/hosts"
+	"xbot/internal/mcpserver"
 	"xbot/internal/store"
 	"xbot/internal/version"
 	"xbot/web"
@@ -34,7 +35,8 @@ func cmdServe(args []string) error {
 	if err := os.MkdirAll(cfg.DataDir, 0o700); err != nil {
 		return fmt.Errorf("建立資料目錄 %s 失敗：%w", cfg.DataDir, err)
 	}
-	if _, err := auth.EnsureAccessToken(cfg.DataDir); err != nil {
+	accessToken, err := auth.EnsureAccessToken(cfg.DataDir)
+	if err != nil {
 		return err
 	}
 	db, err := store.Open(context.Background(), filepath.Join(cfg.DataDir, store.FileName))
@@ -55,9 +57,21 @@ func cmdServe(args []string) error {
 	}
 	defer local.Close()
 
+	pairing := auth.NewPairing(db)
+	reg := buildRegistry(db, pairing)
+	localOwner := os.Getenv("XBOT_MCP_LOCAL_OWNER") == "1"
+	if localOwner {
+		slog.Warn("XBOT_MCP_LOCAL_OWNER=1：這台機器上沒帶權杖的 MCP 連線都會被當成你本人")
+	}
+	mcpHandler := mcpserver.Handler(reg, mcpserver.HTTPOptions{
+		Auth:       &auth.Authenticator{DB: db, AccessToken: accessToken},
+		LocalOwner: localOwner,
+		Logger:     slog.Default(),
+	})
+
 	srv := &http.Server{
 		Addr:              cfg.Addr(),
-		Handler:           api.New(api.Options{Web: web.Dist()}),
+		Handler:           api.New(api.Options{Web: web.Dist(), MCP: mcpHandler, AgentPair: pairing.Handler()}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
