@@ -1,5 +1,5 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Activity as ActivityIcon, ChevronDown, ChevronLeft, Compass, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, Monitor, Phone, Plus, Settings, X } from 'lucide-react'
+import { Activity as ActivityIcon, AudioLines, ChevronDown, ChevronLeft, Compass, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, Monitor, Phone, Plus, Settings, Volume2, VolumeX, X } from 'lucide-react'
 import { isRecording, teachStartStore, useLesson } from '../teaching/teachingData'
 import { ApiError, chatListThreads, chatSend, chatStop, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
 import { botsStore, type Bot, look } from '../data/bots'
@@ -33,6 +33,7 @@ import { FirstHome, FirstTasks, useFirstHome } from '../onboard/FirstHome'
 import { startTour } from '../onboard/state'
 import { ComputerPanel } from '../computer/ComputerPanel'
 import { useNarrow } from '../computer/hooks'
+import { useAutoRead, useAutoReadReplies } from '../voice/useChatVoice'
 import { computerPanelStore } from '../computer/screenData'
 
 const GAP = 30 * 60 * 1000
@@ -74,7 +75,7 @@ function Messages({ items, bot, threadId, onRetry, canRetry }: { items: ChatItem
     else if (m.sender === 'owner') {
       // 先判斷列（C15）放在泡泡下面、懸停的複製列上面
       if (m.content || !m.streaming) out.push(<OwnerMessage key={m.id} msg={m} below={<PreCheckRow taskId={m.taskId} />} />)
-    } else if (m.content) out.push(<BotMessage key={m.id} msg={m} last={isLast} />)
+    } else if (m.content) out.push(<BotMessage key={m.id} msg={m} last={isLast} botId={bot?.id} />)
     if (it.activity && live) out.push(<WorkSteps key={'a' + it.activity.taskId} a={it.activity} bot={bot} />)
     const retryText = m.taskId ? asked.get(m.taskId) : undefined
     if (m.quota && bot) out.push(<QuotaCard key={'q' + m.id} quota={m.quota} botId={bot.id} bot={bot} />)
@@ -142,6 +143,8 @@ function Header({
   onProgress,
   computerOpen,
   onComputer,
+  autoRead,
+  onAutoRead,
 }: {
   bot: Bot
   act?: Activity
@@ -153,6 +156,8 @@ function Header({
   onProgress: () => void
   computerOpen?: boolean
   onComputer: () => void
+  autoRead: boolean
+  onAutoRead?: () => void
 }) {
   const st = statusOf(bot, act, busyElsewhere)
   const { lesson } = useLesson(bot.id)
@@ -182,6 +187,8 @@ function Header({
       />
       <span className="flex-1" />
       <ModelPicker bot={bot} models={models} onSetup={onSetupModels} className="max-sm:max-w-[124px]" />
+      {autoRead && <Icon icon={AudioLines} size={16} className="text-accent-ink" label="自動朗讀開著" />}
+      <IconButton icon={Phone} label={`和${bot.name}通話`} onClick={() => navigate(`/bots/${bot.id}/call`)} />
       <IconButton icon={FolderOpen} label={`${bot.name}的檔案`} onClick={() => navigate(`/bots/${bot.id}/files`)} />
       <IconButton icon={Monitor} label={`${bot.name}的電腦`} pressed={computerOpen} onClick={onComputer} data-tour="computer" />
       <MenuButton
@@ -192,6 +199,8 @@ function Header({
           { label: '新對話串', icon: Plus, onSelect: () => navigate(`/bots/${bot.id}/threads/new`) },
           { label: '教它一件事', icon: GraduationCap, onSelect: () => teachStartStore.set({ botId: bot.id, threadId }) },
           { label: '看導覽', icon: Compass, onSelect: startTour },
+          ...(onAutoRead ? [{ label: autoRead ? '這個對話串不要自動朗讀' : '這個對話串自動朗讀回覆', icon: autoRead ? VolumeX : Volume2, onSelect: onAutoRead }] : []),
+          { label: '聲音與朗讀', icon: AudioLines, onSelect: () => navigate(`/bots/${bot.id}/voice`) },
           { label: 'Bot 設定', icon: Settings, separator: true, onSelect: () => navigate(`/settings/bots/${encodeURIComponent(bot.id)}`) },
           { label: '模型與金鑰設定', icon: Settings, onSelect: () => navigate('/settings/models') },
         ]}
@@ -339,6 +348,9 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   }, [threadId])
 
   const items = threadId ? threadItems(chat, threadId) : []
+  // 自動朗讀（E32，VC-1）：Bot 設定或這個對話串開著時，看著它寫完的回覆念出來並變成語音訊息。
+  const auto = useAutoRead(botId, threadId)
+  useAutoReadReplies(botId, threadId, items, auto.autoRead)
   const th = threadId ? chat.threads[threadId] : undefined
   const act = threadId ? activeTask(chat, threadId) : undefined
   const botAct = activity[botId]
@@ -447,6 +459,8 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
         onProgress={() => setProgress(true)}
         computerOpen={showPanel}
         onComputer={onComputer}
+        autoRead={auto.autoRead}
+        onAutoRead={threadId ? auto.toggle : undefined}
       />
       )}
       <div ref={scroller} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto">
@@ -470,7 +484,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
           {notice && <NoticeRow notice={notice} onStop={() => void stop(false)} onClose={() => setNotice(null)} />}
           {empty && firstHome && <FirstTasks onPick={(t) => composer.current?.fill(t)} />}
           <div data-tour="composer" className="rounded-[26px]">
-            <ChatComposer handle={composer} name={name} mode={mode} onSend={send} onStop={() => void stop()} />
+            <ChatComposer handle={composer} name={name} mode={mode} onSend={send} onStop={() => void stop()} botId={botId} />
           </div>
         </div>
       </div>

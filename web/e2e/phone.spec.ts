@@ -358,11 +358,11 @@ test('L15 辦公室（B14）：依主機分組、等你的用主要按鈕、分�
   await snap(page, info, 'L15')
 })
 
-test('L18 通話（語音在 E32）：全螢幕畫面、掛斷回到對話', async ({ page }, info) => {
+test('L18 通話：全螢幕畫面、掛斷回到對話（語音流程與截圖在 voice.spec）', async ({ page }) => {
   const { mi } = await open(page, '/chats')
   await page.goto(`/bots/${mi.id}/call`)
-  await expect(page.getByText('語音通話還在做')).toBeVisible()
-  await snap(page, info, 'L18')
+  await expect(page.getByRole('main', { name: '通話' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '靜音' })).toBeVisible()
   await page.getByRole('button', { name: '掛斷' }).click()
   await expect(page).toHaveURL(new RegExp(`/bots/${mi.id}`))
 })
