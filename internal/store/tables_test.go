@@ -91,9 +91,10 @@ func TestHostAndBox(t *testing.T) {
 	box.ContainerID = "abc"
 	box.State = "running"
 	box.NoVNCPort = 6080
+	box.HermesPort = 8642
 	check(t, db.UpsertBox(ctx, box))
 	box = must[Box](t)(db.GetBox(ctx, b.ID))
-	if box.ContainerID != "abc" || box.NoVNCPort != 6080 || box.CreatedAt != created {
+	if box.ContainerID != "abc" || box.NoVNCPort != 6080 || box.HermesPort != 8642 || box.CreatedAt != created {
 		t.Fatalf("覆寫電腦：%+v", box)
 	}
 	if err := db.SetBoxState(ctx, b.ID, "exploded", ""); err == nil {
