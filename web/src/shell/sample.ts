@@ -1,4 +1,4 @@
-// 示範資料（W01 版型用，還沒接 API）。角色照 N02「示範角色」：每個 Bot 一組形狀＋顏色，全站一致。
+// 示範資料：待我處理頁下半的示範卡片還在用（側欄已改接 bots.list）。角色照 N02「示範角色」：每個 Bot 一組形狀＋顏色，全站一致。
 import type { AvatarColor, AvatarDot, AvatarShape, AvatarState } from '../ui/avatar-data'
 
 export type SampleBot = {
@@ -17,8 +17,6 @@ export type SampleBot = {
   unread?: boolean
 }
 
-export type SampleRoom = { id: string; name: string; members: [SampleBot['id'], SampleBot['id']]; more: string; time?: string; sub: string }
-
 export const BOTS: Record<string, SampleBot> = {
   xiaomi: { id: 'xiaomi', status: '工作中', name: '小秘', role: '幕僚長', shape: 'cursor', color: 'blue', state: 'working', dot: 'none', sub: '工作中…彙整三家競品定價', chief: true },
   azhe: { id: 'azhe', status: '工作中', name: '阿哲', role: '選品研究員', shape: 'blob', color: 'orange', state: 'searching', dot: 'none', sub: '工作中…在蝦皮比價第 3 家' },
@@ -29,21 +27,3 @@ export const BOTS: Record<string, SampleBot> = {
   xinchai: { id: 'xinchai', status: '休息', name: '信差', role: '收件匣管家', shape: 'star', color: 'cyan', state: 'sleeping', dot: 'none', sub: '整理了 24 封信', time: '昨天' },
   zhuachong: { id: 'zhuachong', status: '待命', name: '抓蟲', role: 'Bug 重現', shape: 'shield', color: 'red', state: 'idle', dot: 'none', sub: '待命' },
 }
-
-export type SidebarSection = { title: string; rows: Array<{ bot: string } | { room: SampleRoom }> }
-
-export const SECTIONS: SidebarSection[] = [
-  { title: '已釘選', rows: [{ bot: 'xiaomi' }] },
-  {
-    title: '群組對話',
-    rows: [
-      { room: { id: 'room', name: '新品上架專案', members: ['xiaomi', 'azhe'], more: '+1', sub: '阿哲 正在回覆…' } },
-      { room: { id: 'room2', name: '每週一早會', members: ['xiaomi', 'shujumiao'], more: '+4', time: '週一', sub: '數據喵：週報資料已備好' } },
-    ],
-  },
-  { title: '營運部', rows: [{ bot: 'azhe' }, { bot: 'xiaobian' }, { bot: 'akai' }] },
-  { title: '後勤', rows: [{ bot: 'zhangfang' }, { bot: 'shujumiao' }, { bot: 'xinchai' }] },
-  { title: '工程 · 1', rows: [] },
-]
-
-export const INBOX_COUNT = 5

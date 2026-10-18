@@ -1,12 +1,15 @@
 import { useState, type ReactNode } from 'react'
 import { Bell, CalendarDays, ChevronDown, Crown, Inbox, Monitor, Network, Plus, Puzzle, Search, Settings, X } from 'lucide-react'
 import { Avatar, Mascot } from '../ui/Avatar'
-import { IconButton } from '../ui/Button'
+import { Button, IconButton } from '../ui/Button'
 import { CountBadge } from '../ui/Pill'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
 import { linkClick } from '../router'
-import { BOTS, INBOX_COUNT, SECTIONS, type SampleRoom } from './sample'
+import { botsStore, type Bot } from '../data/bots'
+import { inboxStore } from '../data/inbox'
+import { useStore } from '../data/store'
+import { openNewBot } from '../data/ui'
 
 type NavProps = { path: string; onNavigate?: () => void }
 
@@ -26,11 +29,15 @@ function NavRow({ to, path, icon, children, aside, onNavigate }: NavProps & { to
   )
 }
 
-function BotRow({ id, path, onNavigate }: NavProps & { id: string }) {
-  const b = BOTS[id]
-  const to = `/bots/${id}`
-  const active = path === to
+function BotRow({ bot, path, onNavigate }: NavProps & { bot: Bot }) {
+  const to = `/bots/${bot.id}`
+  const active = path === to || path.startsWith(to + '/')
   const ring = active ? '#2F2F2F' : '#111111'
+  const act = useStore(botsStore).activity[bot.id]
+  const st = act?.state ?? 'done'
+  const waiting = st === 'waiting_input' || st === 'waiting_approval'
+  const working = st !== 'done' && !waiting
+  const sub = waiting ? '等你回覆' : st === 'waiting_box' ? '電腦開機中…' : working ? '工作中…' : bot.title || bot.description || '待命'
   return (
     <a
       href={to}
@@ -38,42 +45,8 @@ function BotRow({ id, path, onNavigate }: NavProps & { id: string }) {
       aria-current={active ? 'page' : undefined}
       className={cx('flex min-h-[58px] items-center gap-2.5 rounded-menu px-2.5 py-[3px] text-ink', active ? 'bg-control' : 'hover:bg-control/60')}
     >
-      <Avatar shape={b.shape} color={b.color} state={b.state} dot={b.dot} ring={ring} size={40} />
-      <RowText
-        label={b.name}
-        star={b.chief}
-        time={b.time}
-        sub={b.sub}
-        subClass={b.dot === 'waiting' ? 'text-warning-ink' : 'text-ink-2'}
-        unread={b.unread}
-      />
-    </a>
-  )
-}
-
-function RoomRow({ room, path, onNavigate }: NavProps & { room: SampleRoom }) {
-  const to = `/rooms/${room.id}`
-  const active = path === to
-  const [m1, m2] = room.members.map((m) => BOTS[m])
-  return (
-    <a
-      href={to}
-      onClick={linkClick(to, onNavigate)}
-      aria-current={active ? 'page' : undefined}
-      className={cx('flex min-h-[58px] items-center gap-2.5 rounded-menu px-2.5 py-[3px] text-ink', active ? 'bg-control' : 'hover:bg-control/60')}
-    >
-      <span className="relative size-10 flex-none" aria-hidden="true">
-        <span className="absolute left-0 top-1">
-          <Avatar shape={m1.shape} color={m1.color} state="idle" dot="none" size={22} />
-        </span>
-        <span className="absolute left-3 top-1">
-          <Avatar shape={m2.shape} color={m2.color} state="idle" dot="none" size={22} />
-        </span>
-        <span className="absolute left-[18px] top-[18px] flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-control px-1 text-[10.5px] text-ink-2">
-          {room.more}
-        </span>
-      </span>
-      <RowText label={room.name} time={room.time} sub={room.sub} subClass="text-ink-2" />
+      <Avatar shape={bot.shape} color={bot.color} state={waiting ? 'notifying' : working ? 'working' : 'idle'} dot={waiting ? 'waiting' : 'none'} ring={ring} size={40} />
+      <RowText label={bot.name} sub={sub} subClass={waiting ? 'text-warning-ink' : 'text-ink-2'} />
     </a>
   )
 }
@@ -131,13 +104,20 @@ export type SidebarProps = NavProps & {
 
 // 側欄（design/Sidebar.dc.html）：品牌列、搜尋、待我處理／辦公室、分組的 Bot 與群組、底部連結與你。
 export function Sidebar({ path, onNavigate, onClose }: SidebarProps) {
+  const { bots, error } = useStore(botsStore)
+  const inbox = useStore(inboxStore).items
+  const count = inbox?.length ?? 0
+  const newBot = () => {
+    onNavigate?.()
+    openNewBot()
+  }
   return (
     <nav aria-label="側欄" className="flex h-full flex-col gap-2 overflow-hidden bg-panel px-2.5 pb-2.5 pt-3.5 text-ui-sm leading-[1.45] text-ink">
       <div className="flex min-h-9 items-center gap-1 pl-1.5 pr-0.5">
         <Mascot size={26} />
         <span className="flex-1 pl-1.5 text-title">XBot</span>
         <IconButton icon={Bell} label="通知" />
-        <IconButton icon={Plus} label="新增 Bot 或群組對話" />
+        <IconButton icon={Plus} label="新增 Bot" onClick={newBot} />
         {onClose && <IconButton icon={X} label="關閉側欄" onClick={onClose} data-autofocus />}
       </div>
 
@@ -154,26 +134,27 @@ export function Sidebar({ path, onNavigate, onClose }: SidebarProps) {
       </label>
 
       <div className="flex flex-col gap-0.5">
-        <NavRow to="/" path={path} icon={Inbox} onNavigate={onNavigate} aside={<CountBadge count={INBOX_COUNT} label={`${INBOX_COUNT} 件等你`} />}>
+        <NavRow to="/" path={path} icon={Inbox} onNavigate={onNavigate} aside={count > 0 ? <CountBadge count={count} label={`${count} 件等你`} /> : undefined}>
           待我處理
         </NavRow>
-        <NavRow to="/office" path={path} icon={Monitor} onNavigate={onNavigate} aside={<span className="text-meta text-ink-3">5 台開機</span>}>
+        <NavRow to="/office" path={path} icon={Monitor} onNavigate={onNavigate}>
           辦公室
         </NavRow>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto">
-        {SECTIONS.map((sec) => (
-          <Section key={sec.title} title={sec.title}>
-            {sec.rows.map((r) =>
-              'bot' in r ? (
-                <BotRow key={r.bot} id={r.bot} path={path} onNavigate={onNavigate} />
-              ) : (
-                <RoomRow key={r.room.id} room={r.room} path={path} onNavigate={onNavigate} />
-              ),
-            )}
-          </Section>
-        ))}
+        <Section title="Bot">
+          {bots?.map((b) => <BotRow key={b.id} bot={b} path={path} onNavigate={onNavigate} />)}
+          {bots && bots.length === 0 && (
+            <div className="flex flex-col items-start gap-2 px-3 py-2 text-sub text-ink-2">
+              還沒有 Bot。建一個，交代它第一件事。
+              <Button icon={Plus} onClick={newBot}>
+                新增 Bot
+              </Button>
+            </div>
+          )}
+          {!bots && error && <p className="m-0 px-3 py-2 text-sub text-danger">讀不到 Bot 清單：{error}</p>}
+        </Section>
       </div>
 
       <div className="flex flex-col pt-1">
