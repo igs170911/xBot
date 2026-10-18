@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -61,6 +62,7 @@ func (d *Driver) Name() string { return d.o.Agent.Engine }
 // agentConn 是一個 Bot 的 agent 行程與上面的 session。
 type agentConn struct {
 	botID       string
+	mode        string // 開行程時的權限等級（Agent.ModeEnv 用）
 	c           *conn
 	loadSession bool
 
@@ -93,6 +95,8 @@ type session struct {
 	cancelling bool
 	tools      map[string]*toolState
 	q          *queue
+	// resetAt 是 agent 最近報的訂閱用量恢復時間（毫秒，Claude Code 的 _claude/rateLimit）；額度錯誤沒寫時間時用它。
+	resetAt int64
 }
 
 func (s *session) ID() string { return s.id }
@@ -108,7 +112,8 @@ func (d *Driver) authorize(ctx context.Context, botID string) error {
 }
 
 // client 回傳 Bot 目前的 agent 連線；沒有或已斷就重新開（同一個 Bot 同時只開一次）。
-func (d *Driver) client(ctx context.Context, botID string) (*agentConn, error) {
+// 權限用環境變數設定的 agent（Agent.ModeEnv），權限等級改了而且沒有進行中的一輪時重開。
+func (d *Driver) client(ctx context.Context, botID, mode string) (*agentConn, error) {
 	d.mu.Lock()
 	l, ok := d.dials[botID]
 	if !ok {
@@ -123,13 +128,17 @@ func (d *Driver) client(ctx context.Context, botID string) (*agentConn, error) {
 	ac := d.bots[botID]
 	d.mu.Unlock()
 	if ac != nil && ac.c.alive() {
-		return ac, nil
+		if len(d.o.Agent.ModeEnv) == 0 || ac.mode == mode || ac.busy() {
+			return ac, nil
+		}
+		d.log.Info("權限等級改了，重開 agent", "bot", botID, "from", ac.mode, "to", mode)
+		ac.c.close()
 	}
-	p, err := d.o.Launch(ctx, botID, d.o.Agent)
+	p, err := d.o.Launch(ctx, botID, d.o.Agent.ForMode(mode))
 	if err != nil {
 		return nil, err
 	}
-	ac = &agentConn{botID: botID, sessions: map[string]*session{}, threads: map[string]*session{}, requests: map[string]pending{}}
+	ac = &agentConn{botID: botID, mode: mode, sessions: map[string]*session{}, threads: map[string]*session{}, requests: map[string]pending{}}
 	log := d.log.With("bot", botID)
 	ac.c = newConn(p, log, func(m string, params json.RawMessage) { d.notification(ac, m, params) },
 		func(r request) { d.request(ac, r) },
@@ -147,6 +156,10 @@ func (d *Driver) client(ctx context.Context, botID string) (*agentConn, error) {
 	})
 	if err != nil {
 		ac.c.close()
+		// 有些 CLI 找不到（或登入過期）時，開機就停下來要人輸入授權碼（例：Gemini CLI），stderr 會寫認證失敗。
+		if t, ok := p.(StderrTail); ok && authFailRe.MatchString(t.StderrTail()) {
+			return nil, fmt.Errorf("%s 沒有啟動：%s 還沒登入或登入已過期。請在這台電腦重新登入，再到 Bot 設定確認已同意使用你的訂閱", d.o.Agent.Label, d.o.Agent.Label)
+		}
 		return nil, fmt.Errorf("%s 沒有啟動：%w", d.o.Agent.Label, err)
 	}
 	var init struct {
@@ -168,6 +181,25 @@ func (d *Driver) client(ctx context.Context, botID string) (*agentConn, error) {
 	d.bots[botID] = ac
 	d.mu.Unlock()
 	return ac, nil
+}
+
+// busy 回答這個 agent 上有沒有進行中的一輪。
+func (ac *agentConn) busy() bool {
+	ac.mu.Lock()
+	sessions := make([]*session, 0, len(ac.sessions))
+	for _, s := range ac.sessions {
+		sessions = append(sessions, s)
+	}
+	ac.mu.Unlock()
+	for _, s := range sessions {
+		s.mu.Lock()
+		running := s.running
+		s.mu.Unlock()
+		if running {
+			return true
+		}
+	}
+	return false
 }
 
 type modeInfo struct {
@@ -196,7 +228,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	if err := d.authorize(ctx, o.BotID); err != nil {
 		return nil, err
 	}
-	ac, err := d.client(ctx, o.BotID)
+	ac, err := d.client(ctx, o.BotID, o.Mode)
 	if err != nil {
 		return nil, err
 	}
@@ -284,6 +316,32 @@ func (d *Driver) configure(ctx context.Context, s *session, res sessionResult, o
 	}
 }
 
+// quota 看這一輪的錯誤是不是額度用完、限流、餘額不足或登入過期（EN-7）：agent 的訊息加上結構化的 data
+// （claude-agent-acp 的 errorKind、codex-acp 的 codexErrorInfo）一起分類；沒寫恢復時間時用 agent 之前報的用量狀態。
+func (d *Driver) quota(s *session, err error) *engine.QuotaError {
+	text := err.Error()
+	var re *RPCError
+	if errors.As(err, &re) {
+		if re.Code == codeAuthRequired && strings.Contains(strings.ToLower(re.Message), "auth") {
+			return &engine.QuotaError{Engine: d.o.Agent.Engine, Kind: engine.QuotaAuth, Message: re.Message}
+		}
+		if len(re.Data) > 0 && string(re.Data) != "null" {
+			text += " " + truncate(string(re.Data), 2000)
+		}
+	}
+	q := engine.ClassifyQuota(d.o.Agent.Engine, text, time.Now())
+	if q == nil {
+		return nil
+	}
+	s.mu.Lock()
+	reset := s.resetAt
+	s.mu.Unlock()
+	if q.ResetAt == 0 && q.Kind != engine.QuotaAuth && reset > time.Now().UnixMilli() {
+		q.ResetAt = reset
+	}
+	return q
+}
+
 // explain 把 agent 的錯誤換成給人看的說明（尤其是還沒登入）。
 func (d *Driver) explain(what string, err error) error {
 	var re *RPCError
@@ -304,8 +362,14 @@ func (d *Driver) own(s engine.Session) (*session, error) {
 	return as, nil
 }
 
+// authFailRe 認出 agent 行程因為沒有登入而結束時寫在 stderr 的訊息。
+var authFailRe = regexp.MustCompile(`(?i)failed to authenticate|authentication (failed|required)|please (log ?in|sign in)|not (logged|signed) in`)
+
 // ErrBusy 表示這個 session 上一輪還沒結束。
 var ErrBusy = errors.New("上一輪還沒結束")
+
+// ErrBlocked 表示訊息是被擋下的斜線指令（Agent.BlockedPrompts）。
+var ErrBlocked = errors.New("不能送出這個指令")
 
 // Send 實作 engine.Driver（session/prompt）。prompt 的回覆就是這一輪的結束（stopReason），在背景等。
 func (d *Driver) Send(ctx context.Context, s engine.Session, m engine.Message) error {
@@ -315,6 +379,9 @@ func (d *Driver) Send(ctx context.Context, s engine.Session, m engine.Message) e
 	}
 	if err := d.authorize(ctx, as.ac.botID); err != nil {
 		return err
+	}
+	if cmd, blocked := d.o.Agent.Blocked(m.Text); blocked {
+		return fmt.Errorf("%w：%s 的 %s 會關掉所有核准，XBot 不送這個指令（SEC-2）", ErrBlocked, d.o.Agent.Label, cmd)
 	}
 	as.mu.Lock()
 	if as.running {
@@ -350,8 +417,9 @@ func (d *Driver) promptDone(s *session, raw json.RawMessage, err error) {
 			return
 		}
 		msg := d.explain("這一輪失敗", err).Error()
-		s.q.push(engine.Event{Type: engine.EventError, Session: s.id, Text: msg})
-		s.q.push(engine.Event{Type: engine.EventDone, Session: s.id, Status: engine.StatusError, Text: msg})
+		q := d.quota(s, err)
+		s.q.push(engine.Event{Type: engine.EventError, Session: s.id, Text: msg, Quota: q})
+		s.q.push(engine.Event{Type: engine.EventDone, Session: s.id, Status: engine.StatusError, Text: msg, Quota: q})
 		return
 	}
 	var res struct {
@@ -506,6 +574,9 @@ func (d *Driver) notification(ac *agentConn, method string, params json.RawMessa
 		return
 	}
 	s.mu.Lock()
+	if rl := p.Update.Meta.RateLimit; rl != nil && rl.ResetsAt > 0 {
+		s.resetAt = rl.ResetsAt * 1000
+	}
 	evs := normalize(p.Update, s.tools, time.Now())
 	s.mu.Unlock()
 	for _, e := range evs {

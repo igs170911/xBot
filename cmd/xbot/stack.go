@@ -111,8 +111,11 @@ func openStack(cfg config.Config) (*stack, error) {
 		}()
 	}}
 	comp := &runtime.Computers{DB: db, Providers: s.pstore}
+	// 供應商的額度用完、限流（EN-7）：Model Proxy 看到時記下，Hermes 的一輪失敗時用來開額度卡。
+	quotaLog := &engine.QuotaLog{}
 	s.model = proxy.NewHandler(proxy.Options{
-		Keys: s.keys, Providers: s.providers, Usage: s.pstore, Logger: logger,
+		ProviderError: providerError(quotaLog),
+		Keys:          s.keys, Providers: s.providers, Usage: s.pstore, Logger: logger,
 		Bindings: comp, Budget: s.budgets, Pricing: &proxy.Pricing{DB: db},
 		Session: func(botID string) string {
 			if s.runtime == nil {
@@ -168,7 +171,7 @@ func openStack(cfg config.Config) (*stack, error) {
 	comp.Creds = s.creds
 	hermesDriver := hermes.New(comp.Connect, logger)
 	drivers := []engine.Driver{hermesDriver}
-	for _, name := range []string{acp.EngineClaude, acp.EngineCodex} {
+	for _, name := range acp.Engines {
 		drivers = append(drivers, acp.New(acp.Options{Agent: acp.Agents[name], Launch: comp.LaunchACP, Authorize: s.creds.Authorize,
 			MCPServers: comp.MCPServers, Logger: logger}))
 	}
@@ -193,7 +196,16 @@ func openStack(cfg config.Config) (*stack, error) {
 			}
 			return s.budgets.CheckProvider(ctx, botID, providerID)
 		},
-		Judge: s.judge.TaskDoneJudge(), Namer: s.judge.Title, Summarize: s.judge.Summary})
+		Judge: s.judge.TaskDoneJudge(), Namer: s.judge.Title, Summarize: s.judge.Summary,
+		QuotaLog: quotaLog, QuotaCard: s.creds.QuotaCard})
+	// 額度用完時換引擎（xbot.engines.switch）。
+	s.creds.Models = modelChoices(db, s.pstore, s.providers)
+	s.creds.Busy = func(botID string) bool { busy, _ := s.runtime.Busy(botID); return busy }
+	s.creds.Forget = quotaLog.Forget
+	s.creds.Resend = func(ctx context.Context, botID, threadID, text string) (string, error) {
+		res, err := s.runtime.Start(ctx, runtime.ChatRequest{BotID: botID, ThreadID: threadID, Text: text, Queue: true})
+		return res.TaskID, err
+	}
 	s.pstore.Attribute = s.runtime.Active
 	if !cfg.FakeNow.IsZero() {
 		logger.Warn("XBOT_FAKE_NOW：定時任務用假的現在時間（只供測試）", "start", cfg.FakeNow)

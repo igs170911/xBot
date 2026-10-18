@@ -58,6 +58,8 @@ type Event struct {
 	Usage   *Usage   `json:"usage,omitempty"`
 	// Fatal：error 時表示連線已中斷。
 	Fatal bool `json:"fatal,omitempty"`
+	// Quota：error、done 是額度用完、限流、餘額不足或登入過期時（EN-7）。
+	Quota *QuotaError `json:"quota,omitempty"`
 }
 
 // ToolEvent 是一次工具呼叫。

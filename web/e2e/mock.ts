@@ -35,6 +35,8 @@ export type Msg = {
   via?: string
   silent?: boolean
   peer?: Record<string, unknown>
+  /** 引擎額度用完卡（EN-7，meta.quota）。 */
+  quota?: Record<string, unknown>
   created_at: number
   updated_at: number
 }

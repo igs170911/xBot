@@ -22,6 +22,7 @@ import { ChatComposer, type ComposerHandle, type ComposerMode } from './ChatComp
 import { chatStore, loadOlder, loadThread } from './chatStore'
 import { EmptyState } from './EmptyState'
 import { BotMessage, JudgeRow, OutcomeRow, OwnerMessage } from './Message'
+import { QuotaCard } from './QuotaCard'
 import { PreCheckRow } from './PreCheck'
 import { runPreCheck } from './precheckData'
 import { ModelPicker } from './ModelPicker'
@@ -76,7 +77,8 @@ function Messages({ items, bot, threadId, onRetry, canRetry }: { items: ChatItem
     } else if (m.content) out.push(<BotMessage key={m.id} msg={m} last={isLast} />)
     if (it.activity && live) out.push(<WorkSteps key={'a' + it.activity.taskId} a={it.activity} bot={bot} />)
     const retryText = m.taskId ? asked.get(m.taskId) : undefined
-    out.push(<OutcomeRow key={'o' + m.id} msg={m} activity={it.activity} onRetry={isLast && canRetry && retryText ? () => onRetry(retryText) : undefined} />)
+    if (m.quota && bot) out.push(<QuotaCard key={'q' + m.id} quota={m.quota} botId={bot.id} bot={bot} />)
+    else out.push(<OutcomeRow key={'o' + m.id} msg={m} activity={it.activity} onRetry={isLast && canRetry && retryText ? () => onRetry(retryText) : undefined} />)
     if (m.sender !== 'owner' && !Card) out.push(<JudgeRow key={'j' + m.id} msg={m} threadId={threadId} />)
   }
   return <>{out}</>
