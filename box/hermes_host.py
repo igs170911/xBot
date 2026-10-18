@@ -100,6 +100,9 @@ async def relay(path: str, request: Request, *, model_api: bool = False):
         return JSONResponse({"error": "Bot authentication required"}, status_code=401)
     client = product_client()
     headers = {"Authorization": "Bearer " + key, "content-type": request.headers.get("content-type", "application/json")}
+    # /product is the XBot MCP (stateless Streamable HTTP): it needs Accept and the negotiated protocol version.
+    for name in ("accept", "mcp-protocol-version"):
+        if not model_api and request.headers.get(name): headers[name] = request.headers[name]
     if model_api:
         for name in ("anthropic-beta", "anthropic-version"):
             if request.headers.get(name): headers[name] = request.headers[name]

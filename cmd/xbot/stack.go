@@ -94,6 +94,7 @@ func openStack(cfg config.Config) (*stack, error) {
 		Model: s.model, Keys: s.keys, Logger: logger,
 	})
 	comp.Keys, comp.Sockets = s.keys, s.sockets
+	comp.XBotMCP = runtime.XBotMCPServer() // Claude Code、Codex 也拿到 XBot MCP（C11）
 	registry := hosts.NewRegistry(s.local)
 	comp.Hosts = registry
 	s.boxes = box.New(db, registry, box.Options{Image: os.Getenv("XBOT_BOX_IMAGE"), Prepare: comp.Prepare})

@@ -97,6 +97,12 @@ done
 if in_box test -d /opt/xbot/cred && [ "$(in_box stat -c '%U %a' /opt/xbot/cred)" = "root 755" ] && [ -z "$(in_box ls -A /opt/xbot/cred)" ]; then
   ok "訂閱憑證資料夾 /opt/xbot/cred 是空的、屬於 root"; else fail "/opt/xbot/cred 不對（要空的、root 755）"; fi
 
+# XBot MCP 的 stdio 橋接（C11）：在、可執行，而且沒有 product.sock 時好好回錯誤，不會卡住或崩潰。
+mcp_init='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}'
+bridge=$(as_bot sh -c "echo '$mcp_init' | XBOT_WORKER_KEY=smoke timeout 10 xbot-mcp" 2>&1 || true)
+if printf '%s' "$bridge" | grep -q '"id":1,"error"'; then
+  ok "XBot MCP 橋接 xbot-mcp 可執行（沒有 product.sock 時回錯誤）"; else fail "xbot-mcp 不正常：$bridge"; fi
+
 if [ "$failed" = 1 ]; then
   echo "❌ Bot 電腦冒煙測試失敗。最後的紀錄："; docker logs --tail 40 "$name" || true
   exit 1

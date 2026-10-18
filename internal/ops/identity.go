@@ -104,11 +104,11 @@ func Agent(t store.AgentToken, via string) (Identity, error) {
 	return id, nil
 }
 
-// Bot 是一個 Bot 自己透過 product.sock 呼叫：只能看和交辦，而且只能碰自己。
-// 之後依 Bot 的權限設定（bots.set_permissions）放寬。
+// Bot 是一個 Bot 自己透過 product.sock 呼叫：只能看和交辦，而且只能碰自己（不能碰任何團隊、主機），
+// 只能用標了 ForBot 的操作。之後依 Bot 的權限設定（bots.set_permissions）放寬。
 func Bot(botID, name string) Identity {
 	return Identity{Kind: KindBot, ID: botID, Name: name, Scopes: []Scope{ScopeRead, ScopeOperate},
-		Resources: Resources{Bots: []string{botID}}, Via: "product"}
+		Resources: Resources{Bots: []string{botID}, Teams: []string{}, Hosts: []string{}}, Via: "product"}
 }
 
 // Actor 是寫進稽核與去重紀錄的呼叫者代號：owner、agent:<權杖 id>、bot:<Bot id>。

@@ -273,12 +273,27 @@ func (c *Computers) LaunchACP(ctx context.Context, botID string, a acp.Agent) (a
 
 // MCPServers 回傳交給 ACP 引擎的 MCP 伺服器：Bot 電腦裡的 desktop_mcp（和 Hermes 同一個指令，EN-2c），
 // 有 XBot MCP 時一併給。
-func (c *Computers) MCPServers(string) []acp.MCPServer {
+func (c *Computers) MCPServers(botID string) []acp.MCPServer {
 	out := []acp.MCPServer{{Name: "computer", Command: hermes.Python, Args: []string{hermes.DesktopMCP}, Env: []acp.EnvVar{}}}
 	if c.XBotMCP != nil {
-		out = append(out, *c.XBotMCP)
+		x := *c.XBotMCP
+		x.Env = slices.Clone(x.Env)
+		// 沒設定模型的 ACP Bot 不會寫 Hermes 設定（也就沒有 /hermes/.worker-key）：直接把這個 Bot 的 worker-key 交給橋接。
+		if c.Keys != nil {
+			if key, err := c.Keys.Issue(context.Background(), botID); err == nil {
+				x.Env = append(x.Env, acp.EnvVar{Name: "XBOT_WORKER_KEY", Value: string(key)})
+			}
+		}
+		out = append(out, x)
 	}
 	return out
+}
+
+// XBotMCPServer 是給 ACP 引擎的 XBot MCP（C11）：Bot 電腦裡的 stdio 橋接 box/xbot_mcp.py，經 product.sock 以這個 Bot 的身分呼叫。
+// 和 Hermes 設定裡的 mcp_servers.xbot 是同一個指令。
+func XBotMCPServer() *acp.MCPServer {
+	return &acp.MCPServer{Name: hermes.XBotMCPServer, Command: hermes.Python, Args: []string{hermes.XBotMCP},
+		Env: []acp.EnvVar{{Name: "HERMES_HOME", Value: hermes.HomeDir}, {Name: "XBOT_PRODUCT_SOCK", Value: box.IPCDir + "/" + ipc.SocketName}}}
 }
 
 // Locate 實作 engines.Service.Locate：找 Bot 的電腦（不開機；沒有電腦時 ID 空白）。

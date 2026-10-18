@@ -98,8 +98,17 @@ func TestProductSocketRelaysModelRequests(t *testing.T) {
 	if code, _ := post("/internal/providers/openai/v1/chat/completions", "nope"); code != 401 {
 		t.Fatalf("錯的 key：%d", code)
 	}
-	if code, _ := post("/internal/product", string(k1)); code != 501 {
+	// XBot MCP（C11）還沒接上時回 503；接上後 /internal/mcp 與 /internal/product 都交給這個 socket 的 Bot 的處理器。
+	if code, _ := post("/internal/product", string(k1)); code != 503 {
 		t.Fatalf("/internal/product：%d", code)
+	}
+	s.SetProduct(func(botID string) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = io.WriteString(w, botID+" "+r.URL.Path) })
+	})
+	for _, p := range []string{MCPPath, ProductPath} {
+		if code, body := post(p, string(k1)); code != 200 || body != "bot1 "+p {
+			t.Fatalf("%s：%d %s", p, code, body)
+		}
 	}
 	if code, _ := post("/internal/providers/openai/v1/files", string(k1)); code != 403 {
 		t.Fatalf("不開放的路徑：%d", code)

@@ -188,12 +188,15 @@ ENV PATH="/opt/hermes/.venv/bin:${PATH}" HOME=/home/box HERMES_HOME=/hermes BROW
     TERMINAL_CWD=/workspace PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 # LazyBoy also baked product_mcp.py (its product tools as an MCP server) in here. XBot replaces it with the XBot
 # MCP (internal/mcpserver), reached through the product socket the Box Manager mounts or forwards to
-# /product-ipc/product.sock; hermes_host.py already relays /product and /model/* to that socket.
+# /product-ipc/product.sock. xbot_mcp.py is a stdio bridge to it (Hermes registers it as MCP server "xbot";
+# ACP engines run `xbot-mcp`); hermes_host.py relays /product and /model/* to the same socket.
 ENV XBOT_PRODUCT_SOCK=/product-ipc/product.sock
 # Subscription CLI logins the owner linked to this bot (EN-2b) are copied here, outside the home volume: root-owned
 # folders, 0400 files owned by the bot user; ~/.claude/.credentials.json and ~/.codex/auth.json link to them.
 RUN mkdir -p /product-ipc /opt/xbot/cred && chmod 755 /opt/xbot/cred
 COPY hermes_host.py desktop_mcp.py /opt/xbot/
+COPY --chmod=755 xbot_mcp.py /opt/xbot/xbot_mcp.py
+RUN ln -s /opt/xbot/xbot_mcp.py /usr/local/bin/xbot-mcp
 COPY --chmod=755 start-bot.sh /usr/local/bin/start-bot.sh
 EXPOSE 8642 6080
 WORKDIR /workspace
