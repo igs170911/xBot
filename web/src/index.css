@@ -1,8 +1,212 @@
+/* 字型自己 host（不連 Google）：粉圓 Huninn 400；路徑、指令用 JetBrains Mono。 */
+@import "@fontsource/huninn/index.css";
+@import "@fontsource/jetbrains-mono/latin-400.css";
 @import "tailwindcss";
 
-/* 正式的色票、字型與元件在 W01 依 design/N01–N03 建立；這裡先放最基本的底色。 */
-:root {
-  color-scheme: dark;
-  background: #070707;
-  color: #fcfcfc;
+/*
+ * 設計 token：照 design/N01-Tokens（Grok Midnight）。
+ * 深色是預設；Daylight 淺色只覆寫顏色（<html data-theme="light">）。
+ * 用法：bg-app / bg-panel / bg-inset / bg-card / bg-control / bg-hover、border-line、
+ *       text-ink / text-ink-2 / text-ink-3、bg-accent / text-accent-ink、
+ *       text-success / text-danger / bg-warning / text-warning-ink。
+ */
+@theme {
+  --font-sans: "Huninn", "PingFang TC", "Noto Sans TC", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* 表面：由深到淺 */
+  --color-app: #070707;
+  --color-panel: #111111;
+  --color-inset: #191919;
+  --color-card: #262626;
+  --color-control: #2f2f2f;
+  --color-hover: #3d3d3d;
+  --color-line: #333333;
+  --color-divider: #262626;
+  --color-edge: #1c1c1c;
+  --color-bubble-user: #5a5a5a;
+  --color-bubble-bot: #262626;
+
+  /* 文字 */
+  --color-ink: #fcfcfc;
+  --color-ink-2: #fcfcfc99;
+  --color-ink-3: #fcfcfc90;
+  --color-on-ink: #070707;
+
+  /* 語意：填色與文字用色分開 */
+  --color-accent: #1084fe;
+  --color-accent-ink: #7fc0ff;
+  --color-accent-soft: rgb(16 132 254 / 0.2);
+  --color-focus: #459ffe;
+  --color-success: #38d591;
+  --color-success-soft: rgb(56 213 145 / 0.14);
+  --color-danger: #ff5667;
+  --color-danger-soft: rgb(255 86 103 / 0.14);
+  --color-warning: #ff9800;
+  --color-warning-ink: #ffb547;
+  --color-warning-soft: rgb(255 152 0 / 0.16);
+  --color-warning-on: #1a1100;
+  --color-check-off: #5a5a5a;
+
+  /* 字級（粉圓只有一種字重，階層靠字級和顏色） */
+  --text-display: 30px;
+  --text-display--line-height: 1.3;
+  --text-page: 22px;
+  --text-page--line-height: 1.3;
+  --text-title: 17px;
+  --text-title--line-height: 1.4;
+  --text-name: 15.5px;
+  --text-body: 15px;
+  --text-ui: 14.5px;
+  --text-ui-sm: 14px;
+  --text-sub: 13.5px;
+  --text-meta: 12.5px;
+  --text-tab: 11.5px;
+
+  /* 圓角 */
+  --radius-chk: 5px;
+  --radius-seg: 8px;
+  --radius-field: 10px;
+  --radius-menu: 12px;
+  --radius-group: 14px;
+  --radius-card: 18px;
+  --radius-bubble: 20px;
+
+  --shadow-pop: 0 12px 32px rgb(0 0 0 / 0.5);
+  --shadow-dialog: 0 24px 64px rgb(0 0 0 / 0.6);
+
+  --animate-toast-in: toast-in 160ms ease-out;
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+}
+
+/* Daylight 淺色變體（N01 只在外觀設定示範；先提供 token，W01 不加切換入口） */
+[data-theme="light"] {
+  color-scheme: light;
+  --color-app: #ffffff;
+  --color-panel: #f4f4f2;
+  --color-inset: #f4f4f2;
+  --color-card: #f4f4f2;
+  --color-control: #e8e8e5;
+  --color-hover: #dcdcd8;
+  --color-line: #dcdcd8;
+  --color-divider: #dcdcd8;
+  --color-edge: #dcdcd8;
+  --color-bubble-user: #e2e2de;
+  --color-bubble-bot: #f4f4f2;
+  --color-ink: #0b0b0b;
+  --color-ink-2: #5e5e5e;
+  --color-ink-3: #5e5e5e;
+  --color-on-ink: #ffffff;
+  --color-warning-ink: #a65f00;
+}
+
+/* 手機寬度下，把小控制項的可點範圍撐到至少 44×44（外觀不變）。元素本身要 position: relative。 */
+@utility touch-target {
+  @media (width < 40rem) {
+    &::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+  }
+}
+
+/* 只給螢幕閱讀器的文字 */
+@utility sr-only-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    font-synthesis: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html,
+  body {
+    background: var(--color-app);
+    color: var(--color-ink);
+  }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: var(--text-ui);
+    line-height: 1.5;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  legend {
+    font-weight: 400;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  a {
+    color: var(--color-accent-ink);
+    text-decoration: none;
+  }
+  ::placeholder {
+    color: var(--color-ink-3);
+  }
+  /* 鍵盤聚焦一律看得到 */
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+}
+
+/* 滑桿（N03）：自畫軌道與圓鈕，保留原生 range 的鍵盤與輔助功能 */
+@layer components {
+  .xb-slider {
+    appearance: none;
+    background: transparent;
+    margin: 0;
+    cursor: pointer;
+  }
+  .xb-slider::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 9px;
+    background: linear-gradient(to right, var(--color-accent) var(--pct), var(--color-line) var(--pct));
+  }
+  .xb-slider::-moz-range-track {
+    height: 4px;
+    border-radius: 9px;
+    background: linear-gradient(to right, var(--color-accent) var(--pct), var(--color-line) var(--pct));
+  }
+  .xb-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-top: -6px;
+    border-radius: 999px;
+    background: #ffffff;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
+  }
+  .xb-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: 0;
+    border-radius: 999px;
+    background: #ffffff;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
+  }
 }

@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@fontsource/huninn':
+        specifier: 5.2.4
+        version: 5.2.4
+      '@fontsource/jetbrains-mono':
+        specifier: 5.2.5
+        version: 5.2.5
       lucide-react:
         specifier: ^1.58.0
         version: 1.58.0(@types/react@19.3.0)(react@19.3.1)
@@ -253,6 +259,12 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
+
+  '@fontsource/huninn@5.2.4':
+    resolution: {integrity: sha512-6X1k0ZeutimHT+8TLT8QaaFb5EFVb3sT+jsQkO/Vq9B0j9jsKMQfDAN2oG59t8tUrn2ZYbExvNM61vkoVN4ioA==}
+
+  '@fontsource/jetbrains-mono@5.2.5':
+    resolution: {integrity: sha512-TPZ9b/uq38RMdrlZZkl0RwN8Ju9JxuqMETrw76pUQFbGtE1QbwQaNsLlnUrACNNBNbd0NZRXiJJSkC8ajPgbew==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -1715,6 +1727,10 @@ snapshots:
       levn: 0.4.1
 
   '@exodus/bytes@1.16.0': {}
+
+  '@fontsource/huninn@5.2.4': {}
+
+  '@fontsource/jetbrains-mono@5.2.5': {}
 
   '@humanfs/core@0.19.2':
     dependencies:
