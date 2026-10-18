@@ -1,6 +1,6 @@
 import { AgentsPage } from '../pages/AgentsPage'
 import { useEffect, useState, type ReactNode } from 'react'
-import { ChevronLeft, ChevronRight, Construction } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { linkClick, navigate } from '../router'
 import { Icon } from '../ui/Icon'
 import { SimplifiedTag } from '../ui/Pill'
@@ -13,6 +13,8 @@ import { AddHostPage, HostDetailPage } from './HostPages'
 import { BotSettingsPage, type BotTab } from './BotSettings'
 import { SkillsLabPage } from './SkillsLab'
 import { NetworkPage } from './NetworkPage'
+import { BackupPage } from './BackupPage'
+import { PeoplePage } from './PeoplePage'
 import { SettingsOverview } from './SettingsOverview'
 import { SectionHeader } from './parts'
 import { SETTINGS_NAV, activeNav } from './nav'
@@ -62,21 +64,6 @@ function SettingsNav({ path }: { path: string }) {
   )
 }
 
-function Placeholder({ title, sub, note }: { title: string; sub: string; note: string }) {
-  return (
-    <>
-      <SectionHeader title={title} sub={sub} />
-      <div className="flex flex-col items-center gap-2 rounded-group bg-card px-6 py-10 text-center">
-        <span className="text-ink-3">
-          <Icon icon={Construction} size={28} />
-        </span>
-        <p className="m-0 text-ui">這一頁還在做</p>
-        <p className="m-0 text-sub text-ink-2">{note}</p>
-      </div>
-    </>
-  )
-}
-
 function Content({ path }: { path: string }) {
   const bot = path.match(/^\/settings\/bots\/([^/]+)(?:\/(soul|skills|memory|abilities|permissions|advanced)(?:\/([a-z]+))?)?\/?$/)
   if (bot) return <BotSettingsPage key={bot[1]} botId={decodeURIComponent(bot[1])} tab={bot[2] as BotTab | undefined} sub={bot[3]} />
@@ -89,8 +76,8 @@ function Content({ path }: { path: string }) {
   if (host) return <HostDetailPage hostId={decodeURIComponent(host[1])} />
   if (path === '/settings/advanced/agents') return <AgentsPage />
   if (path === '/settings/advanced/network') return <NetworkPage />
-  if (path === '/settings/advanced/backup') return <Placeholder title="備份與更新" sub="備份資料、還原、更新 XBot。" note="目前請用 make backup／make update。" />
-  if (path === '/settings/advanced/people') return <Placeholder title="成員與紀錄" sub="組織成員和操作紀錄。" note="之後的任務卡會做。" />
+  if (path === '/settings/advanced/backup') return <BackupPage />
+  if (path === '/settings/advanced/people') return <PeoplePage />
   if (path === '/settings/advanced/lab') return <SkillsLabPage />
   return <AdvancedIndex />
 }

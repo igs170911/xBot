@@ -22,7 +22,7 @@ XBot 的每個功能都是一個操作（`xbot.<領域>.<動作>`），同一份
    # 權杖 90 天後失效：--token-days 90
    ```
 
-   會得到 `{"code": "RY3F-Z6YP", "expires_at": …}`。配對碼**只能用一次、5 分鐘內有效**。之後網頁的「設定 → 已連線的代理」也會有同一個按鈕。只有你本人能產生配對碼或改代理權限；代理就算有 `admin` 也不行。
+   會得到 `{"code": "RY3F-Z6YP", "expires_at": …}`。配對碼**只能用一次、5 分鐘內有效**。網頁的「設定 → 進階 → 外部代理與 MCP」→「連接新的代理」是同一件事。只有你本人能產生配對碼或改代理權限；代理就算有 `admin` 也不行。
 
 2. **代理那台機器**用配對碼換權杖（不需要登入）：
 
@@ -153,7 +153,7 @@ Cursor 的 `~/.cursor/mcp.json`：
    - 同一條對話串接著說：`chat send` 加 `--thread_id`；看整段對話：`xbot chat read --thread_id …`；停下來：`xbot chat stop --bot_id …`。
    - Bot 正在忙時 `chat send` 回 `conflict`（`retryable: true`）。
 
-5. **需要核准的動作**：例如代理呼叫 `xbot.bots.delete` 會回 `pending_approval` 和 `needs_approval_id`，並在「待我處理」出一張卡。代理用 `xbot.approvals.wait --approval_id …` 等；你用 `xbot inbox list` 看卡片、`xbot approvals decide --approval_id … --decision allow`（或 `deny`）決定。目前只有你本人能決定（代為核准是之後的功能）；刪除 Bot 永遠不能代為核准。
+5. **需要核准的動作**：例如代理呼叫 `xbot.bots.delete` 會回 `pending_approval` 和 `needs_approval_id`，並在「待我處理」出一張卡。代理用 `xbot.approvals.wait --approval_id …` 等；你用 `xbot inbox list` 看卡片、`xbot approvals decide --approval_id … --decision allow`（或 `deny`）決定。預設只有你本人能決定。你可以授權某個代理「代為核准」（`xbot agents set_delegation`，或網頁「設定 → 進階 → 外部代理與 MCP」→ 代理 →「代為核准」），它就能用 `xbot.approvals.decide` 代你允許授權類別內的動作，受每日次數、金額、期限限制；能代為核准哪些動作見 [待我處理與核准](guide/04-inbox-approvals.md#代為核准讓代理幫你按允許)。刪除 Bot 永遠不能代為核准。
 
 6. **查紀錄**：`xbot audit list` 列出誰、從哪裡、做了什麼（參數裡的密鑰已遮蔽）；代理只看得到自己的紀錄。
 

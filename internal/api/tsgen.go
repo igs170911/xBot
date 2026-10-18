@@ -63,10 +63,10 @@ func GenerateTS(list []ops.Info) []byte {
 		b.WriteString("  [name: string]: { input: Record<string, unknown>; output: unknown }\n")
 	}
 	b.WriteString("}\n\nexport type OpName = keyof Ops\n\n")
-	b.WriteString("/** 每個操作的 HTTP 路徑、權限範圍、風險。 */\nexport const OPS: Record<OpName, OpMeta> = {\n")
+	b.WriteString("/** 每個操作的 HTTP 路徑、權限範圍、風險、一句話說明（稽核紀錄顯示用）。 */\nexport const OPS: Record<OpName, OpMeta> = {\n")
 	for _, info := range list {
-		fmt.Fprintf(&b, "  %s: { path: %s, scope: %s, risk: %s, mutates: %t },\n",
-			tsString(info.Name), tsString(Route(info.Name)), tsString(string(info.Scope)), tsString(string(info.Risk)), info.Mutates)
+		fmt.Fprintf(&b, "  %s: { path: %s, scope: %s, risk: %s, mutates: %t, summary: %s },\n",
+			tsString(info.Name), tsString(Route(info.Name)), tsString(string(info.Scope)), tsString(string(info.Risk)), info.Mutates, tsString(info.Summary))
 	}
 	b.WriteString("}\n")
 	return []byte(b.String())
@@ -136,6 +136,8 @@ export interface OpMeta {
   scope: 'read' | 'operate' | 'manage' | 'admin'
   risk: 'safe' | 'confirm'
   mutates: boolean
+  /** 一句白話中文（操作的 Summary） */
+  summary: string
 }
 
 /** 呼叫一個操作，回傳完整結果。失敗時丟 ApiError。 */

@@ -1,7 +1,7 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Activity as ActivityIcon, ChevronDown, ChevronLeft, Compass, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, Monitor, Phone, Plus, Settings, X } from 'lucide-react'
 import { isRecording, teachStartStore, useLesson } from '../teaching/teachingData'
-import { ApiError, chatListThreads, chatSend, chatStop, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
+import { ApiError, chatListThreads, chatSend, chatStop, filesUploadForm, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
 import { botsStore, type Bot, look } from '../data/bots'
 import { onEvent, onReconnect } from '../data/events'
 import { useStore } from '../data/store'
@@ -19,6 +19,7 @@ import { activeTask, isActive, threadItems, type Activity, type ChatItem } from 
 import { cardFor } from './cards'
 import { takeMention } from '../files/mention'
 import { ChatComposer, type ComposerHandle, type ComposerMode } from './ChatComposer'
+import { ATTACH_DIR, filesFrom, hasFiles } from './attachments'
 import { chatStore, loadOlder, loadThread } from './chatStore'
 import { EmptyState } from './EmptyState'
 import { BotMessage, JudgeRow, OutcomeRow, OwnerMessage } from './Message'
@@ -295,6 +296,14 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   }, [hasBot, botId])
   const stick = useRef(true)
   const keepFromBottom = useRef<number | null>(null)
+  // 把檔案拖進對話（C05「8 · 附件」）：放開就上傳到它電腦的 /workspace/uploads/，送出時附上路徑。
+  const [dropping, setDropping] = useState(false)
+  const dragDepth = useRef(0)
+  const upload = useCallback(async (f: File) => {
+    const [up] = await filesUploadForm(botId, [f], ATTACH_DIR)
+    if (!up) throw new Error('沒有傳上去')
+    return up
+  }, [botId])
 
   // 電腦面板（E01）：寬螢幕放在對話右邊；窄的螢幕直接開全視窗的電腦頁。
   const panelOpen = useStore(computerPanelStore)
@@ -432,7 +441,39 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
 
   return (
     <div className="flex min-w-0 flex-1">
-    <main className="flex h-dvh min-w-0 flex-1 flex-col bg-app" aria-label={`和${name}的對話`}>
+    <main
+      className="relative flex h-dvh min-w-0 flex-1 flex-col bg-app"
+      aria-label={`和${name}的對話`}
+      onDragEnter={(e) => {
+        if (!hasFiles(e.dataTransfer)) return
+        e.preventDefault()
+        dragDepth.current++
+        setDropping(true)
+      }}
+      onDragOver={(e) => {
+        if (!hasFiles(e.dataTransfer)) return
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'copy'
+      }}
+      onDragLeave={() => {
+        dragDepth.current = Math.max(0, dragDepth.current - 1)
+        if (dragDepth.current === 0) setDropping(false)
+      }}
+      onDrop={(e) => {
+        if (!hasFiles(e.dataTransfer)) return
+        e.preventDefault()
+        dragDepth.current = 0
+        setDropping(false)
+        composer.current?.attach(filesFrom(e.dataTransfer.files))
+      }}
+    >
+      {dropping && (
+        <div className="pointer-events-none absolute inset-3 z-30 flex flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-accent bg-app/85 text-center" data-testid="drop-overlay">
+          <Icon icon={FolderOpen} size={28} className="text-accent-ink" />
+          <p className="m-0 text-title">放開就傳給{name}</p>
+          <p className="m-0 text-sub text-ink-2">檔案會放進它電腦的 /workspace/uploads/，送出時附上路徑</p>
+        </div>
+      )}
       {phone ? (
         <PhoneHeader bot={bot} act={act} busyElsewhere={busyElsewhere} threads={threads} threadId={threadId} onProgress={() => setProgress(true)} />
       ) : (
@@ -470,7 +511,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
           {notice && <NoticeRow notice={notice} onStop={() => void stop(false)} onClose={() => setNotice(null)} />}
           {empty && firstHome && <FirstTasks onPick={(t) => composer.current?.fill(t)} />}
           <div data-tour="composer" className="rounded-[26px]">
-            <ChatComposer handle={composer} name={name} mode={mode} onSend={send} onStop={() => void stop()} />
+            <ChatComposer handle={composer} name={name} mode={mode} onSend={send} onStop={() => void stop()} onUpload={upload} />
           </div>
         </div>
       </div>

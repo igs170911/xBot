@@ -103,7 +103,13 @@ export function AvatarSheet({ bot, open, onClose }: { bot: Bot; open: boolean; o
           </button>
         ))}
       </div>
-      <p className="m-0 rounded-field bg-inset px-3 py-2 text-meta text-ink-3">上傳圖片、用 AI 產生頭像之後開放。</p>
+      <p className="m-0 rounded-field bg-inset px-3 py-2 text-meta text-ink-3">
+        要用照片當頭像，到「
+        <a href={`/settings/bots/${bot.id}`} onClick={linkClick(`/settings/bots/${bot.id}`)}>
+          Bot 設定 › 基本
+        </a>
+        」上傳；用 AI 產生頭像之後開放。
+      </p>
     </Dialog>
   )
 }

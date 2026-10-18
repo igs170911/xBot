@@ -48,7 +48,11 @@ func (q *Queries) AddAudit(ctx context.Context, a AuditEntry) (AuditEntry, error
 type AuditFilter struct {
 	Actor  string
 	Target string
-	Before int64 // 只列 ID 比它小的（往前翻頁）
+	Op     string // 完整操作名稱（xbot.bots.create），或只寫領域（xbot.bots）列出整個領域
+	Status string // ok / error / pending_approval / dry_run / reverted
+	Since  int64  // 只列這個時間（毫秒）之後的（含）
+	Until  int64  // 只列這個時間（毫秒）之前的（不含）
+	Before int64  // 只列 ID 比它小的（往前翻頁）
 	Limit  int
 }
 
@@ -59,7 +63,10 @@ func (q *Queries) ListAudit(ctx context.Context, f AuditFilter) ([]AuditEntry, e
 	}
 	rows, err := q.r.QueryContext(ctx, `SELECT `+auditCols+` FROM audit_log
 		WHERE (? = '' OR actor = ?) AND (? = '' OR target = ?) AND (? = 0 OR id < ?)
-		ORDER BY id DESC LIMIT ?`, f.Actor, f.Actor, f.Target, f.Target, f.Before, f.Before, f.Limit)
+		  AND (? = '' OR op = ? OR op LIKE ? || '.%') AND (? = '' OR status = ?)
+		  AND (? = 0 OR created_at >= ?) AND (? = 0 OR created_at < ?)
+		ORDER BY id DESC LIMIT ?`, f.Actor, f.Actor, f.Target, f.Target, f.Before, f.Before,
+		f.Op, f.Op, f.Op, f.Status, f.Status, f.Since, f.Since, f.Until, f.Until, f.Limit)
 	return collect(rows, err, scanAudit)
 }
 

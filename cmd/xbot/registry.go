@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"xbot/internal/auth"
+	"xbot/internal/backup"
 	"xbot/internal/catalog"
 	"xbot/internal/ops"
 	"xbot/internal/push"
@@ -28,7 +29,16 @@ func buildRegistry(db *store.DB, pairing *auth.Pairing, notify func(store.Event)
 	auth.RegisterDeviceOps(reg, pwa.devices)
 	push.Register(reg, pwa.push)
 	catalog.Register(reg, coreDeps(st))
+	backup.Register(reg, backupService(st))
 	return reg
+}
+
+// backupService 是網頁的「備份與更新」（J07）；st 是 nil 時只登錄定義。
+func backupService(st *stack) *backup.Service {
+	if st == nil {
+		return nil
+	}
+	return &backup.Service{DataDir: st.dataDir}
 }
 
 // pwaDeps 是手機 PWA 的服務元件（W31）：手機掃 QR 登入、Web Push。

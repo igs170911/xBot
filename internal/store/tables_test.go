@@ -316,6 +316,22 @@ func TestAudit(t *testing.T) {
 	if none := must[[]AuditEntry](t)(db.ListAudit(ctx, AuditFilter{Target: "host:y"})); len(none) != 0 {
 		t.Fatalf("依 target：%d", len(none))
 	}
+	must[AuditEntry](t)(db.AddAudit(ctx, AuditEntry{Actor: "owner", Via: "http", Op: "xbot.bots.delete", Target: "bot:x", Status: "pending_approval"}))
+	must[AuditEntry](t)(db.AddAudit(ctx, AuditEntry{Actor: "owner", Via: "http", Op: "xbot.botsx.get", Status: "error"}))
+	if got := must[[]AuditEntry](t)(db.ListAudit(ctx, AuditFilter{Op: "xbot.bots"})); len(got) != 4 {
+		t.Fatalf("依領域（不含 xbot.botsx）：%d", len(got))
+	}
+	if got := must[[]AuditEntry](t)(db.ListAudit(ctx, AuditFilter{Op: "xbot.bots.delete"})); len(got) != 1 {
+		t.Fatalf("依操作：%d", len(got))
+	}
+	if got := must[[]AuditEntry](t)(db.ListAudit(ctx, AuditFilter{Status: "error"})); len(got) != 1 || got[0].Op != "xbot.botsx.get" {
+		t.Fatalf("依結果：%+v", got)
+	}
+	_, err := db.write.ExecContext(ctx, `UPDATE audit_log SET created_at = id * 1000`)
+	check(t, err)
+	if got := must[[]AuditEntry](t)(db.ListAudit(ctx, AuditFilter{Since: 2000, Until: 4000})); len(got) != 2 || got[0].ID != 3 || got[1].ID != 2 {
+		t.Fatalf("依時間：%+v", got)
+	}
 }
 
 func TestAgentTokens(t *testing.T) {

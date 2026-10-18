@@ -174,6 +174,10 @@ type ItemOut struct {
 type AuditListIn struct {
 	Actor  string `json:"actor,omitempty" max:"80" desc:"只列這個呼叫者：owner、agent:<id>、bot:<id>（代理只看得到自己的）"`
 	Target string `json:"target,omitempty" max:"64" desc:"只列和這個 id 有關的"`
+	Op     string `json:"op,omitempty" max:"80" desc:"只列這個操作（xbot.bots.create），或整個領域（xbot.bots）"`
+	Status string `json:"status,omitempty" enum:"ok,error,pending_approval,dry_run,reverted" desc:"只列這種結果：ok 成功、error 失敗、pending_approval 等核准、dry_run 預演、reverted 已復原"`
+	Since  int64  `json:"since,omitempty" min:"0" desc:"只列這個時間（Unix 毫秒）之後的"`
+	Until  int64  `json:"until,omitempty" min:"0" desc:"只列這個時間（Unix 毫秒）之前的"`
 	Before int64  `json:"before,omitempty" min:"0" desc:"往前翻頁：只列 id 比它小的（上一頁的 next_before）"`
 	Limit  int    `json:"limit,omitempty" min:"1" max:"200" desc:"最多幾筆；預設 50"`
 }
@@ -935,7 +939,8 @@ func undoDelegated(ctx context.Context, reg *ops.Registry, call *ops.Call, it st
 // ── 稽核 ─────────────────────────────────────────────
 
 func listAudit(ctx context.Context, call *ops.Call, in AuditListIn) (AuditListOut, error) {
-	f := store.AuditFilter{Actor: in.Actor, Target: in.Target, Before: in.Before, Limit: pageLimit(in.Limit)}
+	f := store.AuditFilter{Actor: in.Actor, Target: in.Target, Op: in.Op, Status: in.Status, Since: in.Since, Until: in.Until,
+		Before: in.Before, Limit: pageLimit(in.Limit)}
 	if call.Identity.Kind != ops.KindOwner {
 		// 代理與 Bot 只看得到自己的呼叫紀錄。
 		if in.Actor != "" && in.Actor != call.Identity.Actor() {

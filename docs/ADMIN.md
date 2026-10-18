@@ -148,6 +148,8 @@ make backup INCLUDE_LOGINS=1 OUT=/mnt/usb/xbot.tar.gz
 make restore FILE=…                  # 服務會先停、還原後再啟動；原本的資料改名保留
 ```
 
+網頁「設定 → 進階 → 備份與更新」的「立即備份」等於 `make backup`（不含登入，`xbot.backup.create`），也列出備份資料夾裡最近的備份（`xbot.backup.list`）。還原只能用指令列（要先停服務）。
+
 - 資料庫用 SQLite 的 `VACUUM INTO` 做快照，服務執行中也能備份。
 - 備份檔是整個資料目錄（扣掉 SQLite 暫存）。裡面有 `model-proxy.key`、登入碼、SSH 私鑰：**當成密碼一樣保管**。
 - `make update` 每次更新前都會自動備份一次。
@@ -182,7 +184,7 @@ make update
 
 - 第 4 步用當下的環境變數重寫服務檔，見上面「怎麼設給服務」。
 - 新版**已經套用了 migration** 才失敗時，舊版會因為資料庫比較新而起不來。這時用第 3 步的備份還原：`make restore FILE=<最新的備份>`，再裝回舊版。
-- `make update` 不會重建 Bot 電腦映像。版本說明提到映像有變時：`make box`，再 `xbot computers update`（逐台把電腦換成新映像，資料保留，正在工作的跳過）。
+- `make update` 不會重建 Bot 電腦映像。版本說明提到映像有變時：`make box`，再到「設定 → 電腦與裝置」按「更新電腦」或執行 `xbot computers update`（逐台把電腦換成新映像，資料保留，正在工作的跳過）。
 
 部署到另一台：`make deploy HOST=…`（見 [安裝與更新](guide/01-install.md#部署到另一台機器)）。`make deploy` 不傳 Bot 電腦映像。
 
@@ -191,7 +193,7 @@ make update
 - 服務：`make logs`（`journalctl --user -u xbot.service -f`）。結構化文字紀錄，金鑰已遮蔽。
 - Bot 電腦：`docker logs xbot-box-<Bot id>`。
 - 網路防護：`docker logs xbot-netguard`。
-- 誰做了什麼：`xbot audit list`（稽核紀錄存在資料庫）。
+- 誰做了什麼：網頁「設定 → 進階 → 成員與紀錄」，或 `xbot audit list`（稽核紀錄存在資料庫；可加 `--actor`、`--op`、`--status`、`--since`、`--until`）。
 
 ## 資源與限制
 

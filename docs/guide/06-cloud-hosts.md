@@ -65,7 +65,7 @@ StreamLocalBindMask 0111        # socket 開成 0666，容器裡的 Bot 使用�
 - **斷線**：自動重連。網路短暫中斷通常 1 秒內接回；主機凍結約 20 秒會發現。
 - **主機金鑰變了**：XBot 拒絕連線，也不會自動重試。確認是你自己重灌的，再到主機頁重新檢查。
 - **移除主機**：上面還有 Bot 的電腦時不能移除，先搬走（見 [Bot 的電腦](05-computer.md#搬家換到另一台主機)）。移除只是忘掉這台，不會動主機上的任何東西。要你本人允許。
-- **映像更新**：本機 `make box` 換了映像後，主機頁會出現「更新電腦映像」按鈕（或 `make host-check HOST=… UPDATE_IMAGE=1`），把新映像傳過去。要把上面的電腦換成新映像，再執行 `xbot computers update --host_id <id>`。
+- **映像更新**：本機 `make box` 換了映像後，主機頁會出現「更新電腦映像」按鈕（或 `make host-check HOST=… UPDATE_IMAGE=1`），把新映像傳過去。主機清單會標「映像過期」；要把上面的電腦換成新映像，在「設定 → 電腦與裝置」按「更新電腦」，或執行 `xbot computers update --host_id <id>`。
 
 ## 安全說明
 

@@ -41,6 +41,7 @@ import (
 // 訂閱憑證、runtime。
 // serve 與 dev 指令共用。
 type stack struct {
+	dataDir   string // 資料目錄（網頁備份用）
 	db        *store.DB
 	local     *hosts.Local
 	keyring   *proxy.Keyring
@@ -82,7 +83,7 @@ func openStack(cfg config.Config) (*stack, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &stack{db: db}
+	s := &stack{db: db, dataDir: cfg.DataDir}
 	// 本機一定是一台 Bot 電腦主機（host 表沒有就新增）；Docker 沒開時記成離線，服務照常啟動。
 	hostCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	s.local, err = hosts.EnsureLocal(hostCtx, db, cfg.DataDir)
