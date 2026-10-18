@@ -419,11 +419,12 @@ func (r *Runtime) expire(t *turn, p *pending) {
 	t.mu.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	// 先記下「已過期」再回覆 Bot：Bot 收到回覆後可能馬上結束這一輪，紀錄要在那之前寫好。
+	r.settle(t, p, store.InboxExpired, ResolutionExpired, "system", nil, note)
 	r.resume(t)
 	if err := r.o.Driver.Respond(ctx, s, p.reqID, ans); err != nil {
 		r.log.Warn("過期的提問無法回覆 Bot", "task", t.taskID, "err", err)
 	}
-	r.settle(t, p, store.InboxExpired, ResolutionExpired, "system", nil, note)
 }
 
 // closeRequest 是引擎自己取消了請求（Hermes request.cancel）。
