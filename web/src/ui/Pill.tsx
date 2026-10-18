@@ -2,6 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { Check, ChevronDown, LoaderCircle, BadgeCheck, Sparkles, type LucideIcon } from 'lucide-react'
 import { Icon } from './Icon'
 import { cx } from './cx'
+import { MenuButton, type MenuItem } from './Menu'
 
 export type Tone = 'accent' | 'warning' | 'success' | 'danger' | 'neutral'
 
@@ -51,15 +52,28 @@ export function SimplifiedTag({ children }: { children: ReactNode }) {
   )
 }
 
-// 「系統判斷 · 不對？」：快判模型判斷過的地方都帶這個。
-export function JudgeTag({ children, onDispute }: { children: ReactNode; onDispute?: () => void }) {
+// 「系統判斷 · 不對？」：快判模型判斷過的地方都帶這個。給 menu 時「不對？」打開選單（選正確的那一種）。
+export function JudgeTag({ children, onDispute, menu, menuLabel = '應該是哪一種？' }: { children: ReactNode; onDispute?: () => void; menu?: MenuItem[]; menuLabel?: string }) {
+  const cls = 'relative h-[26px] rounded-full bg-transparent px-1.5 text-meta text-accent-ink touch-target hover:bg-control'
   return (
-    <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-line pl-2.5 pr-1 text-meta text-ink-2">
+    <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-line pl-2.5 pr-1 text-meta text-ink-2" data-testid="judge-tag">
       <Icon icon={BadgeCheck} size={14} color="var(--color-success)" />
       系統判斷：{children} ·
-      <button type="button" onClick={onDispute} className="relative h-[26px] rounded-full bg-transparent px-1.5 text-meta text-accent-ink touch-target hover:bg-control">
-        不對？
-      </button>
+      {menu ? (
+        <MenuButton
+          label={menuLabel}
+          items={menu}
+          trigger={(p) => (
+            <button type="button" {...p} className={cls}>
+              不對？
+            </button>
+          )}
+        />
+      ) : (
+        <button type="button" onClick={onDispute} className={cls}>
+          不對？
+        </button>
+      )}
     </span>
   )
 }

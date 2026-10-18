@@ -16,6 +16,7 @@ import (
 
 	"xbot/internal/engine"
 	"xbot/internal/events"
+	"xbot/internal/judge"
 	"xbot/internal/notify"
 	"xbot/internal/store"
 )
@@ -531,21 +532,43 @@ func (r *Runtime) rewait(t *turn, state string) {
 }
 
 // notifyDone 在工作結束時發一張通知卡（B04「完成」「出錯」）；你停掉的不發。
-func (r *Runtime) notifyDone(t *turn, verdict, final string) {
+// 有完成判定時（X04）：要你本人的開「需要你」卡；系統叫 Bot 自己接著做的不發；
+// 丟回來、只說要做、卡住又不能再續做的，發「交回給你」或「沒有完成」。
+func (r *Runtime) notifyDone(t *turn, verdict, final string, res *judge.Result, judged *Judgment) {
 	var it store.InboxItem
-	switch verdict {
-	case VerdictAnswer:
-		if t.source == SourceBot || t.source == SourceRoom {
+	peer := t.source == SourceBot || t.source == SourceRoom
+	if res != nil && verdict == VerdictAnswer {
+		switch {
+		case judged != nil && judged.ContinuedBy != "":
+			return // 還在做：Bot 自己接著做
+		case peer:
+			return // 隊友之間、群組裡的：結果會回到交辦的 Bot 或群組
+		case res.Verdict == judge.NeedsPerson:
+			r.askCard(t, *res, t.botName+"需要你處理")
+			return
+		case res.Verdict == judge.HandedBack:
+			r.askCard(t, *res, t.botName+"把工作交回給你")
+			return
+		case res.Verdict == judge.OnlyPromised || res.Verdict == judge.Stuck:
+			it = store.InboxItem{Kind: "error", Title: t.botName + "的工作沒有完成", Body: clip(res.Reason, 120)}
+		}
+	}
+	switch {
+	case it.Kind != "":
+	case verdict == VerdictAnswer:
+		if peer {
 			return // 隊友之間、群組裡的每一輪不各發一張「完成」（結果會回到交辦的 Bot 或群組）
 		}
 		it = store.InboxItem{Kind: "done", Title: t.botName + "完成了工作"}
-	case VerdictFailed:
+	case verdict == VerdictFailed:
 		it = store.InboxItem{Kind: "error", Title: t.botName + "的工作沒有完成"}
 	default:
 		return
 	}
 	it.BotID, it.TaskID, it.ThreadID, it.Status, it.Resolution = t.botID, t.taskID, t.threadID, store.InboxResolved, ResolutionInfo
-	it.Body = clip(firstLine(final), 120)
+	if it.Body == "" {
+		it.Body = clip(firstLine(final), 120)
+	}
 	raw, _ := json.Marshal(map[string]any{"bot_name": t.botName, "input": clip(t.input, 120)})
 	it.Payload = raw
 	created, err := r.o.DB.CreateInboxItem(context.Background(), it)

@@ -27,6 +27,7 @@ type Runtime interface {
 	Bus() *events.Bus
 	Respond(ctx context.Context, itemID string, a runtime.Answer, by string) (store.InboxItem, error)
 	AskAgain(ctx context.Context, itemID string) (runtime.ChatResult, store.InboxItem, error)
+	Progress(ctx context.Context, botID, skipTask string) (runtime.Progress, error)
 }
 
 // Deps 是對話操作需要的服務元件。Runtime 是 nil 時（指令列只產生說明）呼叫會回 internal。
@@ -88,7 +89,11 @@ type Message struct {
 	// Silent：隊友交辦或群組裡 Bot 回 [silent]（沒有要補充），畫面不顯示。
 	Silent bool `json:"silent,omitempty"`
 	// Peer：kind=peer 時這一行是什麼（已傳訊息給…、來自…的訊息、開了群組…，X02）。
-	Peer      *PeerLine `json:"peer,omitempty"`
+	Peer *PeerLine `json:"peer,omitempty"`
+	// Activity：kind=activity（sender=system）時是哪一種系統紀錄，例：auto_continue（自動繼續，X04）。
+	Activity string `json:"activity,omitempty" desc:"kind=activity 時是哪一種：auto_continue（系統叫 Bot 自己接著做）"`
+	// Judge：Bot 這一輪回覆的完成判定（X04）。
+	Judge     *Judgment `json:"judge,omitempty" desc:"系統判斷這件工作做完了沒（Bot 的回覆才有）"`
 	CreatedAt int64     `json:"created_at"`
 	UpdatedAt int64     `json:"updated_at"`
 }
@@ -145,7 +150,9 @@ type WaitOut struct {
 	BotID    string `json:"bot_id"`
 	ThreadID string `json:"thread_id"`
 	State    string `json:"state" desc:"任務狀態：queued、running、waiting_input、waiting_approval、waiting_box、stopping、done"`
-	Verdict  string `json:"verdict,omitempty" desc:"done 時的結果：answer、cancelled、failed"`
+	Verdict  string `json:"verdict,omitempty" desc:"done 時的結果：answer、cancelled、failed（answer 只代表這一輪結束，不代表目標達成；看 judge）"`
+	// Judge 是做完了沒的系統判斷（X04）：done、needs_person、handed_back、only_promised、stuck。
+	Judge *runtime.Judgment `json:"judge,omitempty" desc:"系統判斷做完了沒（done 時才有；你停掉的沒有）"`
 	// Settled 為 false 表示等到逾時了，Bot 還在做；可以再呼叫一次。
 	Settled       bool     `json:"settled" desc:"true：完成了，或在等人；false：等到逾時，還在做"`
 	NeedsPerson   bool     `json:"needs_person" desc:"Bot 在等人回覆（核准、補充問題）"`
@@ -213,6 +220,7 @@ var stepKinds = []string{runtime.KindToolCall, runtime.KindToolResult, runtime.K
 
 // Register 登錄對話操作。
 func Register(reg *ops.Registry, d Deps) {
+	registerJudge(reg, d)
 	ops.Register(reg, ops.Op[SendIn, SendOut]{
 		Name: "xbot.chat.send", Summary: "對一個 Bot 說話（交辦一件事）",
 		Description: "訊息收下就回傳 thread_id、task_id；Bot 在背景做事（第一次會先開機），用 xbot.chat.wait_until_settled 等回覆。" +
@@ -398,6 +406,7 @@ func read(ctx context.Context, call *ops.Call, in ReadIn) (ReadOut, error) {
 	if out.HasMore {
 		out.NextBefore = msgs[0].Seq
 	}
+	judgments(ctx, call.DB, out.Messages)
 	return out, nil
 }
 
@@ -444,22 +453,28 @@ type PeerLine struct {
 }
 
 type messageMeta struct {
-	TaskID    string    `json:"task_id"`
-	Actor     string    `json:"actor"`
-	ActorName string    `json:"actor_name"`
-	Via       string    `json:"via"`
-	Streaming bool      `json:"streaming"`
-	Status    string    `json:"status"`
-	Silent    bool      `json:"silent"`
-	Peer      *PeerLine `json:"peer"`
+	TaskID    string            `json:"task_id"`
+	Actor     string            `json:"actor"`
+	ActorName string            `json:"actor_name"`
+	Via       string            `json:"via"`
+	Streaming bool              `json:"streaming"`
+	Status    string            `json:"status"`
+	Silent    bool              `json:"silent"`
+	Peer      *PeerLine         `json:"peer"`
+	Activity  string            `json:"activity"`
+	Judge     *runtime.Judgment `json:"judge"`
 }
 
 func messageView(m store.Message) Message {
 	var meta messageMeta
 	_ = json.Unmarshal(m.Meta, &meta)
-	return Message{ID: m.ID, Seq: m.Seq, Sender: m.Sender, Kind: m.Kind, Content: m.Content, TaskID: meta.TaskID,
+	out := Message{ID: m.ID, Seq: m.Seq, Sender: m.Sender, Kind: m.Kind, Content: m.Content, TaskID: meta.TaskID,
 		Actor: meta.Actor, ActorName: meta.ActorName, Via: meta.Via, Streaming: meta.Streaming, Status: meta.Status, Silent: meta.Silent, Peer: meta.Peer,
-		CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
+		Activity: meta.Activity, CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
+	if meta.Judge != nil && meta.Judge.Verdict != "" {
+		out.Judge = &Judgment{Judgment: *meta.Judge}
+	}
+	return out
 }
 
 // settled：做完了，或在等人。
@@ -516,7 +531,7 @@ func (d Deps) wait(ctx context.Context, call *ops.Call, in WaitIn) (WaitOut, err
 			}
 		}
 	}
-	out := WaitOut{TaskID: task.ID, BotID: task.BotID, ThreadID: task.ThreadID, State: task.State, Verdict: task.Verdict,
+	out := WaitOut{TaskID: task.ID, BotID: task.BotID, ThreadID: task.ThreadID, State: task.State, Verdict: task.Verdict, Judge: runtime.TaskJudgment(task),
 		Settled: settled(task.State), WaitedSeconds: time.Since(start).Round(time.Millisecond).Seconds()}
 	out.NeedsPerson = task.State == store.TaskWaitingInput || task.State == store.TaskWaitingApproval
 	if out.NeedsPerson {

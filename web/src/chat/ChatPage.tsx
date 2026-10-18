@@ -17,7 +17,7 @@ import { cardFor } from './cards'
 import { ChatComposer, type ComposerHandle, type ComposerMode } from './ChatComposer'
 import { chatStore, loadOlder, loadThread } from './chatStore'
 import { EmptyState } from './EmptyState'
-import { BotMessage, OutcomeRow, OwnerMessage } from './Message'
+import { BotMessage, JudgeRow, OutcomeRow, OwnerMessage } from './Message'
 import { ModelPicker } from './ModelPicker'
 import { ProgressDialog } from './ProgressDialog'
 import { ThreadMenu, type Thread } from './ThreadMenu'
@@ -65,6 +65,7 @@ function Messages({ items, bot, threadId, onRetry, canRetry }: { items: ChatItem
     if (it.activity && live) out.push(<WorkSteps key={'a' + it.activity.taskId} a={it.activity} bot={bot} />)
     const retryText = m.taskId ? asked.get(m.taskId) : undefined
     out.push(<OutcomeRow key={'o' + m.id} msg={m} activity={it.activity} onRetry={isLast && canRetry && retryText ? () => onRetry(retryText) : undefined} />)
+    if (m.sender !== 'owner' && !Card) out.push(<JudgeRow key={'j' + m.id} msg={m} threadId={threadId} />)
   }
   return <>{out}</>
 }

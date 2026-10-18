@@ -9,7 +9,7 @@ import { LoginPage } from './pages/LoginPage'
 import { NewBotDialog } from './pages/NewBotDialog'
 import { SettingsPage } from './settings/SettingsPage'
 import { ChatPage } from './chat/ChatPage'
-import { registerPeerCard } from './chat/peer'
+import { registerActivityCard, registerPeerCard } from './chat/peer'
 import { NewRoomDialog } from './rooms/NewRoomDialog'
 import { RoomPage } from './rooms/RoomPage'
 import { roomsStore, startRooms } from './data/rooms'
@@ -36,6 +36,7 @@ const ROOM_PATH = /^\/rooms\/([^/]+)\/?$/
 
 // 對話裡 kind=peer 的那一行（和隊友的往來，C13）。
 registerPeerCard()
+registerActivityCard()
 
 function Placeholder({ title }: { title: string }) {
   return (
