@@ -1,0 +1,14 @@
+# make dev 的 Go 熱重載設定
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/xbot ./cmd/xbot"
+entrypoint = ["./tmp/xbot", "serve"]
+include_ext = ["go", "sql"]
+exclude_dir = ["web", "tmp", ".data", "design", "design-work", "docs", "bin", "box"]
+delay = 300
+stop_on_error = true
+
+[log]
+main_only = true

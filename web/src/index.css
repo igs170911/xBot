@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* 正式的色票、字型與元件在 W01 依 design/N01–N03 建立；這裡先放最基本的底色。 */
+:root {
+  color-scheme: dark;
+  background: #070707;
+  color: #fcfcfc;
+}

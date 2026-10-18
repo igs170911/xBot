@@ -1,0 +1,12 @@
+# 執行資料（登入碼、資料庫、Bot 資料）
+.data/
+# 建置產物
+bin/
+tmp/
+dist/
+web/dist/
+web/node_modules/
+web/e2e-results/
+web/playwright-report/
+*.test
+coverage.out

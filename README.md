@@ -9,3 +9,15 @@
 - 實作計畫（給 Agent）：[docs/PLAN.md](docs/PLAN.md)；Agent 工作守則：[AGENTS.md](AGENTS.md)
 - UI/UX 設計（Claude Design）：https://claude.ai/artifact/DmfRHh7dM9EsSLsMVkHYS6
 - 設計原始檔：[design/](design/)
+
+## 開始使用
+
+只需要先有 `make`，其他缺的東西 `make setup` 會自動補齊（需要 sudo 的會先問你）。
+
+```bash
+make setup     # 補齊工具（Go、Node、pnpm…）
+make install   # 建置並安裝成開機自動啟動的服務 → http://127.0.0.1:8780
+make status    # 看狀態
+```
+
+開發：`make dev`（前端 http://localhost:5181）、`make check`。所有指令：`make help`。
