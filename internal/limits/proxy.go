@@ -54,3 +54,24 @@ const (
 	// UsageSummaryDefaultDays 是用量統計預設看幾天（server/usage.py summary：days=30）。
 	UsageSummaryDefaultDays = 30
 )
+
+// 訂閱登入（E13 原型：ChatGPT 方案經 Hermes 的 openai-codex OAuth，權杖只在 Model Proxy）。
+const (
+	// OAuthRefreshSkew 是存取權杖到期前多久就先換新（Hermes auth_constants CODEX_ACCESS_TOKEN_REFRESH_SKEW_SECONDS=120）。
+	OAuthRefreshSkew = 120 * time.Second
+
+	// OAuthHTTPTimeout 是登入與換新權杖每個請求的時限（Hermes HERMES_CODEX_REFRESH_TIMEOUT_SECONDS 預設 20）。
+	OAuthHTTPTimeout = 20 * time.Second
+
+	// OAuthLoginTTL 是裝置碼登入最久等多久（Hermes _codex_poll_authorization_code：max_wait 15 分鐘）。
+	OAuthLoginTTL = 15 * time.Minute
+
+	// OAuthMinPollInterval 是向登入伺服器查詢結果的最短間隔（Hermes：max(3, interval)）。
+	OAuthMinPollInterval = 3 * time.Second
+
+	// OAuthMaxPendingLogins 是同時進行中的登入最多幾個。XBot 新增（避免一直開新登入塞滿記憶體）。
+	OAuthMaxPendingLogins = 8
+
+	// OAuthBodyBytes 是讀登入伺服器回應的上限（Hermes _CODEX_AUTH_BODY_MAX_BYTES = 1 MiB）。
+	OAuthBodyBytes = 1 << 20
+)

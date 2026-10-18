@@ -56,6 +56,10 @@ func (d Deps) probe(ctx context.Context, call *ops.Call, in ProbeIn) (ProbeOut, 
 	if err != nil {
 		return ProbeOut{}, err
 	}
+	if p.Auth != "" {
+		// 訂閱登入只有 Codex 的 responses 端點，呼叫方式固定；探測送的請求格式它不收。
+		return ProbeOut{}, ops.Conflict("訂閱登入的供應商不用探測，呼叫方式固定是 codex_responses")
+	}
 	var def runtime.ModelRef
 	if _, err := call.DB.GetSettingInto(ctx, runtime.DefaultModelSetting, &def); err != nil {
 		return ProbeOut{}, err

@@ -1357,6 +1357,8 @@ export interface ModelsAddProviderOutput {
     preset?: string
     /** 有沒有設定金鑰；金鑰本身永遠不會回傳 */
     api_key_set: boolean
+    /** 登入方式：空白是金鑰；oauth_codex 是 ChatGPT 方案的訂閱登入（權杖只在服務端） */
+    auth?: string
     /** 探測時供應商列出的模型（沒探測過時是範本的常用模型） */
     models?: string[]
     /** 上次探測的時間；0 表示還沒探測 */
@@ -1395,6 +1397,8 @@ export interface ModelsGetOutput {
     preset?: string
     /** 有沒有設定金鑰；金鑰本身永遠不會回傳 */
     api_key_set: boolean
+    /** 登入方式：空白是金鑰；oauth_codex 是 ChatGPT 方案的訂閱登入（權杖只在服務端） */
+    auth?: string
     /** 探測時供應商列出的模型（沒探測過時是範本的常用模型） */
     models?: string[]
     /** 上次探測的時間；0 表示還沒探測 */
@@ -1423,6 +1427,87 @@ export interface ModelsGetOutput {
  */
 export function modelsGet(input: ModelsGetInput = {}, opts?: CallOptions): Promise<ModelsGetOutput> {
   return invoke('xbot.models.get', input, opts).then((r) => r.output)
+}
+
+// xbot.models.oauth_complete
+
+export interface ModelsOauthCompleteInput {
+  login_id: string
+  /** 登入成功後順便設成預設模型 */
+  default_model?: string
+}
+
+export interface ModelsOauthCompleteOutput {
+  /** pending：使用者還沒在瀏覽器完成，稍後再呼叫 */
+  status: 'pending' | 'done'
+  provider?: {
+    id: string
+    label?: string
+    base_url: string
+    /** 預設的呼叫方式；空白是 chat_completions */
+    transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+    /** 從哪個內建範本建立 */
+    preset?: string
+    /** 有沒有設定金鑰；金鑰本身永遠不會回傳 */
+    api_key_set: boolean
+    /** 登入方式：空白是金鑰；oauth_codex 是 ChatGPT 方案的訂閱登入（權杖只在服務端） */
+    auth?: string
+    /** 探測時供應商列出的模型（沒探測過時是範本的常用模型） */
+    models?: string[]
+    /** 上次探測的時間；0 表示還沒探測 */
+    probed_at?: number
+  }
+  default?: {
+    provider: string
+    model: string
+    transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+  }
+}
+
+/**
+ * 查訂閱登入是否完成，完成就存成模型供應商
+ *
+ * 還沒完成時回 status=pending。完成後供應商就設定好了（同代號的舊登入會被換掉），可以用 default_model 設成預設模型。
+ *
+ * `xbot.models.oauth_complete`：權限 admin、風險 safe
+ */
+export function modelsOauthComplete(input: ModelsOauthCompleteInput, opts?: CallOptions): Promise<ModelsOauthCompleteOutput> {
+  return invoke('xbot.models.oauth_complete', input, opts).then((r) => r.output)
+}
+
+// xbot.models.oauth_start
+
+export interface ModelsOauthStartInput {
+  /** openai-codex：ChatGPT 方案（Plus／Pro／Business） */
+  kind: 'openai-codex'
+  /** 供應商代號；預設和 kind 同名 */
+  id?: string
+  /** 顯示名稱 */
+  label?: string
+}
+
+export interface ModelsOauthStartOutput {
+  /** 交給 xbot.models.oauth_complete */
+  login_id: string
+  /** 請使用者在登入頁輸入這組代碼 */
+  user_code: string
+  /** 請使用者用自己的瀏覽器打開 */
+  verification_url: string
+  /** 每隔幾秒呼叫一次 oauth_complete */
+  interval_seconds: number
+  /** 這次登入的期限（毫秒） */
+  expires_at: number
+}
+
+/**
+ * 用訂閱登入新增模型供應商（例：ChatGPT 方案）
+ *
+ * XBot 服務向登入伺服器要一組代碼，你在自己的瀏覽器打開網址、輸入代碼。登入完成後權杖加密存在 Model Proxy，不會進 Bot 的電腦。接著每隔 interval_seconds 呼叫 xbot.models.oauth_complete。只有你本人能登入。
+ *
+ * `xbot.models.oauth_start`：權限 admin、風險 safe
+ */
+export function modelsOauthStart(input: ModelsOauthStartInput, opts?: CallOptions): Promise<ModelsOauthStartOutput> {
+  return invoke('xbot.models.oauth_start', input, opts).then((r) => r.output)
 }
 
 // xbot.models.presets
@@ -1691,6 +1776,8 @@ export interface ModelsSetProviderOutput {
     preset?: string
     /** 有沒有設定金鑰；金鑰本身永遠不會回傳 */
     api_key_set: boolean
+    /** 登入方式：空白是金鑰；oauth_codex 是 ChatGPT 方案的訂閱登入（權杖只在服務端） */
+    auth?: string
     /** 探測時供應商列出的模型（沒探測過時是範本的常用模型） */
     models?: string[]
     /** 上次探測的時間；0 表示還沒探測 */
@@ -1735,6 +1822,8 @@ export interface ModelsUpdateProviderOutput {
   preset?: string
   /** 有沒有設定金鑰；金鑰本身永遠不會回傳 */
   api_key_set: boolean
+  /** 登入方式：空白是金鑰；oauth_codex 是 ChatGPT 方案的訂閱登入（權杖只在服務端） */
+  auth?: string
   /** 探測時供應商列出的模型（沒探測過時是範本的常用模型） */
   models?: string[]
   /** 上次探測的時間；0 表示還沒探測 */
@@ -2138,6 +2227,8 @@ export interface Ops {
   'xbot.inbox.undo': { input: InboxUndoInput; output: InboxUndoOutput }
   'xbot.models.add_provider': { input: ModelsAddProviderInput; output: ModelsAddProviderOutput }
   'xbot.models.get': { input: ModelsGetInput; output: ModelsGetOutput }
+  'xbot.models.oauth_complete': { input: ModelsOauthCompleteInput; output: ModelsOauthCompleteOutput }
+  'xbot.models.oauth_start': { input: ModelsOauthStartInput; output: ModelsOauthStartOutput }
   'xbot.models.presets': { input: ModelsPresetsInput; output: ModelsPresetsOutput }
   'xbot.models.pricing': { input: ModelsPricingInput; output: ModelsPricingOutput }
   'xbot.models.probe': { input: ModelsProbeInput; output: ModelsProbeOutput }
@@ -2188,6 +2279,8 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.inbox.undo': { path: '/api/v1/inbox.undo', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.models.add_provider': { path: '/api/v1/models.add_provider', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.models.get': { path: '/api/v1/models.get', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.models.oauth_complete': { path: '/api/v1/models.oauth_complete', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.models.oauth_start': { path: '/api/v1/models.oauth_start', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.models.presets': { path: '/api/v1/models.presets', scope: 'read', risk: 'safe', mutates: false },
   'xbot.models.pricing': { path: '/api/v1/models.pricing', scope: 'read', risk: 'safe', mutates: false },
   'xbot.models.probe': { path: '/api/v1/models.probe', scope: 'admin', risk: 'safe', mutates: true },

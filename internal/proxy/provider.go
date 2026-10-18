@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -61,6 +62,9 @@ type Provider struct {
 	// Transport 是這個供應商預設的呼叫方式；空白表示 chat_completions。
 	Transport string
 	Preset    string // 從哪個內建範本建立（空白表示自訂）
+	// Auth 是登入方式：空白是 API 金鑰；AuthOAuthCodex 是訂閱登入（權杖在 OAuth，APIKey 是目前的存取權杖）。
+	Auth      string
+	OAuth     *OAuthTokens
 	UpdatedAt time.Time
 }
 
@@ -76,11 +80,19 @@ type Providers struct {
 	store ProviderStore
 	keys  *Keyring
 	now   func() time.Time
+
+	// 訂閱登入（oauth.go）。
+	oauthMu    sync.Mutex
+	oauth      map[string]OAuthClient
+	refreshing map[string]*sync.Mutex
+	logins     map[string]*pendingLogin
 }
 
-// NewProviders 建立 Providers。
+// NewProviders 建立 Providers。訂閱登入預設接 ChatGPT（openai-codex）的真實登入伺服器。
 func NewProviders(store ProviderStore, keys *Keyring) *Providers {
-	return &Providers{store: store, keys: keys, now: time.Now}
+	p := &Providers{store: store, keys: keys, now: time.Now}
+	p.SetOAuth(AuthOAuthCodex, NewCodexOAuth())
+	return p
 }
 
 // Put 新增或更新供應商；金鑰加密後才交給存放層。
@@ -95,7 +107,20 @@ func (p *Providers) Put(ctx context.Context, pr Provider) error {
 	if err != nil {
 		return err
 	}
-	sealed, err := p.keys.Seal([]byte(pr.APIKey), providerAAD(pr.ID))
+	secret := []byte(pr.APIKey)
+	if pr.Auth != "" {
+		if pr.Auth != AuthOAuthCodex {
+			return fmt.Errorf("不認得的登入方式：%q", pr.Auth)
+		}
+		if pr.OAuth == nil || pr.OAuth.AccessToken == "" {
+			return errors.New("訂閱登入沒有權杖")
+		}
+		// 權杖整組加密，和 API 金鑰放在同一個欄位。
+		if secret, err = marshalTokens(pr.OAuth); err != nil {
+			return err
+		}
+	}
+	sealed, err := p.keys.Seal(secret, providerAAD(pr.ID))
 	if err != nil {
 		return fmt.Errorf("加密金鑰失敗：%w", err)
 	}
@@ -106,6 +131,7 @@ func (p *Providers) Put(ctx context.Context, pr Provider) error {
 		Label:     pr.Label,
 		Transport: pr.Transport,
 		Preset:    pr.Preset,
+		Auth:      pr.Auth,
 		UpdatedAt: p.now(),
 	})
 }
@@ -132,12 +158,21 @@ func (p *Providers) Get(ctx context.Context, id string) (Provider, error) {
 	if err != nil {
 		return Provider{}, err
 	}
+	if rec.Auth != "" {
+		tok, err := unmarshalTokens(key)
+		if err != nil {
+			return Provider{}, err
+		}
+		pr := providerOf(rec, tok.AccessToken)
+		pr.OAuth = tok
+		return pr, nil
+	}
 	return providerOf(rec, Secret(key)), nil
 }
 
 func providerOf(rec ProviderRecord, key Secret) Provider {
 	return Provider{ID: rec.ID, BaseURL: rec.BaseURL, APIKey: key, Label: rec.Label, Transport: rec.Transport,
-		Preset: rec.Preset, UpdatedAt: rec.UpdatedAt}
+		Preset: rec.Preset, Auth: rec.Auth, UpdatedAt: rec.UpdatedAt}
 }
 
 // Delete 移除供應商（連同加密的金鑰）。沒有時回 ErrNotFound。
