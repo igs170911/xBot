@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
 	"xbot/internal/api"
 	"xbot/internal/auth"
 	"xbot/internal/config"
+	"xbot/internal/store"
 	"xbot/internal/version"
 	"xbot/web"
 )
@@ -34,6 +36,15 @@ func cmdServe(args []string) error {
 	if _, err := auth.EnsureAccessToken(cfg.DataDir); err != nil {
 		return err
 	}
+	db, err := store.Open(context.Background(), filepath.Join(cfg.DataDir, store.FileName))
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			slog.Error("關閉資料庫失敗", "err", err)
+		}
+	}()
 
 	srv := &http.Server{
 		Addr:              cfg.Addr(),
