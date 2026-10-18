@@ -61,6 +61,9 @@ test: ## 只跑單元測試（Go＋前端）
 test-docker: ## Docker 整合測試（真的開 Bot 電腦，含對話端對端；沒有 Docker 或映像時略過，先 make box）
 	BOX_IMAGE=$(BOX_IMAGE) $(RUN) go test -tags docker -count=1 ./internal/box/... ./internal/runtime/... ./internal/catalog/...
 
+test-race: ## 用 race detector 重複跑 Go 測試，抓偶發失敗（合併前建議跑）
+	$(RUN) go test -race -count=3 ./...
+
 e2e: ## Playwright 端對端測試（會先 make build）
 	@$(MAKE) --no-print-directory build
 	cd web && $(RUN) pnpm e2e
