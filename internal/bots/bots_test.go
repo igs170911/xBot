@@ -240,12 +240,37 @@ func TestRestrictedAgentGetsBotsItCreates(t *testing.T) {
 	}
 	var v View
 	e.must(t, id, "xbot.bots.create", map[string]any{"name": "我的"}, &v)
-	tok, _ = e.db.GetAgentToken(ctx, tok.ID)
-	id, _ = ops.Agent(tok, "mcp")
-	if !id.CanAccess(ops.ResourceBot, v.ID) {
-		t.Fatalf("建立者應該能碰自己建立的 Bot：%s", tok.Resources)
+	if v.CreatedBy != "agent:"+tok.ID || v.UpdatedBy != v.CreatedBy {
+		t.Fatalf("要記下是誰建立的：%+v", v)
 	}
+	// MCP-8：權杖本身不改，靠 bot.created_by 讓它碰得到自己建立的。
+	tok, _ = e.db.GetAgentToken(ctx, tok.ID)
+	if string(tok.Resources) != `{"bots":[]}` {
+		t.Fatalf("權杖不應該被改：%s", tok.Resources)
+	}
+	id, _ = ops.Agent(tok, "mcp")
 	e.must(t, id, "xbot.bots.get", map[string]any{"id": v.ID}, nil)
+	var list ListOut
+	e.must(t, id, "xbot.bots.list", map[string]any{}, &list)
+	if len(list.Bots) != 1 || list.Bots[0].ID != v.ID {
+		t.Fatalf("只看得到自己建立的：%+v", list)
+	}
+	// 別人建立的碰不到。
+	var other View
+	e.must(t, owner, "xbot.bots.create", map[string]any{"name": "你的"}, &other)
+	if _, err := e.call(t, id, "xbot.bots.get", map[string]any{"id": other.ID}); code(err) != ops.CodeForbidden {
+		t.Fatalf("別人建立的不能碰：%v", err)
+	}
+	// 修改記下是誰改的（MCP-13）。
+	var upd View
+	e.must(t, id, "xbot.bots.update", map[string]any{"id": v.ID, "title": "助理"}, &upd)
+	if upd.UpdatedBy != "agent:"+tok.ID || upd.CreatedBy != "agent:"+tok.ID {
+		t.Fatalf("要記下是誰改的：%+v", upd)
+	}
+	e.must(t, owner, "xbot.bots.update", map[string]any{"id": v.ID, "title": "主任"}, &upd)
+	if upd.UpdatedBy != "owner" || upd.CreatedBy != "agent:"+tok.ID {
+		t.Fatalf("你改的記成 owner：%+v", upd)
+	}
 
 	// 不受限的代理不需要改。
 	free, _ := e.db.CreateAgentToken(ctx, store.AgentToken{Name: "不限", TokenHash: "h2", Scopes: []string{"manage"}})

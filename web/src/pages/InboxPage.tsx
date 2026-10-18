@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowRight, Check, Clock, RotateCcw, TriangleAlert } from 'lucide-react'
+import { ArrowRight, Check, Clock, RotateCcw, ShieldCheck, SquareTerminal, TriangleAlert, Undo2 } from 'lucide-react'
 import { Avatar } from '../ui/Avatar'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
+import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { SimplifiedTag, StatusChip, type Tone } from '../ui/Pill'
 import { useToast } from '../ui/toast-context'
@@ -83,8 +84,10 @@ function ApprovalItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
   const [busy, setBusy] = useState<'allow' | 'deny' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const undoToast = useUndoToast()
-  const op = ((item.payload ?? {}) as { op?: string }).op ?? ''
+  const p = (item.payload ?? {}) as { op?: string; actor?: string; actor_name?: string; via?: string; request_id?: string; delegable?: boolean }
+  const op = p.op ?? ''
   const danger = /\.(delete|remove)$/.test(op)
+  const byAgent = !!p.actor?.startsWith('agent:')
   const decide = async (decision: 'allow' | 'deny') => {
     if (!item.ref) return
     setBusy(decision)
@@ -102,8 +105,19 @@ function ApprovalItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
   }
   return (
     <Card data-testid="inbox-item" data-kind="approval">
-      <Head bot={bot} chip="等你允許" tone="warning" sub={`${sinceLabel(item.created_at)} · 只有你能決定`} />
+      <Head
+        bot={bot}
+        chip="等你允許"
+        tone="warning"
+        sub={`${sinceLabel(item.created_at)} · ${byAgent ? `透過 ${p.via === 'mcp' || !p.via ? 'MCP' : p.via.toUpperCase()} · ` : ''}${p.delegable && !danger ? '可以由有授權的代理代為核准' : '只有你能決定'}`}
+      />
       <p className="m-0 text-body">{item.title}</p>
+      {byAgent && op && (
+        <code data-testid="approval-op" className="block truncate font-mono text-[12.5px] text-ink-3">
+          {op}
+          {p.request_id ? ` · request_id ${p.request_id}` : ''}
+        </code>
+      )}
       {item.body && <p className="m-0 whitespace-pre-wrap rounded-menu bg-inset px-3.5 py-2.5 text-ui-sm text-ink-2">{item.body}</p>}
       {danger && (
         <p className="m-0 flex items-center gap-2 rounded-menu bg-danger/15 px-3.5 py-2.5 text-ui-sm text-danger">
@@ -125,6 +139,83 @@ function ApprovalItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
         </Button>
       </div>
     </Card>
+  )
+}
+
+function minutesLeft(until: number, now: number): number {
+  return Math.max(1, Math.ceil((until - now) / 60_000))
+}
+
+/** 現在時間，每 15 秒更新一次（復原倒數用）。 */
+function useNow(): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 15_000)
+    return () => window.clearInterval(t)
+  }, [])
+  return now
+}
+
+/** 代理代為核准的紀錄卡（MCP-10，C16、F08）：做了什麼、今天第幾次；可以復原的話 10 分鐘內能按「復原」。 */
+function DelegatedItem({ item }: { item: InboxItem }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const p = (item.payload ?? {}) as { actor_name?: string; via?: string; category_name?: string; reversible?: boolean }
+  const now = useNow()
+  const undone = item.resolution === 'undone'
+  const undoUntil = item.undo_until ?? 0
+  const canUndo = !undone && undoUntil > now
+  const time = new Date(item.created_at)
+  const hhmm = `${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`
+  const undo = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await inboxUndo({ inbox_id: item.id })
+      await loadInbox()
+    } catch (err) {
+      setError(errText(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <section
+      aria-label="代為核准的紀錄"
+      data-testid="inbox-delegated"
+      data-undone={undone || undefined}
+      className={cx('flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card bg-card py-3 pl-[18px] pr-3.5', undone && 'opacity-70')}
+    >
+      <span className="flex size-8 flex-none items-center justify-center rounded-field bg-control text-ink-2">
+        <Icon icon={SquareTerminal} size={16} />
+      </span>
+      <span className="flex min-w-0 flex-[999_1_260px] flex-col gap-0.5">
+        <span className={cx('text-ui', undone && 'line-through')}>{item.title}</span>
+        <span className="text-[13px] text-ink-2">
+          {item.body} · {hhmm}
+        </span>
+        {error && (
+          <span role="alert" className="text-sub text-danger">
+            {error}
+          </span>
+        )}
+      </span>
+      {undone ? (
+        <span className="inline-flex flex-none items-center gap-1.5 text-sub text-success">
+          <Icon icon={Check} size={16} />
+          已復原
+        </span>
+      ) : canUndo ? (
+        <span className="flex flex-none items-center gap-2">
+          <span className="text-meta text-ink-3">還能復原 {minutesLeft(undoUntil, now)} 分鐘</span>
+          <Button size="sm" icon={Undo2} loading={busy} onClick={() => void undo()}>
+            復原
+          </Button>
+        </span>
+      ) : (
+        <span className="flex-none text-meta text-ink-3">{p.reversible ? '已超過 10 分鐘，不能復原' : '這個動作做了就不能復原'}</span>
+      )}
+    </section>
   )
 }
 
@@ -232,7 +323,7 @@ export function InboxPage() {
     fetchHealth().then(setHealth)
   }, [])
 
-  const { items, expired } = useStore(inboxStore)
+  const { items, expired, delegated } = useStore(inboxStore)
   const bots = useStore(botsStore).bots
   const real = items ?? []
   const left = real.length
@@ -271,6 +362,17 @@ export function InboxPage() {
               <span className="text-body">都處理完了</span>
               <span className="text-sub text-ink-2">Bot 有事要你決定時，會出現在這裡。</span>
             </div>
+          )}
+          {!!delegated?.length && (
+            <section aria-label="最近的決定" className="flex flex-col gap-2 pt-3">
+              <h2 className="m-0 inline-flex items-center gap-1.5 text-sub text-ink-2">
+                <Icon icon={ShieldCheck} size={15} />
+                最近的決定 · 代為核准
+              </h2>
+              {delegated.map((it) => (
+                <DelegatedItem key={it.id} item={it} />
+              ))}
+            </section>
           )}
           {!!expired?.length && (
             <section aria-label="過期的提問" className="flex flex-col gap-2 pt-3">

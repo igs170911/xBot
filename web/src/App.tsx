@@ -23,6 +23,7 @@ const TITLES: Record<string, string> = {
   '/apps': '連接應用程式',
   '/org': '組織架構',
   '/settings': '設定',
+  '/settings/agents': '已連線的代理',
 }
 
 const BOT_PATH = /^\/bots\/([^/]+)(?:\/threads\/([^/]+))?\/?$/
@@ -72,7 +73,8 @@ function Main() {
   let page
   if (path === '/') page = <InboxPage />
   else if (bot) page = <ChatPage key={bot[1]} botId={bot[1]} threadParam={bot[2]} />
-  else if (path === '/settings' || path.startsWith('/settings/')) page = <SettingsPage path={path} />
+  else if (path === '/settings' || path.startsWith('/settings/'))
+    page = <SettingsPage path={path === '/settings/agents' ? '/settings/advanced/agents' : path} />
   else page = <Placeholder title={title} />
 
   return (

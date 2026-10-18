@@ -9,8 +9,13 @@ export type InboxState = {
   items: InboxItem[] | null
   /** 最近過期、還沒請它再問的提問（L14「請它再問一次」）。 */
   expired?: InboxItem[]
+  /** 最近的決定：代理代為核准的紀錄卡（MCP-10，F08「最近的決定」、C16），一天內的。 */
+  delegated?: InboxItem[]
   error?: string
 }
+
+/** 「最近的決定」顯示多久內的代為核准紀錄。 */
+const RECENT_MS = 24 * 60 * 60_000
 
 // 「待我處理」。
 export const inboxStore = createStore<InboxState>({ items: null })
@@ -18,8 +23,12 @@ export const inboxStore = createStore<InboxState>({ items: null })
 export function loadInbox(): Promise<void> {
   const open = inboxList({ status: 'open' })
   const expired = inboxList({ status: 'expired', limit: 10 }).catch(() => ({ items: [] as InboxItem[] }))
-  return Promise.all([open, expired])
-    .then(([o, x]) => inboxStore.set({ items: o.items, expired: x.items.filter((i) => i.resolution !== 'asked_again') }))
+  const delegated = inboxList({ status: 'all', kind: 'delegated', limit: 10 }).catch(() => ({ items: [] as InboxItem[] }))
+  return Promise.all([open, expired, delegated])
+    .then(([o, x, d]) => {
+      const since = Date.now() - RECENT_MS
+      inboxStore.set({ items: o.items, expired: x.items.filter((i) => i.resolution !== 'asked_again'), delegated: d.items.filter((i) => i.kind === 'delegated' && i.created_at >= since) })
+    })
     .catch((err: unknown) => inboxStore.set((s) => ({ ...s, error: err instanceof Error ? err.message : String(err) })))
 }
 

@@ -14,6 +14,9 @@ import (
 // notify 在事件寫進 event 表之後呼叫（SSE 用）；可以是 nil。
 func buildRegistry(db *store.DB, pairing *auth.Pairing, notify func(store.Event), st *stack) *ops.Registry {
 	reg := ops.New(ops.Config{DB: db, Notify: notify})
+	if db != nil {
+		reg.SetLimiter(auth.NewLimiter(db).Check) // 代理的呼叫速率、每日呼叫與花費上限（MCP-12）
+	}
 	ops.RegisterBuiltin(reg)
 	auth.RegisterAgentOps(reg, pairing)
 	catalog.Register(reg, coreDeps(st))

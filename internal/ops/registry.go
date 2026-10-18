@@ -29,13 +29,20 @@ type Op[In, Out any] struct {
 	Description string // 補充說明（可空白）
 	Scope       Scope  // 需要的權限範圍
 	Risk        Risk   // 預設風險；RiskOf 有設時以它為準
-	Category    string // 代為核准的類別（MCP-10），例：send_external、spend；空白表示不能代為核准
+	// Category 是代為核准的類別（MCP-10，見 Categories），例：external_send；空白表示不能代為核准。
+	Category string
 	// NoDelegate 表示永遠不能代為核准（刪除 Bot 或資料、移除主機、提高花費上限、修改代為核准授權）。
+	// 和 Category 同時設定時以 NoDelegate 為準。
 	NoDelegate bool
 	// ForBot 表示 Bot 自己（經 product.sock 的 XBot MCP）可以用這個操作（C11）。Bot 只看得到、也只能呼叫這些。
 	ForBot bool
 	// RiskOf 依輸入決定風險（例：降低花費上限＝safe、提高＝confirm）。可空白。
 	RiskOf func(In) Risk
+	// AmountOf 回傳這次動作的金額（美元百萬分之一），花錢類的動作才設；代為核准用它算每日金額上限。
+	AmountOf func(In) int64
+	// Revert 復原一次已經執行的動作（代為核准的紀錄卡 10 分鐘內按「復原」時呼叫）。
+	// 沒設表示這個動作做了就不能復原（例：已經寄出的信）。
+	Revert func(ctx context.Context, call *Call, in In, out Out) error
 	// Handle 執行操作。call.DryRun 為 true 時只能讀、回傳「會發生什麼」；這時 call.DB 是唯讀的。
 	Handle func(ctx context.Context, call *Call, in In) (Out, error)
 }
@@ -52,8 +59,10 @@ type Info struct {
 	DynamicRisk bool    `json:"dynamic_risk,omitempty"`
 	Category    string  `json:"category,omitempty"`
 	NoDelegate  bool    `json:"no_delegate,omitempty"`
-	ForBot      bool    `json:"for_bot,omitempty"` // Bot 經 product.sock 可以用（C11）
-	Mutates     bool    `json:"mutates"`           // 不是 read：出口應該提供 request_id 與 dry_run（MCP-4）
+	Reversible  bool    `json:"reversible,omitempty"` // 有 Revert：代為核准後 10 分鐘內可以復原
+	HasAmount   bool    `json:"has_amount,omitempty"` // 有 AmountOf：花錢類，算進代為核准的每日金額
+	ForBot      bool    `json:"for_bot,omitempty"`    // Bot 經 product.sock 可以用（C11）
+	Mutates     bool    `json:"mutates"`              // 不是 read：出口應該提供 request_id 與 dry_run（MCP-4）
 	Input       *Schema `json:"input_schema"`
 	Output      *Schema `json:"output_schema"`
 }
@@ -104,10 +113,15 @@ func DefaultPolicy(_ context.Context, call *Call) (Decision, error) {
 	return NeedApproval, nil
 }
 
+// Limiter 在執行前檢查呼叫者的上限（MCP-12：代理的每分鐘呼叫、每日呼叫、每日花費）。
+// 回傳 nil 表示可以繼續；超過時回 limit 錯誤。
+type Limiter func(ctx context.Context, id Identity, info *Info) *Error
+
 // Config 是建立登錄表的設定。
 type Config struct {
 	DB      *store.DB
 	Policy  ApprovalPolicy    // 空白用 DefaultPolicy
+	Limiter Limiter           // 空白表示不限制
 	Notify  func(store.Event) // 事件寫入後通知（SSE 用，C03）；可空白
 	Logger  *slog.Logger      // 空白用 slog.Default()
 	StaleMS int64             // 處理中多久可接手；0 用 limits.OpRequestStale
@@ -121,10 +135,12 @@ type Registry struct {
 }
 
 type entry struct {
-	info Info
-	run  func(ctx context.Context, call *Call, raw json.RawMessage) (json.RawMessage, error)
-	risk func(raw json.RawMessage) Risk
-	refs func(raw json.RawMessage) []resourceRef
+	info   Info
+	run    func(ctx context.Context, call *Call, raw json.RawMessage) (json.RawMessage, error)
+	risk   func(raw json.RawMessage) Risk
+	amount func(raw json.RawMessage) int64
+	revert func(ctx context.Context, call *Call, in, out json.RawMessage) error
+	refs   func(raw json.RawMessage) []resourceRef
 }
 
 type resourceRef struct{ kind, id string }
@@ -150,6 +166,13 @@ func (r *Registry) SetPolicy(p ApprovalPolicy) {
 	r.cfg.Policy = p
 }
 
+// SetLimiter 換掉上限檢查（MCP-12）。
+func (r *Registry) SetLimiter(l Limiter) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.cfg.Limiter = l
+}
+
 // Register 登錄一個操作。定義有錯（名稱格式、重複、型別不支援）會 panic：這是程式錯誤，啟動時就該發現。
 func Register[In, Out any](r *Registry, op Op[In, Out]) {
 	if err := register(r, op); err != nil {
@@ -173,6 +196,9 @@ func register[In, Out any](r *Registry, op Op[In, Out]) error {
 	if op.Handle == nil {
 		return fmt.Errorf("要有 Handle")
 	}
+	if op.Category != "" && !slices.Contains(Categories, op.Category) {
+		return fmt.Errorf("Category 不對：%q（可用：%s）", op.Category, strings.Join(Categories, "、"))
+	}
 	inT, outT := reflect.TypeFor[In](), reflect.TypeFor[Out]()
 	if inT.Kind() != reflect.Struct || outT.Kind() != reflect.Struct {
 		return fmt.Errorf("輸入與輸出都要是 struct")
@@ -189,7 +215,7 @@ func register[In, Out any](r *Registry, op Op[In, Out]) error {
 	e := &entry{info: Info{
 		Name: op.Name, Domain: parts[1], Action: parts[2], Summary: op.Summary, Description: op.Description,
 		Scope: op.Scope, Risk: op.Risk, DynamicRisk: op.RiskOf != nil, Category: op.Category, NoDelegate: op.NoDelegate, ForBot: op.ForBot,
-		Mutates: op.Scope != ScopeRead, Input: in, Output: out,
+		Reversible: op.Revert != nil, HasAmount: op.AmountOf != nil, Mutates: op.Scope != ScopeRead, Input: in, Output: out,
 	}}
 	decode := func(raw json.RawMessage) (In, error) {
 		var v In
@@ -223,6 +249,31 @@ func register[In, Out any](r *Registry, op Op[In, Out]) error {
 		return RiskConfirm // 不認得的值當成 confirm，寧可多問
 	}
 	e.refs = func(raw json.RawMessage) []resourceRef { return collectRefs(raw, in) }
+	e.amount = func(raw json.RawMessage) int64 {
+		if op.AmountOf == nil {
+			return 0
+		}
+		v, err := decode(raw)
+		if err != nil {
+			return 0
+		}
+		return max(op.AmountOf(v), 0)
+	}
+	if op.Revert != nil {
+		e.revert = func(ctx context.Context, call *Call, inRaw, outRaw json.RawMessage) error {
+			v, err := decode(inRaw)
+			if err != nil {
+				return err
+			}
+			var o Out
+			if len(outRaw) > 0 {
+				if err := json.Unmarshal(outRaw, &o); err != nil {
+					return err
+				}
+			}
+			return op.Revert(ctx, call, v, o)
+		}
+	}
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -231,6 +282,17 @@ func register[In, Out any](r *Registry, op Op[In, Out]) error {
 	}
 	r.ops[op.Name] = e
 	return nil
+}
+
+// Amount 回傳一次呼叫的金額（美元百萬分之一；不是花錢類的動作是 0）。
+func (r *Registry) Amount(name string, raw json.RawMessage) int64 {
+	r.mu.RLock()
+	e, ok := r.ops[name]
+	r.mu.RUnlock()
+	if !ok {
+		return 0
+	}
+	return e.amount(raw)
 }
 
 // List 回傳所有操作，依名稱排序。

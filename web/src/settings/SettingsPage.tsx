@@ -1,3 +1,4 @@
+import { AgentsPage } from '../pages/AgentsPage'
 import { useEffect, useState, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight, Construction } from 'lucide-react'
 import { linkClick, navigate } from '../router'
@@ -78,8 +79,7 @@ function Content({ path }: { path: string }) {
   if (path.startsWith('/settings/models')) return <ModelsSection path={path} />
   if (path === '/settings/usage') return <UsageSection />
   if (path === '/settings/computers') return <Placeholder title="電腦與裝置" sub="Bot 的電腦、主機和你的手機。" note="電腦主機、休眠時間、連手機會在電腦頁（B12～B14）完成後放在這裡。" />
-  if (path === '/settings/advanced/agents')
-    return <Placeholder title="外部代理與 MCP" sub="讓 Claude Code、Codex 等外部代理透過 MCP 操作 XBot。" note="代為核准與外部 MCP 權限（C21）完成後放在這裡。" />
+  if (path === '/settings/advanced/agents') return <AgentsPage />
   if (path === '/settings/advanced/backup') return <Placeholder title="備份與更新" sub="備份資料、還原、更新 XBot。" note="目前請用 make backup／make update。" />
   if (path === '/settings/advanced/people') return <Placeholder title="成員與紀錄" sub="組織成員和操作紀錄。" note="之後的任務卡會做。" />
   if (path === '/settings/advanced/lab') return <Placeholder title="技能庫與實驗" sub="技能庫和還在試的功能。" note="之後的任務卡會做。" />

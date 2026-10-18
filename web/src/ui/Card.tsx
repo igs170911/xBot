@@ -1,4 +1,4 @@
-import { useRef, type HTMLAttributes, type KeyboardEvent, type ReactNode } from 'react'
+import { useRef, type HTMLAttributes, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { Icon } from './Icon'
 import { cx } from './cx'
@@ -109,7 +109,7 @@ export function SettingsRow({ title, sub, children }: { title: ReactNode; sub?: 
   )
 }
 
-export function SettingsLink({ title, note, href, onClick }: { title: ReactNode; note?: ReactNode; href?: string; onClick?: () => void }) {
+export function SettingsLink({ title, note, href, onClick }: { title: ReactNode; note?: ReactNode; href?: string; onClick?: (e: MouseEvent<HTMLAnchorElement>) => void }) {
   return (
     <a href={href ?? '#'} onClick={onClick} className={cx(ROW, 'pl-3.5 pr-3 text-ink')}>
       <span className="flex-1 text-ui">{title}</span>
