@@ -205,14 +205,22 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	provider, err := h.o.Providers.Get(r.Context(), providerID)
+	provider, err := h.load(r.Context(), providerID, false)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			fail(w, http.StatusNotFound, "provider_not_found", "還沒有設定這個模型供應商："+providerID)
 			return
 		}
+		if errors.Is(err, ErrOAuthRelogin) {
+			fail(w, http.StatusUnauthorized, "oauth_relogin_required", "訂閱登入已失效，請到模型設定重新登入（"+providerID+"）")
+			return
+		}
 		h.o.Logger.Error("模型代理：讀不到供應商設定", "provider", providerID, "err", err)
 		fail(w, http.StatusInternalServerError, "internal_error", "讀不到模型供應商設定")
+		return
+	}
+	if provider.Auth != "" && !codexPathAllowed(r.Method, apiPath) {
+		fail(w, http.StatusForbidden, "endpoint_not_allowed", "訂閱登入的供應商只開放 responses："+apiPath)
 		return
 	}
 
@@ -254,11 +262,22 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	model := requestModel(body)
 	start := h.o.Now()
 	resp, cancel, err := h.forward(r, botID, provider, apiPath, body)
+	// 訂閱登入：供應商回 401 表示存取權杖被撤銷或過期，換新一次再送（還沒送出任何位元組）。
+	if err == nil && resp.StatusCode == http.StatusUnauthorized && provider.Auth != "" {
+		if fresh, ferr := h.refresh(r.Context(), provider, true); ferr == nil {
+			_ = resp.Body.Close()
+			cancel()
+			provider = fresh
+			resp, cancel, err = h.forward(r, botID, provider, apiPath, body)
+		} else {
+			h.o.Logger.Warn("模型代理：訂閱登入換新權杖失敗", "provider", provider.ID, "err", ferr)
+		}
+	}
 	fellBack := false
 	// 備援（EN-5）：供應商忙碌或出錯、而且還沒送出任何位元組時，改用設定好的備援模型重試一次。
 	if fb := fallbackRoute(binding, r.Method, apiPath, body, providerID, model); fb != nil &&
 		((err != nil && r.Context().Err() == nil) || (err == nil && retryableStatus(resp.StatusCode))) {
-		fp, ferr := h.o.Providers.Get(r.Context(), fb.Provider)
+		fp, ferr := h.load(r.Context(), fb.Provider, false)
 		if ferr == nil && h.o.Budget != nil && fb.Provider != providerID {
 			// 備援的供應商也有自己的上限；超過了就不備援。
 			ferr = h.o.Budget.CheckProvider(r.Context(), botID, fb.Provider)
@@ -325,7 +344,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ReasoningTokens: c.Reasoning, Cost: c.Cost, Fallback: fellBack,
 			Status: resp.StatusCode, OK: resp.StatusCode < 400 && copyErr == nil, At: start,
 		}
-		entry.CostMicros, entry.Unpriced = h.cost(ctx, provider.ID, model, c)
+		if provider.Auth == "" { // 訂閱登入是月費方案，不另外算錢（只記 token）。
+			entry.CostMicros, entry.Unpriced = h.cost(ctx, provider.ID, model, c)
+		}
 		if err := h.o.Usage.RecordUsage(ctx, entry); err != nil {
 			h.o.Logger.Error("模型代理：記錄用量失敗", "bot", botID, "provider", provider.ID, "err", err)
 		}
@@ -367,6 +388,31 @@ func (h *Handler) exceeded(ctx context.Context, be *BudgetError) {
 	}
 }
 
+// OAuthRefresher 換新訂閱登入的權杖；*Providers 實作。ProviderSource 有實作它時才支援訂閱登入。
+type OAuthRefresher interface {
+	Fresh(ctx context.Context, p Provider, force bool) (Provider, error)
+}
+
+// load 讀出供應商；訂閱登入的權杖快到期時先換新。
+func (h *Handler) load(ctx context.Context, id string, force bool) (Provider, error) {
+	p, err := h.o.Providers.Get(ctx, id)
+	if err != nil {
+		return Provider{}, err
+	}
+	return h.refresh(ctx, p, force)
+}
+
+func (h *Handler) refresh(ctx context.Context, p Provider, force bool) (Provider, error) {
+	if p.Auth == "" {
+		return p, nil
+	}
+	rf, ok := h.o.Providers.(OAuthRefresher)
+	if !ok {
+		return Provider{}, errors.New("模型代理不支援訂閱登入")
+	}
+	return rf.Fresh(ctx, p, force)
+}
+
 // session 回傳這個 Bot 目前對話的穩定 id；沒有進行中的對話時用「xbot-<Bot id>」。
 func (h *Handler) session(botID string) string {
 	if h.o.Session != nil {
@@ -385,8 +431,18 @@ var errStreamIdle = errors.New("模型供應商太久沒有送資料（串流閒
 func (h *Handler) forward(r *http.Request, botID string, provider Provider, apiPath string, body []byte) (*http.Response, context.CancelFunc, error) {
 	realKey := string(provider.APIKey)
 	target := provider.BaseURL + "/" + apiPath
-	if r.URL.RawQuery != "" {
-		target += "?" + r.URL.RawQuery
+	query := r.URL.RawQuery
+	var cacheKey string
+	if provider.Auth == AuthOAuthCodex {
+		if r.Method == http.MethodPost {
+			body, cacheKey = codexBody(body)
+		} else if apiPath == "models" && !r.URL.Query().Has("client_version") {
+			// Codex 的模型清單要 client_version（Hermes model_metadata：任何版本都會列出全部）。
+			query = "client_version=1.0.0"
+		}
+	}
+	if query != "" {
+		target += "?" + query
 	}
 	ctx, cancelCause := context.WithCancelCause(r.Context())
 	cancel := func() { cancelCause(context.Canceled) }
@@ -411,6 +467,12 @@ func (h *Handler) forward(r *http.Request, botID string, provider Provider, apiP
 	up.Header.Set("User-Agent", "XBot/"+version.Version)
 	if name := SessionHeaderFor(provider); name != "" {
 		up.Header.Set(name, h.session(botID))
+	}
+	if provider.Auth == AuthOAuthCodex {
+		setCodexHeaders(up.Header, provider.OAuth, h.session(botID), cacheKey)
+		if up.Header.Get("Accept") == "" && r.Method == http.MethodPost {
+			up.Header.Set("Accept", "text/event-stream")
+		}
 	}
 	if realKey != "" {
 		up.Header.Set("Authorization", "Bearer "+realKey)
