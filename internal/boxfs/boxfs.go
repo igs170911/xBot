@@ -214,7 +214,7 @@ func (d *Docker) WriteFiles(ctx context.Context, dir string, files []File) error
 		if err != nil {
 			return err
 		}
-		_, err = d.API.CopyToContainer(ctx, d.ID, client.CopyToContainerOptions{DestinationPath: target, Content: buf, CopyUIDGID: true})
+		_, err = d.API.CopyToContainer(ctx, d.ID, client.CopyToContainerOptions{DestinationPath: target, Content: buf})
 		if err == nil {
 			return nil
 		}
@@ -245,7 +245,8 @@ func (d *Docker) Remove(ctx context.Context, p string) error {
 		}
 		d.ID, d.Running = id, true
 	}
-	return Run(ctx, d.API, d.ID, "0", "rm", "-rf", "--", p)
+	// 以 Bot 使用者刪（B13 起容器沒有任何 capability，root 也進不了 Bot 的 0700 資料夾）。
+	return Run(ctx, d.API, d.ID, fmt.Sprintf("%d:%d", d.UID, d.GID), "rm", "-rf", "--", p)
 }
 
 // Run 在容器裡執行一個指令（不接 stdin），等它結束；結束碼不是 0 時回錯誤（附 stderr 的最後一段）。

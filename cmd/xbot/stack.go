@@ -10,6 +10,7 @@ import (
 
 	"xbot/internal/box"
 	"xbot/internal/collab"
+	"xbot/internal/computers"
 	"xbot/internal/config"
 	"xbot/internal/engine"
 	"xbot/internal/engine/acp"
@@ -47,6 +48,9 @@ type stack struct {
 	skills    *skills.Service
 	memory    *memory.Service
 	collab    *collab.Service
+	computers *computers.Service
+	// stopIdle 停掉閒置休眠的背景檢查（startBackground 開始）。
+	stopIdle context.CancelFunc
 }
 
 func openStack(cfg config.Config) (*stack, error) {
@@ -109,8 +113,23 @@ func openStack(cfg config.Config) (*stack, error) {
 	if image == "" {
 		image = box.DefaultImage
 	}
-	s.boxes = box.New(db, registry, box.Options{Image: image, Prepare: comp.Prepare})
 	bus := events.New()
+	// 網路防護（SEC-4）預設開著；只有不能用 iptables 的環境（例：rootless Docker）才設 XBOT_NETGUARD=off。
+	noGuard := os.Getenv("XBOT_NETGUARD") == "off"
+	if noGuard {
+		logger.Warn("XBOT_NETGUARD=off：Bot 的電腦連得到這台主機與區網（SEC-4 網路防護已關閉）")
+	}
+	s.boxes = box.New(db, registry, box.Options{Image: image, Prepare: comp.Prepare, NoNetGuard: noGuard, Logger: logger,
+		// 電腦狀態變了：推給介面，並叫醒排隊等電腦的工作（休眠空出了名額）。
+		Notify: func(st box.Status) {
+			computers.Publish(db, bus, computers.KindStatus, st.BotID, st, true)
+			if s.hosts != nil {
+				s.hosts.Signal()
+			}
+		},
+		// 連資料一起刪電腦時先關掉服務這邊的 product.sock。
+		Release: func(botID string) { _ = s.sockets.Close(botID) },
+	})
 	// 遠端主機（B12）：連線、健康狀態寫回 host.status、加入與檢查、擺放與排隊。
 	s.hosts = hosts.NewService(hosts.Options{DB: db, Registry: registry, Local: s.local, DataDir: cfg.DataDir, Image: image,
 		LocalSocket: s.sockets.Path, Bus: bus, Logger: logger})
@@ -152,6 +171,8 @@ func openStack(cfg config.Config) (*stack, error) {
 		UID: box.BotUID, GID: box.BotGID,
 	}})
 	comp.Roster = s.collab.RosterText
+	// 電腦的生命週期操作與「更新電腦」（B13）。
+	s.computers = &computers.Service{DB: db, Boxes: s.boxes, Hosts: s.hosts, Activity: s.runtime, Bus: bus, Logger: logger}
 	if err := s.hosts.Start(context.Background()); err != nil {
 		s.Close()
 		return nil, err
@@ -159,8 +180,21 @@ func openStack(cfg config.Config) (*stack, error) {
 	return s, nil
 }
 
+// startBackground 開始服務才需要的背景工作：閒置休眠（BX-12、CL-9）。
+func (s *stack) startBackground() {
+	ctx, cancel := context.WithCancel(context.Background())
+	s.stopIdle = cancel
+	go s.boxes.RunIdle(ctx, s.runtime)
+}
+
 func (s *stack) Close() error {
 	var errs []error
+	if s.stopIdle != nil {
+		s.stopIdle()
+	}
+	if s.computers != nil {
+		s.computers.Wait()
+	}
 	if s.hosts != nil {
 		errs = append(errs, s.hosts.Close())
 	}

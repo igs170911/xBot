@@ -37,6 +37,7 @@ func coreDeps(st *stack) catalog.Deps {
 		Budgets:   st.budgets,
 		Hosts:     st.hosts,
 		Collab:    st.collab,
+		Computers: st.computers,
 		Skills:    st.skills,
 		Memory:    st.memory,
 		SoulChanged: func(ctx context.Context, botID string) {
@@ -44,6 +45,7 @@ func coreDeps(st *stack) catalog.Deps {
 				slog.Warn("更新 Bot 電腦裡的 SOUL.md 失敗，下次開機前會再寫", "bot", botID, "err", err)
 			}
 		},
+		// 刪除 Bot：關引擎連線、刪電腦與資料區、關 product.sock，並清掉主機上的 bots/<id>（遠端主機連反向轉發一起，B13）。
 		Teardown: catalog.Teardown(st.db, st.driver.Close, func(ctx context.Context, botID string) error {
 			_, err := st.boxes.Remove(ctx, botID, true)
 			return err

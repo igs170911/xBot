@@ -157,7 +157,7 @@ func writeFiles(ctx context.Context, api Files, containerID string, p Profile, f
 	if err := tw.Close(); err != nil {
 		return err
 	}
-	if _, err := api.CopyToContainer(ctx, containerID, client.CopyToContainerOptions{DestinationPath: HomeDir, Content: &buf, CopyUIDGID: true}); err != nil {
+	if _, err := api.CopyToContainer(ctx, containerID, client.CopyToContainerOptions{DestinationPath: HomeDir, Content: &buf}); err != nil {
 		return fmt.Errorf("寫入 Bot 的 Hermes 設定失敗：%w", err)
 	}
 	return nil

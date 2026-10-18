@@ -148,6 +148,11 @@
 | `BoxReadyTimeout`／`BoxReadyPoll` | 75 秒／0.6 秒 | server/computers.py:396、:404 | 正確 |
 | `BoxProbeTimeout` | 2 秒 | server/computers.py:341 | 正確 |
 | `BoxIdleMinutes` | 30 分鐘 | 無（PRD BX-12） | LazyBoy 程式沒有休眠 |
+| `BoxIdleCheckInterval` | 1 分鐘 | XBot 新增（B13）：閒置休眠多久檢查一次 | — |
+| `BoxTmpfsTmpBytes`／`BoxTmpfsRunBytes`／`BoxTmpfsVarTmpBytes` | 1 GiB／64 MiB／256 MiB | XBot 新增（B13，SEC-3 唯讀根檔案系統下可寫的 tmpfs）；LazyBoy 根目錄可寫、沒有上限 | — |
+| `NetguardApplyTimeout` | 30 秒 | XBot 新增（B13，SEC-4）：套用網路防護規則的上限 | — |
+| `NetAllowMax` | 32 筆 | XBot 新增（B13，SEC-4）：每個 Bot 的私有網路白名單上限 | — |
+| `HostImageCacheTTL` | 15 秒 | XBot 新增（B13）：主機清單比對映像是否過期時，本機映像資訊的快取 | — |
 | `HermesReadyTimeout`／`HermesCallTimeout` | 15／90 秒 | server/rpc.py:25、:31 | 正確 |
 | `HermesPingInterval`／`HermesPingTimeout`／`HermesMaxFrameBytes` | 15 秒／30 秒／16 MiB | server/rpc.py:21 | 正確 |
 | `HermesMaxIterations`／`HermesTerminalTimeoutSeconds` | 200／120 秒 | server/computers.py:213、:202 | 正確 |

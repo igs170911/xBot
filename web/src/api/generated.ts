@@ -1819,6 +1819,366 @@ export function collabStopRoom(input: CollabStopRoomInput, opts?: CallOptions): 
   return invoke('xbot.collab.stop_room', input, opts).then((r) => r.output)
 }
 
+// xbot.computers.purge
+
+export interface ComputersPurgeInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface ComputersPurgeOutput {
+  computer: {
+    bot_id: string
+    host_id: string
+    container_id: string
+    state: string
+    error?: string
+    running: boolean
+    novnc_port: number
+    hermes_port: number
+    novnc_addr?: string
+    hermes_addr?: string
+  }
+  bot_name: string
+  host_name: string
+  idle_minutes: number
+  last_active_at: number
+  /** 預計閒置休眠的時間（毫秒）；沒開機、有工作或有人在看時是 0 */
+  sleeps_at: number
+  /** Bot 有進行中或排隊中的工作 */
+  busy: boolean
+  /** 映像或強化設定換了，要更新電腦（重建，資料保留） */
+  outdated: boolean
+  net_ip?: string
+  allow_private: string[]
+}
+
+/**
+ * 刪掉一個 Bot 的電腦和裡面所有資料（家目錄、工作資料夾、瀏覽器登入、引擎紀錄），無法復原
+ *
+ * Bot 本身保留，下次有工作時開一台全新的電腦。Bot 正在工作時不能刪（先停止工作）。一定要你本人核准，不能代為核准。
+ *
+ * `xbot.computers.purge`：權限 manage、風險 confirm
+ */
+export function computersPurge(input: ComputersPurgeInput, opts?: CallOptions): Promise<ComputersPurgeOutput> {
+  return invoke('xbot.computers.purge', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.rebuild
+
+export interface ComputersRebuildInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface ComputersRebuildOutput {
+  computer: {
+    bot_id: string
+    host_id: string
+    container_id: string
+    state: string
+    error?: string
+    running: boolean
+    novnc_port: number
+    hermes_port: number
+    novnc_addr?: string
+    hermes_addr?: string
+  }
+  bot_name: string
+  host_name: string
+  idle_minutes: number
+  last_active_at: number
+  /** 預計閒置休眠的時間（毫秒）；沒開機、有工作或有人在看時是 0 */
+  sleeps_at: number
+  /** Bot 有進行中或排隊中的工作 */
+  busy: boolean
+  /** 映像或強化設定換了，要更新電腦（重建，資料保留） */
+  outdated: boolean
+  net_ip?: string
+  allow_private: string[]
+}
+
+/**
+ * 重建一個 Bot 的電腦：用目前的映像與設定重新建立，家目錄、工作資料夾、瀏覽器登入都保留
+ *
+ * 電腦怪怪的、或映像更新後用。Bot 正在工作時不能重建（先停止工作）。原本開著的電腦重建後會再開機。
+ *
+ * `xbot.computers.rebuild`：權限 manage、風險 safe
+ */
+export function computersRebuild(input: ComputersRebuildInput, opts?: CallOptions): Promise<ComputersRebuildOutput> {
+  return invoke('xbot.computers.rebuild', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.restart
+
+export interface ComputersRestartInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface ComputersRestartOutput {
+  computer: {
+    bot_id: string
+    host_id: string
+    container_id: string
+    state: string
+    error?: string
+    running: boolean
+    novnc_port: number
+    hermes_port: number
+    novnc_addr?: string
+    hermes_addr?: string
+  }
+  bot_name: string
+  host_name: string
+  idle_minutes: number
+  last_active_at: number
+  /** 預計閒置休眠的時間（毫秒）；沒開機、有工作或有人在看時是 0 */
+  sleeps_at: number
+  /** Bot 有進行中或排隊中的工作 */
+  busy: boolean
+  /** 映像或強化設定換了，要更新電腦（重建，資料保留） */
+  outdated: boolean
+  net_ip?: string
+  allow_private: string[]
+}
+
+/**
+ * 重開一個 Bot 的電腦（資料保留）
+ *
+ * Bot 正在工作時不能重開（先停止工作）。
+ *
+ * `xbot.computers.restart`：權限 operate、風險 safe
+ */
+export function computersRestart(input: ComputersRestartInput, opts?: CallOptions): Promise<ComputersRestartOutput> {
+  return invoke('xbot.computers.restart', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.set_network
+
+export interface ComputersSetNetworkInput {
+  /** Bot id */
+  bot_id: string
+  /** 這個 Bot 的電腦可以連的私有網路：IP（192.168.1.10）、網段（192.168.1.0/24）、IP:埠或網址（http://192.168.1.10:8080）。空的＝全部關掉（預設） */
+  allow_private?: string[]
+}
+
+export interface ComputersSetNetworkOutput {
+  computer: {
+    bot_id: string
+    host_id: string
+    container_id: string
+    state: string
+    error?: string
+    running: boolean
+    novnc_port: number
+    hermes_port: number
+    novnc_addr?: string
+    hermes_addr?: string
+  }
+  bot_name: string
+  host_name: string
+  idle_minutes: number
+  last_active_at: number
+  /** 預計閒置休眠的時間（毫秒）；沒開機、有工作或有人在看時是 0 */
+  sleeps_at: number
+  /** Bot 有進行中或排隊中的工作 */
+  busy: boolean
+  /** 映像或強化設定換了，要更新電腦（重建，資料保留） */
+  outdated: boolean
+  net_ip?: string
+  allow_private: string[]
+}
+
+/**
+ * 設定一個 Bot 的電腦可以連哪些私有網路（區網、主機上的服務）
+ *
+ * 預設 Bot 的電腦連不到 XBot 所在的主機與任何私有網段（10.x、172.16-31.x、192.168.x、100.64.x/Tailscale 等），只連得到網際網路（SEC-4）。這裡列出的位址會為這個 Bot 打開，立刻生效。打開要你本人核准、不能代為核准；全部關掉不用核准。
+ *
+ * `xbot.computers.set_network`：權限 admin、風險 confirm（依輸入可能需要核准）
+ */
+export function computersSetNetwork(input: ComputersSetNetworkInput, opts?: CallOptions): Promise<ComputersSetNetworkOutput> {
+  return invoke('xbot.computers.set_network', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.sleep
+
+export interface ComputersSleepInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface ComputersSleepOutput {
+  computer: {
+    bot_id: string
+    host_id: string
+    container_id: string
+    state: string
+    error?: string
+    running: boolean
+    novnc_port: number
+    hermes_port: number
+    novnc_addr?: string
+    hermes_addr?: string
+  }
+  bot_name: string
+  host_name: string
+  idle_minutes: number
+  last_active_at: number
+  /** 預計閒置休眠的時間（毫秒）；沒開機、有工作或有人在看時是 0 */
+  sleeps_at: number
+  /** Bot 有進行中或排隊中的工作 */
+  busy: boolean
+  /** 映像或強化設定換了，要更新電腦（重建，資料保留） */
+  outdated: boolean
+  net_ip?: string
+  allow_private: string[]
+}
+
+/**
+ * 讓一個 Bot 的電腦休眠（關機，資料與瀏覽器登入都保留）
+ *
+ * Bot 正在工作時不能休眠（先停止工作）。之後有工作時會自動開機。沒人用的電腦本來就會在閒置 30 分鐘（可每 Bot 調整）後自動休眠。
+ *
+ * `xbot.computers.sleep`：權限 operate、風險 safe
+ */
+export function computersSleep(input: ComputersSleepInput, opts?: CallOptions): Promise<ComputersSleepOutput> {
+  return invoke('xbot.computers.sleep', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.status
+
+export interface ComputersStatusInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface ComputersStatusOutput {
+  computer: {
+    bot_id: string
+    host_id: string
+    container_id: string
+    state: string
+    error?: string
+    running: boolean
+    novnc_port: number
+    hermes_port: number
+    novnc_addr?: string
+    hermes_addr?: string
+  }
+  bot_name: string
+  host_name: string
+  idle_minutes: number
+  last_active_at: number
+  /** 預計閒置休眠的時間（毫秒）；沒開機、有工作或有人在看時是 0 */
+  sleeps_at: number
+  /** Bot 有進行中或排隊中的工作 */
+  busy: boolean
+  /** 映像或強化設定換了，要更新電腦（重建，資料保留） */
+  outdated: boolean
+  net_ip?: string
+  allow_private: string[]
+}
+
+/**
+ * 看一個 Bot 的電腦：開機或休眠、在哪台主機、什麼時候會閒置休眠、要不要更新
+ *
+ * `xbot.computers.status`：權限 read、風險 safe
+ */
+export function computersStatus(input: ComputersStatusInput, opts?: CallOptions): Promise<ComputersStatusOutput> {
+  return invoke('xbot.computers.status', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.update
+
+export interface ComputersUpdateInput {
+  /** 只更新這台主機；不填＝所有主機，一台做完再做下一台 */
+  host_id?: string
+}
+
+export interface ComputersUpdateOutput {
+  running: boolean
+  started_at?: number
+  finished_at?: number
+  hosts: {
+    host_id: string
+    name: string
+    /** 要先把新映像傳到這台主機 */
+    image_outdated: boolean
+    /** pending、image、running、done、failed、skipped */
+    state: string
+    error?: string
+    bots: {
+      bot_id: string
+      name: string
+      /** pending、running、rebuilt、skipped、failed */
+      state: string
+      reason?: string
+    }[]
+  }[]
+  total: number
+  done: number
+  current?: string
+}
+
+/**
+ * 更新電腦：把新的電腦映像傳到主機，並重建上面要更新的電腦（資料保留）
+ *
+ * make box 換了映像、或 XBot 更新了電腦的安全設定之後用。一台主機做完再做下一台；正在工作的 Bot 會跳過。在背景進行，進度看 computers.update 事件（也可以再呼叫一次看目前進度）。dry_run 只列出會更新哪些。
+ *
+ * `xbot.computers.update`：權限 admin、風險 safe
+ */
+export function computersUpdate(input: ComputersUpdateInput = {}, opts?: CallOptions): Promise<ComputersUpdateOutput> {
+  return invoke('xbot.computers.update', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.wake
+
+export interface ComputersWakeInput {
+  /** Bot id */
+  bot_id: string
+  /** 等到桌面與 Hermes 都就緒才回傳（最多 75 秒） */
+  wait?: boolean
+}
+
+export interface ComputersWakeOutput {
+  computer: {
+    bot_id: string
+    host_id: string
+    container_id: string
+    state: string
+    error?: string
+    running: boolean
+    novnc_port: number
+    hermes_port: number
+    novnc_addr?: string
+    hermes_addr?: string
+  }
+  bot_name: string
+  host_name: string
+  idle_minutes: number
+  last_active_at: number
+  /** 預計閒置休眠的時間（毫秒）；沒開機、有工作或有人在看時是 0 */
+  sleeps_at: number
+  /** Bot 有進行中或排隊中的工作 */
+  busy: boolean
+  /** 映像或強化設定換了，要更新電腦（重建，資料保留） */
+  outdated: boolean
+  net_ip?: string
+  allow_private: string[]
+}
+
+/**
+ * 叫醒（開機）一個 Bot 的電腦；還沒有電腦時先建立
+ *
+ * 有工作時電腦本來就會自動開機，這個只是提早開好。主機滿了時照樣開（不排隊）。
+ *
+ * `xbot.computers.wake`：權限 operate、風險 safe
+ */
+export function computersWake(input: ComputersWakeInput, opts?: CallOptions): Promise<ComputersWakeOutput> {
+  return invoke('xbot.computers.wake', input, opts).then((r) => r.output)
+}
+
 // xbot.engines.link_credentials
 
 export interface EnginesLinkCredentialsInput {
@@ -1976,6 +2336,7 @@ export interface HostsAddOutput {
       rtt_ms: number
       /** 主機上的電腦映像版本 */
       image_id?: string
+      image_key?: string
       /** 經 Tailscale 連線 */
       tailscale: boolean
     }
@@ -2012,6 +2373,8 @@ export interface HostsAddOutput {
       percent: number
       error?: string
     }
+    /** 主機上的電腦映像比這台 XBot 的舊，要更新電腦 */
+    image_outdated: boolean
     created_at: number
   }
   report: {
@@ -2039,6 +2402,7 @@ export interface HostsAddOutput {
       rtt_ms: number
       /** 主機上的電腦映像版本 */
       image_id?: string
+      image_key?: string
       /** 經 Tailscale 連線 */
       tailscale: boolean
     }
@@ -2097,6 +2461,7 @@ export interface HostsCheckOutput {
       rtt_ms: number
       /** 主機上的電腦映像版本 */
       image_id?: string
+      image_key?: string
       /** 經 Tailscale 連線 */
       tailscale: boolean
     }
@@ -2133,6 +2498,8 @@ export interface HostsCheckOutput {
       percent: number
       error?: string
     }
+    /** 主機上的電腦映像比這台 XBot 的舊，要更新電腦 */
+    image_outdated: boolean
     created_at: number
   }
   report: {
@@ -2160,6 +2527,7 @@ export interface HostsCheckOutput {
       rtt_ms: number
       /** 主機上的電腦映像版本 */
       image_id?: string
+      image_key?: string
       /** 經 Tailscale 連線 */
       tailscale: boolean
     }
@@ -2215,6 +2583,7 @@ export interface HostsGetOutput {
     rtt_ms: number
     /** 主機上的電腦映像版本 */
     image_id?: string
+    image_key?: string
     /** 經 Tailscale 連線 */
     tailscale: boolean
   }
@@ -2251,6 +2620,8 @@ export interface HostsGetOutput {
     percent: number
     error?: string
   }
+  /** 主機上的電腦映像比這台 XBot 的舊，要更新電腦 */
+  image_outdated: boolean
   created_at: number
 }
 
@@ -2324,6 +2695,7 @@ export interface HostsListOutput {
       rtt_ms: number
       /** 主機上的電腦映像版本 */
       image_id?: string
+      image_key?: string
       /** 經 Tailscale 連線 */
       tailscale: boolean
     }
@@ -2360,6 +2732,8 @@ export interface HostsListOutput {
       percent: number
       error?: string
     }
+    /** 主機上的電腦映像比這台 XBot 的舊，要更新電腦 */
+    image_outdated: boolean
     created_at: number
   }[]
 }
@@ -2458,6 +2832,7 @@ export interface HostsSetLimitsOutput {
     rtt_ms: number
     /** 主機上的電腦映像版本 */
     image_id?: string
+    image_key?: string
     /** 經 Tailscale 連線 */
     tailscale: boolean
   }
@@ -2494,6 +2869,8 @@ export interface HostsSetLimitsOutput {
     percent: number
     error?: string
   }
+  /** 主機上的電腦映像比這台 XBot 的舊，要更新電腦 */
+  image_outdated: boolean
   created_at: number
 }
 
@@ -4664,6 +5041,14 @@ export interface Ops {
   'xbot.collab.start_group': { input: CollabStartGroupInput; output: CollabStartGroupOutput }
   'xbot.collab.stop_chain': { input: CollabStopChainInput; output: CollabStopChainOutput }
   'xbot.collab.stop_room': { input: CollabStopRoomInput; output: CollabStopRoomOutput }
+  'xbot.computers.purge': { input: ComputersPurgeInput; output: ComputersPurgeOutput }
+  'xbot.computers.rebuild': { input: ComputersRebuildInput; output: ComputersRebuildOutput }
+  'xbot.computers.restart': { input: ComputersRestartInput; output: ComputersRestartOutput }
+  'xbot.computers.set_network': { input: ComputersSetNetworkInput; output: ComputersSetNetworkOutput }
+  'xbot.computers.sleep': { input: ComputersSleepInput; output: ComputersSleepOutput }
+  'xbot.computers.status': { input: ComputersStatusInput; output: ComputersStatusOutput }
+  'xbot.computers.update': { input: ComputersUpdateInput; output: ComputersUpdateOutput }
+  'xbot.computers.wake': { input: ComputersWakeInput; output: ComputersWakeOutput }
   'xbot.engines.link_credentials': { input: EnginesLinkCredentialsInput; output: EnginesLinkCredentialsOutput }
   'xbot.engines.status': { input: EnginesStatusInput; output: EnginesStatusOutput }
   'xbot.engines.unlink_credentials': { input: EnginesUnlinkCredentialsInput; output: EnginesUnlinkCredentialsOutput }
@@ -4762,6 +5147,14 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.collab.start_group': { path: '/api/v1/collab.start_group', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.collab.stop_chain': { path: '/api/v1/collab.stop_chain', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.collab.stop_room': { path: '/api/v1/collab.stop_room', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.computers.purge': { path: '/api/v1/computers.purge', scope: 'manage', risk: 'confirm', mutates: true },
+  'xbot.computers.rebuild': { path: '/api/v1/computers.rebuild', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.computers.restart': { path: '/api/v1/computers.restart', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.computers.set_network': { path: '/api/v1/computers.set_network', scope: 'admin', risk: 'confirm', mutates: true },
+  'xbot.computers.sleep': { path: '/api/v1/computers.sleep', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.computers.status': { path: '/api/v1/computers.status', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.computers.update': { path: '/api/v1/computers.update', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.computers.wake': { path: '/api/v1/computers.wake', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.engines.link_credentials': { path: '/api/v1/engines.link_credentials', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.engines.status': { path: '/api/v1/engines.status', scope: 'read', risk: 'safe', mutates: false },
   'xbot.engines.unlink_credentials': { path: '/api/v1/engines.unlink_credentials', scope: 'admin', risk: 'safe', mutates: true },

@@ -148,7 +148,7 @@ ENV DISPLAY=:1 \
     GTK_MODULES=atk-bridge GTK_A11Y=atspi GNOME_ACCESSIBILITY=1 NO_AT_BRIDGE=0
 WORKDIR /workspace
 EXPOSE 6080
-LABEL xbot.box.revision=computer-use-11
+LABEL xbot.box.revision=computer-use-12
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["/usr/local/bin/start-desktop.sh"]
 
@@ -181,11 +181,23 @@ FROM desktop
 COPY --from=hermes /opt/python /opt/python
 COPY --from=hermes /opt/hermes /opt/hermes
 COPY --from=hermes /opt/HERMES_VERSION /opt/hermes/HERMES_VERSION
-ENV UV_PYTHON_INSTALL_DIR=/opt/python UV_CACHE_DIR=/opt/uv-cache
-RUN --mount=type=secret,id=debian_mirror mkdir -p /opt/uv-cache && chmod 1777 /opt/uv-cache && apt-mirror on && apt-get update \
-    && apt-get install -y --no-install-recommends sudo && apt-mirror off && rm -rf /var/lib/apt/lists/*
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+# iptables is for the network guard (box/xbot-netguard, SEC-4): the Box Manager runs this same image once per host as
+# xbot-netguard (host network, NET_ADMIN) to keep bot computers away from the host and private networks. Inside a bot's
+# computer it is inert: the bot user has no capabilities. sudo is not installed (SEC-3: no sudo in the box; with
+# no-new-privileges it could never work anyway).
+RUN --mount=type=secret,id=debian_mirror apt-mirror on && apt-get update \
+    && apt-get install -y --no-install-recommends iptables && apt-mirror off && rm -rf /var/lib/apt/lists/* \
+    && command -v iptables-legacy iptables-nft iptables-legacy-restore iptables-nft-restore
+# The bot user is part of the image (SEC-3: the root filesystem is read-only at run time, so start-bot.sh can no
+# longer add it to /etc/passwd). Fixed UID/GID 1000 on every host (internal/box BotUID/BotGID). The volume mount points
+# belong to it, so Docker gives a new, empty volume the same owner when it first mounts it.
+RUN groupadd --gid 1000 bot \
+    && useradd --uid 1000 --gid 1000 --home-dir /home/box --no-create-home --shell /bin/bash bot \
+    && mkdir -p /hermes /home/box /workspace && chown 1000:1000 /hermes /home/box /workspace && chmod 1777 /workspace
+# uv's cache lives in the bot's home (persisted, writable); /opt is read-only at run time.
 ENV PATH="/opt/hermes/.venv/bin:${PATH}" HOME=/home/box HERMES_HOME=/hermes BROWSER_CDP_URL=http://127.0.0.1:9222 \
-    TERMINAL_CWD=/workspace PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+    TERMINAL_CWD=/workspace PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/home/box/.cache/uv
 # LazyBoy also baked product_mcp.py (its product tools as an MCP server) in here. XBot replaces it with the XBot
 # MCP (internal/mcpserver), reached through the product socket the Box Manager mounts or forwards to
 # /product-ipc/product.sock. xbot_mcp.py is a stdio bridge to it (Hermes registers it as MCP server "xbot";
@@ -193,11 +205,14 @@ ENV PATH="/opt/hermes/.venv/bin:${PATH}" HOME=/home/box HERMES_HOME=/hermes BROW
 ENV XBOT_PRODUCT_SOCK=/product-ipc/product.sock
 # Subscription CLI logins the owner linked to this bot (EN-2b) are copied here, outside the home volume: root-owned
 # folders, 0400 files owned by the bot user; ~/.claude/.credentials.json and ~/.codex/auth.json link to them.
-RUN mkdir -p /product-ipc /opt/xbot/cred && chmod 755 /opt/xbot/cred
+# /opt/xbot/cred is a per-bot volume (xbot-box-<id>-cred) at run time; it starts out as this empty, root-owned folder.
+# /opt/xbot/netguard is where the network guard's "rules are in place" marker is mounted read-only (start-bot.sh waits
+# for it before anything in the box touches the network).
+RUN mkdir -p /product-ipc /opt/xbot/cred /opt/xbot/netguard && chmod 755 /opt/xbot/cred /opt/xbot/netguard
 COPY hermes_host.py desktop_mcp.py /opt/xbot/
 COPY --chmod=755 xbot_mcp.py /opt/xbot/xbot_mcp.py
 RUN ln -s /opt/xbot/xbot_mcp.py /usr/local/bin/xbot-mcp
-COPY --chmod=755 start-bot.sh /usr/local/bin/start-bot.sh
+COPY --chmod=755 start-bot.sh xbot-netguard /usr/local/bin/
 EXPOSE 8642 6080
 WORKDIR /workspace
 CMD ["/usr/local/bin/start-bot.sh"]

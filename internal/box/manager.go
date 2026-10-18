@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -45,6 +47,14 @@ type Options struct {
 	// Prepare 在每次開機前（容器已建立，可能還沒開機）呼叫，用來寫入引擎設定、開好 product.sock（E02）。
 	// 已經在跑時也會呼叫，讓設定保持最新。回傳錯誤時不開機。
 	Prepare PrepareFunc
+	// NoNetGuard 關掉網路防護（SEC-4）：電腦接 Docker 預設的 bridge 網路，連得到主機與私有網段。
+	// 只給不能用 iptables 的環境（XBOT_NETGUARD=off），不建議。
+	NoNetGuard bool
+	// Notify 在電腦狀態變了時呼叫（開機、休眠、重建、刪除、錯誤）；可為 nil。不能在裡面呼叫 Manager（會卡住）。
+	Notify func(Status)
+	// Release 在電腦連資料一起刪除（purge）前呼叫，用來關掉這個 Bot 在服務這邊的 product.sock；可為 nil。
+	Release func(botID string)
+	Logger  *slog.Logger
 }
 
 // PrepareFunc 準備一台電腦開機需要的東西。
@@ -57,10 +67,16 @@ type Manager struct {
 	hosts   Hosts
 	image   string
 	prepare PrepareFunc
+	noGuard bool
+	notify  func(Status)
+	release func(botID string)
+	log     *slog.Logger
 	http    *http.Client
+	guard   netguard
 
 	mu    sync.Mutex
 	locks map[string]*sync.Mutex
+	holds map[string]int // 有人正在看畫面的電腦（B14）：不休眠
 }
 
 // New 建立 Manager。
@@ -68,8 +84,16 @@ func New(db *store.DB, hs Hosts, opts Options) *Manager {
 	if opts.Image == "" {
 		opts.Image = DefaultImage
 	}
-	return &Manager{db: db, hosts: hs, image: opts.Image, prepare: opts.Prepare, http: &http.Client{Timeout: limits.BoxProbeTimeout}, locks: map[string]*sync.Mutex{}}
+	if opts.Logger == nil {
+		opts.Logger = slog.Default()
+	}
+	return &Manager{db: db, hosts: hs, image: opts.Image, prepare: opts.Prepare, noGuard: opts.NoNetGuard, notify: opts.Notify,
+		release: opts.Release, log: opts.Logger, http: &http.Client{Timeout: limits.BoxProbeTimeout},
+		locks: map[string]*sync.Mutex{}, holds: map[string]int{}}
 }
+
+// Image 回傳 Bot 電腦映像的名稱。
+func (m *Manager) Image() string { return m.image }
 
 // Status 是一台電腦目前的狀態。
 type Status struct {
@@ -166,8 +190,14 @@ func hostPort(c *container.InspectResponse, port string) int {
 	return 0
 }
 
-// sync 依容器實際狀態更新 box 列並寫回資料庫。
+// sync 依容器實際狀態更新 box 列並寫回資料庫。發布的埠換了（停止、重建、在 XBot 之外重開）時，
+// 放掉遠端主機上舊埠的本機轉發；狀態變了時通知（Options.Notify）。
 func (m *Manager) sync(ctx context.Context, b store.Box, h hosts.Host, c *container.InspectResponse) (Status, error) {
+	prev, oldPorts := b.State, []int{b.NoVNCPort, b.HermesPort}
+	if old, err := m.db.GetBox(ctx, b.BotID); err == nil {
+		prev = old.State
+		oldPorts = append(oldPorts, old.NoVNCPort, old.HermesPort)
+	}
 	switch {
 	case c == nil:
 		b.ContainerID, b.State = "", StateNone
@@ -180,7 +210,42 @@ func (m *Manager) sync(ctx context.Context, b store.Box, h hosts.Host, c *contai
 	if err := m.db.UpsertBox(ctx, b); err != nil {
 		return Status{}, err
 	}
-	return status(b, h, running(c)), nil
+	m.releasePorts(ctx, h, b.BotID, oldPorts, b.NoVNCPort, b.HermesPort)
+	s := status(b, h, running(c))
+	if prev != b.State && m.notify != nil {
+		m.notify(s)
+	}
+	return s, nil
+}
+
+// releasePorts 放掉不再使用的舊埠在遠端主機上的本機轉發（hosts.SSH.ReleaseAddr；本機主機不用）。
+// 同一台主機上別的電腦剛好拿到同一個埠時不放。
+func (m *Manager) releasePorts(ctx context.Context, h hosts.Host, botID string, old []int, keep ...int) {
+	r, ok := h.(interface{ ReleaseAddr(hostPort int) })
+	if !ok {
+		return
+	}
+	var stale []int
+	for _, p := range old {
+		if p > 0 && !slices.Contains(keep, p) && !slices.Contains(stale, p) {
+			stale = append(stale, p)
+		}
+	}
+	if len(stale) == 0 {
+		return
+	}
+	rows, err := m.db.ListBoxes(ctx, h.ID())
+	if err != nil {
+		return
+	}
+	for _, p := range stale {
+		inUse := slices.ContainsFunc(rows, func(o store.Box) bool {
+			return o.BotID != botID && (o.NoVNCPort == p || o.HermesPort == p)
+		})
+		if !inUse {
+			r.ReleaseAddr(p)
+		}
+	}
 }
 
 func status(b store.Box, h hosts.Host, run bool) Status {
@@ -200,6 +265,9 @@ func (m *Manager) fail(ctx context.Context, b store.Box, err error) error {
 	b.State, b.Error = StateError, err.Error()
 	if werr := m.db.UpsertBox(context.WithoutCancel(ctx), b); werr != nil {
 		return errors.Join(err, werr)
+	}
+	if m.notify != nil {
+		m.notify(Status{BotID: b.BotID, HostID: b.HostID, ContainerID: b.ContainerID, State: b.State, Error: b.Error})
 	}
 	return err
 }
@@ -275,7 +343,15 @@ func (m *Manager) create(ctx context.Context, b *store.Box, h hosts.Host) (*cont
 		return nil, err
 	}
 	lim := parseLimits(b.Limits)
-	res, err := api.ContainerCreate(ctx, createOptions(b.BotID, m.image, ipc, lim))
+	sp := spec{BotID: b.BotID, Image: m.image, IPCDir: ipc, Limits: lim, Revision: m.specRevision()}
+	if m.noGuard {
+		b.NetIP = ""
+	} else {
+		if sp.Net, err = m.attach(ctx, h, b); err != nil {
+			return nil, err
+		}
+	}
+	res, err := api.ContainerCreate(ctx, createOptions(sp))
 	if err != nil {
 		return nil, fmt.Errorf("建立 Bot 電腦失敗：%w", dockerErr(err))
 	}
@@ -287,6 +363,29 @@ func (m *Manager) create(ctx context.Context, b *store.Box, h hosts.Host) (*cont
 	return c, err
 }
 
+// attach 確保主機上的 xbot-box 網路與網路防護，挑好 Bot 的固定 IP 並寫進 box 列（SEC-4）。
+func (m *Manager) attach(ctx context.Context, h hosts.Host, b *store.Box) (*netAttach, error) {
+	rules, err := m.hostRules(ctx, h.ID())
+	if err != nil {
+		return nil, err
+	}
+	hn, err := m.ensureNet(ctx, h, rules)
+	if err != nil {
+		return nil, err
+	}
+	m.guard.alloc.Lock()
+	defer m.guard.alloc.Unlock()
+	ip, err := m.allocIP(ctx, h, hn, b)
+	if err != nil {
+		return nil, err
+	}
+	b.NetIP = ip.String()
+	if err := m.db.UpsertBox(ctx, *b); err != nil {
+		return nil, err
+	}
+	return &netAttach{Network: NetworkName, IP: ip, ReadyVolume: GuardReadyVolume}, nil
+}
+
 func ensureVolume(ctx context.Context, api hosts.DockerAPI, name, botID string) error {
 	_, err := api.VolumeInspect(ctx, name, client.VolumeInspectOptions{})
 	if err == nil {
@@ -295,7 +394,11 @@ func ensureVolume(ctx context.Context, api hosts.DockerAPI, name, botID string) 
 	if !cerrdefs.IsNotFound(err) {
 		return dockerErr(err)
 	}
-	_, err = api.VolumeCreate(ctx, client.VolumeCreateOptions{Name: name, Labels: map[string]string{LabelBot: botID, LabelManaged: "true"}})
+	labels := map[string]string{LabelManaged: "true"}
+	if botID != "" {
+		labels[LabelBot] = botID
+	}
+	_, err = api.VolumeCreate(ctx, client.VolumeCreateOptions{Name: name, Labels: labels})
 	if err != nil {
 		return fmt.Errorf("建立資料區 %s 失敗：%w", name, dockerErr(err))
 	}
@@ -316,6 +419,26 @@ func (m *Manager) start(ctx context.Context, b store.Box, h hosts.Host) (Status,
 	c, err := m.ensure(ctx, &b, h)
 	if err != nil {
 		return Status{}, err
+	}
+	if c != nil && !running(c) && m.stale(c, b) {
+		// 容器是用舊的強化設定（SEC-3／SEC-4）或舊的資源限制（BX-11）建的：開機前重建，資料區保留。
+		if _, err := h.Docker().ContainerRemove(ctx, c.ID, client.ContainerRemoveOptions{Force: true}); err != nil && !cerrdefs.IsNotFound(err) {
+			return Status{}, m.fail(ctx, b, fmt.Errorf("重建 Bot 電腦失敗：%w", dockerErr(err)))
+		}
+		b.ContainerID = ""
+		if c, err = m.ensure(ctx, &b, h); err != nil {
+			return Status{}, err
+		}
+	}
+	if !running(c) && !m.noGuard && b.NetIP != "" {
+		// 開機前確認這台主機的網路防護還在、規則是最新的（含這台電腦的白名單）。
+		rules, err := m.hostRules(ctx, h.ID())
+		if err == nil {
+			_, err = m.ensureNet(ctx, h, rules)
+		}
+		if err != nil {
+			return Status{}, m.fail(ctx, b, err)
+		}
 	}
 	// 每次開機前都確保 product.sock 的資料夾就緒：遠端主機在服務重啟或重連後要重新建立反向轉發（B11）。
 	if _, err := h.PrepareIPC(b.BotID); err != nil {
@@ -393,11 +516,84 @@ func (m *Manager) Remove(ctx context.Context, botID string, purge bool) (Status,
 			}
 		}
 	}
-	if r, ok := h.(interface{ ReleaseIPC(botID string) }); ok && purge {
-		r.ReleaseIPC(botID) // 遠端主機：停掉這個 Bot 的 product.sock 反向轉發
+	if purge {
+		// 連資料一起刪：關掉服務這邊的 product.sock，停掉遠端主機的反向轉發並刪掉主機上的 bots/<id> 資料夾。
+		if m.release != nil {
+			m.release(botID)
+		}
+		if f, ok := h.(interface {
+			ForgetBot(ctx context.Context, botID string) error
+		}); ok {
+			if err := f.ForgetBot(ctx, botID); err != nil {
+				m.log.Warn("刪除主機上 Bot 的資料夾失敗", "bot", botID, "host", h.ID(), "err", err)
+			}
+		} else if r, ok := h.(interface{ ReleaseIPC(botID string) }); ok {
+			r.ReleaseIPC(botID)
+		}
+		b.NetIP = ""
 	}
 	b.Error = ""
-	return m.sync(ctx, b, h, nil)
+	s, err := m.sync(ctx, b, h, nil)
+	if err == nil && purge {
+		// 白名單規則裡不能留著這台已經刪掉的電腦的 IP（之後可能分給別台）。
+		m.dropAllow(ctx, h, botID)
+	}
+	return s, err
+}
+
+// dropAllow 刪掉 Bot 的私有網路白名單，並更新它所在主機的規則。
+func (m *Manager) dropAllow(ctx context.Context, h hosts.Host, botID string) {
+	allow, err := m.NetAllow(ctx, botID)
+	if err != nil || len(allow) == 0 {
+		return
+	}
+	_ = m.db.DeleteSetting(ctx, NetAllowSetting(botID))
+	if m.noGuard {
+		return
+	}
+	rules, err := m.hostRules(ctx, h.ID())
+	if err == nil {
+		_, err = m.ensureNet(ctx, h, rules)
+	}
+	if err != nil {
+		m.log.Warn("更新網路防護規則失敗", "host", h.ID(), "err", err)
+	}
+}
+
+// stale 回答容器是不是用舊的設定建的（強化版本或資源限制和現在不同），沒開機時可以直接重建。
+func (m *Manager) stale(c *container.InspectResponse, b store.Box) bool {
+	if c.Config == nil {
+		return false
+	}
+	if c.Config.Labels[LabelSpec] != m.specRevision() {
+		return true
+	}
+	return c.Config.Labels[LabelLimits] != parseLimits(b.Limits).signature()
+}
+
+// specRevision 是容器設定的版本：強化（SEC-3）改了，或網路防護（SEC-4）開關不同時，舊容器要重建。
+func (m *Manager) specRevision() string {
+	if m.noGuard {
+		return specRevision + "-nonet"
+	}
+	return specRevision
+}
+
+// Outdated 回答 Bot 的電腦要不要「更新電腦」（BX-15）：映像換了，或容器是舊的強化設定建的。沒有電腦時是 false。
+func (m *Manager) Outdated(ctx context.Context, botID string) (bool, error) {
+	b, h, err := m.load(ctx, botID)
+	if err != nil {
+		return false, err
+	}
+	c, err := inspect(ctx, h, botID)
+	if err != nil || c == nil {
+		return false, err
+	}
+	img, err := h.Docker().ImageInspect(ctx, m.image)
+	if err != nil {
+		return false, dockerErr(err)
+	}
+	return c.Image != img.ID || m.stale(c, b), nil
 }
 
 // Rebuild 用目前的映像與設定重建容器，保留三個 volume（BX-15）。原本在跑的話重建後會再開機。

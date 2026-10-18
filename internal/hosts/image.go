@@ -52,8 +52,18 @@ func layersKey(img image.InspectResponse) string {
 	if img.RootFS.Type == "" || len(img.RootFS.Layers) == 0 {
 		return ""
 	}
-	h := sha256.Sum256([]byte(strings.Join(img.RootFS.Layers, ",")))
-	return hex.EncodeToString(h[:])
+	h := sha256.New()
+	h.Write([]byte(strings.Join(img.RootFS.Layers, ",")))
+	// 只改設定（ENV、LABEL、CMD…）不會多一層，也要算成不同的映像（B13：make box 後主機要標成過期）。
+	if c := img.Config; c != nil {
+		cfg, _ := json.Marshal(struct {
+			Env, Cmd, Entrypoint []string
+			Labels               map[string]string
+			User, WorkingDir     string
+		}{c.Env, c.Cmd, c.Entrypoint, c.Labels, c.User, c.WorkingDir})
+		h.Write(cfg)
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // SameImage：主機上的映像和這台的是同一版（id 一樣，或各層內容一樣）。
