@@ -1,5 +1,5 @@
 import { useRef, useState, type RefObject } from 'react'
-import { ArrowLeft, Check, CircleDot, Clipboard, Ellipsis, Expand, Hand, Keyboard, KeyRound, Maximize, RotateCw, ShieldCheck, X } from 'lucide-react'
+import { ArrowLeft, Check, CircleDot, Clipboard, Ellipsis, Expand, GraduationCap, Hand, Keyboard, KeyRound, Maximize, RotateCw, ShieldCheck, X } from 'lucide-react'
 import { botsStore } from '../data/bots'
 import { useStore } from '../data/store'
 import { navigate } from '../router'
@@ -10,6 +10,8 @@ import { Icon } from '../ui/Icon'
 import { MenuButton } from '../ui/Menu'
 import { SimplifiedTag } from '../ui/Pill'
 import { cx } from '../ui/cx'
+import { isRecording, teachStartStore, useLesson } from '../teaching/teachingData'
+import { TeachSection } from '../teaching/TeachPanel'
 import { controlOf, useNarrow, useTakeover } from './hooks'
 import { useScreen } from './screenData'
 import { Stage } from './Stage'
@@ -33,6 +35,8 @@ export function ComputerPage({ botId }: { botId: string }) {
   const narrow = useNarrow()
   const who = controlOf(screen)
   const you = who === 'you'
+  const { lesson } = useLesson(botId)
+  const teaching = lesson && isRecording(lesson) ? lesson : null
 
   if (bots && !bot && !screen) {
     return (
@@ -66,7 +70,7 @@ export function ComputerPage({ botId }: { botId: string }) {
       : screen.working
         ? `${name} 正在使用電腦，你可以看著它做，或直接接手`
         : `${name} 現在沒在用電腦`
-  const primary = you ? (
+  const primary = teaching ? null : you ? (
     <Button variant="primary" icon={Check} loading={busy === 'back'} onClick={() => void handBack()} className={cx(narrow && 'h-12 w-full text-body')}>
       完成，交還給{name}
     </Button>
@@ -85,6 +89,13 @@ export function ComputerPage({ botId }: { botId: string }) {
       接手操作
     </Button>
   )
+  // 教它一件事（E05）：沒有人在操作、也沒有在示範時才能開始。
+  const teach =
+    !teaching && !lesson && who === 'bot' ? (
+      <Button icon={GraduationCap} onClick={() => teachStartStore.set({ botId })} className={cx(narrow && 'h-12 w-full text-body')}>
+        教它一件事
+      </Button>
+    ) : null
 
   const keys = <SpecialKeys vnc={vnc} disabled={!you} />
 
@@ -111,6 +122,7 @@ export function ComputerPage({ botId }: { botId: string }) {
             <span className="max-xl:hidden">
               <SimplifiedTag>簡化：3 步 → 2 步</SimplifiedTag>
             </span>
+            {teach}
             {primary}
           </>
         )}
@@ -151,11 +163,13 @@ export function ComputerPage({ botId }: { botId: string }) {
               </span>
             </div>
           )}
+          <TeachSection lesson={lesson} botName={name} className="flex-none" />
           <Stage
             screen={screen}
             bot={bot}
             vnc={vnc}
             fit={fit}
+            recording={teaching ? (teaching.state === 'paused' ? 'paused' : 'recording') : undefined}
             onStatus={setStatus}
             capsule={!narrow}
             onTake={() => void take()}
@@ -183,8 +197,9 @@ export function ComputerPage({ botId }: { botId: string }) {
 
         {narrow ? (
           <div className="flex flex-none flex-col gap-2.5 pb-[max(8px,env(safe-area-inset-bottom))]">
-            {you && <p className="m-0 text-center text-meta text-ink-2">說明選填。不填時會告訴{name}：「{DEFAULT_NOTE}」</p>}
+            {you && !teaching && <p className="m-0 text-center text-meta text-ink-2">說明選填。不填時會告訴{name}：「{DEFAULT_NOTE}」</p>}
             {primary}
+            {teach}
           </div>
         ) : (
           <aside className="flex w-[340px] flex-none flex-col gap-3 overflow-y-auto max-lg:hidden">

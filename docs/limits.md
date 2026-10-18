@@ -152,6 +152,10 @@
 | `TeachStepsMax` | 300 | 步 | server/teaching.py:16 `MAX_STEPS` | — | — |
 | `TeachStartTimeout`／`TeachStopTimeout` | 15／6 | 秒 | server/teaching.py:159、:160 | — | — |
 | `TeachGoalMax`／`TeachNoteMax` | 200／500 | 字元 | server/teaching.py:203、:254 | — | — |
+| `TeachPoll` | 1 | 秒 | server/teaching.py `watch()` | — | — |
+| `TeachSubmitMerge`／`TeachNavigateMerge`／`TeachTabMerge`／`TeachCauseWindow` | 1.5／2.5／4／5 | 秒 | server/teaching.py `normalize()` | — | — |
+| `TeachKeyShots` | 8 | 張 | server/teaching.py `key_shots(limit=8)` | — | — |
+| `TeachShotBytes`／`TeachRowsBytes` | 2／8 MiB | 位元組 | XBot 新增（B32） | — | — |
 
 ## 9. 先前任務卡的常數（已逐一對過 LazyBoy 程式）
 

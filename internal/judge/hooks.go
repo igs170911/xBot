@@ -115,6 +115,15 @@ func (s *Service) Routine(ctx context.Context, text string) (string, bool) {
 	return d.Label, d.Live()
 }
 
+// Teach 是用途 17（B32）：示範的步驟 → 技能名稱與一句「什麼時候使用」。生效且模型有回答時 ok=true；否則照範本（ok=false）。
+func (s *Service) Teach(ctx context.Context, text, botID string) (name, description string, ok bool) {
+	d, _ := s.Decide(ctx, Ask{Use: UseTeach, Text: text, BotID: botID})
+	if !d.Live() || d.Label == "" {
+		return "", "", false
+	}
+	return d.Label, d.Fields["description"], true
+}
+
 // Chip 是「先判斷」列的一項（C15）。
 type Chip struct {
 	Use   string  `json:"use"`

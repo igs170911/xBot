@@ -13,10 +13,11 @@ import (
 	"xbot/internal/store"
 )
 
-// 對話裡的系統行（KindActivity）：接手、交還。
+// 對話裡的系統行（KindActivity）：接手、交還、示範教學（B32）。
 const (
 	ActivityTakeover = "takeover"
 	ActivityHandback = "handback"
+	ActivityTeaching = "teaching"
 )
 
 // ErrNotPaused 表示這個 Bot 沒有在接手中。

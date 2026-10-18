@@ -33,6 +33,7 @@ import (
 	"xbot/internal/screen"
 	"xbot/internal/skills"
 	"xbot/internal/store"
+	"xbot/internal/teaching"
 )
 
 // stack 是服務的核心元件：資料庫、本機主機、Model Proxy、product.sock、Box Manager、引擎驅動（Hermes、ACP）、
@@ -67,7 +68,8 @@ type stack struct {
 	network *network.Service // 內建 Tailscale 與外部入口（C35）：serve 才建立
 	// stopIdle 停掉閒置休眠的背景檢查（startBackground 開始）。
 	stopIdle context.CancelFunc
-	screen   *screen.Service // 看畫面與接手（B14）
+	screen   *screen.Service   // 看畫面與接手（B14）
+	teaching *teaching.Service // 示範教學（B32）
 }
 
 func openStack(cfg config.Config) (*stack, error) {
@@ -238,6 +240,19 @@ func openStack(cfg config.Config) (*stack, error) {
 	s.computers = &computers.Service{DB: db, Boxes: s.boxes, Hosts: s.hosts, Activity: s.runtime, Bus: bus, Logger: logger}
 	// 看畫面與接手（B14）：noVNC 經服務代理、接手時暫停 Bot、辦公室縮圖。
 	s.screen = screen.New(screen.Options{DB: db, Boxes: s.boxes, Hosts: registry, Runtime: s.runtime, Bus: bus, Logger: logger})
+	// 示範教學（B32）：接手畫面、在電腦裡跑錄製器、整理成技能草稿（快判用途 17 潤飾名稱與用途）、存成 Bot 的技能（C31）。
+	s.teaching = teaching.New(teaching.Options{DB: db, Screen: s.screen, Runtime: s.runtime, Bus: bus, Logger: logger, Polish: s.judge.Teach,
+		Open: teaching.DockerOpener(comp.BotFS, func(ctx context.Context, botID string) error {
+			_, err := s.computers.Wake(ctx, botID, true)
+			return err
+		}),
+		Create: func(ctx context.Context, botID string, e skills.Edit) (skills.Skill, error) {
+			f, err := comp.BotFS(ctx, botID, true)
+			if err != nil {
+				return skills.Skill{}, err
+			}
+			return skills.Bot{FS: f, BotID: botID}.Create(ctx, e)
+		}})
 	if err := s.hosts.Start(context.Background()); err != nil {
 		s.Close()
 		return nil, err

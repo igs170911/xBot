@@ -5,6 +5,8 @@ import { navigate } from '../router'
 import { Button, IconButton } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
+import { isRecording, useLesson } from '../teaching/teachingData'
+import { TeachSection } from '../teaching/TeachPanel'
 import { controlOf, useTakeover } from './hooks'
 import { BOX_SPEC, computerPanelStore, IDLE_SLEEP_MIN, useScreen } from './screenData'
 import { Stage } from './Stage'
@@ -17,6 +19,8 @@ export function ComputerPanel({ bot, className }: { bot: Bot; className?: string
   const [note, setNote] = useState('')
   const { take, back, busy } = useTakeover(bot.id, bot.name, setScreen)
   const who = controlOf(screen)
+  const { lesson } = useLesson(bot.id)
+  const teaching = lesson && isRecording(lesson) ? lesson : null
 
   return (
     <aside aria-label={`${bot.name}的電腦`} data-testid="computer-panel" className={cx('flex h-dvh w-[540px] flex-none flex-col border-l border-edge bg-app', className)}>
@@ -46,8 +50,17 @@ export function ComputerPanel({ bot, className }: { bot: Bot; className?: string
                 </span>
               </div>
             )}
-            <Stage screen={screen} bot={bot} vnc={vnc} className="aspect-[16/10] w-full" onTake={() => void take()} taking={busy === 'take'} />
-            {who === 'you' ? (
+            <TeachSection lesson={lesson} botName={bot.name} />
+            <Stage
+              screen={screen}
+              bot={bot}
+              vnc={vnc}
+              className="aspect-[16/10] w-full"
+              onTake={() => void take()}
+              taking={busy === 'take'}
+              recording={teaching ? (teaching.state === 'paused' ? 'paused' : 'recording') : undefined}
+            />
+            {teaching ? null : who === 'you' ? (
               <div className="flex flex-col gap-2.5">
                 <label className="flex flex-col gap-1">
                   <span className="text-meta text-ink-3">交還時要說什麼（選填）</span>

@@ -94,6 +94,8 @@ type Use struct {
 	rule  func(Ask) Answer
 	// inputMax 是 Text 最多幾個字；0 用 limits.JudgeInputMax。
 	inputMax int
+	// fields 是要寫字的用途除了 label 之外要模型填的欄位（例：建 Bot 建議的職稱、介紹）。
+	fields []string
 }
 
 // 用途 id。
@@ -114,6 +116,7 @@ const (
 	UsePreCost          = "precheck_cost"
 	UsePeerReply        = "peer_reply"
 	UseRoutine          = "routine"
+	UseTeach            = "teach"
 	SeveralKey          = "several"
 	responderSeveralTxt = "Several members: the message explicitly needs answers or work from more than one member."
 )
@@ -177,7 +180,7 @@ var Uses = []*Use{
 	{ID: UseBotSuggest, N: 9, Name: "一句話建立 Bot", Desc: "建議名字、職稱、介紹、常駐指示（可改）", Tier: Tier2, Wait: limits.JudgeWaitBotSuggest,
 		MaxOut: 20, instr: "Suggest a new bot for this request. label = a short Traditional Chinese name (<= 6 characters); " +
 			"fields: title (job title, <= 10 characters), description (one sentence), soul (2-3 short standing instructions).",
-		rule: ruleBotSuggest, Wired: true, Default: ModeOff},
+		rule: ruleBotSuggest, fields: []string{"title", "description", "soul"}, Wired: true, Default: ModeOff},
 	{ID: UseTitle, N: 10, Name: "對話串命名", Desc: "新對話串的標題（≤ 16 字）", Tier: Tier2, Wait: limits.JudgeWaitTitle, Background: true,
 		MaxOut: limits.JudgeTitleMax, instr: "Name this conversation thread in Traditional Chinese, at most 16 characters, as the label.",
 		rule: ruleTitle, inputMax: limits.JudgeRouteInputMax, Wired: true, Default: ModeOff},
@@ -204,6 +207,11 @@ var Uses = []*Use{
 		MaxOut: 200, instr: "Rewrite the request as one Traditional Chinese sentence: when (e.g. 每天早上9點, 每週一下午3點, 每30分鐘, 10月20日下午2點) " +
 			"followed by what to do. Keep bot names. Put it in label.",
 		rule: func(a Ask) Answer { return Answer{Label: strings.TrimSpace(a.Text)} }, inputMax: limits.JudgeRouteInputMax, Wired: true, Default: ModeOff},
+	{ID: UseTeach, N: 17, Name: "示範整理成技能", Desc: "把你示範的步驟取一個技能名稱、寫一句什麼時候使用（B32；步驟本身照範本）", Tier: Tier2,
+		Wait: limits.JudgeWaitTeach, MaxOut: limits.SkillNameMax,
+		instr: "The owner demonstrated these steps on a computer to teach the bot a reusable skill. label = a short Traditional Chinese " +
+			"skill name (<= 16 characters) saying what the steps accomplish; fields: description (one Traditional Chinese sentence: when to use this skill).",
+		rule: func(a Ask) Answer { return Answer{} }, fields: []string{"description"}, Wired: true, Default: ModeOff},
 }
 
 func init() {

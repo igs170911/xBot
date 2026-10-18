@@ -28,6 +28,7 @@ import (
 	"xbot/internal/screen"
 	"xbot/internal/skills"
 	"xbot/internal/store"
+	"xbot/internal/teaching"
 	"xbot/internal/usage"
 )
 
@@ -65,9 +66,11 @@ type Deps struct {
 	Screen *screen.Service
 	// Network 是內建 Tailscale 與外部入口（C35）；nil 時只登錄定義。
 	Network *network.Service
+	// Teaching 是示範教學（B32）；nil 時只登錄定義。
+	Teaching *teaching.Service
 }
 
-// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines、files、computers（生命週期、看畫面與接手）、judge（快判）、network（內建 Tailscale、外部入口）各領域的操作。
+// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines、files、computers（生命週期、看畫面與接手）、judge（快判）、network（內建 Tailscale、外部入口）、teaching（示範教學）各領域的操作。
 func Register(reg *ops.Registry, d Deps) {
 	bd := bots.Deps{Teardown: d.Teardown, SoulChanged: d.SoulChanged}
 	if d.Collab != nil {
@@ -92,6 +95,18 @@ func Register(reg *ops.Registry, d Deps) {
 				}
 			}
 			sc.Forget(botID)
+			return nil
+		}
+	}
+	if d.Teaching != nil {
+		teardown, tc := bd.Teardown, d.Teaching
+		bd.Teardown = func(ctx context.Context, botID string) error {
+			if teardown != nil {
+				if err := teardown(ctx, botID); err != nil {
+					return err
+				}
+			}
+			tc.Forget(botID)
 			return nil
 		}
 	}
@@ -124,6 +139,7 @@ func Register(reg *ops.Registry, d Deps) {
 	apps.Register(reg, d.Apps)
 	screen.Register(reg, d.Screen)
 	network.Register(reg, d.Network)
+	teaching.Register(reg, d.Teaching)
 }
 
 // Teardown 產生刪除 Bot 時用的收尾函式：先關引擎連線，再刪電腦與資料區（remove）。

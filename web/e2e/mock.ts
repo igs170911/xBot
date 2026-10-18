@@ -157,6 +157,7 @@ export class MockServer {
     'collab.peer_history': () => this.peerHistory,
     'collab.stop_chain': () => ({ stopped: 1 }),
     'teams.list': () => ({ teams: [] }),
+    'teaching.get': () => ({ lesson: null }),
     'agenda.list': () => ({ from: 0, to: 0, pending: [], decided: [], calendar: [], approvals: [], open_max: 3 }),
   }
 

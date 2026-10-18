@@ -48,8 +48,8 @@ func buildRequest(u *Use, a Ask, options []Option, model string) []byte {
 	}
 	if !u.Choice() {
 		user["max_label_chars"] = u.MaxOut
-		if u.ID == UseBotSuggest {
-			user["fields"] = []string{"title", "description", "soul"}
+		if len(u.fields) > 0 {
+			user["fields"] = u.fields
 		}
 	}
 	content, _ := json.Marshal(user)
