@@ -615,8 +615,8 @@ export interface BotsCreateInput {
   color?: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
   /** 頭像形狀；不填自動挑 */
   shape?: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
-  /** 引擎；預設 hermes */
-  engine?: 'hermes'
+  /** 引擎；預設 hermes。claude-code、codex 要再用 xbot.engines.link_credentials 同意使用你的訂閱 */
+  engine?: 'hermes' | 'claude-code' | 'codex'
   /** 模型；不填用預設模型（xbot.models.get 看設定） */
   model?: string
   /** 思考強度；不填是 medium */
@@ -768,7 +768,7 @@ export interface BotsUpdateInput {
   soul?: string
   color?: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
   shape?: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
-  engine?: 'hermes'
+  engine?: 'hermes' | 'claude-code' | 'codex'
   /** 空白字串表示改回預設模型 */
   model?: string
   /** 備援模型「<供應商>/<模型>」：主要模型忙碌或出錯時改用；空白字串表示用全域備援 */
@@ -1105,6 +1105,122 @@ export interface ChatWaitUntilSettledOutput {
  */
 export function chatWaitUntilSettled(input: ChatWaitUntilSettledInput, opts?: CallOptions): Promise<ChatWaitUntilSettledOutput> {
   return invoke('xbot.chat.wait_until_settled', input, opts).then((r) => r.output)
+}
+
+// xbot.engines.link_credentials
+
+export interface EnginesLinkCredentialsInput {
+  /** Bot id */
+  bot_id: string
+  /** 要用哪個訂閱 CLI；要和 Bot 目前的引擎相同 */
+  engine: 'claude-code' | 'codex'
+}
+
+export interface EnginesLinkCredentialsOutput {
+  bot_id: string
+  name: string
+  engine: string
+  engine_label: string
+  /** 這個引擎要連結你的訂閱才能用 */
+  needs_link: boolean
+  /** 已同意，Bot 正在用你的訂閱 */
+  linked: boolean
+  linked_engine?: string
+  linked_at?: number
+  /** 已收回，憑證等 Bot 的電腦連得上時清掉 */
+  pending_clear?: boolean
+  marker?: string
+}
+
+/**
+ * 讓一個 Bot 使用你在這台電腦上的訂閱登入（Claude Code／Codex CLI）
+ *
+ * 你同意後，把這台電腦上該 CLI 的登入憑證唯讀放進這個 Bot 的電腦（只有這個 Bot），介面會標示「這個 Bot 用你的訂閱」。Bot 的引擎要先設成同一個 CLI。可以隨時用 xbot.engines.unlink_credentials 收回。只有你本人能做。
+ *
+ * `xbot.engines.link_credentials`：權限 admin、風險 safe
+ */
+export function enginesLinkCredentials(input: EnginesLinkCredentialsInput, opts?: CallOptions): Promise<EnginesLinkCredentialsOutput> {
+  return invoke('xbot.engines.link_credentials', input, opts).then((r) => r.output)
+}
+
+// xbot.engines.status
+
+export interface EnginesStatusInput {
+  /** 只看這個 Bot；不填列出全部 */
+  bot_id?: string
+}
+
+export interface EnginesStatusOutput {
+  bots: {
+    bot_id: string
+    name: string
+    engine: string
+    engine_label: string
+    /** 這個引擎要連結你的訂閱才能用 */
+    needs_link: boolean
+    /** 已同意，Bot 正在用你的訂閱 */
+    linked: boolean
+    linked_engine?: string
+    linked_at?: number
+    /** 已收回，憑證等 Bot 的電腦連得上時清掉 */
+    pending_clear?: boolean
+    marker?: string
+  }[]
+  /** 這台電腦上各訂閱 CLI 的登入狀態 */
+  host: {
+    engine: string
+    label: string
+    plan: string
+    /** 這台電腦上找得到它的登入 */
+    logged_in: boolean
+    /** 沒有登入時，在這台電腦上執行的指令 */
+    login: string
+  }[]
+}
+
+/**
+ * 看每個 Bot 用哪個引擎、有沒有用你的訂閱
+ *
+ * 只回答有沒有連結，不會回傳任何憑證內容。
+ *
+ * `xbot.engines.status`：權限 read、風險 safe
+ */
+export function enginesStatus(input: EnginesStatusInput = {}, opts?: CallOptions): Promise<EnginesStatusOutput> {
+  return invoke('xbot.engines.status', input, opts).then((r) => r.output)
+}
+
+// xbot.engines.unlink_credentials
+
+export interface EnginesUnlinkCredentialsInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface EnginesUnlinkCredentialsOutput {
+  bot_id: string
+  name: string
+  engine: string
+  engine_label: string
+  /** 這個引擎要連結你的訂閱才能用 */
+  needs_link: boolean
+  /** 已同意，Bot 正在用你的訂閱 */
+  linked: boolean
+  linked_engine?: string
+  linked_at?: number
+  /** 已收回，憑證等 Bot 的電腦連得上時清掉 */
+  pending_clear?: boolean
+  marker?: string
+}
+
+/**
+ * 收回一個 Bot 使用你訂閱登入的同意
+ *
+ * 立刻停止這個 Bot 使用你的訂閱：結束它正在跑的 CLI，清掉它電腦裡的憑證。只有你本人能做。
+ *
+ * `xbot.engines.unlink_credentials`：權限 admin、風險 safe
+ */
+export function enginesUnlinkCredentials(input: EnginesUnlinkCredentialsInput, opts?: CallOptions): Promise<EnginesUnlinkCredentialsOutput> {
+  return invoke('xbot.engines.unlink_credentials', input, opts).then((r) => r.output)
 }
 
 // xbot.inbox.counts
@@ -2220,6 +2336,9 @@ export interface Ops {
   'xbot.chat.steps': { input: ChatStepsInput; output: ChatStepsOutput }
   'xbot.chat.stop': { input: ChatStopInput; output: ChatStopOutput }
   'xbot.chat.wait_until_settled': { input: ChatWaitUntilSettledInput; output: ChatWaitUntilSettledOutput }
+  'xbot.engines.link_credentials': { input: EnginesLinkCredentialsInput; output: EnginesLinkCredentialsOutput }
+  'xbot.engines.status': { input: EnginesStatusInput; output: EnginesStatusOutput }
+  'xbot.engines.unlink_credentials': { input: EnginesUnlinkCredentialsInput; output: EnginesUnlinkCredentialsOutput }
   'xbot.inbox.counts': { input: InboxCountsInput; output: InboxCountsOutput }
   'xbot.inbox.dismiss': { input: InboxDismissInput; output: InboxDismissOutput }
   'xbot.inbox.list': { input: InboxListInput; output: InboxListOutput }
@@ -2272,6 +2391,9 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.chat.steps': { path: '/api/v1/chat.steps', scope: 'read', risk: 'safe', mutates: false },
   'xbot.chat.stop': { path: '/api/v1/chat.stop', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.chat.wait_until_settled': { path: '/api/v1/chat.wait_until_settled', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.engines.link_credentials': { path: '/api/v1/engines.link_credentials', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.engines.status': { path: '/api/v1/engines.status', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.engines.unlink_credentials': { path: '/api/v1/engines.unlink_credentials', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.inbox.counts': { path: '/api/v1/inbox.counts', scope: 'read', risk: 'safe', mutates: false },
   'xbot.inbox.dismiss': { path: '/api/v1/inbox.dismiss', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.inbox.list': { path: '/api/v1/inbox.list', scope: 'read', risk: 'safe', mutates: false },

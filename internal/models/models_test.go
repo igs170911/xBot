@@ -150,3 +150,20 @@ func TestSetProviderValidationAndPermissions(t *testing.T) {
 		t.Fatal("預演不應該設預設模型")
 	}
 }
+
+// EN-2a：Claude 訂閱的 OAuth 權杖不能設成 Hermes（Model Proxy）的金鑰；一般 API 金鑰可以。
+func TestRejectClaudeOAuthToken(t *testing.T) {
+	e := setup(t)
+	for _, tok := range []string{"sk-ant-oat01-abcdef", "sk-ant-ort01-abcdef"} {
+		_, err := e.call(owner, "xbot.models.set_provider", map[string]any{"id": "anthropic", "base_url": "https://api.anthropic.com/v1", "api_key": tok})
+		if code(err) != ops.CodeInvalidInput || !strings.Contains(err.Error(), "Claude Code") {
+			t.Errorf("%s：%v", tok, err)
+		}
+	}
+	if _, err := e.pv.Get(bg, "anthropic"); !errors.Is(err, proxy.ErrNotFound) {
+		t.Fatal("不應該存下 OAuth 權杖")
+	}
+	if _, err := e.call(owner, "xbot.models.set_provider", map[string]any{"id": "anthropic", "base_url": "https://api.anthropic.com/v1", "api_key": "sk-ant-api03-abc"}); err != nil {
+		t.Fatalf("API 金鑰可以：%v", err)
+	}
+}
