@@ -84,6 +84,9 @@ type Options struct {
 	// Session 回傳 Bot 目前這段對話的穩定 id（runtime 的對話串 id），給要求對話識別標頭的供應商（OpenCode）；
 	// 回空白時用「xbot-<Bot id>」。可為 nil。
 	Session func(botID string) string
+	// ProviderError 在供應商回錯誤（4xx、5xx）時呼叫，帶回應標頭與內容的前 limits.QuotaProbeBytes 位元組（已遮掉金鑰），
+	// 讓服務認出額度用完、限流（EN-7）。回應照常轉給 Bot。可為 nil。
+	ProviderError func(botID, provider string, status int, header http.Header, body []byte)
 }
 
 // Route 指定一個模型：哪個供應商的哪個模型、用哪種呼叫方式。
@@ -331,7 +334,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		m = newMeter(streaming)
 	}
 	out := newRedactWriter(w, realKey)
-	copyErr := pipe(w, out, resp.Body, m)
+	var src io.Reader = resp.Body
+	var probe *capped
+	if resp.StatusCode >= 400 && h.o.ProviderError != nil {
+		probe = &capped{max: limits.QuotaProbeBytes}
+		src = io.TeeReader(resp.Body, probe)
+	}
+	copyErr := pipe(w, out, src, m)
+	if probe != nil {
+		h.o.ProviderError(botID, provider.ID, resp.StatusCode, resp.Header.Clone(), []byte(redactString(string(probe.b), realKey)))
+	}
 	_ = out.flush()
 	flush(w)
 	if copyErr != nil && r.Context().Err() == nil {
@@ -653,4 +665,17 @@ func fail(w http.ResponseWriter, status int, code, message string) {
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"error": map[string]any{"message": message, "type": "xbot_model_proxy", "code": code},
 	})
+}
+
+// capped 留下寫進來的前 max 個位元組，其餘丟掉。
+type capped struct {
+	b   []byte
+	max int
+}
+
+func (c *capped) Write(p []byte) (int, error) {
+	if room := c.max - len(c.b); room > 0 {
+		c.b = append(c.b, p[:min(room, len(p))]...)
+	}
+	return len(p), nil
 }

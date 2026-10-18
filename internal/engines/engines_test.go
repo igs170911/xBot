@@ -16,6 +16,7 @@ import (
 
 	"github.com/moby/moby/client"
 
+	"xbot/internal/engine/acp"
 	"xbot/internal/ops"
 	"xbot/internal/store"
 )
@@ -197,7 +198,7 @@ func TestLinkAndUnlinkClaude(t *testing.T) {
 	}
 	var st StatusOut
 	_ = json.Unmarshal(raw, &st)
-	if len(st.Bots) != 1 || !st.Bots[0].Linked || len(st.Host) != 2 || !st.Host[0].LoggedIn || st.Host[1].LoggedIn || strings.Contains(string(raw), fakeToken) {
+	if len(st.Bots) != 1 || !st.Bots[0].Linked || len(st.Host) != len(acp.Engines) || !st.Host[0].LoggedIn || st.Host[1].LoggedIn || strings.Contains(string(raw), fakeToken) {
 		t.Fatalf("狀態：%s", raw)
 	}
 	// 設定表與稽核也不能有憑證。

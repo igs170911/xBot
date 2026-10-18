@@ -16,7 +16,7 @@ import { useStore } from '../data/store'
 import { linkClick } from '../router'
 import { Avatar } from '../ui/Avatar'
 import { Button } from '../ui/Button'
-import { Checkbox, SegmentedControl } from '../ui/Controls'
+import { Checkbox } from '../ui/Controls'
 import { ConfirmDialog, Dialog } from '../ui/Dialog'
 import { Icon } from '../ui/Icon'
 import { StatusChip } from '../ui/Pill'
@@ -30,7 +30,7 @@ import { BasicTab } from './bot/BasicTab'
 import { AccessTab } from './bot/AccessTab'
 import { HistoryTab, VoiceTab } from './bot/HistoryTab'
 import { ShareBotDialog } from './bot/share'
-import { ENGINE_LABEL, MODES, MODE_LABEL, PLAN_NAME, subscriptionMarker } from './botModes'
+import { ENGINES, ENGINE_LABEL, MODES, MODE_LABEL, PLAN_NAME, subscriptionMarker } from './botModes'
 import { errText, isPending } from './format'
 import { splitRef, useModelData } from './modelData'
 
@@ -345,21 +345,19 @@ function EngineAndModel({
   const fallbackRef = bot.fallback ? splitRef(bot.fallback) : null
   return (
     <>
-      <Block title="引擎" sub="Hermes 是內建引擎，用「AI 模型」設定的模型；Claude Code、Codex 用你在這台電腦上登入的訂閱。">
+      <Block title="引擎" sub="Hermes 是內建引擎，用「AI 模型」設定的模型；其他引擎用你在這台電腦上登入的訂閱，要逐個 Bot 同意。">
         <Group>
-          <div className="flex flex-col gap-3 px-4 py-3">
-            <SegmentedControl
-              label="引擎"
-              value={engine}
-              onChange={(v) => void update({ engine: v }, `${bot.name}改用 ${ENGINE_LABEL[v]}`)}
-              options={[
-                { value: 'hermes', label: 'Hermes（內建）' },
-                { value: 'claude-code', label: 'Claude Code' },
-                { value: 'codex', label: 'Codex' },
-              ]}
-            />
-            {engine !== 'hermes' && <Subscription bot={bot} engine={engine} state={eng} host={host.find((h) => h.engine === engine)} onChanged={reload} />}
-          </div>
+          <EnginePicker
+            value={engine}
+            host={host}
+            linkedEngine={eng?.linked ? eng.linked_engine || engine : undefined}
+            onChange={(v) => void update({ engine: v }, `${bot.name}改用 ${ENGINE_LABEL[v]}`)}
+          />
+          {engine !== 'hermes' && (
+            <div className="border-t border-line px-4 py-3">
+              <Subscription bot={bot} engine={engine} state={eng} host={host.find((h) => h.engine === engine)} onChanged={reload} />
+            </div>
+          )}
         </Group>
       </Block>
 
@@ -391,6 +389,57 @@ function EngineAndModel({
   )
 }
 
+/** 引擎選擇器（G08；E31）：每個引擎一列，標出這台電腦上有沒有登入、這個 Bot 有沒有同意使用訂閱。 */
+function EnginePicker({ value, host, linkedEngine, onChange }: { value: Engine; host: HostCli[]; linkedEngine?: string; onChange: (v: Engine) => void }) {
+  return (
+    <div role="radiogroup" aria-label="引擎" className="flex flex-col">
+      {ENGINES.map((e) => {
+        const on = value === e.value
+        const h = host.find((x) => x.engine === e.value)
+        return (
+          <button
+            key={e.value}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            data-engine={e.value}
+            onClick={() => !on && onChange(e.value as Engine)}
+            className={cx(
+              'flex min-h-14 items-center gap-3 border-line bg-transparent px-4 py-2.5 text-left text-ink not-first:border-t',
+              on ? 'bg-control/60' : 'hover:bg-control/40',
+            )}
+          >
+            <span aria-hidden="true" className={cx('flex size-[18px] flex-none items-center justify-center rounded-full border-[1.5px]', on ? 'border-accent' : 'border-check-off')}>
+              {on && <span className="size-2.5 rounded-full bg-accent" />}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-ui">
+                {ENGINE_LABEL[e.value]}
+                {e.value === 'hermes' ? '（內建）' : ''}
+              </span>
+              <span className="block text-[13px] text-ink-2">{e.desc}</span>
+            </span>
+            {e.value !== 'hermes' &&
+              (linkedEngine === e.value ? (
+                <StatusChip tone="accent" size="sm" icon={KeyRound}>
+                  用你的訂閱
+                </StatusChip>
+              ) : h?.logged_in ? (
+                <StatusChip tone="success" size="sm">
+                  已登入
+                </StatusChip>
+              ) : h ? (
+                <StatusChip tone="warning" size="sm">
+                  這台電腦沒登入
+                </StatusChip>
+              ) : null)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export function SubscriptionMarker({ engine, marker }: { engine: string; marker?: string }) {
   return (
     <StatusChip tone="accent" icon={KeyRound}>
@@ -412,7 +461,7 @@ function Subscription({ bot, engine, state, host, onChanged }: { bot: Bot; engin
   const link = async () => {
     setBusy(true)
     try {
-      await enginesLinkCredentials({ bot_id: bot.id, engine: engine as 'claude-code' | 'codex' })
+      await enginesLinkCredentials({ bot_id: bot.id, engine: engine as Exclude<Engine, 'hermes'> })
       setConsent(false)
       setAgree(false)
       toast.show({ kind: 'done', text: subscriptionMarker(engine) })

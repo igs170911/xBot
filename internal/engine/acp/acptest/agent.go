@@ -25,7 +25,35 @@ const (
 	PromptCrash = "crash"
 	// PromptRefuse：以 refusal 結束。
 	PromptRefuse = "refuse"
+	// PromptQuota：回一段文字後，照 Profile 的格式回額度用完的錯誤（EN-7）。
+	PromptQuota = "quota"
 )
+
+// Profile 是一種引擎的假 agent 長相：session/new 回的模式、額度用完時的錯誤格式（照各 CLI 實際的寫法）。
+type Profile struct {
+	// Modes 是 session/new 回的 availableModes；空的時不回 modes（例：OpenCode、Grok）。
+	Modes       []string
+	CurrentMode string
+	// QuotaCode、QuotaMessage、QuotaData 是 session/prompt 遇到額度用完時的 JSON-RPC 錯誤。
+	QuotaCode    int
+	QuotaMessage string
+	QuotaData    any
+	// RateLimitResetsAt 不是 0 時，額度錯誤之前先送一個帶 _claude/rateLimit 的 usage_update（Claude Code）。
+	RateLimitResetsAt int64
+}
+
+// Profiles 是各引擎的假 agent（key 是 bot.engine）。
+var Profiles = map[string]Profile{
+	"claude-code": {Modes: []string{"default", "acceptEdits", "auto", "bypassPermissions"}, CurrentMode: "default",
+		QuotaCode: -32603, QuotaMessage: "You've hit your limit", QuotaData: map[string]string{"errorKind": "rate_limit"}, RateLimitResetsAt: 4102444800},
+	"codex": {Modes: []string{"read-only", "workspace-write", "agent", "agent-full-access"}, CurrentMode: "read-only",
+		QuotaCode: -32603, QuotaMessage: "Internal error",
+		QuotaData: map[string]string{"message": "You've hit your usage limit. Try again in 2 hours 5 minutes.", "codexErrorInfo": "usageLimitExceeded"}},
+	"gemini": {Modes: []string{"default", "autoEdit", "yolo", "plan"}, CurrentMode: "default",
+		QuotaCode: -32603, QuotaMessage: `[API Error: You have exhausted your daily quota on this model.] {"status":"RESOURCE_EXHAUSTED","retryDelay":"3600s"}`},
+	"opencode": {QuotaCode: -32603, QuotaMessage: "Insufficient account funds"},
+	"grok":     {QuotaCode: -32603, QuotaMessage: "Rate limit exceeded. Please retry after 30m"},
+}
 
 // Call 是 agent 收到的一個請求或通知。
 type Call struct {
@@ -39,6 +67,8 @@ type Agent struct {
 	AuthRequired bool
 	// NoLoad 時不支援 session/load。
 	NoLoad bool
+	// Profile 是這個假 agent 扮演的引擎（New 是 Claude Code）。
+	Profile Profile
 
 	mu       sync.Mutex
 	calls    []Call
@@ -50,9 +80,12 @@ type Agent struct {
 	launches int
 }
 
-// New 建立假的 agent。
-func New() *Agent {
-	return &Agent{sessions: map[string]bool{}, cancels: map[string]chan struct{}{}, waiting: map[string]chan json.RawMessage{}}
+// New 建立假的 agent（扮演 Claude Code）。
+func New() *Agent { return NewFor("claude-code") }
+
+// NewFor 建立扮演某個引擎的假 agent（Profiles）。
+func NewFor(engine string) *Agent {
+	return &Agent{Profile: Profiles[engine], sessions: map[string]bool{}, cancels: map[string]chan struct{}{}, waiting: map[string]chan json.RawMessage{}}
 }
 
 // Calls 回傳到目前為止收到的請求與通知。
@@ -226,14 +259,19 @@ func (p *peer) handle(f frame) {
 		id := fmt.Sprintf("sess-%d", a.nextSess)
 		a.sessions[id] = true
 		a.mu.Unlock()
-		p.result(f.ID, map[string]any{
+		res := map[string]any{
 			"sessionId": id,
-			"modes": map[string]any{"currentModeId": "default", "availableModes": []map[string]string{
-				{"id": "default", "name": "Manual"}, {"id": "acceptEdits", "name": "Accept edits"}, {"id": "auto", "name": "Auto"}, {"id": "bypassPermissions", "name": "Bypass"},
-			}},
 			"configOptions": []map[string]any{{"id": "model", "type": "select", "currentValue": "default",
 				"options": []map[string]string{{"value": "default"}, {"value": "sonnet"}}}},
-		})
+		}
+		if len(a.Profile.Modes) > 0 {
+			modes := []map[string]string{}
+			for _, m := range a.Profile.Modes {
+				modes = append(modes, map[string]string{"id": m, "name": m})
+			}
+			res["modes"] = map[string]any{"currentModeId": a.Profile.CurrentMode, "availableModes": modes}
+		}
+		p.result(f.ID, res)
 	case "session/load":
 		var params struct {
 			SessionID string `json:"sessionId"`
@@ -343,6 +381,18 @@ func (p *peer) prompt(f frame) {
 		_ = p.out.CloseWithError(io.ErrUnexpectedEOF)
 	case PromptRefuse:
 		end("refusal")
+	case PromptQuota:
+		pf := p.a.Profile
+		p.chunk(sid, "agent_message_chunk", "working")
+		if pf.RateLimitResetsAt != 0 {
+			p.update(sid, map[string]any{"sessionUpdate": "usage_update", "used": 1000, "size": 200000,
+				"_meta": map[string]any{"_claude/rateLimit": map[string]any{"status": "rejected", "resetsAt": pf.RateLimitResetsAt, "rateLimitType": "five_hour"}}})
+		}
+		e := map[string]any{"code": pf.QuotaCode, "message": pf.QuotaMessage}
+		if pf.QuotaData != nil {
+			e["data"] = pf.QuotaData
+		}
+		p.send(map[string]any{"jsonrpc": "2.0", "id": f.ID, "error": e})
 	default:
 		p.chunk(sid, "agent_message_chunk", "echo:"+text)
 		end("end_turn")

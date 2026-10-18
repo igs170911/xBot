@@ -340,7 +340,7 @@ func embeddedTailscaleCheck(env Env, o Options) (Result, bool) {
 	return r, true
 }
 
-// subscriptionChecks 看這台電腦上有沒有 Claude Code／Codex CLI 的登入（選用，EN-2b）：
+// subscriptionChecks 看這台電腦上有沒有 Claude Code／Codex CLI／Gemini CLI／OpenCode／Grok 的登入（選用，EN-2b、E31）：
 // Bot 用 Claude Code、Codex CLI 當引擎時，經你逐 Bot 同意後借用這份登入（xbot.engines.link_credentials）。
 // CLI 本身已裝在 Bot 的電腦映像裡，這台電腦只需要登入過一次。
 func subscriptionChecks(env Env) []Result {
@@ -349,10 +349,18 @@ func subscriptionChecks(env Env) []Result {
 	for _, c := range []struct{ name, envDir, dir, file, fix string }{
 		{"Claude Code 登入（選用）", "CLAUDE_CONFIG_DIR", ".claude", ".credentials.json", "安裝 Claude Code 後執行 claude，輸入 /login 登入"},
 		{"Codex CLI 登入（選用）", "CODEX_HOME", ".codex", "auth.json", "安裝 Codex CLI 後執行 codex login"},
+		{"Gemini CLI 登入（選用）", "GEMINI_CLI_HOME", ".gemini", "oauth_creds.json", "安裝 Gemini CLI 後執行 gemini，選 Login with Google"},
+		{"OpenCode 登入（選用）", "XDG_DATA_HOME", ".local/share/opencode", "auth.json", "安裝 OpenCode 後執行 opencode auth login（OpenCode Go 或 Zen）"},
+		{"Grok 登入（選用）", "GROK_HOME", ".grok", "auth.json", "執行 grok login"},
 	} {
 		dir := os.Getenv(c.envDir)
-		if dir == "" {
+		switch {
+		case dir == "":
 			dir = home + "/" + c.dir
+		case c.envDir == "GEMINI_CLI_HOME":
+			dir += "/.gemini"
+		case c.envDir == "XDG_DATA_HOME":
+			dir += "/opencode"
 		}
 		r := Result{Name: c.name, Required: false, Fix: c.fix}
 		if _, err := env.ReadFile(dir + "/" + c.file); err != nil {

@@ -40,7 +40,7 @@ var DefaultLocal = []LocalServer{
 
 // Deps 是首次設定需要的元件；都可以是 nil（只登錄定義或測試）。
 type Deps struct {
-	// Engines 回答這台電腦上 Claude Code、Codex 有沒有登入（engines.Service.HostLogins）。
+	// Engines 回答這台電腦上各訂閱 CLI（Claude Code、Codex、Gemini CLI、OpenCode、Grok）有沒有登入（engines.Service.HostLogins）。
 	Engines func() []engines.HostLogin
 	// Image 回傳這台的 Bot 電腦映像名稱與好了沒；err 表示 Docker 連不上（hosts.Service.BoxImage）。
 	Image func(ctx context.Context) (name string, ready bool, err error)
@@ -69,7 +69,7 @@ type State struct {
 
 // Engine 是這台電腦上一個訂閱 CLI 的登入狀態。
 type Engine struct {
-	Engine   string `json:"engine" desc:"claude-code 或 codex"`
+	Engine   string `json:"engine" desc:"claude-code、codex、gemini、opencode 或 grok"`
 	Label    string `json:"label"`
 	Plan     string `json:"plan" desc:"訂閱方案名稱，例：Claude"`
 	LoggedIn bool   `json:"logged_in"`

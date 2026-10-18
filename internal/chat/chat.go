@@ -98,9 +98,11 @@ type Message struct {
 	// Card：kind=card 時卡片的內容（Bot 用 xbot.cards.post 發的資訊、核准、檔案卡，C11）。
 	Card *Card `json:"card,omitempty"`
 	// Voice：Bot 的回覆念成了語音訊息（E32，VC-1）；畫面顯示播放器。
-	Voice     *VoiceNote `json:"voice,omitempty"`
-	CreatedAt int64      `json:"created_at"`
-	UpdatedAt int64      `json:"updated_at"`
+	Voice *VoiceNote `json:"voice,omitempty"`
+	// Quota：這一輪因為引擎額度用完、限流、餘額不足或登入過期而失敗（EN-7）；換引擎用 xbot.engines.switch。
+	Quota     *runtime.QuotaView `json:"quota,omitempty"`
+	CreatedAt int64              `json:"created_at"`
+	UpdatedAt int64              `json:"updated_at"`
 }
 
 // CardFile 是檔案卡上的一個檔案（Bot 電腦裡的完整路徑，C33 點了預覽或下載）。
@@ -486,18 +488,19 @@ type PeerLine struct {
 }
 
 type messageMeta struct {
-	TaskID    string            `json:"task_id"`
-	Actor     string            `json:"actor"`
-	ActorName string            `json:"actor_name"`
-	Via       string            `json:"via"`
-	Streaming bool              `json:"streaming"`
-	Status    string            `json:"status"`
-	Silent    bool              `json:"silent"`
-	Peer      *PeerLine         `json:"peer"`
-	Activity  string            `json:"activity"`
-	Judge     *runtime.Judgment `json:"judge"`
-	Card      *Card             `json:"card"`
-	Voice     *VoiceNote        `json:"voice"`
+	TaskID    string             `json:"task_id"`
+	Actor     string             `json:"actor"`
+	ActorName string             `json:"actor_name"`
+	Via       string             `json:"via"`
+	Streaming bool               `json:"streaming"`
+	Status    string             `json:"status"`
+	Silent    bool               `json:"silent"`
+	Peer      *PeerLine          `json:"peer"`
+	Activity  string             `json:"activity"`
+	Judge     *runtime.Judgment  `json:"judge"`
+	Card      *Card              `json:"card"`
+	Quota     *runtime.QuotaView `json:"quota"`
+	Voice     *VoiceNote         `json:"voice"`
 }
 
 func messageView(m store.Message) Message {
@@ -505,7 +508,7 @@ func messageView(m store.Message) Message {
 	_ = json.Unmarshal(m.Meta, &meta)
 	out := Message{ID: m.ID, Seq: m.Seq, Sender: m.Sender, Kind: m.Kind, Content: m.Content, TaskID: meta.TaskID,
 		Actor: meta.Actor, ActorName: meta.ActorName, Via: meta.Via, Streaming: meta.Streaming, Status: meta.Status, Silent: meta.Silent, Peer: meta.Peer,
-		Activity: meta.Activity, Card: meta.Card, Voice: meta.Voice, CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
+		Activity: meta.Activity, Card: meta.Card, Quota: meta.Quota, Voice: meta.Voice, CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
 	if meta.Judge != nil && meta.Judge.Verdict != "" {
 		out.Judge = &Judgment{Judgment: *meta.Judge}
 	}

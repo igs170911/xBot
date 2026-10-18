@@ -1,0 +1,9 @@
+{
+  "security": {
+    "auth": { "selectedType": "oauth-personal" },
+    "disableYoloMode": true,
+    "folderTrust": { "enabled": false }
+  },
+  "general": { "enableAutoUpdate": false, "enableAutoUpdateNotification": false },
+  "privacy": { "usageStatisticsEnabled": false }
+}

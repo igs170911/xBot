@@ -34,6 +34,13 @@ type update struct {
 		Amount   float64 `json:"amount"`
 		Currency string  `json:"currency"`
 	} `json:"cost,omitempty"`
+	// Meta：Claude Code 的 usage_update 帶訂閱的用量狀態（_claude/rateLimit：status、resetsAt 秒）。
+	Meta struct {
+		RateLimit *struct {
+			Status   string `json:"status"`
+			ResetsAt int64  `json:"resetsAt"`
+		} `json:"_claude/rateLimit"`
+	} `json:"_meta"`
 }
 
 type updateParams struct {

@@ -16,6 +16,8 @@ import { useStore } from '../data/store'
 import { AskCard } from '../chat/AskCard'
 import { askFromItem } from '../chat/ask'
 import { AgendaCard } from '../agenda/AgendaCard'
+import { QuotaCard } from '../chat/QuotaCard'
+import { quotaFrom } from '../chat/quota'
 import { TabHeader } from '../mobile/Phone'
 import { usePhone } from '../mobile/nav'
 import { linkClick, navigate } from '../router'
@@ -377,6 +379,14 @@ function RealItem({ item, bots }: { item: InboxItem; bots: Bot[] | null }) {
   }
   if (item.kind === 'approval' && item.ref) return <ApprovalItem item={item} bot={bot} />
   if (item.kind === 'takeover') return <TakeoverItem item={item} bot={bot} />
+  const quota = item.kind === 'engine_quota' && item.bot_id ? quotaFrom({ ...(item.payload as object), inbox_id: item.id }) : null
+  if (quota && item.bot_id) {
+    return (
+      <div data-testid="inbox-item" data-kind={item.kind}>
+        <QuotaCard quota={quota} botId={item.bot_id} bot={bot} sub={`${bot.name} · ${sinceLabel(item.created_at)}`} />
+      </div>
+    )
+  }
   return <InfoItem item={item} bot={bot} />
 }
 

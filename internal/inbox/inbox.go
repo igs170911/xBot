@@ -98,7 +98,7 @@ func (Group) EnumValues() []string { return notify.Groups }
 // Item 是一張待我處理（或通知）。
 type Item struct {
 	ID         string          `json:"id"`
-	Kind       string          `json:"kind" desc:"approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention、delegated（已由代理代為核准的紀錄）"`
+	Kind       string          `json:"kind" desc:"approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、engine_quota（引擎額度用完，可換引擎：xbot.engines.switch）、done、error、mention、delegated（已由代理代為核准的紀錄）"`
 	Group      string          `json:"group" desc:"decide（要你決定）、done（完成）、mention（提到你）、error（出錯）"`
 	BotID      string          `json:"bot_id,omitempty"`
 	TaskID     string          `json:"task_id,omitempty" desc:"Bot 在對話裡問的：是哪件工作"`

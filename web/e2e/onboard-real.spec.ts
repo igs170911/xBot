@@ -10,7 +10,7 @@ test('真的服務：onboard.status 偵測、.xbot 匯出再從網頁匯入', as
 
   const st = (await (await request.post('/api/v1/onboard.status', { data: {} })).json()).output
   expect(Array.isArray(st.engines)).toBe(true)
-  expect(st.engines.map((e: { engine: string }) => e.engine)).toEqual(['claude-code', 'codex'])
+  expect(st.engines.map((e: { engine: string }) => e.engine)).toEqual(['claude-code', 'codex', 'gemini', 'opencode', 'grok'])
   expect(Array.isArray(st.local)).toBe(true)
   expect(typeof st.computer.ready).toBe('boolean')
   await pastOnboarding(request)

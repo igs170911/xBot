@@ -67,3 +67,18 @@ const (
 	// ACPToolPayloadBytes 是一個工具呼叫的輸入或輸出寫進事件的上限（截圖的 base64 不整包存）。
 	ACPToolPayloadBytes = 64 << 10
 )
+
+// 引擎額度用完（E31，PRD EN-7）。XBot 自己的數字。
+const (
+	// QuotaMessageMax 是額度卡上保留的原始錯誤長度（字）。
+	QuotaMessageMax = 300
+
+	// QuotaRecent 是 Model Proxy 看到的額度錯誤多久之內，還算是這一輪失敗的原因。
+	QuotaRecent = 15 * time.Minute
+
+	// QuotaProbeBytes 是 Model Proxy 為了分類錯誤，最多留下供應商錯誤回應的前幾個位元組。
+	QuotaProbeBytes = 8 << 10
+
+	// QuotaChoicesMax 是額度用完卡上最多列幾個換引擎、換模型的選項（不含「等額度恢復」）。
+	QuotaChoicesMax = 6
+)
