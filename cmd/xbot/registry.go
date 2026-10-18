@@ -35,6 +35,8 @@ func coreDeps(st *stack) catalog.Deps {
 		Providers: st.providers,
 		Lister:    st.pstore,
 		Budgets:   st.budgets,
+		Routines:  st.routines,
+		Hosts:     st.hosts,
 		Collab:    st.collab,
 		Skills:    st.skills,
 		Memory:    st.memory,

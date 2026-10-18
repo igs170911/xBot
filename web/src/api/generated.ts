@@ -867,6 +867,8 @@ export interface BotsArchiveOutput {
   /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
   memory_enabled: boolean
   archived: boolean
+  /** 放在哪台主機（xbot.hosts.list）；空白＝第一次開機時自動擺放 */
+  host_id: string
   /** 誰建立的：owner、agent:<id>、bot:<id> */
   created_by?: string
   /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
@@ -929,6 +931,8 @@ export interface BotsCreateOutput {
   /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
   memory_enabled: boolean
   archived: boolean
+  /** 放在哪台主機（xbot.hosts.list）；空白＝第一次開機時自動擺放 */
+  host_id: string
   /** 誰建立的：owner、agent:<id>、bot:<id> */
   created_by?: string
   /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
@@ -1000,6 +1004,8 @@ export interface BotsGetOutput {
   /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
   memory_enabled: boolean
   archived: boolean
+  /** 放在哪台主機（xbot.hosts.list）；空白＝第一次開機時自動擺放 */
+  host_id: string
   /** 誰建立的：owner、agent:<id>、bot:<id> */
   created_by?: string
   /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
@@ -1043,6 +1049,8 @@ export interface BotsListOutput {
     /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
     memory_enabled: boolean
     archived: boolean
+    /** 放在哪台主機（xbot.hosts.list）；空白＝第一次開機時自動擺放 */
+    host_id: string
     /** 誰建立的：owner、agent:<id>、bot:<id> */
     created_by?: string
     /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
@@ -1082,6 +1090,8 @@ export interface BotsUpdateInput {
   approval_mode?: 'ask' | 'edits' | 'auto' | 'full'
   /** 打開或關掉記憶（下次開機生效） */
   memory_enabled?: boolean
+  /** 放在哪台主機（CL-1）；空白字串＝自動擺放。已經有電腦的 Bot 換主機要等搬家（CL-5） */
+  host_id?: string
 }
 
 export interface BotsUpdateOutput {
@@ -1102,6 +1112,8 @@ export interface BotsUpdateOutput {
   /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
   memory_enabled: boolean
   archived: boolean
+  /** 放在哪台主機（xbot.hosts.list）；空白＝第一次開機時自動擺放 */
+  host_id: string
   /** 誰建立的：owner、agent:<id>、bot:<id> */
   created_by?: string
   /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
@@ -1953,6 +1965,579 @@ export interface EnginesUnlinkCredentialsOutput {
  */
 export function enginesUnlinkCredentials(input: EnginesUnlinkCredentialsInput, opts?: CallOptions): Promise<EnginesUnlinkCredentialsOutput> {
   return invoke('xbot.engines.unlink_credentials', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.add
+
+export interface HostsAddInput {
+  /** 主機位址：Tailscale 名稱或 IP，可帶 :埠號（例：cloud-01、100.101.7.23、vps.example.com:2222） */
+  address: string
+  /** 主機名稱；不填用位址 */
+  name?: string
+  /** 同時開機上限；不填是 3 */
+  max_running?: number
+  /** 只檢查，不要把電腦映像傳過去 */
+  skip_image?: boolean
+}
+
+export interface HostsAddOutput {
+  host: {
+    id: string
+    name: string
+    /** local（這台電腦）或 ssh（遠端主機） */
+    kind: string
+    address: string
+    port?: number
+    user?: string
+    /** online、offline、updating、failed、unknown */
+    status: string
+    status_error?: string
+    arch: string
+    max_running: number
+    running: number
+    resources: {
+      cpus: number
+      mem_bytes: number
+      disk_free_bytes: number
+      disk_total_bytes: number
+      docker_version: string
+      os: string
+      /** amd64 或 arm64 */
+      arch: string
+      hostname: string
+      rtt_ms: number
+      /** 主機上的電腦映像版本 */
+      image_id?: string
+      /** 經 Tailscale 連線 */
+      tailscale: boolean
+    }
+    /** 遠端主機的 SSH 連線狀態 */
+    health?: {
+      /** connecting、online、reconnecting、failed、closed */
+      state: string
+      since: number
+      last_error?: string
+      connects: number
+      rtt_ms: number
+      reverse_forwards: number
+      local_forwards: number
+    }
+    last_seen_at: number
+    /** XBot 服務就在這台（不能移除） */
+    control_center: boolean
+    /** 新 Bot 預設放這台 */
+    default: boolean
+    bots: {
+      id: string
+      name: string
+      color: string
+      shape: string
+      state: string
+      running: boolean
+    }[]
+    queued: number
+    /** 電腦映像傳輸中的進度 */
+    image?: {
+      host_id: string
+      done: number
+      total: number
+      percent: number
+      error?: string
+    }
+    created_at: number
+  }
+  report: {
+    items: {
+      /** ssh、docker、resources、arch、forwarding、image、network */
+      id: string
+      label: string
+      /** ok、warn、fail、pending、running */
+      status: string
+      detail: string
+      /** 沒過時怎麼修 */
+      fix?: string
+      progress?: number
+    }[]
+    resources: {
+      cpus: number
+      mem_bytes: number
+      disk_free_bytes: number
+      disk_total_bytes: number
+      docker_version: string
+      os: string
+      /** amd64 或 arm64 */
+      arch: string
+      hostname: string
+      rtt_ms: number
+      /** 主機上的電腦映像版本 */
+      image_id?: string
+      /** 經 Tailscale 連線 */
+      tailscale: boolean
+    }
+    ok: boolean
+    need_image: boolean
+  }
+  added: boolean
+  loading: boolean
+}
+
+/**
+ * 加入一台遠端主機（自動檢查 SSH、Docker、資源、架構、轉發，並把電腦映像傳過去）
+ *
+ * 先在主機上貼 xbot.hosts.install_script 的指令。第一次連線會記下主機金鑰，之後金鑰不同就拒絕連線。檢查沒過時不會加入，report 說明原因與修法。電腦映像在背景傳，傳完主機變成在線（進度看 host.image 事件）。同一個位址重複加入會重新檢查，不會重複新增。
+ *
+ * `xbot.hosts.add`：權限 admin、風險 safe
+ */
+export function hostsAdd(input: HostsAddInput, opts?: CallOptions): Promise<HostsAddOutput> {
+  return invoke('xbot.hosts.add', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.check
+
+export interface HostsCheckInput {
+  /** 主機 id */
+  id: string
+  /** 主機上的電腦映像和這台不同時傳過去（更新電腦） */
+  update_image?: boolean
+}
+
+export interface HostsCheckOutput {
+  host: {
+    id: string
+    name: string
+    /** local（這台電腦）或 ssh（遠端主機） */
+    kind: string
+    address: string
+    port?: number
+    user?: string
+    /** online、offline、updating、failed、unknown */
+    status: string
+    status_error?: string
+    arch: string
+    max_running: number
+    running: number
+    resources: {
+      cpus: number
+      mem_bytes: number
+      disk_free_bytes: number
+      disk_total_bytes: number
+      docker_version: string
+      os: string
+      /** amd64 或 arm64 */
+      arch: string
+      hostname: string
+      rtt_ms: number
+      /** 主機上的電腦映像版本 */
+      image_id?: string
+      /** 經 Tailscale 連線 */
+      tailscale: boolean
+    }
+    /** 遠端主機的 SSH 連線狀態 */
+    health?: {
+      /** connecting、online、reconnecting、failed、closed */
+      state: string
+      since: number
+      last_error?: string
+      connects: number
+      rtt_ms: number
+      reverse_forwards: number
+      local_forwards: number
+    }
+    last_seen_at: number
+    /** XBot 服務就在這台（不能移除） */
+    control_center: boolean
+    /** 新 Bot 預設放這台 */
+    default: boolean
+    bots: {
+      id: string
+      name: string
+      color: string
+      shape: string
+      state: string
+      running: boolean
+    }[]
+    queued: number
+    /** 電腦映像傳輸中的進度 */
+    image?: {
+      host_id: string
+      done: number
+      total: number
+      percent: number
+      error?: string
+    }
+    created_at: number
+  }
+  report: {
+    items: {
+      /** ssh、docker、resources、arch、forwarding、image、network */
+      id: string
+      label: string
+      /** ok、warn、fail、pending、running */
+      status: string
+      detail: string
+      /** 沒過時怎麼修 */
+      fix?: string
+      progress?: number
+    }[]
+    resources: {
+      cpus: number
+      mem_bytes: number
+      disk_free_bytes: number
+      disk_total_bytes: number
+      docker_version: string
+      os: string
+      /** amd64 或 arm64 */
+      arch: string
+      hostname: string
+      rtt_ms: number
+      /** 主機上的電腦映像版本 */
+      image_id?: string
+      /** 經 Tailscale 連線 */
+      tailscale: boolean
+    }
+    ok: boolean
+    need_image: boolean
+  }
+  added: boolean
+  loading: boolean
+}
+
+/**
+ * 重新檢查一台主機（離線時順便重新連線）
+ *
+ * 更新資源、Docker 版本與連線狀態。update_image 為 true 時，主機上的電腦映像和這台不同就傳過去。
+ *
+ * `xbot.hosts.check`：權限 admin、風險 safe
+ */
+export function hostsCheck(input: HostsCheckInput, opts?: CallOptions): Promise<HostsCheckOutput> {
+  return invoke('xbot.hosts.check', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.get
+
+export interface HostsGetInput {
+  /** 主機 id */
+  id: string
+}
+
+export interface HostsGetOutput {
+  id: string
+  name: string
+  /** local（這台電腦）或 ssh（遠端主機） */
+  kind: string
+  address: string
+  port?: number
+  user?: string
+  /** online、offline、updating、failed、unknown */
+  status: string
+  status_error?: string
+  arch: string
+  max_running: number
+  running: number
+  resources: {
+    cpus: number
+    mem_bytes: number
+    disk_free_bytes: number
+    disk_total_bytes: number
+    docker_version: string
+    os: string
+    /** amd64 或 arm64 */
+    arch: string
+    hostname: string
+    rtt_ms: number
+    /** 主機上的電腦映像版本 */
+    image_id?: string
+    /** 經 Tailscale 連線 */
+    tailscale: boolean
+  }
+  /** 遠端主機的 SSH 連線狀態 */
+  health?: {
+    /** connecting、online、reconnecting、failed、closed */
+    state: string
+    since: number
+    last_error?: string
+    connects: number
+    rtt_ms: number
+    reverse_forwards: number
+    local_forwards: number
+  }
+  last_seen_at: number
+  /** XBot 服務就在這台（不能移除） */
+  control_center: boolean
+  /** 新 Bot 預設放這台 */
+  default: boolean
+  bots: {
+    id: string
+    name: string
+    color: string
+    shape: string
+    state: string
+    running: boolean
+  }[]
+  queued: number
+  /** 電腦映像傳輸中的進度 */
+  image?: {
+    host_id: string
+    done: number
+    total: number
+    percent: number
+    error?: string
+  }
+  created_at: number
+}
+
+/**
+ * 讀一台主機的狀態
+ *
+ * `xbot.hosts.get`：權限 read、風險 safe
+ */
+export function hostsGet(input: HostsGetInput, opts?: CallOptions): Promise<HostsGetOutput> {
+  return invoke('xbot.hosts.get', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.install_script
+
+export interface HostsInstallScriptInput {
+  /** 不要裝 Tailscale（主機已經用別的方式連得到） */
+  no_tailscale?: boolean
+}
+
+export interface HostsInstallScriptOutput {
+  /** 在要加入的主機上貼的一行指令 */
+  command: string
+  /** 指令展開後的安裝腳本（可重複執行） */
+  script: string
+  public_key: string
+  fingerprint: string
+  /** 主機上 XBot 用的帳號 */
+  user: string
+}
+
+/**
+ * 產生新增主機第 1 步要在主機上貼的一行安裝指令
+ *
+ * 指令會在那台 Linux 主機上裝 Docker 與 Tailscale（已經有就略過）、建 xbot 帳號（docker 群組）只放 XBot 的 SSH 公鑰、設定 sshd 允許 XBot 的轉發。可以重複執行。之後用 xbot.hosts.add 加入。
+ *
+ * `xbot.hosts.install_script`：權限 admin、風險 safe
+ */
+export function hostsInstallScript(input: HostsInstallScriptInput = {}, opts?: CallOptions): Promise<HostsInstallScriptOutput> {
+  return invoke('xbot.hosts.install_script', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.list
+
+export type HostsListInput = Record<string, never>
+
+export interface HostsListOutput {
+  hosts: {
+    id: string
+    name: string
+    /** local（這台電腦）或 ssh（遠端主機） */
+    kind: string
+    address: string
+    port?: number
+    user?: string
+    /** online、offline、updating、failed、unknown */
+    status: string
+    status_error?: string
+    arch: string
+    max_running: number
+    running: number
+    resources: {
+      cpus: number
+      mem_bytes: number
+      disk_free_bytes: number
+      disk_total_bytes: number
+      docker_version: string
+      os: string
+      /** amd64 或 arm64 */
+      arch: string
+      hostname: string
+      rtt_ms: number
+      /** 主機上的電腦映像版本 */
+      image_id?: string
+      /** 經 Tailscale 連線 */
+      tailscale: boolean
+    }
+    /** 遠端主機的 SSH 連線狀態 */
+    health?: {
+      /** connecting、online、reconnecting、failed、closed */
+      state: string
+      since: number
+      last_error?: string
+      connects: number
+      rtt_ms: number
+      reverse_forwards: number
+      local_forwards: number
+    }
+    last_seen_at: number
+    /** XBot 服務就在這台（不能移除） */
+    control_center: boolean
+    /** 新 Bot 預設放這台 */
+    default: boolean
+    bots: {
+      id: string
+      name: string
+      color: string
+      shape: string
+      state: string
+      running: boolean
+    }[]
+    queued: number
+    /** 電腦映像傳輸中的進度 */
+    image?: {
+      host_id: string
+      done: number
+      total: number
+      percent: number
+      error?: string
+    }
+    created_at: number
+  }[]
+}
+
+/**
+ * 列出放 Bot 電腦的主機（狀態、資源、開機台數、上面有哪些 Bot）
+ *
+ * `xbot.hosts.list`：權限 read、風險 safe
+ */
+export function hostsList(input: HostsListInput = {}, opts?: CallOptions): Promise<HostsListOutput> {
+  return invoke('xbot.hosts.list', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.remove
+
+export interface HostsRemoveInput {
+  /** 主機 id */
+  id: string
+}
+
+export interface HostsRemoveOutput {
+  id: string
+  name: string
+  /** 預演時是 false */
+  removed: boolean
+}
+
+/**
+ * 移除一台遠端主機
+ *
+ * 上面還有 Bot 的電腦時不能移除（先搬走或刪掉）。只會斷線並忘掉這台主機，不會動主機上的任何東西。一定要你本人核准，不能代為核准。
+ *
+ * `xbot.hosts.remove`：權限 admin、風險 confirm
+ */
+export function hostsRemove(input: HostsRemoveInput, opts?: CallOptions): Promise<HostsRemoveOutput> {
+  return invoke('xbot.hosts.remove', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.set_default
+
+export interface HostsSetDefaultInput {
+  /** 新 Bot 預設放的主機；空白＝這台電腦 */
+  id?: string
+}
+
+export interface HostsSetDefaultOutput {
+  id: string
+}
+
+/**
+ * 設定新 Bot 預設放哪台主機
+ *
+ * 預設主機滿了或離線時，新 Bot 會自動放到其他有空位的主機（CL-4）。
+ *
+ * `xbot.hosts.set_default`：權限 admin、風險 safe
+ */
+export function hostsSetDefault(input: HostsSetDefaultInput = {}, opts?: CallOptions): Promise<HostsSetDefaultOutput> {
+  return invoke('xbot.hosts.set_default', input, opts).then((r) => r.output)
+}
+
+// xbot.hosts.set_limits
+
+export interface HostsSetLimitsInput {
+  /** 主機 id */
+  id: string
+  /** 主機名稱 */
+  name?: string
+  /** 同時開機上限；0＝不限 */
+  max_running?: number
+}
+
+export interface HostsSetLimitsOutput {
+  id: string
+  name: string
+  /** local（這台電腦）或 ssh（遠端主機） */
+  kind: string
+  address: string
+  port?: number
+  user?: string
+  /** online、offline、updating、failed、unknown */
+  status: string
+  status_error?: string
+  arch: string
+  max_running: number
+  running: number
+  resources: {
+    cpus: number
+    mem_bytes: number
+    disk_free_bytes: number
+    disk_total_bytes: number
+    docker_version: string
+    os: string
+    /** amd64 或 arm64 */
+    arch: string
+    hostname: string
+    rtt_ms: number
+    /** 主機上的電腦映像版本 */
+    image_id?: string
+    /** 經 Tailscale 連線 */
+    tailscale: boolean
+  }
+  /** 遠端主機的 SSH 連線狀態 */
+  health?: {
+    /** connecting、online、reconnecting、failed、closed */
+    state: string
+    since: number
+    last_error?: string
+    connects: number
+    rtt_ms: number
+    reverse_forwards: number
+    local_forwards: number
+  }
+  last_seen_at: number
+  /** XBot 服務就在這台（不能移除） */
+  control_center: boolean
+  /** 新 Bot 預設放這台 */
+  default: boolean
+  bots: {
+    id: string
+    name: string
+    color: string
+    shape: string
+    state: string
+    running: boolean
+  }[]
+  queued: number
+  /** 電腦映像傳輸中的進度 */
+  image?: {
+    host_id: string
+    done: number
+    total: number
+    percent: number
+    error?: string
+  }
+  created_at: number
+}
+
+/**
+ * 改主機名稱或同時開機上限
+ *
+ * 上限滿了時新的工作會排隊（等電腦空出來）；改大之後排隊的工作會自動開機。
+ *
+ * `xbot.hosts.set_limits`：權限 admin、風險 safe
+ */
+export function hostsSetLimits(input: HostsSetLimitsInput, opts?: CallOptions): Promise<HostsSetLimitsOutput> {
+  return invoke('xbot.hosts.set_limits', input, opts).then((r) => r.output)
 }
 
 // xbot.inbox.counts
@@ -3253,6 +3838,1252 @@ export function roomsUpdate(input: RoomsUpdateInput, opts?: CallOptions): Promis
   return invoke('xbot.rooms.update', input, opts).then((r) => r.output)
 }
 
+// xbot.routines.calendar
+
+export interface RoutinesCalendarInput {
+  /** 開始（Unix 毫秒） */
+  from: number
+  /** 結束（Unix 毫秒，不含）；最多 42 天 */
+  to: number
+  /** 只看這個 Bot 的 */
+  bot_id?: string
+}
+
+export interface RoutinesCalendarOutput {
+  /** 依時間排序 */
+  items: {
+    routine_id: string
+    bot_id: string
+    title: string
+    /** Unix 毫秒；未來的是排定時間（不含隨機延後） */
+    at: number
+    /** scheduled 排程中，或執行紀錄的狀態（done、failed、running、skipped、retrying、cancelled、test） */
+    status: string
+    trigger?: string
+    run_id?: string
+    task_id?: string
+  }[]
+  /** 太多（例：每 5 分鐘一次）只列前面的 */
+  truncated?: boolean
+}
+
+/**
+ * 行事曆：一段時間內的定時任務
+ *
+ * 過去的是執行紀錄，未來的是排程展開（隨機延後的以排定時間顯示）。最多 42 天。
+ *
+ * `xbot.routines.calendar`：權限 read、風險 safe
+ */
+export function routinesCalendar(input: RoutinesCalendarInput, opts?: CallOptions): Promise<RoutinesCalendarOutput> {
+  return invoke('xbot.routines.calendar', input, opts).then((r) => r.output)
+}
+
+// xbot.routines.complete
+
+export interface RoutinesCompleteInput {
+  id: string
+  /** 一句話成果：學到或完成了什麼 */
+  summary: string
+}
+
+export interface RoutinesCompleteOutput {
+  id: string
+  bot_id: string
+  title: string
+  /** 每次交給 Bot 的指示 */
+  prompt: string
+  schedule: {
+    /** once 一次、daily 每天、weekdays 平日、weekly 每週幾、monthly 每月幾號、interval 每隔幾分鐘、cron、trigger 只靠網址觸發 */
+    kind: 'once' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'interval' | 'cron' | 'trigger'
+    /** 幾點，24 小時制 HH:MM，例：09:00 */
+    time?: string
+    /** once：哪一天 YYYY-MM-DD */
+    date?: string
+    /** weekly：星期幾，1＝週一…7＝週日 */
+    weekdays?: number[]
+    /** monthly：每月幾號（1～31；沒有這天的月份略過） */
+    day_of_month?: number
+    /** interval：每幾分鐘（5 分鐘～7 天） */
+    every_minutes?: number
+    /** interval：只在這段時間內跑，開始 HH:MM */
+    active_from?: string
+    /** interval：只在這段時間內跑，結束 HH:MM（含） */
+    active_to?: string
+    /** 重複的排程跑到哪一天為止 YYYY-MM-DD（含這天） */
+    end_date?: string
+    /** cron：5 欄運算式，例：0 9 * * 1-5 */
+    cron?: string
+    /** 時區，例：Asia/Taipei；不填用 Asia/Taipei */
+    timezone?: string
+  }
+  /** 排程的白話寫法，例：每天上午 9:00 */
+  when: string
+  /** 每次隨機延後 0～N 分鐘 */
+  jitter_minutes: number
+  /** 沒跑成功時發一張卡到待我處理 */
+  notify_on_failure: boolean
+  /** 目標型：做到完成條件為止（RT-4） */
+  goal?: {
+    done_when: string
+    max_rounds: number
+    rounds: number
+    progress_file: string
+    completed_at?: number
+    summary?: string
+  }
+  /** 結果貼到的對話串（第一次跑時建立） */
+  thread_id?: string
+  /** active 啟用中、paused 已暫停、done 已結束（單次跑完、目標完成或用完輪數、過了結束日） */
+  status: string
+  /** 這個定時任務交辦的工作正在跑 */
+  running: boolean
+  /** 下一次（Unix 毫秒，已含隨機延後） */
+  next_run_at?: number
+  last_run_at?: number
+  last_task_id?: string
+  /** 最近一次開不了工的原因 */
+  last_error?: string
+  /** 連續開不了工的次數（退避 1／5／15／60 分鐘重試） */
+  failures?: number
+  retry_at?: number
+  /** 網址觸發 */
+  hook?: {
+    id: string
+    /** POST 這個路徑（接在 XBot 的網址後面），例：/hooks/h… */
+    path: string
+    /** 金鑰：Authorization: Bearer <金鑰>，或用它對內容算 HMAC-SHA256 放在 X-XBot-Signature: sha256=<hex> */
+    secret?: string
+    last_hook_at?: number
+  }
+  created_by?: string
+  created_at: number
+  updated_at: number
+}
+
+/**
+ * 目標達成，結束這個目標型定時任務
+ *
+ * 目標型定時任務達到完成條件（或連續兩輪沒有新進展）時呼叫：關掉這個定時任務，並在它的對話裡通知使用者。
+ *
+ * `xbot.routines.complete`：權限 operate、風險 safe
+ */
+export function routinesComplete(input: RoutinesCompleteInput, opts?: CallOptions): Promise<RoutinesCompleteOutput> {
+  return invoke('xbot.routines.complete', input, opts).then((r) => r.output)
+}
+
+// xbot.routines.create
+
+export interface RoutinesCreateInput {
+  /** 誰做；Bot 自己呼叫時不用填（就是你自己） */
+  bot_id?: string
+  /** 標題；不填從指示取 */
+  title?: string
+  /** 每次交給 Bot 的指示 */
+  prompt?: string
+  /** 排程；只給 text 時可以不填 */
+  schedule?: {
+    /** once 一次、daily 每天、weekdays 平日、weekly 每週幾、monthly 每月幾號、interval 每隔幾分鐘、cron、trigger 只靠網址觸發 */
+    kind?: 'once' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'interval' | 'cron' | 'trigger'
+    /** 幾點，24 小時制 HH:MM，例：09:00 */
+    time?: string
+    /** once：哪一天 YYYY-MM-DD */
+    date?: string
+    /** weekly：星期幾，1＝週一…7＝週日 */
+    weekdays?: number[]
+    /** monthly：每月幾號（1～31；沒有這天的月份略過） */
+    day_of_month?: number
+    /** interval：每幾分鐘（5 分鐘～7 天） */
+    every_minutes?: number
+    /** interval：只在這段時間內跑，開始 HH:MM */
+    active_from?: string
+    /** interval：只在這段時間內跑，結束 HH:MM（含） */
+    active_to?: string
+    /** 重複的排程跑到哪一天為止 YYYY-MM-DD（含這天） */
+    end_date?: string
+    /** cron：5 欄運算式，例：0 9 * * 1-5 */
+    cron?: string
+    /** 時區，例：Asia/Taipei；不填用 Asia/Taipei */
+    timezone?: string
+  }
+  /** 每次隨機延後 0～N 分鐘（畫面選項 15／30／60／90／120）；間隔型要小於間隔 */
+  jitter_minutes?: number
+  /** 沒跑成功時通知我；預設開 */
+  notify_on_failure?: boolean
+  /** 做到完成為止（目標型） */
+  goal?: {
+    /** 完成條件，例：連續兩輪沒有新的錯誤 */
+    done_when: string
+    /** 最多幾輪；預設 10 */
+    max_rounds?: number
+  }
+  /** 結果貼到哪條對話串；不填第一次跑時開一條新的 */
+  thread_id?: string
+  /** 同時開一個網址觸發 */
+  hook?: boolean
+  /** 也可以只給一句話（同 xbot.routines.propose）；有給的欄位優先 */
+  text?: string
+}
+
+export interface RoutinesCreateOutput {
+  /** 建好的定時任務（送去確認時沒有） */
+  routine?: {
+    id: string
+    bot_id: string
+    title: string
+    /** 每次交給 Bot 的指示 */
+    prompt: string
+    schedule: {
+      /** once 一次、daily 每天、weekdays 平日、weekly 每週幾、monthly 每月幾號、interval 每隔幾分鐘、cron、trigger 只靠網址觸發 */
+      kind: 'once' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'interval' | 'cron' | 'trigger'
+      /** 幾點，24 小時制 HH:MM，例：09:00 */
+      time?: string
+      /** once：哪一天 YYYY-MM-DD */
+      date?: string
+      /** weekly：星期幾，1＝週一…7＝週日 */
+      weekdays?: number[]
+      /** monthly：每月幾號（1～31；沒有這天的月份略過） */
+      day_of_month?: number
+      /** interval：每幾分鐘（5 分鐘～7 天） */
+      every_minutes?: number
+      /** interval：只在這段時間內跑，開始 HH:MM */
+      active_from?: string
+      /** interval：只在這段時間內跑，結束 HH:MM（含） */
+      active_to?: string
+      /** 重複的排程跑到哪一天為止 YYYY-MM-DD（含這天） */
+      end_date?: string
+      /** cron：5 欄運算式，例：0 9 * * 1-5 */
+      cron?: string
+      /** 時區，例：Asia/Taipei；不填用 Asia/Taipei */
+      timezone?: string
+    }
+    /** 排程的白話寫法，例：每天上午 9:00 */
+    when: string
+    /** 每次隨機延後 0～N 分鐘 */
+    jitter_minutes: number
+    /** 沒跑成功時發一張卡到待我處理 */
+    notify_on_failure: boolean
+    /** 目標型：做到完成條件為止（RT-4） */
+    goal?: {
+      done_when: string
+      max_rounds: number
+      rounds: number
+      progress_file: string
+      completed_at?: number
+      summary?: string
+    }
+    /** 結果貼到的對話串（第一次跑時建立） */
+    thread_id?: string
+    /** active 啟用中、paused 已暫停、done 已結束（單次跑完、目標完成或用完輪數、過了結束日） */
+    status: string
+    /** 這個定時任務交辦的工作正在跑 */
+    running: boolean
+    /** 下一次（Unix 毫秒，已含隨機延後） */
+    next_run_at?: number
+    last_run_at?: number
+    last_task_id?: string
+    /** 最近一次開不了工的原因 */
+    last_error?: string
+    /** 連續開不了工的次數（退避 1／5／15／60 分鐘重試） */
+    failures?: number
+    retry_at?: number
+    /** 網址觸發 */
+    hook?: {
+      id: string
+      /** POST 這個路徑（接在 XBot 的網址後面），例：/hooks/h… */
+      path: string
+      /** 金鑰：Authorization: Bearer <金鑰>，或用它對內容算 HMAC-SHA256 放在 X-XBot-Signature: sha256=<hex> */
+      secret?: string
+      last_hook_at?: number
+    }
+    created_by?: string
+    created_at: number
+    updated_at: number
+  }
+  /** Bot 或代理建立的：已送到「待我處理」等使用者確認，確認後才會建立 */
+  proposed?: boolean
+  /** proposed 時：用 xbot.approvals.wait 等結果 */
+  approval_id?: string
+  note?: string
+}
+
+/**
+ * 新增定時任務
+ *
+ * 給結構化的 schedule，或只給 text（一句話）。Bot 或代理建立的會先送到使用者的「待我處理」，使用者確認後才建立（RT-2）。每個 Bot 最多 50 個定時任務；間隔最短 5 分鐘。
+ *
+ * `xbot.routines.create`：權限 operate、風險 safe
+ */
+export function routinesCreate(input: RoutinesCreateInput = {}, opts?: CallOptions): Promise<RoutinesCreateOutput> {
+  return invoke('xbot.routines.create', input, opts).then((r) => r.output)
+}
+
+// xbot.routines.delete
+
+export interface RoutinesDeleteInput {
+  /** 定時任務 id */
+  id: string
+}
+
+export interface RoutinesDeleteOutput {
+  id: string
+  title: string
+  /** 預演時是 false */
+  deleted: boolean
+}
+
+/**
+ * 刪除定時任務
+ *
+ * 連同執行紀錄與網址觸發一起刪除，無法復原。要你本人確認，不能代為核准。
+ *
+ * `xbot.routines.delete`：權限 operate、風險 confirm
+ */
+export function routinesDelete(input: RoutinesDeleteInput, opts?: CallOptions): Promise<RoutinesDeleteOutput> {
+  return invoke('xbot.routines.delete', input, opts).then((r) => r.output)
+}
+
+// xbot.routines.get
+
+export interface RoutinesGetInput {
+  /** 定時任務 id */
+  id: string
+}
+
+export interface RoutinesGetOutput {
+  id: string
+  bot_id: string
+  title: string
+  /** 每次交給 Bot 的指示 */
+  prompt: string
+  schedule: {
+    /** once 一次、daily 每天、weekdays 平日、weekly 每週幾、monthly 每月幾號、interval 每隔幾分鐘、cron、trigger 只靠網址觸發 */
+    kind: 'once' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'interval' | 'cron' | 'trigger'
+    /** 幾點，24 小時制 HH:MM，例：09:00 */
+    time?: string
+    /** once：哪一天 YYYY-MM-DD */
+    date?: string
+    /** weekly：星期幾，1＝週一…7＝週日 */
+    weekdays?: number[]
+    /** monthly：每月幾號（1～31；沒有這天的月份略過） */
+    day_of_month?: number
+    /** interval：每幾分鐘（5 分鐘～7 天） */
+    every_minutes?: number
+    /** interval：只在這段時間內跑，開始 HH:MM */
+    active_from?: string
+    /** interval：只在這段時間內跑，結束 HH:MM（含） */
+    active_to?: string
+    /** 重複的排程跑到哪一天為止 YYYY-MM-DD（含這天） */
+    end_date?: string
+    /** cron：5 欄運算式，例：0 9 * * 1-5 */
+    cron?: string
+    /** 時區，例：Asia/Taipei；不填用 Asia/Taipei */
+    timezone?: string
+  }
+  /** 排程的白話寫法，例：每天上午 9:00 */
+  when: string
+  /** 每次隨機延後 0～N 分鐘 */
+  jitter_minutes: number
+  /** 沒跑成功時發一張卡到待我處理 */
+  notify_on_failure: boolean
+  /** 目標型：做到完成條件為止（RT-4） */
+  goal?: {
+    done_when: string
+    max_rounds: number
+    rounds: number
+    progress_file: string
+    completed_at?: number
+    summary?: string
+  }
+  /** 結果貼到的對話串（第一次跑時建立） */
+  thread_id?: string
+  /** active 啟用中、paused 已暫停、done 已結束（單次跑完、目標完成或用完輪數、過了結束日） */
+  status: string
+  /** 這個定時任務交辦的工作正在跑 */
+  running: boolean
+  /** 下一次（Unix 毫秒，已含隨機延後） */
+  next_run_at?: number
+  last_run_at?: number
+  last_task_id?: string
+  /** 最近一次開不了工的原因 */
+  last_error?: string
+  /** 連續開不了工的次數（退避 1／5／15／60 分鐘重試） */
+  failures?: number
+  retry_at?: number
+  /** 網址觸發 */
+  hook?: {
+    id: string
+    /** POST 這個路徑（接在 XBot 的網址後面），例：/hooks/h… */
+    path: string
+    /** 金鑰：Authorization: Bearer <金鑰>，或用它對內容算 HMAC-SHA256 放在 X-XBot-Signature: sha256=<hex> */
+    secret?: string
+    last_hook_at?: number
+  }
+  created_by?: string
+  created_at: number
+  updated_at: number
+}
+
+/**
+ * 讀一個定時任務
+ *
+ * `xbot.routines.get`：權限 read、風險 safe
+ */
+export function routinesGet(input: RoutinesGetInput, opts?: CallOptions): Promise<RoutinesGetOutput> {
+  return invoke('xbot.routines.get', input, opts).then((r) => r.output)
+}
+
+// xbot.routines.hook_create
+
+export interface RoutinesHookCreateInput {
+  /** 定時任務 id */
+  id: string
+}
+
+export interface RoutinesHookCreateOutput {
+  routine: {
+    id: string
+    bot_id: string
+    title: string
+    /** 每次交給 Bot 的指示 */
+    prompt: string
+    schedule: {
+      /** once 一次、daily 每天、weekdays 平日、weekly 每週幾、monthly 每月幾號、interval 每隔幾分鐘、cron、trigger 只靠網址觸發 */
+      kind: 'once' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'interval' | 'cron' | 'trigger'
+      /** 幾點，24 小時制 HH:MM，例：09:00 */
+      time?: string
+      /** once：哪一天 YYYY-MM-DD */
+      date?: string
+      /** weekly：星期幾，1＝週一…7＝週日 */
+      weekdays?: number[]
+      /** monthly：每月幾號（1～31；沒有這天的月份略過） */
+      day_of_month?: number
+      /** interval：每幾分鐘（5 分鐘～7 天） */
+      every_minutes?: number
+      /** interval：只在這段時間內跑，開始 HH:MM */
+      active_from?: string
+      /** interval：只在這段時間內跑，結束 HH:MM（含） */
+      active_to?: string
+      /** 重複的排程跑到哪一天為止 YYYY-MM-DD（含這天） */
+      end_date?: string
+      /** cron：5 欄運算式，例：0 9 * * 1-5 */
+      cron?: string
+      /** 時區，例：Asia/Taipei；不填用 Asia/Taipei */
+      timezone?: string
+    }
+    /** 排程的白話寫法，例：每天上午 9:00 */
+    when: string
+    /** 每次隨機延後 0～N 分鐘 */
+    jitter_minutes: number
+    /** 沒跑成功時發一張卡到待我處理 */
+    notify_on_failure: boolean
+    /** 目標型：做到完成條件為止（RT-4） */
+    goal?: {
+      done_when: string
+      max_rounds: number
+      rounds: number
+      progress_file: string
+      completed_at?: number
+      summary?: string
+    }
+    /** 結果貼到的對話串（第一次跑時建立） */
+    thread_id?: string
+    /** active 啟用中、paused 已暫停、done 已結束（單次跑完、目標完成或用完輪數、過了結束日） */
+    status: string
+    /** 這個定時任務交辦的工作正在跑 */
+    running: boolean
+    /** 下一次（Unix 毫秒，已含隨機延後） */
+    next_run_at?: number
+    last_run_at?: number
+    last_task_id?: string
+    /** 最近一次開不了工的原因 */
+    last_error?: string
+    /** 連續開不了工的次數（退避 1／5／15／60 分鐘重試） */
+    failures?: number
+    retry_at?: number
+    /** 網址觸發 */
+    hook?: {
+      id: string
+      /** POST 這個路徑（接在 XBot 的網址後面），例：/hooks/h… */
+      path: string
+      /** 金鑰：Authorization: Bearer <金鑰>，或用它對內容算 HMAC-SHA256 放在 X-XBot-Signature: sha256=<hex> */
+      secret?: string
+      last_hook_at?: number
+    }
+    created_by?: string
+    created_at: number
+    updated_at: number
+  }
+}
+
+/**
+ * 幫定時任務開一個網址觸發
+ *
+ * 外部服務 POST 到 /hooks/<id>，帶 Authorization: Bearer <金鑰>（或 X-XBot-Signature HMAC 簽章），內容會當成資料交給 Bot（不是指令）。內容最多 64 KiB；同一個網址至少隔 60 秒；帶 X-XBot-Test: 1 是測試，不開始工作。
+ *
+ * `xbot.routines.hook_create`：權限 operate、風險 safe
+ */
+export function routinesHookCreate(input: RoutinesHookCreateInput, opts?: CallOptions): Promise<RoutinesHookCreateOutput> {
+  return invoke('xbot.routines.hook_create', input, opts).then((r) => r.output)
+}
+
+// xbot.routines.hook_delete
+
+export interface RoutinesHookDeleteInput {
+  /** 定時任務 id */
+  id: string
+}
+
+export interface RoutinesHookDeleteOutput {
+  id: string
+  bot_id: string
+  title: string
+  /** 每次交給 Bot 的指示 */
+  prompt: string
+  schedule: {
+    /** once 一次、daily 每天、weekdays 平日、weekly 每週幾、monthly 每月幾號、interval 每隔幾分鐘、cron、trigger 只靠網址觸發 */
+    kind: 'once' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'interval' | 'cron' | 'trigger'
+    /** 幾點，24 小時制 HH:MM，例：09:00 */
+    time?: string
+    /** once：哪一天 YYYY-MM-DD */
+    date?: string
+    /** weekly：星期幾，1＝週一…7＝週日 */
+    weekdays?: number[]
+    /** monthly：每月幾號（1～31；沒有這天的月份略過） */
+    day_of_month?: number
+    /** interval：每幾分鐘（5 分鐘～7 天） */
+    every_minutes?: number
+    /** interval：只在這段時間內跑，開始 HH:MM */
+    active_from?: string
+    /** interval：只在這段時間內跑，結束 HH:MM（含） */
+    active_to?: string
+    /** 重複的排程跑到哪一天為止 YYYY-MM-DD（含這天） */
+    end_date?: string
+    /** cron：5 欄運算式，例：0 9 * * 1-5 */
+    cron?: string
+    /** 時區，例：Asia/Taipei；不填用 Asia/Taipei */
+    timezone?: string
+  }
+  /** 排程的白話寫法，例：每天上午 9:00 */
+  when: string
+  /** 每次隨機延後 0～N 分鐘 */
+  jitter_minutes: number
+  /** 沒跑成功時發一張卡到待我處理 */
+  notify_on_failure: boolean
+  /** 目標型：做到完成條件為止（RT-4） */
+  goal?: {
+    done_when: string
+    max_rounds: number
+    rounds: number
+    progress_file: string
+    completed_at?: number
+    summary?: string
+  }
+  /** 結果貼到的對話串（第一次跑時建立） */
+  thread_id?: string
+  /** active 啟用中、paused 已暫停、done 已結束（單次跑完、目標完成或用完輪數、過了結束日） */
+  status: string
+  /** 這個定時任務交辦的工作正在跑 */
+  running: boolean
+  /** 下一次（Unix 毫秒，已含隨機延後） */
+  next_run_at?: number
+  last_run_at?: number
+  last_task_id?: string
+  /** 最近一次開不了工的原因 */
+  last_error?: string
+  /** 連續開不了工的次數（退避 1／5／15／60 分鐘重試） */
+  failures?: number
+  retry_at?: number
+  /** 網址觸發 */
+  hook?: {
+    id: string
+    /** POST 這個路徑（接在 XBot 的網址後面），例：/hooks/h… */
+    path: string
+    /** 金鑰：Authorization: Bearer <金鑰>，或用它對內容算 HMAC-SHA256 放在 X-XBot-Signature: sha256=<hex> */
+    secret?: string
+    last_hook_at?: number
+  }
+  created_by?: string
+  created_at: number
+  updated_at: number
+}
+
+/**
+ * 關掉網址觸發
+ *
+ * 網址與金鑰立刻失效。
+ *
+ * `xbot.routines.hook_delete`：權限 operate、風險 safe
+ */
+export function routinesHookDelete(input: RoutinesHookDeleteInput, opts?: CallOptions): Promise<RoutinesHookDeleteOutput> {
+  return invoke('xbot.routines.hook_delete', input, opts).then((r) => r.output)
+}
+
+// xbot.routines.hook_rotate
+
+export interface RoutinesHookRotateInput {
+  /** 定時任務 id */
+  id: string
+}
+
+export interface RoutinesHookRotateOutput {
+  routine: {
+    id: string
+    bot_id: string
+    title: string
+    /** 每次交給 Bot 的指示 */
+    prompt: string
+    schedule: {
+      /** once 一次、daily 每天、weekdays 平日、weekly 每週幾、monthly 每月幾號、interval 每隔幾分鐘、cron、trigger 只靠網址觸發 */
+      kind: 'once' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'interval' | 'cron' | 'trigger'
+      /** 幾點，24 小時制 HH:MM，例：09:00 */
+      time?: string
+      /** once：哪一天 YYYY-MM-DD */
+      date?: string
+      /** weekly：星期幾，1＝週一…7＝週日 */
+      weekdays?: number[]
+      /** monthly：每月幾號（1～31；沒有這天的月份略過） */
+      day_of_month?: number
+      /** interval：每幾分鐘（5 分鐘～7 天） */
+      every_minutes?: number
+      /** interval：只在這段時間內跑，開始 HH:MM */
+      active_from?: string
+      /** interval：只在這段時間內跑，結束 HH:MM（含） */
+      active_to?: string
+      /** 重複的排程跑到哪一天為止 YYYY-MM-DD（含這天） */
+      end_date?: string
+      /** cron：5 欄運算式，例：0 9 * * 1-5 */
+      cron?: string
+      /** 時區，例：Asia/Taipei；不填用 Asia/Taipei */
+      timezone?: string
+    }
+    /** 排程的白話寫法，例：每天上午 9:00 */
+    when: string
+    /** 每次隨機延後 0～N 分鐘 */
+    jitter_minutes: number
+    /** 沒跑成功時發一張卡到待我處理 */
+    notify_on_failure: boolean
+    /** 目標型：做到完成條件為止（RT-4） */
+    goal?: {
+      done_when: string
+      max_rounds: number
+      rounds: number
+      progress_file: string
+      completed_at?: number
+      summary?: string
+    }
+    /** 結果貼到的對話串（第一次跑時建立） */
+    thread_id?: string
+    /** active 啟用中、paused 已暫停、done 已結束（單次跑完、目標完成或用完輪數、過了結束日） */
+    status: string
+    /** 這個定時任務交辦的工作正在跑 */
+    running: boolean
+    /** 下一次（Unix 毫秒，已含隨機延後） */
+    next_run_at?: number
+    last_run_at?: number
+    last_task_id?: string
+    /** 最近一次開不了工的原因 */
+    last_error?: string
+    /** 連續開不了工的次數（退避 1／5／15／60 分鐘重試） */
+    failures?: number
+    retry_at?: number
+    /** 網址觸發 */
+    hook?: {
+      id: string
+      /** POST 這個路徑（接在 XBot 的網址後面），例：/hooks/h… */
+      path: string
+      /** 金鑰：Authorization: Bearer <金鑰>，或用它對內容算 HMAC-SHA256 放在 X-XBot-Signature: sha256=<hex> */
+      secret?: string
+      last_hook_at?: number
+    }
+    created_by?: string
+    created_at: number
+    updated_at: number
+  }
+}
+
+/**
+ * 換網址觸發的金鑰
+ *
+ * 舊金鑰立刻失效；網址不變。
+ *
+ * `xbot.routines.hook_rotate`：權限 operate、風險 safe
+ */
+export function routinesHookRotate(input: RoutinesHookRotateInput, opts?: CallOptions): Promise<RoutinesHookRotateOutput> {
+  return invoke('xbot.routines.hook_rotate', input, opts).then((r) => r.output)
+}
+
+// xbot.routines.list
+
+export interface RoutinesListInput {
+  /** 只列這個 Bot 的 */
+  bot_id?: string
+}
+
+export interface RoutinesListOutput {
+  routines: {
+    id: string
+    bot_id: string
+    title: string
+    /** 每次交給 Bot 的指示 */
+    prompt: string
+    schedule: {
+      /** once 一次、daily 每天、weekdays 平日、weekly 每週幾、monthly 每月幾號、interval 每隔幾分鐘、cron、trigger 只靠網址觸發 */
+      kind: 'once' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'interval' | 'cron' | 'trigger'
+      /** 幾點，24 小時制 HH:MM，例：09:00 */
+      time?: string
+      /** once：哪一天 YYYY-MM-DD */
+      date?: string
+      /** weekly：星期幾，1＝週一…7＝週日 */
+      weekdays?: number[]
+      /** monthly：每月幾號（1～31；沒有這天的月份略過） */
+      day_of_month?: number
+      /** interval：每幾分鐘（5 分鐘～7 天） */
+      every_minutes?: number
+      /** interval：只在這段時間內跑，開始 HH:MM */
+      active_from?: string
+      /** interval：只在這段時間內跑，結束 HH:MM（含） */
+      active_to?: string
+      /** 重複的排程跑到哪一天為止 YYYY-MM-DD（含這天） */
+      end_date?: string
+      /** cron：5 欄運算式，例：0 9 * * 1-5 */
+      cron?: string
+      /** 時區，例：Asia/Taipei；不填用 Asia/Taipei */
+      timezone?: string
+    }
+    /** 排程的白話寫法，例：每天上午 9:00 */
+    when: string
+    /** 每次隨機延後 0～N 分鐘 */
+    jitter_minutes: number
+    /** 沒跑成功時發一張卡到待我處理 */
+    notify_on_failure: boolean
+    /** 目標型：做到完成條件為止（RT-4） */
+    goal?: {
+      done_when: string
+      max_rounds: number
+      rounds: number
+      progress_file: string
+      completed_at?: number
+      summary?: string
+    }
+    /** 結果貼到的對話串（第一次跑時建立） */
+    thread_id?: string
+    /** active 啟用中、paused 已暫停、done 已結束（單次跑完、目標完成或用完輪數、過了結束日） */
+    status: string
+    /** 這個定時任務交辦的工作正在跑 */
+    running: boolean
+    /** 下一次（Unix 毫秒，已含隨機延後） */
+    next_run_at?: number
+    last_run_at?: number
+    last_task_id?: string
+    /** 最近一次開不了工的原因 */
+    last_error?: string
+    /** 連續開不了工的次數（退避 1／5／15／60 分鐘重試） */
+    failures?: number
+    retry_at?: number
+    /** 網址觸發 */
+    hook?: {
+      id: string
+      /** POST 這個路徑（接在 XBot 的網址後面），例：/hooks/h… */
+      path: string
+      /** 金鑰：Authorization: Bearer <金鑰>，或用它對內容算 HMAC-SHA256 放在 X-XBot-Signature: sha256=<hex> */
+      secret?: string
+      last_hook_at?: number
+    }
+    created_by?: string
+    created_at: number
+    updated_at: number
+  }[]
+}
+
+/**
+ * 列出定時任務
+ *
+ * `xbot.routines.list`：權限 read、風險 safe
+ */
+export function routinesList(input: RoutinesListInput = {}, opts?: CallOptions): Promise<RoutinesListOutput> {
+  return invoke('xbot.routines.list', input, opts).then((r) => r.output)
+}
+
+// xbot.routines.logs
+
+export interface RoutinesLogsInput {
+  id: string
+  /** 最多幾筆；預設 20（每個定時任務保留最近 20 筆） */
+  limit?: number
+}
+
+export interface RoutinesLogsOutput {
+  /** 新到舊。trigger：schedule 排程、catchup 補跑、manual 手動、webhook 網址觸發、test 測試；status：starting、running、done、failed、cancelled、skipped、retrying、test */
+  runs: {
+    id: string
+    routine_id: string
+    bot_id: string
+    occurrence: string
+    trigger: string
+    status: string
+    task_id: string
+    error: string
+    payload_bytes: number
+    scheduled_at: number
+    started_at: number
+    finished_at: number
+    created_at: number
+    updated_at: number
+  }[]
+}
+
+/**
+ * 看定時任務的執行紀錄
+ *
+ * `xbot.routines.logs`：權限 read、風險 safe
+ */
+export function routinesLogs(input: RoutinesLogsInput, opts?: CallOptions): Promise<RoutinesLogsOutput> {
+  return invoke('xbot.routines.logs', input, opts).then((r) => r.output)
+}
+
+// xbot.routines.pause
+
+export interface RoutinesPauseInput {
+  /** 定時任務 id */
+  id: string
+}
+
+export interface RoutinesPauseOutput {
+  id: string
+  bot_id: string
+  title: string
+  /** 每次交給 Bot 的指示 */
+  prompt: string
+  schedule: {
+    /** once 一次、daily 每天、weekdays 平日、weekly 每週幾、monthly 每月幾號、interval 每隔幾分鐘、cron、trigger 只靠網址觸發 */
+    kind: 'once' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'interval' | 'cron' | 'trigger'
+    /** 幾點，24 小時制 HH:MM，例：09:00 */
+    time?: string
+    /** once：哪一天 YYYY-MM-DD */
+    date?: string
+    /** weekly：星期幾，1＝週一…7＝週日 */
+    weekdays?: number[]
+    /** monthly：每月幾號（1～31；沒有這天的月份略過） */
+    day_of_month?: number
+    /** interval：每幾分鐘（5 分鐘～7 天） */
+    every_minutes?: number
+    /** interval：只在這段時間內跑，開始 HH:MM */
+    active_from?: string
+    /** interval：只在這段時間內跑，結束 HH:MM（含） */
+    active_to?: string
+    /** 重複的排程跑到哪一天為止 YYYY-MM-DD（含這天） */
+    end_date?: string
+    /** cron：5 欄運算式，例：0 9 * * 1-5 */
+    cron?: string
+    /** 時區，例：Asia/Taipei；不填用 Asia/Taipei */
+    timezone?: string
+  }
+  /** 排程的白話寫法，例：每天上午 9:00 */
+  when: string
+  /** 每次隨機延後 0～N 分鐘 */
+  jitter_minutes: number
+  /** 沒跑成功時發一張卡到待我處理 */
+  notify_on_failure: boolean
+  /** 目標型：做到完成條件為止（RT-4） */
+  goal?: {
+    done_when: string
+    max_rounds: number
+    rounds: number
+    progress_file: string
+    completed_at?: number
+    summary?: string
+  }
+  /** 結果貼到的對話串（第一次跑時建立） */
+  thread_id?: string
+  /** active 啟用中、paused 已暫停、done 已結束（單次跑完、目標完成或用完輪數、過了結束日） */
+  status: string
+  /** 這個定時任務交辦的工作正在跑 */
+  running: boolean
+  /** 下一次（Unix 毫秒，已含隨機延後） */
+  next_run_at?: number
+  last_run_at?: number
+  last_task_id?: string
+  /** 最近一次開不了工的原因 */
+  last_error?: string
+  /** 連續開不了工的次數（退避 1／5／15／60 分鐘重試） */
+  failures?: number
+  retry_at?: number
+  /** 網址觸發 */
+  hook?: {
+    id: string
+    /** POST 這個路徑（接在 XBot 的網址後面），例：/hooks/h… */
+    path: string
+    /** 金鑰：Authorization: Bearer <金鑰>，或用它對內容算 HMAC-SHA256 放在 X-XBot-Signature: sha256=<hex> */
+    secret?: string
+    last_hook_at?: number
+  }
+  created_by?: string
+  created_at: number
+  updated_at: number
+}
+
+/**
+ * 暫停定時任務
+ *
+ * `xbot.routines.pause`：權限 operate、風險 safe
+ */
+export function routinesPause(input: RoutinesPauseInput, opts?: CallOptions): Promise<RoutinesPauseOutput> {
+  return invoke('xbot.routines.pause', input, opts).then((r) => r.output)
+}
+
+// xbot.routines.propose
+
+export interface RoutinesProposeInput {
+  /** 一句話，例：每天早上 9 點整理新聞給我 */
+  text: string
+  /** 誰做；不填看句子裡有沒有提到 Bot 的名字，沒有就是第一個 Bot（Bot 自己呼叫時是它自己） */
+  bot_id?: string
+  /** 時區；預設 Asia/Taipei */
+  timezone?: string
+}
+
+export interface RoutinesProposeOutput {
+  draft: {
+    /** 誰做；Bot 自己呼叫時不用填（就是你自己） */
+    bot_id?: string
+    /** 標題；不填從指示取 */
+    title?: string
+    /** 每次交給 Bot 的指示 */
+    prompt?: string
+    /** 排程；只給 text 時可以不填 */
+    schedule?: {
+      /** once 一次、daily 每天、weekdays 平日、weekly 每週幾、monthly 每月幾號、interval 每隔幾分鐘、cron、trigger 只靠網址觸發 */
+      kind: 'once' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'interval' | 'cron' | 'trigger'
+      /** 幾點，24 小時制 HH:MM，例：09:00 */
+      time?: string
+      /** once：哪一天 YYYY-MM-DD */
+      date?: string
+      /** weekly：星期幾，1＝週一…7＝週日 */
+      weekdays?: number[]
+      /** monthly：每月幾號（1～31；沒有這天的月份略過） */
+      day_of_month?: number
+      /** interval：每幾分鐘（5 分鐘～7 天） */
+      every_minutes?: number
+      /** interval：只在這段時間內跑，開始 HH:MM */
+      active_from?: string
+      /** interval：只在這段時間內跑，結束 HH:MM（含） */
+      active_to?: string
+      /** 重複的排程跑到哪一天為止 YYYY-MM-DD（含這天） */
+      end_date?: string
+      /** cron：5 欄運算式，例：0 9 * * 1-5 */
+      cron?: string
+      /** 時區，例：Asia/Taipei；不填用 Asia/Taipei */
+      timezone?: string
+    }
+    /** 每次隨機延後 0～N 分鐘（畫面選項 15／30／60／90／120）；間隔型要小於間隔 */
+    jitter_minutes?: number
+    /** 沒跑成功時通知我；預設開 */
+    notify_on_failure?: boolean
+    /** 做到完成為止（目標型） */
+    goal?: {
+      /** 完成條件，例：連續兩輪沒有新的錯誤 */
+      done_when: string
+      /** 最多幾輪；預設 10 */
+      max_rounds?: number
+    }
+    /** 結果貼到哪條對話串；不填第一次跑時開一條新的 */
+    thread_id?: string
+    /** 同時開一個網址觸發 */
+    hook?: boolean
+    /** 也可以只給一句話（同 xbot.routines.propose）；有給的欄位優先 */
+    text?: string
+  }
+  bot_name: string
+  card: {
+    who: string
+    /** 沒看到時間時是「沒看到時間，要幾點做？」 */
+    when: string
+    what: string
+    posts_to: string
+    /** 下次執行，例：明天上午 9:00 */
+    next: string
+  }
+  next_run_at?: number
+  /** 可以直接建立；false 時看 missing */
+  ready: boolean
+  /** 還缺：time（沒看到時間）、task（沒看到要做什麼）、bot（沒有 Bot） */
+  missing: string[]
+  /** 解析時做的假設，確認卡上要讓使用者看到 */
+  notes: string[]
+  /** 草稿有問題（例：單次的時間已經過了） */
+  problem?: string
+}
+
+/**
+ * 把一句話解析成定時任務草稿
+ *
+ * 例：「每天早上 9 點整理新聞給我」「平日下午三點」「每 30 分鐘」「每週一、三」「明天早上 8 點」。回傳草稿與確認卡（誰做、什麼時候、做什麼、結果貼到、下次執行），不會建立任何東西；確認後把 draft 交給 xbot.routines.create。
+ *
+ * `xbot.routines.propose`：權限 read、風險 safe
+ */
+export function routinesPropose(input: RoutinesProposeInput, opts?: CallOptions): Promise<RoutinesProposeOutput> {
+  return invoke('xbot.routines.propose', input, opts).then((r) => r.output)
+}
+
+// xbot.routines.resume
+
+export interface RoutinesResumeInput {
+  /** 定時任務 id */
+  id: string
+}
+
+export interface RoutinesResumeOutput {
+  id: string
+  bot_id: string
+  title: string
+  /** 每次交給 Bot 的指示 */
+  prompt: string
+  schedule: {
+    /** once 一次、daily 每天、weekdays 平日、weekly 每週幾、monthly 每月幾號、interval 每隔幾分鐘、cron、trigger 只靠網址觸發 */
+    kind: 'once' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'interval' | 'cron' | 'trigger'
+    /** 幾點，24 小時制 HH:MM，例：09:00 */
+    time?: string
+    /** once：哪一天 YYYY-MM-DD */
+    date?: string
+    /** weekly：星期幾，1＝週一…7＝週日 */
+    weekdays?: number[]
+    /** monthly：每月幾號（1～31；沒有這天的月份略過） */
+    day_of_month?: number
+    /** interval：每幾分鐘（5 分鐘～7 天） */
+    every_minutes?: number
+    /** interval：只在這段時間內跑，開始 HH:MM */
+    active_from?: string
+    /** interval：只在這段時間內跑，結束 HH:MM（含） */
+    active_to?: string
+    /** 重複的排程跑到哪一天為止 YYYY-MM-DD（含這天） */
+    end_date?: string
+    /** cron：5 欄運算式，例：0 9 * * 1-5 */
+    cron?: string
+    /** 時區，例：Asia/Taipei；不填用 Asia/Taipei */
+    timezone?: string
+  }
+  /** 排程的白話寫法，例：每天上午 9:00 */
+  when: string
+  /** 每次隨機延後 0～N 分鐘 */
+  jitter_minutes: number
+  /** 沒跑成功時發一張卡到待我處理 */
+  notify_on_failure: boolean
+  /** 目標型：做到完成條件為止（RT-4） */
+  goal?: {
+    done_when: string
+    max_rounds: number
+    rounds: number
+    progress_file: string
+    completed_at?: number
+    summary?: string
+  }
+  /** 結果貼到的對話串（第一次跑時建立） */
+  thread_id?: string
+  /** active 啟用中、paused 已暫停、done 已結束（單次跑完、目標完成或用完輪數、過了結束日） */
+  status: string
+  /** 這個定時任務交辦的工作正在跑 */
+  running: boolean
+  /** 下一次（Unix 毫秒，已含隨機延後） */
+  next_run_at?: number
+  last_run_at?: number
+  last_task_id?: string
+  /** 最近一次開不了工的原因 */
+  last_error?: string
+  /** 連續開不了工的次數（退避 1／5／15／60 分鐘重試） */
+  failures?: number
+  retry_at?: number
+  /** 網址觸發 */
+  hook?: {
+    id: string
+    /** POST 這個路徑（接在 XBot 的網址後面），例：/hooks/h… */
+    path: string
+    /** 金鑰：Authorization: Bearer <金鑰>，或用它對內容算 HMAC-SHA256 放在 X-XBot-Signature: sha256=<hex> */
+    secret?: string
+    last_hook_at?: number
+  }
+  created_by?: string
+  created_at: number
+  updated_at: number
+}
+
+/**
+ * 繼續已暫停的定時任務
+ *
+ * `xbot.routines.resume`：權限 operate、風險 safe
+ */
+export function routinesResume(input: RoutinesResumeInput, opts?: CallOptions): Promise<RoutinesResumeOutput> {
+  return invoke('xbot.routines.resume', input, opts).then((r) => r.output)
+}
+
+// xbot.routines.run_now
+
+export interface RoutinesRunNowInput {
+  /** 定時任務 id */
+  id: string
+}
+
+export interface RoutinesRunNowOutput {
+  run: {
+    id: string
+    routine_id: string
+    bot_id: string
+    occurrence: string
+    trigger: string
+    status: string
+    task_id: string
+    error: string
+    payload_bytes: number
+    scheduled_at: number
+    started_at: number
+    finished_at: number
+    created_at: number
+    updated_at: number
+  }
+  thread_id: string
+}
+
+/**
+ * 現在就跑一次定時任務
+ *
+ * 不影響原本的排程。Bot 正在忙時回 conflict。
+ *
+ * `xbot.routines.run_now`：權限 operate、風險 safe
+ */
+export function routinesRunNow(input: RoutinesRunNowInput, opts?: CallOptions): Promise<RoutinesRunNowOutput> {
+  return invoke('xbot.routines.run_now', input, opts).then((r) => r.output)
+}
+
+// xbot.routines.update
+
+export interface RoutinesUpdateInput {
+  id: string
+  title?: string
+  prompt?: string
+  /** 整個換掉 */
+  schedule?: {
+    /** once 一次、daily 每天、weekdays 平日、weekly 每週幾、monthly 每月幾號、interval 每隔幾分鐘、cron、trigger 只靠網址觸發 */
+    kind?: 'once' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'interval' | 'cron' | 'trigger'
+    /** 幾點，24 小時制 HH:MM，例：09:00 */
+    time?: string
+    /** once：哪一天 YYYY-MM-DD */
+    date?: string
+    /** weekly：星期幾，1＝週一…7＝週日 */
+    weekdays?: number[]
+    /** monthly：每月幾號（1～31；沒有這天的月份略過） */
+    day_of_month?: number
+    /** interval：每幾分鐘（5 分鐘～7 天） */
+    every_minutes?: number
+    /** interval：只在這段時間內跑，開始 HH:MM */
+    active_from?: string
+    /** interval：只在這段時間內跑，結束 HH:MM（含） */
+    active_to?: string
+    /** 重複的排程跑到哪一天為止 YYYY-MM-DD（含這天） */
+    end_date?: string
+    /** cron：5 欄運算式，例：0 9 * * 1-5 */
+    cron?: string
+    /** 時區，例：Asia/Taipei；不填用 Asia/Taipei */
+    timezone?: string
+  }
+  jitter_minutes?: number
+  notify_on_failure?: boolean
+  /** 換新的完成條件會從第 0 輪重新開始；只加輪數會接著做 */
+  goal?: {
+    /** 完成條件，例：連續兩輪沒有新的錯誤 */
+    done_when: string
+    /** 最多幾輪；預設 10 */
+    max_rounds?: number
+  }
+  /** 拿掉目標，變回一般定時任務 */
+  clear_goal?: boolean
+  /** 空白字串表示下次開一條新的對話串 */
+  thread_id?: string
+}
+
+export interface RoutinesUpdateOutput {
+  id: string
+  bot_id: string
+  title: string
+  /** 每次交給 Bot 的指示 */
+  prompt: string
+  schedule: {
+    /** once 一次、daily 每天、weekdays 平日、weekly 每週幾、monthly 每月幾號、interval 每隔幾分鐘、cron、trigger 只靠網址觸發 */
+    kind: 'once' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'interval' | 'cron' | 'trigger'
+    /** 幾點，24 小時制 HH:MM，例：09:00 */
+    time?: string
+    /** once：哪一天 YYYY-MM-DD */
+    date?: string
+    /** weekly：星期幾，1＝週一…7＝週日 */
+    weekdays?: number[]
+    /** monthly：每月幾號（1～31；沒有這天的月份略過） */
+    day_of_month?: number
+    /** interval：每幾分鐘（5 分鐘～7 天） */
+    every_minutes?: number
+    /** interval：只在這段時間內跑，開始 HH:MM */
+    active_from?: string
+    /** interval：只在這段時間內跑，結束 HH:MM（含） */
+    active_to?: string
+    /** 重複的排程跑到哪一天為止 YYYY-MM-DD（含這天） */
+    end_date?: string
+    /** cron：5 欄運算式，例：0 9 * * 1-5 */
+    cron?: string
+    /** 時區，例：Asia/Taipei；不填用 Asia/Taipei */
+    timezone?: string
+  }
+  /** 排程的白話寫法，例：每天上午 9:00 */
+  when: string
+  /** 每次隨機延後 0～N 分鐘 */
+  jitter_minutes: number
+  /** 沒跑成功時發一張卡到待我處理 */
+  notify_on_failure: boolean
+  /** 目標型：做到完成條件為止（RT-4） */
+  goal?: {
+    done_when: string
+    max_rounds: number
+    rounds: number
+    progress_file: string
+    completed_at?: number
+    summary?: string
+  }
+  /** 結果貼到的對話串（第一次跑時建立） */
+  thread_id?: string
+  /** active 啟用中、paused 已暫停、done 已結束（單次跑完、目標完成或用完輪數、過了結束日） */
+  status: string
+  /** 這個定時任務交辦的工作正在跑 */
+  running: boolean
+  /** 下一次（Unix 毫秒，已含隨機延後） */
+  next_run_at?: number
+  last_run_at?: number
+  last_task_id?: string
+  /** 最近一次開不了工的原因 */
+  last_error?: string
+  /** 連續開不了工的次數（退避 1／5／15／60 分鐘重試） */
+  failures?: number
+  retry_at?: number
+  /** 網址觸發 */
+  hook?: {
+    id: string
+    /** POST 這個路徑（接在 XBot 的網址後面），例：/hooks/h… */
+    path: string
+    /** 金鑰：Authorization: Bearer <金鑰>，或用它對內容算 HMAC-SHA256 放在 X-XBot-Signature: sha256=<hex> */
+    secret?: string
+    last_hook_at?: number
+  }
+  created_by?: string
+  created_at: number
+  updated_at: number
+}
+
+/**
+ * 修改定時任務
+ *
+ * 只改有給的欄位；改完重新排下一次、清掉失敗的退避。
+ *
+ * `xbot.routines.update`：權限 operate、風險 safe
+ */
+export function routinesUpdate(input: RoutinesUpdateInput, opts?: CallOptions): Promise<RoutinesUpdateOutput> {
+  return invoke('xbot.routines.update', input, opts).then((r) => r.output)
+}
+
 // xbot.settings.get
 
 export interface SettingsGetInput {
@@ -4288,6 +6119,14 @@ export interface Ops {
   'xbot.engines.link_credentials': { input: EnginesLinkCredentialsInput; output: EnginesLinkCredentialsOutput }
   'xbot.engines.status': { input: EnginesStatusInput; output: EnginesStatusOutput }
   'xbot.engines.unlink_credentials': { input: EnginesUnlinkCredentialsInput; output: EnginesUnlinkCredentialsOutput }
+  'xbot.hosts.add': { input: HostsAddInput; output: HostsAddOutput }
+  'xbot.hosts.check': { input: HostsCheckInput; output: HostsCheckOutput }
+  'xbot.hosts.get': { input: HostsGetInput; output: HostsGetOutput }
+  'xbot.hosts.install_script': { input: HostsInstallScriptInput; output: HostsInstallScriptOutput }
+  'xbot.hosts.list': { input: HostsListInput; output: HostsListOutput }
+  'xbot.hosts.remove': { input: HostsRemoveInput; output: HostsRemoveOutput }
+  'xbot.hosts.set_default': { input: HostsSetDefaultInput; output: HostsSetDefaultOutput }
+  'xbot.hosts.set_limits': { input: HostsSetLimitsInput; output: HostsSetLimitsOutput }
   'xbot.inbox.counts': { input: InboxCountsInput; output: InboxCountsOutput }
   'xbot.inbox.dismiss': { input: InboxDismissInput; output: InboxDismissOutput }
   'xbot.inbox.list': { input: InboxListInput; output: InboxListOutput }
@@ -4319,6 +6158,21 @@ export interface Ops {
   'xbot.rooms.pause_member': { input: RoomsPauseMemberInput; output: RoomsPauseMemberOutput }
   'xbot.rooms.post': { input: RoomsPostInput; output: RoomsPostOutput }
   'xbot.rooms.update': { input: RoomsUpdateInput; output: RoomsUpdateOutput }
+  'xbot.routines.calendar': { input: RoutinesCalendarInput; output: RoutinesCalendarOutput }
+  'xbot.routines.complete': { input: RoutinesCompleteInput; output: RoutinesCompleteOutput }
+  'xbot.routines.create': { input: RoutinesCreateInput; output: RoutinesCreateOutput }
+  'xbot.routines.delete': { input: RoutinesDeleteInput; output: RoutinesDeleteOutput }
+  'xbot.routines.get': { input: RoutinesGetInput; output: RoutinesGetOutput }
+  'xbot.routines.hook_create': { input: RoutinesHookCreateInput; output: RoutinesHookCreateOutput }
+  'xbot.routines.hook_delete': { input: RoutinesHookDeleteInput; output: RoutinesHookDeleteOutput }
+  'xbot.routines.hook_rotate': { input: RoutinesHookRotateInput; output: RoutinesHookRotateOutput }
+  'xbot.routines.list': { input: RoutinesListInput; output: RoutinesListOutput }
+  'xbot.routines.logs': { input: RoutinesLogsInput; output: RoutinesLogsOutput }
+  'xbot.routines.pause': { input: RoutinesPauseInput; output: RoutinesPauseOutput }
+  'xbot.routines.propose': { input: RoutinesProposeInput; output: RoutinesProposeOutput }
+  'xbot.routines.resume': { input: RoutinesResumeInput; output: RoutinesResumeOutput }
+  'xbot.routines.run_now': { input: RoutinesRunNowInput; output: RoutinesRunNowOutput }
+  'xbot.routines.update': { input: RoutinesUpdateInput; output: RoutinesUpdateOutput }
   'xbot.settings.get': { input: SettingsGetInput; output: SettingsGetOutput }
   'xbot.skills.create': { input: SkillsCreateInput; output: SkillsCreateOutput }
   'xbot.skills.delete': { input: SkillsDeleteInput; output: SkillsDeleteOutput }
@@ -4381,6 +6235,14 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.engines.link_credentials': { path: '/api/v1/engines.link_credentials', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.engines.status': { path: '/api/v1/engines.status', scope: 'read', risk: 'safe', mutates: false },
   'xbot.engines.unlink_credentials': { path: '/api/v1/engines.unlink_credentials', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.hosts.add': { path: '/api/v1/hosts.add', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.hosts.check': { path: '/api/v1/hosts.check', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.hosts.get': { path: '/api/v1/hosts.get', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.hosts.install_script': { path: '/api/v1/hosts.install_script', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.hosts.list': { path: '/api/v1/hosts.list', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.hosts.remove': { path: '/api/v1/hosts.remove', scope: 'admin', risk: 'confirm', mutates: true },
+  'xbot.hosts.set_default': { path: '/api/v1/hosts.set_default', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.hosts.set_limits': { path: '/api/v1/hosts.set_limits', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.inbox.counts': { path: '/api/v1/inbox.counts', scope: 'read', risk: 'safe', mutates: false },
   'xbot.inbox.dismiss': { path: '/api/v1/inbox.dismiss', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.inbox.list': { path: '/api/v1/inbox.list', scope: 'read', risk: 'safe', mutates: false },
@@ -4412,6 +6274,21 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.rooms.pause_member': { path: '/api/v1/rooms.pause_member', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.rooms.post': { path: '/api/v1/rooms.post', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.rooms.update': { path: '/api/v1/rooms.update', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.routines.calendar': { path: '/api/v1/routines.calendar', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.routines.complete': { path: '/api/v1/routines.complete', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.routines.create': { path: '/api/v1/routines.create', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.routines.delete': { path: '/api/v1/routines.delete', scope: 'operate', risk: 'confirm', mutates: true },
+  'xbot.routines.get': { path: '/api/v1/routines.get', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.routines.hook_create': { path: '/api/v1/routines.hook_create', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.routines.hook_delete': { path: '/api/v1/routines.hook_delete', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.routines.hook_rotate': { path: '/api/v1/routines.hook_rotate', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.routines.list': { path: '/api/v1/routines.list', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.routines.logs': { path: '/api/v1/routines.logs', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.routines.pause': { path: '/api/v1/routines.pause', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.routines.propose': { path: '/api/v1/routines.propose', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.routines.resume': { path: '/api/v1/routines.resume', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.routines.run_now': { path: '/api/v1/routines.run_now', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.routines.update': { path: '/api/v1/routines.update', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.settings.get': { path: '/api/v1/settings.get', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.skills.create': { path: '/api/v1/skills.create', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.skills.delete': { path: '/api/v1/skills.delete', scope: 'manage', risk: 'confirm', mutates: true },

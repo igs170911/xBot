@@ -268,3 +268,49 @@ func TestResolveModel(t *testing.T) {
 type staticProviders []string
 
 func (s staticProviders) ProviderIDs(context.Context) ([]string, error) { return s, nil }
+
+// 定時任務（C32）：送給引擎的是 Prompt（含「使用者不在旁邊」的說明），對話裡只顯示 Text；MessageMeta、TaskMeta 記在訊息與工作上。
+// 失敗時不發一般的「出錯」卡（排程器自己發 routine_failed）。
+func TestStartWithPromptAndMeta(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t)
+	res, err := f.rt.Start(ctx, ChatRequest{BotID: f.bot.ID, Text: "整理新聞", Prompt: "【定時任務】整理新聞", Source: "routine",
+		MessageMeta: map[string]any{"routine_id": "r1", "routine_title": "新聞"}, TaskMeta: json.RawMessage(`{"routine_id":"r1"}`)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.wait(t, res.TaskID)
+	var sent []string
+	for _, c := range f.g.Calls() {
+		if c.Method == "prompt.submit" {
+			s, _ := c.Params["text"].(string)
+			sent = append(sent, s)
+		}
+	}
+	if len(sent) != 1 || sent[0] != "【定時任務】整理新聞" {
+		t.Fatalf("送給引擎：%q", sent)
+	}
+	msgs, _ := f.db.ListMessages(ctx, store.ScopeThread, res.ThreadID, 0, 0)
+	var meta map[string]string
+	_ = json.Unmarshal(msgs[0].Meta, &meta)
+	if msgs[0].Content != "整理新聞" || meta["routine_id"] != "r1" || meta["task_id"] != res.TaskID {
+		t.Fatalf("對話裡：%+v %v", msgs[0], meta)
+	}
+	task, _ := f.db.GetTask(ctx, res.TaskID)
+	if task.Source != "routine" || !strings.Contains(string(task.Meta), `"routine_id":"r1"`) {
+		t.Fatalf("工作：%+v", task)
+	}
+	// 定時任務失敗：不發 error 卡（另一個還沒連線的 Bot，開機失敗）。
+	f.err = errors.New("開不了機")
+	other, _ := f.db.CreateBot(ctx, store.Bot{Name: "阿寶"})
+	res, err = f.rt.Start(ctx, ChatRequest{BotID: other.ID, Text: "再一次", Source: "routine"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if task := f.wait(t, res.TaskID); task.Verdict != VerdictFailed {
+		t.Fatalf("任務：%+v", task)
+	}
+	if items, _ := f.db.ListInboxFiltered(ctx, store.InboxFilter{Kinds: []string{"error"}}); len(items) != 0 {
+		t.Fatalf("定時任務的失敗由排程器發卡：%+v", items)
+	}
+}

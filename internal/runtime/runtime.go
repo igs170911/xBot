@@ -79,6 +79,9 @@ type Options struct {
 	// Stranded 回答這一輪是不是背景子任務回報後的那一輪，以及失敗後沒人接手的背景子任務（目標文字）。
 	// LazyBoy 用 Hermes 的 subagent 追蹤；XBot 還沒有這個來源，nil 時不叫醒（見 X04 待確認）。
 	Stranded func(ctx context.Context, task store.Task) (goals []string, background bool)
+	// Admit 在開機前排隊等主機（B12：主機離線或滿了，CL-4、CL-6）；wait 收到排隊原因時，任務維持 waiting_box，
+	// 並發 task.state（payload 帶 wait）。回傳的 release 在開機完成後呼叫。可為 nil（不排隊）。
+	Admit func(ctx context.Context, botID string, wait func(any)) (release func(), err error)
 }
 
 // Watchdog 是對話看門狗的時間（LazyBoy runtime.watch()）。
@@ -467,6 +470,17 @@ func (r *Runtime) run(ctx context.Context, t *turn) {
 		}
 	}
 	r.setState(t, store.TaskWaitingBox)
+	if r.o.Admit != nil {
+		release, err := r.o.Admit(ctx, t.botID, func(w any) {
+			// 還在等電腦（主機離線／滿了）：狀態仍是 waiting_box，介面依 wait 顯示「主機離線」或「等電腦空出來」。
+			r.emit(t, KindTaskState, map[string]any{"state": store.TaskWaitingBox, "wait": w}, true)
+		})
+		if err != nil {
+			r.finishErr(t, err)
+			return
+		}
+		defer release()
+	}
 	title := b.Name
 	if th.Title != "" {
 		title = b.Name + " · " + th.Title

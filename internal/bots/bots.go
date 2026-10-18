@@ -90,6 +90,7 @@ type View struct {
 	ApprovalMode  ApprovalMode `json:"approval_mode"`
 	MemoryEnabled bool         `json:"memory_enabled" desc:"記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶"`
 	Archived      bool         `json:"archived"`
+	HostID        string       `json:"host_id" desc:"放在哪台主機（xbot.hosts.list）；空白＝第一次開機時自動擺放"`
 	CreatedBy     string       `json:"created_by,omitempty" desc:"誰建立的：owner、agent:<id>、bot:<id>"`
 	UpdatedBy     string       `json:"updated_by,omitempty" desc:"最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」"`
 	CreatedAt     int64        `json:"created_at"`
@@ -106,7 +107,7 @@ func ViewOf(b store.Bot) View {
 	_ = json.Unmarshal(b.Avatar, &a)
 	return View{ID: b.ID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul,
 		Color: Color(b.Color), Shape: Shape(a.Shape), Engine: b.Engine, Model: b.Model, Fallback: first(b.Fallback), Effort: b.Effort,
-		ApprovalMode: ApprovalMode(b.ApprovalMode), MemoryEnabled: b.MemoryEnabled, Archived: b.Archived, CreatedBy: b.CreatedBy, UpdatedBy: b.UpdatedBy,
+		ApprovalMode: ApprovalMode(b.ApprovalMode), MemoryEnabled: b.MemoryEnabled, Archived: b.Archived, HostID: b.HostID, CreatedBy: b.CreatedBy, UpdatedBy: b.UpdatedBy,
 		CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt}
 }
 
@@ -156,6 +157,7 @@ type UpdateIn struct {
 	Effort        *Effort       `json:"effort,omitempty"`
 	ApprovalMode  *ApprovalMode `json:"approval_mode,omitempty" desc:"改成 ask 以外的等級要你核准"`
 	MemoryEnabled *bool         `json:"memory_enabled,omitempty" desc:"打開或關掉記憶（下次開機生效）"`
+	HostID        *string       `json:"host_id,omitempty" resource:"host" max:"64" desc:"放在哪台主機（CL-1）；空白字串＝自動擺放。已經有電腦的 Bot 換主機要等搬家（CL-5）"`
 }
 
 // ArchiveIn 是 xbot.bots.archive 的輸入。
@@ -226,9 +228,18 @@ func Register(reg *ops.Registry, d Deps) {
 			if err := apply(&b, in); err != nil {
 				return View{}, err
 			}
+			box, err := placeHost(ctx, call.DB, &b, in.HostID)
+			if err != nil {
+				return View{}, err
+			}
 			b.UpdatedBy = call.Identity.Actor()
 			if call.DryRun {
 				return ViewOf(b), nil
+			}
+			if box != nil {
+				if err := call.DB.UpsertBox(ctx, *box); err != nil {
+					return View{}, err
+				}
 			}
 			b, err = call.DB.UpdateBot(ctx, b)
 			if err == nil && d.SoulChanged != nil && soulOf(b) != before {
@@ -349,6 +360,38 @@ func first(list []string) string {
 		return ""
 	}
 	return list[0]
+}
+
+// placeHost 換 Bot 的主機（CL-1）。電腦已經建在別台時不能直接換（那是搬家，CL-5）；
+// 電腦列還在但容器沒了（state none）時，一起改電腦列的主機，下次開機就建在新主機。回傳要寫回的電腦列。
+func placeHost(ctx context.Context, db *store.DB, b *store.Bot, hostID *string) (*store.Box, error) {
+	if hostID == nil {
+		return nil, nil
+	}
+	id := strings.TrimSpace(*hostID)
+	if id != "" {
+		if _, err := db.GetHost(ctx, id); errors.Is(err, store.ErrNotFound) {
+			return nil, ops.InvalidInput(ops.FieldError{Field: "host_id", Message: "找不到這台主機"})
+		} else if err != nil {
+			return nil, err
+		}
+	}
+	b.HostID = id
+	box, err := db.GetBox(ctx, b.ID)
+	if errors.Is(err, store.ErrNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if id == "" || box.HostID == id {
+		return nil, nil
+	}
+	if box.ContainerID != "" || box.State != "none" {
+		return nil, ops.Conflict("這個 Bot 的電腦已經在另一台主機上；換主機要搬家（之後的版本會支援），或先刪掉它的電腦")
+	}
+	box.HostID = id
+	return &box, nil
 }
 
 func apply(b *store.Bot, in UpdateIn) error {

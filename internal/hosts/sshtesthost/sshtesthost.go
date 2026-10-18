@@ -27,7 +27,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-//go:embed image
+//go:embed image fresh
 var files embed.FS
 
 // CacheVolume 是內層 Docker 的資料（含載入的 Bot 電腦映像）。
@@ -47,9 +47,11 @@ type Host struct {
 }
 
 // Tag 回傳依映像內容決定的標籤。
-func Tag() (string, error) {
+func Tag() (string, error) { return tagOf("image", "xbot-test-sshhost") }
+
+func tagOf(root, name string) (string, error) {
 	h := sha256.New()
-	err := fs.WalkDir(files, "image", func(p string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(files, root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
@@ -58,7 +60,7 @@ func Tag() (string, error) {
 		h.Write(b)
 		return err
 	})
-	return "xbot-test-sshhost:" + hex.EncodeToString(h.Sum(nil))[:12], err
+	return name + ":" + hex.EncodeToString(h.Sum(nil))[:12], err
 }
 
 func docker(ctx context.Context, args ...string) (string, error) {
@@ -70,7 +72,9 @@ func docker(ctx context.Context, args ...string) (string, error) {
 }
 
 // build 在映像不存在時建出它。
-func build(ctx context.Context, tag string) error {
+func build(ctx context.Context, tag string) error { return buildFrom(ctx, tag, "image") }
+
+func buildFrom(ctx context.Context, tag, root string) error {
 	if _, err := docker(ctx, "image", "inspect", tag); err == nil {
 		return nil
 	}
@@ -79,7 +83,7 @@ func build(ctx context.Context, tag string) error {
 		return err
 	}
 	defer os.RemoveAll(dir)
-	err = fs.WalkDir(files, "image", func(p string, d fs.DirEntry, err error) error {
+	err = fs.WalkDir(files, root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
@@ -221,4 +225,81 @@ func (h *Host) cleanup() {
 	h.removeInner(ctx)
 	_, _ = docker(ctx, "rm", "-f", "-v", h.Container)
 	_, _ = docker(ctx, "network", "rm", h.Network)
+}
+
+// FreshCacheVolume 是「剛租來的主機」內層 Docker 的資料（XBot 傳過去的電腦映像會留著，下次不用再傳）。
+const FreshCacheVolume = "xbot-test-freshhost-docker"
+
+// FreshLabel 標在 StartFresh 建立的容器與網路上。
+const FreshLabel = "xbot.test=freshhost"
+
+// StartFresh 開一台「剛租來的主機」（B12）：Debian 13＋sshd（發行版預設設定）＋Docker 26，沒有 xbot 帳號。
+// 測試要自己以 root 跑安裝腳本（Shell）。Addr 是 sshd 的位址；Signer 是 nil（用 XBot 自己的金鑰）。
+func StartFresh(ctx context.Context, t testing.TB) *Host {
+	t.Helper()
+	tag, err := tagOf("fresh", "xbot-test-freshhost")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := buildFrom(ctx, tag, "fresh"); err != nil {
+		t.Fatalf("建測試主機映像：%v", err)
+	}
+	if ids, _ := docker(ctx, "ps", "-aq", "--filter", "label="+FreshLabel); ids != "" {
+		_, _ = docker(ctx, append([]string{"rm", "-f"}, strings.Fields(ids)...)...)
+	}
+	if ids, _ := docker(ctx, "network", "ls", "-q", "--filter", "label="+FreshLabel); ids != "" {
+		_, _ = docker(ctx, append([]string{"network", "rm"}, strings.Fields(ids)...)...)
+	}
+	suffix := make([]byte, 4)
+	_, _ = rand.Read(suffix)
+	h := &Host{Container: "xbot-freshhost-" + hex.EncodeToString(suffix), Network: "xbot-freshhost-net-" + hex.EncodeToString(suffix)}
+	if _, err := docker(ctx, "network", "create", "--label", FreshLabel, h.Network); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { h.cleanup() })
+	if _, err := docker(ctx, "run", "-d", "--privileged", "--name", h.Container, "--hostname", "cloud-test", "--network", h.Network,
+		"--label", FreshLabel, "-v", FreshCacheVolume+":/var/lib/docker", tag); err != nil {
+		t.Fatal(err)
+	}
+	ip, err := docker(ctx, "inspect", "-f", `{{(index .NetworkSettings.Networks "`+h.Network+`").IPAddress}}`, h.Container)
+	if err != nil || ip == "" {
+		t.Fatalf("取得測試主機 IP：%v", err)
+	}
+	h.Addr = net.JoinHostPort(ip, "22")
+	deadline := time.Now().Add(90 * time.Second)
+	for {
+		_, derr := h.Exec(ctx, "docker", "info")
+		c, serr := net.DialTimeout("tcp", h.Addr, time.Second)
+		if serr == nil {
+			c.Close()
+		}
+		if derr == nil && serr == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			logs, _ := docker(ctx, "logs", "--tail", "30", h.Container)
+			t.Fatalf("測試主機沒起來：%v %v\n%s", derr, serr, logs)
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	h.removeInner(ctx)
+	return h
+}
+
+// IP 是測試主機在測試網路上的位址。
+func (h *Host) IP() string {
+	ip, _, _ := net.SplitHostPort(h.Addr)
+	return ip
+}
+
+// StopSSHD 讓 sshd 停下並暫時不重啟（主機離線）。只對 StartFresh 的主機有用。
+func (h *Host) StopSSHD(ctx context.Context) error {
+	_, err := h.Shell(ctx, "touch /tmp/nosshd; pkill sshd; true") // 連 sshd-session（每條連線）一起停
+	return err
+}
+
+// StartSSHD 讓 sshd 回來。
+func (h *Host) StartSSHD(ctx context.Context) error {
+	_, err := h.Shell(ctx, "rm -f /tmp/nosshd")
+	return err
 }

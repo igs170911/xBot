@@ -208,7 +208,7 @@ func (r *Runtime) askCard(t *turn, res judge.Result, title string) {
 		}
 	}
 	raw, _ := json.Marshal(map[string]any{"bot_name": t.botName, "task_id": t.taskID, "verdict": res.Verdict, "reason": res.Reason,
-		"input": clip(t.input, 120)})
+		"input": clip(t.shownInput(), 120)})
 	it := store.InboxItem{Kind: "question", BotID: t.botID, ThreadID: t.threadID, Ref: judgeRefPrefix + t.taskID, Title: title,
 		Body: clip(firstNonEmpty(res.Ask, res.Reason), limits.JudgeAskMax), Payload: raw}
 	created, err := r.o.DB.CreateInboxItem(ctx, it)

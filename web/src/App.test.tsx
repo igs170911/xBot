@@ -133,7 +133,8 @@ it('側欄連結用前端路由換頁', async () => {
   expect(window.location.pathname).toBe('/office')
   expect(screen.getByRole('heading', { level: 1, name: '辦公室' })).toBeInTheDocument()
   act(() => navigate('/'))
-  expect(screen.getByRole('heading', { level: 1, name: '早安，事情都處理完了' })).toBeInTheDocument()
+  // 待我處理是非同步讀的：讀完才知道「事情都處理完了」。
+  expect(await screen.findByRole('heading', { level: 1, name: '早安，事情都處理完了' })).toBeInTheDocument()
   await screen.findByText('服務正常 · v-test')
 })
 
