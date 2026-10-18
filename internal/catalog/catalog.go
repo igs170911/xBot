@@ -17,6 +17,7 @@ import (
 	"xbot/internal/engines"
 	"xbot/internal/files"
 	"xbot/internal/hosts"
+	"xbot/internal/importer"
 	"xbot/internal/inbox"
 	"xbot/internal/judge"
 	"xbot/internal/memory"
@@ -71,6 +72,8 @@ type Deps struct {
 	Network *network.Service
 	// Teaching 是示範教學（B32）；nil 時只登錄定義。
 	Teaching *teaching.Service
+	// Importer 是從 LazyBoy、OpenMausBot 匯入（V10）；nil 時只登錄定義。
+	Importer *importer.Service
 	// Voice 是語音：朗讀、語音輸入、語音訊息、通話（E32）；nil 時只登錄定義。
 	Voice *voice.Service
 }
@@ -155,7 +158,29 @@ func Register(reg *ops.Registry, d Deps) {
 			return ref.Name, ref.ID != "", err
 		}
 	}
+	if d.Importer != nil {
+		imp := d.Importer
+		od.Legacy = func(ctx context.Context) onboard.Legacy {
+			list, err := imp.Detect(ctx, "")
+			if err != nil {
+				return onboard.Legacy{}
+			}
+			// 卡片只在還有沒帶進來的 Bot（或金鑰）時出現。
+			out := onboard.Legacy{}
+			for _, f := range list {
+				if f.Imported >= f.Bots && f.Bots > 0 {
+					continue
+				}
+				out.Sources++
+				if !out.Found {
+					out.Found, out.Summary = true, f.Summary
+				}
+			}
+			return out
+		}
+	}
 	onboard.Register(reg, od)
+	importer.Register(reg, d.Importer)
 	network.Register(reg, d.Network)
 	teaching.Register(reg, d.Teaching)
 	voice.Register(reg, d.Voice)

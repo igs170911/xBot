@@ -5839,6 +5839,250 @@ export function hostsSetLimits(input: HostsSetLimitsInput, opts?: CallOptions): 
   return invoke('xbot.hosts.set_limits', input, opts).then((r) => r.output)
 }
 
+// xbot.import.detect
+
+export interface ImportDetectInput {
+  /** 只看這個資料夾（LazyBoy 的 .data、OpenMausBot 的 ~/.openmausbot）；不填找預設的位置 */
+  path?: string
+}
+
+export interface ImportDetectOutput {
+  sources: {
+    /** 這份舊資料的代號（plan、run 用） */
+    id: string
+    /** lazyboy 或 openmausbot */
+    kind: string
+    /** LazyBoy 或 OpenMausBot */
+    label: string
+    path: string
+    bots: number
+    /** Bot 自己的技能（不含內建的） */
+    skills: number
+    /** 有記憶的 Bot */
+    memory: number
+    routines: number
+    teams: number
+    rooms: number
+    /** 模型金鑰（要你勾選才帶） */
+    keys: number
+    /** 有瀏覽器登入的 Bot（要你勾選才帶） */
+    logins: number
+    /** 已經帶進來的 Bot */
+    imported: number
+    /** 一句話，例：找到 LazyBoy 的 3 個 Bot、2 把金鑰和 4 個定時任務 */
+    summary: string
+  }[]
+}
+
+/**
+ * 找這台電腦上 LazyBoy、OpenMausBot 的舊資料
+ *
+ * 列出找到的舊資料與可以帶進來的東西：Bot、技能、記憶、定時任務、團隊、群組、模型金鑰、瀏覽器登入。只讀，不改舊資料。預設找 LazyBoy 的 .data 與 OpenMausBot 的 ~/.openmausbot；path 只看指定的資料夾。
+ *
+ * `xbot.import.detect`：權限 read、風險 safe
+ */
+export function importDetect(input: ImportDetectInput = {}, opts?: CallOptions): Promise<ImportDetectOutput> {
+  return invoke('xbot.import.detect', input, opts).then((r) => r.output)
+}
+
+// xbot.import.plan
+
+export interface ImportPlanInput {
+  /** xbot.import.detect 的 id */
+  source?: string
+  /** 或直接給舊資料的資料夾 */
+  path?: string
+  /** 改 Bot 的名字（預演裡看重名） */
+  names?: {
+    /** Bot 項目代號（bot:<舊 id>） */
+    key: string
+    name: string
+  }[]
+}
+
+export interface ImportPlanOutput {
+  source: {
+    /** 這份舊資料的代號（plan、run 用） */
+    id: string
+    /** lazyboy 或 openmausbot */
+    kind: string
+    /** LazyBoy 或 OpenMausBot */
+    label: string
+    path: string
+    bots: number
+    /** Bot 自己的技能（不含內建的） */
+    skills: number
+    /** 有記憶的 Bot */
+    memory: number
+    routines: number
+    teams: number
+    rooms: number
+    /** 模型金鑰（要你勾選才帶） */
+    keys: number
+    /** 有瀏覽器登入的 Bot（要你勾選才帶） */
+    logins: number
+    /** 已經帶進來的 Bot */
+    imported: number
+    /** 一句話，例：找到 LazyBoy 的 3 個 Bot、2 把金鑰和 4 個定時任務 */
+    summary: string
+  }
+  items: {
+    /** 項目代號（run 的 items 用），例：bot:<舊 id>、skills:<舊 id>、key:openai */
+    key: string
+    /** bot、skills、memory、data、login、routine、team、room、key、approvals */
+    kind: string
+    /** 屬於哪個 Bot 項目（技能、記憶、電腦資料、登入、定時任務） */
+    bot?: string
+    title: string
+    detail?: string
+    /** ready：可以帶；done：已經帶進來了；blocked：帶不過來 */
+    status: string
+    checked: boolean
+    explicit?: boolean
+    attention?: string
+    name?: string
+    original?: string
+    renamed?: boolean
+    /** 技能數、記憶條數、檔案數 */
+    count?: number
+    /** 電腦資料、登入的大小 */
+    bytes?: number
+    color?: string
+    shape?: string
+    image?: string
+    target?: string
+  }[]
+  /** 全部照預設勾選時會建立幾個 Bot */
+  new_bots: number
+  /** 還可以建立幾個 Bot（全部最多 50 個） */
+  remaining: number
+  can_create: boolean
+  /** 不能全部建立的原因 */
+  reason?: string
+  /** 一律不帶的東西 */
+  not_carried: string[]
+  /** 讀舊資料時遇到的小問題 */
+  notes: string[]
+}
+
+/**
+ * 預演匯入：逐項列出會帶什麼
+ *
+ * 列出每個 Bot 與它的技能、記憶、電腦裡的檔案、瀏覽器登入、定時任務，以及團隊、群組、模型金鑰；每項有預設勾不勾。已經帶過的標 done（再匯入不會重複建立），和現有 Bot 同名的自動加編號。不建立任何東西。
+ *
+ * `xbot.import.plan`：權限 read、風險 safe
+ */
+export function importPlan(input: ImportPlanInput = {}, opts?: CallOptions): Promise<ImportPlanOutput> {
+  return invoke('xbot.import.plan', input, opts).then((r) => r.output)
+}
+
+// xbot.import.run
+
+export interface ImportRunInput {
+  /** xbot.import.detect 的 id */
+  source?: string
+  /** 或直接給舊資料的資料夾 */
+  path?: string
+  /** 要帶的項目代號（xbot.import.plan 的 items[].key） */
+  items: string[]
+  /** 改 Bot 的名字 */
+  names?: {
+    /** Bot 項目代號（bot:<舊 id>） */
+    key: string
+    name: string
+  }[]
+  /** 等做完才回（指令列用）；不等時看 xbot.import.status 或 import.progress 事件 */
+  wait?: boolean
+}
+
+export interface ImportRunOutput {
+  id: string
+  source_id: string
+  label: string
+  /** running、done、failed */
+  state: string
+  /** 正在做什麼（給人看） */
+  step?: string
+  done: number
+  total: number
+  percent: number
+  /** 已經複製的電腦資料 */
+  bytes: number
+  results: {
+    key: string
+    kind: string
+    title: string
+    /** ok、failed、skipped */
+    status: string
+    detail?: string
+    /** 在 XBot 建立的 id（Bot、定時任務、團隊、群組） */
+    target?: string
+  }[]
+  /** 這次建立的 Bot id */
+  bots: string[]
+  error?: string
+  started_at: number
+  finished_at?: number
+}
+
+/**
+ * 從 LazyBoy 或 OpenMausBot 匯入勾選的項目
+ *
+ * 照 xbot.import.plan 的項目代號建立：Bot 一律從「先問我」開始（SEC-1），技能放進它自己的技能並先關閉，定時任務先暫停，模型金鑰加密後只放在服務端。對話紀錄不帶。在背景進行，進度看 xbot.import.status 或 import.progress 事件；wait=true 等做完才回。已經帶過的不會重複建立。
+ *
+ * `xbot.import.run`：權限 manage、風險 safe
+ */
+export function importRun(input: ImportRunInput, opts?: CallOptions): Promise<ImportRunOutput> {
+  return invoke('xbot.import.run', input, opts).then((r) => r.output)
+}
+
+// xbot.import.status
+
+export type ImportStatusInput = Record<string, never>
+
+export interface ImportStatusOutput {
+  running: boolean
+  /** 最近的匯入（新的在前） */
+  runs: {
+    id: string
+    source_id: string
+    label: string
+    /** running、done、failed */
+    state: string
+    /** 正在做什麼（給人看） */
+    step?: string
+    done: number
+    total: number
+    percent: number
+    /** 已經複製的電腦資料 */
+    bytes: number
+    results: {
+      key: string
+      kind: string
+      title: string
+      /** ok、failed、skipped */
+      status: string
+      detail?: string
+      /** 在 XBot 建立的 id（Bot、定時任務、團隊、群組） */
+      target?: string
+    }[]
+    /** 這次建立的 Bot id */
+    bots: string[]
+    error?: string
+    started_at: number
+    finished_at?: number
+  }[]
+}
+
+/**
+ * 匯入的進度與結果
+ *
+ * `xbot.import.status`：權限 read、風險 safe
+ */
+export function importStatus(input: ImportStatusInput = {}, opts?: CallOptions): Promise<ImportStatusOutput> {
+  return invoke('xbot.import.status', input, opts).then((r) => r.output)
+}
+
 // xbot.inbox.counts
 
 export interface InboxCountsInput {
@@ -7703,6 +7947,15 @@ export interface OnboardStatusOutput {
     /** 還沒好時該怎麼做 */
     hint?: string
     error?: string
+  }
+  /** 這台電腦上 LazyBoy、OpenMausBot 的舊資料（首頁「帶入舊設定」） */
+  legacy: {
+    /** 找到還沒帶進來的舊資料 */
+    found: boolean
+    /** 卡片上的一句話，例：在這台電腦找到 LazyBoy 的 3 個 Bot、2 把金鑰和 4 個定時任務。 */
+    summary?: string
+    /** 找到幾份舊資料 */
+    sources: number
   }
 }
 
@@ -12284,6 +12537,10 @@ export interface Ops {
   'xbot.hosts.remove': { input: HostsRemoveInput; output: HostsRemoveOutput }
   'xbot.hosts.set_default': { input: HostsSetDefaultInput; output: HostsSetDefaultOutput }
   'xbot.hosts.set_limits': { input: HostsSetLimitsInput; output: HostsSetLimitsOutput }
+  'xbot.import.detect': { input: ImportDetectInput; output: ImportDetectOutput }
+  'xbot.import.plan': { input: ImportPlanInput; output: ImportPlanOutput }
+  'xbot.import.run': { input: ImportRunInput; output: ImportRunOutput }
+  'xbot.import.status': { input: ImportStatusInput; output: ImportStatusOutput }
   'xbot.inbox.counts': { input: InboxCountsInput; output: InboxCountsOutput }
   'xbot.inbox.dismiss': { input: InboxDismissInput; output: InboxDismissOutput }
   'xbot.inbox.list': { input: InboxListInput; output: InboxListOutput }
@@ -12505,6 +12762,10 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.hosts.remove': { path: '/api/v1/hosts.remove', scope: 'admin', risk: 'confirm', mutates: true },
   'xbot.hosts.set_default': { path: '/api/v1/hosts.set_default', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.hosts.set_limits': { path: '/api/v1/hosts.set_limits', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.import.detect': { path: '/api/v1/import.detect', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.import.plan': { path: '/api/v1/import.plan', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.import.run': { path: '/api/v1/import.run', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.import.status': { path: '/api/v1/import.status', scope: 'read', risk: 'safe', mutates: false },
   'xbot.inbox.counts': { path: '/api/v1/inbox.counts', scope: 'read', risk: 'safe', mutates: false },
   'xbot.inbox.dismiss': { path: '/api/v1/inbox.dismiss', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.inbox.list': { path: '/api/v1/inbox.list', scope: 'read', risk: 'safe', mutates: false },

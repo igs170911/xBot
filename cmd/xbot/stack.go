@@ -21,6 +21,7 @@ import (
 	"xbot/internal/events"
 	"xbot/internal/files"
 	"xbot/internal/hosts"
+	"xbot/internal/importer"
 	"xbot/internal/ipc"
 	"xbot/internal/judge"
 	"xbot/internal/limits"
@@ -71,6 +72,7 @@ type stack struct {
 	stopIdle context.CancelFunc
 	screen   *screen.Service   // 看畫面與接手（B14）
 	teaching *teaching.Service // 示範教學（B32）
+	importer *importer.Service // 從 LazyBoy、OpenMausBot 匯入（V10）
 	voice    *voice.Service    // 語音（E32）：合成與辨識經 Model Proxy
 }
 
@@ -285,6 +287,17 @@ func openStack(cfg config.Config) (*stack, error) {
 			}
 			return skills.Bot{FS: f, BotID: botID}.Create(ctx, e)
 		}})
+	// 從 LazyBoy、OpenMausBot 匯入（V10）：技能、記憶、電腦資料寫進新 Bot 的電腦（沒有時先建立、不開機）；
+	// 金鑰加密後存在 Model Proxy；進度推給介面。
+	s.importer = &importer.Service{DB: db, Locate: comp.BotFS, Memory: s.memory, Providers: s.providers, Logger: logger,
+		ApprovalItems: func(ctx context.Context, add []string) ([]string, error) {
+			cur, err := s.org.ApprovalItems(ctx)
+			if err != nil {
+				return nil, err
+			}
+			return s.org.SetApprovalItems(ctx, append(cur, add...))
+		},
+		Publish: func(kind string, payload any) { computers.Publish(db, bus, kind, "", payload, false) }}
 	if err := s.hosts.Start(context.Background()); err != nil {
 		s.Close()
 		return nil, err
@@ -339,6 +352,9 @@ func (s *stack) Close() error {
 	}
 	if s.computers != nil {
 		s.computers.Close()
+	}
+	if s.importer != nil {
+		s.importer.Close()
 	}
 	if s.routines != nil {
 		s.routines.Close()
