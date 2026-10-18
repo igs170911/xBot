@@ -451,3 +451,70 @@ function CapInput({ label, value, onCommit, prefix }: { label: string; value: nu
     </label>
   )
 }
+
+/** 一個 Bot 的花費上限（G08「權限與花費」）：每日、每月與用量條；降低直接生效，提高或取消要再確認（US-2）。 */
+export function BotCaps({ botId, name }: { botId: string; name: string }) {
+  const toast = useToast()
+  const [cap, setCap] = useState<Cap | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [confirm, setConfirm] = useState<{ field: 'daily_usd' | 'monthly_usd'; from: number; to: number } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [ver, setVer] = useState(0)
+  const load = useCallback(
+    () =>
+      usageCaps({ bot_id: botId })
+        .then((c) => {
+          setCap(c.bots.find((x) => x.key === botId) ?? emptyCap(botId, name))
+          setError(null)
+        })
+        .catch((e: unknown) => setError(errText(e))),
+    [botId, name],
+  )
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const apply = async (field: 'daily_usd' | 'monthly_usd', to: number) => {
+    setBusy(true)
+    try {
+      await usageSetCaps({ bot_id: botId, [field]: to })
+      await load()
+      toast.show({ kind: 'done', text: `${name}的${field === 'daily_usd' ? '每日' : '每月'}上限改成 ${to ? usd(to) : '不限'}` })
+    } catch (e) {
+      toast.show({ kind: isPending(e) ? 'info' : 'error', text: errText(e) })
+    } finally {
+      setBusy(false)
+      setConfirm(null)
+    }
+  }
+  const change = (field: 'daily_usd' | 'monthly_usd', from: number, to: number) => {
+    if (to === from) return
+    if (to === 0 || (from !== 0 && to > from)) setConfirm({ field, from, to })
+    else void apply(field, to)
+  }
+
+  return (
+    <Block title="花費上限" sub="用到 80% 提醒你，到上限就暫停並在「待我處理」問你。0 或空白表示不限。">
+      {error && <p className="m-0 rounded-group bg-card px-4 py-3 text-ui-sm text-danger">讀不到花費上限：{error}</p>}
+      {cap && (
+        <Group label={`${name}的花費上限`}>
+          <div key={ver} className="contents">
+            <CapRow cap={cap} name={name} onChange={change} />
+          </div>
+        </Group>
+      )}
+      <ConfirmDialog
+        open={!!confirm}
+        busy={busy}
+        title={confirm?.to === 0 ? '取消這個上限？' : '提高上限？'}
+        description={confirm ? `${name}的${confirm.field === 'daily_usd' ? '每日' : '每月'}上限從 ${confirm.from ? usd(confirm.from) : '不限'} 改成 ${confirm.to ? usd(confirm.to) : '不限'}。放寬上限只有你本人能決定，不能交給別人代為核准。` : ''}
+        confirmText={confirm?.to === 0 ? '取消上限' : '提高'}
+        onConfirm={() => confirm && void apply(confirm.field, confirm.to)}
+        onCancel={() => {
+          setConfirm(null)
+          setVer((v) => v + 1)
+        }}
+      />
+    </Block>
+  )
+}

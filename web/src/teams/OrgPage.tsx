@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Crown, Plus, X } from 'lucide-react'
 import { botsUpdate, teamsApprovalItems, teamsChart, teamsSetApprovalItems, teamsSetReportsTo } from '../api/generated'
-import { loadBots } from '../data/bots'
+import { loadBots, look } from '../data/bots'
 import { onEvent, onReconnect } from '../data/events'
 import { isTeamEvent } from '../data/teams'
 import { Avatar } from '../ui/Avatar'
@@ -153,7 +153,7 @@ export function OrgPage() {
               className={cx('flex min-h-11 items-center gap-2.5 rounded-menu py-1 pr-2 text-left', current?.id === bot.id ? 'bg-control outline outline-1 outline-accent' : 'hover:bg-control/60')}
               style={{ paddingLeft: 16 + (depth + 1) * 20 }}
             >
-              <Avatar shape={bot.shape} color={bot.color} dot="none" size={28} blink={false} ring="#1A1A1A" />
+              <Avatar {...look(bot)} dot="none" size={28} blink={false} ring="#1A1A1A" />
               <span className="flex min-w-0 flex-1 flex-col leading-[1.35]">
                 <span className="flex items-center gap-1.5 truncate text-ui-sm">
                   {bot.name}

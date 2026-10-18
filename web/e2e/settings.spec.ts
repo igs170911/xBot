@@ -296,6 +296,9 @@ test('Bot 的引擎：換 Claude Code、同意使用訂閱並標示、權限等�
   await main(page).getByRole('link', { name: /小秘/ }).click()
   await expect(page).toHaveURL(new RegExp(`/settings/bots/${xm.id}$`))
   const m = main(page)
+  // 12 個分頁 → 4 個（G02）：引擎與模型在「進階」，權限在「權限與花費」
+  await m.getByRole('navigation', { name: 'Bot 設定分頁' }).getByRole('link', { name: '進階' }).click()
+  await expect(page).toHaveURL(new RegExp(`/settings/bots/${xm.id}/advanced$`))
   await m.getByRole('radiogroup', { name: '引擎' }).getByRole('radio', { name: 'Claude Code' }).click()
   await expect.poll(() => api.calls.find((c) => c.op === 'bots.update')?.input).toEqual({ id: xm.id, engine: 'claude-code' })
   await m.getByRole('button', { name: '同意使用我的訂閱' }).click()
@@ -310,6 +313,7 @@ test('Bot 的引擎：換 Claude Code、同意使用訂閱並標示、權限等�
   await expect(m.getByText('這個 Bot 用你的 Claude 訂閱').first()).toBeVisible()
   expect(api.calls.find((c) => c.op === 'engines.link_credentials')?.input).toEqual({ bot_id: xm.id, engine: 'claude-code' })
 
+  await m.getByRole('navigation', { name: 'Bot 設定分頁' }).getByRole('link', { name: '權限與花費' }).click()
   const modes = m.getByRole('radiogroup', { name: '權限等級' })
   await expect(modes.getByRole('radio')).toHaveCount(4)
   for (const name of ['先問我', '一般的事自己做', '放手做', '完全放手']) await expect(modes.getByRole('radio', { name: new RegExp(`^${name}`) })).toBeVisible()
@@ -320,6 +324,7 @@ test('Bot 的引擎：換 Claude Code、同意使用訂閱並標示、權限等�
   await page.screenshot({ path: shot(`${info.project.name}-w12-bot`), fullPage: true })
 
   // 收回
+  await m.getByRole('navigation', { name: 'Bot 設定分頁' }).getByRole('link', { name: '進階' }).click()
   await m.getByRole('button', { name: '收回' }).click()
   await page.getByRole('alertdialog').getByRole('button', { name: '收回' }).click()
   await expect.poll(() => api.calls.some((c) => c.op === 'engines.unlink_credentials')).toBe(true)

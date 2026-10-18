@@ -34,7 +34,7 @@ import {
   type ExpiryDays,
   type ResourceScope,
 } from '../data/agents'
-import { botsStore } from '../data/bots'
+import { botsStore, look } from '../data/bots'
 import { useStore } from '../data/store'
 import { useNetwork } from '../data/network'
 import { useFunnelSwitch } from '../settings/useFunnelSwitch'
@@ -396,7 +396,7 @@ function Editor({ draft, set, bots, locked }: { draft: Draft; set: (d: Partial<D
                     onClick={() => set({ bots: on ? draft.bots.filter((x) => x !== b.id) : [...draft.bots, b.id] })}
                     className={cx('inline-flex h-8 items-center gap-1.5 rounded-full border pl-1 pr-3 text-sub', on ? 'border-accent bg-accent-soft' : 'border-line bg-inset')}
                   >
-                    <Avatar shape={b.shape} color={b.color} state="idle" dot="none" size={22} />
+                    <Avatar {...look(b)} state="idle" dot="none" size={22} />
                     {b.name}
                   </button>
                 )

@@ -1,7 +1,7 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Activity as ActivityIcon, Cpu, Ellipsis, FolderOpen, Monitor, Plus, Settings, X } from 'lucide-react'
+import { Activity as ActivityIcon, Compass, Cpu, Ellipsis, FolderOpen, Monitor, Plus, Settings, X } from 'lucide-react'
 import { ApiError, chatListThreads, chatSend, chatStop, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
-import { botsStore, type Bot } from '../data/bots'
+import { botsStore, type Bot, look } from '../data/bots'
 import { onEvent, onReconnect } from '../data/events'
 import { useStore } from '../data/store'
 import { stampLabel } from '../data/ui'
@@ -25,6 +25,8 @@ import { ModelPicker } from './ModelPicker'
 import { ProgressDialog } from './ProgressDialog'
 import { ThreadMenu, type Thread } from './ThreadMenu'
 import { WorkSteps } from './WorkSteps'
+import { FirstHome, FirstTasks, useFirstHome } from '../onboard/FirstHome'
+import { startTour } from '../onboard/state'
 import { ComputerPanel } from '../computer/ComputerPanel'
 import { useNarrow } from '../computer/hooks'
 import { computerPanelStore } from '../computer/screenData'
@@ -151,7 +153,7 @@ function Header({
   return (
     <header className="flex h-14 flex-none items-center gap-2 pl-5 pr-3 max-md:h-12 max-md:gap-1.5 max-md:pl-3 max-md:pr-1.5">
       <span className="flex items-center gap-2 max-md:hidden">
-        <Avatar shape={bot.shape} color={bot.color} state={act ? 'working' : 'idle'} dot="none" ring="#070707" size={26} />
+        <Avatar {...look(bot)} state={act ? 'working' : 'idle'} dot="none" ring="#070707" size={26} />
         <span className="text-[16px]">{bot.name}</span>
       </span>
       <span className="flex items-center gap-1.5 whitespace-nowrap text-[13px] text-ink-3" data-testid="bot-status">
@@ -169,14 +171,15 @@ function Header({
       <span className="flex-1" />
       <ModelPicker bot={bot} models={models} onSetup={onSetupModels} className="max-sm:max-w-[124px]" />
       <IconButton icon={FolderOpen} label={`${bot.name}的檔案`} onClick={() => navigate(`/bots/${bot.id}/files`)} />
-      <IconButton icon={Monitor} label={`${bot.name}的電腦`} pressed={computerOpen} onClick={onComputer} />
+      <IconButton icon={Monitor} label={`${bot.name}的電腦`} pressed={computerOpen} onClick={onComputer} data-tour="computer" />
       <MenuButton
         label="更多"
         align="end"
         items={[
           { label: '目前進度', icon: ActivityIcon, onSelect: onProgress },
           { label: '新對話串', icon: Plus, onSelect: () => navigate(`/bots/${bot.id}/threads/new`) },
-          { label: '引擎與權限', icon: Settings, separator: true, onSelect: () => navigate(`/settings/bots/${encodeURIComponent(bot.id)}`) },
+          { label: '看導覽', icon: Compass, onSelect: startTour },
+          { label: 'Bot 設定', icon: Settings, separator: true, onSelect: () => navigate(`/settings/bots/${encodeURIComponent(bot.id)}`) },
           { label: '模型與金鑰設定', icon: Settings, onSelect: () => navigate('/settings/models') },
         ]}
         trigger={(p) => <IconButton {...p} icon={Ellipsis} label="更多" />}
@@ -278,6 +281,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   const mode: ComposerMode = act ? (stopping ? 'stopping' : 'working') : 'idle'
   const noModel = models !== null && !models.ready && !bot?.model
   const name = bot?.name ?? 'Bot'
+  const firstHome = useFirstHome(bots)
 
   // 新內容進來時，如果本來就在最下面，就跟著捲到底；載入更早的訊息時保持畫面不跳
   const lastItem = items[items.length - 1]
@@ -377,7 +381,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
       />
       <div ref={scroller} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto">
         <div
-          className={cx('mx-auto box-border flex min-h-full max-w-[828px] flex-col gap-3.5 px-6 pb-2 pt-3 max-sm:px-3', empty ? 'justify-center' : 'justify-end')}
+          className={cx('mx-auto box-border flex min-h-full max-w-[828px] flex-col gap-3.5 px-6 pb-2 pt-3 max-sm:px-3', empty ? (firstHome ? 'justify-start pt-8' : 'justify-center') : 'justify-end')}
           aria-live="polite"
           aria-busy={loading || undefined}
         >
@@ -386,7 +390,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
               載入更早的訊息
             </Button>
           )}
-          {empty && <EmptyState bot={bot} onPick={(t) => composer.current?.fill(t)} onFree={() => composer.current?.fill()} />}
+          {empty && (firstHome ? <FirstHome bot={bot} /> : <EmptyState bot={bot} onPick={(t) => composer.current?.fill(t)} onFree={() => composer.current?.fill()} />)}
           {threadId && <Messages items={items} bot={bot} threadId={threadId} canRetry={!act} onRetry={(t) => void send(t)} />}
         </div>
       </div>
@@ -394,7 +398,10 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
         <div className="mx-auto flex max-w-[780px] flex-col gap-2">
           {noModel && <NoModelCard name={name} onSetup={() => setModelDialog(true)} />}
           {notice && <NoticeRow notice={notice} onStop={() => void stop(false)} onClose={() => setNotice(null)} />}
-          <ChatComposer handle={composer} name={name} mode={mode} onSend={send} onStop={() => void stop()} />
+          {empty && firstHome && <FirstTasks onPick={(t) => composer.current?.fill(t)} />}
+          <div data-tour="composer" className="rounded-[26px]">
+            <ChatComposer handle={composer} name={name} mode={mode} onSend={send} onStop={() => void stop()} />
+          </div>
         </div>
       </div>
       <ModelSettingsDialog open={modelDialog} onClose={() => setModelDialog(false)} onSaved={(m) => setModels(m)} />

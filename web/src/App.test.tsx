@@ -162,9 +162,10 @@ it('沒有 Bot 時側欄有新增按鈕；新增 Bot 表單呼叫 bots.create �
   render(<App />)
   const nav = await screen.findByRole('navigation', { name: '側欄' })
   await within(nav).findByText(/還沒有 Bot/)
-  const adds = within(nav).getAllByRole('button', { name: '新增 Bot' })
-  expect(adds).toHaveLength(2) // 標題列的＋與空清單的按鈕
-  fireEvent.click(adds[1])
+  // 沒有 Bot 時首頁是「建立第一個 Bot」（A09）
+  expect(await screen.findByRole('heading', { level: 1, name: '建立第一個 Bot' })).toBeInTheDocument()
+  expect(within(nav).getByRole('button', { name: '新增 Bot' })).toBeInTheDocument() // 標題列的＋
+  fireEvent.click(within(nav).getByRole('button', { name: '建立 Bot' }))
   const dlg = await screen.findByRole('dialog', { name: '新增 Bot' })
   fireEvent.click(within(dlg).getByRole('button', { name: '建立' }))
   expect(await within(dlg).findByText('請填名字')).toBeInTheDocument()

@@ -14,6 +14,7 @@ import { Block, Group, Note, Row, SectionHeader } from './parts'
 import { DevicesEntry } from './NetworkPage'
 import { STATUS_LABEL, hostSub, loadHosts, useHosts, type HostView, type HostsState } from './hostsData'
 import { useRemoveHost } from './removeHost'
+import { look } from '../data/bots'
 
 // 設定 › 電腦與裝置（J06，PRD §16 CL-1、CL-3、CL-6、CL-8）：主機清單（狀態、資源、上面的 Bot、開機台數／上限）、
 // 新增主機（J11）、新 Bot 預設放哪台。搬家（CL-5）與「從家裡出去」（CL-7）之後的卡片做。
@@ -61,7 +62,7 @@ function BotFaces({ h }: { h: HostView }) {
     <span className="flex items-center" title={h.bots.map((b) => b.name).join('、')}>
       {shown.map((b, i) => (
         <span key={b.id} className={cx('rounded-full', i > 0 && '-ml-1.5')}>
-          <Avatar shape={b.shape} color={b.color} size={24} blink={false} state={h.status === 'offline' ? 'sleeping' : b.running ? 'working' : 'idle'} />
+          <Avatar {...look(b)} size={24} blink={false} state={h.status === 'offline' ? 'sleeping' : b.running ? 'working' : 'idle'} />
         </span>
       ))}
       {h.bots.length > shown.length && <span className="ml-1.5 text-meta text-ink-2">+{h.bots.length - shown.length}</span>}
@@ -201,7 +202,7 @@ export function ComputersSection() {
             {open &&
               bots.map((b) => (
                 <div key={b.id} className="flex items-center gap-3 border-t border-line px-4 py-2">
-                  <Avatar shape={b.shape} color={b.color} size={24} blink={false} />
+                  <Avatar {...look(b)} size={24} blink={false} />
                   <span className="min-w-0 flex-1 text-ui-sm">{b.name}</span>
                   <span className="text-[13px] text-ink-2">
                     {b.host.name} · {b.host.status === 'offline' ? '主機離線' : b.running ? '開機中' : b.state === 'none' ? '還沒開機' : '休眠'}

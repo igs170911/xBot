@@ -10,7 +10,7 @@ import { useToast } from '../ui/toast-context'
 import { BOTS } from '../shell/sample'
 import { fetchHealth, type Health } from '../health'
 import { ApiError, approvalsDecide, chatAskAgain, inboxDismiss, inboxUndo, routinesRunNow } from '../api/generated'
-import { botsStore, type Bot } from '../data/bots'
+import { botsStore, type Bot, look } from '../data/bots'
 import { inboxStore, loadInbox, type InboxItem } from '../data/inbox'
 import { useStore } from '../data/store'
 import { AskCard } from '../chat/AskCard'
@@ -66,7 +66,7 @@ function useUndoToast() {
 function Head({ bot, chip, tone, sub, aside }: { bot: CardBot; chip: ReactNode; tone: Tone; sub: ReactNode; aside?: ReactNode }) {
   return (
     <div className="flex items-center gap-3">
-      <Avatar shape={bot.shape} color={bot.color} state="notifying" dot="waiting" ring="#262626" size={32} />
+      <Avatar {...look(bot)} state="notifying" dot="waiting" ring="#262626" size={32} />
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="flex items-center gap-2">
           <span className="text-body">{bot.name}</span>
@@ -476,7 +476,7 @@ export function InboxPage() {
                 <a key={c.bot} href="/office" aria-label={`${b.name}的電腦：${c.thumb}`} className="flex flex-col gap-1.5 text-ink">
                   <ScreenThumb label={c.thumb} waiting={c.waiting} />
                   <span className="flex min-w-0 items-center gap-1.5 text-[13px]">
-                    <Avatar shape={b.shape} color={b.color} state={c.state} dot={c.waiting ? 'waiting' : 'none'} size={18} />
+                    <Avatar {...look(b)} state={c.state} dot={c.waiting ? 'waiting' : 'none'} size={18} />
                     {b.name}
                     <span className={c.waiting ? 'truncate text-warning-ink' : 'truncate text-ink-2'}>{c.note}</span>
                   </span>

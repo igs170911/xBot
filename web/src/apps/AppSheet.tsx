@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ChevronRight, CircleAlert, CircleCheck, Plus } from 'lucide-react'
 import { appsGet, appsGrantToBot, appsRevokeFromBot, appsUpdate, type AppsGetOutput } from '../api/generated'
-import { botsStore } from '../data/bots'
+import { botsStore, look } from '../data/bots'
 import { useStore } from '../data/store'
 import { Avatar } from '../ui/Avatar'
 import { Button } from '../ui/Button'
@@ -167,7 +167,7 @@ export function AppSheet({
                 {bots.map((b) => (
                   <Checkbox key={b.id} checked={granted.has(b.id)} onChange={(v) => toggleBot(b.id, v)} className="rounded-[12px] bg-card px-3 py-2">
                     <span className="flex items-center gap-2">
-                      <Avatar shape={b.shape} color={b.color} size={24} />
+                      <Avatar {...look(b)} size={24} />
                       {b.name}
                     </span>
                   </Checkbox>
@@ -184,7 +184,7 @@ export function AppSheet({
               const b = bots.find((x) => x.id === u.bot_id)
               return (
                 <div key={u.id} className="flex items-center gap-3 border-0 border-b border-solid border-divider py-2 last:border-b-0">
-                  {b ? <Avatar shape={b.shape} color={b.color} size={22} /> : <span className="size-[22px]" />}
+                  {b ? <Avatar {...look(b)} size={22} /> : <span className="size-[22px]" />}
                   <span className="min-w-0 flex-1 truncate text-ui-sm">
                     {b?.name ?? 'Bot'} 用了 <span className="font-mono text-meta">{u.tool}</span>
                     {!u.ok && <span className="text-danger">（失敗）</span>}

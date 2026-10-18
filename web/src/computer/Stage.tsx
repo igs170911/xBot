@@ -9,6 +9,7 @@ import { boxState, controlOf } from './hooks'
 import { useWake, type Screen } from './screenData'
 import { statusText, type VncHandle, type VncStatus } from './vnc'
 import { VncScreen } from './VncScreen'
+import { look } from '../data/bots'
 
 /** 畫面框：即時畫面（或電腦狀態）、左下角的膠囊、連線問題的提示列、「你在看」。 */
 export function Stage({
@@ -99,7 +100,7 @@ export function Stage({
                 <span className="px-2 py-1">{screen.takeover?.by_name} 正在操作 · {screen.name}已暫停</span>
               ) : (
                 <>
-                  {bot && <Avatar shape={bot.shape} color={bot.color} state={screen.working ? 'working' : 'idle'} dot="none" size={20} ring="#000" />}
+                  {bot && <Avatar {...look(bot)} state={screen.working ? 'working' : 'idle'} dot="none" size={20} ring="#000" />}
                   <span className="truncate">
                     {screen.name} {screen.working ? '正在使用電腦' : '閒著'}
                   </span>

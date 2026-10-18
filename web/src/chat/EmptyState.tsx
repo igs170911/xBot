@@ -5,6 +5,7 @@ import { Avatar } from '../ui/Avatar'
 import { IconButton } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { STARTERS } from './format'
+import { look } from '../data/bots'
 
 const APPROVAL_LABEL: Record<string, string> = { ask: '先問我', edits: '一般的事自己做', auto: '放手做', full: '完全放手' }
 
@@ -17,7 +18,7 @@ export function EmptyState({ bot, onPick, onFree }: { bot: Bot; onPick: (text: s
   return (
     <div className="flex flex-col gap-3.5" data-testid="chat-empty">
       <div className="flex flex-col items-center gap-1.5 pb-3 text-center">
-        <Avatar shape={bot.shape} color={bot.color} state="happy" dot="none" size={72} />
+        <Avatar {...look(bot)} state="happy" dot="none" size={72} />
         <h1 className="m-0 mt-1.5 text-[24px] leading-[1.35]">{bot.name}</h1>
         {sub && <span className="text-ui-sm text-ink-2">{sub}</span>}
         <span className="mt-1.5 flex flex-wrap justify-center gap-1.5 text-meta text-ink-2">

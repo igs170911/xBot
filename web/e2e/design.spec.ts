@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { ensureBot } from './real-helpers'
 
 // W01：截圖給人和 design/N02、N03、Sidebar、Main 畫板並排比對（存在 e2e-results/screens，不進 git）。
 const shot = (name: string) => `e2e-results/screens/${name}.png`
@@ -37,7 +38,8 @@ test('/dev/components 截圖', async ({ page }, info) => {
   }
 })
 
-test('版型截圖：側欄＋待我處理', async ({ page }, info) => {
+test('版型截圖：側欄＋待我處理', async ({ page, request }, info) => {
+  await ensureBot(request)
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1, name: '早安，事情都處理完了' })).toBeVisible()
   await expect(page.getByTestId('health')).toContainText('服務正常')

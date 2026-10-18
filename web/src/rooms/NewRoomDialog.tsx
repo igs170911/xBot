@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { roomsCreate } from '../api/generated'
-import { botsStore } from '../data/bots'
+import { botsStore, look } from '../data/bots'
 import { newRoomDialog, upsertRoom } from '../data/rooms'
 import { useStore } from '../data/store'
 import { navigate } from '../router'
@@ -72,7 +72,7 @@ function NewRoomForm({ onDone }: { onDone: () => void }) {
                   full && 'opacity-50',
                 )}
               >
-                <Avatar shape={b.shape} color={b.color} dot="none" size={30} blink={false} />
+                <Avatar {...look(b)} dot="none" size={30} blink={false} />
                 <span className="flex min-w-0 flex-1 flex-col leading-[1.35]">
                   <span className="truncate text-ui-sm text-ink">{b.name}</span>
                   <span className="truncate text-meta text-ink-3">{b.title || b.description || ' '}</span>
