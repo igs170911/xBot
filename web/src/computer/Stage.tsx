@@ -22,6 +22,7 @@ export function Stage({
   onTake,
   taking,
   onStatus,
+  recording,
   children,
 }: {
   screen: Screen
@@ -33,6 +34,8 @@ export function Stage({
   onTake?: () => void
   taking?: boolean
   onStatus?: (s: VncStatus) => void
+  /** 示範教學中（B32、E04）：紅框＋左下角「錄製中 · 密碼只會記成 ••••」。 */
+  recording?: 'recording' | 'paused'
   children?: ReactNode
 }) {
   const [status, setStatus] = useState<VncStatus>({ kind: 'connecting' })
@@ -51,7 +54,14 @@ export function Stage({
   const canWake = (screen.box === 'sleeping' || screen.box === 'none') && screen.host_status === 'online'
   return (
     <div
-      className={cx('relative overflow-hidden rounded-[10px] bg-[#111111]', control && 'ring-2 ring-accent', screen.request && !screen.takeover && 'ring-2 ring-warning', className)}
+      className={cx(
+        'relative overflow-hidden rounded-[10px] bg-[#111111]',
+        control && 'ring-2 ring-accent',
+        screen.request && !screen.takeover && 'ring-2 ring-warning',
+        recording === 'recording' && 'ring-2 ring-danger',
+        recording === 'paused' && 'ring-2 ring-check-off',
+        className,
+      )}
       data-testid="computer-stage"
       data-state={off ? screen.box : status.kind}
     >
@@ -91,7 +101,12 @@ export function Stage({
           )}
           {capsule && (
             <div className="absolute bottom-2.5 left-2.5 flex max-w-[calc(100%-20px)] items-center gap-2 rounded-full bg-black/80 py-1 pl-1.5 pr-1 text-sub shadow-dialog" data-testid="capsule">
-              {who === 'you' ? (
+              {recording ? (
+                <span className="flex items-center gap-1.5 px-2.5 py-1" data-testid="rec-label">
+                  <span className={cx('size-2 rounded-full', recording === 'paused' ? 'bg-check-off' : 'animate-pulse bg-danger')} />
+                  {recording === 'paused' ? '已暫停錄製' : '錄製中 · 密碼只會記成 ••••'}
+                </span>
+              ) : who === 'you' ? (
                 <span className="flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-white">
                   <Icon icon={MousePointerClick} size={14} />
                   你正在操作 · {screen.name}已暫停

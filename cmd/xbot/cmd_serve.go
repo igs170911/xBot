@@ -59,6 +59,10 @@ func cmdServe(args []string) error {
 	if err := st.runtime.RecoverTasks(context.Background()); err != nil {
 		slog.Warn("接續排隊中的工作失敗", "err", err)
 	}
+	// 上次沒結束的示範教學（錄製器的監督者不在了）收掉（B32，同 LazyBoy teaching.recover）。
+	if err := st.teaching.Recover(context.Background()); err != nil {
+		slog.Warn("收掉沒結束的示範教學失敗", "err", err)
+	}
 	// 閒置的 Bot 電腦自動休眠（有工作時會自動開機）。
 	st.startBackground()
 	// 只有一條事件匯流排：runtime（對話串流）與操作登錄表都發布到它，SSE 從它訂閱。

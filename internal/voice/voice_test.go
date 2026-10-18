@@ -43,7 +43,7 @@ func (u *fakeUpstream) handler(w http.ResponseWriter, r *http.Request) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	if r.Header.Get("Authorization") != "Bearer "+testKey {
-		http.Error(w, "no key", 401)
+		http.Error(w, "no key", http.StatusUnauthorized)
 		return
 	}
 	if u.fail != 0 {

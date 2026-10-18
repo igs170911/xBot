@@ -118,7 +118,7 @@ func Clip(text string, max int) (string, bool) {
 
 var (
 	fence      = regexp.MustCompile("(?s)```([^\\n]*)\\n.*?(?:```|$)")
-	tildeFence = regexp.MustCompile("(?s)~~~([^\\n]*)\\n.*?(?:~~~|$)")
+	tildeFence = regexp.MustCompile(`(?s)~~~([^\n]*)\n.*?(?:~~~|$)`)
 	image      = regexp.MustCompile(`!\[([^\]]*)\]\([^)]*\)`)
 	link       = regexp.MustCompile(`\[([^\]]+)\]\([^)]*\)`)
 	angleURL   = regexp.MustCompile(`<https?://[^>\s]+>`)
