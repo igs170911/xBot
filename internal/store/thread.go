@@ -22,18 +22,23 @@ type Thread struct {
 	LastMessageAt int64           `json:"last_message_at"`
 	// EngineSession 是這條對話串在引擎裡的 session（例：Hermes 的 stored_session_id），由驅動寫入。
 	EngineSession string `json:"engine_session"`
-	CreatedAt     int64  `json:"created_at"`
-	UpdatedAt     int64  `json:"updated_at"`
+	// RoomID：這是 Bot 在群組裡的座位（隱藏的對話串，不出現在 Bot 的對話串清單，RM-4）。
+	RoomID string `json:"room_id,omitempty"`
+	// PeerBotID：這條對話串收的是哪個隊友傳來的工作（X02）。
+	PeerBotID string `json:"peer_bot_id,omitempty"`
+	CreatedAt int64  `json:"created_at"`
+	UpdatedAt int64  `json:"updated_at"`
 }
 
-const threadCols = `id, bot_id, title, folder_id, pinned, archived, unread, model_override, usage, last_message_at, engine_session, created_at, updated_at`
+const threadCols = `id, bot_id, title, folder_id, pinned, archived, unread, model_override, usage, last_message_at, engine_session, room_id, peer_bot_id, created_at, updated_at`
 
 func scanThread(s scanner) (Thread, error) {
 	var t Thread
-	var folder sql.NullString
+	var folder, room, peer sql.NullString
 	var usage string
-	err := s.Scan(&t.ID, &t.BotID, &t.Title, &folder, &t.Pinned, &t.Archived, &t.Unread, &t.ModelOverride, &usage, &t.LastMessageAt, &t.EngineSession, &t.CreatedAt, &t.UpdatedAt)
-	t.FolderID, t.Usage = folder.String, json.RawMessage(usage)
+	err := s.Scan(&t.ID, &t.BotID, &t.Title, &folder, &t.Pinned, &t.Archived, &t.Unread, &t.ModelOverride, &usage, &t.LastMessageAt, &t.EngineSession,
+		&room, &peer, &t.CreatedAt, &t.UpdatedAt)
+	t.FolderID, t.Usage, t.RoomID, t.PeerBotID = folder.String, json.RawMessage(usage), room.String, peer.String
 	return t, err
 }
 
@@ -45,9 +50,9 @@ func (q *Queries) CreateThread(ctx context.Context, t Thread) (Thread, error) {
 	t.CreatedAt = nowMS()
 	t.UpdatedAt = t.CreatedAt
 	t.Usage = json.RawMessage(jsonOr(t.Usage, "{}"))
-	_, err := q.w.ExecContext(ctx, `INSERT INTO thread(`+threadCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+	_, err := q.w.ExecContext(ctx, `INSERT INTO thread(`+threadCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		t.ID, t.BotID, t.Title, nullStr(t.FolderID), b2i(t.Pinned), b2i(t.Archived), t.Unread, t.ModelOverride,
-		string(t.Usage), t.LastMessageAt, t.EngineSession, t.CreatedAt, t.UpdatedAt)
+		string(t.Usage), t.LastMessageAt, t.EngineSession, nullStr(t.RoomID), nullStr(t.PeerBotID), t.CreatedAt, t.UpdatedAt)
 	return t, err
 }
 
@@ -57,9 +62,9 @@ func (q *Queries) GetThread(ctx context.Context, id string) (Thread, error) {
 	return t, notFound(err)
 }
 
-// ListThreads 列出一個 Bot 的對話串：釘選的在前，其餘依最後訊息時間新到舊。
+// ListThreads 列出一個 Bot 的對話串：釘選的在前，其餘依最後訊息時間新到舊。群組座位（隱藏的對話串）不列。
 func (q *Queries) ListThreads(ctx context.Context, botID string, includeArchived bool) ([]Thread, error) {
-	rows, err := q.r.QueryContext(ctx, `SELECT `+threadCols+` FROM thread WHERE bot_id = ? AND (archived = 0 OR ?)
+	rows, err := q.r.QueryContext(ctx, `SELECT `+threadCols+` FROM thread WHERE bot_id = ? AND room_id IS NULL AND (archived = 0 OR ?)
 		ORDER BY pinned DESC, last_message_at DESC, created_at DESC`, botID, includeArchived)
 	return collect(rows, err, scanThread)
 }

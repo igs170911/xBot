@@ -1,4 +1,4 @@
--- 0008（C31）：記憶的變更紀錄（MM-3：可復原）。
+-- 0009（C31）：記憶的變更紀錄（MM-3：可復原）。
 -- 每次 XBot 改 Bot 的 MEMORY.md／USER.md（或發現 Bot 自己改過）記一筆：改之前、改之後的全文。
 -- 每個 Bot 每份記憶只留最近 limits.MemoryVersionsKept 筆。
 CREATE TABLE memory_version (

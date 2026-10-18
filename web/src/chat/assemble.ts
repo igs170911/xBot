@@ -35,6 +35,23 @@ export type ChatMsg = {
   actorName?: string
   /** 從哪個出口送的：mcp、http、cli。 */
   via?: string
+  /** 隊友交辦或群組裡 Bot 回 [silent]：不顯示。 */
+  silent?: boolean
+  /** kind=peer：和隊友往來的那一行（X02、C13）。 */
+  peer?: PeerLine
+}
+
+/** 對話裡和隊友往來的一行（chat.read 的 peer）。 */
+export type PeerLine = {
+  event: string
+  peer_id?: string
+  peer_name?: string
+  intent?: string
+  message_id?: string
+  hop?: number
+  chain?: string
+  room_id?: string
+  files?: number
 }
 
 export type Step = {
@@ -102,7 +119,7 @@ type StoreMessage = {
   updated_at: number
 }
 
-type MessageMeta = { task_id?: string; streaming?: boolean; status?: string; actor?: string; actor_name?: string; via?: string }
+type MessageMeta = { task_id?: string; streaming?: boolean; status?: string; actor?: string; actor_name?: string; via?: string; silent?: boolean; peer?: PeerLine }
 
 type EngineEvent = {
   text?: string
@@ -179,6 +196,8 @@ export function applyRead(s: ChatState, out: ChatReadOutput): ChatState {
       updatedAt: m.updated_at,
       live: false,
       ...(m.actor ? { actorName: m.actor_name || m.actor, via: m.via } : {}),
+      ...(m.silent ? { silent: true } : {}),
+      ...(m.peer ? { peer: m.peer } : {}),
     }
     if (local && server.streaming && local.content.length > server.content.length && local.content.startsWith(server.content)) {
       // 還在串流：本地已經接到比快照更多的字
@@ -244,6 +263,8 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
         updatedAt: m.updated_at,
         live: existing ? existing.live : !!meta.streaming && m.content === '',
         ...(meta.actor ? { actorName: meta.actor_name || meta.actor, via: meta.via } : {}),
+        ...(meta.silent ? { silent: true } : {}),
+        ...(meta.peer ? { peer: meta.peer } : {}),
       }
       const messages = existing ? th.messages.map((x) => (x.id === m.id ? msg : x)) : [...th.messages, msg]
       let next = putMessages(s, m.scope_id, messages)
