@@ -12,6 +12,7 @@ import (
 	"xbot/internal/collab"
 	"xbot/internal/delegation"
 	"xbot/internal/engines"
+	"xbot/internal/files"
 	"xbot/internal/hosts"
 	"xbot/internal/inbox"
 	"xbot/internal/memory"
@@ -47,9 +48,11 @@ type Deps struct {
 	Collab *collab.Service
 	// Org 是團隊、匯報線、提案與討論（X03）；nil 時只登錄定義。
 	Org *org.Service
+	// Files 是檔案面板（C33）；nil 時只登錄定義。
+	Files *files.Service
 }
 
-// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines 各領域的操作。
+// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines、files 各領域的操作。
 func Register(reg *ops.Registry, d Deps) {
 	bd := bots.Deps{Teardown: d.Teardown, SoulChanged: d.SoulChanged}
 	if d.Collab != nil {
@@ -88,6 +91,7 @@ func Register(reg *ops.Registry, d Deps) {
 	skills.Register(reg, d.Skills)
 	memory.Register(reg, d.Memory)
 	hosts.Register(reg, d.Hosts)
+	files.Register(reg, d.Files)
 }
 
 // Teardown 產生刪除 Bot 時用的收尾函式：先關引擎連線，再刪電腦與資料區（remove）。

@@ -335,3 +335,15 @@ func TestNoRuntime(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 }
+
+// 檔案卡（C11 cards.post）：chat.read 帶出卡片內容，畫面才能把檔案畫成可以預覽、下載的列（C33）。
+func TestMessageViewCarriesCard(t *testing.T) {
+	m := messageView(store.Message{ID: "m1", Kind: "card", Content: "【檔案】報告", Meta: []byte(
+		`{"task_id":"t1","card":{"type":"file","title":"報告好了","files":[{"path":"/workspace/報告.pdf","name":"報告.pdf"}]}}`)})
+	if m.Card == nil || m.Card.Type != "file" || len(m.Card.Files) != 1 || m.Card.Files[0].Path != "/workspace/報告.pdf" || m.TaskID != "t1" {
+		t.Fatalf("%+v", m)
+	}
+	if messageView(store.Message{ID: "m2", Kind: "text"}).Card != nil {
+		t.Fatal("一般訊息沒有卡片")
+	}
+}
