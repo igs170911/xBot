@@ -15,3 +15,7 @@ const BoxIdleMinutes = 30
 
 // EventsKeepPerBot 是每個 Bot 保留的事件筆數，較舊的會被清掉。出自 LazyBoy server/store.py prune_events(keep=5000)。
 const EventsKeepPerBot = 5000
+
+// OpRequestStale 是帶 request_id 的操作停在「處理中」多久後，同一個 request_id 可以重新接手
+// （程序中途當掉留下的紀錄）。XBot 新增：LazyBoy 的 admissions 只在成功收下後才寫，沒有處理中狀態。
+const OpRequestStale = 15 * time.Minute
