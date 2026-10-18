@@ -89,6 +89,7 @@ func cmdServe(args []string) error {
 		MCP:        mcpHandler,
 		AgentPair:  pairing.Handler(),
 		Hooks:      st.routines.HookHandler(),
+		VNC:        st.screen.ServeVNC,
 		Streams: map[string]api.StreamHandler{
 			"POST " + api.Route("xbot.files.upload"): st.files.UploadHandler(reg),
 			"GET /api/v1/files.download":             st.files.DownloadHandler(reg),
@@ -112,6 +113,8 @@ func cmdServe(args []string) error {
 	defer stop()
 	// 提案到期視同同意、討論時間到叫醒 Bot（X03，LazyBoy agenda tick）。
 	go st.org.Run(ctx)
+	// 接手後太久沒人操作的自動交還（B14）。
+	go st.screen.Run(ctx)
 
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()

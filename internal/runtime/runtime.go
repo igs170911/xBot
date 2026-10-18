@@ -114,6 +114,7 @@ type Runtime struct {
 
 	mu        sync.Mutex
 	active    map[string]*turn          // botID → 進行中的一輪
+	held      map[string]*hold          // botID → 使用者接手電腦中（B14）：不開始新的工作
 	closing   map[string]*turn          // taskID → 已經釋放 Bot、還在收尾的一輪（Wait 要等它寫完）
 	consumers map[engine.Session]string // 已經有人在讀事件的 session → botID
 
@@ -142,7 +143,7 @@ func New(o Options) *Runtime {
 			*d.v = d.def
 		}
 	}
-	return &Runtime{o: o, log: o.Logger, active: map[string]*turn{}, closing: map[string]*turn{}, consumers: map[engine.Session]string{},
+	return &Runtime{o: o, log: o.Logger, active: map[string]*turn{}, held: map[string]*hold{}, closing: map[string]*turn{}, consumers: map[engine.Session]string{},
 		stallNudged: map[string]int{}}
 }
 
@@ -200,6 +201,7 @@ type turn struct {
 	text      strings.Builder
 	persisted time.Time
 	stopping  bool
+	paused    bool // 使用者接手電腦而中斷（B14）：交還時接著做
 	finished  bool
 	waiting   bool
 	lastErr   string
@@ -374,7 +376,7 @@ func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error
 // 呼叫時要拿著 dispatchMu。回傳開始的任務 id（沒有開始任何工作時是空白）。
 func (r *Runtime) next(botID string) string {
 	r.mu.Lock()
-	busy := r.active[botID] != nil
+	busy := r.active[botID] != nil || r.held[botID] != nil
 	r.mu.Unlock()
 	if busy {
 		return ""
@@ -697,6 +699,7 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	streamed := t.text.String()
 	msgID := t.messageID
 	stopping := t.stopping
+	paused := t.paused
 	lastErr := t.lastErr
 	t.mu.Unlock()
 
@@ -736,6 +739,9 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	}
 	if msgID != "" {
 		fields := map[string]any{"task_id": t.taskID, "status": status}
+		if paused && verdict == VerdictCancelled {
+			fields["paused"] = true // 你接手了電腦：這一輪先停，交還時接著做（B14）
+		}
 		if h := r.hooks(); h.Silent != nil && h.Silent(t.taskID, verdict, final) {
 			fields["silent"] = true // 隊友、群組裡回 [silent] 的：不顯示（LazyBoy finish）
 		}

@@ -235,7 +235,9 @@ test('目前進度（C12）與電腦按鈕；載入更早的訊息', async ({ pa
   await page.keyboard.press('Escape')
   await expect(dlg).toBeHidden()
 
+  // 電腦按鈕（B14）：寬螢幕在對話右邊打開電腦面板（E01）；手機到全視窗的電腦頁（L04）。
   await main.getByRole('button', { name: '小秘的電腦' }).click()
-  await expect(page).toHaveURL(new RegExp(`/bots/${bot.id}/computer$`))
+  if (info.project.name === 'desktop') await expect(page.getByTestId('computer-panel')).toBeVisible()
+  else await expect(page).toHaveURL(new RegExp(`/bots/${bot.id}/computer$`))
   await expect(page.getByRole('heading', { name: '小秘的電腦' })).toBeVisible()
 })

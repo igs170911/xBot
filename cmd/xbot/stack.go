@@ -28,6 +28,7 @@ import (
 	"xbot/internal/proxy"
 	"xbot/internal/routines"
 	"xbot/internal/runtime"
+	"xbot/internal/screen"
 	"xbot/internal/skills"
 	"xbot/internal/store"
 )
@@ -61,6 +62,7 @@ type stack struct {
 	computers *computers.Service
 	// stopIdle 停掉閒置休眠的背景檢查（startBackground 開始）。
 	stopIdle context.CancelFunc
+	screen   *screen.Service // 看畫面與接手（B14）
 }
 
 func openStack(cfg config.Config) (*stack, error) {
@@ -206,6 +208,8 @@ func openStack(cfg config.Config) (*stack, error) {
 	}
 	// 電腦的生命週期操作與「更新電腦」（B13）。
 	s.computers = &computers.Service{DB: db, Boxes: s.boxes, Hosts: s.hosts, Activity: s.runtime, Bus: bus, Logger: logger}
+	// 看畫面與接手（B14）：noVNC 經服務代理、接手時暫停 Bot、辦公室縮圖。
+	s.screen = screen.New(screen.Options{DB: db, Boxes: s.boxes, Hosts: registry, Runtime: s.runtime, Bus: bus, Logger: logger})
 	if err := s.hosts.Start(context.Background()); err != nil {
 		s.Close()
 		return nil, err

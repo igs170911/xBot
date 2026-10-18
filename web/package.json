@@ -15,6 +15,7 @@
   "dependencies": {
     "@fontsource/huninn": "5.2.4",
     "@fontsource/jetbrains-mono": "5.2.5",
+    "@novnc/novnc": "1.7.0",
     "highlight.js": "11.11.1",
     "lowlight": "3.3.0",
     "lucide-react": "^1.58.0",

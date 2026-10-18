@@ -40,6 +40,7 @@ func coreDeps(st *stack) catalog.Deps {
 		Collab:    st.collab,
 		Computers: st.computers,
 		Org:       st.org,
+		Screen:    st.screen,
 		Skills:    st.skills,
 		Memory:    st.memory,
 		Files:     st.files,

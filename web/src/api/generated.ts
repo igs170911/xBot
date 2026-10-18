@@ -2185,6 +2185,73 @@ export function collabStopRoom(input: CollabStopRoomInput, opts?: CallOptions): 
   return invoke('xbot.collab.stop_room', input, opts).then((r) => r.output)
 }
 
+// xbot.computers.handback
+
+export interface ComputersHandbackInput {
+  /** Bot id */
+  bot_id: string
+  /** 告訴 Bot 你做了什麼（選填）；不填送出「我剛剛在電腦上操作過，請從目前畫面繼續。」 */
+  note?: string
+}
+
+export interface ComputersHandbackOutput {
+  /** 送給 Bot 的說明 */
+  note: string
+  resumed_task_id?: string
+  thread_id?: string
+  screen: {
+    bot_id: string
+    /** Bot 名稱 */
+    name: string
+    /** 電腦所在的主機；還沒有電腦時是 Bot 指定的主機（空白＝第一次開機時自動擺放） */
+    host_id: string
+    /** none 還沒建立、creating 建立中、running 開機中、sleeping 休眠中、updating 更新中、error 出錯 */
+    box: string
+    /** box=error 時的原因 */
+    error?: string
+    /** 主機名稱；還沒擺放時空白 */
+    host_name: string
+    /** 主機狀態：online、offline、unknown、updating、failed */
+    host_status: string
+    /** Bot 正在做事 */
+    working: boolean
+    /** Bot 因為接手而暫停 */
+    paused: boolean
+    /** 電腦最後被使用的時間（毫秒） */
+    last_active_at: number
+    takeover?: {
+      /** 誰在操作：owner 或 agent:<權杖 id> */
+      by: string
+      /** 顯示名稱 */
+      by_name: string
+      since: number
+      thread_id?: string
+      task_id?: string
+    }
+    request?: {
+      inbox_id: string
+      /** Bot 寫的原因，例：需要輸入簡訊驗證碼 */
+      reason: string
+      thread_id?: string
+      at: number
+    }
+    /** 正在看畫面的連線數 */
+    viewers: number
+    /** 正在操作的是你（呼叫者） */
+    you: boolean
+    vnc: string
+  }
+}
+
+/**
+ * 把電腦交還給 Bot，可以附一句說明；Bot 會從目前的畫面接著做原本的工作
+ *
+ * `xbot.computers.handback`：權限 operate、風險 safe
+ */
+export function computersHandback(input: ComputersHandbackInput, opts?: CallOptions): Promise<ComputersHandbackOutput> {
+  return invoke('xbot.computers.handback', input, opts).then((r) => r.output)
+}
+
 // xbot.computers.purge
 
 export interface ComputersPurgeInput {
@@ -2275,6 +2342,31 @@ export function computersRebuild(input: ComputersRebuildInput, opts?: CallOption
   return invoke('xbot.computers.rebuild', input, opts).then((r) => r.output)
 }
 
+// xbot.computers.request_takeover
+
+export interface ComputersRequestTakeoverInput {
+  /** 一兩句話說明要使用者在電腦上做什麼，例：Threads 要輸入簡訊驗證碼 */
+  reason: string
+}
+
+export interface ComputersRequestTakeoverOutput {
+  inbox_id: string
+  /** 已經請過了，還在等使用者 */
+  already_pending?: boolean
+  note: string
+}
+
+/**
+ * 請使用者接手你的電腦（登入、驗證碼、付款這類一定要真人做的步驟）
+ *
+ * 使用者的「待我處理」會出現一張接手卡。送出後在這一輪的回覆裡用一兩句話說明要使用者做什麼，然後結束這一輪，不要再操作電腦。使用者交還時你會收到一則訊息（含使用者寫的說明），再從當時的畫面接著做。
+ *
+ * `xbot.computers.request_takeover`：權限 operate、風險 safe
+ */
+export function computersRequestTakeover(input: ComputersRequestTakeoverInput, opts?: CallOptions): Promise<ComputersRequestTakeoverOutput> {
+  return invoke('xbot.computers.request_takeover', input, opts).then((r) => r.output)
+}
+
 // xbot.computers.restart
 
 export interface ComputersRestartInput {
@@ -2318,6 +2410,125 @@ export interface ComputersRestartOutput {
  */
 export function computersRestart(input: ComputersRestartInput, opts?: CallOptions): Promise<ComputersRestartOutput> {
   return invoke('xbot.computers.restart', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.screen
+
+export interface ComputersScreenInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface ComputersScreenOutput {
+  bot_id: string
+  /** Bot 名稱 */
+  name: string
+  /** 電腦所在的主機；還沒有電腦時是 Bot 指定的主機（空白＝第一次開機時自動擺放） */
+  host_id: string
+  /** none 還沒建立、creating 建立中、running 開機中、sleeping 休眠中、updating 更新中、error 出錯 */
+  box: string
+  /** box=error 時的原因 */
+  error?: string
+  /** 主機名稱；還沒擺放時空白 */
+  host_name: string
+  /** 主機狀態：online、offline、unknown、updating、failed */
+  host_status: string
+  /** Bot 正在做事 */
+  working: boolean
+  /** Bot 因為接手而暫停 */
+  paused: boolean
+  /** 電腦最後被使用的時間（毫秒） */
+  last_active_at: number
+  takeover?: {
+    /** 誰在操作：owner 或 agent:<權杖 id> */
+    by: string
+    /** 顯示名稱 */
+    by_name: string
+    since: number
+    thread_id?: string
+    task_id?: string
+  }
+  request?: {
+    inbox_id: string
+    /** Bot 寫的原因，例：需要輸入簡訊驗證碼 */
+    reason: string
+    thread_id?: string
+    at: number
+  }
+  /** 正在看畫面的連線數 */
+  viewers: number
+  /** 正在操作的是你（呼叫者） */
+  you: boolean
+  vnc: string
+}
+
+/**
+ * 看一台電腦的畫面狀態：開機或休眠、有沒有人在接手、Bot 有沒有請你接手、幾個人在看
+ *
+ * 畫面本身用 WebSocket 連 vnc 欄位的路徑（noVNC，預設只能看）。接手前先呼叫 xbot.computers.takeover。
+ *
+ * `xbot.computers.screen`：權限 read、風險 safe
+ */
+export function computersScreen(input: ComputersScreenInput, opts?: CallOptions): Promise<ComputersScreenOutput> {
+  return invoke('xbot.computers.screen', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.screens
+
+export type ComputersScreensInput = Record<string, never>
+
+export interface ComputersScreensOutput {
+  screens: {
+    bot_id: string
+    /** Bot 名稱 */
+    name: string
+    /** 電腦所在的主機；還沒有電腦時是 Bot 指定的主機（空白＝第一次開機時自動擺放） */
+    host_id: string
+    /** none 還沒建立、creating 建立中、running 開機中、sleeping 休眠中、updating 更新中、error 出錯 */
+    box: string
+    /** box=error 時的原因 */
+    error?: string
+    /** 主機名稱；還沒擺放時空白 */
+    host_name: string
+    /** 主機狀態：online、offline、unknown、updating、failed */
+    host_status: string
+    /** Bot 正在做事 */
+    working: boolean
+    /** Bot 因為接手而暫停 */
+    paused: boolean
+    /** 電腦最後被使用的時間（毫秒） */
+    last_active_at: number
+    takeover?: {
+      /** 誰在操作：owner 或 agent:<權杖 id> */
+      by: string
+      /** 顯示名稱 */
+      by_name: string
+      since: number
+      thread_id?: string
+      task_id?: string
+    }
+    request?: {
+      inbox_id: string
+      /** Bot 寫的原因，例：需要輸入簡訊驗證碼 */
+      reason: string
+      thread_id?: string
+      at: number
+    }
+    /** 正在看畫面的連線數 */
+    viewers: number
+    /** 正在操作的是你（呼叫者） */
+    you: boolean
+    vnc: string
+  }[]
+}
+
+/**
+ * 列出所有 Bot 的電腦（辦公室）：在哪台主機、開機或休眠、誰在工作、誰在等你接手
+ *
+ * `xbot.computers.screens`：權限 read、風險 safe
+ */
+export function computersScreens(input: ComputersScreensInput = {}, opts?: CallOptions): Promise<ComputersScreensOutput> {
+  return invoke('xbot.computers.screens', input, opts).then((r) => r.output)
 }
 
 // xbot.computers.set_network
@@ -2412,6 +2623,31 @@ export function computersSleep(input: ComputersSleepInput, opts?: CallOptions): 
   return invoke('xbot.computers.sleep', input, opts).then((r) => r.output)
 }
 
+// xbot.computers.snapshot
+
+export interface ComputersSnapshotInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface ComputersSnapshotOutput {
+  bot_id: string
+  available: boolean
+  /** JPEG（base64） */
+  image?: string
+  media_type?: string
+  taken_at?: number
+}
+
+/**
+ * 擷取一台電腦目前畫面的小縮圖（JPEG）；電腦沒開機時 available=false，不會叫醒它
+ *
+ * `xbot.computers.snapshot`：權限 operate、風險 safe
+ */
+export function computersSnapshot(input: ComputersSnapshotInput, opts?: CallOptions): Promise<ComputersSnapshotOutput> {
+  return invoke('xbot.computers.snapshot', input, opts).then((r) => r.output)
+}
+
 // xbot.computers.status
 
 export interface ComputersStatusInput {
@@ -2453,6 +2689,67 @@ export interface ComputersStatusOutput {
  */
 export function computersStatus(input: ComputersStatusInput, opts?: CallOptions): Promise<ComputersStatusOutput> {
   return invoke('xbot.computers.status', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.takeover
+
+export interface ComputersTakeoverInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface ComputersTakeoverOutput {
+  bot_id: string
+  /** Bot 名稱 */
+  name: string
+  /** 電腦所在的主機；還沒有電腦時是 Bot 指定的主機（空白＝第一次開機時自動擺放） */
+  host_id: string
+  /** none 還沒建立、creating 建立中、running 開機中、sleeping 休眠中、updating 更新中、error 出錯 */
+  box: string
+  /** box=error 時的原因 */
+  error?: string
+  /** 主機名稱；還沒擺放時空白 */
+  host_name: string
+  /** 主機狀態：online、offline、unknown、updating、failed */
+  host_status: string
+  /** Bot 正在做事 */
+  working: boolean
+  /** Bot 因為接手而暫停 */
+  paused: boolean
+  /** 電腦最後被使用的時間（毫秒） */
+  last_active_at: number
+  takeover?: {
+    /** 誰在操作：owner 或 agent:<權杖 id> */
+    by: string
+    /** 顯示名稱 */
+    by_name: string
+    since: number
+    thread_id?: string
+    task_id?: string
+  }
+  request?: {
+    inbox_id: string
+    /** Bot 寫的原因，例：需要輸入簡訊驗證碼 */
+    reason: string
+    thread_id?: string
+    at: number
+  }
+  /** 正在看畫面的連線數 */
+  viewers: number
+  /** 正在操作的是你（呼叫者） */
+  you: boolean
+  vnc: string
+}
+
+/**
+ * 接手一台電腦：Bot 先暫停（正在做的那一輪中斷、排隊的先等），你可以直接操作畫面
+ *
+ * 接手後用畫面 WebSocket 加 mode=control 操作。做完用 xbot.computers.handback 交還，Bot 會在同一條對話接著做。別人正在操作時回 conflict。接手中沒有人連著畫面超過 30 分鐘會自動交還。
+ *
+ * `xbot.computers.takeover`：權限 operate、風險 safe
+ */
+export function computersTakeover(input: ComputersTakeoverInput, opts?: CallOptions): Promise<ComputersTakeoverOutput> {
+  return invoke('xbot.computers.takeover', input, opts).then((r) => r.output)
 }
 
 // xbot.computers.update
@@ -8281,12 +8578,18 @@ export interface Ops {
   'xbot.collab.start_group': { input: CollabStartGroupInput; output: CollabStartGroupOutput }
   'xbot.collab.stop_chain': { input: CollabStopChainInput; output: CollabStopChainOutput }
   'xbot.collab.stop_room': { input: CollabStopRoomInput; output: CollabStopRoomOutput }
+  'xbot.computers.handback': { input: ComputersHandbackInput; output: ComputersHandbackOutput }
   'xbot.computers.purge': { input: ComputersPurgeInput; output: ComputersPurgeOutput }
   'xbot.computers.rebuild': { input: ComputersRebuildInput; output: ComputersRebuildOutput }
+  'xbot.computers.request_takeover': { input: ComputersRequestTakeoverInput; output: ComputersRequestTakeoverOutput }
   'xbot.computers.restart': { input: ComputersRestartInput; output: ComputersRestartOutput }
+  'xbot.computers.screen': { input: ComputersScreenInput; output: ComputersScreenOutput }
+  'xbot.computers.screens': { input: ComputersScreensInput; output: ComputersScreensOutput }
   'xbot.computers.set_network': { input: ComputersSetNetworkInput; output: ComputersSetNetworkOutput }
   'xbot.computers.sleep': { input: ComputersSleepInput; output: ComputersSleepOutput }
+  'xbot.computers.snapshot': { input: ComputersSnapshotInput; output: ComputersSnapshotOutput }
   'xbot.computers.status': { input: ComputersStatusInput; output: ComputersStatusOutput }
+  'xbot.computers.takeover': { input: ComputersTakeoverInput; output: ComputersTakeoverOutput }
   'xbot.computers.update': { input: ComputersUpdateInput; output: ComputersUpdateOutput }
   'xbot.computers.wake': { input: ComputersWakeInput; output: ComputersWakeOutput }
   'xbot.engines.link_credentials': { input: EnginesLinkCredentialsInput; output: EnginesLinkCredentialsOutput }
@@ -8439,12 +8742,18 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.collab.start_group': { path: '/api/v1/collab.start_group', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.collab.stop_chain': { path: '/api/v1/collab.stop_chain', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.collab.stop_room': { path: '/api/v1/collab.stop_room', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.computers.handback': { path: '/api/v1/computers.handback', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.computers.purge': { path: '/api/v1/computers.purge', scope: 'manage', risk: 'confirm', mutates: true },
   'xbot.computers.rebuild': { path: '/api/v1/computers.rebuild', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.computers.request_takeover': { path: '/api/v1/computers.request_takeover', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.computers.restart': { path: '/api/v1/computers.restart', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.computers.screen': { path: '/api/v1/computers.screen', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.computers.screens': { path: '/api/v1/computers.screens', scope: 'read', risk: 'safe', mutates: false },
   'xbot.computers.set_network': { path: '/api/v1/computers.set_network', scope: 'admin', risk: 'confirm', mutates: true },
   'xbot.computers.sleep': { path: '/api/v1/computers.sleep', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.computers.snapshot': { path: '/api/v1/computers.snapshot', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.computers.status': { path: '/api/v1/computers.status', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.computers.takeover': { path: '/api/v1/computers.takeover', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.computers.update': { path: '/api/v1/computers.update', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.computers.wake': { path: '/api/v1/computers.wake', scope: 'operate', risk: 'safe', mutates: true },
   'xbot.engines.link_credentials': { path: '/api/v1/engines.link_credentials', scope: 'admin', risk: 'safe', mutates: true },
