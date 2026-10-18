@@ -29,6 +29,9 @@ export type Msg = {
   task_id?: string
   streaming?: boolean
   status?: string
+  actor?: string
+  actor_name?: string
+  via?: string
   created_at: number
   updated_at: number
 }
@@ -85,7 +88,7 @@ export class MockServer {
     'bots.list': () => ({ bots: this.bots }),
     'bots.get': (i) => this.bots.find((b) => b.id === i.id),
     'bots.create': (i) => this.addBot(i as Partial<Bot> & { name: string }),
-    'inbox.list': (i) => ({ items: this.inbox.filter((x) => (i.status ?? 'open') === 'all' || x.status === (i.status ?? 'open')) }),
+    'inbox.list': (i) => ({ items: this.inbox.filter((x) => ((i.status ?? 'open') === 'all' || x.status === (i.status ?? 'open')) && (!i.kind || x.kind === i.kind)) }),
     'inbox.mark_read': () => ({ marked: 0 }),
     'chat.steps': () => ({ events: [], has_more: false }),
     'models.get': () =>

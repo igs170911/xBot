@@ -116,7 +116,7 @@ function Body({ bot, models, close }: { bot: Bot; models: ModelsGetOutput; close
                 {p.api_key_set ? (
                   <span className="flex h-6 flex-none items-center rounded-full bg-success-soft px-2.5 text-[12px] text-success">金鑰已設定</span>
                 ) : (
-                  <button type="button" onClick={() => navigate('/settings')} className="flex h-7 flex-none items-center rounded-full bg-ink px-3 text-[12.5px] text-on-ink">
+                  <button type="button" onClick={() => navigate('/settings/models')} className="flex h-7 flex-none items-center rounded-full bg-ink px-3 text-[12.5px] text-on-ink">
                     設定金鑰
                   </button>
                 )}
@@ -176,7 +176,7 @@ function Body({ bot, models, close }: { bot: Bot; models: ModelsGetOutput; close
           )}
         </div>
       </div>
-      <button type="button" onClick={() => navigate('/settings')} className="flex h-12 items-center gap-2.5 border-t border-line bg-transparent px-4 text-left text-ui text-ink hover:bg-control">
+      <button type="button" onClick={() => navigate('/settings/models')} className="flex h-12 items-center gap-2.5 border-t border-line bg-transparent px-4 text-left text-ui text-ink hover:bg-control">
         <Icon icon={Settings} size={18} className="text-ink-2" />
         <span className="flex-1">管理 AI 模型與金鑰</span>
         <Icon icon={ChevronRight} size={16} className="text-ink-2" />

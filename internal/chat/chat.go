@@ -20,7 +20,7 @@ import (
 
 // Runtime 是對話執行層；*runtime.Runtime 符合。
 type Runtime interface {
-	Chat(ctx context.Context, botID, threadID, text string) (runtime.ChatResult, error)
+	Start(ctx context.Context, req runtime.ChatRequest) (runtime.ChatResult, error)
 	Stop(ctx context.Context, botID, threadID string) (bool, error)
 	Active(botID string) (threadID, taskID string)
 	Bus() *events.Bus
@@ -38,7 +38,7 @@ type Deps struct {
 // SendIn 是 xbot.chat.send 的輸入。
 type SendIn struct {
 	BotID    string `json:"bot_id" required:"true" resource:"bot" max:"64" desc:"要對哪個 Bot 說"`
-	Text     string `json:"text" required:"true" max:"100000" desc:"訊息內容"`
+	Text     string `json:"text" required:"true" max:"64000" desc:"訊息內容"`
 	ThreadID string `json:"thread_id,omitempty" max:"64" desc:"接續的對話串；不填開一條新的"`
 }
 
@@ -71,12 +71,16 @@ type ReadIn struct {
 
 // Message 是對外的一則訊息。
 type Message struct {
-	ID        string `json:"id"`
-	Seq       int64  `json:"seq"`
-	Sender    string `json:"sender" desc:"owner（你）、bot:<id>、system"`
-	Kind      string `json:"kind"`
-	Content   string `json:"content"`
-	TaskID    string `json:"task_id,omitempty"`
+	ID      string `json:"id"`
+	Seq     int64  `json:"seq"`
+	Sender  string `json:"sender" desc:"owner（你）、bot:<id>、system"`
+	Kind    string `json:"kind"`
+	Content string `json:"content"`
+	TaskID  string `json:"task_id,omitempty"`
+	// Actor／ActorName：代理透過 MCP 等出口送的訊息，記下是哪個代理（MCP-13）；你自己送的是空白。
+	Actor     string `json:"actor,omitempty" desc:"代理送的訊息：agent:<id>"`
+	ActorName string `json:"actor_name,omitempty" desc:"代理的名字，例：Claude Code"`
+	Via       string `json:"via,omitempty" desc:"從哪裡送的：mcp、http、cli"`
 	Streaming bool   `json:"streaming,omitempty" desc:"Bot 還在寫這則回覆"`
 	Status    string `json:"status,omitempty" desc:"Bot 回覆的結果：complete、interrupted、error"`
 	CreatedAt int64  `json:"created_at"`
@@ -150,7 +154,7 @@ type RespondIn struct {
 	InboxID string            `json:"inbox_id,omitempty" max:"64" desc:"待我處理卡的 id（chat.needs_approval 事件或 wait_until_settled 的 request.inbox_id）"`
 	TaskID  string            `json:"task_id,omitempty" max:"64" desc:"或：這件工作目前在等的那個問題"`
 	Choice  string            `json:"choice,omitempty" enum:"once,always,deny" desc:"核准卡：once 允許這次、always 一律允許（卡片有給才行）、deny 拒絕"`
-	Text    string            `json:"text,omitempty" max:"100000" desc:"提問的回答（點選項就送選項的文字）"`
+	Text    string            `json:"text,omitempty" max:"64000" desc:"提問的回答（點選項就送選項的文字）"`
 	Answers []string          `json:"answers,omitempty" max:"20" desc:"多個問題時逐題的回答（依題目順序）"`
 	Value   string            `json:"value,omitempty" max:"16384" secret:"true" desc:"密碼、金鑰、驗證碼；只交給 Bot 的電腦，不寫進紀錄"`
 	Values  map[string]string `json:"values,omitempty" secret:"true" desc:"多欄位的密碼類輸入（例：identifier、password）"`
@@ -311,7 +315,9 @@ func (d Deps) send(ctx context.Context, call *ops.Call, in SendIn) (SendOut, err
 		}
 		return SendOut{BotID: b.ID, ThreadID: in.ThreadID}, nil
 	}
-	res, err := rt.Chat(ctx, b.ID, in.ThreadID, text)
+	id := call.Identity
+	res, err := rt.Start(ctx, runtime.ChatRequest{BotID: b.ID, ThreadID: in.ThreadID, Text: text,
+		Actor: id.Actor(), ActorName: id.DisplayName(), Via: id.Via})
 	var over *proxy.BudgetError
 	switch {
 	case errors.Is(err, runtime.ErrBusy):
@@ -419,6 +425,9 @@ func threadView(t store.Thread) Thread {
 
 type messageMeta struct {
 	TaskID    string `json:"task_id"`
+	Actor     string `json:"actor"`
+	ActorName string `json:"actor_name"`
+	Via       string `json:"via"`
 	Streaming bool   `json:"streaming"`
 	Status    string `json:"status"`
 }
@@ -427,7 +436,7 @@ func messageView(m store.Message) Message {
 	var meta messageMeta
 	_ = json.Unmarshal(m.Meta, &meta)
 	return Message{ID: m.ID, Seq: m.Seq, Sender: m.Sender, Kind: m.Kind, Content: m.Content, TaskID: meta.TaskID,
-		Streaming: meta.Streaming, Status: meta.Status, CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
+		Actor: meta.Actor, ActorName: meta.ActorName, Via: meta.Via, Streaming: meta.Streaming, Status: meta.Status, CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
 }
 
 // settled：做完了，或在等人。

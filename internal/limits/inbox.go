@@ -7,7 +7,7 @@ import "time"
 const (
 	// QuestionTTL 是無人在場的工作（不是你自己交辦的）裡，Bot 的提問、核准、密碼請求等多久沒回就過期：
 	// 核准自動拒絕、提問回「使用者沒有回應，不要猜答案」。你自己交辦的工作不會過期。
-	// 出自 LazyBoy server/runtime.py（QUESTION_TTL = 600、unattended()、expire_question()）。
+	// 出自 LazyBoy server/runtime.py:1024（QUESTION_TTL = 600、unattended()、expire_question()）。
 	QuestionTTL = 600 * time.Second
 
 	// UndoWindow 是處理過的卡多久內可以「復原」（退回的核准、略過的卡）。

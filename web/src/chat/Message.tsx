@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Check, ChevronDown, CircleX, Code, Copy, OctagonPause, RotateCcw, Square, Volume2 } from 'lucide-react'
+import { AgentMark } from '../ui/AgentMark'
 import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
@@ -111,6 +112,7 @@ export function OwnerMessage({ msg }: { msg: ChatMsg }) {
           {msg.content}
         </Collapsible>
       </div>
+      {msg.actorName && <AgentMark name={msg.actorName} via={msg.via} verb="傳送" className="self-end" />}
       {msg.content && <OwnerActions msg={msg} />}
     </div>
   )

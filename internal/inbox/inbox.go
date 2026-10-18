@@ -7,8 +7,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
+	"xbot/internal/delegation"
 	"xbot/internal/limits"
 	"xbot/internal/notify"
 	"xbot/internal/ops"
@@ -92,7 +95,7 @@ func (Group) EnumValues() []string { return notify.Groups }
 // Item 是一張待我處理（或通知）。
 type Item struct {
 	ID         string          `json:"id"`
-	Kind       string          `json:"kind" desc:"approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention"`
+	Kind       string          `json:"kind" desc:"approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、done、error、mention、delegated（已由代理代為核准的紀錄）"`
 	Group      string          `json:"group" desc:"decide（要你決定）、done（完成）、mention（提到你）、error（出錯）"`
 	BotID      string          `json:"bot_id,omitempty"`
 	TaskID     string          `json:"task_id,omitempty" desc:"Bot 在對話裡問的：是哪件工作"`
@@ -102,7 +105,7 @@ type Item struct {
 	Body       string          `json:"body"`
 	Payload    json.RawMessage `json:"payload" desc:"卡片內容（選項、指令、輸入欄…）；不含任何密碼類的值"`
 	Status     string          `json:"status" desc:"open、resolved、dismissed、expired"`
-	Resolution string          `json:"resolution,omitempty" desc:"怎麼處理的：once、always、deny、allow、answered、provided、declined、expired、gone、canceled、asked_again、dismissed、info"`
+	Resolution string          `json:"resolution,omitempty" desc:"怎麼處理的：once、always、deny、allow、answered、provided、declined、expired、gone、canceled、asked_again、dismissed、info、delegated（代理代為核准）、undone（代為核准的動作已復原）"`
 	ResolvedBy string          `json:"resolved_by,omitempty"`
 	ResolvedAt int64           `json:"resolved_at,omitempty"`
 	Read       bool            `json:"read"`
@@ -186,20 +189,27 @@ type AuditListOut struct {
 func Register(reg *ops.Registry) {
 	ops.Register(reg, ops.Op[ApprovalsListIn, ApprovalsListOut]{
 		Name: "xbot.approvals.list", Summary: "列出等你核准的動作",
-		Scope: ops.ScopeRead, Risk: ops.RiskSafe, ForBot: true,
-		Handle: listApprovals,
+		Description: "代理看得到自己要求的；有代為核准授權的代理也看得到授權類別內、它能碰的 Bot 的核准。",
+		Scope:       ops.ScopeRead, Risk: ops.RiskSafe, ForBot: true,
+		Handle: func(ctx context.Context, call *ops.Call, in ApprovalsListIn) (ApprovalsListOut, error) {
+			return listApprovals(ctx, reg, call, in)
+		},
 	})
 	ops.Register(reg, ops.Op[WaitIn, Outcome]{
 		Name: "xbot.approvals.wait", Summary: "等一個核准的結果",
 		Description: "收到 pending_approval 後用它等：使用者允許並執行完（executed）、允許了但執行失敗（failed）、退回、" +
 			"或逾時（settled=false，可以再呼叫）。代理只能等自己要求的核准。",
 		Scope: ops.ScopeRead, Risk: ops.RiskSafe, ForBot: true,
-		Handle: wait,
+		Handle: func(ctx context.Context, call *ops.Call, in WaitIn) (Outcome, error) {
+			return wait(ctx, reg, call, in)
+		},
 	})
 	ops.Register(reg, ops.Op[DecideIn, Outcome]{
 		Name: "xbot.approvals.decide", Summary: "允許或退回一個等核准的動作",
-		Description: "允許後立刻執行原本的動作並回傳結果。目前只有你本人能決定；代為核准（MCP-10）之後才開放給有授權的代理。",
-		Scope:       ops.ScopeOperate, Risk: ops.RiskSafe,
+		Description: "允許後立刻執行原本的動作並回傳結果。只有你本人、或拿到代為核准授權的代理（MCP-10，xbot.agents.set_delegation）能用；" +
+			"代理只能允許授權類別內的動作，受每日次數、金額與有效期限限制。刪除 Bot 或資料、移除主機、提高花費上限、改代為核准授權永遠要你本人。" +
+			"每次代為核准都會在待我處理留一張紀錄卡，動作可以復原的話，你 10 分鐘內可以復原。",
+		Scope: ops.ScopeOperate, Risk: ops.RiskSafe,
 		Handle: func(ctx context.Context, call *ops.Call, in DecideIn) (Outcome, error) {
 			return decide(ctx, reg, call, in)
 		},
@@ -233,8 +243,8 @@ func Register(reg *ops.Registry) {
 	})
 	ops.Register(reg, ops.Op[ItemIn, ItemOut]{
 		Name: "xbot.inbox.undo", Summary: "復原剛剛的決定",
-		Description: "10 分鐘內可以復原：退回的核准會回到等你決定，略過的卡會回到待我處理。" +
-			"已經執行的動作、已經交給 Bot 的回答不能復原（undo_until 是 0）。",
+		Description: "10 分鐘內可以復原：退回的核准會回到等你決定，略過的卡會回到待我處理，" +
+			"代理代為核准的動作（可以復原的話）會被收回。已經執行的動作、已經交給 Bot 的回答不能復原（undo_until 是 0）。",
 		Scope: ops.ScopeOperate, Risk: ops.RiskSafe,
 		Handle: func(ctx context.Context, call *ops.Call, in ItemIn) (ItemOut, error) {
 			return undo(ctx, reg, call, in)
@@ -269,12 +279,18 @@ func approvalView(a store.Approval) Approval {
 		RequestID: a.RequestID, Status: ApprovalStatus(a.Status), DecidedBy: a.DecidedBy, DecidedAt: a.DecidedAt, CreatedAt: a.CreatedAt}
 }
 
-// canSee：你本人看得到全部；代理與 Bot 只看得到自己要求的核准。
-func canSee(id ops.Identity, a store.Approval) bool {
-	return id.Kind == ops.KindOwner || a.RequestedBy == id.Actor()
+// canSee：你本人看得到全部；代理與 Bot 看得到自己要求的核准；
+// 有代為核准授權的代理也看得到授權類別內、它能碰的 Bot 的核准（MCP-10）。
+func canSee(ctx context.Context, reg *ops.Registry, call *ops.Call, a store.Approval) bool {
+	id := call.Identity
+	if id.Kind == ops.KindOwner || a.RequestedBy == id.Actor() {
+		return true
+	}
+	info, ok := reg.Get(a.Action)
+	return ok && delegation.Covers(ctx, call.DB, id, info, a.BotID)
 }
 
-func listApprovals(ctx context.Context, call *ops.Call, in ApprovalsListIn) (ApprovalsListOut, error) {
+func listApprovals(ctx context.Context, reg *ops.Registry, call *ops.Call, in ApprovalsListIn) (ApprovalsListOut, error) {
 	all, err := call.DB.ListApprovals(ctx, string(in.Status))
 	if err != nil {
 		return ApprovalsListOut{}, err
@@ -285,7 +301,7 @@ func listApprovals(ctx context.Context, call *ops.Call, in ApprovalsListIn) (App
 		if len(out.Approvals) == limit {
 			break
 		}
-		if !canSee(call.Identity, a) || (in.BotID != "" && a.BotID != in.BotID) {
+		if (in.BotID != "" && a.BotID != in.BotID) || !canSee(ctx, reg, call, a) {
 			continue
 		}
 		out.Approvals = append(out.Approvals, approvalView(a))
@@ -293,9 +309,9 @@ func listApprovals(ctx context.Context, call *ops.Call, in ApprovalsListIn) (App
 	return out, nil
 }
 
-func getApproval(ctx context.Context, call *ops.Call, id string) (store.Approval, error) {
+func getApproval(ctx context.Context, reg *ops.Registry, call *ops.Call, id string) (store.Approval, error) {
 	a, err := call.DB.GetApproval(ctx, id)
-	if errors.Is(err, store.ErrNotFound) || (err == nil && !canSee(call.Identity, a)) {
+	if errors.Is(err, store.ErrNotFound) || (err == nil && !canSee(ctx, reg, call, a)) {
 		return a, ops.NotFound("找不到這個核准")
 	}
 	return a, err
@@ -324,8 +340,8 @@ func outcome(ctx context.Context, db *store.DB, a store.Approval) (Outcome, erro
 	return o, nil
 }
 
-func wait(ctx context.Context, call *ops.Call, in WaitIn) (Outcome, error) {
-	a, err := getApproval(ctx, call, in.ApprovalID)
+func wait(ctx context.Context, reg *ops.Registry, call *ops.Call, in WaitIn) (Outcome, error) {
+	a, err := getApproval(ctx, reg, call, in.ApprovalID)
 	if err != nil {
 		return Outcome{}, err
 	}
@@ -370,11 +386,14 @@ func wait(ctx context.Context, call *ops.Call, in WaitIn) (Outcome, error) {
 }
 
 func decide(ctx context.Context, reg *ops.Registry, call *ops.Call, in DecideIn) (Outcome, error) {
-	// MCP-9／MCP-10：核准只認你本人；代為核准授權（C21）做好之前，代理和 Bot 一律不能決定。
+	// MCP-9／MCP-10：核准只認你本人，唯一例外是你授權的代理代為允許（delegation）。Bot 一律不能決定。
 	if call.Identity.Kind != ops.KindOwner {
-		return Outcome{}, ops.Forbidden("只有你本人能核准；代理請用 xbot.approvals.wait 等結果")
+		if call.Identity.Kind != ops.KindAgent {
+			return Outcome{}, ops.Forbidden("只有你本人能核准；請用 xbot.approvals.wait 等結果")
+		}
+		return decideDelegated(ctx, reg, call, in)
 	}
-	a, err := getApproval(ctx, call, in.ApprovalID)
+	a, err := getApproval(ctx, reg, call, in.ApprovalID)
 	if err != nil {
 		return Outcome{}, err
 	}
@@ -423,6 +442,11 @@ func decide(ctx context.Context, reg *ops.Registry, call *ops.Call, in DecideIn)
 		}
 		return Outcome{Approval: approvalView(a), Settled: true}, nil
 	}
+	return execute(ctx, reg, call, a)
+}
+
+// execute 執行允許了的動作，整理成 Outcome。
+func execute(ctx context.Context, reg *ops.Registry, call *ops.Call, a store.Approval) (Outcome, error) {
 	res, execErr := reg.ExecuteApproved(ctx, a.ID)
 	o := Outcome{Settled: true}
 	if cur, err := call.DB.GetApproval(ctx, a.ID); err == nil {
@@ -439,6 +463,138 @@ func decide(ctx context.Context, reg *ops.Registry, call *ops.Call, in DecideIn)
 	o.Executed, o.Output = true, res.Output
 	return o, nil
 }
+
+// decideDelegated 是代理代為核准（MCP-10）：只能允許；授權（類別、每日次數與金額、期限）在同一個交易裡檢查並記下，
+// 同時把核准改成允許、結掉原本的核准卡、留一張「已由 ○○ 代為核准」紀錄卡，然後執行動作。
+func decideDelegated(ctx context.Context, reg *ops.Registry, call *ops.Call, in DecideIn) (Outcome, error) {
+	id := call.Identity
+	if in.Decision != "allow" {
+		return Outcome{}, ops.Forbidden("代理只能代為允許；要退回請等你本人決定")
+	}
+	a, err := call.DB.GetApproval(ctx, in.ApprovalID)
+	if errors.Is(err, store.ErrNotFound) {
+		return Outcome{}, ops.NotFound("找不到這個核准")
+	}
+	if err != nil {
+		return Outcome{}, err
+	}
+	info, ok := reg.Get(a.Action)
+	if !ok {
+		return Outcome{}, ops.NotFound("沒有這個操作：" + a.Action)
+	}
+	amount := reg.Amount(a.Action, a.Input)
+	retry := a.Status == "approved" && a.DecidedBy == id.Actor()
+	if !retry {
+		// 先檢查授權（不記錄）：沒授權的代理拿到「沒有授權」，不是「已經處理過」。
+		if _, err := delegation.Authorize(ctx, call.DB.Queries, id, info, a, amount, false); err != nil && (a.Status == "pending" || ops.AsError(err).Code != ops.CodeLimit) {
+			return Outcome{}, err
+		}
+	}
+	switch {
+	case a.Status == "pending":
+	case retry:
+		// 這個代理允許過、上次執行失敗：再執行一次（不再計次）。
+		if call.DryRun {
+			return Outcome{Approval: approvalView(a), Settled: true}, nil
+		}
+		return execute(ctx, reg, call, a)
+	default:
+		return Outcome{}, ops.Conflict(store.ErrAlreadyDecided.Error())
+	}
+	if call.DryRun {
+		o := Outcome{Approval: approvalView(a), Settled: true}
+		o.Approval.Status, o.Approval.DecidedBy = "approved", id.Actor()
+		return o, nil
+	}
+	var evs []store.Event
+	err = call.DB.Tx(ctx, func(q *store.Queries) error {
+		use, err := delegation.Authorize(ctx, q, id, info, a, amount, true)
+		if err != nil {
+			return err
+		}
+		if err := q.DecideApproval(ctx, a.ID, "approved", id.Actor()); err != nil {
+			return err
+		}
+		items, err := q.ResolveInboxByRef(ctx, a.ID, "allow", id.Actor())
+		if err != nil {
+			return err
+		}
+		card, err := delegatedCard(ctx, q, id, info, a, use)
+		if err != nil {
+			return err
+		}
+		created, err := q.AppendEvent(ctx, notify.Event(notify.KindCreated, card))
+		if err != nil {
+			return err
+		}
+		evs, err = appendUpdated(ctx, q, items...)
+		evs = append(evs, created)
+		return err
+	})
+	if errors.Is(err, store.ErrAlreadyDecided) {
+		return Outcome{}, ops.Conflict(err.Error())
+	}
+	if err != nil {
+		return Outcome{}, err
+	}
+	reg.Notify(evs...)
+	a.Status, a.DecidedBy = "approved", id.Actor()
+	return execute(ctx, reg, call, a)
+}
+
+// delegatedPayload 是代為核准紀錄卡的內容。
+type delegatedPayload struct {
+	Op           string          `json:"op"`
+	Summary      string          `json:"summary"`
+	Params       json.RawMessage `json:"params"`
+	ApprovalID   string          `json:"approval_id"`
+	Actor        string          `json:"actor"`
+	ActorName    string          `json:"actor_name"`
+	Via          string          `json:"via,omitempty"`
+	RequestedBy  string          `json:"requested_by"`
+	Category     string          `json:"category"`
+	CategoryName string          `json:"category_name"`
+	AmountMicros int64           `json:"amount_micros,omitempty"`
+	Count        int             `json:"count" desc:"今天第幾次"`
+	Limit        int             `json:"limit" desc:"每天上限"`
+	Reversible   bool            `json:"reversible"`
+}
+
+// delegatedCard 建一張「已由 ○○ 代為核准」紀錄卡（C16、F08）：一建立就是處理過的（resolution=delegated），
+// 未讀，出現在通知中心與待我處理的「最近的決定」；動作可以復原的話 10 分鐘內可以按「復原」。
+func delegatedCard(ctx context.Context, q *store.Queries, id ops.Identity, info ops.Info, a store.Approval, use delegation.Use) (store.InboxItem, error) {
+	var p payload
+	_ = json.Unmarshal(a.Payload, &p)
+	if len(p.Params) == 0 {
+		p.Params = json.RawMessage("{}")
+	}
+	cat := ops.CategoryNames[use.Category]
+	via := "MCP"
+	if id.Via != "" && id.Via != "mcp" {
+		via = strings.ToUpper(id.Via)
+	}
+	body := fmt.Sprintf("%s · 今天第 %d／%d 次", info.Summary, use.Count, use.Limit)
+	if use.AmountMicros > 0 {
+		body = fmt.Sprintf("%s · %s · 今天第 %d／%d 次", info.Summary, delegation.USD(use.AmountMicros), use.Count, use.Limit)
+	}
+	raw, err := json.Marshal(delegatedPayload{Op: info.Name, Summary: info.Summary, Params: p.Params, ApprovalID: a.ID,
+		Actor: id.Actor(), ActorName: id.DisplayName(), Via: id.Via, RequestedBy: a.RequestedBy, Category: use.Category, CategoryName: cat,
+		AmountMicros: use.AmountMicros, Count: use.Count, Limit: use.Limit, Reversible: info.Reversible})
+	if err != nil {
+		return store.InboxItem{}, err
+	}
+	return q.CreateInboxItem(ctx, store.InboxItem{Kind: kindDelegated, BotID: a.BotID, Ref: a.ID,
+		Title:  fmt.Sprintf("已由 %s（%s）代為核准 · %s", id.DisplayName(), via, cat),
+		Body:   body,
+		Status: store.InboxResolved, Resolution: resolutionDelegated, ResolvedBy: id.Actor(), ResolvedAt: clock().UnixMilli(),
+		Payload: raw})
+}
+
+const (
+	kindDelegated       = "delegated"
+	resolutionDelegated = "delegated"
+	resolutionUndone    = "undone"
+)
 
 // ── 待我處理 ─────────────────────────────────────────
 
@@ -517,6 +673,17 @@ func undoable(ctx context.Context, db *store.DB, i store.InboxItem) (bool, error
 	switch {
 	case i.Resolution == resolutionDismissed:
 		return true, nil
+	case i.Kind == kindDelegated && i.Resolution == resolutionDelegated && i.Ref != "":
+		// 代為核准的動作：可以復原（有 Revert）而且已經執行完成才能復原。
+		var p delegatedPayload
+		if json.Unmarshal(i.Payload, &p) != nil || !p.Reversible {
+			return false, nil
+		}
+		req, err := db.GetOpRequestByApproval(ctx, i.Ref)
+		if errors.Is(err, store.ErrNotFound) {
+			return false, nil
+		}
+		return err == nil && req.Status == "ok", err
 	case i.Kind == "approval" && i.TaskID == "" && i.Ref != "" && i.Resolution == "deny":
 		a, err := db.GetApproval(ctx, i.Ref)
 		if errors.Is(err, store.ErrNotFound) {
@@ -691,6 +858,9 @@ func undo(ctx context.Context, reg *ops.Registry, call *ops.Call, in ItemIn) (It
 		}
 		return ItemOut{}, ops.Conflict("這個決定不能復原（動作已經執行，或回答已經交給 Bot）")
 	}
+	if it.Kind == kindDelegated {
+		return undoDelegated(ctx, reg, call, it, v)
+	}
 	if call.DryRun {
 		v.Status, v.Resolution, v.ResolvedBy, v.ResolvedAt, v.UndoUntil = store.InboxOpen, "", "", 0, 0
 		return ItemOut{Item: v}, nil
@@ -716,6 +886,42 @@ func undo(ctx context.Context, reg *ops.Registry, call *ops.Call, in ItemIn) (It
 	if errors.Is(err, store.ErrAlreadyDecided) {
 		return ItemOut{}, ops.Conflict("這個決定已經改過了，不能復原")
 	}
+	if err != nil {
+		return ItemOut{}, err
+	}
+	reg.Notify(evs...)
+	v, err = itemView(ctx, call.DB, it, clock().UnixMilli())
+	return ItemOut{Item: v}, err
+}
+
+// undoDelegated 收回代理代為核准的動作：先把卡改成「已復原」佔住（同時按兩次只會復原一次），
+// 再執行操作的 Revert；失敗就把卡改回來，讓你可以再試。
+func undoDelegated(ctx context.Context, reg *ops.Registry, call *ops.Call, it store.InboxItem, v Item) (ItemOut, error) {
+	if call.DryRun {
+		v.Resolution, v.UndoUntil = resolutionUndone, 0
+		return ItemOut{Item: v}, nil
+	}
+	if err := call.DB.SwapInboxResolution(ctx, it.ID, resolutionDelegated, resolutionUndone); errors.Is(err, store.ErrAlreadyDecided) {
+		return ItemOut{}, ops.Conflict("這個決定已經復原過了")
+	} else if err != nil {
+		return ItemOut{}, err
+	}
+	if err := reg.RevertApproved(ctx, it.Ref, call.Identity); err != nil {
+		if e := call.DB.SwapInboxResolution(context.WithoutCancel(ctx), it.ID, resolutionUndone, resolutionDelegated); e != nil {
+			return ItemOut{}, errors.Join(err, e)
+		}
+		return ItemOut{}, err
+	}
+	var evs []store.Event
+	err := call.DB.Tx(ctx, func(q *store.Queries) error {
+		cur, err := q.GetInboxItem(ctx, it.ID)
+		if err != nil {
+			return err
+		}
+		it = cur
+		evs, err = appendUpdated(ctx, q, cur)
+		return err
+	})
 	if err != nil {
 		return ItemOut{}, err
 	}

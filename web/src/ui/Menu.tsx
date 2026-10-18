@@ -147,10 +147,13 @@ export type SelectProps<T extends string> = {
   /** field＝輸入框樣式（40 高）；compact＝設定列裡的小下拉（32 高）。 */
   look?: 'field' | 'compact'
   className?: string
+  /** 沒選到任何選項時顯示的灰字。 */
+  placeholder?: string
+  disabled?: boolean
 }
 
 // 自畫下拉選單（不用原生 select）：按鈕＋listbox，方向鍵選、Enter 確定、Esc 取消。
-export function Select<T extends string>({ label, hideLabel, value, options, onChange, look = 'field', className }: SelectProps<T>) {
+export function Select<T extends string>({ label, hideLabel, value, options, onChange, look = 'field', className, placeholder, disabled }: SelectProps<T>) {
   const [open, setOpen] = useState(false)
   const btn = useRef<HTMLButtonElement>(null)
   const pop = useRef<HTMLUListElement>(null)
@@ -178,6 +181,7 @@ export function Select<T extends string>({ label, hideLabel, value, options, onC
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-labelledby={`${id}-l ${id}-v`}
+        disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -186,14 +190,14 @@ export function Select<T extends string>({ label, hideLabel, value, options, onC
           }
         }}
         className={cx(
-          'flex items-center border border-line text-left text-ink',
+          'flex items-center border border-line text-left text-ink disabled:opacity-50',
           look === 'field'
             ? 'h-10 gap-2 rounded-field bg-inset pl-3 pr-2.5 text-ui max-sm:h-11'
             : 'relative h-8 gap-1.5 rounded-field bg-card pl-3 pr-2 text-ui-sm touch-target',
         )}
       >
-        <span id={`${id}-v`} className="flex-1 truncate">
-          {current?.label}
+        <span id={`${id}-v`} className={cx('flex-1 truncate', !current && 'text-ink-3')}>
+          {current?.label ?? placeholder}
         </span>
         <span className="flex text-ink-2">
           <Icon icon={ChevronDown} size={look === 'field' ? 18 : 16} />
@@ -213,7 +217,7 @@ export function Select<T extends string>({ label, hideLabel, value, options, onC
               btn.current?.focus()
             } else if (e.key === 'Tab') setOpen(false)
           }}
-          className="absolute left-0 right-0 top-full z-40 m-0 mt-1 min-w-[180px] list-none rounded-menu bg-card p-1.5 shadow-pop"
+          className="absolute left-0 right-0 top-full z-40 m-0 mt-1 max-h-[320px] min-w-[180px] list-none overflow-y-auto rounded-menu bg-card p-1.5 shadow-pop"
         >
           {options.map((o) => {
             const on = o.value === value

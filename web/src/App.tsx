@@ -7,7 +7,7 @@ import { InboxPage } from './pages/InboxPage'
 import { DevComponentsPage } from './pages/DevComponentsPage'
 import { LoginPage } from './pages/LoginPage'
 import { NewBotDialog } from './pages/NewBotDialog'
-import { SettingsPage } from './pages/ModelSettings'
+import { SettingsPage } from './settings/SettingsPage'
 import { ChatPage } from './chat/ChatPage'
 import { startChat } from './chat/chatStore'
 import { botsStore, startBots } from './data/bots'
@@ -23,6 +23,7 @@ const TITLES: Record<string, string> = {
   '/apps': '連接應用程式',
   '/org': '組織架構',
   '/settings': '設定',
+  '/settings/agents': '已連線的代理',
 }
 
 const BOT_PATH = /^\/bots\/([^/]+)(?:\/threads\/([^/]+))?\/?$/
@@ -67,12 +68,13 @@ function Main() {
   const bot = path.match(BOT_PATH)
   const computer = path.match(COMPUTER_PATH)
   const botName = (id: string) => bots?.find((b) => b.id === id)?.name
-  const title = path === '/' ? '待我處理' : bot ? (botName(bot[1]) ?? '對話') : computer ? `${botName(computer[1]) ?? 'Bot'}的電腦` : path.startsWith('/rooms/') ? '群組對話' : (TITLES[path] ?? 'XBot')
+  const title = path === '/' ? '待我處理' : bot ? (botName(bot[1]) ?? '對話') : computer ? `${botName(computer[1]) ?? 'Bot'}的電腦` : path.startsWith('/rooms/') ? '群組對話' : (TITLES[path] ?? (path.startsWith('/settings') ? '設定' : 'XBot'))
 
   let page
   if (path === '/') page = <InboxPage />
   else if (bot) page = <ChatPage key={bot[1]} botId={bot[1]} threadParam={bot[2]} />
-  else if (path === '/settings') page = <SettingsPage />
+  else if (path === '/settings' || path.startsWith('/settings/'))
+    page = <SettingsPage path={path === '/settings/agents' ? '/settings/advanced/agents' : path} />
   else page = <Placeholder title={title} />
 
   return (

@@ -29,6 +29,9 @@ type PairGrant struct {
 	Scopes    []ops.Scope
 	Resources *ops.Resources // nil 表示不限制
 	TokenDays int            // 權杖有效天數；0 表示不過期
+	// 上限（MCP-12）；0 表示不另外限制。
+	DailyCalls       int
+	DailySpendMicros int64
 }
 
 type pendingCode struct {
@@ -176,7 +179,7 @@ func (p *Pairing) Complete(ctx context.Context, code, name, source string) (Pair
 		g.Name = "外部代理"
 	}
 	raw, hash := NewAgentToken()
-	t := store.AgentToken{Name: g.Name, TokenHash: hash}
+	t := store.AgentToken{Name: g.Name, TokenHash: hash, DailyCalls: g.DailyCalls, DailySpendMicros: g.DailySpendMicros}
 	for _, s := range g.Scopes {
 		t.Scopes = append(t.Scopes, string(s))
 	}

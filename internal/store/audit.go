@@ -75,16 +75,22 @@ type AgentToken struct {
 	LastUsedAt int64           `json:"last_used_at"`
 	ExpiresAt  int64           `json:"expires_at"` // 0 表示不過期
 	RevokedAt  int64           `json:"revoked_at"` // 0 表示有效
-	CreatedAt  int64           `json:"created_at"`
-	UpdatedAt  int64           `json:"updated_at"`
+	// 上限（MCP-12）：每分鐘呼叫（0＝用預設值）、每日呼叫與每日花費（0＝不另外限制）。
+	RatePerMin       int   `json:"rate_per_min"`
+	DailyCalls       int   `json:"daily_calls"`
+	DailySpendMicros int64 `json:"daily_spend_micros"`
+	CreatedAt        int64 `json:"created_at"`
+	UpdatedAt        int64 `json:"updated_at"`
 }
 
-const tokenCols = `id, name, token_hash, scopes, resources, last_used_at, expires_at, revoked_at, created_at, updated_at`
+const tokenCols = `id, name, token_hash, scopes, resources, last_used_at, expires_at, revoked_at, created_at, updated_at,
+	rate_per_min, daily_calls, daily_spend_micros`
 
 func scanToken(s scanner) (AgentToken, error) {
 	var t AgentToken
 	var scopes, res string
-	err := s.Scan(&t.ID, &t.Name, &t.TokenHash, &scopes, &res, &t.LastUsedAt, &t.ExpiresAt, &t.RevokedAt, &t.CreatedAt, &t.UpdatedAt)
+	err := s.Scan(&t.ID, &t.Name, &t.TokenHash, &scopes, &res, &t.LastUsedAt, &t.ExpiresAt, &t.RevokedAt, &t.CreatedAt, &t.UpdatedAt,
+		&t.RatePerMin, &t.DailyCalls, &t.DailySpendMicros)
 	if err != nil {
 		return t, err
 	}
@@ -104,8 +110,9 @@ func (q *Queries) CreateAgentToken(ctx context.Context, t AgentToken) (AgentToke
 	t.CreatedAt = nowMS()
 	t.UpdatedAt = t.CreatedAt
 	t.Resources = json.RawMessage(jsonOr(t.Resources, "{}"))
-	_, err := q.w.ExecContext(ctx, `INSERT INTO agent_token(`+tokenCols+`) VALUES (?,?,?,?,?,?,?,?,?,?)`,
-		t.ID, t.Name, t.TokenHash, strList(t.Scopes), string(t.Resources), t.LastUsedAt, t.ExpiresAt, t.RevokedAt, t.CreatedAt, t.UpdatedAt)
+	_, err := q.w.ExecContext(ctx, `INSERT INTO agent_token(`+tokenCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		t.ID, t.Name, t.TokenHash, strList(t.Scopes), string(t.Resources), t.LastUsedAt, t.ExpiresAt, t.RevokedAt, t.CreatedAt, t.UpdatedAt,
+		t.RatePerMin, t.DailyCalls, t.DailySpendMicros)
 	return t, err
 }
 
@@ -131,6 +138,20 @@ func (q *Queries) ListAgentTokens(ctx context.Context) ([]AgentToken, error) {
 // TouchAgentToken 記錄最後使用時間。
 func (q *Queries) TouchAgentToken(ctx context.Context, id string) error {
 	return affected(q.w.ExecContext(ctx, `UPDATE agent_token SET last_used_at=? WHERE id=?`, nowMS(), id))
+}
+
+// RestoreAgentToken 取消撤銷（撤銷後在畫面上按「復原」）。
+func (q *Queries) RestoreAgentToken(ctx context.Context, id string) error {
+	return affected(q.w.ExecContext(ctx, `UPDATE agent_token SET revoked_at=0, updated_at=? WHERE id=?`, nowMS(), id))
+}
+
+// CountAuditSince 算 actor 從 since（Unix 毫秒）起的呼叫數；被速率上限擋下的（error_code=limit）與配對本身不算。
+func (q *Queries) CountAuditSince(ctx context.Context, actor string, since int64) (int, error) {
+	var n int
+	err := q.r.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE actor = ? AND created_at >= ? AND error_code <> 'limit'
+		AND op <> 'xbot.agents.pair_complete'`,
+		actor, since).Scan(&n)
+	return n, err
 }
 
 // RevokeAgentToken 撤銷權杖；已撤銷的再撤銷不會改時間。

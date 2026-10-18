@@ -17,6 +17,8 @@
   /* 表面：由深到淺 */
   --color-app: #070707;
   --color-panel: #111111;
+  /* 設定頁這類整頁面板的底色（深色＝panel；淺色時用白底，群組卡片才看得出來） */
+  --color-sheet: #111111;
   --color-inset: #191919;
   --color-card: #262626;
   --color-control: #2f2f2f;
@@ -84,7 +86,7 @@
   }
 }
 
-/* Daylight 淺色變體（N01 只在外觀設定示範；先提供 token，W01 不加切換入口） */
+/* Daylight 淺色變體（N01；W12 在「設定 › 一般」加了切換）。淺底上的文字用色要夠深，另外覆寫 accent-ink、success。 */
 [data-theme="light"] {
   color-scheme: light;
   --color-app: #ffffff;
@@ -103,6 +105,9 @@
   --color-ink-3: #5e5e5e;
   --color-on-ink: #ffffff;
   --color-warning-ink: #a65f00;
+  --color-sheet: #ffffff;
+  --color-accent-ink: #0a64c2;
+  --color-success: #12854f;
 }
 
 /* 手機寬度下，把小控制項的可點範圍撐到至少 44×44（外觀不變）。元素本身要 position: relative。 */

@@ -11,3 +11,5 @@ web/playwright-report/
 *.test
 coverage.out
 .claude/
+__pycache__/
+*.pyc

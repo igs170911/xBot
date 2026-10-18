@@ -20,7 +20,7 @@ const (
 // InboxItem 是「待我處理」或通知中心的一張卡。
 type InboxItem struct {
 	ID       string `json:"id"`
-	Kind     string `json:"kind"` // approval / question / secret / signin / takeover / proposal / discussion / routine_failed / budget / done / error / mention
+	Kind     string `json:"kind"` // approval / question / secret / signin / takeover / proposal / discussion / routine_failed / budget / done / error / mention / delegated
 	BotID    string `json:"bot_id"`
 	TaskID   string `json:"task_id"`
 	ThreadID string `json:"thread_id"`
@@ -165,6 +165,12 @@ func (q *Queries) ListInboxByRef(ctx context.Context, ref string) ([]InboxItem, 
 func (q *Queries) ReopenInboxItem(ctx context.Context, id string) error {
 	res, err := q.w.ExecContext(ctx, `UPDATE inbox_item SET status='open', resolution='', resolved_by='', resolved_at=0, updated_at=?
 		WHERE id=? AND status <> 'open'`, nowMS(), id)
+	return q.decided(ctx, res, err, `SELECT 1 FROM inbox_item WHERE id = ?`, id)
+}
+
+// SwapInboxResolution 把處理方式從 from 改成 to（例：代為核准 → 已復原）；目前不是 from 的回 ErrAlreadyDecided。
+func (q *Queries) SwapInboxResolution(ctx context.Context, id, from, to string) error {
+	res, err := q.w.ExecContext(ctx, `UPDATE inbox_item SET resolution=?, updated_at=? WHERE id=? AND resolution=?`, to, nowMS(), id, from)
 	return q.decided(ctx, res, err, `SELECT 1 FROM inbox_item WHERE id = ?`, id)
 }
 
