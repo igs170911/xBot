@@ -24,6 +24,10 @@ const (
 	ModelMaxConns        = 100
 	ModelMaxIdleConns    = 32
 	ModelIdleConnTimeout = 60 * time.Second
+
+	// DefaultGlobalMonthlyMicros 是全部 Bot 合計的預設每月花費上限（百萬分之一美元；20 美元）。XBot 新增（V10）：
+	// 新安裝直接套用；舊安裝沒有設全域上限時套用一次並發「待我處理」通知（之後你拿掉就不再自動加回）。
+	DefaultGlobalMonthlyMicros int64 = 20_000_000
 )
 
 // Model Proxy 完整版（E11）。

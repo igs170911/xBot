@@ -1,4 +1,11 @@
 # make up／make down：用 docker compose 跑 XBot 服務（另一種安裝方式，和 make install 二選一）。
+# 請用 make up 啟動：它會算好下面的 XBOT_COMPOSE_DATA、XBOT_UID、XBOT_GID、XBOT_DOCKER_GID。
+#
+# 服務在容器裡用主機的 Docker 開 Bot 的電腦，所以有兩件事要和 make install 一樣：
+#   1. 資料目錄用「同一個絕對路徑」掛進容器：Bot 電腦的通訊資料夾（<資料目錄>/bots/<id>/ipc）是由主機的 Docker
+#      掛進 Bot 電腦的，路徑要在主機上也存在。
+#   2. 用主機的網路（network_mode: host）：Bot 電腦的畫面與 Hermes 只發布在主機的 127.0.0.1，服務要連得到。
+#      所以這裡沒有 ports:，聽哪裡由 XBOT_HOST_BIND、XBOT_PORT 決定。
 services:
   xbot:
     build:
@@ -7,13 +14,19 @@ services:
         VERSION: ${XBOT_VERSION:-dev}
     image: xbot:local
     restart: unless-stopped
-    ports:
+    network_mode: host
+    # 用你自己的帳號執行（資料檔案屬於你，不是 root），並加入 docker 群組才能用 docker.sock。
+    user: "${XBOT_UID:?請用 make up 啟動}:${XBOT_GID:?請用 make up 啟動}"
+    group_add:
+      - "${XBOT_DOCKER_GID:?請用 make up 啟動}"
+    environment:
       # 預設對所有網路介面開放（0.0.0.0）；非本機連線要登入碼。只想本機用：XBOT_HOST_BIND=127.0.0.1。
-      - "${XBOT_HOST_BIND:-0.0.0.0}:${XBOT_PORT:-8780}:8780"
+      XBOT_BIND: ${XBOT_HOST_BIND:-0.0.0.0}
+      XBOT_PORT: ${XBOT_PORT:-8780}
+      XBOT_DATA_DIR: ${XBOT_COMPOSE_DATA:?請用 make up 啟動}
+      XBOT_BOX_IMAGE: ${XBOT_BOX_IMAGE:-xbot-box:dev}
+      HOME: /tmp
     volumes:
-      - xbot-data:/data
+      - ${XBOT_COMPOSE_DATA}:${XBOT_COMPOSE_DATA}
       # 服務要用 Docker 開 Bot 的電腦。注意：能用 Docker 等於有主機 root 權限（PRD SEC-9）。
       - /var/run/docker.sock:/var/run/docker.sock
-
-volumes:
-  xbot-data:

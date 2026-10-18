@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# 在有 systemd 的乾淨容器裡驗證 C06：安裝成服務、狀態、備份與還原、更新失敗自動回滾、
-# 重開機自動啟動、移除。不會動到你自己的機器。
+# 在有 systemd 的乾淨容器裡驗證 C06：安裝成服務、狀態、更新時保留服務設定（V10）、備份與還原、
+# 更新失敗自動回滾（含新版已套用 migration 時連資料庫一起換回，V10）、重開機自動啟動、移除。不會動到你自己的機器。
 # 用法：scripts/test-service.sh（需要先 make build）
 set -euo pipefail
 cd "$(dirname "$0")/.."
 [ -x bin/xbot-linux-amd64 ] || { echo "先執行 make build"; exit 1; }
 
-name=xbot-service-test
-img=xbot-systemd-test:local
+name=${XBOT_SERVICE_TEST_NAME:-xbot-service-test}
+img=xbot-systemd-test:v2
 docker rm -f "$name" >/dev/null 2>&1 || true
 docker build -q -t "$img" - >/dev/null <<'EOF'
 FROM debian:13
-RUN apt-get update -qq && apt-get install -y -qq systemd systemd-sysv dbus dbus-user-session curl ca-certificates >/dev/null \
+RUN apt-get update -qq && apt-get install -y -qq systemd systemd-sysv dbus dbus-user-session curl ca-certificates sqlite3 >/dev/null \
  && useradd -m -u 1000 -s /bin/bash xb && mkdir -p /var/lib/systemd/linger && touch /var/lib/systemd/linger/xb
 CMD ["/sbin/init"]
 EOF
@@ -31,8 +31,17 @@ step() { printf '\n▶ %s\n' "$*"; }
 wait_for "as_user 'systemctl --user is-system-running --wait || systemctl --user show-environment'"
 docker cp bin/xbot-linux-amd64 "$name":/home/xb/xbot
 printf '#!/bin/sh\nexit 1\n' > /tmp/xbot-bad && docker cp /tmp/xbot-bad "$name":/home/xb/bad && rm /tmp/xbot-bad
-docker exec "$name" chown xb:xb /home/xb/xbot /home/xb/bad
-docker exec "$name" chmod +x /home/xb/xbot /home/xb/bad
+# 模擬「套用了新的 migration 才起不來」的新版：資料庫記上一個比舊版新的 migration，然後失敗。
+cat > /tmp/xbot-bad-migrate <<'EOS'
+#!/bin/sh
+[ "$1" = serve ] || exit 1
+sqlite3 "$XBOT_DATA_DIR/xbot.db" "INSERT INTO schema_migrations(version, name, applied_at) VALUES (9999, '9999_future.sql', 0)"
+echo "新版：已套用 migration 9999，故意起不來" >&2
+exit 1
+EOS
+docker cp /tmp/xbot-bad-migrate "$name":/home/xb/bad-migrate && rm /tmp/xbot-bad-migrate
+docker exec "$name" chown xb:xb /home/xb/xbot /home/xb/bad /home/xb/bad-migrate
+docker exec "$name" chmod +x /home/xb/xbot /home/xb/bad /home/xb/bad-migrate
 
 step "1. 安裝成服務"
 as_user './xbot service install --bin ./xbot'
@@ -41,6 +50,22 @@ step "2. 狀態"
 as_user '.local/bin/xbot service status'
 # Go 對 0.0.0.0 用雙協定 socket，會出現在 tcp6 的 [::]；兩個檔都看。
 as_user 'grep -qE " (00000000|00000000000000000000000000000000):224C [0-9A-F:]+ 0A " /proc/net/tcp /proc/net/tcp6 && echo "✅ 服務聽所有介面的 8780（區網可連）"' || { echo "❌ 服務沒有聽 0.0.0.0"; exit 1; }
+
+step "2b. 更新時沿用服務檔的設定，只有明確帶的才改"
+unit=.config/systemd/user/xbot.service
+as_user 'XBOT_PORT=8781 XBOT_PUSH_SUBJECT=mailto:t@example.com .local/bin/xbot service update --bin ./xbot'
+as_user "grep -qx 'Environment=XBOT_PORT=8781' $unit && grep -qx 'Environment=XBOT_PUSH_SUBJECT=mailto:t@example.com' $unit" \
+  || { as_user "cat $unit"; echo "❌ 明確帶的設定沒有寫進服務檔"; exit 1; }
+as_user '.local/bin/xbot service update --bin ./xbot'
+as_user "grep -qx 'Environment=XBOT_PORT=8781' $unit && grep -qx 'Environment=XBOT_PUSH_SUBJECT=mailto:t@example.com' $unit" \
+  || { as_user "cat $unit"; echo "❌ 沒帶變數的 update 把服務設定改回預設了"; exit 1; }
+as_user 'curl -fsS http://127.0.0.1:8781/healthz >/dev/null && .local/bin/xbot service status >/dev/null' \
+  || { echo "❌ 服務沒有照服務檔的埠執行，或 xbot service status 沒讀到服務檔的埠"; exit 1; }
+echo "✅ 沒帶變數時沿用服務檔的設定（埠 8781、推播聯絡方式）"
+as_user 'XBOT_PORT=8780 .local/bin/xbot service update --bin ./xbot'
+as_user "grep -qx 'Environment=XBOT_PORT=8780' $unit && grep -qx 'Environment=XBOT_PUSH_SUBJECT=mailto:t@example.com' $unit" \
+  || { as_user "cat $unit"; echo "❌ 明確帶的埠沒有改"; exit 1; }
+echo "✅ 明確帶的才改（埠改回 8780，其他保留）"
 
 step "3. 備份 → 刪掉資料 → 還原"
 as_user 'echo 測試資料 > .local/share/xbot/note.txt && .local/bin/xbot backup --out backups/t.tar.gz'
@@ -51,6 +76,17 @@ as_user 'test "$(cat .local/share/xbot/note.txt)" = 測試資料 && echo "✅ �
 step "4. 更新成壞掉的版本 → 應該自動換回上一版"
 if as_user '.local/bin/xbot service update --bin ./bad'; then echo "❌ 壞掉的版本不該更新成功"; exit 1; fi
 as_user 'curl -fsS http://127.0.0.1:8780/healthz && echo && echo "✅ 回滾後服務正常"'
+
+step "4b. 新版套用了 migration 才起不來 → 資料庫和執行檔一起換回上一版"
+v_old=$(as_user '.local/bin/xbot version')
+if as_user '.local/bin/xbot service update --bin ./bad-migrate'; then echo "❌ 壞掉的版本不該更新成功"; exit 1; fi
+as_user 'curl -fsS http://127.0.0.1:8780/healthz >/dev/null' || { as_user 'journalctl --user -u xbot -n 30 --no-pager' || true; echo "❌ 回滾後舊版沒有起來"; exit 1; }
+[ "$(as_user '.local/bin/xbot version')" = "$v_old" ] || { echo "❌ 執行檔沒有換回上一版"; exit 1; }
+max=$(as_user 'sqlite3 .local/share/xbot/xbot.db "SELECT MAX(version) FROM schema_migrations"')
+[ "$max" -lt 9999 ] || { echo "❌ 資料庫沒有換回更新前的備份（版本 $max）"; exit 1; }
+as_user 'ls .local/share/xbot/xbot.db.replaced-* >/dev/null && ls .local/share/xbot-backups/*-before-update.tar.gz >/dev/null' \
+  || { echo "❌ 應保留更新前的備份與新版改過的資料庫"; exit 1; }
+echo "✅ 資料庫換回更新前的備份（版本 $max），舊版正常執行"
 
 step "5. 重開機（重啟容器）→ 服務應自動啟動"
 docker restart "$name" >/dev/null

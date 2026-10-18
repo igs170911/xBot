@@ -106,6 +106,23 @@ func TestDockerProblems(t *testing.T) {
 	}
 }
 
+func TestDockerRootlessFails(t *testing.T) {
+	env := fakeEnv(allTools, map[string]string{
+		"docker version --format {{.Server.Version}}": "29.0.0",
+		"docker info --format {{.SecurityOptions}}":   "[name=seccomp,profile=builtin name=rootless name=cgroupns]",
+		"docker compose version --short":              "5.5.1",
+		"go version":                                  "go version go1.27.2 linux/amd64",
+	}, nil)
+	rs := Check(env, Options{Mode: ModeRun, DataDir: "/tmp", Addr: ":1"})
+	r := find(rs, "Docker")
+	if !Failed(rs) || r.Status != Fail || !r.Required || !strings.Contains(r.Detail, "rootless") || !strings.Contains(r.Fix, "dockerd-rootless-setuptool.sh uninstall") {
+		t.Fatalf("rootless 應該是必要的失敗：%+v", r)
+	}
+	if !strings.Contains(Format(rs), "❌ Docker") {
+		t.Fatalf("要顯示 ❌：\n%s", Format(rs))
+	}
+}
+
 func TestDockerInstallFixPerDistro(t *testing.T) {
 	env := fakeEnv(map[string]bool{}, nil, nil)
 	env.ReadFile = func(string) ([]byte, error) { return []byte("ID=omarchy\nID_LIKE=arch\n"), nil }

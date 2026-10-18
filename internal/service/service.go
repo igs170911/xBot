@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -48,6 +49,8 @@ func DefaultPaths(dataDir string) (Paths, error) {
 type Settings struct {
 	Bind string
 	Port int
+	// Extra 是其他要寫進服務檔的環境變數（MergeEnv：原本服務檔裡的，加上這次明確設了的）。
+	Extra []EnvVar
 }
 
 // Runner 執行外部指令並回傳輸出；測試時替換。
@@ -71,6 +74,10 @@ type Manager struct {
 	Healthy func(url string) bool
 	// Wait 是等待服務起來的上限。
 	Wait time.Duration
+	// Snapshot 在 Update 換新版之前備份資料（至少資料庫），回傳備份檔；nil 時不備份。
+	Snapshot func() (string, error)
+	// RestoreDB 在新版起不來、換回舊版時，把資料庫換回 Snapshot 的備份，回傳換下來的資料庫保留在哪裡。
+	RestoreDB func(snapshot string) (string, error)
 }
 
 var unitTmpl = template.Must(template.New("unit").Parse(`[Unit]
@@ -81,10 +88,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 ExecStart={{.Bin}} serve
-Environment=XBOT_DATA_DIR={{.DataDir}}
-Environment=XBOT_BIND={{.Bind}}
-Environment=XBOT_PORT={{.Port}}
-Restart=on-failure
+{{range .Env}}{{.}}
+{{end}}Restart=on-failure
 RestartSec=3
 TimeoutStopSec=20
 
@@ -95,7 +100,15 @@ WantedBy=default.target
 // RenderUnit 產生 systemd 服務檔內容。
 func RenderUnit(p Paths, s Settings) string {
 	var b strings.Builder
-	_ = unitTmpl.Execute(&b, map[string]any{"Bin": p.Bin, "DataDir": p.DataDir, "Bind": s.Bind, "Port": s.Port})
+	env := []string{
+		unitLine(EnvVar{"XBOT_DATA_DIR", p.DataDir}),
+		unitLine(EnvVar{"XBOT_BIND", s.Bind}),
+		unitLine(EnvVar{"XBOT_PORT", strconv.Itoa(s.Port)}),
+	}
+	for _, e := range s.Extra {
+		env = append(env, unitLine(e))
+	}
+	_ = unitTmpl.Execute(&b, map[string]any{"Bin": p.Bin, "Env": env})
 	return b.String()
 }
 
@@ -128,17 +141,23 @@ func (m *Manager) Install(srcBin string) error {
 	if err := os.MkdirAll(m.Paths.DataDir, 0o700); err != nil {
 		return err
 	}
-	unit := filepath.Join(m.Paths.UnitDir, Unit)
-	if err := os.WriteFile(unit, []byte(RenderUnit(m.Paths, m.Settings)), 0o644); err != nil {
+	unit := m.Paths.UnitPath()
+	old, _ := os.ReadFile(unit)
+	next := RenderUnit(m.Paths, m.Settings)
+	if err := os.WriteFile(unit, []byte(next), 0o644); err != nil {
 		return fmt.Errorf("寫入服務檔失敗：%w", err)
 	}
 	m.say("✅ 服務檔：%s", unit)
+	if len(old) > 0 {
+		m.reportEnvChanges(string(old), next)
+	}
 	if err := m.systemctl("daemon-reload"); err != nil {
 		return err
 	}
 	if err := m.systemctl("enable", Unit); err != nil {
 		return err
 	}
+	_ = m.systemctl("reset-failed", Unit) // 連續更新、回滾時不要被 systemd 的啟動次數限制擋下
 	if err := m.systemctl("restart", Unit); err != nil {
 		return err
 	}
@@ -150,6 +169,9 @@ func (m *Manager) Install(srcBin string) error {
 }
 
 // Update 換成新的執行檔並重啟；新版起不來就自動換回舊版。
+//
+// 換之前先備份（Snapshot）。新版可能已經套用了 migration 才失敗，舊版會因為資料庫比較新而拒絕啟動，
+// 所以換回舊版時連資料庫也換回更新前的備份（RestoreDB；新版改過的資料庫另外保留）。
 func (m *Manager) Update(srcBin string) error {
 	prev := m.Paths.Bin + ".prev"
 	hadOld := fileExists(m.Paths.Bin)
@@ -158,15 +180,34 @@ func (m *Manager) Update(srcBin string) error {
 			return fmt.Errorf("保留舊版失敗：%w", err)
 		}
 	}
+	snap := ""
+	if hadOld && m.Snapshot != nil && fileExists(m.Paths.DataDir) {
+		m.say("▶ 更新前先備份資料…")
+		f, err := m.Snapshot()
+		if err != nil {
+			return fmt.Errorf("更新前的備份失敗，沒有更新（舊版照常執行）：%w", err)
+		}
+		snap = f
+		m.say("✅ 已備份：%s", f)
+	}
 	if err := m.Install(srcBin); err != nil {
 		if !hadOld {
 			return err
 		}
 		m.say("❌ 新版啟動失敗：%v", err)
 		m.say("↩️  換回上一版…")
+		_ = m.systemctl("stop", Unit)
+		if snap != "" && m.RestoreDB != nil {
+			kept, rerr := m.RestoreDB(snap)
+			if rerr != nil {
+				return fmt.Errorf("新版失敗，而且資料庫換回更新前的備份也失敗：%v（備份檔：%s；原因：%w）", rerr, snap, err)
+			}
+			m.say("✅ 資料庫已換回更新前的備份（新版改過的保留在 %s）", kept)
+		}
 		if rerr := copyFile(prev, m.Paths.Bin, 0o755); rerr != nil {
 			return fmt.Errorf("新版失敗，而且換回舊版也失敗：%v（原因：%w）", rerr, err)
 		}
+		_ = m.systemctl("reset-failed", Unit)
 		if rerr := m.systemctl("restart", Unit); rerr != nil {
 			return fmt.Errorf("新版失敗，舊版重啟也失敗：%v（原因：%w）", rerr, err)
 		}

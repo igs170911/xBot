@@ -2233,6 +2233,10 @@ export function auditList(input: AuditListInput = {}, opts?: CallOptions): Promi
 export type BackupCreateInput = Record<string, never>
 
 export interface BackupCreateOutput {
+  running: boolean
+  started_at: number
+  finished_at?: number
+  /** 備份檔（做完才有大小） */
   file: {
     /** 檔名，例：xbot-backup-20261019-030000.tar.gz */
     name: string
@@ -2243,14 +2247,23 @@ export interface BackupCreateOutput {
     /** 建立時間（Unix 毫秒，取檔案修改時間） */
     created_at: number
   }
-  /** 包進去幾個檔案 */
-  files: number
+  /** 資料目錄裡備了幾個檔案 */
+  files?: number
+  /** 備到幾台 Bot 電腦的資料 */
+  computers?: number
+  /** 沒有備到的 Bot 電腦（主機連不上等），主機恢復後再備份一次 */
+  skipped?: {
+    bot_name: string
+    reason: string
+  }[]
+  /** 備份失敗的原因 */
+  error?: string
 }
 
 /**
- * 立即備份 XBot 的資料（同 make backup，不含瀏覽器登入）
+ * 立即備份 XBot 的資料與每個 Bot 電腦的資料（同 make backup，不含瀏覽器登入）
  *
- * 資料庫用一致的快照，服務執行中也能備份。不含 Bot 電腦裡的資料（Docker volume）與瀏覽器登入；要包含登入請用指令列 make backup INCLUDE_LOGINS=1。同一時間只能有一份在做。
+ * 在背景進行，進度看 xbot.backup.list 的 job。資料庫用一致的快照、Bot 電腦開著也能備份（不會停下它）。訂閱登入憑證不備份；要包含瀏覽器登入請用指令列 make backup INCLUDE_LOGINS=1。同一時間只能有一份在做（再呼叫回目前的進度）。
  *
  * `xbot.backup.create`：權限 admin、風險 safe
  */
@@ -2278,10 +2291,38 @@ export interface BackupListOutput {
     /** 建立時間（Unix 毫秒，取檔案修改時間） */
     created_at: number
   }[]
+  /** 網頁按的「立即備份」：進行中或最近一次 */
+  job?: {
+    running: boolean
+    started_at: number
+    finished_at?: number
+    /** 備份檔（做完才有大小） */
+    file: {
+      /** 檔名，例：xbot-backup-20261019-030000.tar.gz */
+      name: string
+      /** 完整路徑（make restore FILE=… 用） */
+      path: string
+      /** 位元組 */
+      size: number
+      /** 建立時間（Unix 毫秒，取檔案修改時間） */
+      created_at: number
+    }
+    /** 資料目錄裡備了幾個檔案 */
+    files?: number
+    /** 備到幾台 Bot 電腦的資料 */
+    computers?: number
+    /** 沒有備到的 Bot 電腦（主機連不上等），主機恢復後再備份一次 */
+    skipped?: {
+      bot_name: string
+      reason: string
+    }[]
+    /** 備份失敗的原因 */
+    error?: string
+  }
 }
 
 /**
- * 列出最近的備份檔（資料目錄旁的 xbot-backups）
+ * 列出最近的備份檔（資料目錄旁的 xbot-backups）與網頁備份的進度
  *
  * 還原要先停服務，請用指令列：make restore FILE=<備份檔>。
  *
@@ -4681,6 +4722,46 @@ export interface ComputersUpdateOutput {
  */
 export function computersUpdate(input: ComputersUpdateInput = {}, opts?: CallOptions): Promise<ComputersUpdateOutput> {
   return invoke('xbot.computers.update', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.update_status
+
+export type ComputersUpdateStatusInput = Record<string, never>
+
+export interface ComputersUpdateStatusOutput {
+  running: boolean
+  started_at?: number
+  finished_at?: number
+  hosts: {
+    host_id: string
+    name: string
+    /** 要先把新映像傳到這台主機 */
+    image_outdated: boolean
+    /** pending、image、running、done、failed、skipped */
+    state: string
+    error?: string
+    bots: {
+      bot_id: string
+      name: string
+      /** pending、running、rebuilt、skipped、failed */
+      state: string
+      reason?: string
+    }[]
+  }[]
+  total: number
+  done: number
+  current?: string
+}
+
+/**
+ * 看「更新電腦」的進度：正在進行或最近一次的結果（還沒更新過時 hosts 是空的）
+ *
+ * make update 之後用來等電腦更新完；網頁的「更新電腦」按鈕也用它顯示進度。
+ *
+ * `xbot.computers.update_status`：權限 read、風險 safe
+ */
+export function computersUpdateStatus(input: ComputersUpdateStatusInput = {}, opts?: CallOptions): Promise<ComputersUpdateStatusOutput> {
+  return invoke('xbot.computers.update_status', input, opts).then((r) => r.output)
 }
 
 // xbot.computers.wake
@@ -12668,6 +12749,7 @@ export interface Ops {
   'xbot.computers.status': { input: ComputersStatusInput; output: ComputersStatusOutput }
   'xbot.computers.takeover': { input: ComputersTakeoverInput; output: ComputersTakeoverOutput }
   'xbot.computers.update': { input: ComputersUpdateInput; output: ComputersUpdateOutput }
+  'xbot.computers.update_status': { input: ComputersUpdateStatusInput; output: ComputersUpdateStatusOutput }
   'xbot.computers.wake': { input: ComputersWakeInput; output: ComputersWakeOutput }
   'xbot.devices.pair_start': { input: DevicesPairStartInput; output: DevicesPairStartOutput }
   'xbot.devices.pair_status': { input: DevicesPairStatusInput; output: DevicesPairStatusOutput }
@@ -12848,8 +12930,8 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.apps.test': { path: '/api/v1/apps.test', scope: 'admin', risk: 'safe', mutates: true, summary: '測試一個連接' },
   'xbot.apps.update': { path: '/api/v1/apps.update', scope: 'admin', risk: 'safe', mutates: true, summary: '修改一個連接' },
   'xbot.audit.list': { path: '/api/v1/audit.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出稽核紀錄（誰、從哪裡、做了什麼）' },
-  'xbot.backup.create': { path: '/api/v1/backup.create', scope: 'admin', risk: 'safe', mutates: true, summary: '立即備份 XBot 的資料（同 make backup，不含瀏覽器登入）' },
-  'xbot.backup.list': { path: '/api/v1/backup.list', scope: 'admin', risk: 'safe', mutates: true, summary: '列出最近的備份檔（資料目錄旁的 xbot-backups）' },
+  'xbot.backup.create': { path: '/api/v1/backup.create', scope: 'admin', risk: 'safe', mutates: true, summary: '立即備份 XBot 的資料與每個 Bot 電腦的資料（同 make backup，不含瀏覽器登入）' },
+  'xbot.backup.list': { path: '/api/v1/backup.list', scope: 'admin', risk: 'safe', mutates: true, summary: '列出最近的備份檔（資料目錄旁的 xbot-backups）與網頁備份的進度' },
   'xbot.bots.archive': { path: '/api/v1/bots.archive', scope: 'manage', risk: 'safe', mutates: true, summary: '封存（或取消封存）一個 Bot' },
   'xbot.bots.create': { path: '/api/v1/bots.create', scope: 'manage', risk: 'safe', mutates: true, summary: '建立一個 Bot' },
   'xbot.bots.delete': { path: '/api/v1/bots.delete', scope: 'manage', risk: 'confirm', mutates: true, summary: '刪除一個 Bot' },
@@ -12896,6 +12978,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.computers.status': { path: '/api/v1/computers.status', scope: 'read', risk: 'safe', mutates: false, summary: '看一個 Bot 的電腦：開機或休眠、在哪台主機、什麼時候會閒置休眠、要不要更新' },
   'xbot.computers.takeover': { path: '/api/v1/computers.takeover', scope: 'operate', risk: 'safe', mutates: true, summary: '接手一台電腦：Bot 先暫停（正在做的那一輪中斷、排隊的先等），你可以直接操作畫面' },
   'xbot.computers.update': { path: '/api/v1/computers.update', scope: 'admin', risk: 'safe', mutates: true, summary: '更新電腦：把新的電腦映像傳到主機，並重建上面要更新的電腦（資料保留）' },
+  'xbot.computers.update_status': { path: '/api/v1/computers.update_status', scope: 'read', risk: 'safe', mutates: false, summary: '看「更新電腦」的進度：正在進行或最近一次的結果（還沒更新過時 hosts 是空的）' },
   'xbot.computers.wake': { path: '/api/v1/computers.wake', scope: 'operate', risk: 'safe', mutates: true, summary: '叫醒（開機）一個 Bot 的電腦；還沒有電腦時先建立' },
   'xbot.devices.pair_start': { path: '/api/v1/devices.pair_start', scope: 'admin', risk: 'safe', mutates: true, summary: '產生連手機用的 QR（一次性配對碼）' },
   'xbot.devices.pair_status': { path: '/api/v1/devices.pair_status', scope: 'admin', risk: 'safe', mutates: true, summary: '看連手機的配對碼用掉了沒' },

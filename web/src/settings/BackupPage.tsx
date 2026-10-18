@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Archive, Check, Copy, DatabaseBackup, Info } from 'lucide-react'
 import { backupCreate, backupList, systemPing, type BackupListOutput, type SystemPingOutput } from '../api/generated'
 import { useCopy } from '../chat/useCopy'
@@ -51,6 +51,25 @@ export function BackupPage() {
       })
       .catch((e: unknown) => setErr(errText(e)))
   }, [])
+  // 備份在背景做（Bot 電腦的資料可能要幾分鐘）：進行中每 3 秒看一次，做完說結果。
+  const job = list?.job
+  const running = !!job?.running
+  const reported = useRef<number | null>(null)
+  useEffect(() => {
+    if (!running) return
+    const t = setInterval(load, 3000)
+    return () => clearInterval(t)
+  }, [running, load])
+  useEffect(() => {
+    if (!job || job.running || !job.finished_at || reported.current === job.finished_at || reported.current === null) {
+      if (job && !job.running && reported.current === null) reported.current = job.finished_at ?? 0
+      return
+    }
+    reported.current = job.finished_at
+    if (job.error) toast.show({ kind: 'error', text: `備份失敗：${job.error}` })
+    else toast.show({ kind: 'done', text: `已備份 ${job.files ?? 0} 個檔案和 ${job.computers ?? 0} 台 Bot 電腦的資料（${sizeLabel(job.file.size)}）` })
+  }, [job, toast])
+
   useEffect(() => {
     load()
     systemPing({})
@@ -61,8 +80,8 @@ export function BackupPage() {
   const backupNow = async () => {
     setBusy(true)
     try {
-      const out = await backupCreate({})
-      toast.show({ kind: 'done', text: `已備份 ${out.files} 個檔案（${sizeLabel(out.file.size)}）` })
+      await backupCreate({})
+      reported.current = -1
       load()
     } catch (e) {
       toast.show({ kind: 'error', text: errText(e) })
@@ -91,13 +110,24 @@ export function BackupPage() {
         <Group label="最近的備份">
           <Row
             title="立即備份"
-            sub="所有 Bot、對話、技能、記憶、定時任務、連接的應用程式設定；資料庫用一致的快照，Bot 正在工作也能備份。"
+            sub={
+              running
+                ? '正在備份資料目錄和每個 Bot 電腦的資料…（可以離開這頁，做完會出現在下面）'
+                : '所有 Bot、對話、技能、記憶、定時任務，加上每個 Bot 電腦裡的檔案（家目錄、工作資料夾）；Bot 正在工作也能備份。'
+            }
             wrap
           >
-            <Button variant="primary" size="sm" icon={DatabaseBackup} loading={busy} onClick={() => void backupNow()}>
-              立即備份
+            <Button variant="primary" size="sm" icon={DatabaseBackup} loading={busy || running} onClick={() => void backupNow()}>
+              {running ? '備份中…' : '立即備份'}
             </Button>
           </Row>
+          {job && !job.running && (job.error || (job.skipped?.length ?? 0) > 0) && (
+            <Row
+              title={job.error ? '上次的備份沒有成功' : '有 Bot 電腦的資料沒有備到'}
+              sub={job.error ?? `${(job.skipped ?? []).map((x) => `${x.bot_name}（${x.reason}）`).join('、')}；主機恢復後再備份一次。`}
+              className="text-warning-ink"
+            />
+          )}
           {list && list.backups.length === 0 && <Row title="還沒有備份" sub={`備份會放在 ${list.dir}`} />}
           {list?.backups.map((b) => (
             <div key={b.path} className="flex min-h-12 items-center gap-3 border-t border-line px-4 py-2.5" data-testid="backup-row">
@@ -113,7 +143,7 @@ export function BackupPage() {
           ))}
         </Group>
         <Note tone="warning" icon={<Icon icon={Info} size={18} />}>
-          備份不包含：Bot 電腦裡的檔案（家目錄、/workspace，存在 Docker volume）與網站登入。要一起備份請看管理手冊（docs/ADMIN.md）的「備份」。
+          備份不包含：訂閱登入憑證（開機時會重新寫入）和網站登入。要連網站登入一起備份，在終端機用 make backup INCLUDE_LOGINS=1；細節見管理手冊（docs/ADMIN.md）的「備份」。
         </Note>
       </Block>
 
@@ -129,7 +159,7 @@ export function BackupPage() {
 
       <Block title="更新">
         <Group>
-          <Row title={`XBot ${version}`} sub="在原始碼資料夾執行：先拉新版、建置、自動備份一份，再換新版重啟；新版起不來會自動換回上一版。" wrap>
+          <Row title={`XBot ${version}`} sub="在原始碼資料夾執行：先拉新版、建置、自動備份一份，再換新版重啟（新版起不來會連資料庫一起換回上一版），映像有改就重建並更新電腦。" wrap>
             <span className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-1.5 max-sm:max-w-none">
               <Cmd text="make update" />
             </span>
@@ -138,11 +168,11 @@ export function BackupPage() {
             title="更新 Bot 的電腦"
             sub={
               <>
-                make update 不會重建 Bot 的電腦。電腦映像換了（make box）以後，到「
+                正在工作的 Bot 在 make update 時會跳過；之後到「
                 <a href="/settings/computers" onClick={linkClick('/settings/computers')}>
                   電腦與裝置
                 </a>
-                」按「更新電腦」。
+                」按「更新電腦」補做。
               </>
             }
           />

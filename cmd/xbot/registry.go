@@ -5,6 +5,8 @@ import (
 	"log/slog"
 
 	"xbot/internal/auth"
+	"xbot/internal/backup"
+	"xbot/internal/backup/dockervol"
 	"xbot/internal/backupops"
 	"xbot/internal/catalog"
 	"xbot/internal/ops"
@@ -38,7 +40,9 @@ func backupService(st *stack) *backupops.Service {
 	if st == nil {
 		return nil
 	}
-	return &backupops.Service{DataDir: st.dataDir}
+	return &backupops.Service{DataDir: st.dataDir, NewComputers: func() backup.Computers {
+		return &dockervol.Computers{DataDir: st.dataDir, Image: st.boxImage}
+	}}
 }
 
 // pwaDeps 是手機 PWA 的服務元件（W31）：手機掃 QR 登入、Web Push。

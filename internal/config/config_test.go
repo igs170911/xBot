@@ -47,6 +47,30 @@ func TestLocalNoAuth(t *testing.T) {
 	}
 }
 
+// 有反向代理時預設關掉本機免登入（同一台的反向代理沒帶 X-Forwarded-For 會看起來像本機），明確設 1 才開。
+func TestLocalNoAuthOffBehindProxy(t *testing.T) {
+	cases := []struct {
+		public, trusted, noauth string
+		want                    bool
+	}{
+		{"https://xbot.example.com", "", "", false},
+		{"", "10.0.0.5", "", false},
+		{"https://xbot.example.com", "", "1", true},
+		{"", "10.0.0.5", "1", true},
+		{"https://xbot.example.com", "", "0", false},
+		{"", "", "", true},
+	}
+	for _, c := range cases {
+		t.Setenv("XBOT_PUBLIC_URL", c.public)
+		t.Setenv("XBOT_TRUSTED_PROXIES", c.trusted)
+		t.Setenv("XBOT_LOCAL_NOAUTH", c.noauth)
+		got, err := Load()
+		if err != nil || got.LocalNoAuth != c.want {
+			t.Fatalf("%+v：LocalNoAuth=%v %v", c, got.LocalNoAuth, err)
+		}
+	}
+}
+
 func TestURLForAnyBind(t *testing.T) {
 	c := Config{Bind: "0.0.0.0", Port: 9000}
 	if c.URL() != "http://localhost:9000" {

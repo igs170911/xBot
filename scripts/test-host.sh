@@ -113,6 +113,15 @@ if [ "${ONLY:-}" != "deploy" ]; then
   wait "$serve_pid" 2>/dev/null || true
   serve_pid=""
   docker exec "$fresh_name" sh -c 'ids=$(docker ps -aq --filter label=xbot.managed); [ -z "$ids" ] || docker rm -f $ids >/dev/null; true'
+
+  step "B4. make deploy 也帶 Bot 電腦映像（V10；--image-only 只做這一步）：那台沒有就傳，一樣就不傳"
+  docker exec "$fresh_name" docker rmi -f "$BOX_IMAGE" >/dev/null
+  bin/xbot deploy --host "root@$ip" --ssh-opts "$ssh_opts" --image-only | tee "$work/image.log"
+  grep -q "已把 Bot 電腦映像" "$work/image.log" || { echo "❌ 那台沒有映像時應該傳過去"; exit 1; }
+  docker exec "$fresh_name" docker image inspect "$BOX_IMAGE" >/dev/null || { echo "❌ 那台還是沒有映像"; exit 1; }
+  bin/xbot deploy --host "root@$ip" --ssh-opts "$ssh_opts" --image-only | tee "$work/image.log"
+  grep -q "已是最新" "$work/image.log" || { echo "❌ 一樣的映像不該再傳"; exit 1; }
+  echo "✅ 映像傳過去了，第二次不再傳"
 fi
 
 printf '\n✅ 主機與部署測試全部通過\n'

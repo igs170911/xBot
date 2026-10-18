@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { LoaderCircle, RefreshCw } from 'lucide-react'
-import { computersUpdate, type ComputersUpdateOutput } from '../api/generated'
+import { computersUpdate, computersUpdateStatus, type ComputersUpdateOutput } from '../api/generated'
 import { onEvent } from '../data/events'
 import { Button } from '../ui/Button'
 import { ConfirmDialog } from '../ui/Dialog'
@@ -12,7 +12,7 @@ import { Note } from './parts'
 
 // 設定 › 電腦與裝置的「更新電腦」（BX-15、B13）：make box 換了映像、或 XBot 更新了電腦的安全設定以後，
 // 主機清單標出「映像過期」、電腦標出要更新。這裡用 xbot.computers.update 的預演看要更新哪些，按一下在背景更新
-// （一台主機做完再做下一台，正在工作的 Bot 跳過），進度看 computers.update 事件。
+// （一台主機做完再做下一台，正在工作的 Bot 跳過），進度看 computers.update 事件與 xbot.computers.update_status。
 
 export type UpdatePlan = ComputersUpdateOutput
 
@@ -37,6 +37,12 @@ export function useComputerUpdate() {
   }, [])
   useEffect(() => {
     reload()
+    // 已經在更新（例如 make update 叫的，或別的分頁按的）：先顯示目前的進度。
+    computersUpdateStatus({})
+      .then((p) => {
+        if (p.running) setProgress(p)
+      })
+      .catch(() => {})
     return onEvent((e) => {
       if (e.kind !== 'computers.update') return
       const p = e.payload as UpdatePlan | undefined

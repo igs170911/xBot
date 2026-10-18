@@ -43,6 +43,7 @@ import (
 // serve 與 dev 指令共用。
 type stack struct {
 	dataDir   string // 資料目錄（網頁備份用）
+	boxImage  string // Bot 電腦映像（網頁備份的輔助容器用）
 	db        *store.DB
 	local     *hosts.Local
 	keyring   *proxy.Keyring
@@ -146,6 +147,7 @@ func openStack(cfg config.Config) (*stack, error) {
 	if noGuard {
 		logger.Warn("XBOT_NETGUARD=off：Bot 的電腦連得到這台主機與區網（SEC-4 網路防護已關閉）")
 	}
+	s.boxImage = image
 	s.boxes = box.New(db, registry, box.Options{Image: image, Prepare: comp.Prepare, NoNetGuard: noGuard, Logger: logger,
 		// 電腦狀態變了：推給介面，並叫醒排隊等電腦的工作（休眠空出了名額）。
 		Notify: func(st box.Status) {

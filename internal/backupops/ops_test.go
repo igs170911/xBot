@@ -33,7 +33,7 @@ func makeData(t *testing.T) string {
 	return data
 }
 
-func opsEnv(t *testing.T, dataDir string) *ops.Registry {
+func opsEnv(t *testing.T, dataDir string) (*ops.Registry, *Service) {
 	t.Helper()
 	db, err := store.Open(context.Background(), filepath.Join(t.TempDir(), store.FileName))
 	if err != nil {
@@ -41,8 +41,9 @@ func opsEnv(t *testing.T, dataDir string) *ops.Registry {
 	}
 	t.Cleanup(func() { db.Close() })
 	reg := ops.New(ops.Config{DB: db})
-	Register(reg, &Service{DataDir: dataDir})
-	return reg
+	svc := &Service{DataDir: dataDir}
+	Register(reg, svc)
+	return reg, svc
 }
 
 func invoke[T any](t *testing.T, reg *ops.Registry, id ops.Identity, name string, opts ops.Options) (T, error) {
@@ -57,7 +58,7 @@ func invoke[T any](t *testing.T, reg *ops.Registry, id ops.Identity, name string
 
 func TestBackupOps(t *testing.T) {
 	data := makeData(t)
-	reg := opsEnv(t, data)
+	reg, svc := opsEnv(t, data)
 	owner := ops.Owner("http")
 
 	empty, err := invoke[ListOut](t, reg, owner, "xbot.backup.list", ops.Options{})
@@ -65,7 +66,7 @@ func TestBackupOps(t *testing.T) {
 		t.Fatalf("還沒有備份：%+v %v", empty, err)
 	}
 
-	dry, err := invoke[CreateOut](t, reg, owner, "xbot.backup.create", ops.Options{DryRun: true})
+	dry, err := invoke[Job](t, reg, owner, "xbot.backup.create", ops.Options{DryRun: true})
 	if err != nil || !strings.HasPrefix(dry.File.Path, backup.DefaultDir(data)) {
 		t.Fatalf("預演：%+v %v", dry, err)
 	}
@@ -73,10 +74,16 @@ func TestBackupOps(t *testing.T) {
 		t.Fatal("預演不能真的寫備份")
 	}
 
-	made, err := invoke[CreateOut](t, reg, owner, "xbot.backup.create", ops.Options{})
-	if err != nil || made.Files == 0 || made.File.Size == 0 {
-		t.Fatalf("立即備份：%+v %v", made, err)
+	started, err := invoke[Job](t, reg, owner, "xbot.backup.create", ops.Options{})
+	if err != nil || !started.Running {
+		t.Fatalf("立即備份在背景開始：%+v %v", started, err)
 	}
+	svc.Wait()
+	done, err := invoke[ListOut](t, reg, owner, "xbot.backup.list", ops.Options{})
+	if err != nil || done.Job == nil || done.Job.Running || done.Job.Error != "" || done.Job.Files == 0 || done.Job.File.Size == 0 {
+		t.Fatalf("做完的進度：%+v %v", done.Job, err)
+	}
+	made := done.Job
 	if m, err := backup.ReadManifest(made.File.Path); err != nil || m.IncludeLogins {
 		t.Fatalf("網頁備份不含登入：%+v %v", m, err)
 	}
@@ -103,12 +110,24 @@ func TestBackupOps(t *testing.T) {
 
 func TestBackupCreateOneAtATime(t *testing.T) {
 	s := &Service{DataDir: makeData(t)}
-	s.mu.Lock()
-	_, err := s.Create(context.Background(), filepath.Join(t.TempDir(), "b.tar.gz"))
-	s.mu.Unlock()
-	var oe *ops.Error
-	if !errors.As(err, &oe) || oe.Code != ops.CodeConflict {
-		t.Fatalf("同時兩份要回 conflict：%v", err)
+	s.job = &Job{Running: true, File: File{Name: "a.tar.gz"}}
+	if j := s.Start(context.Background(), filepath.Join(t.TempDir(), "b.tar.gz")); j.File.Name != "a.tar.gz" || !j.Running {
+		t.Fatalf("已經在做時回目前的進度：%+v", j)
+	}
+	s.job.Running = false
+	s.Start(context.Background(), filepath.Join(t.TempDir(), "missing", "..", "c.tar.gz"))
+	s.Wait()
+	if s.job.Running || s.job.File.Name != "c.tar.gz" {
+		t.Fatalf("新的一份：%+v", s.job)
+	}
+}
+
+func TestBackupFailureIsReported(t *testing.T) {
+	s := &Service{DataDir: filepath.Join(t.TempDir(), "nope")}
+	s.Start(context.Background(), filepath.Join(t.TempDir(), "b.tar.gz"))
+	s.Wait()
+	if s.job.Running || s.job.Error == "" {
+		t.Fatalf("找不到資料目錄要記下原因：%+v", s.job)
 	}
 }
 

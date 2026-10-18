@@ -45,7 +45,7 @@ make install   # 補齊 → 建置 → 建 Bot 電腦映像 → 裝成 systemd �
 XBOT_BIND=127.0.0.1 make install
 ```
 
-> 注意：`make update` 會用當下的環境變數重寫服務檔。裝的時候用了 `XBOT_BIND`、`XBOT_PORT` 或 `XBOT_DATA_DIR`，更新時也要帶一樣的值，或改用服務的覆寫檔（見 [管理手冊](../ADMIN.md#環境變數)）。
+裝的時候帶的 `XBOT_BIND`、`XBOT_PORT`、`XBOT_DATA_DIR` 等設定會寫進服務檔。之後 `make update` 沿用服務檔裡的值，不用每次都帶；要改時才帶，例：`XBOT_PORT=8790 make update`（見 [管理手冊](../ADMIN.md#環境變數)）。
 
 ## 管理服務
 
@@ -62,39 +62,52 @@ XBOT_BIND=127.0.0.1 make install
 make update
 ```
 
-依序做：`git pull --ff-only`（有沒提交的修改就略過）→ `make build` → 備份 → 換新版重啟 → 健康檢查。新版起不來會自動換回上一版。資料庫的 migration 在服務啟動時自動執行。
+依序做：
 
-`make update` **不會**重建 Bot 電腦映像。版本說明提到映像有改時，再做：
-
-```bash
-make box
-```
-
-然後更新電腦：「設定 → 電腦與裝置」上方出現「N 台電腦要更新」時，按「更新電腦」。指令列也可以：
+1. `git pull --ff-only`（有沒提交的修改就略過）→ `make build`。
+2. 備份資料目錄 → 換新版重啟 → 健康檢查。新版起不來會自動換回上一版，**連資料庫也換回更新前的備份**（新版可能已經改了資料庫，舊版看到會拒絕啟動）。資料庫的 migration 在服務啟動時自動執行。
+3. `box/` 有改時重建 Bot 電腦映像（`make box`），沒改就跳過。
+4. 更新電腦：映像或安全設定改過的電腦逐台重建，一台主機做完再做下一台，遠端主機先把新映像傳過去。家目錄、工作資料夾、瀏覽器登入都保留。**正在工作的 Bot 會跳過**，之後再更新一次：
 
 ```bash
 xbot computers update --dry-run   # 先看會更新哪些
 xbot computers update             # 所有主機；只更新一台加 --host_id <id>
 ```
 
-XBot 會一台主機做完再做下一台：把新映像傳過去，再把電腦逐台重建。家目錄、工作資料夾、瀏覽器登入都保留；正在工作的 Bot 會跳過，下次再更新。
+也可以在網頁「設定 → 電腦與裝置」按「更新電腦」。
 
 ## 備份與還原
 
 ```bash
 make backup                       # 備份到 ~/.local/share/xbot-backups/
-make backup INCLUDE_LOGINS=1      # 連登入資料一起
+make backup INCLUDE_LOGINS=1      # 連瀏覽器登入一起
 make backup OUT=/mnt/usb/xbot.tar.gz
 make restore FILE=~/.local/share/xbot-backups/xbot-backup-20261019-090000.tar.gz
 ```
 
-- 服務執行中也能備份（資料庫用 SQLite 快照）。
-- 網頁上也可以：「設定 → 進階 → 備份與更新」按「立即備份」（不含登入資料），下面列出最近的備份檔、目前版本，以及還原和更新要在終端機打的指令。
-- 還原時服務會先停下，還原完再啟動，所以只能用指令列。原本的資料會改名保留，確認沒問題再自己刪。
+- 服務執行中、Bot 的電腦開著也能備份（資料庫用 SQLite 快照）。
+- 網頁上也可以：「設定 → 進階 → 備份與更新」按「立即備份」（不含瀏覽器登入），下面列出最近的備份檔、目前版本，以及還原和更新要在終端機打的指令。
+- 還原時服務會先停下，還原完再啟動。原本的資料會改名保留，確認沒問題再自己刪。
 
-備份**包含**：資料庫（Bot、對話、技能、定時任務、設定、用量）、加密金鑰 `model-proxy.key`、登入碼、SSH 金鑰、內建 Tailscale 狀態、共用技能庫。
+備份**包含**：
 
-備份**不包含** Bot 電腦裡的檔案（家目錄、工作資料夾、Hermes 紀錄、瀏覽器登入）。它們放在 Docker volume（`xbot-box-<Bot id>-home` 等），要另外備份，做法見 [管理手冊](../ADMIN.md#備份)。
+- 資料庫（Bot、對話、技能、定時任務、設定、用量）、加密金鑰 `model-proxy.key`、登入碼、SSH 金鑰、內建 Tailscale 狀態、共用技能庫。
+- 每個 Bot 電腦裡的檔案：家目錄、工作資料夾、Hermes 的設定與紀錄。在遠端主機上的也會備到。
+
+備份**不包含**：
+
+- 訂閱登入憑證（電腦開機時會重新寫入）。
+- 瀏覽器登入（除非 `INCLUDE_LOGINS=1`）。
+
+遠端主機當時連不上的話，那幾個 Bot 的電腦資料會沒有備到，會列出來。主機回來後再備份一次。
+
+還原時，Bot 電腦的資料寫回它所在的主機，原本的資料先複製一份保留（`docker volume ls` 裡 `-before-restore-` 開頭的）。主機當時不在線上的會跳過，之後補還原：
+
+```bash
+make restore FILE=… COMPUTERS_ONLY=1 BOT=<Bot id>
+```
+
+細節見 [管理手冊](../ADMIN.md#備份)。
 
 `model-proxy.key` 和資料庫一定要放在一起。少了它，存著的 API 金鑰就解不開。
 
@@ -114,21 +127,24 @@ make deploy HOST=me@server.example.com
 make deploy HOST=me@server SSH_OPTS="-p 2222 -i ~/.ssh/id_vps" PORT=8780
 ```
 
-用你自己的 SSH 帳號：看對方的 CPU 架構 → 傳對應的執行檔 → 第一次就安裝、裝過就更新（失敗自動回滾）→ 健康檢查。XBot 會裝成那個帳號的 systemd 使用者服務。可以重複執行。
+用你自己的 SSH 帳號：看對方的 CPU 架構 → 傳對應的執行檔 → 第一次就安裝、裝過就更新（失敗自動回滾，服務設定沿用）→ 健康檢查 → 傳 Bot 電腦映像。XBot 會裝成那個帳號的 systemd 使用者服務。可以重複執行。
 
-注意：`make deploy` 只傳 XBot 本身，不傳 Bot 電腦映像。那台要開 Bot 的電腦，先把映像搬過去：
-
-```bash
-docker save xbot-box:dev | ssh me@server docker load
-```
-
-或在那台機器上也拿一份原始碼跑 `make box`。只是要把那台當成「放 Bot 電腦的主機」，不需要部署 XBot，用 `make host-add`，見 [雲端主機](06-cloud-hosts.md)。
+Bot 電腦映像：那台沒有、或和這台的不同時才傳（1 GB 以上，第一次比較久）。那台的帳號要能用 Docker（在 docker 群組）。不能用、CPU 架構不同、或這台還沒 `make box` 時，只會提醒你，XBot 照樣部署；架構不同時在那台也拿一份原始碼跑 `make box`。不想傳：`NO_IMAGE=1`。只是要把那台當成「放 Bot 電腦的主機」，不需要部署 XBot，用 `make host-add`，見 [雲端主機](06-cloud-hosts.md)。
 
 ## 另一種方式：docker compose
 
+不想裝成 systemd 服務時，可以把服務跑在容器裡。和 `make install` 二選一，不要兩個同時開。
+
 ```bash
+make box     # 先建 Bot 電腦映像（只要一次）
 make up      # 用 docker compose 跑服務
-make down
+make down    # 停止（Bot 的電腦與資料保留）
 ```
 
-這個方式還在試驗階段：服務在容器裡，開 Bot 電腦的路徑對不上主機。目前只建議拿來看網頁，要真的讓 Bot 做事請用 `make install`。
+- Bot 的電腦一樣能開，和 `make install` 沒有差別。
+- 資料放在 `~/.local/share/xbot-compose`（`XBOT_COMPOSE_DATA=…` 可改），備份就是備份這個資料夾。
+- 只想讓這台電腦連：`XBOT_HOST_BIND=127.0.0.1 make up`；換埠：`XBOT_PORT=8790 make up`。
+- 請用 `make up`／`make down`，不要直接 `docker compose up`（要先算好你的帳號與 Docker 群組）。
+- 更新：`git pull` 後再 `make up` 一次。沒有自動回滾，也不會自動備份。
+
+細節（為什麼用主機網路、從舊版 compose 搬資料）見 [管理手冊](../ADMIN.md#docker-composemake-up)。

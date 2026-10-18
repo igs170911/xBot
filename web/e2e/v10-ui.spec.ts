@@ -147,13 +147,11 @@ test('備份與更新（J07）：版本、最近的備份、立即備份、還�
     { name: 'xbot-backup-20261018-030000.tar.gz', path: '/home/u/.local/share/xbot-backups/xbot-backup-20261018-030000.tar.gz', size: 1.8 * GB, created_at: at(18, 3) },
     { name: 'xbot-backup-20261017-030000.tar.gz', path: '/home/u/.local/share/xbot-backups/xbot-backup-20261017-030000.tar.gz', size: 1.7 * GB, created_at: at(17, 3) },
   ]
+  let job: Record<string, unknown> | undefined
+  const f = { name: 'xbot-backup-20261019-090000.tar.gz', path: '/home/u/.local/share/xbot-backups/xbot-backup-20261019-090000.tar.gz', size: 1.9 * GB, created_at: at(19, 9) }
   Object.assign(api.override, {
-    'backup.list': () => ({ dir: '/home/u/.local/share/xbot-backups', data_dir: '/home/u/.local/share/xbot', backups }),
-    'backup.create': () => {
-      const f = { name: 'xbot-backup-20261019-090000.tar.gz', path: '/home/u/.local/share/xbot-backups/xbot-backup-20261019-090000.tar.gz', size: 1.9 * GB, created_at: at(19, 9) }
-      backups.unshift(f)
-      return { file: f, files: 1284 }
-    },
+    'backup.list': () => ({ dir: '/home/u/.local/share/xbot-backups', data_dir: '/home/u/.local/share/xbot', backups, job }),
+    'backup.create': () => (job = { running: true, started_at: Date.now(), file: { ...f, size: 0 } }),
   })
   await api.install()
   await page.goto('/settings/advanced/backup')
@@ -163,7 +161,10 @@ test('備份與更新（J07）：版本、最近的備份、立即備份、還�
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-v10-backup`), fullPage: true })
   await page.getByRole('button', { name: '立即備份' }).click()
-  await expect(page.getByText(/已備份 1284 個檔案/)).toBeVisible()
+  await expect(page.getByRole('button', { name: '備份中…' })).toBeVisible()
+  backups.unshift(f)
+  job = { running: false, started_at: Date.now(), finished_at: Date.now(), file: f, files: 1284, computers: 2 }
+  await expect(page.getByText(/已備份 1284 個檔案和 2 台 Bot 電腦的資料/)).toBeVisible({ timeout: 10_000 })
   await expect(page.getByTestId('backup-row')).toHaveCount(3)
   await expect(page.getByText('make restore FILE=/home/u/.local/share/xbot-backups/xbot-backup-20261019-090000.tar.gz')).toBeVisible()
 })

@@ -16,15 +16,13 @@ const calls = (p: string) => api.calls.filter((c) => c.path === p)
 
 // ── 備份與更新（J07）────────────────────────────────
 
-it('備份與更新：版本、最近的備份、立即備份、還原指令', async () => {
+it('備份與更新：版本、最近的備份、立即備份（背景做、做完說結果）、還原指令', async () => {
   let backups = [{ name: 'xbot-backup-20261018-030000.tar.gz', path: '/d/xbot-backups/xbot-backup-20261018-030000.tar.gz', size: 2 * 1024 * 1024, created_at: new Date(2026, 9, 18, 3, 0).getTime() }]
+  let job: Record<string, unknown> | undefined
+  const f = { name: 'xbot-backup-20261019-090000.tar.gz', path: '/d/xbot-backups/xbot-backup-20261019-090000.tar.gz', size: 0, created_at: 0 }
   api = fakeApi({
-    'backup.list': () => ({ dir: '/d/xbot-backups', data_dir: '/d/xbot', backups }),
-    'backup.create': () => {
-      const f = { name: 'xbot-backup-20261019-090000.tar.gz', path: '/d/xbot-backups/xbot-backup-20261019-090000.tar.gz', size: 3 * 1024 * 1024, created_at: new Date(2026, 9, 19, 9, 0).getTime() }
-      backups = [f, ...backups]
-      return { file: f, files: 42 }
-    },
+    'backup.list': () => ({ dir: '/d/xbot-backups', data_dir: '/d/xbot', backups, job }),
+    'backup.create': () => (job = { running: true, started_at: 1, file: f }),
   })
   wrap(<BackupPage />)
   expect(await screen.findByText('/d/xbot')).toBeInTheDocument()
@@ -33,11 +31,22 @@ it('備份與更新：版本、最近的備份、立即備份、還原指令', a
   expect(screen.getByText('make restore FILE=/d/xbot-backups/xbot-backup-20261018-030000.tar.gz')).toBeInTheDocument()
   expect(screen.getByText('make update')).toBeInTheDocument()
 
+  vi.useFakeTimers({ shouldAdvanceTime: true })
   fireEvent.click(screen.getByRole('button', { name: '立即備份' }))
-  expect(await screen.findByText(/已備份 42 個檔案（3\.0 MB）/)).toBeInTheDocument()
-  await waitFor(() => expect(screen.getAllByTestId('backup-row')).toHaveLength(2))
-  expect(screen.getByText('make restore FILE=/d/xbot-backups/xbot-backup-20261019-090000.tar.gz')).toBeInTheDocument()
+  expect(await screen.findByText(/正在備份資料目錄和每個 Bot 電腦的資料/)).toBeInTheDocument()
   expect(calls('backup.create')[0].input).toEqual({})
+  const done = { ...f, size: 3 * 1024 * 1024, created_at: new Date(2026, 9, 19, 9, 0).getTime() }
+  backups = [done, ...backups]
+  job = { running: false, started_at: 1, finished_at: 2, file: done, files: 42, computers: 2, skipped: [{ bot_name: '阿哲', reason: 'cloud-01 連不上' }] }
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(3100)
+  })
+  vi.useRealTimers()
+  expect(await screen.findByText(/已備份 42 個檔案和 2 台 Bot 電腦的資料（3\.0 MB）/)).toBeInTheDocument()
+  await waitFor(() => expect(screen.getAllByTestId('backup-row')).toHaveLength(2))
+  expect(screen.getByText('有 Bot 電腦的資料沒有備到')).toBeInTheDocument()
+  expect(screen.getByText(/阿哲（cloud-01 連不上）/)).toBeInTheDocument()
+  expect(screen.getByText('make restore FILE=/d/xbot-backups/xbot-backup-20261019-090000.tar.gz')).toBeInTheDocument()
 })
 
 it('備份與更新：還沒有備份時說會放在哪', async () => {

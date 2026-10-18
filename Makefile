@@ -18,14 +18,14 @@ XBOT_INSTALLED = $(shell command -v $(HOME)/.local/bin/xbot 2>/dev/null || echo 
 XBOT_CLI = $(shell test -x $(XBOT) && echo $(XBOT) || command -v $(HOME)/.local/bin/xbot 2>/dev/null || echo $(XBOT))
 
 .PHONY: help doctor setup deps dev check fmt gen test test-docker e2e e2e-docker box box-latest box-test build web-build install start stop restart \
-        status logs token up down update backup restore clean uninstall host-add host-check deploy test-host
+        status logs token up down update box-if-changed backup restore clean uninstall host-add host-check deploy test-host
 
 help: ## 列出所有指令
 	@echo "XBot 指令（完整說明見 docs/PLAN.md §2）："
 	@awk 'BEGIN{FS=":.*## "} /^[a-zA-Z_-]+:.*## /{printf "  \033[36m%-12s\033[0m %s\n",$$1,$$2}' $(MAKEFILE_LIST)
 	@echo ""
 	@echo "常用參數：YES=1 不詢問直接執行｜WITH_TAILSCALE=1 也裝 Tailscale｜SKIP_BROWSERS=1 不下載測試瀏覽器"
-	@echo "　　　　　PURGE=1 移除時連資料一起刪｜INCLUDE_LOGINS=1 備份含登入資料｜FILE=… 還原用的備份檔"
+	@echo "　　　　　PURGE=1 移除時連資料一起刪｜INCLUDE_LOGINS=1 備份含瀏覽器登入｜FILE=… 還原用的備份檔｜NO_IMAGE=1 部署不傳映像"
 	@echo "　　　　　HOST=使用者@位址 主機與部署｜SSH_OPTS=\"-p 2222 -i 金鑰\" 額外的 ssh 參數"
 
 doctor: ## 檢查缺什麼，並告訴你怎麼修
@@ -63,7 +63,7 @@ test: ## 只跑單元測試（Go＋前端）
 
 # 測試套件會同時跑、共用本機的 xbot-netguard 與 xbot-box（不刪它們）；改網路防護規則的測試用 internal/box/guardlock 獨占，其他開電腦的測試共用。
 test-docker: ## Docker 整合測試（真的開 Bot 電腦，含對話端對端與 SSH 遠端主機；沒有 Docker 或映像時略過，先 make box）
-	BOX_IMAGE=$(BOX_IMAGE) $(RUN) go test -tags docker -count=1 -timeout 30m ./internal/box/... ./internal/runtime/... ./internal/catalog/... ./internal/hosts/... ./internal/computers/... ./internal/files/...
+	BOX_IMAGE=$(BOX_IMAGE) $(RUN) go test -tags docker -count=1 -timeout 30m ./internal/box/... ./internal/runtime/... ./internal/catalog/... ./internal/hosts/... ./internal/computers/... ./internal/files/... ./internal/backup/...
 
 test-race: ## 用 race detector 重複跑 Go 測試，抓偶發失敗（合併前建議跑）
 	$(RUN) go test -race -count=3 ./...
@@ -81,9 +81,11 @@ e2e-docker: ## 真的開 Bot 電腦的端對端測試（網頁建 Bot → 對話
 # Bot 電腦映像：box/Dockerfile（桌面＋Chromium＋noVNC＋Hermes，Hermes 版本固定在 box/HERMES_VERSION）。
 # DEBIAN_MIRROR=<網址> 改用較快的 Debian 鏡像站（當成建置密鑰傳入，不影響快取）。
 BOX_IMAGE ?= xbot-box:dev
+# box/ 的內容指紋：標在映像上（xbot.box-src），make update 用它判斷要不要重建映像。
+BOX_SRC = $(shell find box -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -c1-16)
 box: ## 建 Bot 電腦映像 xbot-box:dev（沿用快取與固定版本）
 	@docker info >/dev/null 2>&1 || { echo "❌ 無法連線到 Docker。請先啟動 Docker，並確認目前的使用者可以執行 docker（make doctor 會告訴你怎麼修）"; exit 1; }
-	DOCKER_BUILDKIT=1 docker build $(if $(DEBIAN_MIRROR),--secret id=debian_mirror$(,)env=DEBIAN_MIRROR,) $(BOX_ARGS) -t $(BOX_IMAGE) box
+	DOCKER_BUILDKIT=1 docker build $(if $(DEBIAN_MIRROR),--secret id=debian_mirror$(,)env=DEBIAN_MIRROR,) $(BOX_ARGS) --label xbot.box-src=$(BOX_SRC) -t $(BOX_IMAGE) box
 	@echo "✅ 已建好 $(BOX_IMAGE)（Hermes $$(cut -c1-12 box/HERMES_VERSION)）。驗證：make box-test"
 
 box-latest: ## 同 make box，但 grok 等工具與 Python 資料套件更新到最新版
@@ -125,19 +127,26 @@ logs: ## 即時查看服務紀錄（Ctrl+C 離開）
 token: ## 顯示其他裝置用的登入碼
 	@$(XBOT_INSTALLED) token
 
-update: ## 更新：拉新版 → 建置 → 備份 → 換新版重啟（失敗自動換回上一版）
+update: ## 更新：拉新版 → 建置 → 備份 → 換新版重啟（失敗連資料庫一起換回上一版）→ 映像有改就重建 → 更新電腦
 	@if [ -d .git ] && [ -z "$$(git status --porcelain)" ]; then git pull --ff-only; \
 	  else echo "⚠️  有未提交的修改或不是 git 專案，略過 git pull，直接用目前的程式碼"; fi
 	@$(MAKE) --no-print-directory build
-	@$(XBOT_INSTALLED) backup
 	@YES=$(YES) $(XBOT) service update --bin $(XBOT)
+	@$(MAKE) --no-print-directory box-if-changed
+	@$(XBOT) service update-computers
 
-backup: ## 備份資料（INCLUDE_LOGINS=1 連登入資料一起）
-	@$(XBOT_INSTALLED) backup $(if $(INCLUDE_LOGINS),--include-logins,) $(if $(OUT),--out $(OUT),)
+box-if-changed: # box/ 改過（或映像還沒有指紋）才重建 Bot 電腦映像（make update 用）
+	@if ! docker info >/dev/null 2>&1; then echo "⚠️  無法連線到 Docker，略過 Bot 電腦映像（Docker 好了以後 make box）"; \
+	elif [ "$$(docker image inspect -f '{{index .Config.Labels "xbot.box-src"}}' $(BOX_IMAGE) 2>/dev/null)" = "$(BOX_SRC)" ]; then \
+	  echo "✅ Bot 電腦映像 $(BOX_IMAGE) 已是最新（box/ 沒有改）"; \
+	else echo "▶ box/ 有改（或映像是舊的建法），重建 Bot 電腦映像 $(BOX_IMAGE)…"; $(MAKE) --no-print-directory box; fi
 
-restore: ## 從備份還原：make restore FILE=備份檔
+backup: ## 備份資料目錄與每個 Bot 電腦的資料（INCLUDE_LOGINS=1 連瀏覽器登入；NO_COMPUTERS=1 只備份資料目錄）
+	@$(XBOT_INSTALLED) backup $(if $(INCLUDE_LOGINS),--include-logins,) $(if $(NO_COMPUTERS),--no-computers,) $(if $(OUT),--out $(OUT),)
+
+restore: ## 從備份還原：make restore FILE=備份檔（NO_COMPUTERS=1 不動 Bot 電腦的資料；COMPUTERS_ONLY=1 BOT=id 只補還原電腦資料）
 	@test -n "$(FILE)" || { echo "用法：make restore FILE=備份檔"; exit 1; }
-	@$(XBOT_INSTALLED) restore "$(FILE)"
+	@$(XBOT_INSTALLED) restore $(if $(NO_COMPUTERS),--no-computers,) $(if $(COMPUTERS_ONLY),--computers-only,) $(if $(BOT),--bot "$(BOT)",) "$(FILE)"
 
 uninstall: ## 移除服務與執行檔（資料保留；PURGE=1 連資料一起刪，會再確認）
 	@YES=$(YES) $(XBOT_INSTALLED) service uninstall $(if $(PURGE),--purge,)
@@ -158,19 +167,27 @@ host-check: ## 檢查一台主機：make host-check HOST=名稱或位址 [UPDATE
 	@test -x "$(XBOT_CLI)" || $(MAKE) --no-print-directory build
 	@$(XBOT_CLI) host check --host "$(HOST)" $(if $(UPDATE_IMAGE),--update-image,)
 
-deploy: ## 部署到另一台機器（建置 → SSH 複製 → 安裝或更新服務 → 健康檢查，失敗自動回滾）：make deploy HOST=使用者@位址
+deploy: ## 部署到另一台機器（建置 → SSH 複製 → 安裝或更新服務 → 健康檢查，失敗自動回滾 → 傳 Bot 電腦映像；NO_IMAGE=1 不傳）：make deploy HOST=使用者@位址
 	@test -n "$(HOST)" || { echo "用法：make deploy HOST=使用者@位址"; exit 1; }
 	@$(MAKE) --no-print-directory build
-	@YES=$(YES) SSH_OPTS="$(SSH_OPTS)" $(XBOT) deploy --host "$(HOST)" $(if $(PORT),--port $(PORT),)
+	@YES=$(YES) SSH_OPTS="$(SSH_OPTS)" $(XBOT) deploy --host "$(HOST)" $(if $(PORT),--port $(PORT),) $(if $(NO_IMAGE),--no-image,)
 
 test-host: ## 在 systemd＋sshd 容器裡驗證 make deploy（含回滾）與 make host-add（要 Docker，會先 make build）
 	@$(MAKE) --no-print-directory build
 	@scripts/test-host.sh
 
 # ── docker compose 版本（和 make install 二選一）──────────
+# 資料放 XBOT_COMPOSE_DATA（預設 ~/.local/share/xbot-compose），以同一個絕對路徑掛進容器；服務用主機網路、以你的帳號執行。
+XBOT_COMPOSE_DATA ?= $(HOME)/.local/share/xbot-compose
+COMPOSE_ENV = XBOT_VERSION=$(VERSION) XBOT_COMPOSE_DATA="$(abspath $(XBOT_COMPOSE_DATA))" \
+	XBOT_UID=$$(id -u) XBOT_GID=$$(id -g) XBOT_DOCKER_GID=$$(stat -c %g /var/run/docker.sock 2>/dev/null || echo 0) \
+	XBOT_BOX_IMAGE=$${XBOT_BOX_IMAGE:-$(BOX_IMAGE)}
 
-up: ## 用 docker compose 啟動整套服務
-	XBOT_VERSION=$(VERSION) docker compose up -d --build
-	@echo "✅ 已啟動：http://127.0.0.1:$${XBOT_PORT:-8780}（make down 停止）"
-down: ## 停止 docker compose 版本
-	docker compose down
+up: ## 用 docker compose 啟動整套服務（Bot 電腦映像要先 make box）
+	@docker info >/dev/null 2>&1 || { echo "❌ 無法連線到 Docker（make doctor 會告訴你怎麼修）"; exit 1; }
+	@docker image inspect $${XBOT_BOX_IMAGE:-$(BOX_IMAGE)} >/dev/null 2>&1 || echo "⚠️  沒有 Bot 電腦映像 $${XBOT_BOX_IMAGE:-$(BOX_IMAGE)}：服務會啟動，但 Bot 的電腦開不了機，先執行 make box"
+	@mkdir -p "$(XBOT_COMPOSE_DATA)" && chmod 700 "$(XBOT_COMPOSE_DATA)"
+	$(COMPOSE_ENV) docker compose up -d --build
+	@echo "✅ 已啟動：http://127.0.0.1:$${XBOT_PORT:-8780}（資料：$(abspath $(XBOT_COMPOSE_DATA))；make down 停止）"
+down: ## 停止 docker compose 版本（Bot 的電腦與資料保留）
+	$(COMPOSE_ENV) docker compose down

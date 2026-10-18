@@ -46,6 +46,14 @@ func TestIsLocal(t *testing.T) {
 		{"10.0.0.2:1", "localhost", "", false},
 		{"127.0.0.1:1", "localhost", "Tailscale-User-Login", false},
 		{"127.0.0.1:1", "localhost", "Forwarded", false},
+		{"127.0.0.1:1", "localhost", "X-Forwarded-For", false},
+		// 同一台機器上的反向代理沒帶 X-Forwarded-For、但保留對外的 Host：不算本機。
+		{"127.0.0.1:1", "xbot.example.com", "", false},
+		{"127.0.0.1:1", "xbot.example.com:443", "", false},
+		// 用區網 IP 或機器名稱連自己：Host 不是 localhost，不算本機。
+		{"127.0.0.1:1", "192.168.1.10:8780", "", false},
+		{"[::1]:1", "myhost:8780", "", false},
+		{"127.0.0.1:1", "", "", false},
 	}
 	for _, c := range cases {
 		r := httptest.NewRequest("GET", "/", nil)
