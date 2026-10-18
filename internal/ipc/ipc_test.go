@@ -121,6 +121,9 @@ func TestProductSocketRelaysModelRequests(t *testing.T) {
 	if err := s.Ensure("bot1"); err != nil {
 		t.Fatal(err)
 	}
+	// 重開會關掉舊的伺服器和它的連線；用戶端連線池裡那條舊連線可能還沒發現被關，POST 不會自動重試。
+	// 這裡要驗的是重開後新連線可以用，所以先丟掉舊連線。
+	c.CloseIdleConnections()
 	if code, _ := post("/internal/providers/openai/v1/models", string(k1)); code != 200 {
 		t.Fatalf("重開後：%d", code)
 	}

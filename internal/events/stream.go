@@ -28,10 +28,12 @@ func Stream(ctx context.Context, bus *Bus, db *store.DB, filter Filter, lastID i
 	sub := bus.Subscribe(nil, 0) // 先訂閱再讀資料庫：之後提交的事件一定會通知到
 	out := make(chan Event)
 	cursor := lastID
-	var startErr error
+	// 訂閱當下最新的事件 id：補送只補到這裡。之後提交的事件一定會從匯流排送來，照匯流排的順序送出；
+	// 如果補送一路讀到最新，後來才存的事件會跑到比它早發布的即時事件（文字增量）前面。
+	head, startErr := db.LastEventID(ctx, "")
 	if cursor < 0 {
 		// 在回傳前決定起點：Stream 回傳之後才提交的事件一定收得到。
-		cursor, startErr = db.LastEventID(ctx, "")
+		cursor = head
 	}
 	go func() {
 		defer close(out)
@@ -53,7 +55,7 @@ func Stream(ctx context.Context, bus *Bus, db *store.DB, filter Filter, lastID i
 				return false
 			}
 		}
-		// catchUp 從 event 表讀 cursor 之後、到 upTo 為止的事件（upTo 是 0 表示讀到最新）。
+		// catchUp 從 event 表讀 cursor 之後、到 upTo 為止的事件（upTo 小於 0 表示讀到最新）。
 		catchUp := func(upTo int64) bool {
 			for {
 				batch, err := db.ListEvents(ctx, "", cursor, limits.SSEBatch)
@@ -64,7 +66,7 @@ func Stream(ctx context.Context, bus *Bus, db *store.DB, filter Filter, lastID i
 					return false
 				}
 				for _, row := range batch {
-					if upTo > 0 && row.ID > upTo {
+					if upTo >= 0 && row.ID > upTo {
 						return true // 之後的等匯流排送來，保持和即時事件的先後順序
 					}
 					cursor = row.ID
@@ -77,7 +79,7 @@ func Stream(ctx context.Context, bus *Bus, db *store.DB, filter Filter, lastID i
 				}
 			}
 		}
-		if !catchUp(0) {
+		if !catchUp(head) {
 			return
 		}
 		dropped := 0
@@ -91,7 +93,7 @@ func Stream(ctx context.Context, bus *Bus, db *store.DB, filter Filter, lastID i
 				}
 				if d := sub.Dropped(); d != dropped {
 					dropped = d // 有事件被丟掉：已存的從資料庫補
-					if !catchUp(0) {
+					if !catchUp(-1) {
 						return
 					}
 				}
