@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -20,7 +21,8 @@ const deployDir = ".local/share/xbot-deploy"
 //  2. 傳到遠端 ~/.local/share/xbot-deploy/xbot.new；
 //  3. 遠端已經裝過：用「已安裝的」xbot 執行 service update（新版起不來會自動換回上一版，C06）；
 //     還沒裝過：用新版執行 service install；
-//  4. 最後用遠端的 xbot service status 做健康檢查。
+//  4. 最後用遠端的 xbot service status 做健康檢查；
+//  5. Bot 電腦映像：那台沒有或和這台不同時，經 SSH 串流過去（docker save | docker load，V10）。
 //
 // 可以重複執行；同一版再部署一次只是重新啟動。
 func cmdDeploy(args []string) error {
@@ -30,6 +32,8 @@ func cmdDeploy(args []string) error {
 	binDir := fs.String("bin-dir", "bin", "make build 建出執行檔的資料夾")
 	bin := fs.String("bin", "", "直接指定要部署的執行檔（不依架構挑選；測試回滾用）")
 	port := fs.String("port", os.Getenv("XBOT_DEPLOY_PORT"), "遠端服務的埠（預設 8780）")
+	noImage := fs.Bool("no-image", os.Getenv("NO_IMAGE") == "1", "不傳 Bot 電腦映像")
+	imageOnly := fs.Bool("image-only", false, "只傳 Bot 電腦映像（不部署 XBot）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -46,6 +50,9 @@ func cmdDeploy(args []string) error {
 	arch := hosts.NormalizeArch(uname)
 	if arch != "amd64" && arch != "arm64" {
 		return fmt.Errorf("%s 的架構是 %s，XBot 只有 amd64 與 arm64 版", t.dest, uname)
+	}
+	if *imageOnly {
+		return deployImage(context.Background(), t, arch)
 	}
 	src := *bin
 	if src == "" {
@@ -97,6 +104,12 @@ func cmdDeploy(args []string) error {
 	}
 	if err := t.run(status + `"$HOME/.local/bin/xbot" service status && "$HOME/.local/bin/xbot" version`); err != nil {
 		return errors.New("部署後服務沒有正常回應（make logs 在那台機器上看原因）")
+	}
+	if !*noImage {
+		fmt.Println("▶ Bot 電腦映像…")
+		if err := deployImage(context.Background(), t, arch); err != nil {
+			fmt.Printf("⚠️  沒有傳 Bot 電腦映像：%v\n", err)
+		}
 	}
 	fmt.Printf("\n✅ 已部署到 %s\n", t.dest)
 	return nil

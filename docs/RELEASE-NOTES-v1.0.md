@@ -7,7 +7,8 @@
 
 **安裝與營運**
 
-- `make` 一個入口：`make setup` 自動補工具、`make install` 一鍵裝成開機自動啟動的服務、`make update` 自動備份並在失敗時換回舊版、`make backup`／`restore`、`make deploy` 部署到另一台、`make doctor` 告訴你缺什麼怎麼修。
+- `make` 一個入口：`make setup` 自動補工具、`make install` 一鍵裝成開機自動啟動的服務、`make update` 自動備份並在失敗時連資料庫一起換回舊版、映像有改就重建並更新電腦、`make backup`／`restore`（含每個 Bot 電腦的資料，本機與遠端主機都有）、`make deploy` 部署到另一台（連 Bot 電腦映像）、`make doctor` 告訴你缺什麼怎麼修。
+- 更新時沿用服務檔裡的設定（`XBOT_BIND`、`XBOT_PORT`、`XBOT_DATA_DIR`…），只有明確帶的才改。
 - 單一執行檔（前端內嵌），amd64 與 arm64。
 - 服務預設聽 `0.0.0.0:8780`，區網其他裝置用登入碼連；本機不用登入。
 
@@ -75,14 +76,12 @@
 
 ### 安裝、升級、備份
 
-- `make backup` **不含 Bot 電腦的資料**（家目錄、工作資料夾、Hermes、瀏覽器登入的 Docker volume）；`INCLUDE_LOGINS` 指的舊路徑已不存在。要另外備份 volume，見 [管理手冊](ADMIN.md#備份)。
-- `make update` 換回舊版時只換執行檔，不還原資料庫；新版已套用 migration 時舊版會拒絕啟動，要手動 `make restore`。
-- `make update` 用當下的環境變數重寫服務檔，安裝時設的 `XBOT_BIND` 等沒帶就會被改回預設。
-- `make update` 不重建 Bot 電腦映像；「更新電腦」目前只有指令列（`xbot computers update`），網頁沒有按鈕。
-- `make deploy` 不傳 Bot 電腦映像。
-- `make up`（docker compose）還不能開 Bot 的電腦，只適合看網頁。
+- `make backup` 備份開著的電腦時不會停下它，正在寫的檔案可能不是同一刻的。還原 Bot 電腦資料時，原本的資料先在同一台主機上整份複製保留，要有一樣多的可用磁碟。
+- `make update` 換回舊版時，資料庫換回更新前的備份：新版那約 30 秒裡寫進去的資料會不見（新版的資料庫另外保留）。
+- `make update` 判斷映像要不要重建只看 `box/` 的內容；用 `XBOT_BOX_IMAGE` 改過映像名稱時要帶 `BOX_IMAGE=`。正在工作的 Bot 跳過更新，之後要再按一次「更新電腦」。
+- `make up`（docker compose）的服務用主機網路（`network_mode: host`），資料改放主機資料夾 `~/.local/share/xbot-compose`；舊版放在 `xbot-data` volume 的資料要手動搬一次（見 [管理手冊](ADMIN.md#docker-composemake-up)）。compose 版本沒有自動備份與回滾。
 - 網頁的「備份與更新」「成員與紀錄」頁還是佔位。
-- 只支援 Linux。rootless Docker 不支援（網路防護套不上，電腦不開機；`make doctor` 還沒提示）。
+- 只支援 Linux。rootless Docker 不支援（網路防護套不上，電腦不開機；`make doctor` 會顯示 ❌ 和改法）。
 
 ### Bot 的電腦與主機
 
@@ -110,7 +109,7 @@
 - Gemini 登入失效時會卡在等登入碼，約 60 秒後才報未登入。
 - 首次設定只列出 Claude Code、Codex；「額度用完」卡換的是整個 Bot 的引擎。
 - Hermes 以外的引擎不讀 XBot 的技能與記憶。
-- ChatGPT 方案的 Bot 建議關掉 Hermes 的 tool_search，還沒自動處理；重新登入的卡片未做。
+- ChatGPT 方案的 Bot 開機時自動關掉 Hermes 的 tool_search（工具全部直接給模型，較耗 token）；重新登入的卡片未做。
 - 除了 Claude 外，內建價格表待核對；花費日界線的時區、80% 預警未做。
 - 快判有 6 個用途只留了掛勾（對話分流、要不要找你核定、是不是問進度、錯誤分類、重複技能、隊友訊息要不要回）。
 - 工作鏈的 token 預算暫定 200 萬。
@@ -131,4 +130,10 @@
 
 ## 升級注意
 
-從開發版升到 v1.0：`make update` 會自動套用 migration（到 0025）。E31 改了 Bot 電腦映像（加了 Gemini CLI、OpenCode），所以之後一定要 `make box`，再執行 `xbot computers update`，讓所有 Bot 電腦換上最新映像與安全設定。
+從開發版升到 v1.0：`make update` 會自動套用 migration（到 0025）。E31 改了 Bot 電腦映像（加了 Gemini CLI、OpenCode）。從這一版起 `make update` 會自己重建映像並更新電腦；但**從舊版升上來的這一次**，make 用的還是 `git pull` 之前讀進來的舊 Makefile，不會做這兩步，所以這次之後請再執行一次 `make update`（或 `make box` 再 `xbot computers update`），讓所有 Bot 電腦換上最新映像與安全設定。舊映像沒有 `box/` 指紋，第一次會重建一次（有快取）。
+
+`make backup` 的備份檔改成第 2 版格式（多了 Bot 電腦的資料）。舊的備份檔照樣能還原；新的備份檔不能用舊版 XBot 還原。
+
+全部 Bot 合計的每月花費上限預設 20 美元：新安裝直接有；升上來時還沒設全域月上限的，第一次啟動會套用並在「待我處理」通知一次（已經設過的不動；之後你拿掉也不會再加回）。到「設定 → 用量與花費」調整。
+
+設了 `XBOT_PUBLIC_URL` 或 `XBOT_TRUSTED_PROXIES` 的安裝：本機免登入改成預設關閉，這台電腦的瀏覽器也要輸入登入碼；真的要保留請明確設 `XBOT_LOCAL_NOAUTH=1`。

@@ -25,9 +25,9 @@ FROM debian:13-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=server /out/xbot /usr/local/bin/xbot
-ENV XBOT_BIND=0.0.0.0 XBOT_PORT=8780 XBOT_DATA_DIR=/data
-VOLUME /data
+# 資料目錄由 compose.yaml 以「和主機相同的絕對路徑」掛進來（XBOT_DATA_DIR），見 compose.yaml 的說明。
+ENV XBOT_BIND=0.0.0.0 XBOT_PORT=8780
 EXPOSE 8780
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD curl -fsS http://127.0.0.1:8780/healthz || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD curl -fsS "http://127.0.0.1:${XBOT_PORT}/healthz" || exit 1
 ENTRYPOINT ["xbot"]
 CMD ["serve"]

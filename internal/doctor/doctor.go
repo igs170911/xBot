@@ -242,6 +242,13 @@ func dockerChecks(env Env, d distroInfo) []Result {
 		r.Cmd = r.Fix
 		return []Result{r}
 	}
+	// rootless Docker：網路防護（SEC-4）要在主機上改 iptables，rootless 做不到，Bot 的電腦開不了機。
+	if sec, err := env.Output("docker", "info", "--format", "{{.SecurityOptions}}"); err == nil && strings.Contains(sec, "rootless") {
+		r.Status, r.Detail = Fail, fmt.Sprintf("Engine %s 是 rootless 模式：網路防護套不上，Bot 的電腦開不了機", ver)
+		r.Fix = "改用一般（rootful）Docker：dockerd-rootless-setuptool.sh uninstall，再 sudo systemctl enable --now docker、" +
+			"sudo usermod -aG docker $USER，登出再登入，並確認沒有設 DOCKER_HOST 指到 rootless 的 socket"
+		return []Result{r}
+	}
 	r.Status, r.Detail = OK, "Engine "+ver
 	c := Result{Name: "docker compose", Required: false, Fix: d.composeInstall()}
 	if out, err := env.Output("docker", "compose", "version", "--short"); err != nil {

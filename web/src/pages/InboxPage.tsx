@@ -230,7 +230,15 @@ function InfoItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
   const [busy, setBusy] = useState(false)
   const undoToast = useUndoToast()
   const toast = useToast()
-  const chip = item.kind === 'budget' ? '預算用完，已暫停' : item.kind === 'routine_failed' ? '定時任務沒有完成' : '等你處理'
+  // 已套用預設花費上限（V10）也是 budget 卡，但只是通知，沒有停下工作。
+  const capNotice = item.kind === 'budget' && (item.payload as { scope?: unknown } | null)?.scope === 'default_applied'
+  const chip = capNotice
+    ? '已設定花費上限'
+    : item.kind === 'budget'
+      ? '預算用完，已暫停'
+      : item.kind === 'routine_failed'
+        ? '定時任務沒有完成'
+        : '等你處理'
   // 定時任務失敗卡（C32）：重跑一次，然後收掉這張卡。
   const rerun = async () => {
     setBusy(true)

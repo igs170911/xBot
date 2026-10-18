@@ -52,6 +52,11 @@ type TransportSource interface {
 	TransportFor(ctx context.Context, providerID, model string) (string, error)
 }
 
+// AuthSource 回答供應商的登入方式（空白是金鑰；proxy.AuthOAuthCodex 是 ChatGPT 方案）；*proxy.DBStore 符合。
+type AuthSource interface {
+	ProviderAuth(ctx context.Context, providerID string) (string, error)
+}
+
 // Computers 把 Bot 的電腦準備好給引擎用：開機前寫 Hermes 設定、開 product.sock、放（或清掉）訂閱 CLI 的憑證；
 // 開機後回傳 Hermes 的位址，或在電腦裡開 ACP agent 行程。
 // 它的 Prepare 給 box.Manager（Options.Prepare），Connect 給 Hermes 驅動，LaunchACP、MCPServers 給 ACP 驅動。
@@ -236,6 +241,13 @@ func (c *Computers) Prepare(ctx context.Context, h hosts.Host, botID, containerI
 		BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul, Team: team,
 		ProviderID: ref.Provider, Model: ref.Model, Transport: ref.Transport, Effort: b.Effort,
 		WorkerKey: string(key), UID: box.BotUID, GID: box.BotGID, ApprovalMode: b.ApprovalMode, MemoryOff: !b.MemoryEnabled,
+	}
+	if as, ok := c.Providers.(AuthSource); ok {
+		auth, err := as.ProviderAuth(ctx, ref.Provider)
+		if err != nil {
+			return err
+		}
+		p.NoToolSearch = auth == proxy.AuthOAuthCodex
 	}
 	if c.Apps != nil {
 		apps, err := c.Apps(ctx, botID)
