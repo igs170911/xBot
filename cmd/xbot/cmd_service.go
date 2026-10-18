@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -9,15 +10,32 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"xbot/internal/backup"
+	"xbot/internal/backup/dockervol"
+	"xbot/internal/box"
 	"xbot/internal/config"
+	"xbot/internal/hosts"
 	"xbot/internal/service"
 )
 
-func newManager() (*service.Manager, config.Config, error) {
+// installedConfig 讀設定：已安裝的服務檔裡的 XBot 變數（資料目錄、埠號…）先補進環境（這次有明確設的優先），
+// 讓 service／backup／restore／token 看到的和服務一樣。
+func installedConfig() (config.Config, []service.EnvVar, error) {
+	p, err := service.DefaultPaths("")
+	if err != nil {
+		return config.Config{}, nil, err
+	}
+	unit := service.ReadUnitEnv(p.UnitPath())
+	service.ApplyUnitEnv(p.UnitPath())
 	cfg, err := config.Load()
+	return cfg, unit, err
+}
+
+func newManager() (*service.Manager, config.Config, error) {
+	cfg, unit, err := installedConfig()
 	if err != nil {
 		return nil, cfg, err
 	}
@@ -27,20 +45,27 @@ func newManager() (*service.Manager, config.Config, error) {
 	}
 	return &service.Manager{
 		Paths:    p,
-		Settings: service.Settings{Bind: cfg.Bind, Port: cfg.Port},
+		Settings: service.Settings{Bind: cfg.Bind, Port: cfg.Port, Extra: service.MergeEnv(unit, os.LookupEnv)},
 		Run:      service.SystemRunner,
 		Out:      os.Stdout,
 		In:       bufio.NewReader(os.Stdin),
 		Yes:      os.Getenv("YES") == "1",
 		Healthy:  service.HTTPHealthy,
 		Wait:     30 * time.Second,
+		// 更新前的自動備份：只有資料目錄（含資料庫快照），不含 Bot 電腦的資料（那個要 make backup）。
+		Snapshot: func() (string, error) {
+			out := filepath.Join(backup.DefaultDir(cfg.DataDir), "xbot-backup-"+time.Now().Format("20060102-150405")+"-before-update.tar.gz")
+			_, err := backup.Create(backup.Options{DataDir: cfg.DataDir, Out: out})
+			return out, err
+		},
+		RestoreDB: func(snap string) (string, error) { return backup.RestoreDB(snap, cfg.DataDir) },
 	}, cfg, nil
 }
 
 // cmdService：xbot service install|update|uninstall|start|stop|restart|status|logs
 func cmdService(args []string) error {
 	if len(args) == 0 {
-		return errors.New("用法：xbot service install|update|uninstall|start|stop|restart|status|logs")
+		return errors.New("用法：xbot service install|update|update-computers|uninstall|start|stop|restart|status|logs")
 	}
 	m, cfg, err := newManager()
 	if err != nil {
@@ -67,6 +92,8 @@ func cmdService(args []string) error {
 		return nil
 	case "update":
 		return m.Update(src)
+	case "update-computers":
+		return updateComputers(m, cfg)
 	case "uninstall":
 		return m.Uninstall(*purge)
 	case "start", "stop", "restart":
@@ -111,37 +138,77 @@ func lanIPs() []string {
 	return out
 }
 
-// cmdBackup：xbot backup [--out 檔案] [--include-logins]
+// cmdBackup：xbot backup [--out 檔案] [--include-logins] [--no-computers]
 func cmdBackup(args []string) error {
 	fs := flag.NewFlagSet("backup", flag.ContinueOnError)
 	out := fs.String("out", "", "備份檔路徑（預設放在資料目錄旁的 xbot-backups/）")
 	logins := fs.Bool("include-logins", false, "也備份 Bot 瀏覽器的登入資料")
+	noComputers := fs.Bool("no-computers", false, "只備份資料目錄，不含 Bot 電腦的資料（家目錄、工作資料夾、Hermes）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	cfg, err := config.Load()
+	cfg, _, err := installedConfig()
 	if err != nil {
 		return err
 	}
 	if *out == "" {
 		*out = filepath.Join(backup.DefaultDir(cfg.DataDir), backup.DefaultName(time.Now()))
 	}
-	m, err := backup.Create(backup.Options{DataDir: cfg.DataDir, Out: *out, IncludeLogins: *logins})
+	opts := backup.Options{DataDir: cfg.DataDir, Out: *out, IncludeLogins: *logins,
+		Report: func(f string, a ...any) { fmt.Printf(f+"\n", a...) }}
+	if !*noComputers {
+		comps := &dockervol.Computers{DataDir: cfg.DataDir, Image: boxImage()}
+		defer comps.Close()
+		opts.Computers = comps
+		fmt.Println("▶ 備份資料目錄與每個 Bot 電腦的資料…")
+	}
+	m, err := backup.Create(opts)
 	if err != nil {
 		return err
 	}
-	note := "不含登入資料（要包含請加 INCLUDE_LOGINS=1）"
-	if m.IncludeLogins {
-		note = "含登入資料，請妥善保管"
+	inc, skipped := 0, 0
+	for _, c := range m.Computers {
+		if c.Included {
+			inc++
+		} else if c.Skipped != "" {
+			skipped++
+		}
 	}
-	fmt.Printf("✅ 已備份 %d 個檔案：%s\n   %s\n", m.Files, *out, note)
+	note := "不含瀏覽器登入資料（要包含請加 INCLUDE_LOGINS=1）"
+	if m.IncludeLogins {
+		note = "含瀏覽器登入資料，請妥善保管"
+	}
+	fmt.Printf("✅ 已備份 %d 個檔案", m.Files)
+	if !*noComputers {
+		fmt.Printf("和 %d 台 Bot 電腦的資料", inc)
+	}
+	fmt.Printf("：%s\n   %s；訂閱登入憑證不備份（開機時會重新寫入）\n", *out, note)
+	if skipped > 0 {
+		fmt.Printf("⚠️  有 %d 台 Bot 電腦的資料沒有備到（原因見上面），主機恢復後再備份一次\n", skipped)
+		return errSilent
+	}
 	return nil
 }
 
-// cmdRestore：xbot restore 備份檔。服務在執行的話會先停下、還原後再啟動。
+// cmdRestore：xbot restore [--computers-only] [--no-computers] [--bot id] 備份檔。服務在執行的話會先停下、還原後再啟動。
 func cmdRestore(args []string) error {
-	if len(args) != 1 {
-		return errors.New("用法：xbot restore <備份檔>（make restore FILE=…）")
+	fs := flag.NewFlagSet("restore", flag.ContinueOnError)
+	computersOnly := fs.Bool("computers-only", false, "只還原 Bot 電腦的資料（資料目錄不動；例：當時主機不在線上，之後補還原）")
+	noComputers := fs.Bool("no-computers", false, "只還原資料目錄，不動 Bot 電腦的資料")
+	bot := fs.String("bot", "", "只還原這些 Bot 的電腦資料（Bot id，逗號分隔）")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 || (*computersOnly && *noComputers) {
+		return errors.New("用法：xbot restore [--computers-only|--no-computers] [--bot id,…] <備份檔>（make restore FILE=…）")
+	}
+	file := fs.Arg(0)
+	man0, err := backup.ReadManifest(file)
+	if err != nil {
+		return err
+	}
+	if man0.Format > backup.FormatVersion {
+		return fmt.Errorf("這份備份是較新版的 XBot（%s）做的，請先更新 XBot 再還原", man0.Version)
 	}
 	m, cfg, err := newManager()
 	if err != nil {
@@ -157,23 +224,99 @@ func cmdRestore(args []string) error {
 	} else if m.Healthy(m.URL() + "/healthz") {
 		return errors.New("XBot 正在執行（不是由 make install 啟動的），請先停止它再還原")
 	}
-	man, kept, err := backup.Restore(args[0], cfg.DataDir)
+	var failed error
+	if !*computersOnly {
+		man, kept, err := backup.Restore(file, cfg.DataDir)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("✅ 已還原 %d 個檔案（備份時間 %s）到 %s\n", man.Files, man.CreatedAt.Local().Format("2006-01-02 15:04"), cfg.DataDir)
+		if kept != "" {
+			fmt.Printf("   原本的資料保留在：%s（確認沒問題後可以刪除）\n", kept)
+			stopLocalComputers(cfg.DataDir)
+		}
+	}
+	if !*noComputers {
+		failed = restoreComputers(file, cfg, splitList(*bot))
+	}
+	if running {
+		if err := m.Ctl("start"); err != nil {
+			return err
+		}
+	}
+	return failed
+}
+
+// stopLocalComputers 停掉這台上還開著的 Bot 電腦：它們掛的是改名保留的舊資料目錄裡的 product.sock，下次用到時會重新開機。
+func stopLocalComputers(dataDir string) {
+	cli, err := hosts.NewLocalDocker()
+	if err != nil {
+		return
+	}
+	defer cli.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	stopped, err := box.StopUsingDir(ctx, cli, dataDir)
+	if len(stopped) > 0 {
+		fmt.Printf("   已讓這台上開著的 %d 台 Bot 電腦休眠（下次有工作時自動開機，接上還原後的資料）\n", len(stopped))
+	}
+	if err != nil {
+		fmt.Printf("⚠️  讓 Bot 電腦休眠失敗：%v（請在網頁上讓它們休眠再叫醒）\n", err)
+	}
+}
+
+func splitList(s string) []string {
+	var out []string
+	for _, v := range strings.Split(s, ",") {
+		if v = strings.TrimSpace(v); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// restoreComputers 把備份檔裡每個 Bot 電腦的資料寫回它的主機；主機不在線上的說明怎麼之後補還原。
+func restoreComputers(file string, cfg config.Config, only []string) error {
+	man, err := backup.ReadManifest(file)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("✅ 已還原 %d 個檔案（備份時間 %s）到 %s\n", man.Files, man.CreatedAt.Local().Format("2006-01-02 15:04"), cfg.DataDir)
-	if kept != "" {
-		fmt.Printf("   原本的資料保留在：%s（確認沒問題後可以刪除）\n", kept)
+	if man.Format < 2 {
+		fmt.Println("   （這份備份是舊格式，沒有 Bot 電腦的資料）")
+		return nil
 	}
-	if running {
-		return m.Ctl("start")
+	fmt.Println("▶ 還原 Bot 電腦的資料…")
+	comps := &dockervol.Computers{DataDir: cfg.DataDir, Image: boxImage()}
+	defer comps.Close()
+	res, err := backup.RestoreComputers(context.Background(), file, cfg.DataDir, comps, only)
+	if err != nil {
+		return err
+	}
+	var later []string
+	for _, r := range res {
+		if r.Restored {
+			fmt.Printf("   💻 %s（%s）：已還原 %d 個檔案；下次開機時重建電腦\n", r.BotName, r.HostName, r.Files)
+			if len(r.Kept) > 0 {
+				fmt.Printf("      原本的資料保留在 volume：%s（確認沒問題後可以 docker volume rm）\n", strings.Join(r.Kept, " "))
+			}
+			continue
+		}
+		fmt.Printf("   ⚠️  %s（%s）沒有還原：%s\n", r.BotName, r.HostName, r.Error)
+		later = append(later, r.BotID)
+	}
+	if len(res) == 0 {
+		fmt.Println("   （備份裡沒有 Bot 電腦的資料）")
+	}
+	if len(later) > 0 {
+		fmt.Printf("   資料還在備份檔裡。主機恢復後補還原：\n   xbot restore --computers-only --bot %s %s\n", strings.Join(later, ","), file)
+		return errSilent
 	}
 	return nil
 }
 
 // cmdToken 顯示其他裝置用的登入碼。
 func cmdToken([]string) error {
-	cfg, err := config.Load()
+	cfg, _, err := installedConfig()
 	if err != nil {
 		return err
 	}

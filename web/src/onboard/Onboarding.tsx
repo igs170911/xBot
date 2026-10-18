@@ -325,6 +325,7 @@ function KeyForm({ hasDefault, onDone }: { hasDefault: boolean; onDone: (c: Choi
       {key.trim() && !guessed && (
         <Select label="供應商" value={picked} placeholder="選供應商" options={presets.map((p) => ({ value: p.id, label: p.label }))} onChange={setPicked} />
       )}
+      <p className="m-0 text-meta text-ink-3">所有 Bot 合計預設每月最多花 $20，到了會先停下來問你；可在「設定 → 用量與花費」改。</p>
       <div className="flex justify-end">
         <Button variant="primary" loading={busy} disabled={!preset || !key.trim()} onClick={() => void add()}>
           {hasDefault ? '加入並用這個' : '用這把金鑰'}

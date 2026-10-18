@@ -153,19 +153,21 @@ func (s *Service) Close() error {
 // Identity 回傳 XBot 的 SSH 金鑰（第一次用時產生）。
 func (s *Service) Identity() (Identity, error) { return EnsureIdentity(s.o.DataDir) }
 
-func (s *Service) knownHostsPath(row store.Host) string {
+func (s *Service) knownHostsPath(row store.Host) string { return knownHostsPath(s.o.DataDir, row) }
+
+func knownHostsPath(dataDir string, row store.Host) string {
 	rel := row.KnownHosts
 	if rel == "" {
 		rel = filepath.ToSlash(filepath.Join("hosts", row.ID, "known_hosts"))
 	}
-	return filepath.Join(s.o.DataDir, filepath.FromSlash(rel))
+	return filepath.Join(dataDir, filepath.FromSlash(rel))
 }
 
-// connect 依 host 列建立（或換掉）SSH 連線，加進登錄表並開始監看。
-func (s *Service) connect(row store.Host) (*SSH, error) {
-	id, err := s.Identity()
+// SSHOptionsFor 依 host 列與資料目錄（XBot 的 SSH 金鑰、known_hosts）組出連線設定；LocalSocket 等由呼叫端補。
+func SSHOptionsFor(dataDir string, row store.Host) (SSHOptions, error) {
+	id, err := EnsureIdentity(dataDir)
 	if err != nil {
-		return nil, err
+		return SSHOptions{}, err
 	}
 	user := row.SSHUser
 	if user == "" {
@@ -175,12 +177,19 @@ func (s *Service) connect(row store.Host) (*SSH, error) {
 	if port == 0 {
 		port = 22
 	}
-	h, err := NewSSH(SSHOptions{
-		ID: row.ID, Addr: net.JoinHostPort(row.Address, strconv.Itoa(port)), User: user, Signer: id.Signer,
-		KnownHosts: s.knownHostsPath(row), LocalSocket: s.o.LocalSocket, Dial: s.o.Dial,
-		RemoteDir: s.o.RemoteDir, DockerSocket: s.o.DockerSocket,
-		Logger: s.log.With("name", row.Name),
-	})
+	return SSHOptions{ID: row.ID, Addr: net.JoinHostPort(row.Address, strconv.Itoa(port)), User: user, Signer: id.Signer,
+		KnownHosts: knownHostsPath(dataDir, row)}, nil
+}
+
+// connect 依 host 列建立（或換掉）SSH 連線，加進登錄表並開始監看。
+func (s *Service) connect(row store.Host) (*SSH, error) {
+	o, err := SSHOptionsFor(s.o.DataDir, row)
+	if err != nil {
+		return nil, err
+	}
+	o.LocalSocket, o.Dial, o.RemoteDir, o.DockerSocket = s.o.LocalSocket, s.o.Dial, s.o.RemoteDir, s.o.DockerSocket
+	o.Logger = s.log.With("name", row.Name)
+	h, err := NewSSH(o)
 	if err != nil {
 		return nil, err
 	}

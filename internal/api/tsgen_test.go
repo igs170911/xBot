@@ -49,7 +49,7 @@ func TestGenerateTS(t *testing.T) {
 		// 有必填欄位時 input 不能省略。
 		"export function chatListThreads(input: ChatListThreadsInput, opts?: CallOptions): Promise<ChatListThreadsOutput> {",
 		"return invoke('xbot.chat.list_threads', input, opts)",
-		"'xbot.chat.list_threads': { path: '/api/v1/chat.list_threads', scope: 'read', risk: 'safe', mutates: false },",
+		"'xbot.chat.list_threads': { path: '/api/v1/chat.list_threads', scope: 'read', risk: 'safe', mutates: false, summary: '列出對話串' },",
 		"export function subscribeEvents(",
 	} {
 		if !strings.Contains(src, want) {

@@ -13,6 +13,12 @@
 - 引擎：Hermes 驅動（JSON-RPC）＋ ACP 驅動（Claude Code、Codex CLI）。不要自己寫 agent harness。
 - 細節見 `docs/TECH-DESIGN.md`。
 
+## 文件在哪
+- 使用者看的：`docs/guide/`（使用手冊，一個主題一份，入口 `docs/guide/README.md`）。改了畫面或行為，要同時改對應的那一份。
+- 管理者看的：`docs/ADMIN.md`（安裝位置、服務、更新、備份還原、疑難排解）。
+- 這一版的範圍與已知限制：`docs/RELEASE-NOTES-v1.0.md`；修好限制時把那一行拿掉或改寫。
+- 外部代理接 MCP：`docs/mcp-setup.md`。
+
 ## 規格的權威順序
 1. **數字與行為**：以 LazyBoy DEV 程式為準（`/home/daniel/Projects/LazyBoyHermes`，例：`server/collab.py` 的限制值）。規格和程式不一致時，照程式做，並在 PR 說明中列出差異。
 2. **需求**：`docs/PRD.md`。每個任務卡會標出需求 ID（例：CH-1、BX-3、MCP-9）。
@@ -56,4 +62,4 @@ make backup / restore / update
 新增任何需要外部工具的功能時，要同時更新 `make doctor` 和 `make setup`。
 
 埠號：安裝版服務 8780（預設聽 0.0.0.0，區網可連；非本機連線要登入碼；`XBOT_BIND=127.0.0.1` 只限本機）；`make dev` 用 8782（API）與 5181（前端）；`make e2e` 預設 8799——多個 Agent 同時跑時請設 `XBOT_E2E_PORT=<88xx>` 避免撞埠。
-驗證腳本：`scripts/test-clean-install.sh`（乾淨容器裡 make setup＋check）、`scripts/test-service.sh`（systemd 容器裡測安裝、備份還原、回滾、開機自動啟動）。
+驗證腳本：`scripts/test-clean-install.sh`（乾淨容器裡 make setup＋check）、`scripts/test-service.sh`（systemd 容器裡測安裝、更新沿用服務設定、備份還原、回滾（含資料庫）、開機自動啟動）、`scripts/test-host.sh`（部署含映像、加主機）、`scripts/test-compose.sh`（make up 真的開 Bot 電腦）。

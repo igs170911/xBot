@@ -4,15 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/moby/moby/client"
 
+	"xbot/internal/limits"
 	"xbot/internal/store"
 )
 
@@ -216,4 +219,54 @@ func (r *Registry) Default() string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.def
+}
+
+// OpenOptions 是 Open 的額外設定。
+type OpenOptions struct {
+	// Wait 是等遠端主機連上的上限（0＝limits.SSHWaitOnline）。
+	Wait time.Duration
+	// RemoteDir、DockerSocket、Dial 同 Options（測試用）。
+	RemoteDir, DockerSocket string
+	Dial                    func(ctx context.Context, network, addr string) (net.Conn, error)
+	Logger                  *slog.Logger
+}
+
+// Open 為指令列（xbot backup／restore）臨時連上一台主機：本機直接連 Docker；遠端主機用資料目錄裡的 SSH 金鑰與
+// known_hosts 連線並等它連上（連不上回傳 ErrHostOffline）。不碰資料庫，也不轉發 product.sock。用完要 Close。
+func Open(ctx context.Context, dataDir string, row store.Host, o OpenOptions) (Host, error) {
+	if row.Kind == "local" {
+		cli, err := NewLocalDocker()
+		if err != nil {
+			return nil, fmt.Errorf("無法建立 Docker 連線：%w", err)
+		}
+		return &Local{id: row.ID, dataDir: dataDir, docker: cli}, nil
+	}
+	so, err := SSHOptionsFor(dataDir, row)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := os.Stat(so.KnownHosts); err != nil {
+		// 沒有記下的主機金鑰時不要「第一次連線就信任」：資料目錄不完整。
+		return nil, fmt.Errorf("%w：找不到 %s 的主機金鑰（%s）", ErrHostOffline, row.Name, so.KnownHosts)
+	}
+	so.LocalSocket = func(string) string { return "" }
+	so.RemoteDir, so.DockerSocket, so.Dial, so.Logger = o.RemoteDir, o.DockerSocket, o.Dial, o.Logger
+	if so.Logger == nil {
+		so.Logger = slog.New(slog.DiscardHandler)
+	}
+	h, err := NewSSH(so)
+	if err != nil {
+		return nil, err
+	}
+	wait := o.Wait
+	if wait <= 0 {
+		wait = limits.SSHWaitOnline
+	}
+	wctx, cancel := context.WithTimeout(ctx, wait)
+	defer cancel()
+	if err := h.WaitOnline(wctx); err != nil {
+		_ = h.Close()
+		return nil, err
+	}
+	return h, nil
 }

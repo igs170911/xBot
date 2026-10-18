@@ -69,6 +69,10 @@ const (
 	BoxMoveTimeout = 6 * time.Hour
 	// BoxMoveProgressEvery：搬家進度事件最多多久發一次。
 	BoxMoveProgressEvery = 500 * time.Millisecond
+	// BackupKeepTimeout：還原備份前，在主機上把 Bot 電腦原本的資料複製一份保留，最多等多久。
+	BackupKeepTimeout = 6 * time.Hour
+	// BackupHostWait：xbot backup／restore 等一台遠端主機連上的上限；連不上就略過那台並在結果裡說明。
+	BackupHostWait = 20 * time.Second
 	// BoxMoveHistory：搬家紀錄（進度面板、xbot.computers.move_status）最多回傳幾筆。
 	BoxMoveHistory = 20
 	// BoxMoveManifestBytes：新主機上算出的檔案清單與檢查碼最大多少（約 100 萬個檔案）。

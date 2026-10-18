@@ -325,7 +325,7 @@ function CapsEditor({ caps, onSaved }: { caps: Caps; onSaved: () => Promise<void
     <div key={ver} className="contents">
       <Block title="花費上限" sub="到上限時，模型請求會被擋下、正在做的工作停在原地，並在「待我處理」問你要不要追加。0 或空白表示不限。">
         <Group label="全部 Bot">
-          <Row title="全部 Bot · 每月" sub={`本月已花 ${usd(caps.global?.spent_month_usd ?? 0)}`} wrap>
+          <Row title="全部 Bot · 每月" sub={`本月已花 ${usd(caps.global?.spent_month_usd ?? 0)} · 預設 $20，可以改`} wrap>
             <CapInput
               label="全部 Bot 每月上限"
               value={caps.global?.monthly_usd ?? 0}

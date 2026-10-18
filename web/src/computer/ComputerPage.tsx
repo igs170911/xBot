@@ -15,6 +15,7 @@ import { TeachSection } from '../teaching/TeachPanel'
 import { controlOf, useNarrow, useTakeover } from './hooks'
 import { useScreen } from './screenData'
 import { Stage } from './Stage'
+import { ComputerActions, NetworkAllow, useComputer } from './ComputerActions'
 import { KEY, statusText, type VncHandle, type VncStatus } from './vnc'
 
 const DEFAULT_NOTE = '我剛剛在電腦上操作過，請從目前畫面繼續。'
@@ -37,6 +38,7 @@ export function ComputerPage({ botId }: { botId: string }) {
   const you = who === 'you'
   const { lesson } = useLesson(botId)
   const teaching = lesson && isRecording(lesson) ? lesson : null
+  const computer = useComputer(botId)
 
   if (bots && !bot && !screen) {
     return (
@@ -246,6 +248,8 @@ export function ComputerPage({ botId }: { botId: string }) {
               </h2>
               <p className="m-0 text-sub text-ink-2">這台電腦的 Chromium 會記住你登入的網站，下次{name}不用再問你。</p>
             </section>
+            {!you && <ComputerActions botId={botId} botName={name} state={computer} />}
+            {!you && <NetworkAllow botId={botId} botName={name} state={computer} />}
           </aside>
         )}
       </div>

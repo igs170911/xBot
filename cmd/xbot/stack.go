@@ -42,6 +42,8 @@ import (
 // 訂閱憑證、runtime。
 // serve 與 dev 指令共用。
 type stack struct {
+	dataDir   string // 資料目錄（網頁備份用）
+	boxImage  string // Bot 電腦映像（網頁備份的輔助容器用）
 	db        *store.DB
 	local     *hosts.Local
 	keyring   *proxy.Keyring
@@ -84,7 +86,7 @@ func openStack(cfg config.Config) (*stack, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &stack{db: db}
+	s := &stack{db: db, dataDir: cfg.DataDir}
 	// 本機一定是一台 Bot 電腦主機（host 表沒有就新增）；Docker 沒開時記成離線，服務照常啟動。
 	hostCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	s.local, err = hosts.EnsureLocal(hostCtx, db, cfg.DataDir)
@@ -145,6 +147,7 @@ func openStack(cfg config.Config) (*stack, error) {
 	if noGuard {
 		logger.Warn("XBOT_NETGUARD=off：Bot 的電腦連得到這台主機與區網（SEC-4 網路防護已關閉）")
 	}
+	s.boxImage = image
 	s.boxes = box.New(db, registry, box.Options{Image: image, Prepare: comp.Prepare, NoNetGuard: noGuard, Logger: logger,
 		// 電腦狀態變了：推給介面，並叫醒排隊等電腦的工作（休眠空出了名額）。
 		Notify: func(st box.Status) {

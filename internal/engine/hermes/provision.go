@@ -65,6 +65,9 @@ type Profile struct {
 	Model      string
 	// Transport：chat_completions（預設）、codex_responses、anthropic_messages。
 	Transport string
+	// NoToolSearch 關掉 Hermes 的工具搜尋（tools.tool_search.enabled: off）。ChatGPT 方案（oauth_codex）的端點保留了
+	// tool_search 這個名稱，Hermes 經 Model Proxy 呼叫時不會改名，請求會被拒絕（E13，docs/spike-hermes-oauth.md）。
+	NoToolSearch bool
 	// Effort 是 reasoning_effort，空白時 medium（LazyBoy config.reasoning）。
 	Effort string
 	// WorkerKey 是這個 Bot 的 worker-key（不是供應商金鑰）。
@@ -271,6 +274,18 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 		desktop["auto_continue"] = auto
 	}
 	auto["enabled"] = false
+	tools, _ := cfg["tools"].(map[string]any)
+	toolSearch, _ := tools["tool_search"].(map[string]any)
+	if p.NoToolSearch {
+		if toolSearch == nil {
+			toolSearch = map[string]any{}
+			sub("tools")["tool_search"] = toolSearch
+		}
+		toolSearch["enabled"] = "off"
+	} else if toolSearch != nil && toolSearch["enabled"] == "off" {
+		// 換掉 ChatGPT 方案後回到 Hermes 預設（auto）。
+		delete(toolSearch, "enabled")
+	}
 	mcp := sub("mcp_servers")
 	mcp["computer"] = map[string]any{"command": Python, "args": []any{DesktopMCP}, "trust": "full"}
 	mcp[XBotMCPServer] = map[string]any{"command": Python, "args": []any{XBotMCP}, "trust": "full"}

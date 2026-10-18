@@ -62,10 +62,12 @@
 
 ### 怎麼設給服務
 
-服務檔只寫了 `XBOT_DATA_DIR`、`XBOT_BIND`、`XBOT_PORT`，而且 `make install`、`make update` 每次都會**用當下的環境變數重寫**服務檔。所以：
+服務檔一定有 `XBOT_DATA_DIR`、`XBOT_BIND`、`XBOT_PORT`，再加上安裝或更新時你**明確帶了**的服務變數（下表「服務」那些，`XBOT_ACCESS_TOKEN` 除外，因為服務檔誰都讀得到）。
 
-- 這三個值：安裝和更新時都帶一樣的值（例：`XBOT_BIND=127.0.0.1 make update`）。
-- 其他變數，或想一勞永逸：用覆寫檔，更新不會動到它：
+- **第一次安裝**：沒帶的用預設值。例：`XBOT_BIND=127.0.0.1 XBOT_PUSH_SUBJECT=mailto:you@example.com make install`。
+- **`make update`、再跑一次 `make install`、`make deploy`**：沿用服務檔裡原本的值，只有這次明確帶的變數才改。例：`XBOT_PORT=8790 make update` 只改埠，其他照舊。有改到的會印出「服務設定 XBOT_PORT：8780 → 8790」。服務檔裡你自己加的其他 `Environment=`（例：`DOCKER_HOST`）也原樣保留。
+- `xbot service status`、`make backup`／`restore`／`token` 也讀服務檔裡的資料目錄與埠，所以裝在別的資料目錄時不用每次都帶 `XBOT_DATA_DIR`。
+- 想完全自己管：用覆寫檔，更新不會動到它：
 
   ```bash
   systemctl --user edit xbot
@@ -88,7 +90,7 @@
 | `XBOT_BIND` | `0.0.0.0` | 聽哪個位址。`127.0.0.1` 只限本機 |
 | `XBOT_PORT` | `8780` | HTTP 埠 |
 | `XBOT_DATA_DIR` | `$XDG_DATA_HOME/xbot` 或 `~/.local/share/xbot` | 資料目錄 |
-| `XBOT_LOCAL_NOAUTH` | `1` | 從這台電腦（`localhost`、沒經過代理）來的請求不用登入。`0` 關掉 |
+| `XBOT_LOCAL_NOAUTH` | `1`（設了 `XBOT_PUBLIC_URL` 或 `XBOT_TRUSTED_PROXIES` 時是 `0`） | 從這台電腦（`localhost`、沒經過代理）來的請求不用登入。`0` 關掉；有反向代理時要明確設 `1` 才開 |
 | `XBOT_ACCESS_TOKEN` | （空白，用 `access-token` 檔） | 直接指定登入碼。本機 `xbot` 指令列也會用它 |
 | `XBOT_PUBLIC_URL` | （空白） | 反向代理的對外網址，例 `https://xbot.example.com`（不能有路徑）。設了就打開「反向代理外部入口」 |
 | `XBOT_TRUSTED_PROXIES` | `127.0.0.1`、`::1` | 可以帶 `X-Forwarded-For` 的反向代理位址，逗號分隔的 IP 或 CIDR |
@@ -117,18 +119,44 @@
 | `YES=1` | setup、install、update、uninstall、host-add、deploy | 不詢問直接做 |
 | `WITH_TAILSCALE=1` | setup | 也裝 Tailscale |
 | `SKIP_BROWSERS=1` | setup | 不下載測試用瀏覽器 |
-| `INCLUDE_LOGINS=1`、`OUT=…` | backup | 見下面「備份」 |
-| `FILE=…` | restore | 備份檔 |
+| `INCLUDE_LOGINS=1`、`NO_COMPUTERS=1`、`OUT=…` | backup | 見下面「備份」 |
+| `FILE=…`、`NO_COMPUTERS=1`、`COMPUTERS_ONLY=1`、`BOT=…` | restore | 備份檔；不動電腦資料；只補還原電腦資料（`BOT=` 逗號分隔的 Bot id） |
 | `PURGE=1` | uninstall | 連資料一起刪（會再確認） |
 | `HOST=…`、`SSH_OPTS=…` | host-add、host-check、deploy | SSH 目的地與額外參數 |
 | `NAME=`、`MAX=`、`ADDRESS=`、`NO_TAILSCALE=1` | host-add | 主機名稱、同時開機上限、XBot 之後連它用的位址、不裝 Tailscale |
 | `UPDATE_IMAGE=1` | host-check | 順便傳新映像 |
-| `PORT=` | deploy | 遠端服務埠 |
+| `PORT=`、`NO_IMAGE=1` | deploy | 遠端服務埠；不傳 Bot 電腦映像 |
 | `BOX_IMAGE=`、`DEBIAN_MIRROR=` | box | 映像名稱、較快的 Debian 鏡像站 |
 
 ### docker compose（`make up`）
 
-`XBOT_HOST_BIND`（預設 `0.0.0.0`）、`XBOT_PORT`（預設 8780）。容器裡固定 `XBOT_DATA_DIR=/data`。這個方式目前只適合看網頁，見 [安裝與更新](guide/01-install.md#另一種方式docker-compose)。
+| 變數 | 預設 | 說明 |
+|---|---|---|
+| `XBOT_HOST_BIND` | `0.0.0.0` | 服務聽哪個位址（容器裡的 `XBOT_BIND`） |
+| `XBOT_PORT` | `8780` | HTTP 埠 |
+| `XBOT_COMPOSE_DATA` | `~/.local/share/xbot-compose` | 資料目錄（主機上的資料夾） |
+| `XBOT_BOX_IMAGE` | `xbot-box:dev` | Bot 電腦映像 |
+| `COMPOSE_PROJECT_NAME` | 專案資料夾名稱 | compose 的專案名稱 |
+
+compose 版本和 `make install` 一樣能開 Bot 的電腦，做法上有三點不同：
+
+- 資料目錄是主機上的資料夾，用**同一個絕對路徑**掛進容器（容器裡的 `XBOT_DATA_DIR` 就是 `XBOT_COMPOSE_DATA`）。Bot 電腦的通訊資料夾 `bots/<Bot id>/ipc/` 是由主機的 Docker 掛進電腦的，路徑兩邊要一樣。
+- 服務用主機的網路（`network_mode: host`），所以連得到只發布在主機 `127.0.0.1` 的電腦畫面與 Hermes。compose 裡沒有 `ports:`，聽哪裡由 `XBOT_HOST_BIND`、`XBOT_PORT` 決定。
+- 服務在容器裡用你的帳號（`id -u`／`id -g`）執行，並加入 docker.sock 的群組；資料檔案屬於你。這些值由 `make up` 算好傳給 compose，請用 `make up`／`make down`，不要直接 `docker compose up`。
+
+`XBOT_COMPOSE_DATA` 的完整路徑別太長：`<資料目錄>/bots/<32 字元 id>/ipc/product.sock` 不能超過 108 個字元（Unix socket 的限制）。
+
+舊版 compose（資料在 `xbot-data` volume、容器裡 `/data`）升上來時，先把資料搬到新的資料夾：
+
+```bash
+make down
+mkdir -p ~/.local/share/xbot-compose
+docker run --rm -v <專案名稱>_xbot-data:/from:ro -v ~/.local/share/xbot-compose:/to debian:13-slim \
+  sh -c "cp -a /from/. /to/ && chown -R $(id -u):$(id -g) /to"
+make up
+```
+
+驗證腳本：`scripts/test-compose.sh`（make up → 建 Bot → 經服務對話 → 休眠後再對話）。
 
 ### 內部使用（不用設）
 
@@ -145,24 +173,34 @@ Bot 電腦裡由 XBot 設定：`XBOT_UID`、`XBOT_GID`、`XBOT_WORKER_KEY`、`XB
 ```bash
 make backup                          # → ~/.local/share/xbot-backups/xbot-backup-<日期時間>.tar.gz
 make backup INCLUDE_LOGINS=1 OUT=/mnt/usb/xbot.tar.gz
+make backup NO_COMPUTERS=1           # 只備份資料目錄（快，不含 Bot 電腦的資料）
 make restore FILE=…                  # 服務會先停、還原後再啟動；原本的資料改名保留
 ```
 
-- 資料庫用 SQLite 的 `VACUUM INTO` 做快照，服務執行中也能備份。
-- 備份檔是整個資料目錄（扣掉 SQLite 暫存）。裡面有 `model-proxy.key`、登入碼、SSH 私鑰：**當成密碼一樣保管**。
-- `make update` 每次更新前都會自動備份一次。
+網頁「設定 → 進階 → 備份與更新」的「立即備份」等於 `make backup`（資料目錄＋每個 Bot 電腦的資料，不含瀏覽器登入；`xbot.backup.create`，在背景做），也列出備份資料夾裡最近的備份（`xbot.backup.list`）。還原只能用指令列（要先停服務）。
 
-**Bot 電腦的資料要另外備份**（上面的 volume）。目前 `make backup` 不含它們。手動備份一個 Bot：
+備份檔裡有：
 
-```bash
-id=<Bot id>
-for v in home workspace hermes; do
-  docker run --rm -v xbot-box-$id-$v:/src:ro -v "$PWD":/out debian:13-slim \
-    tar czf /out/xbot-box-$id-$v.tar.gz -C /src .
-done
-```
+- **資料目錄**（扣掉 SQLite 暫存）。資料庫用 SQLite 的 `VACUUM INTO` 做快照，服務執行中也能備份。裡面有 `model-proxy.key`、登入碼、SSH 私鑰：**當成密碼一樣保管**。
+- **每個 Bot 電腦的資料**：`home`、`workspace`、`hermes` 三個 volume，不管電腦在這台還是遠端主機。XBot 用一個不開機、沒有網路的輔助容器（同一個 Bot 電腦映像）掛上 volume，經 Docker API 串流出來（遠端主機走 XBot 自己的 SSH 連線，和搬家一樣），不落地；檔案的擁有者與權限照原樣。電腦開著也能備份，不會停下它（正在寫的檔案可能不是同一刻的）。
+  - 訂閱登入憑證（`cred` volume）**永遠不備份**：每次開機前會依你的同意重新寫入。
+  - 瀏覽器登入（`home` 裡的 `chrome-profile`）預設不備份，`INCLUDE_LOGINS=1` 才包含。
+  - 主機不在線上（等 20 秒連不上）或讀到一半斷線：那個 Bot 記成「沒有備到」，其他照常，最後印出原因並以失敗結束，主機恢復後再備份一次。
+- 備份檔格式是第 2 版（`xbot-backup.json` 的 `format`）：資料目錄在根目錄，電腦資料在 `xbot-computers/<Bot id>/<home|workspace|hermes>/…`，`computers` 列出每個 Bot 有沒有備到。v1.0 之前的備份檔（第 1 版，只有資料目錄）照樣能還原。
 
-還原時建一樣名字的 volume，反過來解開即可（Bot 的電腦要先休眠）。
+還原：
+
+- 資料目錄整份換掉，原本的改名成 `xbot.before-restore-<時間>` 保留。這台上還開著的 Bot 電腦會先休眠（它們接的是舊資料目錄裡的 product.sock），有工作時自動開機。
+- 每個 Bot 電腦的資料寫回它所在的主機（依還原後的資料庫）：先刪掉那台電腦的容器（下次開機重建），原本有資料的 volume 先整份複製到 `<volume>-before-restore-<時間>` 保留（同一台主機上，要有一樣多的磁碟空間），再換成備份裡的資料。確認沒問題後用 `docker volume rm` 刪掉保留的 volume。
+- 主機不在線上的 Bot 會跳過，資料還在備份檔裡。主機恢復後補還原：
+
+  ```bash
+  make restore FILE=… COMPUTERS_ONLY=1 BOT=<Bot id>[,<Bot id>…]
+  ```
+
+- 只想還原資料目錄：`NO_COMPUTERS=1`。
+
+`make update` 換新版前會自動做一份只有資料目錄的備份（`xbot-backup-<時間>-before-update.tar.gz`），新版起不來時用它換回資料庫（見「升級」）。
 
 建議：每天 `make backup` 一次（例如用 systemd timer 或 cron），備份檔複製到別台機器。
 
@@ -174,24 +212,23 @@ make update
 
 1. `git pull --ff-only`（有沒提交的修改就略過）。
 2. `make build`。
-3. `xbot backup`（自動備份）。
-4. 換新執行檔、重寫服務檔、重啟、等健康檢查（30 秒）。
-5. 新版起不來：自動換回 `xbot.prev` 並重啟。
+3. `xbot service update`：
+   1. 備份資料目錄（含資料庫快照）到 `xbot-backups/xbot-backup-<時間>-before-update.tar.gz`。備份失敗就不更新。
+   2. 換新執行檔、更新服務檔（沿用原本的設定，見上面「怎麼設給服務」）、重啟、等健康檢查（30 秒）。
+   3. 新版起不來：停下服務 → 資料庫換回第 1 步的備份（新版可能已經套用了 migration，舊版看到比較新的資料庫會拒絕啟動）→ 換回 `xbot.prev` → 重啟。新版改過的資料庫保留成 `xbot.db.replaced-<時間>`。這段時間（約 30 秒）寫進去的資料會跟著還原。
+4. Bot 電腦映像：`box/` 有改（比對映像上的 `xbot.box-src` 指紋）才 `make box` 重建。沒有指紋的舊映像會重建一次（有快取，很快）。
+5. `xbot service update-computers`：叫服務「更新電腦」，把映像換過或安全設定改過的電腦逐台重建（資料保留），一台主機做完再做下一台、遠端主機先傳新映像；**正在工作的 Bot 跳過**，之後在網頁「設定 → 電腦與裝置」按「更新電腦」，或執行 `xbot computers update`。全部都是最新時印「所有 Bot 的電腦都是最新的」。
 
-注意：
+`XBOT_BOX_IMAGE` 改過映像名稱時，`make update BOX_IMAGE=<名稱>`。
 
-- 第 4 步用當下的環境變數重寫服務檔，見上面「怎麼設給服務」。
-- 新版**已經套用了 migration** 才失敗時，舊版會因為資料庫比較新而起不來。這時用第 3 步的備份還原：`make restore FILE=<最新的備份>`，再裝回舊版。
-- `make update` 不會重建 Bot 電腦映像。版本說明提到映像有變時：`make box`，再 `xbot computers update`（逐台把電腦換成新映像，資料保留，正在工作的跳過）。
-
-部署到另一台：`make deploy HOST=…`（見 [安裝與更新](guide/01-install.md#部署到另一台機器)）。`make deploy` 不傳 Bot 電腦映像。
+部署到另一台：`make deploy HOST=…`（見 [安裝與更新](guide/01-install.md#部署到另一台機器)）。`make deploy` 也會把 Bot 電腦映像傳過去：那台沒有、或和這台的不同時，用你的 SSH 串流 `docker save | docker load`（不落地）。那台的帳號要能用 Docker；不能用、架構不同、或這台沒有映像時只提醒、不擋部署。`NO_IMAGE=1` 不傳，`xbot deploy --host … --image-only` 只傳映像。
 
 ## 紀錄
 
 - 服務：`make logs`（`journalctl --user -u xbot.service -f`）。結構化文字紀錄，金鑰已遮蔽。
 - Bot 電腦：`docker logs xbot-box-<Bot id>`。
 - 網路防護：`docker logs xbot-netguard`。
-- 誰做了什麼：`xbot audit list`（稽核紀錄存在資料庫）。
+- 誰做了什麼：網頁「設定 → 進階 → 成員與紀錄」，或 `xbot audit list`（稽核紀錄存在資料庫；可加 `--actor`、`--op`、`--status`、`--since`、`--until`）。
 
 ## 資源與限制
 
@@ -220,7 +257,7 @@ make update
 - [ ] 這台電腦有別人共用時，設 `XBOT_LOCAL_NOAUTH=0`。
 - [ ] 這台的防火牆只對信任的網段開 8780。
 - [ ] 跑 XBot 的帳號在 docker 群組＝這台的 root。這個帳號要有好密碼，不要給別人登入。
-- [ ] 設全部合計的每月花費上限（預設沒有上限）。
+- [ ] 看一下全部合計的每月花費上限（預設 20 美元；舊版升上來沒設過的也會套用，並在「待我處理」通知一次）。
 
 ### Tailscale（建議的遠端方式）
 
@@ -240,7 +277,7 @@ make update
 ### 外部入口：自己的反向代理
 
 - [ ] 設 `XBOT_PUBLIC_URL=https://你的網域`，HTTPS 由反向代理負責。
-- [ ] 反向代理**一定要帶 `X-Forwarded-For`**。不帶的話，同一台機器上的反向代理送來的請求看起來像「這台電腦的你」。
+- [ ] 反向代理**一定要帶 `X-Forwarded-For`**。設了 `XBOT_PUBLIC_URL`（或 `XBOT_TRUSTED_PROXIES`）後本機免登入預設關掉，所以就算同一台機器上的反向代理沒帶、又把 Host 改成 `127.0.0.1`，也不會被當成「這台電腦的你」；不要再設 `XBOT_LOCAL_NOAUTH=1`。
 - [ ] 反向代理不在同一台時，設 `XBOT_TRUSTED_PROXIES`。
 - [ ] 只轉發上面那三條路徑更好（XBot 自己也會擋其他路徑）。
 - [ ] 設了反向代理模式後，經外部 `tailscale serve` 進來的請求也會被當成外部；tailnet 內請改用內建 Tailscale。
