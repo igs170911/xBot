@@ -83,8 +83,8 @@ func TestMountsMCPAndAgentPair(t *testing.T) {
 	mark := func(name string) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(name)) })
 	}
-	h := New(Options{MCP: mark("mcp"), AgentPair: mark("pair")})
-	for path, want := range map[string]string{"/mcp": "mcp", "/api/v1/agents.pair": "pair"} {
+	h := New(Options{MCP: mark("mcp"), AgentPair: mark("pair"), Hooks: mark("hooks")})
+	for path, want := range map[string]string{"/mcp": "mcp", "/api/v1/agents.pair": "pair", "/hooks/h123": "hooks"} {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, httptest.NewRequest("POST", path, nil))
 		if rec.Body.String() != want {

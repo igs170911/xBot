@@ -77,6 +77,9 @@
 | `ReviewDaysDefault`／`Max` | 7／30 | 天 | server/agenda.py:44 `RECENT_DAYS`、:205 | — | — |
 | `CalendarDenseInterval` | 180 | 分鐘 | server/agenda.py:42 `DENSE_INTERVAL` | RT-5 | — |
 | `CalendarWeekItems` | 120 | 項 | server/agenda.py:43 `WEEK_ITEMS` | RT-5 | — |
+| `AgendaZone` | Asia/Taipei | 時區 | server/agenda.py:45 `ZONE` | TM-5 | — |
+| `AgendaSubjectMax` | 120 | 字元 | server/agenda.py:90 `plain(subject, 120)` | — | — |
+| `AgendaTick` | 30 | 秒 | server/scheduling.py:293 `loop`（每 2 秒） | — | **有**：XBot 改成 30 秒（到期時間以分鐘計）（X03） |
 
 ## 6. 執行中的工作：看門狗、重試、自動續做（`collab.go`、`inbox.go`）
 
@@ -101,6 +104,9 @@
 | `FailureDetailMax` | 1,500 | 字元 | server/runtime.py:545 | — | — |
 | `ChatTextMax` | 64,000 | 字元 | server/runtime.py:333 `_submit` | §12 | 和 PRD 一致；**XBot 原本的常數錯了**（見第 10 節） |
 | `AnswerTextMax` | 64,000 | 字元 | XBot 新增（同 `ChatTextMax`） | — | — |
+| `StrandedGoalKey` | 80 | 字元 | server/runtime.py:722（`goal[:80]`） | — | PRD 沒寫（X04） |
+| `JudgeTaskDoneWait` | 1 | 秒 | XBot 新增（PRD §20.2 用途 2 等待 1 秒） | §20 FJ-2 | —（X04，`judge.go`） |
+| `JudgeReasonMax`／`JudgeAskMax`／`JudgeNoteMax` | 120／300／500 | 字元 | XBot 新增 | §20 FJ-1、FJ-7 | —（X04，`judge.go`） |
 
 ## 7. 定時任務（`routines.go`）
 

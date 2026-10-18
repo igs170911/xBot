@@ -104,10 +104,11 @@ func Agent(t store.AgentToken, via string) (Identity, error) {
 	return id, nil
 }
 
-// Bot 是一個 Bot 自己透過 product.sock 呼叫：只能看和交辦，而且只能碰自己（不能碰任何團隊、主機），
-// 只能用標了 ForBot 的操作。之後依 Bot 的權限設定（bots.set_permissions）放寬。
+// Bot 是一個 Bot 自己透過 product.sock 呼叫：只能用標了 ForBot 的操作，而且資源範圍只有自己（不能碰任何團隊、主機）。
+// 有 manage 範圍是為了 X03 的 Bot 管理（建幫手 Bot、主管建團隊、調整報告對象）：這些操作都標了 ForBot，
+// 並在操作裡再檢查每日上限與團隊管理權限（can_manage）。之後依 Bot 的權限設定（bots.set_permissions）調整。
 func Bot(botID, name string) Identity {
-	return Identity{Kind: KindBot, ID: botID, Name: name, Scopes: []Scope{ScopeRead, ScopeOperate},
+	return Identity{Kind: KindBot, ID: botID, Name: name, Scopes: []Scope{ScopeRead, ScopeOperate, ScopeManage},
 		Resources: Resources{Bots: []string{botID}, Teams: []string{}, Hosts: []string{}}, Via: "product"}
 }
 

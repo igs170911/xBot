@@ -9,12 +9,13 @@ import { SimplifiedTag, StatusChip, type Tone } from '../ui/Pill'
 import { useToast } from '../ui/toast-context'
 import { BOTS } from '../shell/sample'
 import { fetchHealth, type Health } from '../health'
-import { ApiError, approvalsDecide, chatAskAgain, inboxDismiss, inboxUndo } from '../api/generated'
+import { ApiError, approvalsDecide, chatAskAgain, inboxDismiss, inboxUndo, routinesRunNow } from '../api/generated'
 import { botsStore, type Bot } from '../data/bots'
 import { inboxStore, loadInbox, type InboxItem } from '../data/inbox'
 import { useStore } from '../data/store'
 import { AskCard } from '../chat/AskCard'
 import { askFromItem } from '../chat/ask'
+import { AgendaCard } from '../agenda/AgendaCard'
 
 // 待我處理（design/Main、F08、C08～C10、L02）：真的卡片來自 xbot.inbox.list。
 //   - Bot 在對話裡的提問（核准指令、補充問題、密碼）：和對話裡同一張 AskCard，回覆走 xbot.chat.respond。
@@ -225,6 +226,20 @@ function InfoItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
   const undoToast = useUndoToast()
   const toast = useToast()
   const chip = item.kind === 'budget' ? '預算用完，已暫停' : item.kind === 'routine_failed' ? '定時任務沒有完成' : '等你處理'
+  // 定時任務失敗卡（C32）：重跑一次，然後收掉這張卡。
+  const rerun = async () => {
+    setBusy(true)
+    try {
+      await routinesRunNow({ id: (item.payload as { routine_id: string }).routine_id })
+      await inboxDismiss({ inbox_id: item.id })
+      toast.show({ kind: 'done', text: '已開始重跑' })
+      await loadInbox()
+    } catch (err) {
+      toast.show({ kind: 'error', text: errText(err) })
+    } finally {
+      setBusy(false)
+    }
+  }
   const dismiss = async () => {
     setBusy(true)
     try {
@@ -243,6 +258,11 @@ function InfoItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
         <Head bot={bot} chip={chip} tone="warning" sub={item.title} />
         {item.body && <p className="m-0 pl-11 text-sub text-ink-2">{item.body}</p>}
       </div>
+      {item.kind === 'routine_failed' && typeof (item.payload as { routine_id?: unknown } | null)?.routine_id === 'string' && (
+        <Button icon={RotateCcw} onClick={() => void rerun()} loading={busy}>
+          重跑一次
+        </Button>
+      )}
       <Button onClick={() => void dismiss()} loading={busy}>
         知道了
       </Button>
@@ -288,8 +308,36 @@ function ExpiredItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
   )
 }
 
+/** Bot 的提案或討論（TM-5、H04）：卡片的 payload 帶 agenda_id、kind、due_at、subject。 */
+function AgendaItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
+  const toast = useToast()
+  const p = (item.payload ?? {}) as { agenda_id?: string; kind?: string; due_at?: number; subject?: string }
+  const done: Record<string, string> = { accepted: '已同意', vetoed: '已否決', answered: '已回覆', declined: '不用討論了' }
+  return (
+    <div data-testid="inbox-item" data-kind={item.kind}>
+      <AgendaCard
+        item={{
+          id: p.agenda_id ?? item.ref ?? '',
+          kind: p.kind ?? (item.kind === 'proposal' ? 'propose' : 'discuss'),
+          subject: p.subject ?? item.title,
+          details: item.body,
+          due_at: p.due_at ?? item.created_at,
+          bot_name: bot.name,
+        }}
+        bot={bot}
+        sub={sinceLabel(item.created_at)}
+        onDone={(state) => {
+          toast.show({ kind: 'done', text: `${done[state] ?? '已處理'} · ${p.subject ?? item.title}` })
+          window.setTimeout(() => void loadInbox(), 1500)
+        }}
+      />
+    </div>
+  )
+}
+
 function RealItem({ item, bots }: { item: InboxItem; bots: Bot[] | null }) {
   const bot = cardBot(item, bots)
+  if (item.kind === 'proposal' || item.kind === 'discussion') return <AgendaItem item={item} bot={bot} />
   if (item.task_id && (item.kind === 'approval' || item.kind === 'question' || item.kind === 'secret')) {
     const p = (item.payload ?? {}) as { thread_title?: string; unattended?: boolean }
     const sub = [bot.name, p.thread_title, sinceLabel(item.created_at)].filter(Boolean).join(' · ')

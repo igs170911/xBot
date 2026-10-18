@@ -15,6 +15,8 @@ const defaults: Record<string, OpHandler> = {
   'inbox.list': () => ({ items: [] }),
   'models.get': () => ({ providers: [], ready: true, default: { provider: 'openai', model: 'gpt-test' } }),
   'chat.list_threads': () => ({ threads: [] }),
+  'teams.list': () => ({ teams: [] }),
+  'agenda.list': () => ({ from: 0, to: 0, pending: [], decided: [], calendar: [], approvals: [], open_max: 3 }),
 }
 
 /** 換掉全域 fetch；ops 的 key 是去掉 /api/v1/ 的路徑（例：bots.list）。丟 {error} 物件就回錯誤。 */

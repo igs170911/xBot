@@ -44,6 +44,7 @@ func TestRegisterWithoutDeps(t *testing.T) {
 		"xbot.approvals.list", "xbot.approvals.wait", "xbot.approvals.decide", "xbot.inbox.list", "xbot.audit.list",
 		"xbot.chat.respond", "xbot.chat.ask_again", "xbot.chat.steps", "xbot.inbox.counts", "xbot.inbox.mark_read", "xbot.inbox.dismiss", "xbot.inbox.undo",
 		"xbot.models.get", "xbot.models.set_provider", "xbot.models.set_default",
+		"xbot.routines.list", "xbot.routines.propose", "xbot.routines.create", "xbot.routines.run_now", "xbot.routines.hook_create",
 	} {
 		if _, ok := reg.Get(name); !ok {
 			t.Errorf("少了 %s", name)

@@ -8,10 +8,17 @@ import { DevComponentsPage } from './pages/DevComponentsPage'
 import { LoginPage } from './pages/LoginPage'
 import { NewBotDialog } from './pages/NewBotDialog'
 import { SettingsPage } from './settings/SettingsPage'
+import { NewRoutineDialog } from './routines/NewRoutineDialog'
+import { ROUTINES_PATH, RoutinesPage } from './routines/RoutinesPage'
 import { ChatPage } from './chat/ChatPage'
-import { registerPeerCard } from './chat/peer'
+import { registerActivityCard, registerPeerCard } from './chat/peer'
 import { NewRoomDialog } from './rooms/NewRoomDialog'
 import { RoomPage } from './rooms/RoomPage'
+import { NewTeamDialog } from './teams/NewTeamDialog'
+import { TeamMapPage } from './teams/TeamMapPage'
+import { OrgPage } from './teams/OrgPage'
+import { AgendaPage } from './agenda/AgendaPage'
+import { startTeams } from './data/teams'
 import { roomsStore, startRooms } from './data/rooms'
 import { startChat } from './chat/chatStore'
 import { botsStore, startBots } from './data/bots'
@@ -23,7 +30,8 @@ import { Icon } from './ui/Icon'
 
 const TITLES: Record<string, string> = {
   '/office': '辦公室',
-  '/calendar': '定時任務與行事曆',
+  '/agenda': '等你的事',
+  '/teams': '團隊地圖',
   '/apps': '連接應用程式',
   '/org': '組織架構',
   '/settings': '設定',
@@ -36,6 +44,7 @@ const ROOM_PATH = /^\/rooms\/([^/]+)\/?$/
 
 // 對話裡 kind=peer 的那一行（和隊友的往來，C13）。
 registerPeerCard()
+registerActivityCard()
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -72,6 +81,7 @@ function Main() {
     startInbox()
     startChat()
     startRooms()
+    startTeams()
   }, [])
   const rooms = useStore(roomsStore).rooms
 
@@ -79,12 +89,16 @@ function Main() {
   const computer = path.match(COMPUTER_PATH)
   const room = path.match(ROOM_PATH)
   const botName = (id: string) => bots?.find((b) => b.id === id)?.name
-  const title = path === '/' ? '待我處理' : bot ? (botName(bot[1]) ?? '對話') : computer ? `${botName(computer[1]) ?? 'Bot'}的電腦` : room ? (rooms?.find((r) => r.id === room[1])?.name ?? '群組對話') : (TITLES[path] ?? (path.startsWith('/settings') ? '設定' : 'XBot'))
+  const title = path === '/' ? '待我處理' : bot ? (botName(bot[1]) ?? '對話') : computer ? `${botName(computer[1]) ?? 'Bot'}的電腦` : room ? (rooms?.find((r) => r.id === room[1])?.name ?? '群組對話') : (TITLES[path] ?? (path.startsWith('/settings') ? '設定' : path.startsWith('/calendar') ? '定時任務與行事曆' : 'XBot'))
 
   let page
   if (path === '/') page = <InboxPage />
   else if (bot) page = <ChatPage key={bot[1]} botId={bot[1]} threadParam={bot[2]} />
+  else if (ROUTINES_PATH.test(path)) page = <RoutinesPage path={path} />
   else if (room) page = <RoomPage key={room[1]} roomId={room[1]} />
+  else if (path === '/teams') page = <TeamMapPage />
+  else if (path === '/org') page = <OrgPage />
+  else if (path === '/agenda') page = <AgendaPage />
   else if (path === '/settings' || path.startsWith('/settings/'))
     page = <SettingsPage path={path === '/settings/agents' ? '/settings/advanced/agents' : path} />
   else page = <Placeholder title={title} />
@@ -93,7 +107,9 @@ function Main() {
     <AppShell path={path} title={title}>
       {page}
       <NewBotDialog />
+      <NewRoutineDialog />
       <NewRoomDialog />
+      <NewTeamDialog />
     </AppShell>
   )
 }

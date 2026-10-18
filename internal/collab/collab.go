@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"xbot/internal/events"
+	"xbot/internal/judge"
 	"xbot/internal/limits"
 	"xbot/internal/notify"
 	"xbot/internal/runtime"
@@ -66,7 +67,7 @@ func New(o Options) *Service {
 	}
 	s := &Service{o: o, db: o.DB, rt: o.Runtime, log: o.Logger}
 	if s.rt != nil {
-		s.rt.SetHooks(runtime.Hooks{Prompt: s.prompt, Finished: s.finished, Stopped: s.stopped, Silent: s.silent})
+		s.rt.SetHooks(runtime.Hooks{Prompt: s.prompt, Finished: s.finished, Stopped: s.stopped, Silent: s.silent, ContinueMeta: s.continueMeta})
 	}
 	return s
 }
@@ -136,6 +137,7 @@ type Mate struct {
 	About     string `json:"about,omitempty"`
 	Chief     bool   `json:"chief,omitempty"`
 	ReportsTo string `json:"reports_to"`
+	Team      string `json:"team,omitempty"`
 }
 
 // Directory 列出 Bot 可以聯絡的隊友（不含自己、不含封存的；LazyBoy directory）。
@@ -147,6 +149,12 @@ func (s *Service) Directory(ctx context.Context, exclude string) ([]Mate, error)
 	names := map[string]string{}
 	for _, b := range bots {
 		names[b.ID] = b.Name
+	}
+	teams := map[string]string{}
+	if ts, err := s.db.ListTeams(ctx); err == nil {
+		for _, t := range ts {
+			teams[t.ID] = t.Name
+		}
 	}
 	out := []Mate{}
 	for _, b := range bots {
@@ -161,7 +169,8 @@ func (s *Service) Directory(ctx context.Context, exclude string) ([]Mate, error)
 		if reports == "" {
 			reports = "使用者"
 		}
-		out = append(out, Mate{ID: b.ID, Name: b.Name, Title: b.Title, About: plain(about, limits.RosterAboutMax), Chief: b.IsChief, ReportsTo: reports})
+		out = append(out, Mate{ID: b.ID, Name: b.Name, Title: b.Title, About: plain(about, limits.RosterAboutMax), Chief: b.IsChief, ReportsTo: reports,
+			Team: teams[b.TeamID]})
 	}
 	return out, nil
 }
@@ -185,8 +194,15 @@ func (s *Service) RosterText(ctx context.Context, botID string) (string, error) 
 				chief = m.Name
 			}
 		}
+		var place []string
+		if m.Team != "" {
+			place = append(place, m.Team)
+		}
 		if m.ReportsTo != "使用者" {
-			line += "［向 " + m.ReportsTo + " 報告］"
+			place = append(place, "向 "+m.ReportsTo+" 報告")
+		}
+		if len(place) > 0 {
+			line += "［" + strings.Join(place, "，") + "］"
 		}
 		if m.About != "" {
 			line += "：" + m.About
@@ -662,6 +678,22 @@ func framed(sender store.Bot, target Mate, text, intent, owedTo string) string {
 func (s *Service) finished(task store.Task, verdict, text string) {
 	ctx := context.Background()
 	m := metaOf(task)
+	if m.FromBot != "" && m.RoomID == "" && replyExpected(m.Intent) {
+		if j := runtime.TaskJudgment(task); j != nil && verdict == runtime.VerdictAnswer && j.Verdict == judge.OnlyPromised {
+			if j.ContinuedBy != "" {
+				// 只回了「我來查一下」：不算回答了（X04）。系統叫它接著做，那一輪的回答才送回去；交辦與傳話改記在那一輪。
+				if m.AssignmentID != "" {
+					_ = s.db.SetAssignmentTask(ctx, m.AssignmentID, j.ContinuedBy)
+				}
+				if m.MessageID != "" {
+					_ = s.db.SetBotMessageTask(ctx, m.MessageID, j.ContinuedBy)
+				}
+				return
+			}
+			// 叫它接著做也還是只說要做（或不能再續做了）：照沒有完成回覆，交辦人不會把一句承諾當成答案。
+			verdict = runtime.VerdictFailed
+		}
+	}
 	defer s.settleAssignment(ctx, task, m, verdict)
 	switch {
 	case m.RoomID != "":
@@ -826,6 +858,19 @@ func (s *Service) longResult(ctx context.Context, fromID, toID, text string) str
 		}
 	}
 	return preview + fmt.Sprintf("\n\n…（完整回覆共 %d 字，太長放不進訊息，只附上開頭）", runes(text))
+}
+
+// continueMeta 是 runtime 的 Hooks.ContinueMeta：隊友交辦的工作只回了「我來查一下」時，續做的那一輪帶著原本的交辦
+// （寄件者、傳話、交辦紀錄、工作鏈），它的回答才會送回隊友（X04）。群組的一輪、不用回覆的傳話不續做。
+func (s *Service) continueMeta(task store.Task) (json.RawMessage, bool) {
+	m := metaOf(task)
+	if m.FromBot == "" || m.RoomID != "" || !replyExpected(m.Intent) {
+		return nil, false
+	}
+	keep := taskMeta{FromBot: m.FromBot, FromName: m.FromName, Intent: m.Intent, Hop: m.Hop, Chain: m.Chain, ParentTask: m.ParentTask,
+		ReplyThread: m.ReplyThread, MessageID: m.MessageID, AssignmentID: m.AssignmentID}
+	raw, err := json.Marshal(keep)
+	return raw, err == nil
 }
 
 // silent 是 runtime 的 Hooks.Silent：隊友交辦、群組裡回 [silent] 的回覆不顯示；群組已經刪除的也不顯示（LazyBoy finish）。

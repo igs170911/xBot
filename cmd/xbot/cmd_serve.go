@@ -64,6 +64,7 @@ func cmdServe(args []string) error {
 	pairing := auth.NewPairing(st.db)
 	notify := func(e store.Event) { bus.Publish(events.FromStore(e)) }
 	st.budgets.Notify = notify // 花費上限卡片也即時推給介面
+	st.routines.SetNotify(notify)
 	reg := buildRegistry(st.db, pairing, notify, st)
 	// Bot 經自己的 product.sock 用 XBot MCP（C11）：身分就是那個 Bot。
 	st.sockets.SetProduct(mcpserver.BotHandler(reg, mcpserver.BotOptions{Keys: st.keys, DB: st.db, Logger: slog.Default()}))
@@ -83,6 +84,7 @@ func cmdServe(args []string) error {
 		ModelProxy: st.model,
 		MCP:        mcpHandler,
 		AgentPair:  pairing.Handler(),
+		Hooks:      st.routines.HookHandler(),
 		Registry:   reg,
 		Bus:        bus,
 		DB:         st.db,
@@ -100,9 +102,16 @@ func cmdServe(args []string) error {
 	srv.RegisterOnShutdown(cancelBase)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	// 提案到期視同同意、討論時間到叫醒 Bot（X03，LazyBoy agenda tick）。
+	go st.org.Run(ctx)
 
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()
+	// 定時任務排程器（C32）：關機時先停，避免在關機途中交辦新工作。
+	schedCtx, stopSched := context.WithCancel(context.Background())
+	schedDone := make(chan struct{})
+	go func() { defer close(schedDone); st.routines.Run(schedCtx) }()
+	defer func() { stopSched(); <-schedDone }()
 	slog.Info("XBot 服務已啟動", "url", cfg.URL(), "version", version.Version, "data", cfg.DataDir)
 
 	select {

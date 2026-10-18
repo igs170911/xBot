@@ -61,6 +61,8 @@ type Bot struct {
 	Archived       bool            `json:"archived"`
 	// HostID 是 Bot 放在哪台主機（CL-1）；空白＝還沒擺放，第一次開機時自動擺放（CL-4）。
 	HostID string `json:"host_id"`
+	// CanManage 是團隊管理權限（X03，LazyBoy can_manage）：可以替你建團隊、調整別的 Bot；每天可建 20 個 Bot。
+	CanManage bool `json:"can_manage"`
 	// CreatedBy／UpdatedBy 是誰建立、最後修改（owner、agent:<權杖 id>、bot:<id>；舊資料是空白）。
 	// MCP-8 用 CreatedBy 決定代理「自己建立的」Bot；MCP-13 用 UpdatedBy 標「由 ○○（MCP）修改」。
 	CreatedBy string `json:"created_by"`
@@ -71,7 +73,7 @@ type Bot struct {
 
 const botCols = `id, name, title, description, soul, color, avatar, engine, model, effort, fallback,
 	approval_mode, tool_scope, contacts_policy, team_id, reports_to, is_chief, box_limits, idle_minutes,
-	budget, memory_enabled, voice, archived, host_id, created_at, updated_at, created_by, updated_by`
+	budget, memory_enabled, voice, archived, host_id, can_manage, created_at, updated_at, created_by, updated_by`
 
 func scanBot(s scanner) (Bot, error) {
 	var b Bot
@@ -79,7 +81,7 @@ func scanBot(s scanner) (Bot, error) {
 	var team, reports, host sql.NullString
 	err := s.Scan(&b.ID, &b.Name, &b.Title, &b.Description, &b.Soul, &b.Color, &avatar, &b.Engine, &b.Model,
 		&b.Effort, &fallback, &b.ApprovalMode, &toolScope, &contacts, &team, &reports, &b.IsChief, &boxLimits,
-		&b.IdleMinutes, &budget, &b.MemoryEnabled, &b.Voice, &b.Archived, &host, &b.CreatedAt, &b.UpdatedAt, &b.CreatedBy, &b.UpdatedBy)
+		&b.IdleMinutes, &budget, &b.MemoryEnabled, &b.Voice, &b.Archived, &host, &b.CanManage, &b.CreatedAt, &b.UpdatedAt, &b.CreatedBy, &b.UpdatedBy)
 	if err != nil {
 		return b, err
 	}
@@ -94,7 +96,7 @@ func (b *Bot) args() []any {
 	return []any{b.Name, b.Title, b.Description, b.Soul, b.Color, jsonOr(b.Avatar, "{}"), b.Engine, b.Model,
 		b.Effort, strList(b.Fallback), b.ApprovalMode, jsonOr(b.ToolScope, "{}"), jsonOr(b.ContactsPolicy, "{}"),
 		nullStr(b.TeamID), nullStr(b.ReportsTo), b2i(b.IsChief), jsonOr(b.BoxLimits, "{}"), b.IdleMinutes,
-		jsonOr(b.Budget, "{}"), b2i(b.MemoryEnabled), b.Voice, b2i(b.Archived), nullStr(b.HostID)}
+		jsonOr(b.Budget, "{}"), b2i(b.MemoryEnabled), b.Voice, b2i(b.Archived), nullStr(b.HostID), b2i(b.CanManage)}
 }
 
 // CreateBot 新增一個 Bot。ID 空白會自動產生；IdleMinutes 為 0 時用預設值。回傳存好的 Bot。
@@ -112,7 +114,7 @@ func (q *Queries) CreateBot(ctx context.Context, b Bot) (Bot, error) {
 		b.UpdatedBy = b.CreatedBy
 	}
 	args = append(args, b.CreatedAt, b.UpdatedAt, b.CreatedBy, b.UpdatedBy)
-	_, err := q.w.ExecContext(ctx, `INSERT INTO bot(`+botCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, args...)
+	_, err := q.w.ExecContext(ctx, `INSERT INTO bot(`+botCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, args...)
 	if err != nil {
 		return b, err
 	}
@@ -141,7 +143,7 @@ func (q *Queries) UpdateBot(ctx context.Context, b Bot) (Bot, error) {
 	err := affected(q.w.ExecContext(ctx, `UPDATE bot SET name=?, title=?, description=?, soul=?, color=?, avatar=?,
 		engine=?, model=?, effort=?, fallback=?, approval_mode=?, tool_scope=?, contacts_policy=?, team_id=?,
 		reports_to=?, is_chief=?, box_limits=?, idle_minutes=?, budget=?, memory_enabled=?, voice=?, archived=?,
-		host_id=?, updated_at=?, updated_by=? WHERE id=?`, args...))
+		host_id=?, can_manage=?, updated_at=?, updated_by=? WHERE id=?`, args...))
 	if err != nil {
 		return b, err
 	}

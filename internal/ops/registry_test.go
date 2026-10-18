@@ -242,7 +242,8 @@ func TestResourceScope(t *testing.T) {
 
 	// Bot 只能碰自己。
 	self := Bot(a.ID, "甲")
-	if !self.CanAccess(ResourceBot, a.ID) || self.CanAccess(ResourceBot, b.ID) || self.HasScope(ScopeManage) {
+	// X03：Bot 有 manage（建幫手、主管建團隊），但只能用 ForBot 的操作，資源範圍仍只有自己。
+	if !self.CanAccess(ResourceBot, a.ID) || self.CanAccess(ResourceBot, b.ID) || self.HasScope(ScopeAdmin) {
 		t.Fatalf("Bot 身分範圍不對：%+v", self)
 	}
 	if !Owner("ui").CanAccess(ResourceHost, "anything") {

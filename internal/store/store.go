@@ -199,3 +199,6 @@ func (q *Queries) atomic(ctx context.Context, fn func(q *Queries) error) error {
 	}
 	return tx.Commit()
 }
+
+// NowMS 是現在的 unix 毫秒（和存進資料庫的時間同一個來源）。
+func NowMS() int64 { return nowMS() }

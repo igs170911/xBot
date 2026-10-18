@@ -20,7 +20,9 @@ import (
 	"xbot/internal/hosts"
 	"xbot/internal/ipc"
 	"xbot/internal/memory"
+	"xbot/internal/org"
 	"xbot/internal/proxy"
+	"xbot/internal/routines"
 	"xbot/internal/runtime"
 	"xbot/internal/skills"
 	"xbot/internal/store"
@@ -44,10 +46,12 @@ type stack struct {
 	creds     *engines.Service
 	hosts     *hosts.Service
 	runtime   *runtime.Runtime
+	routines  *routines.Service // 定時任務排程器（serve 才啟動；Notify 由 serve 接上 SSE）
 	comp      *runtime.Computers
 	skills    *skills.Service
 	memory    *memory.Service
 	collab    *collab.Service
+	org       *org.Service
 	computers *computers.Service
 	// stopIdle 停掉閒置休眠的背景檢查（startBackground 開始）。
 	stopIdle context.CancelFunc
@@ -156,6 +160,7 @@ func openStack(cfg config.Config) (*stack, error) {
 			return s.budgets.CheckProvider(ctx, botID, providerID)
 		}})
 	s.pstore.Attribute = s.runtime.Active
+	s.routines = routines.New(routines.Options{DB: db, Runtime: s.runtime, Logger: logger})
 	s.comp = comp
 	s.skills = &skills.Service{Locate: comp.BotFS, Library: &skills.Library{Dir: filepath.Join(cfg.DataDir, "skills")}}
 	s.memory = &memory.Service{DB: db, Locate: comp.BotFS}
@@ -170,7 +175,16 @@ func openStack(cfg config.Config) (*stack, error) {
 		},
 		UID: box.BotUID, GID: box.BotGID,
 	}})
-	comp.Roster = s.collab.RosterText
+	// 團隊、匯報線、提案與討論（X03）。Bot 的系統提示：隊友名冊＋組織與回報。
+	s.org = org.New(org.Options{DB: db, Runtime: s.runtime, Collab: s.collab, Logger: logger})
+	comp.Roster = func(ctx context.Context, botID string) (string, error) {
+		team, err := s.collab.RosterText(ctx, botID)
+		if err != nil {
+			return "", err
+		}
+		soul, err := s.org.SoulText(ctx, botID)
+		return team + soul, err
+	}
 	// 電腦的生命週期操作與「更新電腦」（B13）。
 	s.computers = &computers.Service{DB: db, Boxes: s.boxes, Hosts: s.hosts, Activity: s.runtime, Bus: bus, Logger: logger}
 	if err := s.hosts.Start(context.Background()); err != nil {
@@ -194,6 +208,9 @@ func (s *stack) Close() error {
 	}
 	if s.computers != nil {
 		s.computers.Wait()
+	}
+	if s.routines != nil {
+		s.routines.Close()
 	}
 	if s.hosts != nil {
 		errs = append(errs, s.hosts.Close())

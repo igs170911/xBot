@@ -9,6 +9,7 @@
 //	POST /api/v1/auth/login      用登入碼換 session cookie；auth/logout 登出；GET auth/status 看登入狀態
 //	POST /api/v1/agents.pair     代理用配對碼換權杖（C04，不需要登入）
 //	/mcp                         MCP Streamable HTTP（C04）
+//	POST /hooks/<id>             定時任務的網址觸發（C32，不需要登入，帶金鑰）
 package api
 
 import (
@@ -38,6 +39,8 @@ type Options struct {
 	MCP http.Handler
 	// AgentPair 掛在 /api/v1/agents.pair（internal/auth.Pairing.Handler）：代理用配對碼換權杖，不需要登入。
 	AgentPair http.Handler
+	// Hooks 掛在 /hooks/（定時任務的網址觸發，C32）：不需要登入，網址 id＋金鑰就是憑證。nil 表示不提供。
+	Hooks http.Handler
 	// Registry 是操作登錄表；nil 表示不提供 /api/v1 的操作路由。要在呼叫 New 之前登錄好所有操作。
 	Registry *ops.Registry
 	// Bus 是事件匯流排（SSE 用）；Registry 不是 nil 時必填。
@@ -92,6 +95,9 @@ func New(o Options) http.Handler {
 	}
 	if o.AgentPair != nil {
 		mux.Handle("/api/v1/agents.pair", o.AgentPair)
+	}
+	if o.Hooks != nil {
+		mux.Handle("/hooks/", o.Hooks)
 	}
 	mux.Handle("/", spa(o.Web))
 	return mux

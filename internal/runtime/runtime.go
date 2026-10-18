@@ -17,6 +17,7 @@ import (
 
 	"xbot/internal/engine"
 	"xbot/internal/events"
+	"xbot/internal/judge"
 	"xbot/internal/limits"
 	"xbot/internal/store"
 )
@@ -33,7 +34,7 @@ const (
 	KindUsage          = "chat.usage"
 	KindStatus         = "chat.status"
 	KindError          = "chat.error"
-	KindDone           = "chat.done"  // payload：{message_id, status, verdict, text}
+	KindDone           = "chat.done"  // payload：DonePayload {message_id, status, verdict, text, judge}
 	KindTaskState      = "task.state" // payload：{state, verdict}
 )
 
@@ -43,6 +44,15 @@ const (
 	VerdictCancelled = "cancelled"
 	VerdictFailed    = "failed"
 )
+
+// DonePayload 是 chat.done 的內容。Judge 是做完了沒的判斷（X04；停掉的、中斷的沒有）。
+type DonePayload struct {
+	MessageID string    `json:"message_id"`
+	Status    string    `json:"status"`
+	Verdict   string    `json:"verdict"`
+	Text      string    `json:"text"`
+	Judge     *Judgment `json:"judge,omitempty"`
+}
 
 // ErrBusy 表示這個 Bot 正在處理另一則訊息。
 var ErrBusy = errors.New("這個 Bot 正在忙，等它做完或先停止")
@@ -64,6 +74,11 @@ type Options struct {
 	Watchdog Watchdog
 	// Budget 在交辦前檢查花費上限（Bot 與它的模型供應商）；超過時 Chat 回它的錯誤（*proxy.BudgetError）。可為 nil。
 	Budget func(ctx context.Context, botID, providerID string) error
+	// Judge 判斷一輪做完了沒（X04，PRD §20 用途 2）；nil 用規則（judge.Rules）。X05 換成快判模型＋規則兜底。
+	Judge judge.Judge
+	// Stranded 回答這一輪是不是背景子任務回報後的那一輪，以及失敗後沒人接手的背景子任務（目標文字）。
+	// LazyBoy 用 Hermes 的 subagent 追蹤；XBot 還沒有這個來源，nil 時不叫醒（見 X04 待確認）。
+	Stranded func(ctx context.Context, task store.Task) (goals []string, background bool)
 	// Admit 在開機前排隊等主機（B12：主機離線或滿了，CL-4、CL-6）；wait 收到排隊原因時，任務維持 waiting_box，
 	// 並發 task.state（payload 帶 wait）。回傳的 release 在開機完成後呼叫。可為 nil（不排隊）。
 	Admit func(ctx context.Context, botID string, wait func(any)) (release func(), err error)
@@ -97,6 +112,10 @@ type Runtime struct {
 	active    map[string]*turn          // botID → 進行中的一輪
 	closing   map[string]*turn          // taskID → 已經釋放 Bot、還在收尾的一輪（Wait 要等它寫完）
 	consumers map[engine.Session]string // 已經有人在讀事件的 session → botID
+
+	// stallNudged：同一個失敗的背景子任務已經叫 Bot 回去處理幾次（botID＋目標前 80 字，LazyBoy stall_nudged）。
+	stallMu     sync.Mutex
+	stallNudged map[string]int
 }
 
 // New 建立 Runtime。
@@ -119,7 +138,8 @@ func New(o Options) *Runtime {
 			*d.v = d.def
 		}
 	}
-	return &Runtime{o: o, log: o.Logger, active: map[string]*turn{}, closing: map[string]*turn{}, consumers: map[engine.Session]string{}}
+	return &Runtime{o: o, log: o.Logger, active: map[string]*turn{}, closing: map[string]*turn{}, consumers: map[engine.Session]string{},
+		stallNudged: map[string]int{}}
 }
 
 // Bus 回傳事件匯流排。
@@ -137,6 +157,9 @@ type Hooks struct {
 	Stopped func(botID string, taskIDs []string)
 	// Silent 回答這一輪的回覆要不要藏起來（隊友交辦、群組裡回 [silent] 的；群組已刪除的）。
 	Silent func(taskID, verdict, text string) bool
+	// ContinueMeta：隊友交辦的工作只回了「我來查一下」時，續做的那一輪要帶的 task.meta（原本的交辦，結果才會送回隊友）。
+	// ok=false 時不續做（X04）。
+	ContinueMeta func(task store.Task) (meta json.RawMessage, ok bool)
 }
 
 // SetHooks 接上協作層。
@@ -177,6 +200,8 @@ type turn struct {
 	waiting   bool
 	lastErr   string
 	pending   *pending // Bot 正在等人回覆的請求（一次一個）
+	usedTools bool     // 這一輪呼叫過工具（判斷「只說要做」用）
+	plan      []string // Bot 的計畫裡還沒做完的項目（最新的一份）
 
 	// 看門狗：最後一次收到事件的時間、正在執行的工具、看門狗送出中斷的時間、按停止的時間。
 	seen      time.Time
@@ -328,6 +353,9 @@ func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error
 		return ChatResult{}, err
 	}
 	r.publish(botID, th.ID, task.ID, KindMessageCreated, msg, true)
+	if source == SourceOwner && kind != KindActivity {
+		r.closeJudgeCards(context.WithoutCancel(ctx), botID, th.ID) // 你回話了：「需要你」卡收掉（X04）
+	}
 	started := r.next(botID)
 	if started != task.ID {
 		r.publish(botID, th.ID, task.ID, KindTaskState, map[string]string{"state": store.TaskQueued}, true)
@@ -430,6 +458,17 @@ func (r *Runtime) run(ctx context.Context, t *turn) {
 			return
 		}
 	}
+	// 你問「進度如何」：附上系統查得的事實，Bot 照事實回答，不會只說「我去查」（PRD §19.2，LazyBoy _prompt）。
+	t.mu.Lock()
+	input := t.input
+	t.mu.Unlock()
+	if t.source == SourceOwner && judge.IsProgressQuestion(strings.TrimSpace(input)) {
+		if p, err := r.Progress(ctx, t.botID, t.taskID); err == nil {
+			t.mu.Lock()
+			t.input = input + "\n\n" + p.Text
+			t.mu.Unlock()
+		}
+	}
 	r.setState(t, store.TaskWaitingBox)
 	if r.o.Admit != nil {
 		release, err := r.o.Admit(ctx, t.botID, func(w any) {
@@ -467,7 +506,7 @@ func (r *Runtime) run(ctx context.Context, t *turn) {
 	t.mu.Lock()
 	t.session, t.messageID = s, msg.ID
 	stopping := t.stopping
-	input := t.input
+	input = t.input
 	t.mu.Unlock()
 	r.emit(t, KindMessageCreated, msg, true)
 	if stopping {
@@ -478,7 +517,9 @@ func (r *Runtime) run(ctx context.Context, t *turn) {
 	t.mu.Lock()
 	t.seen = time.Now()
 	t.mu.Unlock()
-	if err := r.o.Driver.Send(ctx, s, engine.Message{Text: input}); err != nil {
+	// 送出不跟著這一輪的 ctx：引擎可能在回覆 prompt.submit 之前就把這一輪做完（finish 會取消 ctx），
+	// 取消寫到一半的 WebSocket 會把整條連線關掉，下一輪（例：自動續做）就斷線了。停止走 Interrupt。
+	if err := r.o.Driver.Send(context.WithoutCancel(ctx), s, engine.Message{Text: input}); err != nil {
 		r.finishErr(t, err)
 		return
 	}
@@ -524,6 +565,7 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 		if e.Tool != nil && e.Tool.ID != "" {
 			switch e.Type {
 			case engine.EventToolCall:
+				t.usedTools = true
 				if t.openTools == nil {
 					t.openTools = map[string]bool{}
 				}
@@ -572,6 +614,11 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 	case engine.EventUsage:
 		r.emit(t, KindUsage, e, true)
 	case engine.EventStatus:
+		if left, ok := planLeft(e.Text); ok {
+			t.mu.Lock()
+			t.plan = left
+			t.mu.Unlock()
+		}
 		r.emit(t, KindStatus, e, true)
 	case engine.EventNeedsApproval:
 		t.mu.Lock()
@@ -668,10 +715,25 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		}
 	}
 	ctx := context.Background()
+	// 判斷做完了沒（X04）：停掉的、中斷的不判斷。
+	task, terr := r.o.DB.GetTask(ctx, t.taskID)
+	var in judge.Input
+	var res *judge.Result
+	if terr == nil {
+		in, res = r.judgeTurn(t, task, verdict, final, status == engine.StatusError && text == StalledText)
+	}
+	var judged *Judgment
+	if res != nil {
+		j := judgmentOf(*res)
+		judged = &j
+	}
 	if msgID != "" {
 		fields := map[string]any{"task_id": t.taskID, "status": status}
 		if h := r.hooks(); h.Silent != nil && h.Silent(t.taskID, verdict, final) {
 			fields["silent"] = true // 隊友、群組裡回 [silent] 的：不顯示（LazyBoy finish）
+		}
+		if judged != nil {
+			fields["judge"] = judged
 		}
 		meta, _ := json.Marshal(fields)
 		if err := r.o.DB.UpdateMessage(ctx, msgID, final, nil, meta); err != nil {
@@ -679,7 +741,11 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		}
 	} else if final != "" {
 		// 還沒開始就失敗：把原因寫成 Bot 的一則訊息，對話裡看得到。
-		meta, _ := json.Marshal(map[string]any{"task_id": t.taskID, "status": status})
+		fields := map[string]any{"task_id": t.taskID, "status": status}
+		if judged != nil {
+			fields["judge"] = judged
+		}
+		meta, _ := json.Marshal(fields)
 		if m, err := r.o.DB.AddMessage(ctx, store.Message{Scope: store.ScopeThread, ScopeID: t.threadID, Sender: "bot:" + t.botID, Content: final, Meta: meta}); err == nil {
 			msgID = m.ID
 			r.emit(t, KindMessageCreated, m, true)
@@ -690,7 +756,16 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		p.stop()
 		r.settle(t, p, store.InboxDismissed, ResolutionGone, "system", nil, "")
 	}
-	r.notifyDone(t, verdict, final)
+	// 只說要做、丟回來、計畫沒做完：叫 Bot 自己接著做（排在這一輪後面；LazyBoy auto_continue）。
+	if res != nil {
+		if req := r.continuation(t, task, in, *res); req != nil {
+			judged.ContinuedBy = r.continueTurn(t, in, req)
+		}
+		if err := r.o.DB.PatchTaskMeta(ctx, t.taskID, map[string]any{"judge": judged}); err != nil {
+			r.log.Warn("寫入完成判定失敗", "task", t.taskID, "err", err)
+		}
+	}
+	r.notifyDone(t, verdict, final, res, judged)
 	// 先釋放這個 Bot 再寫 done：看到任務結束的人（wait_until_settled）馬上交辦下一件不會撞到「正在忙」。
 	r.mu.Lock()
 	if r.active[t.botID] == t {
@@ -702,7 +777,7 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		r.log.Warn("寫入任務狀態失敗", "task", t.taskID, "err", err)
 	}
 	r.emit(t, KindTaskState, map[string]string{"state": store.TaskDone, "verdict": verdict}, true)
-	r.emit(t, KindDone, map[string]string{"message_id": msgID, "status": status, "verdict": verdict, "text": final}, true)
+	r.emit(t, KindDone, DonePayload{MessageID: msgID, Status: status, Verdict: verdict, Text: final, Judge: judged}, true)
 	r.finished(t.taskID, verdict, final)
 	t.cancel()
 	close(t.done)
@@ -975,6 +1050,7 @@ func (r *Runtime) Active(botID string) (threadID, taskID string) {
 }
 
 // Wait 等任務結束（或 ctx 結束），回傳任務的最後狀態。排隊中的工作會等它開始、做完。
+// 不在進行中、也還沒結束的工作（例：服務重開前留下的）會一直等到 ctx 結束。
 func (r *Runtime) Wait(ctx context.Context, taskID string) (store.Task, error) {
 	for {
 		r.mu.Lock()
@@ -997,9 +1073,10 @@ func (r *Runtime) Wait(ctx context.Context, taskID string) (store.Task, error) {
 			return r.o.DB.GetTask(ctx, taskID)
 		}
 		task, err := r.o.DB.GetTask(ctx, taskID)
-		if err != nil || task.State != store.TaskQueued {
+		if err != nil || task.State == store.TaskDone {
 			return task, err
 		}
+		// 排隊中，或剛好在上面查完之後才開始（還不在 active 裡就已經不是 queued）：再查一次。
 		select {
 		case <-ctx.Done():
 			return store.Task{}, ctx.Err()

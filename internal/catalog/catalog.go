@@ -18,7 +18,9 @@ import (
 	"xbot/internal/memory"
 	"xbot/internal/models"
 	"xbot/internal/ops"
+	"xbot/internal/org"
 	"xbot/internal/proxy"
+	"xbot/internal/routines"
 	"xbot/internal/skills"
 	"xbot/internal/store"
 	"xbot/internal/usage"
@@ -35,6 +37,8 @@ type Deps struct {
 	Hosts     *hosts.Service   // 主機管理（B12）
 	// Teardown 收掉 Bot 的電腦（含資料區）與引擎連線；刪除 Bot 時呼叫。可為 nil。
 	Teardown func(ctx context.Context, botID string) error
+	// Routines 是定時任務的排程器（C32）；nil 時只登錄定義，run_now 等要排程器的呼叫回 internal。
+	Routines *routines.Service
 	// Skills、Memory 是技能與記憶（C31）；nil 時只登錄定義。
 	Skills *skills.Service
 	Memory *memory.Service
@@ -42,11 +46,13 @@ type Deps struct {
 	SoulChanged func(ctx context.Context, botID string)
 	// Collab 是 Bot 之間的傳話與群組（X02）；nil 時只登錄定義。
 	Collab *collab.Service
+	// Org 是團隊、匯報線、提案與討論（X03）；nil 時只登錄定義。
+	Org *org.Service
 	// Computers 是 Bot 電腦的生命週期（B13）；nil 時只登錄定義。
 	Computers *computers.Service
 }
 
-// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、models、usage、engines、skills、memory、hosts、computers 各領域的操作。
+// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines、computers 各領域的操作。
 func Register(reg *ops.Registry, d Deps) {
 	bd := bots.Deps{Teardown: d.Teardown, SoulChanged: d.SoulChanged}
 	if d.Collab != nil {
@@ -65,6 +71,7 @@ func Register(reg *ops.Registry, d Deps) {
 	if d.Runtime != nil {
 		rt := d.Runtime
 		bd.Stop = func(ctx context.Context, botID string) { _, _ = rt.Stop(ctx, botID, "") }
+		bd.Active = rt.Active
 	}
 	bots.Register(reg, bd)
 	chat.Register(reg, chat.Deps{Runtime: d.Runtime})
@@ -76,9 +83,11 @@ func Register(reg *ops.Registry, d Deps) {
 	}
 	botops.Register(reg, botops.Deps{Active: active})
 	collab.Register(reg, d.Collab)
+	org.Register(reg, d.Org)
 	models.Register(reg, models.Deps{Providers: d.Providers, Lister: d.Lister, Prober: d.Prober})
 	usage.Register(reg, usage.Deps{Budgets: d.Budgets})
 	engines.Register(reg, d.Engines)
+	routines.Register(reg, d.Routines)
 	skills.Register(reg, d.Skills)
 	memory.Register(reg, d.Memory)
 	hosts.Register(reg, d.Hosts)
