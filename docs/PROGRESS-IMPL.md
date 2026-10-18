@@ -18,3 +18,4 @@
 | C05 第一批核心操作 | ✅ 完成 | `task/C05-core-ops` | 多了 `models.set_default`；approval_mode 值 ask/edits/auto/full（取自 OMB）；代理只看到自己的核准與稽核 | Bot 等人回答時還沒有回答的操作（chat.respond，C12）；核准後執行失敗時 approvals.wait 分不出來；刪除 Bot 沒關閉 product.sock；`xbot dev chat` 可移除 |
 | W02 對話畫面最小版 | ✅ 完成 | `task/W02-chat` | 工作中再送訊息會顯示「忙碌中，先按停止」（伺服器不接受排隊）；Bot 的提問只顯示「在等你」（回答功能在 C12）；新增 `make e2e-docker`（真 Bot 電腦＋假模型） | 重新整理後看不到舊回合的步驟（需要 tasks.events 之類的 op）；開機中重新整理看不到進度；事件表沒存 thread_id |
 | CP1（關卡 G0） | ✅ 通過 | tag `cp1` | 用假模型驗收；Claude Code 真的透過 MCP 建 Bot 並對話 | 真模型驗收待使用者同意使用金鑰 |
+| W11 對話完整版 | ✅ 完成 | `task/W11-chat-full` | Markdown 用 marked lexer 自建 React 元素（不經 innerHTML）；數學只顯示原始 TeX、Mermaid 當程式碼；「再試一次」用 chat.send 重送（會多一則訊息）；`registerCard` 給 C12 掛卡片 | 待補 op：重新命名／釘選／刪除對話串、模型清單、context 用量、retry；手機頁首是否照 L03 |
