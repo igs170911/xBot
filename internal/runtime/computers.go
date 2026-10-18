@@ -63,6 +63,8 @@ type Computers struct {
 	Creds *engines.Service
 	// XBotMCP 是給 ACP 引擎的 XBot MCP（經 product.sock，C11）；還沒有時是 nil，只給 desktop_mcp。
 	XBotMCP *acp.MCPServer
+	// Roster 是 Bot 系統提示裡的隊友段落（X02，collab.RosterText）；nil 時不寫。
+	Roster func(ctx context.Context, botID string) (string, error)
 }
 
 // ResolveModel 決定 Bot 要用的模型：bot.model 寫成「<供應商>/<模型>」且供應商已設定時用它；
@@ -214,8 +216,14 @@ func (c *Computers) Prepare(ctx context.Context, h hosts.Host, botID, containerI
 	if err := c.ensureSocket(h, botID); err != nil {
 		return err
 	}
+	team := ""
+	if c.Roster != nil {
+		if team, err = c.Roster(ctx, botID); err != nil {
+			return err
+		}
+	}
 	return hermes.Provision(ctx, h.Docker(), containerID, hermes.Profile{
-		BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul,
+		BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul, Team: team,
 		ProviderID: ref.Provider, Model: ref.Model, Transport: ref.Transport, Effort: b.Effort,
 		WorkerKey: string(key), UID: box.BotUID, GID: box.BotGID, ApprovalMode: b.ApprovalMode,
 	})
@@ -313,6 +321,22 @@ func (c *Computers) Locate(ctx context.Context, botID string) (engines.Container
 		return engines.Container{}, fmt.Errorf("這個 Bot 的電腦所在的主機連不上：%w", err)
 	}
 	return engines.Container{API: h.Docker(), ID: s.ContainerID, Running: s.Running}, nil
+}
+
+// Docker 找 Bot 的電腦所在主機的 Docker API 與容器（不開機；沒有電腦時 id 空白）。協作層讀寫 /workspace 用（X02）。
+func (c *Computers) Docker(ctx context.Context, botID string) (hosts.DockerAPI, string, error) {
+	if _, err := c.DB.GetBox(ctx, botID); errors.Is(err, store.ErrNotFound) {
+		return nil, "", nil
+	}
+	s, err := c.Boxes.Status(ctx, botID)
+	if err != nil || s.ContainerID == "" {
+		return nil, "", err
+	}
+	h, err := c.Hosts.Get(s.HostID)
+	if err != nil {
+		return nil, "", fmt.Errorf("這個 Bot 的電腦所在的主機連不上：%w", err)
+	}
+	return h.Docker(), s.ContainerID, nil
 }
 
 // EngineOf 讀 Bot 的引擎（engine.Router 用）。

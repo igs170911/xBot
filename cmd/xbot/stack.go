@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"xbot/internal/box"
+	"xbot/internal/collab"
 	"xbot/internal/config"
 	"xbot/internal/engine"
 	"xbot/internal/engine/acp"
@@ -39,6 +40,7 @@ type stack struct {
 	driver    *engine.Router
 	creds     *engines.Service
 	runtime   *runtime.Runtime
+	collab    *collab.Service
 }
 
 func openStack(cfg config.Config) (*stack, error) {
@@ -118,6 +120,18 @@ func openStack(cfg config.Config) (*stack, error) {
 			return s.budgets.CheckProvider(ctx, botID, providerID)
 		}})
 	s.pstore.Attribute = s.runtime.Active
+	// Bot 之間的傳話與群組（X02）：接上 runtime 的 Hooks；帶檔經 Docker 讀寫兩邊電腦的 /workspace。
+	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Files: collab.DockerFiles{
+		Locate: func(ctx context.Context, botID string) (collab.CopyAPI, string, error) {
+			api, id, err := comp.Docker(ctx, botID)
+			if api == nil {
+				return nil, id, err
+			}
+			return api, id, err
+		},
+		UID: box.BotUID, GID: box.BotGID,
+	}})
+	comp.Roster = s.collab.RosterText
 	return s, nil
 }
 

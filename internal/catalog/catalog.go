@@ -9,6 +9,7 @@ import (
 	"xbot/internal/botops"
 	"xbot/internal/bots"
 	"xbot/internal/chat"
+	"xbot/internal/collab"
 	"xbot/internal/delegation"
 	"xbot/internal/engines"
 	"xbot/internal/inbox"
@@ -29,11 +30,26 @@ type Deps struct {
 	Engines   *engines.Service // 訂閱 CLI 的憑證（EN-2b）
 	// Teardown 收掉 Bot 的電腦（含資料區）與引擎連線；刪除 Bot 時呼叫。可為 nil。
 	Teardown func(ctx context.Context, botID string) error
+	// Collab 是 Bot 之間的傳話與群組（X02）；nil 時只登錄定義。
+	Collab *collab.Service
 }
 
-// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、models、usage、engines 各領域的操作。
+// Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、models、usage、engines 各領域的操作。
 func Register(reg *ops.Registry, d Deps) {
 	bd := bots.Deps{Teardown: d.Teardown}
+	if d.Collab != nil {
+		// 刪除 Bot 時，還在等它回覆的隊友會收到「已經被刪除」（AA-6）。
+		teardown, c := d.Teardown, d.Collab
+		bd.Teardown = func(ctx context.Context, botID string) error {
+			if teardown != nil {
+				if err := teardown(ctx, botID); err != nil {
+					return err
+				}
+			}
+			c.ForgetBot(context.WithoutCancel(ctx), botID)
+			return nil
+		}
+	}
 	if d.Runtime != nil {
 		rt := d.Runtime
 		bd.Stop = func(ctx context.Context, botID string) { _, _ = rt.Stop(ctx, botID, "") }
@@ -47,6 +63,7 @@ func Register(reg *ops.Registry, d Deps) {
 		active = d.Runtime.Active
 	}
 	botops.Register(reg, botops.Deps{Active: active})
+	collab.Register(reg, d.Collab)
 	models.Register(reg, models.Deps{Providers: d.Providers, Lister: d.Lister, Prober: d.Prober})
 	usage.Register(reg, usage.Deps{Budgets: d.Budgets})
 	engines.Register(reg, d.Engines)

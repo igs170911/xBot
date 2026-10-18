@@ -32,6 +32,8 @@ export type Msg = {
   actor?: string
   actor_name?: string
   via?: string
+  silent?: boolean
+  peer?: Record<string, unknown>
   created_at: number
   updated_at: number
 }
@@ -48,6 +50,11 @@ export class MockServer {
   /** 待我處理的卡（xbot.inbox.list 的項目）。 */
   inbox: Array<Record<string, unknown> & { id: string; status: string }> = []
   calls: Array<{ op: string; input: Record<string, unknown> }> = []
+  /** 群組（xbot.rooms.list 的項目）與群組訊息（collab.room_read）。 */
+  rooms: Array<Record<string, unknown> & { id: string; name: string; members: Array<Record<string, unknown>> }> = []
+  roomMessages: Record<string, Array<Record<string, unknown>>> = {}
+  /** collab.peer_history 的回應。 */
+  peerHistory: Record<string, unknown> | null = null
   /** 測試可以換掉某個操作的回應。 */
   override: Record<string, Handler> = {}
   private seq = 0
@@ -120,6 +127,53 @@ export class MockServer {
       return { bot_id: i.bot_id, thread_id: t.id, task_id: task, message_id: m.id }
     },
     'chat.stop': () => ({ stopped: true, task_id: this.lastSend?.taskId }),
+    'rooms.list': () => ({ rooms: this.rooms }),
+    'rooms.create': (i) => this.addRoom(i.member_ids as string[], (i.name as string) || '', (i.responder_rule as string) || 'auto'),
+    'rooms.update': (i) => {
+      const r = this.rooms.find((x) => x.id === i.room_id)!
+      Object.assign(r, Object.fromEntries(Object.entries(i).filter(([k]) => k !== 'room_id')))
+      return r
+    },
+    'rooms.pause_member': (i) => {
+      const r = this.rooms.find((x) => x.id === i.room_id)!
+      const m = r.members.find((x) => x.bot_id === i.bot_id)!
+      m.paused = i.paused
+      return r
+    },
+    'rooms.post': (i) => {
+      const r = this.rooms.find((x) => x.id === i.room_id)!
+      const now = Date.now()
+      this.seq += 1
+      const m = { id: this.id('rm'), seq: this.seq, sender: 'owner', content: String(i.text), mentions: [], created_at: now }
+      ;(this.roomMessages[r.id] ??= []).push(m)
+      return { message: m, woke: [] }
+    },
+    'collab.room_read': (i) => {
+      const r = this.rooms.find((x) => x.id === i.room)!
+      return { room: r, messages: this.roomMessages[r.id] ?? [], has_more: false }
+    },
+    'collab.stop_room': () => ({ stopped: [] }),
+    'collab.peer_history': () => this.peerHistory,
+    'collab.stop_chain': () => ({ stopped: 1 }),
+  }
+
+  addRoom(memberIds: string[], name: string, rule = 'auto', seats: Record<string, string> = {}) {
+    const members = memberIds.map((id, i) => {
+      const b = this.bots.find((x) => x.id === id)!
+      return { bot_id: id, name: b.name, title: b.title, color: b.color, shape: b.shape, lead: i === 0, paused: false, seat: seats[id] ?? 'idle', seat_thread_id: 'seat-' + id }
+    })
+    const now = Date.now()
+    const room = { id: this.id('room'), name: name || members.map((m) => m.name).join('、'), auto_name: !name, responder_rule: rule, lead_id: memberIds[0], bulletin: '', created_by: 'owner', members, preview: '', last_message_at: now, created_at: now }
+    this.rooms.unshift(room)
+    this.roomMessages[room.id] = []
+    return room
+  }
+
+  addRoomMessage(roomId: string, m: Record<string, unknown> & { sender: string; content: string }) {
+    this.seq += 1
+    const msg = { id: this.id('rm'), seq: this.seq, mentions: [], created_at: Date.now(), ...m }
+    this.roomMessages[roomId].push(msg)
+    return msg
   }
 
   lastSend: { botId: string; threadId: string; taskId: string; messageId: string; text: string } | null = null

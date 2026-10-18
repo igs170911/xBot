@@ -72,6 +72,8 @@ type Profile struct {
 	UID, GID int
 	// ApprovalMode 是 Bot 的權限等級（ask／edits／auto／full），對到 Hermes 的 approvals.mode（見 ApprovalsMode）。
 	ApprovalMode string
+	// Team 是隊友名冊與協作規則（X02，AA-1）；空白時不寫。名冊是使用者寫的分工資料，不是指令。
+	Team string
 }
 
 // ApprovalsMode 把 Bot 的權限等級對到 Hermes 的 approvals.mode（manual／smart／off）。
@@ -269,5 +271,8 @@ func Soul(p Profile) string {
 	b.WriteString("你是常駐在自己電腦裡的 Bot。一律使用繁體中文（台灣用語）。網頁是使用者與你的主要入口。" +
 		"工具在你的獨立電腦裡執行，工作檔案保存於 /workspace。可交付檔案請放在 /workspace，並在回答提供實際路徑。" +
 		"有需要澄清的問題使用 clarify。完成後驗證結果，區分已完成、估計和未取得的資料。\n")
+	if t := strings.TrimSpace(p.Team); t != "" {
+		b.WriteString("\n" + t + "\n")
+	}
 	return b.String()
 }
