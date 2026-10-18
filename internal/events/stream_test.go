@@ -78,6 +78,37 @@ func TestStreamFromNowAndResume(t *testing.T) {
 	}
 }
 
+// 剛訂閱、補送還沒跑完時發生的事件也照匯流排順序：之後才存的事件不能從資料庫被補送到比它早發布的即時事件前面。
+func TestStreamKeepsBusOrderDuringCatchUp(t *testing.T) {
+	b, db := New(), newDB(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	for i := range 50 {
+		for _, last := range []int64{-1, 0} {
+			sctx, scancel := context.WithCancel(ctx)
+			ch := Stream(sctx, b, db, nil, last, nil)
+			b.Publish(Event{Kind: "delta"})
+			stored := appendEvent(t, b, db, "stored")
+			for {
+				got := recv(t, ch)
+				if got.ID != 0 && got.ID < stored.ID {
+					continue // last=0 時補送的舊事件
+				}
+				if got.ID != 0 || got.Kind != "delta" {
+					t.Fatalf("第 %d 次（last=%d）：即時事件要先到，拿到 %+v", i, last, got)
+				}
+				break
+			}
+			if got := recv(t, ch); got.ID != stored.ID {
+				t.Fatalf("第 %d 次（last=%d）：%+v", i, last, got)
+			}
+			scancel()
+			for range ch {
+			}
+		}
+	}
+}
+
 // 跳號時（某筆事件寫了但沒通知、或通知比較晚到）從資料庫補，不漏也不重複。
 func TestStreamFillsGaps(t *testing.T) {
 	b, db := New(), newDB(t)
