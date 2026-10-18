@@ -15,7 +15,7 @@ XBOT    := bin/xbot
 # 管理已安裝服務時，優先用裝好的執行檔；還沒安裝就用剛建出來的。
 XBOT_INSTALLED = $(shell command -v $(HOME)/.local/bin/xbot 2>/dev/null || echo $(XBOT))
 
-.PHONY: help doctor setup deps dev check fmt test test-docker e2e box box-latest box-test build web-build install start stop restart \
+.PHONY: help doctor setup deps dev check fmt gen test test-docker e2e box box-latest box-test build web-build install start stop restart \
         status logs token up down update backup restore clean uninstall
 
 help: ## 列出所有指令
@@ -41,10 +41,14 @@ dev: ## 開發模式：後端熱重載＋前端 Vite
 fmt: ## 自動排版 Go 程式
 	$(RUN) gofmt -w cmd internal web/*.go
 
-check: ## 全部檢查（排版、vet、staticcheck、測試、前端型別、lint、單元測試）
+gen: ## 由操作登錄表產生前端型別 web/src/api/generated.ts（改了操作後執行並提交）
+	$(RUN) go run ./cmd/xbot gen ts
+
+check: ## 全部檢查（排版、vet、生成檔是否最新、staticcheck、測試、前端型別、lint、單元測試）
 	@files=$$($(RUN) gofmt -l cmd internal web/*.go); \
 	  if [ -n "$$files" ]; then echo "❌ 這些檔案沒有排版，請執行 make fmt："; echo "$$files"; exit 1; fi
 	$(RUN) go vet ./...
+	@$(RUN) go run ./cmd/xbot gen ts --check || { echo "❌ 前端型別過期，請執行 make gen 並提交"; exit 1; }
 	$(RUN) staticcheck ./...
 	$(RUN) go test ./...
 	cd web && $(RUN) pnpm typecheck && $(RUN) pnpm lint && $(RUN) pnpm test

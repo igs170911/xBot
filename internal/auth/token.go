@@ -1,7 +1,7 @@
 // Package auth 處理登入碼、裝置配對與代理權杖。
 //
-// 目前只有登入碼（存放在資料目錄的 access-token，權限 600）；
-// 配對、代理權杖與權限範圍在 C03／C04 加上。
+// 登入碼（access-token）、HTTP 驗證（session cookie、Bearer、本機免登入、登入失敗限速）、代理權杖雜湊。
+// 配對碼換權杖在 C04。
 package auth
 
 import (

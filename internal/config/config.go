@@ -21,6 +21,8 @@ type Config struct {
 	DataDir string
 	// Dev 為 true 時前端由 Vite 提供，服務只提供 API。
 	Dev bool
+	// LocalNoAuth 為 true 時，從本機（localhost）來的請求不用登入（SEC-7）。XBOT_LOCAL_NOAUTH=0 關掉。
+	LocalNoAuth bool
 }
 
 // Addr 回傳 host:port。
@@ -35,13 +37,20 @@ func (c Config) URL() string {
 	return fmt.Sprintf("http://%s:%d", host, c.Port)
 }
 
-// Load 從環境變數讀設定：XBOT_BIND、XBOT_PORT、XBOT_DATA_DIR、XBOT_DEV。
+// Load 從環境變數讀設定：XBOT_BIND、XBOT_PORT、XBOT_DATA_DIR、XBOT_DEV、XBOT_LOCAL_NOAUTH。
 func Load() (Config, error) {
 	c := Config{
 		Bind:    envOr("XBOT_BIND", "127.0.0.1"),
 		Port:    DefaultPort,
 		DataDir: os.Getenv("XBOT_DATA_DIR"),
 		Dev:     os.Getenv("XBOT_DEV") == "1",
+	}
+	switch v := os.Getenv("XBOT_LOCAL_NOAUTH"); v {
+	case "", "1", "true":
+		c.LocalNoAuth = true
+	case "0", "false":
+	default:
+		return c, fmt.Errorf("XBOT_LOCAL_NOAUTH 只能是 1 或 0：%q", v)
 	}
 	if v := os.Getenv("XBOT_PORT"); v != "" {
 		p, err := strconv.Atoi(v)

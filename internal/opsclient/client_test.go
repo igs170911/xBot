@@ -4,15 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
-	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"xbot/internal/api"
 	"xbot/internal/auth"
-	"xbot/internal/mcpserver"
+	"xbot/internal/events"
 	"xbot/internal/ops"
 	"xbot/internal/store"
 )
@@ -128,30 +127,6 @@ func TestParseArgsErrors(t *testing.T) {
 	}
 }
 
-// fakeService 照 C03 的路由格式（POST /api/v1/<名稱去掉 xbot.>）實作，讓 CLI 可以在 C03 之前測。
-func fakeService(t *testing.T, reg *ops.Registry, token string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || !strings.HasPrefix(r.URL.Path, "/api/v1/") {
-			http.NotFound(w, r)
-			return
-		}
-		name := "xbot." + strings.TrimPrefix(r.URL.Path, "/api/v1/")
-		id := ops.Identity{}
-		if r.Header.Get("Authorization") == "Bearer "+token {
-			id = ops.Owner("cli")
-		}
-		body, _ := io.ReadAll(r.Body)
-		res, err := reg.Invoke(r.Context(), id, name, body, ops.Options{RequestID: r.Header.Get(HeaderRequestID), DryRun: r.Header.Get(HeaderDryRun) == "1"})
-		if err != nil {
-			e := ops.AsError(err)
-			auth.WriteError(w, auth.StatusFor(e), e)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(res)
-	})
-}
-
 func newReg(t *testing.T) (*ops.Registry, *auth.Pairing, *store.DB) {
 	t.Helper()
 	db, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "xbot.db"))
@@ -166,12 +141,14 @@ func newReg(t *testing.T) (*ops.Registry, *auth.Pairing, *store.DB) {
 	return reg, p, db
 }
 
+// 對著真的 HTTP 出口（api.New）測：路由、標頭、錯誤格式和服務一致。
 func TestClientHTTPRoute(t *testing.T) {
-	reg, p, _ := newReg(t)
-	mux := http.NewServeMux()
-	mux.Handle("/api/v1/", fakeService(t, reg, "secret"))
-	mux.Handle(auth.PairPath, p.Handler())
-	srv := httptest.NewServer(mux)
+	reg, p, db := newReg(t)
+	h := api.New(api.Options{
+		Registry: reg, Bus: events.New(), DB: db, AgentPair: p.Handler(),
+		Auth: auth.NewHTTP(auth.HTTPConfig{DB: db, AccessToken: "secret"}), // 關掉本機免登入，才測得到沒帶身分
+	})
+	srv := httptest.NewServer(h)
 	defer srv.Close()
 	ctx := context.Background()
 
@@ -207,29 +184,5 @@ func TestClientHTTPRoute(t *testing.T) {
 	_, err = (&Client{BaseURL: srv.URL}).Call(ctx, "xbot.system.ping", nil, ops.Options{})
 	if !errors.As(err, &oe) || oe.Code != ops.CodeForbidden {
 		t.Fatalf("應該 forbidden：%v", err)
-	}
-}
-
-// 服務還沒有 /api/v1 路由時，改走 /mcp。
-func TestClientFallsBackToMCP(t *testing.T) {
-	reg, _, db := newReg(t)
-	mux := http.NewServeMux()
-	mux.Handle("/mcp", mcpserver.Handler(reg, mcpserver.HTTPOptions{Auth: &auth.Authenticator{DB: db, AccessToken: "secret"}}))
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-	c := &Client{BaseURL: srv.URL, Token: "secret", HTTP: srv.Client()}
-	ctx := context.Background()
-	res, err := c.Call(ctx, "xbot.system.ping", json.RawMessage(`{"echo":"m"}`), ops.Options{})
-	if err != nil || !strings.Contains(string(res.Output), `"echo":"m"`) {
-		t.Fatalf("%s %v", res.Output, err)
-	}
-	res, err = c.Call(ctx, "xbot.agents.pair_start", json.RawMessage(`{"scopes":["read"]}`), ops.Options{DryRun: true})
-	if err != nil || !res.DryRun {
-		t.Fatalf("%+v %v", res, err)
-	}
-	_, err = c.Call(ctx, "xbot.settings.get", json.RawMessage(`{}`), ops.Options{})
-	var oe *ops.Error
-	if !errors.As(err, &oe) || oe.Code != ops.CodeInvalidInput {
-		t.Fatalf("錯誤要轉回 ops.Error：%v", err)
 	}
 }
