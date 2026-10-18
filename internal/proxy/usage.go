@@ -14,6 +14,8 @@ import (
 type counts struct {
 	Input, Output, Cached, CacheWrite, Reasoning int64
 	Cost                                         float64
+	// Seconds 是語音辨識按秒計費時回報的長度（usage.type = duration，例：whisper-1）。
+	Seconds float64
 }
 
 func num(v any) float64 {
@@ -55,6 +57,9 @@ func normalize(u map[string]any) counts {
 	}
 	c.CacheWrite = int64(cacheWrite)
 	c.Cost = num(u["cost"])
+	if t, _ := u["type"].(string); t == "duration" {
+		c.Seconds = num(u["seconds"])
+	}
 	return c
 }
 
@@ -140,6 +145,7 @@ func (m *meter) take(raw []byte) {
 	m.seen.CacheWrite = max(m.seen.CacheWrite, c.CacheWrite)
 	m.seen.Reasoning = max(m.seen.Reasoning, c.Reasoning)
 	m.seen.Cost = max(m.seen.Cost, c.Cost)
+	m.seen.Seconds = max(m.seen.Seconds, c.Seconds)
 }
 
 // result 回傳讀到的用量；ok 為 false 表示整個回應都沒有 usage。

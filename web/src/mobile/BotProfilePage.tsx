@@ -220,6 +220,7 @@ function More({ bot }: { bot: Bot }) {
     { to: `/settings/bots/${bot.id}/soul`, label: '人設（常駐指示）' },
     { to: `/settings/bots/${bot.id}/memory`, label: '記憶' },
     { to: `/bots/${bot.id}/files`, label: '檔案' },
+    { to: `/bots/${bot.id}/voice`, label: '聲音與朗讀' },
   ]
   return (
     <div className="flex flex-col overflow-hidden rounded-card bg-card">

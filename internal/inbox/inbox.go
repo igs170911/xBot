@@ -16,6 +16,7 @@ import (
 	"xbot/internal/notify"
 	"xbot/internal/ops"
 	"xbot/internal/store"
+	"xbot/internal/voice"
 )
 
 // ── 輸入輸出 ──────────────────────────────────────────
@@ -76,6 +77,8 @@ type Outcome struct {
 type DecideIn struct {
 	ApprovalID string `json:"approval_id" required:"true" max:"64"`
 	Decision   string `json:"decision" required:"true" enum:"allow,deny" desc:"allow：允許這次並執行；deny：退回"`
+	// Via：voice 表示是在通話中用說的（E32）。等核准的操作都是 confirm 級，用說的不能允許（Bot 請你決定的低風險事項除外）；退回一律可以。
+	Via string `json:"via,omitempty" enum:"voice" desc:"voice：通話中用說的決定（confirm 級的操作不能用說的允許）"`
 }
 
 // InboxStatus 是待我處理的狀態篩選。
@@ -390,6 +393,18 @@ func wait(ctx context.Context, reg *ops.Registry, call *ops.Call, in WaitIn) (Ou
 }
 
 func decide(ctx context.Context, reg *ops.Registry, call *ops.Call, in DecideIn) (Outcome, error) {
+	if in.Via == voice.ViaVoice && in.Decision == "allow" {
+		a, err := call.DB.GetApproval(ctx, in.ApprovalID)
+		if errors.Is(err, store.ErrNotFound) {
+			return Outcome{}, ops.NotFound("找不到這個核准")
+		}
+		if err != nil {
+			return Outcome{}, err
+		}
+		if voice.OpApprovalNeedsTap(a.Action, a.Input) {
+			return Outcome{}, ops.Forbidden(voice.TapMessage)
+		}
+	}
 	// MCP-9／MCP-10：核准只認你本人，唯一例外是你授權的代理代為允許（delegation）。Bot 一律不能決定。
 	if call.Identity.Kind != ops.KindOwner {
 		if call.Identity.Kind != ops.KindAgent {

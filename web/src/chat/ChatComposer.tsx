@@ -7,6 +7,8 @@ import { usePhone } from '../mobile/nav'
 import { IconButton } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
+import { DictationBar, MicButton } from '../voice/Dictation'
+import { useDictation } from '../voice/useDictation'
 
 export type ComposerMode = 'idle' | 'working' | 'stopping'
 
@@ -23,6 +25,8 @@ export type ChatComposerProps = {
   handle?: Ref<ComposerHandle>
   /** 上傳一個附件到 Bot 的電腦（/workspace/uploads/），回傳路徑；沒給就不能附檔。 */
   onUpload?: (file: File) => Promise<Uploaded>
+  /** 有給才顯示麥克風（語音輸入，E32）；辨識的花費算在這個 Bot 頭上。 */
+  botId?: string
 }
 
 export type ComposerHandle = {
@@ -44,7 +48,7 @@ const fieldSizing = typeof CSS !== 'undefined' && typeof CSS.supports === 'funct
 
 // 輸入框（design/C05-Composer）：#2F2F2F 膠囊 52 高；有字才能送出（白色圓鈕）；
 // Bot 工作中右側是停止鈕（白底黑方塊），正在停止時變灰色轉圈。
-export function ChatComposer({ name, mode, onSend, onStop, hint, handle, onUpload }: ChatComposerProps) {
+export function ChatComposer({ name, mode, onSend, onStop, hint, handle, onUpload, botId }: ChatComposerProps) {
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [files, setFiles] = useState<Attachment[]>([])
@@ -60,6 +64,15 @@ export function ChatComposer({ name, mode, onSend, onStop, hint, handle, onUploa
   const showMention = query !== null && closedAt !== text
 
   const caretToEnd = useRef(false)
+  // 語音輸入：聽到的字接在輸入框後面，可以再改了才送。
+  const dictation = useDictation({
+    botId,
+    onText: (heard) => {
+      setText((t) => (t.trim() ? t.replace(/\s*$/, ' ') + heard : heard))
+      caretToEnd.current = true
+      input.current?.focus()
+    },
+  })
   const pickMention = (who: string) => {
     setText(text.replace(/@([^\s@]*)$/, '@' + who + ' '))
     caretToEnd.current = true
@@ -206,7 +219,8 @@ export function ChatComposer({ name, mode, onSend, onStop, hint, handle, onUploa
         </ul>
       )}
       {attachNote && <span className="text-meta text-warning-ink">{attachNote}</span>}
-      <form onSubmit={submit} className={cx('flex min-h-[52px] items-center gap-0.5 rounded-[26px] bg-control py-[8px] pr-[9px]', onUpload ? 'pl-[7px]' : 'pl-4')}>
+      {dictation.active && dictation.phase.kind !== 'starting' && <DictationBar d={dictation} />}
+      <form hidden={dictation.active && dictation.phase.kind !== 'starting'} onSubmit={submit} className={cx('flex min-h-[52px] items-center gap-0.5 rounded-[26px] bg-control py-[8px] pr-[9px]', onUpload ? 'pl-[7px]' : 'pl-4')}>
         {onUpload && (
           <>
             <IconButton icon={Plus} label="附加檔案" onClick={() => picker.current?.click()} disabled={files.length >= ATTACH_MAX} />
@@ -238,6 +252,7 @@ export function ChatComposer({ name, mode, onSend, onStop, hint, handle, onUploa
             className="field-sizing-content max-h-40 min-h-9 min-w-0 flex-1 resize-none bg-transparent px-1.5 py-[6px] text-[15px] leading-6 text-ink outline-none focus-visible:outline-none"
           />
         </label>
+        {botId && <MicButton d={dictation} />}
         {(mode === 'idle' || !empty) && (
           <IconButton icon={sending ? LoaderCircle : ArrowUp} label="送出" variant="send" type="submit" disabled={empty || sending || uploading} className={cx(sending && '[&_svg]:animate-spin')} />
         )}

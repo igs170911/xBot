@@ -237,6 +237,34 @@ export async function filesUploadForm(botId: string, files: File[], dir = '', op
   return body.files
 }
 
+// ── 語音（內容不走 JSON，E32）──────────────────────────
+
+/** 一段合成好的音訊的網址（GET，同一個登入）；id 是 xbot.voice.speak 回的 audio_id。 */
+export function voiceAudioUrl(id: string): string {
+  return '/api/v1/voice.audio?' + new URLSearchParams({ id }).toString()
+}
+
+/** 上傳一段錄音辨識成文字（multipart，經 xbot.voice.transcribe）。 */
+export async function voiceTranscribeForm(audio: Blob, input: { bot_id?: string; duration_ms?: number; language?: string } = {}, opts: CallOptions = {}): Promise<VoiceTranscribeOutput> {
+  const form = new FormData()
+  if (input.bot_id) form.append('bot_id', input.bot_id)
+  if (input.duration_ms !== undefined) form.append('duration_ms', String(Math.round(input.duration_ms)))
+  if (input.language) form.append('language', input.language)
+  const type = audio.type || 'audio/webm'
+  const ext = type.includes('ogg') ? 'ogg' : type.includes('mp4') ? 'm4a' : type.includes('wav') ? 'wav' : 'webm'
+  form.append('file', audio, 'speech.' + ext)
+  const res = await (opts.fetch ?? fetch)((opts.baseUrl ?? '') + '/api/v1/voice.transcribe', {
+    method: 'POST',
+    body: form,
+    credentials: 'same-origin',
+    signal: opts.signal,
+  })
+  const body = (await res.json().catch(() => null)) as (VoiceTranscribeOutput & { error?: ApiErrorBody }) | null
+  if (body?.error) throw new ApiError(res.status, body.error)
+  if (!res.ok || !body || typeof body.text !== 'string') throw new ApiError(res.status, { code: 'internal', message: '服務沒有正常回應，請稍後再試', retryable: true })
+  return body
+}
+
 // ── 事件（SSE）────────────────────────────────────────
 
 /** 一筆事件。沒有 id 的是即時事件（例：串流文字），斷線後不會補送。 */

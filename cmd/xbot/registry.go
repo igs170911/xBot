@@ -70,6 +70,7 @@ func coreDeps(st *stack) catalog.Deps {
 		Files:     st.files,
 		Judge:     st.judge,
 		Network:   st.network,
+		Voice:     st.voice,
 		Teaching:  st.teaching,
 		Importer:  st.importer,
 		SoulChanged: func(ctx context.Context, botID string) {

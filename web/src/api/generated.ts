@@ -166,6 +166,34 @@ export async function filesUploadForm(botId: string, files: File[], dir = '', op
   return body.files
 }
 
+// ── 語音（內容不走 JSON，E32）──────────────────────────
+
+/** 一段合成好的音訊的網址（GET，同一個登入）；id 是 xbot.voice.speak 回的 audio_id。 */
+export function voiceAudioUrl(id: string): string {
+  return '/api/v1/voice.audio?' + new URLSearchParams({ id }).toString()
+}
+
+/** 上傳一段錄音辨識成文字（multipart，經 xbot.voice.transcribe）。 */
+export async function voiceTranscribeForm(audio: Blob, input: { bot_id?: string; duration_ms?: number; language?: string } = {}, opts: CallOptions = {}): Promise<VoiceTranscribeOutput> {
+  const form = new FormData()
+  if (input.bot_id) form.append('bot_id', input.bot_id)
+  if (input.duration_ms !== undefined) form.append('duration_ms', String(Math.round(input.duration_ms)))
+  if (input.language) form.append('language', input.language)
+  const type = audio.type || 'audio/webm'
+  const ext = type.includes('ogg') ? 'ogg' : type.includes('mp4') ? 'm4a' : type.includes('wav') ? 'wav' : 'webm'
+  form.append('file', audio, 'speech.' + ext)
+  const res = await (opts.fetch ?? fetch)((opts.baseUrl ?? '') + '/api/v1/voice.transcribe', {
+    method: 'POST',
+    body: form,
+    credentials: 'same-origin',
+    signal: opts.signal,
+  })
+  const body = (await res.json().catch(() => null)) as (VoiceTranscribeOutput & { error?: ApiErrorBody }) | null
+  if (body?.error) throw new ApiError(res.status, body.error)
+  if (!res.ok || !body || typeof body.text !== 'string') throw new ApiError(res.status, { code: 'internal', message: '服務沒有正常回應，請稍後再試', retryable: true })
+  return body
+}
+
 // ── 事件（SSE）────────────────────────────────────────
 
 /** 一筆事件。沒有 id 的是即時事件（例：串流文字），斷線後不會補送。 */
@@ -850,6 +878,8 @@ export interface ApprovalsDecideInput {
   approval_id: string
   /** allow：允許這次並執行；deny：退回 */
   decision: 'allow' | 'deny'
+  /** voice：通話中用說的決定（confirm 級的操作不能用說的允許） */
+  via?: 'voice'
 }
 
 export interface ApprovalsDecideOutput {
@@ -2995,6 +3025,16 @@ export interface ChatReadOutput {
         name?: string
       }[]
     }
+    voice?: {
+      /** proxy：用 audio_id 播放；browser：用瀏覽器內建的聲音念 */
+      engine: string
+      /** GET /api/v1/voice.audio?id=… */
+      audio_id?: string
+      voice: string
+      speed: number
+      chars: number
+      bytes?: number
+    }
     quota?: {
       /** 額度用完卡（待我處理）的 id */
       inbox_id?: string
@@ -3059,6 +3099,8 @@ export interface ChatRespondInput {
   values?: Record<string, string>
   /** 不回答：核准＝拒絕、提問＝略過、密碼＝不提供 */
   decline?: boolean
+  /** voice：通話中用說的決定（危險的指令、花錢、對外發送等不能用說的允許） */
+  via?: 'voice'
 }
 
 export interface ChatRespondOutput {
@@ -12158,6 +12200,391 @@ export function usageSummary(input: UsageSummaryInput = {}, opts?: CallOptions):
   return invoke('xbot.usage.summary', input, opts).then((r) => r.output)
 }
 
+// xbot.voice.audio
+
+export interface VoiceAudioInput {
+  /** xbot.voice.speak 回的 audio_id */
+  id: string
+}
+
+export interface VoiceAudioOutput {
+  id: string
+  bot_id: string
+  content_type: string
+  bytes: number
+}
+
+/**
+ * 查一段合成好的音訊（內容用 GET /api/v1/voice.audio?id=… 拿）
+ *
+ * `xbot.voice.audio`：權限 read、風險 safe
+ */
+export function voiceAudio(input: VoiceAudioInput, opts?: CallOptions): Promise<VoiceAudioOutput> {
+  return invoke('xbot.voice.audio', input, opts).then((r) => r.output)
+}
+
+// xbot.voice.bot_get
+
+export interface VoiceBotGetInput {
+  bot_id: string
+  /** 一起讀這條對話串的自動朗讀設定 */
+  thread_id?: string
+}
+
+export interface VoiceBotGetOutput {
+  bot_id: string
+  /** 聲音代號（voices 清單） */
+  voice: string
+  /** 語速，1 是正常 */
+  speed: number
+  /** Bot 回完自動念出來（變成語音訊息） */
+  auto_read: boolean
+  voice_name: string
+  /** proxy：XBot 的語音引擎；browser：瀏覽器內建的聲音 */
+  engine: string
+  thread_id?: string
+  /** 這條對話串自己的自動朗讀；沒有時跟著 Bot */
+  thread_auto_read?: boolean
+  auto_read_now: boolean
+}
+
+/**
+ * 看一個 Bot 的聲音（聲音、語速、自動朗讀）
+ *
+ * `xbot.voice.bot_get`：權限 read、風險 safe
+ */
+export function voiceBotGet(input: VoiceBotGetInput, opts?: CallOptions): Promise<VoiceBotGetOutput> {
+  return invoke('xbot.voice.bot_get', input, opts).then((r) => r.output)
+}
+
+// xbot.voice.bot_set
+
+export interface VoiceBotSetInput {
+  bot_id: string
+  /** 聲音代號 */
+  voice?: 'qing' | 'an' | 'kui' | 'jie' | 'ya' | 'system'
+  /** 語速，1 是正常 */
+  speed?: number
+  /** Bot 回完自動念出來（變成語音訊息） */
+  auto_read?: boolean
+}
+
+export interface VoiceBotSetOutput {
+  bot_id: string
+  /** 聲音代號（voices 清單） */
+  voice: string
+  /** 語速，1 是正常 */
+  speed: number
+  /** Bot 回完自動念出來（變成語音訊息） */
+  auto_read: boolean
+  voice_name: string
+  /** proxy：XBot 的語音引擎；browser：瀏覽器內建的聲音 */
+  engine: string
+  thread_id?: string
+  /** 這條對話串自己的自動朗讀；沒有時跟著 Bot */
+  thread_auto_read?: boolean
+  auto_read_now: boolean
+}
+
+/**
+ * 幫 Bot 挑聲音、改語速、開關自動朗讀
+ *
+ * 選了就生效（K02：自動儲存）。自動朗讀開著時，Bot 回完會念出來，對話裡變成語音訊息。
+ *
+ * `xbot.voice.bot_set`：權限 manage、風險 safe
+ */
+export function voiceBotSet(input: VoiceBotSetInput, opts?: CallOptions): Promise<VoiceBotSetOutput> {
+  return invoke('xbot.voice.bot_set', input, opts).then((r) => r.output)
+}
+
+// xbot.voice.call_end
+
+export interface VoiceCallEndInput {
+  bot_id: string
+  thread_id: string
+  /** 通話多久（秒） */
+  duration_s?: number
+  /** 你說了幾句 */
+  turns?: number
+  /** hangup 你掛斷、idle 太久沒人說話、error 斷線 */
+  reason?: 'hangup' | 'idle' | 'error'
+}
+
+export interface VoiceCallEndOutput {
+  message_id: string
+  text: string
+}
+
+/**
+ * 通話結束：在對話裡留一列通話紀錄
+ *
+ * `xbot.voice.call_end`：權限 operate、風險 safe
+ */
+export function voiceCallEnd(input: VoiceCallEndInput, opts?: CallOptions): Promise<VoiceCallEndOutput> {
+  return invoke('xbot.voice.call_end', input, opts).then((r) => r.output)
+}
+
+// xbot.voice.settings_get
+
+export type VoiceSettingsGetInput = Record<string, never>
+
+export interface VoiceSettingsGetOutput {
+  settings: {
+    /** 朗讀（合成）用的引擎 */
+    tts: {
+      /** 模型供應商代號（xbot.models.get）；空白表示用瀏覽器內建的 */
+      provider: string
+      /** 例：gpt-4o-mini-tts、gpt-4o-mini-transcribe、whisper-1 */
+      model: string
+    }
+    /** 語音輸入（辨識）用的引擎 */
+    stt: {
+      /** 模型供應商代號（xbot.models.get）；空白表示用瀏覽器內建的 */
+      provider: string
+      /** 例：gpt-4o-mini-tts、gpt-4o-mini-transcribe、whisper-1 */
+      model: string
+    }
+    hangup_minutes: number
+  }
+  /** 可以挑的聲音 */
+  voices: {
+    id: string
+    name: string
+    desc: string
+    upstream?: string
+  }[]
+  /** 可以選的語音引擎（第一個是瀏覽器內建） */
+  engines: {
+    /** 空白是瀏覽器內建 */
+    provider: string
+    label: string
+    usable: boolean
+    note?: string
+  }[]
+  /** 朗讀用 XBot 的語音引擎（false：用瀏覽器內建的聲音） */
+  tts_ready: boolean
+  /** 語音輸入用 XBot 的語音引擎（false：用瀏覽器內建的辨識，有的瀏覽器沒有） */
+  stt_ready: boolean
+  limits: {
+    /** 一段錄音最長幾秒 */
+    max_seconds: number
+    /** 一段錄音最大幾個位元組 */
+    upload_bytes: number
+    /** 一次最多念幾個字 */
+    speak_chars: number
+    speed_min: number
+    speed_max: number
+  }
+  lang: string
+}
+
+/**
+ * 看語音設定（朗讀與語音輸入的引擎、可以挑的聲音）
+ *
+ * 引擎是設定好的模型供應商（OpenAI 相容的 audio API），金鑰只在 XBot 的 Model Proxy；沒有設定時用瀏覽器內建的聲音與辨識。
+ *
+ * `xbot.voice.settings_get`：權限 read、風險 safe
+ */
+export function voiceSettingsGet(input: VoiceSettingsGetInput = {}, opts?: CallOptions): Promise<VoiceSettingsGetOutput> {
+  return invoke('xbot.voice.settings_get', input, opts).then((r) => r.output)
+}
+
+// xbot.voice.settings_set
+
+export interface VoiceSettingsSetInput {
+  /** 朗讀用的引擎；provider 空白＝瀏覽器內建 */
+  tts?: {
+    /** 模型供應商代號（xbot.models.get）；空白表示用瀏覽器內建的 */
+    provider?: string
+    /** 例：gpt-4o-mini-tts、gpt-4o-mini-transcribe、whisper-1 */
+    model?: string
+  }
+  /** 語音輸入用的引擎；provider 空白＝瀏覽器內建 */
+  stt?: {
+    /** 模型供應商代號（xbot.models.get）；空白表示用瀏覽器內建的 */
+    provider?: string
+    /** 例：gpt-4o-mini-tts、gpt-4o-mini-transcribe、whisper-1 */
+    model?: string
+  }
+  /** 通話中多久沒人說話自動掛斷 */
+  hangup_minutes?: number
+}
+
+export interface VoiceSettingsSetOutput {
+  settings: {
+    /** 朗讀（合成）用的引擎 */
+    tts: {
+      /** 模型供應商代號（xbot.models.get）；空白表示用瀏覽器內建的 */
+      provider: string
+      /** 例：gpt-4o-mini-tts、gpt-4o-mini-transcribe、whisper-1 */
+      model: string
+    }
+    /** 語音輸入（辨識）用的引擎 */
+    stt: {
+      /** 模型供應商代號（xbot.models.get）；空白表示用瀏覽器內建的 */
+      provider: string
+      /** 例：gpt-4o-mini-tts、gpt-4o-mini-transcribe、whisper-1 */
+      model: string
+    }
+    hangup_minutes: number
+  }
+  /** 可以挑的聲音 */
+  voices: {
+    id: string
+    name: string
+    desc: string
+    upstream?: string
+  }[]
+  /** 可以選的語音引擎（第一個是瀏覽器內建） */
+  engines: {
+    /** 空白是瀏覽器內建 */
+    provider: string
+    label: string
+    usable: boolean
+    note?: string
+  }[]
+  /** 朗讀用 XBot 的語音引擎（false：用瀏覽器內建的聲音） */
+  tts_ready: boolean
+  /** 語音輸入用 XBot 的語音引擎（false：用瀏覽器內建的辨識，有的瀏覽器沒有） */
+  stt_ready: boolean
+  limits: {
+    /** 一段錄音最長幾秒 */
+    max_seconds: number
+    /** 一段錄音最大幾個位元組 */
+    upload_bytes: number
+    /** 一次最多念幾個字 */
+    speak_chars: number
+    speed_min: number
+    speed_max: number
+  }
+  lang: string
+}
+
+/**
+ * 改語音設定（朗讀、語音輸入用哪個引擎、通話多久沒說話就掛斷）
+ *
+ * `xbot.voice.settings_set`：權限 admin、風險 safe
+ */
+export function voiceSettingsSet(input: VoiceSettingsSetInput = {}, opts?: CallOptions): Promise<VoiceSettingsSetOutput> {
+  return invoke('xbot.voice.settings_set', input, opts).then((r) => r.output)
+}
+
+// xbot.voice.speak
+
+export interface VoiceSpeakInput {
+  /** 用哪個 Bot 的聲音 */
+  bot_id: string
+  /** 要念的文字（Markdown 會整理成念得出來的句子） */
+  text?: string
+  /** 或：念這則 Bot 的回覆 */
+  message_id?: string
+  /** 和 message_id 一起用：把這則回覆標成語音訊息（對話裡顯示播放器） */
+  voice_note?: boolean
+  /** 試聽別的聲音；不填用 Bot 的設定 */
+  voice?: 'qing' | 'an' | 'kui' | 'jie' | 'ya' | 'system'
+  speed?: number
+}
+
+export interface VoiceSpeakOutput {
+  /** proxy：用 url 播放 XBot 合成好的音訊；browser：沒有語音引擎，請用瀏覽器內建的聲音念 text */
+  engine: string
+  audio_id?: string
+  /** GET 這個網址拿音訊 */
+  url?: string
+  content_type?: string
+  bytes?: number
+  /** 念過一樣的內容，直接用快取（不另外花錢） */
+  cached?: boolean
+  /** 實際要念的文字 */
+  text: string
+  /** 太長，只念前面一段 */
+  truncated?: boolean
+  voice: string
+  voice_name: string
+  speed: number
+  lang: string
+  message_id?: string
+}
+
+/**
+ * 用 Bot 的聲音念一段文字（朗讀、語音訊息、通話）
+ *
+ * 經 XBot 的語音引擎合成，回傳音訊網址（GET /api/v1/voice.audio?id=…）；一樣的內容直接用快取。沒有語音引擎、或 Bot 選了系統內建聲音時回 engine=browser，請用瀏覽器內建的聲音念 text。給 message_id 念 Bot 的那則回覆；再加 voice_note=true 把它標成語音訊息。
+ *
+ * `xbot.voice.speak`：權限 operate、風險 safe
+ */
+export function voiceSpeak(input: VoiceSpeakInput, opts?: CallOptions): Promise<VoiceSpeakOutput> {
+  return invoke('xbot.voice.speak', input, opts).then((r) => r.output)
+}
+
+// xbot.voice.thread_set
+
+export interface VoiceThreadSetInput {
+  thread_id: string
+  /** on／off：這條對話串自己決定；inherit：跟著 Bot 的設定 */
+  auto_read: 'on' | 'off' | 'inherit'
+}
+
+export interface VoiceThreadSetOutput {
+  bot_id: string
+  /** 聲音代號（voices 清單） */
+  voice: string
+  /** 語速，1 是正常 */
+  speed: number
+  /** Bot 回完自動念出來（變成語音訊息） */
+  auto_read: boolean
+  voice_name: string
+  /** proxy：XBot 的語音引擎；browser：瀏覽器內建的聲音 */
+  engine: string
+  thread_id?: string
+  /** 這條對話串自己的自動朗讀；沒有時跟著 Bot */
+  thread_auto_read?: boolean
+  auto_read_now: boolean
+}
+
+/**
+ * 這條對話串要不要自動朗讀 Bot 的回覆
+ *
+ * `xbot.voice.thread_set`：權限 operate、風險 safe
+ */
+export function voiceThreadSet(input: VoiceThreadSetInput, opts?: CallOptions): Promise<VoiceThreadSetOutput> {
+  return invoke('xbot.voice.thread_set', input, opts).then((r) => r.output)
+}
+
+// xbot.voice.transcribe
+
+export interface VoiceTranscribeInput {
+  /** 替哪個 Bot 聽（花費算在它頭上） */
+  bot_id?: string
+  /** 錄音內容（base64）；不寫進紀錄（密鑰：只能寫、不能讀） */
+  audio_base64?: string
+  /** 例：audio/webm */
+  mime_type?: string
+  /** 錄音長度（毫秒） */
+  duration_ms?: number
+  /** 例：zh；不填自動判斷 */
+  language?: string
+}
+
+export interface VoiceTranscribeOutput {
+  /** 聽到的文字（沒聽到話時是空白） */
+  text: string
+  provider: string
+  model: string
+  bytes: number
+}
+
+/**
+ * 把一段錄音轉成文字（語音輸入、通話）
+ *
+ * 經 XBot 的語音引擎辨識；網頁用 POST /api/v1/voice.transcribe 以 multipart 上傳（欄位 file），其他出口用 audio_base64。一段最長 120 秒、10 MB。沒有設定語音輸入引擎時回 conflict（請改用瀏覽器內建的辨識）。
+ *
+ * `xbot.voice.transcribe`：權限 operate、風險 safe
+ */
+export function voiceTranscribe(input: VoiceTranscribeInput = {}, opts?: CallOptions): Promise<VoiceTranscribeOutput> {
+  return invoke('xbot.voice.transcribe', input, opts).then((r) => r.output)
+}
+
 // ── 操作清單 ─────────────────────────────────────────
 
 /** 每個操作的輸入與輸出型別，invoke 用它檢查型別。 */
@@ -12375,6 +12802,15 @@ export interface Ops {
   'xbot.usage.export': { input: UsageExportInput; output: UsageExportOutput }
   'xbot.usage.set_caps': { input: UsageSetCapsInput; output: UsageSetCapsOutput }
   'xbot.usage.summary': { input: UsageSummaryInput; output: UsageSummaryOutput }
+  'xbot.voice.audio': { input: VoiceAudioInput; output: VoiceAudioOutput }
+  'xbot.voice.bot_get': { input: VoiceBotGetInput; output: VoiceBotGetOutput }
+  'xbot.voice.bot_set': { input: VoiceBotSetInput; output: VoiceBotSetOutput }
+  'xbot.voice.call_end': { input: VoiceCallEndInput; output: VoiceCallEndOutput }
+  'xbot.voice.settings_get': { input: VoiceSettingsGetInput; output: VoiceSettingsGetOutput }
+  'xbot.voice.settings_set': { input: VoiceSettingsSetInput; output: VoiceSettingsSetOutput }
+  'xbot.voice.speak': { input: VoiceSpeakInput; output: VoiceSpeakOutput }
+  'xbot.voice.thread_set': { input: VoiceThreadSetInput; output: VoiceThreadSetOutput }
+  'xbot.voice.transcribe': { input: VoiceTranscribeInput; output: VoiceTranscribeOutput }
 }
 
 export type OpName = keyof Ops
@@ -12594,4 +13030,13 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.usage.export': { path: '/api/v1/usage.export', scope: 'read', risk: 'safe', mutates: false, summary: '匯出用量明細（CSV）' },
   'xbot.usage.set_caps': { path: '/api/v1/usage.set_caps', scope: 'manage', risk: 'safe', mutates: true, summary: '設定花費上限' },
   'xbot.usage.summary': { path: '/api/v1/usage.summary', scope: 'read', risk: 'safe', mutates: false, summary: '看用量與花費' },
+  'xbot.voice.audio': { path: '/api/v1/voice.audio', scope: 'read', risk: 'safe', mutates: false, summary: '查一段合成好的音訊（內容用 GET /api/v1/voice.audio?id=… 拿）' },
+  'xbot.voice.bot_get': { path: '/api/v1/voice.bot_get', scope: 'read', risk: 'safe', mutates: false, summary: '看一個 Bot 的聲音（聲音、語速、自動朗讀）' },
+  'xbot.voice.bot_set': { path: '/api/v1/voice.bot_set', scope: 'manage', risk: 'safe', mutates: true, summary: '幫 Bot 挑聲音、改語速、開關自動朗讀' },
+  'xbot.voice.call_end': { path: '/api/v1/voice.call_end', scope: 'operate', risk: 'safe', mutates: true, summary: '通話結束：在對話裡留一列通話紀錄' },
+  'xbot.voice.settings_get': { path: '/api/v1/voice.settings_get', scope: 'read', risk: 'safe', mutates: false, summary: '看語音設定（朗讀與語音輸入的引擎、可以挑的聲音）' },
+  'xbot.voice.settings_set': { path: '/api/v1/voice.settings_set', scope: 'admin', risk: 'safe', mutates: true, summary: '改語音設定（朗讀、語音輸入用哪個引擎、通話多久沒說話就掛斷）' },
+  'xbot.voice.speak': { path: '/api/v1/voice.speak', scope: 'operate', risk: 'safe', mutates: true, summary: '用 Bot 的聲音念一段文字（朗讀、語音訊息、通話）' },
+  'xbot.voice.thread_set': { path: '/api/v1/voice.thread_set', scope: 'operate', risk: 'safe', mutates: true, summary: '這條對話串要不要自動朗讀 Bot 的回覆' },
+  'xbot.voice.transcribe': { path: '/api/v1/voice.transcribe', scope: 'operate', risk: 'safe', mutates: true, summary: '把一段錄音轉成文字（語音輸入、通話）' },
 }

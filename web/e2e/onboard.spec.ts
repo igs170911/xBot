@@ -265,8 +265,24 @@ test('Bot 設定 · 能力 › 應用程式與電腦、權限與花費、進階�
   await expect(m.getByRole('radiogroup', { name: '引擎' })).toBeVisible()
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-w32-g09`), fullPage: true })
+  // 聲音（G10 的聲音區塊，E32）
+  Object.assign(api.override, {
+    'voice.settings_get': () => ({
+      settings: { tts: { provider: '', model: '' }, stt: { provider: '', model: '' }, hangup_minutes: 5 },
+      voices: [
+        { id: 'qing', name: '晴', desc: '溫和的女聲 · 推薦給幕僚長' },
+        { id: 'an', name: '安', desc: '沉穩的男聲' },
+      ],
+      engines: [{ provider: '', label: '瀏覽器內建', usable: true }],
+      tts_ready: false,
+      stt_ready: false,
+      limits: { max_seconds: 120, upload_bytes: 10485760, speak_chars: 4096, speed_min: 0.5, speed_max: 2 },
+      lang: 'zh-TW',
+    }),
+    'voice.bot_get': (i: Record<string, unknown>) => ({ bot_id: i.bot_id, voice: 'qing', speed: 1.1, auto_read: false, voice_name: '晴', engine: 'browser', auto_read_now: false }),
+  })
   await m.getByRole('navigation', { name: '進階分頁' }).getByRole('link', { name: '聲音、通知、誰看得到' }).click()
-  await expect(m.getByText('語音還沒開放')).toBeVisible()
+  await expect(m.getByTestId('bot-voice')).toContainText('自動朗讀每則回覆')
   await page.screenshot({ path: shot(`${info.project.name}-w32-g11`), fullPage: true })
   await m.getByRole('navigation', { name: '進階分頁' }).getByRole('link', { name: '歷史' }).click()
   const hist = m.getByRole('group', { name: '設定的變更' })
