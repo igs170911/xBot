@@ -263,7 +263,7 @@ test('K01／L18 通話：說話→辨識→交辦→念回覆；核定卡用說�
   // 要你核定：卡片出現，念出來，再用說的「允許」
   await api.emit(
     { ...base, kind: 'task.state', payload: { state: 'waiting_approval' } },
-    { ...base, kind: 'chat.needs_approval', payload: { inbox_id: 'ap1', request: { id: 'r1', kind: 'approval', method: 'approval', prompt: '調價', choices: ['once', 'deny'], params: { command: 'python3 /workspace/price.py --apply', description: '調降 5 項商品售價' } } } },
+    { ...base, kind: 'chat.needs_approval', payload: { inbox_id: 'ap1', request: { id: 'r1', kind: 'approval', method: 'approval', prompt: '調價', choices: ['once', 'deny'], params: { description: '調降 5 項商品售價' } } } },
   )
   const ask = page.getByTestId('call-ask')
   await expect(ask).toContainText('調降 5 項商品售價')
@@ -271,7 +271,7 @@ test('K01／L18 通話：說話→辨識→交辦→念回覆；核定卡用說�
   await expect.poll(() => api.calls.some((c) => c.op === 'voice.speak' && String(c.input.text).includes('需要你核定'))).toBe(true)
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-${phone ? 'L18' : 'K01'}-call-approval`) })
-  await expect.poll(() => api.calls.find((c) => c.op === 'chat.respond')?.input, { timeout: 20_000 }).toEqual({ inbox_id: 'ap1', choice: 'once' })
+  await expect.poll(() => api.calls.find((c) => c.op === 'chat.respond')?.input, { timeout: 20_000 }).toEqual({ inbox_id: 'ap1', choice: 'once', via: 'voice' })
   await expect(page.getByTestId('call-decided')).toHaveText('已允許這次')
 
   // 做完：念回覆（標成語音訊息），再回到聽
@@ -301,6 +301,55 @@ test('K01／L18 通話：說話→辨識→交辦→念回覆；核定卡用說�
   const end = api.calls.find((c) => c.op === 'voice.call_end')?.input
   expect(end).toMatchObject({ bot_id: mi.id, thread_id: th.id, reason: 'hangup' })
   expect(end?.turns).toBeGreaterThanOrEqual(2)
+})
+
+// ── 高風險的核定：用說的只能拒絕，允許要在畫面上按 ──────────
+
+test('通話中的高風險核定：危險指令與 confirm 級操作要在畫面上按，用說的只能拒絕', async ({ page }, info) => {
+  test.setTimeout(90_000)
+  const phone = info.project.name !== 'desktop'
+  const api = new MockServer(page)
+  const mi = seedBot(api)
+  const th = api.addThread(mi.id, '清理')
+  api.addMessage(th.id, { sender: 'owner', content: '幫我清一下舊檔案' })
+  api.override['chat.respond'] = (i: Record<string, unknown>) => ({ inbox_id: i.inbox_id, task_id: 'k-rm', thread_id: th.id, status: 'resolved', resolution: i.choice })
+  api.override['approvals.decide'] = (i: Record<string, unknown>) => ({ approval: { id: i.approval_id, status: i.decision === 'allow' ? 'approved' : 'denied' }, settled: true, executed: i.decision === 'allow', failed: false })
+  await api.install()
+  await voiceMocks(page, api, mi, { transcripts: ['允許', '拒絕'] })
+  await page.goto(`/bots/${mi.id}/call`)
+  const main = page.getByRole('main', { name: '通話' })
+  const status = main.getByTestId('call-status')
+  await expect(status).toHaveText('正在聽…')
+  // 先靜音，等卡片出現再開口
+  await main.getByRole('button', { name: '靜音' }).click()
+  await expect(status).toHaveText('已靜音')
+  const base = { bot_id: mi.id, thread_id: th.id, task_id: 'k-rm' }
+  await api.emit(
+    { ...base, kind: 'task.state', payload: { state: 'waiting_approval' } },
+    { ...base, kind: 'chat.needs_approval', payload: { inbox_id: 'rm1', request: { id: 'r1', kind: 'approval', method: 'approval', prompt: '刪除', choices: ['once', 'deny'], params: { command: 'rm -rf /workspace/old', description: '刪掉舊資料夾' } } } },
+  )
+  const ask = page.getByTestId('call-ask')
+  await expect(ask).toContainText('刪掉舊資料夾')
+  await expect(page.getByTestId('call-tap-only')).toContainText('這件事要在畫面上按確認')
+  await settle(page)
+  await page.screenshot({ path: shot(`${info.project.name}-${phone ? 'L18' : 'K01'}-call-tap-only`) })
+  // 說「允許」：不送出，提醒要按；說「拒絕」：可以（帶 via=voice）
+  await main.getByRole('button', { name: '取消靜音' }).click()
+  await expect.poll(() => api.calls.some((c) => c.op === 'voice.speak' && String(c.input.text).includes('這件事要在畫面上按確認，不能只用說的')), { timeout: 20_000 }).toBe(true)
+  expect(api.calls.filter((c) => c.op === 'chat.respond')).toHaveLength(0)
+  await expect.poll(() => api.calls.find((c) => c.op === 'chat.respond')?.input, { timeout: 20_000 }).toEqual({ inbox_id: 'rm1', choice: 'deny', via: 'voice' })
+  await expect(page.getByTestId('call-decided')).toHaveText('已拒絕')
+  await api.emit({ ...base, kind: 'chat.answered', payload: { inbox_id: 'rm1', kind: 'approval', resolution: 'deny', text: '' } })
+
+  // confirm 級的操作（例：刪除 Bot）：只能按；按了不帶 via
+  await main.getByRole('button', { name: '靜音' }).click()
+  api.inbox = [{ id: 'op1', kind: 'approval', group: 'decide', bot_id: mi.id, thread_id: th.id, ref: 'ap-del', title: 'Claude Code 想要：刪除 Bot', body: '要允許嗎？', payload: { op: 'xbot.bots.delete', params: { id: mi.id } }, status: 'open', read: false, created_at: Date.now() }]
+  await api.emit({ kind: 'inbox.created', bot_id: mi.id, payload: { id: 'op1' } })
+  await expect(ask).toContainText('刪除 Bot')
+  await expect(page.getByTestId('call-tap-only')).toBeVisible()
+  await ask.getByRole('button', { name: '允許這次' }).click()
+  await expect.poll(() => api.calls.find((c) => c.op === 'approvals.decide')?.input).toEqual({ approval_id: 'ap-del', decision: 'allow' })
+  await expect(page.getByTestId('call-decided')).toHaveText('已允許這次')
 })
 
 // ── 真的服務＋假的語音供應商 ──────────────────────────

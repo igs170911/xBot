@@ -876,6 +876,8 @@ export interface ApprovalsDecideInput {
   approval_id: string
   /** allow：允許這次並執行；deny：退回 */
   decision: 'allow' | 'deny'
+  /** voice：通話中用說的決定（confirm 級的操作不能用說的允許） */
+  via?: 'voice'
 }
 
 export interface ApprovalsDecideOutput {
@@ -2999,6 +3001,8 @@ export interface ChatRespondInput {
   values?: Record<string, string>
   /** 不回答：核准＝拒絕、提問＝略過、密碼＝不提供 */
   decline?: boolean
+  /** voice：通話中用說的決定（危險的指令、花錢、對外發送等不能用說的允許） */
+  via?: 'voice'
 }
 
 export interface ChatRespondOutput {

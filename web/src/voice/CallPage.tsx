@@ -93,16 +93,23 @@ function AskCard({ state, engine, bot, phone }: { state: CallState; engine: Call
             )}
           </span>
           {ask.command && ask.command !== title && <code className="truncate font-mono text-meta text-ink-3">{ask.command}</code>}
-          {!phone && <span className="text-meta text-warning-ink">{approval ? '要你核定 · 用說的也算' : '要你回答'}</span>}
+          {!phone && <span className="text-meta text-warning-ink">{!approval ? '要你回答' : ask.tapOnly ? '要你核定 · 要在畫面上按' : '要你核定 · 用說的也算'}</span>}
         </div>
       </div>
       {approval ? (
         <>
-          {phone && (
-            <span className="flex items-center gap-2 rounded-field bg-inset px-3 py-2 text-sub text-ink">
-              <Icon icon={Mic} size={16} className="text-accent-ink" />
-              說「允許」或「拒絕」，也可以直接按
+          {ask.tapOnly ? (
+            <span className="flex items-center gap-2 rounded-field bg-warning-soft px-3 py-2 text-sub text-warning-ink" data-testid="call-tap-only">
+              <Icon icon={Hand} size={16} />
+              這件事要在畫面上按確認（要拒絕可以直接說）
             </span>
+          ) : (
+            phone && (
+              <span className="flex items-center gap-2 rounded-field bg-inset px-3 py-2 text-sub text-ink">
+                <Icon icon={Mic} size={16} className="text-accent-ink" />
+                說「允許」或「拒絕」，也可以直接按
+              </span>
+            )
           )}
           <div className="flex gap-2">
             <Button variant="primary" className={phone ? 'h-11 flex-1' : undefined} onClick={() => void engine.decide('once')}>

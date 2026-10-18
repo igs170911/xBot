@@ -1,9 +1,10 @@
-import { ApiError, chatListThreads, chatRespond, chatSend, chatStop, voiceCallEnd } from '../api/generated'
+import { ApiError, approvalsDecide, chatListThreads, chatRespond, chatSend, chatStop, voiceCallEnd } from '../api/generated'
 import type { Ask } from '../chat/ask'
 import { activeTask, type ChatMsg, type ChatState } from '../chat/assemble'
 import { chatStore, loadThread } from '../chat/chatStore'
+import { inboxStore, type InboxItem } from '../data/inbox'
 import { createStore } from '../data/store'
-import { browserRecognition, decision, loadVoiceSettings, Mic, speak, stopPlayback, transcribe, type Recognition, type VoiceSettings } from './voice'
+import { browserRecognition, decision, engineNeedsTap, loadVoiceSettings, Mic, opNeedsTap, speak, stopPlayback, TAP_MESSAGE, transcribe, type Recognition, type VoiceSettings } from './voice'
 
 // 通話（K01 桌面、L18 手機，VC-3 的最小版）：半雙工的一來一回——
 // 聽（音量判斷你在說話、停一下就算說完）→ 辨識 → 交給 Bot（xbot.chat.send）→ 字幕跟著回覆 → 念出來 → 再聽。
@@ -11,6 +12,10 @@ import { browserRecognition, decision, loadVoiceSettings, Mic, speak, stopPlayba
 // 掛斷：在對話裡留一列通話紀錄（xbot.voice.call_end）。
 
 export type CallPhase = 'connecting' | 'listening' | 'hearing' | 'transcribing' | 'thinking' | 'working' | 'speaking' | 'waiting' | 'muted' | 'ended' | 'error'
+
+/** 通話中的核定：Bot 在對話裡問的（chat.respond），或等核准的操作（approvals.decide，有 approvalId）。
+ * tapOnly：高風險，要在畫面上按（用說的只能拒絕）。 */
+export type CallAsk = Ask & { approvalId?: string; tapOnly: boolean }
 
 export type CallLine = { id: string; who: 'me' | 'bot' | 'system'; text: string; at: number }
 
@@ -29,7 +34,7 @@ export type CallState = {
   /** 上一句（L18：字幕顯示上一句與目前這句）。 */
   previous: { who: 'me' | 'bot'; text: string } | null
   /** Bot 在等你核定或回答（C12 的卡）。 */
-  ask?: Ask
+  ask?: CallAsk
   /** 核定的結果（「已允許這次」）。 */
   decided?: { text: string; tone: 'ok' | 'muted' }
   error?: string
@@ -108,7 +113,13 @@ export class CallEngine {
       this.mic = await Mic.open()
       if (this.disposed) return this.mic.close()
       this.patch({ stt: useXbot ? 'xbot' : 'browser', startedAt: Date.now() })
-      this.unsub = chatStore.subscribe(() => this.watch(chatStore.get()))
+      const unChat = chatStore.subscribe(() => this.watch(chatStore.get()))
+      const unInbox = inboxStore.subscribe(() => this.watchInbox(inboxStore.get().items))
+      this.unsub = () => {
+        unChat()
+        unInbox()
+      }
+      this.watchInbox(inboxStore.get().items)
       this.timer = setInterval(() => this.tick(), 80)
       this.listen()
     } catch (e) {
@@ -234,7 +245,8 @@ export class CallEngine {
     if (ask) {
       if (ask.kind === 'approval') {
         const d = decision(text)
-        if (!d) return this.say('我沒聽清楚。請說「允許」或「拒絕」，也可以直接按。')
+        if (!d) return this.say(ask.tapOnly ? '我沒聽清楚。這件事要在畫面上按確認；要拒絕可以直接說「拒絕」。' : '我沒聽清楚。請說「允許」或「拒絕」，也可以直接按。')
+        if (d === 'allow' && ask.tapOnly) return this.say(TAP_MESSAGE + '。')
         return this.decide(d === 'allow' ? 'once' : 'deny', true)
       }
       if (ask.kind === 'question') {
@@ -269,17 +281,44 @@ export class CallEngine {
   async decide(choice: 'once' | 'deny', spoken = false) {
     const ask = this.state.ask
     if (!ask) return
+    // 用說的決定帶 via=voice：服務端會再擋一次高風險的允許。
+    const via = spoken ? ('voice' as const) : undefined
     try {
-      await chatRespond({ inbox_id: ask.inboxId, choice })
+      if (ask.approvalId) await approvalsDecide({ approval_id: ask.approvalId, decision: choice === 'deny' ? 'deny' : 'allow', via })
+      else await chatRespond({ inbox_id: ask.inboxId, choice, via })
       this.announced.add(ask.inboxId)
       const text = choice === 'deny' ? '已拒絕' : '已允許這次'
       this.addLine('system', `${spoken ? '你說' : '你按了'}「${choice === 'deny' ? '拒絕' : '允許'}」· ${text}`)
       this.patch({ ask: undefined, decided: { text, tone: choice === 'deny' ? 'muted' : 'ok' }, phase: 'thinking' })
       this.busy = false
     } catch (e) {
+      if (spoken && e instanceof ApiError && e.code === 'forbidden') {
+        // 服務端判斷要在畫面上按：卡片改成只能按
+        this.patch({ ask: { ...ask, tapOnly: true } })
+        return this.say(e.message + '。')
+      }
       this.addLine('system', errText(e))
       this.listen()
     }
+  }
+
+  /** 等核准的操作（approvals.decide）：這條對話串裡、這個 Bot 的。 */
+  private watchInbox(items: InboxItem[] | null) {
+    const tid = this.state.threadId
+    if (!items || !tid || this.disposed || this.state.ask) return
+    const it = items.find((x) => x.kind === 'approval' && x.ref && !x.task_id && x.bot_id === this.botId && x.thread_id === tid && !this.announced.has(x.id))
+    if (!it) return
+    const p = (it.payload ?? {}) as { op?: string; params?: { subject?: string; details?: string; category?: string } }
+    const ask: CallAsk = { inboxId: it.id, approvalId: it.ref, kind: 'approval', prompt: it.title, description: p.params?.subject || it.title, tapOnly: opNeedsTap(p.op, p.params) }
+    this.announced.add(it.id)
+    this.announce(ask)
+  }
+
+  private announce(ask: CallAsk) {
+    this.patch({ ask, decided: undefined })
+    const what = ask.description || ask.prompt || ask.command || '一件事'
+    if (ask.kind === 'approval') void this.say(ask.tapOnly ? `需要你核定：${what}。這件事要在畫面上按確認；要拒絕可以直接說。` : `需要你核定：${what}。說「允許」或「拒絕」。`)
+    else void this.say(ask.kind === 'secret' ? `需要你在畫面上輸入：${what}。` : `我想問你：${ask.prompt}`)
   }
 
   // ── Bot 那邊 ───────────────────────────────────────
@@ -291,13 +330,11 @@ export class CallEngine {
     // 等你核定或回答
     const req = act?.request
     if (req && !this.announced.has(req.inboxId) && this.state.ask?.inboxId !== req.inboxId) {
-      this.patch({ ask: req, decided: undefined })
       this.announced.add(req.inboxId)
-      const what = req.description || req.prompt || req.command || '一件事'
-      void this.say(req.kind === 'approval' ? `需要你核定：${what}。說「允許」或「拒絕」。` : req.kind === 'secret' ? `需要你在畫面上輸入：${what}。` : `我想問你：${req.prompt}`)
+      this.announce({ ...req, tapOnly: req.kind === 'approval' && engineNeedsTap(req) })
       return
     }
-    if (!req && this.state.ask && act && act.state !== 'waiting_approval' && act.state !== 'waiting_input') this.patch({ ask: undefined })
+    if (!req && this.state.ask && !this.state.ask.approvalId && act && act.state !== 'waiting_approval' && act.state !== 'waiting_input') this.patch({ ask: undefined })
     if (!this.taskId) return
     const reply = this.replyOf(s, tid, this.taskId)
     const p = this.state.phase

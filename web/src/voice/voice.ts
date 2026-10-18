@@ -307,6 +307,28 @@ export function estimateSeconds(chars: number, speed = 1): number {
   return Math.max(1, Math.round(chars / 4.5 / Math.max(speed, 0.5)))
 }
 
+// ── 用說的核定的界線（和服務端 internal/voice/guard.go 一樣）────────────
+
+/** 用說的允許被擋下時的訊息。 */
+export const TAP_MESSAGE = '這件事要在畫面上按確認，不能只用說的'
+
+const RISKY = /刪除|移除|清除|清空|銷毀|付款|支付|匯款|轉帳|花錢|花費|支出|購買|下單|扣款|刷卡|退款|金額|NT\$|\$\s?\d|\d\s*元|對外|寄出|寄信|發信|發送|發布|公開|上架|簽約|合約|不可逆|無法復原|危險|\bdelete\b|\bremove\b|\bdrop\b|\bdestroy\b|\bpay(ment)?\b|\bpurchase\b|\btransfer\b|\bsend\b|\bemail\b|\bpublish\b|\bcontract\b|irreversible|danger/i
+
+export function risky(...texts: (string | undefined)[]): boolean {
+  return texts.some((t) => !!t && RISKY.test(t))
+}
+
+/** Bot 在對話裡要求核准的引擎動作：終端機指令、看得出高風險的，要在畫面上按。 */
+export function engineNeedsTap(ask: { command?: string; description?: string; prompt?: string }): boolean {
+  return !!ask.command || risky(ask.description, ask.prompt)
+}
+
+/** 等核准的操作：confirm 級的一律要按；Bot 請你決定（xbot.approvals.request）而且看不出高風險的才可以用說的。 */
+export function opNeedsTap(op: string | undefined, params: { subject?: string; details?: string; category?: string } | undefined): boolean {
+  if (op !== 'xbot.approvals.request') return true
+  return risky(params?.subject, params?.details, params?.category)
+}
+
 /** 聽到的話是不是「允許」或「拒絕」（通話中的核定，L18：聽不清楚時再問一次，不猜）。 */
 export function decision(text: string): 'allow' | 'deny' | null {
   const t = text.replace(/[\s，。！？、,.!?「」"']/g, '')

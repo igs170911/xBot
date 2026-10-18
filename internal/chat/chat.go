@@ -16,6 +16,7 @@ import (
 	"xbot/internal/proxy"
 	"xbot/internal/runtime"
 	"xbot/internal/store"
+	"xbot/internal/voice"
 )
 
 // Runtime 是對話執行層；*runtime.Runtime 符合。
@@ -202,6 +203,8 @@ type RespondIn struct {
 	Value   string            `json:"value,omitempty" max:"16384" secret:"true" desc:"密碼、金鑰、驗證碼；只交給 Bot 的電腦，不寫進紀錄"`
 	Values  map[string]string `json:"values,omitempty" secret:"true" desc:"多欄位的密碼類輸入（例：identifier、password）"`
 	Decline bool              `json:"decline,omitempty" desc:"不回答：核准＝拒絕、提問＝略過、密碼＝不提供"`
+	// Via：voice 表示是在通話中用說的（E32）。用說的只能允許低風險的事，拒絕一律可以；高風險的要在畫面上按。
+	Via string `json:"via,omitempty" enum:"voice" desc:"voice：通話中用說的決定（危險的指令、花錢、對外發送等不能用說的允許）"`
 }
 
 // RespondOut 是 xbot.chat.respond 的輸出。
@@ -609,6 +612,11 @@ func (d Deps) respond(ctx context.Context, call *ops.Call, in RespondIn) (Respon
 		return RespondOut{}, err
 	}
 	out := RespondOut{InboxID: it.ID, TaskID: it.TaskID, ThreadID: it.ThreadID, Status: it.Status}
+	if in.Via == voice.ViaVoice {
+		if err := voiceAllowed(it, in); err != nil {
+			return out, err
+		}
+	}
 	if call.DryRun {
 		if it.Status != store.InboxOpen {
 			return out, ops.Conflict(runtime.ErrAnswered.Error())
@@ -632,6 +640,23 @@ func (d Deps) respond(ctx context.Context, call *ops.Call, in RespondIn) (Respon
 	}
 	out.Status, out.Resolution = got.Status, got.Resolution
 	return out, nil
+}
+
+// voiceAllowed 檢查通話中用說的回覆（E32）：拒絕、略過一律可以；密碼類不能用說的；
+// 允許要是低風險的引擎動作，而且不能「一律允許」。
+func voiceAllowed(it store.InboxItem, in RespondIn) error {
+	if in.Decline || in.Choice == "deny" {
+		return nil
+	}
+	switch it.Kind {
+	case "secret":
+		return ops.Forbidden("密碼、驗證碼要在畫面上輸入，不能用說的")
+	case "approval":
+		if in.Choice == "always" || voice.EngineApprovalNeedsTap(it.Payload) {
+			return ops.Forbidden(voice.TapMessage)
+		}
+	}
+	return nil
 }
 
 // findCard 找要回覆的卡：直接給 inbox_id，或給 task_id 找那件工作目前在等的。
