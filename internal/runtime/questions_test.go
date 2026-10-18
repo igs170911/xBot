@@ -98,9 +98,11 @@ func TestQuestionCardEventsAndAnswer(t *testing.T) {
 			t.Fatalf("等不到 done：%v", seen)
 		}
 	}
-	want := "inbox.created:secret:decide,chat.needs_approval,inbox.updated:secret:decide,chat.answered,inbox.created:done:done"
-	if strings.Join(seen, ",") != want {
-		t.Fatalf("事件順序：\n%v\n想要\n%v", strings.Join(seen, ","), want)
+	// 回覆送出後引擎可能馬上做完：chat.answered 和完成通知誰先都可以。
+	order := strings.Join(seen, ",")
+	want := "inbox.created:secret:decide,chat.needs_approval,inbox.updated:secret:decide,"
+	if !strings.HasPrefix(order, want) || !strings.Contains(order, "chat.answered") || !strings.Contains(order, "inbox.created:done:done") || len(seen) != 5 {
+		t.Fatalf("事件順序：\n%v\n想要開頭\n%v", order, want)
 	}
 }
 

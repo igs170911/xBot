@@ -298,9 +298,9 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
       if (!e.task_id) return s
       const a = activity(s, e.task_id)
       const ask = askFromEvent(p)
-      // 已經回覆過的（補送或讀回的舊事件）不要再跳出來
-      if (ask && a.answered?.some((x) => x.inboxId === ask.inboxId)) return s
-      return putActivity(s, { ...a, request: ask, threadId: a.threadId ?? e.thread_id })
+      // 同一張卡又問一次（回覆沒送出去）：拿掉那一行結果
+      const answered = ask ? a.answered?.filter((x) => x.inboxId !== ask.inboxId) : a.answered
+      return putActivity(s, { ...a, request: ask, answered, threadId: a.threadId ?? e.thread_id })
     }
     case 'chat.answered': {
       if (!e.task_id) return s

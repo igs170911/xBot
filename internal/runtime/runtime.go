@@ -70,6 +70,7 @@ type Runtime struct {
 
 	mu        sync.Mutex
 	active    map[string]*turn          // botID → 進行中的一輪
+	closing   map[string]*turn          // taskID → 已經釋放 Bot、還在收尾的一輪（Wait 要等它寫完）
 	consumers map[engine.Session]string // 已經有人在讀事件的 session → botID
 }
 
@@ -84,7 +85,7 @@ func New(o Options) *Runtime {
 	if o.QuestionTTL <= 0 {
 		o.QuestionTTL = limits.QuestionTTL
 	}
-	return &Runtime{o: o, log: o.Logger, active: map[string]*turn{}, consumers: map[engine.Session]string{}}
+	return &Runtime{o: o, log: o.Logger, active: map[string]*turn{}, closing: map[string]*turn{}, consumers: map[engine.Session]string{}}
 }
 
 // Bus 回傳事件匯流排。
@@ -372,12 +373,15 @@ func (r *Runtime) finishErr(t *turn, err error) {
 
 // finish 寫下最後的回覆、結束任務、發布 done，並釋放這個 Bot。只會做一次。
 func (r *Runtime) finish(t *turn, status, text string) {
+	t.askMu.Lock() // 和 resume 互斥：回覆前改回「工作中」不會蓋掉「已完成」
 	t.mu.Lock()
 	if t.finished {
 		t.mu.Unlock()
+		t.askMu.Unlock()
 		return
 	}
 	t.finished = true
+	t.askMu.Unlock()
 	p := t.pending
 	t.pending = nil
 	streamed := t.text.String()
@@ -426,20 +430,24 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		p.stop()
 		r.settle(t, p, store.InboxDismissed, ResolutionGone, "system", nil, "")
 	}
-	if err := r.o.DB.SetTaskState(ctx, t.taskID, store.TaskDone, verdict); err != nil {
-		r.log.Warn("寫入任務狀態失敗", "task", t.taskID, "err", err)
-	}
 	r.notifyDone(t, verdict, final)
-	r.emit(t, KindTaskState, map[string]string{"state": store.TaskDone, "verdict": verdict}, true)
-	r.emit(t, KindDone, map[string]string{"message_id": msgID, "status": status, "verdict": verdict, "text": final}, true)
-
+	// 先釋放這個 Bot 再寫 done：看到任務結束的人（wait_until_settled）馬上交辦下一件不會撞到「正在忙」。
 	r.mu.Lock()
 	if r.active[t.botID] == t {
 		delete(r.active, t.botID)
 	}
+	r.closing[t.taskID] = t
 	r.mu.Unlock()
+	if err := r.o.DB.SetTaskState(ctx, t.taskID, store.TaskDone, verdict); err != nil {
+		r.log.Warn("寫入任務狀態失敗", "task", t.taskID, "err", err)
+	}
+	r.emit(t, KindTaskState, map[string]string{"state": store.TaskDone, "verdict": verdict}, true)
+	r.emit(t, KindDone, map[string]string{"message_id": msgID, "status": status, "verdict": verdict, "text": final}, true)
 	t.cancel()
 	close(t.done)
+	r.mu.Lock()
+	delete(r.closing, t.taskID)
+	r.mu.Unlock()
 }
 
 func (r *Runtime) setState(t *turn, state string) {
@@ -522,6 +530,9 @@ func (r *Runtime) Wait(ctx context.Context, taskID string) (store.Task, error) {
 		if t.taskID == taskID {
 			done = t.done
 		}
+	}
+	if t := r.closing[taskID]; t != nil {
+		done = t.done
 	}
 	r.mu.Unlock()
 	if done != nil {

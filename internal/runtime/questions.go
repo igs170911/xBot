@@ -92,6 +92,8 @@ type pending struct {
 	inboxID string
 	choices []string // 核准可用的選項（once／always／deny）
 	nq      int      // 提問的題數
+	req     *engine.Request
+	expires int64
 	timer   *time.Timer
 }
 
@@ -212,7 +214,7 @@ func (r *Runtime) openCard(t *turn, req *engine.Request) store.InboxItem {
 		r.log.Warn("開待我處理卡失敗", "task", t.taskID, "err", err)
 		return store.InboxItem{}
 	}
-	pend.inboxID = created.ID
+	pend.inboxID, pend.req, pend.expires = created.ID, req, created.ExpiresAt
 	r.emitStored(t, notify.Event(notify.KindCreated, created))
 	t.mu.Lock()
 	if t.finished {
@@ -303,13 +305,16 @@ func (r *Runtime) Respond(ctx context.Context, itemID string, a Answer, by strin
 	t.mu.Lock()
 	s := t.session
 	t.mu.Unlock()
-	if err := r.o.Driver.Respond(ctx, s, p.reqID, ans); err != nil {
-		t.release(p)
-		return it, err
-	}
+	// 先結卡、改回工作中再送出：引擎收到回覆後可能馬上做完或又問下一題，那些不能被這裡蓋掉。
 	p.stop()
 	r.settle(t, p, store.InboxResolved, resolution, by, payload, shown)
-	r.resume(t)
+	state := r.resume(t)
+	if err := r.o.Driver.Respond(ctx, s, p.reqID, ans); err != nil {
+		// 沒送出去：卡片回到等你，可以再回一次。
+		r.reopen(t, p)
+		r.rewait(t, state)
+		return it, err
+	}
 	return r.o.DB.GetInboxItem(context.WithoutCancel(ctx), itemID)
 }
 
@@ -414,11 +419,11 @@ func (r *Runtime) expire(t *turn, p *pending) {
 	t.mu.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	r.resume(t)
 	if err := r.o.Driver.Respond(ctx, s, p.reqID, ans); err != nil {
 		r.log.Warn("過期的提問無法回覆 Bot", "task", t.taskID, "err", err)
 	}
 	r.settle(t, p, store.InboxExpired, ResolutionExpired, "system", nil, note)
-	r.resume(t)
 }
 
 // closeRequest 是引擎自己取消了請求（Hermes request.cancel）。
@@ -462,19 +467,61 @@ func (r *Runtime) settleStale(ctx context.Context, it store.InboxItem) {
 	}
 }
 
-// resume 在回覆送出後把任務改回工作中（停止中的不動）。
-func (r *Runtime) resume(t *turn) {
+// resume 在送出回覆前把任務改回工作中（停止中、已結束的不動），回傳原本在等的狀態（沒改時是空白）。
+// 和 finish、新問題的開卡互斥，所以不會蓋掉「已完成」或下一個問題的「等你」。
+func (r *Runtime) resume(t *turn) string {
 	t.askMu.Lock()
 	defer t.askMu.Unlock()
 	t.mu.Lock()
-	// 已經又在等下一個問題了（引擎回覆得很快）：狀態由那個問題決定。
-	wasWaiting := t.waiting && !t.finished && !t.stopping && t.pending == nil
-	if t.pending == nil {
+	ok := t.waiting && !t.finished && !t.stopping && t.pending == nil
+	if ok {
 		t.waiting = false
 	}
 	t.mu.Unlock()
-	if wasWaiting {
-		r.setState(t, store.TaskRunning)
+	if !ok {
+		return ""
+	}
+	state := store.TaskWaitingInput
+	if task, err := r.o.DB.GetTask(context.Background(), t.taskID); err == nil {
+		state = task.State
+	}
+	r.setState(t, store.TaskRunning)
+	return state
+}
+
+// reopen 在回覆沒送出去時把卡片打開、重新發 needs_approval（畫面才會再出現回覆卡）。
+func (r *Runtime) reopen(t *turn, p *pending) {
+	ctx := context.Background()
+	if err := r.o.DB.ReopenInboxItem(ctx, p.inboxID); err != nil {
+		r.log.Warn("重新打開待我處理卡失敗", "inbox", p.inboxID, "err", err)
+	}
+	if it, err := r.o.DB.GetInboxItem(ctx, p.inboxID); err == nil {
+		r.emitStored(t, notify.Event(notify.KindUpdated, it))
+	}
+	if p.expires > 0 {
+		p.timer = time.AfterFunc(max(time.Until(time.UnixMilli(p.expires)), 0), func() { r.expire(t, p) })
+	}
+	t.release(p)
+	if p.req != nil {
+		r.emit(t, KindNeedsApproval, NeedsPayload{Event: engine.Event{Type: engine.EventNeedsApproval, Request: p.req}, InboxID: p.inboxID, ExpiresAt: p.expires}, true)
+	}
+}
+
+// rewait 在回覆沒送出去時把任務改回等你。
+func (r *Runtime) rewait(t *turn, state string) {
+	if state == "" {
+		return
+	}
+	t.askMu.Lock()
+	defer t.askMu.Unlock()
+	t.mu.Lock()
+	ok := !t.finished && !t.stopping
+	if ok {
+		t.waiting = true
+	}
+	t.mu.Unlock()
+	if ok {
+		r.setState(t, state)
 	}
 }
 
