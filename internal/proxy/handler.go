@@ -31,6 +31,7 @@ var allowedPaths = map[string]bool{
 	"embeddings":           true,
 	"images/generations":   true,
 	"audio/transcriptions": true,
+	"audio/speech":         true,
 }
 
 // responses/<id>、responses/<id>/cancel 等（LazyBoy 允許 responses/ 開頭）。
@@ -240,7 +241,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 花費上限（US-2）：會花錢的請求在送出前檢查。
-	metered := meteredPaths[apiPath]
+	metered := meteredPaths[apiPath] || audioPaths[apiPath]
 	if metered && h.o.Budget != nil {
 		err := h.o.Budget.Check(r.Context(), botID)
 		if err == nil {
@@ -260,6 +261,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	model := requestModel(body)
+	if model == "" && audioPaths[apiPath] {
+		model = formModel(r.Header.Get("Content-Type"), body)
+	}
 	start := h.o.Now()
 	resp, cancel, err := h.forward(r, h.session(botID), provider, apiPath, body)
 	// 訂閱登入：供應商回 401 表示存取權杖被撤銷或過期，換新一次再送（還沒送出任何位元組）。
@@ -323,7 +327,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	streaming := strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream")
 	var m *meter
-	if metered {
+	if metered && apiPath != "audio/speech" { // 合成語音回的是音訊，照請求的字數記
 		m = newMeter(streaming)
 	}
 	out := newRedactWriter(w, realKey)
@@ -335,8 +339,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"err", redactString(copyErr.Error(), realKey))
 	}
 
-	if m != nil && h.o.Usage != nil {
-		c, _ := m.result()
+	if metered && h.o.Usage != nil {
+		var c counts
+		if m != nil {
+			c, _ = m.result()
+		}
+		var units int64
+		if resp.StatusCode < 400 { // 失敗的語音請求不照字數收錢
+			units = audioUnits(apiPath, body, c)
+		}
 		ctx := context.WithoutCancel(r.Context()) // 容器斷線也要記下已經用掉的量。
 		entry := UsageEntry{
 			BotID: botID, Provider: provider.ID, Model: model, Endpoint: apiPath,
@@ -345,7 +356,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Status: resp.StatusCode, OK: resp.StatusCode < 400 && copyErr == nil, At: start,
 		}
 		if provider.Auth == "" { // 訂閱登入是月費方案，不另外算錢（只記 token）。
-			entry.CostMicros, entry.Unpriced = h.cost(ctx, provider.ID, model, c)
+			entry.CostMicros, entry.Unpriced = h.costOf(ctx, provider.ID, model, c, units)
 		}
 		if err := h.o.Usage.RecordUsage(ctx, entry); err != nil {
 			h.o.Logger.Error("模型代理：記錄用量失敗", "bot", botID, "provider", provider.ID, "err", err)

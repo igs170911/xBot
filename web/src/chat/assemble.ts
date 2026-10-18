@@ -45,7 +45,12 @@ export type ChatMsg = {
   activity?: string
   /** Bot 回覆的完成判定（X04）：系統判斷做完了沒，與你的改正。 */
   judge?: Judge
+  /** Bot 的回覆念成了語音訊息（E32，VC-1）：顯示播放器。 */
+  voice?: VoiceNote
 }
+
+/** 語音訊息（chat.read 的 voice）：proxy 用 audio_id 播放；browser 用瀏覽器內建的聲音念。 */
+export type VoiceNote = { engine: string; audio_id?: string; voice: string; speed: number; chars: number; bytes?: number }
 
 /** 系統判斷一件工作做完了沒（X04，PRD §20 用途 2）。 */
 export type Judge = {
@@ -179,6 +184,7 @@ type MessageMeta = {
   activity?: string
   judge?: Judge
   card?: ChatCard
+  voice?: VoiceNote
 }
 
 type EngineEvent = {
@@ -261,6 +267,7 @@ export function applyRead(s: ChatState, out: ChatReadOutput): ChatState {
       ...(m.activity ? { activity: m.activity } : {}),
       ...(m.judge ? { judge: m.judge as Judge } : {}),
       ...(m.card ? { card: m.card } : {}),
+      ...(m.voice ? { voice: m.voice } : {}),
     }
     if (local && server.streaming && local.content.length > server.content.length && local.content.startsWith(server.content)) {
       // 還在串流：本地已經接到比快照更多的字
@@ -331,6 +338,7 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
         ...(meta.activity ? { activity: meta.activity } : {}),
         ...(meta.judge ? { judge: meta.judge } : existing?.judge ? { judge: existing.judge } : {}),
         ...(meta.card ? { card: meta.card } : {}),
+        ...(meta.voice ? { voice: meta.voice } : existing?.voice ? { voice: existing.voice } : {}),
       }
       const messages = existing ? th.messages.map((x) => (x.id === m.id ? msg : x)) : [...th.messages, msg]
       let next = putMessages(s, m.scope_id, messages)

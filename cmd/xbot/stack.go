@@ -33,6 +33,7 @@ import (
 	"xbot/internal/screen"
 	"xbot/internal/skills"
 	"xbot/internal/store"
+	"xbot/internal/voice"
 )
 
 // stack 是服務的核心元件：資料庫、本機主機、Model Proxy、product.sock、Box Manager、引擎驅動（Hermes、ACP）、
@@ -68,6 +69,7 @@ type stack struct {
 	// stopIdle 停掉閒置休眠的背景檢查（startBackground 開始）。
 	stopIdle context.CancelFunc
 	screen   *screen.Service // 看畫面與接手（B14）
+	voice    *voice.Service  // 語音（E32）：合成與辨識經 Model Proxy
 }
 
 func openStack(cfg config.Config) (*stack, error) {
@@ -244,6 +246,28 @@ func openStack(cfg config.Config) (*stack, error) {
 	// 電腦的生命週期操作與「更新電腦」（B13）。
 	// 搬家（B31，CL-5）與「從家裡出去」（CL-7）也在這裡。
 	s.computers = &computers.Service{DB: db, Boxes: s.boxes, Hosts: s.hosts, Activity: s.runtime, Bus: bus, Logger: logger, Sealer: s.keyring}
+	// 語音（E32）：朗讀、語音輸入、語音訊息、通話。合成與辨識經 Model Proxy（金鑰不離開服務端），用量記成 engine=voice。
+	s.voice = &voice.Service{DB: db, Bus: bus, CacheDir: filepath.Join(cfg.DataDir, "voice-cache"), Logger: logger,
+		Media: func(ctx context.Context, req voice.MediaRequest) (voice.MediaResponse, error) {
+			resp, err := s.model.CallMedia(ctx, proxy.MediaRequest{Provider: req.Provider, Path: req.Path, ContentType: req.ContentType,
+				Body: req.Body, BotID: req.BotID, Engine: voice.UsageEngine, MaxBytes: req.MaxBytes})
+			var be *proxy.BudgetError
+			switch {
+			case errors.As(err, &be):
+				return voice.MediaResponse{}, &voice.BudgetError{Message: be.Error()}
+			case errors.Is(err, proxy.ErrNotFound), errors.Is(err, proxy.ErrCallPath):
+				return voice.MediaResponse{}, voice.ErrNoEngine
+			}
+			return voice.MediaResponse{Status: resp.Status, ContentType: resp.ContentType, Body: resp.Body}, err
+		},
+		Providers: func(ctx context.Context) ([]voice.Provider, error) {
+			recs, err := s.pstore.ListProviders(ctx)
+			out := make([]voice.Provider, 0, len(recs))
+			for _, r := range recs {
+				out = append(out, voice.Provider{ID: r.ID, Label: r.Label, OAuth: r.Auth != ""})
+			}
+			return out, err
+		}}
 	// 看畫面與接手（B14）：noVNC 經服務代理、接手時暫停 Bot、辦公室縮圖。
 	s.screen = screen.New(screen.Options{DB: db, Boxes: s.boxes, Hosts: registry, Runtime: s.runtime, Bus: bus, Logger: logger})
 	if err := s.hosts.Start(context.Background()); err != nil {

@@ -31,6 +31,7 @@ import (
 	"xbot/internal/skills"
 	"xbot/internal/store"
 	"xbot/internal/usage"
+	"xbot/internal/voice"
 )
 
 // Deps 是核心操作需要的服務元件。全部是 nil 時只登錄定義（指令列、gen ts），呼叫會回 internal。
@@ -67,6 +68,8 @@ type Deps struct {
 	Screen *screen.Service
 	// Network 是內建 Tailscale 與外部入口（C35）；nil 時只登錄定義。
 	Network *network.Service
+	// Voice 是語音：朗讀、語音輸入、語音訊息、通話（E32）；nil 時只登錄定義。
+	Voice *voice.Service
 }
 
 // Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines、files、computers（生命週期、看畫面與接手）、judge（快判）、network（內建 Tailscale、外部入口）各領域的操作。
@@ -139,6 +142,7 @@ func Register(reg *ops.Registry, d Deps) {
 	}
 	onboard.Register(reg, od)
 	network.Register(reg, d.Network)
+	voice.Register(reg, d.Voice)
 }
 
 // Teardown 產生刪除 Bot 時用的收尾函式：先關引擎連線，再刪電腦與資料區（remove）。

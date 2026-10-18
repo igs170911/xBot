@@ -46,7 +46,8 @@ import { PairPage } from './mobile/PairPage'
 import { BotProfilePage } from './mobile/BotProfilePage'
 import { NewBotPage, NewRoomPage } from './mobile/NewPages'
 import { SharePage } from './mobile/SharePage'
-import { CallPage } from './mobile/CallPage'
+import { CallPage } from './voice/CallPage'
+import { VOICE_PATH, VoiceSetupPage } from './voice/VoiceSetupPage'
 import { WelcomePage } from './mobile/WelcomePage'
 
 const TITLES: Record<string, string> = {
@@ -128,8 +129,9 @@ function Main() {
   const botFiles = path.match(BOT_FILES_PATH)
   const profile = path.match(PROFILE_PATH)
   const call = path.match(CALL_PATH)
+  const voice = path.match(VOICE_PATH)
   const botName = (id: string) => bots?.find((b) => b.id === id)?.name
-  const title = path === '/' ? '待我處理' : botFiles ? `${botName(botFiles[1]) ?? 'Bot'}的檔案` : bot ? (botName(bot[1]) ?? '對話') : computer ? `${botName(computer[1]) ?? 'Bot'}的電腦` : room ? (rooms?.find((r) => r.id === room[1])?.name ?? '群組對話') : (TITLES[path] ?? (path.startsWith('/settings') ? '設定' : path.startsWith('/calendar') ? '定時任務與行事曆' : 'XBot'))
+  const title = path === '/' ? '待我處理' : botFiles ? `${botName(botFiles[1]) ?? 'Bot'}的檔案` : bot ? (botName(bot[1]) ?? '對話') : computer ? `${botName(computer[1]) ?? 'Bot'}的電腦` : call ? `和${botName(call[1]) ?? 'Bot'}通話` : voice ? `${botName(voice[1]) ?? 'Bot'}的聲音` : room ? (rooms?.find((r) => r.id === room[1])?.name ?? '群組對話') : (TITLES[path] ?? (path.startsWith('/settings') ? '設定' : path.startsWith('/calendar') ? '定時任務與行事曆' : 'XBot'))
 
   // 首次設定（A03、A04）：還沒有任何 Bot、也還沒做完首次設定時，整頁顯示；讀狀態的那一下先不畫，免得閃一下首頁。
   if (onboard.status === null) return null
@@ -150,6 +152,7 @@ function Main() {
   else if (path === '/welcome') page = <WelcomePage />
   else if (profile) page = <BotProfilePage key={profile[1]} botId={profile[1]} />
   else if (call) page = <CallPage key={call[1]} botId={call[1]} />
+  else if (voice) page = <VoiceSetupPage key={voice[1]} botId={voice[1]} />
   else if (computer) page = <ComputerPage key={computer[1]} botId={computer[1]} />
   else if (botFiles) page = <BotFilesPage key={botFiles[1]} botId={botFiles[1]} />
   else if (path === '/files') page = <FilesPage />

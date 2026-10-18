@@ -217,7 +217,12 @@ export class MockServer {
     const url = new URL(route.request().url())
     const path = url.pathname.replace('/api/v1/', '')
     if (path === 'auth/status') return route.fulfill({ json: { authenticated: true, local: true, kind: 'owner', name: '你' } })
-    const input = (route.request().postDataJSON() ?? {}) as Record<string, unknown>
+    let input: Record<string, unknown> = {}
+    try {
+      input = (route.request().postDataJSON() ?? {}) as Record<string, unknown>
+    } catch {
+      // multipart 上傳（例：語音輸入的錄音）不是 JSON
+    }
     this.calls.push({ op: path, input })
     const h = this.override[path] ?? this.ops[path]
     if (!h) return route.fulfill({ status: 404, json: { error: { code: 'not_found', message: '假服務沒有 ' + path, retryable: false } } })

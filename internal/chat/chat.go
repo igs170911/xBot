@@ -95,9 +95,11 @@ type Message struct {
 	// Judge：Bot 這一輪回覆的完成判定（X04）。
 	Judge *Judgment `json:"judge,omitempty" desc:"系統判斷這件工作做完了沒（Bot 的回覆才有）"`
 	// Card：kind=card 時卡片的內容（Bot 用 xbot.cards.post 發的資訊、核准、檔案卡，C11）。
-	Card      *Card `json:"card,omitempty"`
-	CreatedAt int64 `json:"created_at"`
-	UpdatedAt int64 `json:"updated_at"`
+	Card *Card `json:"card,omitempty"`
+	// Voice：Bot 的回覆念成了語音訊息（E32，VC-1）；畫面顯示播放器。
+	Voice     *VoiceNote `json:"voice,omitempty"`
+	CreatedAt int64      `json:"created_at"`
+	UpdatedAt int64      `json:"updated_at"`
 }
 
 // CardFile 是檔案卡上的一個檔案（Bot 電腦裡的完整路徑，C33 點了預覽或下載）。
@@ -114,6 +116,16 @@ type Card struct {
 	ApprovalID string     `json:"approval_id,omitempty"`
 	Category   string     `json:"category,omitempty"`
 	Files      []CardFile `json:"files,omitempty"`
+}
+
+// VoiceNote 是語音訊息（xbot.voice.speak 的 voice_note）。
+type VoiceNote struct {
+	Engine  string  `json:"engine" desc:"proxy：用 audio_id 播放；browser：用瀏覽器內建的聲音念"`
+	AudioID string  `json:"audio_id,omitempty" desc:"GET /api/v1/voice.audio?id=…"`
+	Voice   string  `json:"voice"`
+	Speed   float64 `json:"speed"`
+	Chars   int     `json:"chars"`
+	Bytes   int64   `json:"bytes,omitempty"`
 }
 
 // ReadOut 是 xbot.chat.read 的輸出。
@@ -482,6 +494,7 @@ type messageMeta struct {
 	Activity  string            `json:"activity"`
 	Judge     *runtime.Judgment `json:"judge"`
 	Card      *Card             `json:"card"`
+	Voice     *VoiceNote        `json:"voice"`
 }
 
 func messageView(m store.Message) Message {
@@ -489,7 +502,7 @@ func messageView(m store.Message) Message {
 	_ = json.Unmarshal(m.Meta, &meta)
 	out := Message{ID: m.ID, Seq: m.Seq, Sender: m.Sender, Kind: m.Kind, Content: m.Content, TaskID: meta.TaskID,
 		Actor: meta.Actor, ActorName: meta.ActorName, Via: meta.Via, Streaming: meta.Streaming, Status: meta.Status, Silent: meta.Silent, Peer: meta.Peer,
-		Activity: meta.Activity, Card: meta.Card, CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
+		Activity: meta.Activity, Card: meta.Card, Voice: meta.Voice, CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
 	if meta.Judge != nil && meta.Judge.Verdict != "" {
 		out.Judge = &Judgment{Judgment: *meta.Judge}
 	}

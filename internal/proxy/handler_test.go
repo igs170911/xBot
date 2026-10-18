@@ -34,7 +34,10 @@ type fixture struct {
 	mu       sync.Mutex
 	calls    []upstreamCall
 	botKey   string
+	h        *Handler
 }
+
+func (f *fixture) handler() *Handler { return f.h }
 
 type syncBuffer struct {
 	mu sync.Mutex
@@ -83,7 +86,8 @@ func newFixture(t *testing.T, upstream http.HandlerFunc, opts ...func(*Options))
 		fn(&o)
 	}
 	mux := http.NewServeMux()
-	mux.Handle(Prefix, NewHandler(o))
+	f.h = NewHandler(o)
+	mux.Handle(Prefix, f.h)
 	f.srv = httptest.NewServer(mux)
 	t.Cleanup(f.srv.Close)
 	return f
@@ -215,7 +219,7 @@ func TestAnthropicStyleXAPIKey(t *testing.T) {
 
 func TestPathAllowlist(t *testing.T) {
 	f := newFixture(t, jsonUpstream(200, `{"data":[]}`))
-	for _, p := range []string{"files", "fine_tuning/jobs", "chat/completions/extra", "batches", "responses/../files", "assistants", "audio/speech"} {
+	for _, p := range []string{"files", "fine_tuning/jobs", "chat/completions/extra", "batches", "responses/../files", "assistants"} {
 		resp := f.do("POST", "/model/openai/v1/"+p, "Bearer "+f.botKey, chatBody)
 		_ = readAll(t, resp)
 		// responses/../files 會被 ServeMux 清理成 /model/openai/v1/files 並轉址；轉址後一樣是 403。
@@ -223,7 +227,7 @@ func TestPathAllowlist(t *testing.T) {
 			t.Fatalf("%s 應回 403，實際 %d", p, resp.StatusCode)
 		}
 	}
-	for _, p := range []string{"models", "responses/resp_123", "responses/resp_123/cancel", "embeddings", "images/generations", "audio/transcriptions"} {
+	for _, p := range []string{"models", "responses/resp_123", "responses/resp_123/cancel", "embeddings", "images/generations", "audio/transcriptions", "audio/speech"} {
 		method, body := "POST", chatBody
 		if p == "models" {
 			method, body = "GET", ""
