@@ -168,6 +168,9 @@
 | `BoxTmpfsTmpBytes`／`BoxTmpfsRunBytes`／`BoxTmpfsVarTmpBytes` | 1 GiB／64 MiB／256 MiB | XBot 新增（B13，SEC-3 唯讀根檔案系統下可寫的 tmpfs）；LazyBoy 根目錄可寫、沒有上限 | — |
 | `NetguardApplyTimeout` | 30 秒 | XBot 新增（B13，SEC-4）：套用網路防護規則的上限 | — |
 | `NetAllowMax` | 32 筆 | XBot 新增（B13，SEC-4）：每個 Bot 的私有網路白名單上限 | — |
+| `BoxMoveKeep`／`BoxMoveCleanupEvery` | 24 小時／10 分鐘 | XBot 新增（B31，CL-5）：搬家後原主機上的舊資料保留多久、多久檢查一次 | — |
+| `BoxMoveHelperTimeout`／`BoxMoveTimeout`／`BoxMoveProgressEvery`／`BoxMoveHistory`／`BoxMoveManifestBytes` | 30 分鐘／6 小時／0.5 秒／20 筆／256 MiB | XBot 新增（B31）：量資料與驗證的輔助容器上限、一次搬家上限、進度事件間隔、紀錄筆數、驗證清單大小 | — |
+| `EgressImage`／`EgressProxyPort`／`EgressMemoryBytes`／`EgressStatusTimeout`／`EgressPullTimeout` | tailscale/tailscale:v1.88.3／1055／256 MiB／10 秒／10 分鐘 | XBot 新增（B31，CL-7）：「從家裡出去」的 Tailscale 小容器 | — |
 | `HostImageCacheTTL` | 15 秒 | XBot 新增（B13）：主機清單比對映像是否過期時，本機映像資訊的快取 | — |
 | `HermesReadyTimeout`／`HermesCallTimeout` | 15／90 秒 | server/rpc.py:25、:31 | 正確 |
 | `HermesPingInterval`／`HermesPingTimeout`／`HermesMaxFrameBytes` | 15 秒／30 秒／16 MiB | server/rpc.py:21 | 正確 |

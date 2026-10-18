@@ -146,6 +146,13 @@ func openStack(cfg config.Config) (*stack, error) {
 		},
 		// 連資料一起刪電腦時先關掉服務這邊的 product.sock。
 		Release: func(botID string) { _ = s.sockets.Close(botID) },
+		// 「從家裡出去」（CL-7）的 exit node 與 Tailscale 登入金鑰存在 computers 的設定裡。
+		Egress: box.EgressFunc(func(ctx context.Context) (box.EgressConfig, error) {
+			if s.computers == nil {
+				return box.EgressConfig{}, box.ErrEgressNotSet
+			}
+			return s.computers.EgressConfig(ctx)
+		}),
 	})
 	// 遠端主機（B12）：連線、健康狀態寫回 host.status、加入與檢查、擺放與排隊。
 	s.hosts = hosts.NewService(hosts.Options{DB: db, Registry: registry, Local: s.local, DataDir: cfg.DataDir, Image: image,
@@ -232,7 +239,8 @@ func openStack(cfg config.Config) (*stack, error) {
 	comp.Apps = s.apps.Servers
 	s.sockets.SetApps(s.apps.Proxy)
 	// 電腦的生命週期操作與「更新電腦」（B13）。
-	s.computers = &computers.Service{DB: db, Boxes: s.boxes, Hosts: s.hosts, Activity: s.runtime, Bus: bus, Logger: logger}
+	// 搬家（B31，CL-5）與「從家裡出去」（CL-7）也在這裡。
+	s.computers = &computers.Service{DB: db, Boxes: s.boxes, Hosts: s.hosts, Activity: s.runtime, Bus: bus, Logger: logger, Sealer: s.keyring}
 	// 看畫面與接手（B14）：noVNC 經服務代理、接手時暫停 Bot、辦公室縮圖。
 	s.screen = screen.New(screen.Options{DB: db, Boxes: s.boxes, Hosts: registry, Runtime: s.runtime, Bus: bus, Logger: logger})
 	if err := s.hosts.Start(context.Background()); err != nil {
@@ -271,11 +279,15 @@ func (s *stack) refreshApps(ctx context.Context, hd *hermes.Driver, botIDs []str
 	}
 }
 
-// startBackground 開始服務才需要的背景工作：閒置休眠（BX-12、CL-9）。
+// startBackground 開始服務才需要的背景工作：閒置休眠（BX-12、CL-9）；收尾上次沒做完的搬家，並定期刪掉搬家後保留期已過的舊資料（CL-5）。
 func (s *stack) startBackground() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.stopIdle = cancel
 	go s.boxes.RunIdle(ctx, s.runtime)
+	if err := s.computers.RecoverMoves(ctx); err != nil {
+		slog.Warn("收尾上次沒做完的搬家失敗", "err", err)
+	}
+	go s.computers.RunMoveCleanup(ctx)
 }
 
 func (s *stack) Close() error {
@@ -284,7 +296,7 @@ func (s *stack) Close() error {
 		s.stopIdle()
 	}
 	if s.computers != nil {
-		s.computers.Wait()
+		s.computers.Close()
 	}
 	if s.routines != nil {
 		s.routines.Close()

@@ -84,6 +84,7 @@ func cmdServe(args []string) error {
 	if publicURL != "" {
 		slog.Info("反向代理模式：從反向代理進來的請求只開放 /mcp、/api/v1/agents.pair、/hooks/*", "public_url", publicURL)
 	}
+	st.computers.TailscaleKey = st.network.AuthKey // 「從家裡出去」沒有自己的金鑰時借用內建 Tailscale 的
 	reg := buildRegistry(st.db, pairing, notify, st)
 	// Bot 經自己的 product.sock 用 XBot MCP（C11）：身分就是那個 Bot。
 	st.sockets.SetProduct(mcpserver.BotHandler(reg, mcpserver.BotOptions{Keys: st.keys, DB: st.db, Logger: slog.Default()}))
