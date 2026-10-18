@@ -8,15 +8,11 @@ package runtime
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -24,68 +20,13 @@ import (
 
 	"xbot/internal/box"
 	"xbot/internal/engine/hermes"
+	"xbot/internal/engine/hermes/hermestest"
 	"xbot/internal/events"
 	"xbot/internal/hosts"
 	"xbot/internal/ipc"
 	"xbot/internal/proxy"
 	"xbot/internal/store"
 )
-
-// fakeModel 是說 OpenAI Chat Completions（含串流）的假模型，每次都回「OK」。
-type fakeModel struct {
-	mu    sync.Mutex
-	calls []string
-	auth  []string
-}
-
-func (f *fakeModel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	body, _ := io.ReadAll(r.Body)
-	f.mu.Lock()
-	f.calls = append(f.calls, r.Method+" "+r.URL.Path)
-	f.auth = append(f.auth, r.Header.Get("Authorization"))
-	f.mu.Unlock()
-	switch {
-	case strings.HasSuffix(r.URL.Path, "/models"):
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"object":"list","data":[{"id":"fake-model","object":"model","owned_by":"xbot"}]}`)
-	case strings.HasSuffix(r.URL.Path, "/chat/completions"):
-		var req struct {
-			Stream bool `json:"stream"`
-		}
-		_ = json.Unmarshal(body, &req)
-		usage := `{"prompt_tokens":20,"completion_tokens":1,"total_tokens":21}`
-		if !req.Stream {
-			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprintf(w, `{"id":"c1","object":"chat.completion","created":1,"model":"fake-model","choices":[{"index":0,"message":{"role":"assistant","content":"OK"},"finish_reason":"stop"}],"usage":%s}`, usage)
-			return
-		}
-		w.Header().Set("Content-Type", "text/event-stream")
-		chunk := func(s string) {
-			fmt.Fprintf(w, "data: %s\n\n", s)
-			w.(http.Flusher).Flush()
-		}
-		chunk(`{"id":"c1","object":"chat.completion.chunk","created":1,"model":"fake-model","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}`)
-		chunk(`{"id":"c1","object":"chat.completion.chunk","created":1,"model":"fake-model","choices":[{"index":0,"delta":{"content":"O"},"finish_reason":null}]}`)
-		chunk(`{"id":"c1","object":"chat.completion.chunk","created":1,"model":"fake-model","choices":[{"index":0,"delta":{"content":"K"},"finish_reason":null}]}`)
-		chunk(`{"id":"c1","object":"chat.completion.chunk","created":1,"model":"fake-model","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`)
-		chunk(`{"id":"c1","object":"chat.completion.chunk","created":1,"model":"fake-model","choices":[],"usage":` + usage + `}`)
-		chunk("[DONE]")
-	default:
-		http.NotFound(w, r)
-	}
-}
-
-func (f *fakeModel) chatCalls() int {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	n := 0
-	for _, c := range f.calls {
-		if strings.HasSuffix(c, "/chat/completions") {
-			n++
-		}
-	}
-	return n
-}
 
 func TestDockerChatEndToEnd(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
@@ -107,9 +48,9 @@ func TestDockerChatEndToEnd(t *testing.T) {
 	}
 
 	base, realKey, modelName := os.Getenv("XBOT_TEST_OPENAI_BASE"), os.Getenv("XBOT_TEST_OPENAI_KEY"), os.Getenv("XBOT_TEST_MODEL")
-	var fake *fakeModel
+	var fake *hermestest.FakeModel
 	if base == "" || realKey == "" || modelName == "" {
-		fake = &fakeModel{}
+		fake = &hermestest.FakeModel{}
 		srv := httptest.NewServer(fake)
 		defer srv.Close()
 		base, realKey, modelName = srv.URL+"/v1", "sk-FAKE-REAL-KEY-must-not-enter-box-7f3a", "fake-model"
@@ -218,17 +159,15 @@ func TestDockerChatEndToEnd(t *testing.T) {
 	if len(msgs) != 2 || !strings.Contains(strings.ToUpper(msgs[1].Content), "OK") {
 		t.Fatalf("訊息：%+v", msgs)
 	}
-	if fake != nil && fake.chatCalls() == 0 {
+	if fake != nil && fake.ChatCalls() == 0 {
 		t.Fatal("假模型應該被呼叫")
 	}
 	if fake != nil {
-		fake.mu.Lock()
-		for _, a := range fake.auth {
+		for _, a := range fake.Auth() {
 			if a != "Bearer "+realKey {
 				t.Errorf("供應商收到的不是真金鑰：%q", a)
 			}
 		}
-		fake.mu.Unlock()
 	}
 	usage, _ := db.ListUsage(ctx, store.UsageFilter{BotID: bot.ID})
 	if len(usage) == 0 || usage[0].TaskID != res.TaskID {

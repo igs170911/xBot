@@ -104,3 +104,52 @@ Cursor 的 `~/.cursor/mcp.json`：
 - 指令列：`xbot <領域> <動作> --欄位 值`，例：`xbot system ping --echo hi`、`xbot agents list`。它讀這台機器資料目錄裡的登入碼（權限 600 的 `access-token`），以你本人的身分呼叫；設 `XBOT_TOKEN` 則改用那個代理權杖。陣列欄位可重複旗標或給 JSON（`--tags a --tags b`／`--tags '["a","b"]'`），巢狀欄位用點（`--resources.bots …`），整份輸入用 `--json '{…}'`（`--json -` 從 stdin 讀）。每個指令都有 `--help`。
 - `xbot mcp --owner`：stdio MCP 以你本人的身分連線（同樣是讀本機登入碼，所以只能在服務那台機器、同一個使用者執行）。給你完全信任的本機工具用；一般代理請配對。
 - `XBOT_MCP_LOCAL_OWNER=1`（啟動服務時設定，預設關閉）：從這台機器直接連 `/mcp`、沒帶權杖的請求都當成你本人。同一台機器上的任何程式都能因此拿到完整權限，只建議在開發時用。經 Tailscale serve 或反向代理進來的請求（Host 不是 localhost）不適用。
+
+## 7. 第一次對話（從配對到拿到回覆）
+
+前提：服務在跑（`make start` 或 `xbot serve`），Bot 電腦映像建好了（`make box`）。
+
+1. **配對**（你本人，在服務那台機器上）：
+
+   ```sh
+   xbot agents pair_start --name "Claude Code" --scopes read --scopes operate --scopes manage
+   xbot mcp pair <配對碼>          # 在代理那台機器上；記下印出的權杖
+   ```
+
+   再照 §2～§4 把權杖接到代理。建 Bot 要 `manage`，對話要 `operate`，讀回覆要 `read`。
+
+2. **設定模型**（你本人；金鑰只能寫、不能讀，存在服務端的 Model Proxy，不會進 Bot 的電腦）。金鑰用 `--json -` 從標準輸入給，不會留在指令紀錄裡：
+
+   ```sh
+   xbot models set_provider --json - <<'JSON'
+   {"id":"openai","base_url":"https://api.openai.com/v1","api_key":"sk-…","default_model":"gpt-4.1-mini"}
+   JSON
+   xbot models get                 # ready: true 就可以了；只回 api_key_set，不回金鑰
+   ```
+
+   之後要換預設模型：`xbot models set_default --provider openai --model <模型>`。代理就算有 `admin` 也不能設金鑰。
+
+3. **建 Bot**（代理呼叫 MCP 工具，或你用指令列）：
+
+   ```sh
+   xbot bots create --name 小秘 --title 幕僚長
+   # → {"id":"<bot id>","approval_mode":"ask",…}   新 Bot 預設「先問我」（SEC-1）
+   ```
+
+4. **對話**：`xbot.chat.send` 收下就回傳，Bot 在背景做事（第一次會先開機，約半分鐘）；再用 `xbot.chat.wait_until_settled` 等它做完或需要人：
+
+   ```sh
+   xbot chat send --bot_id <bot id> --text "幫我列出三個週末活動點子"
+   # → {"thread_id":"…","task_id":"…","message_id":"…"}
+   xbot chat wait_until_settled --task_id <task id> --timeout_s 120
+   # → {"settled":true,"state":"done","verdict":"answer","text":"…"}
+   ```
+
+   - `settled: false`：等到逾時、Bot 還在做，再呼叫一次（每次最多 300 秒）。
+   - `needs_person: true`：Bot 在等人（`request` 是它問的內容），到網頁上回覆。
+   - 同一條對話串接著說：`chat send` 加 `--thread_id`；看整段對話：`xbot chat read --thread_id …`；停下來：`xbot chat stop --bot_id …`。
+   - Bot 正在忙時 `chat send` 回 `conflict`（`retryable: true`）。
+
+5. **需要核准的動作**：例如代理呼叫 `xbot.bots.delete` 會回 `pending_approval` 和 `needs_approval_id`，並在「待我處理」出一張卡。代理用 `xbot.approvals.wait --approval_id …` 等；你用 `xbot inbox list` 看卡片、`xbot approvals decide --approval_id … --decision allow`（或 `deny`）決定。目前只有你本人能決定（代為核准是之後的功能）；刪除 Bot 永遠不能代為核准。
+
+6. **查紀錄**：`xbot audit list` 列出誰、從哪裡、做了什麼（參數裡的密鑰已遮蔽）；代理只看得到自己的紀錄。

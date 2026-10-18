@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"xbot/internal/auth"
+	"xbot/internal/limits"
 	"xbot/internal/ops"
 )
 
@@ -36,14 +37,15 @@ const (
 type Client struct {
 	BaseURL string       // 例：http://127.0.0.1:8780
 	Token   string       // 登入碼（使用者本人）或代理權杖；空白就不帶
-	HTTP    *http.Client // 空白用預設（60 秒逾時）
+	HTTP    *http.Client // 空白用預設（逾時 limits.ChatWaitMax＋1 分鐘）
 }
 
 func (c *Client) http() *http.Client {
 	if c.HTTP != nil {
 		return c.HTTP
 	}
-	return &http.Client{Timeout: 60 * time.Second}
+	// 等待類操作（chat.wait_until_settled、approvals.wait）最多等 limits.ChatWaitMax，再多留一分鐘。
+	return &http.Client{Timeout: limits.ChatWaitMax + time.Minute}
 }
 
 func (c *Client) base() string { return strings.TrimRight(c.BaseURL, "/") }

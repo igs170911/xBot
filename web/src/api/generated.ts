@@ -368,6 +368,756 @@ export function agentsUpdateScopes(input: AgentsUpdateScopesInput, opts?: CallOp
   return invoke('xbot.agents.update_scopes', input, opts).then((r) => r.output)
 }
 
+// xbot.approvals.decide
+
+export interface ApprovalsDecideInput {
+  approval_id: string
+  /** allow：允許這次並執行；deny：退回 */
+  decision: 'allow' | 'deny'
+}
+
+export interface ApprovalsDecideOutput {
+  approval: {
+    id: string
+    bot_id?: string
+    /** 要執行的操作，例：xbot.bots.delete */
+    op: string
+    summary: string
+    /** 操作的輸入（密鑰已遮蔽） */
+    params: unknown
+    /** 誰要求的：agent:<id>、bot:<id> */
+    requested_by: string
+    request_id?: string
+    status: 'pending' | 'approved' | 'denied' | 'expired' | 'canceled'
+    decided_by?: string
+    decided_at?: number
+    created_at: number
+  }
+  settled: boolean
+  /** 允許後動作已經執行完成 */
+  executed: boolean
+  /** 動作的輸出（executed 時） */
+  output?: unknown
+  /** 允許了但執行失敗時的錯誤（可以再允許一次重試） */
+  error?: {
+    code: string
+    message: string
+    retryable: boolean
+    needs_approval_id?: string
+    fields?: {
+      field: string
+      message: string
+    }[]
+  }
+}
+
+/**
+ * 允許或退回一個等核准的動作
+ *
+ * 允許後立刻執行原本的動作並回傳結果。目前只有你本人能決定；代為核准（MCP-10）之後才開放給有授權的代理。
+ *
+ * `xbot.approvals.decide`：權限 operate、風險 safe
+ */
+export function approvalsDecide(input: ApprovalsDecideInput, opts?: CallOptions): Promise<ApprovalsDecideOutput> {
+  return invoke('xbot.approvals.decide', input, opts).then((r) => r.output)
+}
+
+// xbot.approvals.list
+
+export interface ApprovalsListInput {
+  /** 只列這個狀態；不填列全部 */
+  status?: 'pending' | 'approved' | 'denied' | 'expired' | 'canceled'
+  /** 只列和這個 Bot 有關的 */
+  bot_id?: string
+  /** 最多幾筆；預設 50 */
+  limit?: number
+}
+
+export interface ApprovalsListOutput {
+  /** 新到舊；代理只看得到自己要求的 */
+  approvals: {
+    id: string
+    bot_id?: string
+    /** 要執行的操作，例：xbot.bots.delete */
+    op: string
+    summary: string
+    /** 操作的輸入（密鑰已遮蔽） */
+    params: unknown
+    /** 誰要求的：agent:<id>、bot:<id> */
+    requested_by: string
+    request_id?: string
+    status: 'pending' | 'approved' | 'denied' | 'expired' | 'canceled'
+    decided_by?: string
+    decided_at?: number
+    created_at: number
+  }[]
+}
+
+/**
+ * 列出等你核准的動作
+ *
+ * `xbot.approvals.list`：權限 read、風險 safe
+ */
+export function approvalsList(input: ApprovalsListInput = {}, opts?: CallOptions): Promise<ApprovalsListOutput> {
+  return invoke('xbot.approvals.list', input, opts).then((r) => r.output)
+}
+
+// xbot.approvals.wait
+
+export interface ApprovalsWaitInput {
+  /** pending_approval 錯誤裡的 needs_approval_id */
+  approval_id: string
+  /** 最多等幾秒；預設 60 */
+  timeout_s?: number
+}
+
+export interface ApprovalsWaitOutput {
+  approval: {
+    id: string
+    bot_id?: string
+    /** 要執行的操作，例：xbot.bots.delete */
+    op: string
+    summary: string
+    /** 操作的輸入（密鑰已遮蔽） */
+    params: unknown
+    /** 誰要求的：agent:<id>、bot:<id> */
+    requested_by: string
+    request_id?: string
+    status: 'pending' | 'approved' | 'denied' | 'expired' | 'canceled'
+    decided_by?: string
+    decided_at?: number
+    created_at: number
+  }
+  settled: boolean
+  /** 允許後動作已經執行完成 */
+  executed: boolean
+  /** 動作的輸出（executed 時） */
+  output?: unknown
+  /** 允許了但執行失敗時的錯誤（可以再允許一次重試） */
+  error?: {
+    code: string
+    message: string
+    retryable: boolean
+    needs_approval_id?: string
+    fields?: {
+      field: string
+      message: string
+    }[]
+  }
+}
+
+/**
+ * 等一個核准的結果
+ *
+ * 收到 pending_approval 後用它等：使用者允許並執行完、退回、或逾時（settled=false，可以再呼叫）。代理只能等自己要求的核准。
+ *
+ * `xbot.approvals.wait`：權限 read、風險 safe
+ */
+export function approvalsWait(input: ApprovalsWaitInput, opts?: CallOptions): Promise<ApprovalsWaitOutput> {
+  return invoke('xbot.approvals.wait', input, opts).then((r) => r.output)
+}
+
+// xbot.audit.list
+
+export interface AuditListInput {
+  /** 只列這個呼叫者：owner、agent:<id>、bot:<id>（代理只看得到自己的） */
+  actor?: string
+  /** 只列和這個 id 有關的 */
+  target?: string
+  /** 往前翻頁：只列 id 比它小的（上一頁的 next_before） */
+  before?: number
+  /** 最多幾筆；預設 50 */
+  limit?: number
+}
+
+export interface AuditListOutput {
+  /** 新到舊；參數已遮蔽密鑰 */
+  entries: {
+    id: number
+    actor: string
+    via: string
+    op: string
+    request_id: string
+    target: string
+    params: unknown
+    status: string
+    error_code: string
+    created_at: number
+  }[]
+  next_before?: number
+}
+
+/**
+ * 列出稽核紀錄（誰、從哪裡、做了什麼）
+ *
+ * `xbot.audit.list`：權限 read、風險 safe
+ */
+export function auditList(input: AuditListInput = {}, opts?: CallOptions): Promise<AuditListOutput> {
+  return invoke('xbot.audit.list', input, opts).then((r) => r.output)
+}
+
+// xbot.bots.archive
+
+export interface BotsArchiveInput {
+  /** Bot id */
+  id: string
+  /** false 表示取消封存；不填是封存 */
+  archived?: boolean
+}
+
+export interface BotsArchiveOutput {
+  id: string
+  name: string
+  title: string
+  description: string
+  soul: string
+  color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+  shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  engine: string
+  /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
+  model: string
+  effort: string
+  approval_mode: 'ask' | 'edits' | 'auto' | 'full'
+  archived: boolean
+  created_at: number
+  updated_at: number
+}
+
+/**
+ * 封存（或取消封存）一個 Bot
+ *
+ * 封存的 Bot 不會出現在清單，也不能對話；資料都保留，可以取消封存。封存時會先停下它正在做的事。
+ *
+ * `xbot.bots.archive`：權限 manage、風險 safe
+ */
+export function botsArchive(input: BotsArchiveInput, opts?: CallOptions): Promise<BotsArchiveOutput> {
+  return invoke('xbot.bots.archive', input, opts).then((r) => r.output)
+}
+
+// xbot.bots.create
+
+export interface BotsCreateInput {
+  /** 名稱，例：小秘 */
+  name: string
+  /** 職稱，例：幕僚長 */
+  title?: string
+  /** 一兩句話說明它負責什麼 */
+  description?: string
+  /** 常駐指示（SOUL.md） */
+  soul?: string
+  /** 頭像顏色；不填自動挑 */
+  color?: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+  /** 頭像形狀；不填自動挑 */
+  shape?: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  /** 引擎；預設 hermes */
+  engine?: 'hermes'
+  /** 模型；不填用預設模型（xbot.models.get 看設定） */
+  model?: string
+  /** 思考強度；不填是 medium */
+  effort?: 'low' | 'medium' | 'high'
+  /** 權限等級；預設 ask（先問我）。設成其他等級要你核准 */
+  approval_mode?: 'ask' | 'edits' | 'auto' | 'full'
+}
+
+export interface BotsCreateOutput {
+  id: string
+  name: string
+  title: string
+  description: string
+  soul: string
+  color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+  shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  engine: string
+  /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
+  model: string
+  effort: string
+  approval_mode: 'ask' | 'edits' | 'auto' | 'full'
+  archived: boolean
+  created_at: number
+  updated_at: number
+}
+
+/**
+ * 建立一個 Bot
+ *
+ * 新 Bot 的權限等級預設是「先問我」（SEC-1）。它的電腦在第一次對話時才開機。受資源範圍限制的代理建立的 Bot，會自動加進它能碰的 Bot。
+ *
+ * `xbot.bots.create`：權限 manage、風險 safe（依輸入可能需要核准）
+ */
+export function botsCreate(input: BotsCreateInput, opts?: CallOptions): Promise<BotsCreateOutput> {
+  return invoke('xbot.bots.create', input, opts).then((r) => r.output)
+}
+
+// xbot.bots.delete
+
+export interface BotsDeleteInput {
+  /** Bot id */
+  id: string
+}
+
+export interface BotsDeleteOutput {
+  id: string
+  name: string
+  /** 預演時是 false */
+  deleted: boolean
+  /** 會一起刪掉的對話串數 */
+  threads: number
+}
+
+/**
+ * 刪除一個 Bot
+ *
+ * 連同它的電腦（含檔案）、對話、任務一起刪除，無法復原。一定要你本人核准，不能代為核准。
+ *
+ * `xbot.bots.delete`：權限 manage、風險 confirm
+ */
+export function botsDelete(input: BotsDeleteInput, opts?: CallOptions): Promise<BotsDeleteOutput> {
+  return invoke('xbot.bots.delete', input, opts).then((r) => r.output)
+}
+
+// xbot.bots.get
+
+export interface BotsGetInput {
+  /** Bot id */
+  id: string
+}
+
+export interface BotsGetOutput {
+  id: string
+  name: string
+  title: string
+  description: string
+  soul: string
+  color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+  shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  engine: string
+  /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
+  model: string
+  effort: string
+  approval_mode: 'ask' | 'edits' | 'auto' | 'full'
+  archived: boolean
+  created_at: number
+  updated_at: number
+}
+
+/**
+ * 讀一個 Bot 的設定
+ *
+ * `xbot.bots.get`：權限 read、風險 safe
+ */
+export function botsGet(input: BotsGetInput, opts?: CallOptions): Promise<BotsGetOutput> {
+  return invoke('xbot.bots.get', input, opts).then((r) => r.output)
+}
+
+// xbot.bots.list
+
+export interface BotsListInput {
+  /** 也列出已封存的 Bot */
+  include_archived?: boolean
+}
+
+export interface BotsListOutput {
+  bots: {
+    id: string
+    name: string
+    title: string
+    description: string
+    soul: string
+    color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+    shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+    engine: string
+    /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
+    model: string
+    effort: string
+    approval_mode: 'ask' | 'edits' | 'auto' | 'full'
+    archived: boolean
+    created_at: number
+    updated_at: number
+  }[]
+}
+
+/**
+ * 列出 Bot
+ *
+ * `xbot.bots.list`：權限 read、風險 safe
+ */
+export function botsList(input: BotsListInput = {}, opts?: CallOptions): Promise<BotsListOutput> {
+  return invoke('xbot.bots.list', input, opts).then((r) => r.output)
+}
+
+// xbot.bots.update
+
+export interface BotsUpdateInput {
+  /** Bot id */
+  id: string
+  name?: string
+  title?: string
+  description?: string
+  soul?: string
+  color?: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+  shape?: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  engine?: 'hermes'
+  /** 空白字串表示改回預設模型 */
+  model?: string
+  effort?: 'low' | 'medium' | 'high'
+  /** 改成 ask 以外的等級要你核准 */
+  approval_mode?: 'ask' | 'edits' | 'auto' | 'full'
+}
+
+export interface BotsUpdateOutput {
+  id: string
+  name: string
+  title: string
+  description: string
+  soul: string
+  color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+  shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  engine: string
+  /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
+  model: string
+  effort: string
+  approval_mode: 'ask' | 'edits' | 'auto' | 'full'
+  archived: boolean
+  created_at: number
+  updated_at: number
+}
+
+/**
+ * 修改一個 Bot 的設定
+ *
+ * 只改有給的欄位。把權限等級改成 ask 以外要你核准。
+ *
+ * `xbot.bots.update`：權限 manage、風險 safe（依輸入可能需要核准）
+ */
+export function botsUpdate(input: BotsUpdateInput, opts?: CallOptions): Promise<BotsUpdateOutput> {
+  return invoke('xbot.bots.update', input, opts).then((r) => r.output)
+}
+
+// xbot.chat.list_threads
+
+export interface ChatListThreadsInput {
+  bot_id: string
+  include_archived?: boolean
+  /** 最多幾條；預設 50 */
+  limit?: number
+}
+
+export interface ChatListThreadsOutput {
+  /** 釘選的在前，其餘新到舊 */
+  threads: {
+    id: string
+    bot_id: string
+    title: string
+    pinned: boolean
+    archived: boolean
+    unread: number
+    last_message_at: number
+    created_at: number
+  }[]
+}
+
+/**
+ * 列出和一個 Bot 的對話串
+ *
+ * `xbot.chat.list_threads`：權限 read、風險 safe
+ */
+export function chatListThreads(input: ChatListThreadsInput, opts?: CallOptions): Promise<ChatListThreadsOutput> {
+  return invoke('xbot.chat.list_threads', input, opts).then((r) => r.output)
+}
+
+// xbot.chat.read
+
+export interface ChatReadInput {
+  thread_id: string
+  /** 往前翻頁：只讀 seq 比它小的訊息（上一頁的 next_before） */
+  before?: number
+  /** 最多幾則；預設 50 */
+  limit?: number
+}
+
+export interface ChatReadOutput {
+  thread: {
+    id: string
+    bot_id: string
+    title: string
+    pinned: boolean
+    archived: boolean
+    unread: number
+    last_message_at: number
+    created_at: number
+  }
+  /** 由舊到新 */
+  messages: {
+    id: string
+    seq: number
+    /** owner（你）、bot:<id>、system */
+    sender: string
+    kind: string
+    content: string
+    task_id?: string
+    /** Bot 還在寫這則回覆 */
+    streaming?: boolean
+    /** Bot 回覆的結果：complete、interrupted、error */
+    status?: string
+    created_at: number
+    updated_at: number
+  }[]
+  /** 還有更早的訊息 */
+  has_more: boolean
+  /** 讀更早一頁時帶的 before */
+  next_before?: number
+}
+
+/**
+ * 讀一條對話串的訊息
+ *
+ * 預設回最新的 50 則（由舊到新）；has_more 時用 next_before 往前翻。
+ *
+ * `xbot.chat.read`：權限 read、風險 safe
+ */
+export function chatRead(input: ChatReadInput, opts?: CallOptions): Promise<ChatReadOutput> {
+  return invoke('xbot.chat.read', input, opts).then((r) => r.output)
+}
+
+// xbot.chat.send
+
+export interface ChatSendInput {
+  /** 要對哪個 Bot 說 */
+  bot_id: string
+  /** 訊息內容 */
+  text: string
+  /** 接續的對話串；不填開一條新的 */
+  thread_id?: string
+}
+
+export interface ChatSendOutput {
+  bot_id: string
+  /** 預演且沒給 thread_id 時是空白（會開新的對話串） */
+  thread_id: string
+  /** 這件工作的 id，交給 wait_until_settled */
+  task_id: string
+  /** 你這則訊息的 id */
+  message_id: string
+}
+
+/**
+ * 對一個 Bot 說話（交辦一件事）
+ *
+ * 訊息收下就回傳 thread_id、task_id；Bot 在背景做事（第一次會先開機），用 xbot.chat.wait_until_settled 等回覆。Bot 正在忙另一件事時回 conflict（retryable），等它做完或先 xbot.chat.stop。
+ *
+ * `xbot.chat.send`：權限 operate、風險 safe
+ */
+export function chatSend(input: ChatSendInput, opts?: CallOptions): Promise<ChatSendOutput> {
+  return invoke('xbot.chat.send', input, opts).then((r) => r.output)
+}
+
+// xbot.chat.stop
+
+export interface ChatStopInput {
+  bot_id: string
+  /** 只停這條對話串的工作；不填停 Bot 正在做的 */
+  thread_id?: string
+}
+
+export interface ChatStopOutput {
+  /** false 表示本來就沒有在做事（預演時表示會不會停到東西） */
+  stopped: boolean
+  task_id?: string
+}
+
+/**
+ * 停止 Bot 正在做的事
+ *
+ * `xbot.chat.stop`：權限 operate、風險 safe
+ */
+export function chatStop(input: ChatStopInput, opts?: CallOptions): Promise<ChatStopOutput> {
+  return invoke('xbot.chat.stop', input, opts).then((r) => r.output)
+}
+
+// xbot.chat.wait_until_settled
+
+export interface ChatWaitUntilSettledInput {
+  /** xbot.chat.send 回的 task_id */
+  task_id: string
+  /** 最多等幾秒；預設 60 */
+  timeout_s?: number
+}
+
+export interface ChatWaitUntilSettledOutput {
+  task_id: string
+  bot_id: string
+  thread_id: string
+  /** 任務狀態：queued、running、waiting_input、waiting_approval、waiting_box、stopping、done */
+  state: string
+  /** done 時的結果：answer、cancelled、failed */
+  verdict?: string
+  /** true：完成了，或在等人；false：等到逾時，還在做 */
+  settled: boolean
+  /** Bot 在等人回覆（核准、補充問題） */
+  needs_person: boolean
+  /** needs_person 時 Bot 問的內容 */
+  request?: {
+    /** approval（核准）、clarify（補充問題）、secret（密碼、驗證碼）… */
+    kind: string
+    prompt: string
+    choices?: string[]
+  }
+  /** Bot 這次的回覆（目前為止） */
+  text: string
+  /** Bot 回覆那則訊息的 id */
+  message_id?: string
+  waited_s: number
+}
+
+/**
+ * 等 Bot 做完（或需要人）再回傳它的回覆
+ *
+ * 最多等 timeout_s 秒（上限 300）。settled=true 表示做完了，或在等人回覆（needs_person）；settled=false 表示逾時、還在做，可以再呼叫一次。
+ *
+ * `xbot.chat.wait_until_settled`：權限 read、風險 safe
+ */
+export function chatWaitUntilSettled(input: ChatWaitUntilSettledInput, opts?: CallOptions): Promise<ChatWaitUntilSettledOutput> {
+  return invoke('xbot.chat.wait_until_settled', input, opts).then((r) => r.output)
+}
+
+// xbot.inbox.list
+
+export interface InboxListInput {
+  /** 預設 open（還沒處理的） */
+  status?: 'open' | 'resolved' | 'dismissed' | 'all'
+  /** 只列這一種 */
+  kind?: string
+  bot_id?: string
+  /** 最多幾筆；預設 50 */
+  limit?: number
+}
+
+export interface InboxListOutput {
+  /** 新到舊 */
+  items: {
+    id: string
+    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget */
+    kind: string
+    bot_id?: string
+    /** 例：核准的 id */
+    ref?: string
+    title: string
+    body: string
+    payload: unknown
+    status: string
+    resolved_by?: string
+    resolved_at?: number
+    created_at: number
+  }[]
+}
+
+/**
+ * 列出「待我處理」
+ *
+ * `xbot.inbox.list`：權限 read、風險 safe
+ */
+export function inboxList(input: InboxListInput = {}, opts?: CallOptions): Promise<InboxListOutput> {
+  return invoke('xbot.inbox.list', input, opts).then((r) => r.output)
+}
+
+// xbot.models.get
+
+export type ModelsGetInput = Record<string, never>
+
+export interface ModelsGetOutput {
+  providers: {
+    id: string
+    base_url: string
+    /** 有沒有設定金鑰；金鑰本身永遠不會回傳 */
+    api_key_set: boolean
+  }[]
+  /** 沒設定預設模型時不出現 */
+  default?: {
+    provider: string
+    model: string
+    transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+  }
+  /** 預設模型和它的供應商都設好了，新 Bot 可以直接對話 */
+  ready: boolean
+}
+
+/**
+ * 看模型設定（供應商與預設模型，不含金鑰）
+ *
+ * `xbot.models.get`：權限 read、風險 safe
+ */
+export function modelsGet(input: ModelsGetInput = {}, opts?: CallOptions): Promise<ModelsGetOutput> {
+  return invoke('xbot.models.get', input, opts).then((r) => r.output)
+}
+
+// xbot.models.set_default
+
+export interface ModelsSetDefaultInput {
+  /** 已設定的供應商代號 */
+  provider: string
+  /** 模型名稱，例：gpt-4.1-mini */
+  model: string
+  /** 預設 chat_completions */
+  transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+}
+
+export interface ModelsSetDefaultOutput {
+  provider: string
+  model: string
+  transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+}
+
+/**
+ * 設定預設模型
+ *
+ * 沒有指定模型的 Bot 用這個模型。改了之後，新的對話串就會用新的模型。
+ *
+ * `xbot.models.set_default`：權限 admin、風險 safe
+ */
+export function modelsSetDefault(input: ModelsSetDefaultInput, opts?: CallOptions): Promise<ModelsSetDefaultOutput> {
+  return invoke('xbot.models.set_default', input, opts).then((r) => r.output)
+}
+
+// xbot.models.set_provider
+
+export interface ModelsSetProviderInput {
+  /** 供應商代號（小寫英文、數字、-），例：openai；Bot 的電腦經 /model/<代號>/v1 使用 */
+  id: string
+  /** OpenAI 相容的服務網址，例：https://api.openai.com/v1 */
+  base_url: string
+  /** 金鑰（只能寫、不能讀）；不填時保留原本的金鑰（密鑰：只能寫、不能讀） */
+  api_key?: string
+  /** 順便把這個模型設成預設模型 */
+  default_model?: string
+  /** 設預設模型時的呼叫方式；預設 chat_completions */
+  transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+}
+
+export interface ModelsSetProviderOutput {
+  provider: {
+    id: string
+    base_url: string
+    /** 有沒有設定金鑰；金鑰本身永遠不會回傳 */
+    api_key_set: boolean
+  }
+  default?: {
+    provider: string
+    model: string
+    transport?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+  }
+}
+
+/**
+ * 設定一個模型供應商（網址與金鑰）
+ *
+ * 金鑰加密存在服務端的 Model Proxy，不會進 Bot 的電腦，也不會再回傳（MCP-11）。可以同時用 default_model 設定預設模型。只有你本人能設定。在指令列建議用 --json - 從標準輸入給金鑰，避免留在指令紀錄裡。
+ *
+ * `xbot.models.set_provider`：權限 admin、風險 safe
+ */
+export function modelsSetProvider(input: ModelsSetProviderInput, opts?: CallOptions): Promise<ModelsSetProviderOutput> {
+  return invoke('xbot.models.set_provider', input, opts).then((r) => r.output)
+}
+
 // xbot.settings.get
 
 export interface SettingsGetInput {
@@ -429,6 +1179,25 @@ export interface Ops {
   'xbot.agents.pair_start': { input: AgentsPairStartInput; output: AgentsPairStartOutput }
   'xbot.agents.revoke': { input: AgentsRevokeInput; output: AgentsRevokeOutput }
   'xbot.agents.update_scopes': { input: AgentsUpdateScopesInput; output: AgentsUpdateScopesOutput }
+  'xbot.approvals.decide': { input: ApprovalsDecideInput; output: ApprovalsDecideOutput }
+  'xbot.approvals.list': { input: ApprovalsListInput; output: ApprovalsListOutput }
+  'xbot.approvals.wait': { input: ApprovalsWaitInput; output: ApprovalsWaitOutput }
+  'xbot.audit.list': { input: AuditListInput; output: AuditListOutput }
+  'xbot.bots.archive': { input: BotsArchiveInput; output: BotsArchiveOutput }
+  'xbot.bots.create': { input: BotsCreateInput; output: BotsCreateOutput }
+  'xbot.bots.delete': { input: BotsDeleteInput; output: BotsDeleteOutput }
+  'xbot.bots.get': { input: BotsGetInput; output: BotsGetOutput }
+  'xbot.bots.list': { input: BotsListInput; output: BotsListOutput }
+  'xbot.bots.update': { input: BotsUpdateInput; output: BotsUpdateOutput }
+  'xbot.chat.list_threads': { input: ChatListThreadsInput; output: ChatListThreadsOutput }
+  'xbot.chat.read': { input: ChatReadInput; output: ChatReadOutput }
+  'xbot.chat.send': { input: ChatSendInput; output: ChatSendOutput }
+  'xbot.chat.stop': { input: ChatStopInput; output: ChatStopOutput }
+  'xbot.chat.wait_until_settled': { input: ChatWaitUntilSettledInput; output: ChatWaitUntilSettledOutput }
+  'xbot.inbox.list': { input: InboxListInput; output: InboxListOutput }
+  'xbot.models.get': { input: ModelsGetInput; output: ModelsGetOutput }
+  'xbot.models.set_default': { input: ModelsSetDefaultInput; output: ModelsSetDefaultOutput }
+  'xbot.models.set_provider': { input: ModelsSetProviderInput; output: ModelsSetProviderOutput }
   'xbot.settings.get': { input: SettingsGetInput; output: SettingsGetOutput }
   'xbot.system.ping': { input: SystemPingInput; output: SystemPingOutput }
 }
@@ -441,6 +1210,25 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.agents.pair_start': { path: '/api/v1/agents.pair_start', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.agents.revoke': { path: '/api/v1/agents.revoke', scope: 'admin', risk: 'confirm', mutates: true },
   'xbot.agents.update_scopes': { path: '/api/v1/agents.update_scopes', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.approvals.decide': { path: '/api/v1/approvals.decide', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.approvals.list': { path: '/api/v1/approvals.list', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.approvals.wait': { path: '/api/v1/approvals.wait', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.audit.list': { path: '/api/v1/audit.list', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.bots.archive': { path: '/api/v1/bots.archive', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.bots.create': { path: '/api/v1/bots.create', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.bots.delete': { path: '/api/v1/bots.delete', scope: 'manage', risk: 'confirm', mutates: true },
+  'xbot.bots.get': { path: '/api/v1/bots.get', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.bots.list': { path: '/api/v1/bots.list', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.bots.update': { path: '/api/v1/bots.update', scope: 'manage', risk: 'safe', mutates: true },
+  'xbot.chat.list_threads': { path: '/api/v1/chat.list_threads', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.chat.read': { path: '/api/v1/chat.read', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.chat.send': { path: '/api/v1/chat.send', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.chat.stop': { path: '/api/v1/chat.stop', scope: 'operate', risk: 'safe', mutates: true },
+  'xbot.chat.wait_until_settled': { path: '/api/v1/chat.wait_until_settled', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.inbox.list': { path: '/api/v1/inbox.list', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.models.get': { path: '/api/v1/models.get', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.models.set_default': { path: '/api/v1/models.set_default', scope: 'admin', risk: 'safe', mutates: true },
+  'xbot.models.set_provider': { path: '/api/v1/models.set_provider', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.settings.get': { path: '/api/v1/settings.get', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.system.ping': { path: '/api/v1/system.ping', scope: 'read', risk: 'safe', mutates: false },
 }

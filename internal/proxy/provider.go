@@ -58,12 +58,9 @@ func (p *Providers) Put(ctx context.Context, pr Provider) error {
 	if !ValidProviderID(pr.ID) {
 		return fmt.Errorf("供應商代號只能用小寫英文、數字和 -：%q", pr.ID)
 	}
-	u, err := url.Parse(strings.TrimSpace(pr.BaseURL))
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return errors.New("服務網址要以 http:// 或 https:// 開頭")
-	}
-	if u.User != nil || u.RawQuery != "" || u.Fragment != "" {
-		return errors.New("服務網址不能含帳號密碼或查詢參數，金鑰請另外填")
+	base, err := NormalizeBaseURL(pr.BaseURL)
+	if err != nil {
+		return err
 	}
 	sealed, err := p.keys.Seal([]byte(pr.APIKey), providerAAD(pr.ID))
 	if err != nil {
@@ -71,10 +68,22 @@ func (p *Providers) Put(ctx context.Context, pr Provider) error {
 	}
 	return p.store.PutProvider(ctx, ProviderRecord{
 		ID:        pr.ID,
-		BaseURL:   strings.TrimRight(u.String(), "/"),
+		BaseURL:   base,
 		SealedKey: sealed,
 		UpdatedAt: p.now(),
 	})
+}
+
+// NormalizeBaseURL 檢查供應商的服務網址（http／https、沒有帳密與查詢參數），回傳去掉結尾 / 的網址。
+func NormalizeBaseURL(raw string) (string, error) {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return "", errors.New("服務網址要以 http:// 或 https:// 開頭")
+	}
+	if u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+		return "", errors.New("服務網址不能含帳號密碼或查詢參數，金鑰請另外填")
+	}
+	return strings.TrimRight(u.String(), "/"), nil
 }
 
 // Get 讀出供應商並解開金鑰。沒有時回 ErrNotFound。

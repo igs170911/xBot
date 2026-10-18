@@ -26,7 +26,7 @@ import (
 var errSilent = errors.New("")
 
 // cliRegistry 是指令列用的登錄表（只用來產生旗標與說明）。
-func cliRegistry() *ops.Registry { return buildRegistry(nil, auth.NewPairing(nil), nil) }
+func cliRegistry() *ops.Registry { return buildRegistry(nil, auth.NewPairing(nil), nil, nil) }
 
 // serviceURL 是執行中服務的網址：XBOT_URL，否則依 XBOT_BIND／XBOT_PORT（預設 http://127.0.0.1:8780）。
 func serviceURL() (string, config.Config, error) {
