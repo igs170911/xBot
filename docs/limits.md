@@ -77,6 +77,9 @@
 | `ReviewDaysDefault`／`Max` | 7／30 | 天 | server/agenda.py:44 `RECENT_DAYS`、:205 | — | — |
 | `CalendarDenseInterval` | 180 | 分鐘 | server/agenda.py:42 `DENSE_INTERVAL` | RT-5 | — |
 | `CalendarWeekItems` | 120 | 項 | server/agenda.py:43 `WEEK_ITEMS` | RT-5 | — |
+| `AgendaZone` | Asia/Taipei | 時區 | server/agenda.py:45 `ZONE` | TM-5 | — |
+| `AgendaSubjectMax` | 120 | 字元 | server/agenda.py:90 `plain(subject, 120)` | — | — |
+| `AgendaTick` | 30 | 秒 | server/scheduling.py:293 `loop`（每 2 秒） | — | **有**：XBot 改成 30 秒（到期時間以分鐘計）（X03） |
 
 ## 6. 執行中的工作：看門狗、重試、自動續做（`collab.go`、`inbox.go`）
 

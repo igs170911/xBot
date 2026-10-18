@@ -67,13 +67,14 @@ test('版型截圖：側欄＋待我處理', async ({ page }, info) => {
 
   const small: string[] = []
   for (const el of await drawer.locator('a, button, input').all()) {
+    // 分區標題（收合鈕，含團隊名稱）用 touch-target 撐大可點範圍，量不到 ::before，所以排除
+    if (await el.getAttribute('data-section-toggle')) continue
     const b = await el.boundingBox()
     if (b && (b.height < 44 || (b.width < 44 && (await el.getAttribute('aria-label'))))) {
       small.push(`${(await el.getAttribute('aria-label')) ?? (await el.innerText()).slice(0, 12)} ${b.width}×${b.height}`)
     }
   }
-  // 群組標題（收合鈕）用 touch-target 撐大可點範圍，量不到 ::before，所以排除
-  expect(small.filter((s) => !/^(Bot|群組對話) /.test(s))).toEqual([])
+  expect(small).toEqual([])
 
   await page.keyboard.press('Escape')
   await expect(drawer).toBeHidden()

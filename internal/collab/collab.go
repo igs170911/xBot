@@ -137,6 +137,7 @@ type Mate struct {
 	About     string `json:"about,omitempty"`
 	Chief     bool   `json:"chief,omitempty"`
 	ReportsTo string `json:"reports_to"`
+	Team      string `json:"team,omitempty"`
 }
 
 // Directory 列出 Bot 可以聯絡的隊友（不含自己、不含封存的；LazyBoy directory）。
@@ -148,6 +149,12 @@ func (s *Service) Directory(ctx context.Context, exclude string) ([]Mate, error)
 	names := map[string]string{}
 	for _, b := range bots {
 		names[b.ID] = b.Name
+	}
+	teams := map[string]string{}
+	if ts, err := s.db.ListTeams(ctx); err == nil {
+		for _, t := range ts {
+			teams[t.ID] = t.Name
+		}
 	}
 	out := []Mate{}
 	for _, b := range bots {
@@ -162,7 +169,8 @@ func (s *Service) Directory(ctx context.Context, exclude string) ([]Mate, error)
 		if reports == "" {
 			reports = "使用者"
 		}
-		out = append(out, Mate{ID: b.ID, Name: b.Name, Title: b.Title, About: plain(about, limits.RosterAboutMax), Chief: b.IsChief, ReportsTo: reports})
+		out = append(out, Mate{ID: b.ID, Name: b.Name, Title: b.Title, About: plain(about, limits.RosterAboutMax), Chief: b.IsChief, ReportsTo: reports,
+			Team: teams[b.TeamID]})
 	}
 	return out, nil
 }
@@ -186,8 +194,15 @@ func (s *Service) RosterText(ctx context.Context, botID string) (string, error) 
 				chief = m.Name
 			}
 		}
+		var place []string
+		if m.Team != "" {
+			place = append(place, m.Team)
+		}
 		if m.ReportsTo != "使用者" {
-			line += "［向 " + m.ReportsTo + " 報告］"
+			place = append(place, "向 "+m.ReportsTo+" 報告")
+		}
+		if len(place) > 0 {
+			line += "［" + strings.Join(place, "，") + "］"
 		}
 		if m.About != "" {
 			line += "：" + m.About

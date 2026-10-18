@@ -14,6 +14,11 @@ import { ChatPage } from './chat/ChatPage'
 import { registerActivityCard, registerPeerCard } from './chat/peer'
 import { NewRoomDialog } from './rooms/NewRoomDialog'
 import { RoomPage } from './rooms/RoomPage'
+import { NewTeamDialog } from './teams/NewTeamDialog'
+import { TeamMapPage } from './teams/TeamMapPage'
+import { OrgPage } from './teams/OrgPage'
+import { AgendaPage } from './agenda/AgendaPage'
+import { startTeams } from './data/teams'
 import { roomsStore, startRooms } from './data/rooms'
 import { startChat } from './chat/chatStore'
 import { botsStore, startBots } from './data/bots'
@@ -25,7 +30,8 @@ import { Icon } from './ui/Icon'
 
 const TITLES: Record<string, string> = {
   '/office': '辦公室',
-  '/calendar': '定時任務與行事曆',
+  '/agenda': '等你的事',
+  '/teams': '團隊地圖',
   '/apps': '連接應用程式',
   '/org': '組織架構',
   '/settings': '設定',
@@ -75,6 +81,7 @@ function Main() {
     startInbox()
     startChat()
     startRooms()
+    startTeams()
   }, [])
   const rooms = useStore(roomsStore).rooms
 
@@ -89,6 +96,9 @@ function Main() {
   else if (bot) page = <ChatPage key={bot[1]} botId={bot[1]} threadParam={bot[2]} />
   else if (ROUTINES_PATH.test(path)) page = <RoutinesPage path={path} />
   else if (room) page = <RoomPage key={room[1]} roomId={room[1]} />
+  else if (path === '/teams') page = <TeamMapPage />
+  else if (path === '/org') page = <OrgPage />
+  else if (path === '/agenda') page = <AgendaPage />
   else if (path === '/settings' || path.startsWith('/settings/'))
     page = <SettingsPage path={path === '/settings/agents' ? '/settings/advanced/agents' : path} />
   else page = <Placeholder title={title} />
@@ -99,6 +109,7 @@ function Main() {
       <NewBotDialog />
       <NewRoutineDialog />
       <NewRoomDialog />
+      <NewTeamDialog />
     </AppShell>
   )
 }

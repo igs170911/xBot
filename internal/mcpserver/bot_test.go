@@ -152,7 +152,8 @@ func call(t *testing.T, cs *mcp.ClientSession, name string, args map[string]any,
 	return nil
 }
 
-var botToolNames = []string{"xbot.approvals.list", "xbot.approvals.request", "xbot.approvals.wait", "xbot.cards.post", "xbot.team.roster"}
+var botToolNames = []string{"xbot.approvals.list", "xbot.approvals.request", "xbot.approvals.wait", "xbot.bots.create", "xbot.bots.update_my_profile",
+	"xbot.cards.post", "xbot.team.roster"}
 
 func TestBotToolsList(t *testing.T) {
 	e := newBotEnv(t)
