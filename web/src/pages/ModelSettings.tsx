@@ -109,24 +109,3 @@ export function ModelSettingsDialog({ open, onClose, onSaved }: { open: boolean;
     </Dialog>
   )
 }
-
-/** /settings：目前只有模型。 */
-export function SettingsPage() {
-  const [saved, setSaved] = useState(false)
-  return (
-    <main className="flex flex-1 justify-center px-8 py-6 max-sm:px-4">
-      <div className="flex w-full max-w-[560px] flex-col gap-4">
-        <h1 className="m-0 text-page">設定</h1>
-        <section className="flex flex-col gap-3 rounded-card bg-panel px-[22px] py-5">
-          <h2 className="m-0 text-[16px]">模型</h2>
-          <ModelSettingsForm onSaved={() => setSaved(true)} />
-          {saved && (
-            <p role="status" className="m-0 text-meta text-success">
-              已儲存
-            </p>
-          )}
-        </section>
-      </div>
-    </main>
-  )
-}
