@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -14,18 +15,34 @@ import (
 
 	"xbot/internal/config"
 	"xbot/internal/engine"
+	"xbot/internal/engine/hermes/hermestest"
 	"xbot/internal/events"
 	"xbot/internal/proxy"
 	"xbot/internal/runtime"
 	"xbot/internal/store"
 )
 
-// cmdDev 是開發用的暫時指令（C05 的 chat.send 等操作做好後移除）。
+// cmdDev 是開發用指令：dev chat（不經服務直接對 Bot 說話）與 dev fake-model（假模型）。
 func cmdDev(args []string) error {
+	if len(args) > 0 && args[0] == "fake-model" {
+		return devFakeModel(args[1:])
+	}
 	if len(args) == 0 || args[0] != "chat" {
-		return errors.New("用法：xbot dev chat --bot <名稱> [選項] \"訊息\"（xbot dev chat -h 看選項）")
+		return errors.New("用法：xbot dev chat --bot <名稱> [選項] \"訊息\"｜xbot dev fake-model [--addr]")
 	}
 	return devChat(args[1:])
+}
+
+// devFakeModel 開一個每次都回「OK」的假模型（OpenAI 相容，含串流），用來在沒有真金鑰時試整條路。
+func devFakeModel(args []string) error {
+	fs := flag.NewFlagSet("dev fake-model", flag.ContinueOnError)
+	addr := fs.String("addr", "127.0.0.1:8798", "監聽位址")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	fmt.Printf("假模型：http://%s/v1（模型名稱 fake-model，永遠回 OK）\n", *addr)
+	srv := &http.Server{Addr: *addr, Handler: &hermestest.FakeModel{}, ReadHeaderTimeout: 10 * time.Second}
+	return srv.ListenAndServe()
 }
 
 // devChat 在這個程序裡開起整套元件（不需要 xbot serve），對一個 Bot 說一句話並印出串流回覆。
