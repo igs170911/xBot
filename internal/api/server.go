@@ -11,6 +11,7 @@
 //	POST /api/v1/agents.pair     代理用配對碼換權杖（C04，不需要登入）
 //	/mcp                         MCP Streamable HTTP（C04）
 //	POST /hooks/<id>             定時任務的網址觸發（C32，不需要登入，帶金鑰）
+//	GET  /api/v1/apps/oauth/callback  連接應用程式的 OAuth 回呼（C34，不需要登入，一次性 state）
 //	POST /api/v1/files.upload    檔案上傳（multipart，C33）；GET /api/v1/files.download 檔案下載（Streams）
 package api
 
@@ -43,6 +44,9 @@ type Options struct {
 	AgentPair http.Handler
 	// Hooks 掛在 /hooks/（定時任務的網址觸發，C32）：不需要登入，網址 id＋金鑰就是憑證。nil 表示不提供。
 	Hooks http.Handler
+	// AppsCallback 掛在 GET /api/v1/apps/oauth/callback（連接應用程式的 OAuth 回呼，C34）：不需要登入，
+	// 一次性的 state 就是憑證。nil 表示不提供。
+	AppsCallback http.Handler
 	// Registry 是操作登錄表；nil 表示不提供 /api/v1 的操作路由。要在呼叫 New 之前登錄好所有操作。
 	Registry *ops.Registry
 	// Bus 是事件匯流排（SSE 用）；Registry 不是 nil 時必填。
@@ -125,6 +129,9 @@ func New(o Options) http.Handler {
 	}
 	if o.Hooks != nil {
 		mux.Handle("/hooks/", o.Hooks)
+	}
+	if o.AppsCallback != nil {
+		mux.Handle("GET "+Prefix+"apps/oauth/callback", o.AppsCallback)
 	}
 	mux.Handle("/", spa(o.Web))
 	return mux

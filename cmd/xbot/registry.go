@@ -39,6 +39,7 @@ func coreDeps(st *stack) catalog.Deps {
 		Hosts:     st.hosts,
 		Collab:    st.collab,
 		Computers: st.computers,
+		Apps:      st.apps,
 		Org:       st.org,
 		Screen:    st.screen,
 		Skills:    st.skills,

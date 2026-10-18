@@ -89,7 +89,9 @@ func cmdServe(args []string) error {
 		MCP:        mcpHandler,
 		AgentPair:  pairing.Handler(),
 		Hooks:      st.routines.HookHandler(),
-		VNC:        st.screen.ServeVNC,
+		// 連接應用程式的 OAuth 回呼（C34）。
+		AppsCallback: st.apps.CallbackHandler(),
+		VNC:          st.screen.ServeVNC,
 		Streams: map[string]api.StreamHandler{
 			"POST " + api.Route("xbot.files.upload"): st.files.UploadHandler(reg),
 			"GET /api/v1/files.download":             st.files.DownloadHandler(reg),

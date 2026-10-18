@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 
+	"xbot/internal/apps"
 	"xbot/internal/botops"
 	"xbot/internal/bots"
 	"xbot/internal/chat"
@@ -57,6 +58,8 @@ type Deps struct {
 	Judge *judge.Service
 	// Computers 是 Bot 電腦的生命週期（B13）；nil 時只登錄定義。
 	Computers *computers.Service
+	// Apps 是連接應用程式與登入（C34）；nil 時只登錄定義。
+	Apps *apps.Service
 	// Screen 是看畫面與接手（B14）；nil 時只登錄定義。
 	Screen *screen.Service
 }
@@ -115,6 +118,7 @@ func Register(reg *ops.Registry, d Deps) {
 	files.Register(reg, d.Files)
 	judge.Register(reg, d.Judge)
 	computers.Register(reg, d.Computers)
+	apps.Register(reg, d.Apps)
 	screen.Register(reg, d.Screen)
 }
 

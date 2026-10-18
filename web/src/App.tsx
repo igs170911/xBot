@@ -23,6 +23,9 @@ import { NewTeamDialog } from './teams/NewTeamDialog'
 import { TeamMapPage } from './teams/TeamMapPage'
 import { OrgPage } from './teams/OrgPage'
 import { AgendaPage } from './agenda/AgendaPage'
+import { APPS_PATH, AppsPage } from './apps/AppsPage'
+import { McpPage } from './apps/McpPage'
+import { LoginsPage } from './apps/LoginsPage'
 import { startTeams } from './data/teams'
 import { roomsStore, startRooms } from './data/rooms'
 import { startChat } from './chat/chatStore'
@@ -38,6 +41,8 @@ const TITLES: Record<string, string> = {
   '/agenda': '等你的事',
   '/teams': '團隊地圖',
   '/apps': '連接應用程式',
+  '/apps/mcp': '自訂連接（MCP）',
+  '/apps/logins': '網站登入',
   '/org': '組織架構',
   '/files': '全部檔案',
   '/settings': '設定',
@@ -112,6 +117,8 @@ function Main() {
   else if (path === '/teams') page = <TeamMapPage />
   else if (path === '/org') page = <OrgPage />
   else if (path === '/agenda') page = <AgendaPage />
+  else if (APPS_PATH.test(path))
+    page = path.startsWith('/apps/mcp') ? <McpPage /> : path.startsWith('/apps/logins') ? <LoginsPage /> : <AppsPage />
   else if (path === '/settings' || path.startsWith('/settings/'))
     page = <SettingsPage path={path === '/settings/agents' ? '/settings/advanced/agents' : path} />
   else page = <Placeholder title={title} />

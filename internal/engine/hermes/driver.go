@@ -438,6 +438,34 @@ func (d *Driver) Close(botID string) {
 	}
 }
 
+// ReloadMCP 請連線中的 Hermes 重新讀 config.yaml 的 MCP 伺服器（連接的應用程式改了，C34；同 LazyBoy apply 的 reload.mcp）。
+// 每個開著的 session 都重新載入；沒有連線時回 false（下次連線就會讀到新的設定）。
+func (d *Driver) ReloadMCP(ctx context.Context, botID string) (bool, error) {
+	d.mu.Lock()
+	bc := d.bots[botID]
+	d.mu.Unlock()
+	if bc == nil || bc.c == nil || !bc.c.alive() {
+		return false, nil
+	}
+	bc.mu.Lock()
+	ids := make([]string, 0, len(bc.sessions))
+	for id := range bc.sessions {
+		ids = append(ids, id)
+	}
+	bc.mu.Unlock()
+	if len(ids) == 0 {
+		_, err := bc.c.call(ctx, "reload.mcp", map[string]any{"confirm": true}, 30*time.Second)
+		return err == nil, err
+	}
+	var errs []error
+	for _, id := range ids {
+		if _, err := bc.c.call(ctx, "reload.mcp", map[string]any{"confirm": true, "session_id": id}, 30*time.Second); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return len(errs) < len(ids), errors.Join(errs...)
+}
+
 func (d *Driver) disconnected(bc *botConn) {
 	d.mu.Lock()
 	if d.bots[bc.botID] == bc {
