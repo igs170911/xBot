@@ -146,6 +146,8 @@ type spec struct {
 	Limits   Limits
 	// Net 是 nil 時接 Docker 預設的 bridge 網路（關掉網路防護時）。
 	Net *netAttach
+	// Proxy 是「從家裡出去」（CL-7）的 HTTP proxy；空白＝直接連外。
+	Proxy string
 }
 
 // createOptions 組出建立容器的完整參數。對應 LazyBoy server/computers.py start() 的 docker run，
@@ -209,6 +211,10 @@ func createOptions(sp spec) client.ContainerCreateOptions {
 				PidsLimit: &pids,
 			},
 		},
+	}
+	if sp.Proxy != "" {
+		o.Config.Env = append(o.Config.Env, proxyEnv(sp.Proxy)...)
+		o.Config.Labels[LabelProxy] = sp.Proxy
 	}
 	if n := sp.Net; n != nil {
 		o.HostConfig.NetworkMode = container.NetworkMode(n.Network)

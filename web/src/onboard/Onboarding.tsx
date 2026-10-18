@@ -15,6 +15,7 @@ import { navigate } from '../router'
 import { Avatar, Mascot } from '../ui/Avatar'
 import type { AvatarColor, EyeVariant } from '../ui/avatar-data'
 import { Button } from '../ui/Button'
+import { Checkbox } from '../ui/Controls'
 import { TextInput } from '../ui/Field'
 import { Icon } from '../ui/Icon'
 import { Select } from '../ui/Menu'
@@ -77,6 +78,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const [choice, setChoice] = useState<Choice | null>(null)
   const [status, setStatus] = useState<Status | null>(null)
   const [models, setModels] = useState<ModelsGetOutput | null>(null)
+  const [keyFirst, setKeyFirst] = useState(false)
 
   useEffect(() => {
     onboardStatus({})
@@ -109,6 +111,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
         <ConnectAI
           status={status}
           models={models}
+          openKey={keyFirst}
           onPick={(c) => {
             setChoice(c)
             setStep(2)
@@ -116,7 +119,17 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           onSkip={() => void skip()}
         />
       ) : (
-        <MeetBot choice={choice} status={status} onBack={() => setStep(1)} onDone={onDone} />
+        <MeetBot
+          choice={choice}
+          status={status}
+          models={models}
+          onBack={() => setStep(1)}
+          onAddKey={() => {
+            setKeyFirst(true)
+            setStep(1)
+          }}
+          onDone={onDone}
+        />
       )}
     </Frame>
   )
@@ -126,10 +139,10 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 
 type Row = { key: string; icon: typeof Cpu; title: string; sub: string; choice: Choice; setup?: () => Promise<void> }
 
-function ConnectAI({ status, models, onPick, onSkip }: { status: Status | null; models: ModelsGetOutput | null; onPick: (c: Choice) => void; onSkip: () => void }) {
+function ConnectAI({ status, models, openKey, onPick, onSkip }: { status: Status | null; models: ModelsGetOutput | null; openKey?: boolean; onPick: (c: Choice) => void; onSkip: () => void }) {
   const toast = useToast()
   const [busy, setBusy] = useState<string | null>(null)
-  const [keyOpen, setKeyOpen] = useState<boolean | null>(null)
+  const [keyOpen, setKeyOpen] = useState<boolean | null>(openKey ? true : null)
   const detecting = !status
 
   const rows = useMemo<Row[]>(() => {
@@ -323,7 +336,21 @@ function KeyForm({ hasDefault, onDone }: { hasDefault: boolean; onDone: (c: Choi
 
 // ── 步驟 2：認識小秘（A04）＋電腦在背景準備 ───────────────
 
-function MeetBot({ choice, status, onBack, onDone }: { choice: Choice | null; status: Status | null; onBack: () => void; onDone: () => void }) {
+function MeetBot({
+  choice,
+  status,
+  models,
+  onBack,
+  onAddKey,
+  onDone,
+}: {
+  choice: Choice | null
+  status: Status | null
+  models: ModelsGetOutput | null
+  onBack: () => void
+  onAddKey: () => void
+  onDone: () => void
+}) {
   const toast = useToast()
   const [name, setName] = useState(DEFAULT_NAME)
   const [color, setColor] = useState<AvatarColor>('blue')
@@ -332,6 +359,11 @@ function MeetBot({ choice, status, onBack, onDone }: { choice: Choice | null; st
   const [busy, setBusy] = useState(false)
   const shown = name.trim() || DEFAULT_NAME
   const engine = choice?.kind === 'engine' ? choice : null
+  // EN-2b：訂閱憑證要逐 Bot 明確同意，預設不勾；不同意就改用已設定的模型（Hermes）。
+  const [agree, setAgree] = useState(false)
+  const useSub = !!engine && agree
+  const hasModel = !!models?.ready
+  const blocked = !!engine && !agree && !hasModel
 
   const start = async () => {
     setBusy(true)
@@ -344,11 +376,11 @@ function MeetBot({ choice, status, onBack, onDone }: { choice: Choice | null; st
         shape: 'cursor',
         color,
         eyes,
-        engine: engine?.engine,
+        engine: useSub ? engine.engine : undefined,
       })
       upsertBot(bot)
-      if (engine) {
-        // 按「開始」時畫面上寫明了會用你的訂閱（EN-2b 逐 Bot 同意）
+      if (useSub) {
+        // 你勾了同意（EN-2b 逐 Bot 同意）才把訂閱連給這個 Bot
         await enginesLinkCredentials({ bot_id: bot.id, engine: engine.engine }).catch((e: unknown) =>
           toast.show({ kind: 'error', text: `${shown}還不能用你的 ${engine.plan} 訂閱：${errText(e)}` }),
         )
@@ -402,13 +434,31 @@ function MeetBot({ choice, status, onBack, onDone }: { choice: Choice | null; st
       </div>
       <ComputerLine status={status} name={shown} />
       {engine && (
-        <p className="m-0 flex items-start gap-2 text-meta text-ink-2">
-          <Icon icon={KeyRound} size={14} className="mt-0.5 flex-none" />
-          按「開始」也代表同意讓{shown}用你在這台電腦登入的 {engine.plan} 訂閱（唯讀放進它自己的電腦，隨時可以收回）。
-        </p>
+        <div data-testid="consent" className="flex flex-col gap-2 rounded-group border border-line px-3.5 py-3 text-[13px] text-ink-2">
+          <span className="flex items-start gap-2">
+            <Icon icon={KeyRound} size={14} className="mt-0.5 flex-none" />
+            <span>
+              同意後，會把這台電腦上 {engine.label} 的登入憑證<strong className="font-normal text-ink">唯讀</strong>放進<strong className="font-normal text-ink">{shown}的電腦</strong>，只有這個 Bot 拿得到；它的工作會用掉你的 {engine.plan} 方案額度，電腦裡的程式也讀得到這份憑證。隨時可以在設定收回。
+            </span>
+          </span>
+          <Checkbox checked={agree} onChange={setAgree}>
+            我同意讓{shown}使用我的 {engine.plan} 訂閱
+          </Checkbox>
+          {!agree &&
+            (hasModel ? (
+              <span className="text-ink-3">不同意也可以：{shown}先用你設定好的模型{models?.default ? `（${models.default.model}）` : ''}。</span>
+            ) : (
+              <span className="flex flex-wrap items-center gap-2 text-warning-ink">
+                還沒有其他可用的模型：勾選同意，或改貼 API 金鑰。
+                <Button size="sm" icon={KeyRound} onClick={onAddKey}>
+                  改用 API 金鑰
+                </Button>
+              </span>
+            ))}
+        </div>
       )}
       {choice?.kind === 'model' && <p className="m-0 text-meta text-ink-3">{shown}會用 {choice.label}。</p>}
-      <Button variant="primary" loading={busy} onClick={() => void start()} className="h-12 w-full text-[16px] max-sm:h-12">
+      <Button variant="primary" loading={busy} disabled={blocked} onClick={() => void start()} className="h-12 w-full text-[16px] max-sm:h-12">
         開始
         <Icon icon={ArrowRight} size={18} />
       </Button>

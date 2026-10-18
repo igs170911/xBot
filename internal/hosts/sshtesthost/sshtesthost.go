@@ -235,8 +235,17 @@ const FreshLabel = "xbot.test=freshhost"
 
 // StartFresh 開一台「剛租來的主機」（B12）：Debian 13＋sshd（發行版預設設定）＋Docker 26，沒有 xbot 帳號。
 // 測試要自己以 root 跑安裝腳本（Shell）。Addr 是 sshd 的位址；Signer 是 nil（用 XBot 自己的金鑰）。
-func StartFresh(ctx context.Context, t testing.TB) *Host {
+func StartFresh(ctx context.Context, t testing.TB) *Host { return StartFreshAs(ctx, t, "") }
+
+// StartFreshAs 同 StartFresh，但用自己的標籤與快取 volume（name 不是空白時：xbot.test=freshhost-<name>、
+// xbot-test-freshhost-<name>-docker）。不同套件的 Docker 測試（go test 會同時跑）各用各的，不會互相清掉對方的主機，
+// 兩個 dockerd 也不會同時用同一個快取。
+func StartFreshAs(ctx context.Context, t testing.TB, name string) *Host {
 	t.Helper()
+	label, cache := FreshLabel, FreshCacheVolume
+	if name != "" {
+		label, cache = FreshLabel+"-"+name, "xbot-test-freshhost-"+name+"-docker"
+	}
 	tag, err := tagOf("fresh", "xbot-test-freshhost")
 	if err != nil {
 		t.Fatal(err)
@@ -244,21 +253,21 @@ func StartFresh(ctx context.Context, t testing.TB) *Host {
 	if err := buildFrom(ctx, tag, "fresh"); err != nil {
 		t.Fatalf("建測試主機映像：%v", err)
 	}
-	if ids, _ := docker(ctx, "ps", "-aq", "--filter", "label="+FreshLabel); ids != "" {
+	if ids, _ := docker(ctx, "ps", "-aq", "--filter", "label="+label); ids != "" {
 		_, _ = docker(ctx, append([]string{"rm", "-f"}, strings.Fields(ids)...)...)
 	}
-	if ids, _ := docker(ctx, "network", "ls", "-q", "--filter", "label="+FreshLabel); ids != "" {
+	if ids, _ := docker(ctx, "network", "ls", "-q", "--filter", "label="+label); ids != "" {
 		_, _ = docker(ctx, append([]string{"network", "rm"}, strings.Fields(ids)...)...)
 	}
 	suffix := make([]byte, 4)
 	_, _ = rand.Read(suffix)
 	h := &Host{Container: "xbot-freshhost-" + hex.EncodeToString(suffix), Network: "xbot-freshhost-net-" + hex.EncodeToString(suffix)}
-	if _, err := docker(ctx, "network", "create", "--label", FreshLabel, h.Network); err != nil {
+	if _, err := docker(ctx, "network", "create", "--label", label, h.Network); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { h.cleanup() })
 	if _, err := docker(ctx, "run", "-d", "--privileged", "--name", h.Container, "--hostname", "cloud-test", "--network", h.Network,
-		"--label", FreshLabel, "-v", FreshCacheVolume+":/var/lib/docker", tag); err != nil {
+		"--label", label, "-v", cache+":/var/lib/docker", tag); err != nil {
 		t.Fatal(err)
 	}
 	ip, err := docker(ctx, "inspect", "-f", `{{(index .NetworkSettings.Networks "`+h.Network+`").IPAddress}}`, h.Container)

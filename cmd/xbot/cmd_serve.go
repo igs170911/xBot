@@ -85,6 +85,7 @@ func cmdServe(args []string) error {
 	if publicURL != "" {
 		slog.Info("反向代理模式：從反向代理進來的請求只開放 /mcp、/api/v1/agents.pair、/hooks/*", "public_url", publicURL)
 	}
+	st.computers.TailscaleKey = st.network.AuthKey // 「從家裡出去」沒有自己的金鑰時借用內建 Tailscale 的
 	// 手機掃 QR 登入（W31、§17）：QR 的網址優先用內建 Tailscale 的 tailnet 網址（反向代理／Funnel 的對外網址只開放 MCP 入口，不能用）；
 	// 沒有時用你打開網頁的網址。Web Push：新的待我處理卡推到手機。
 	devices := auth.NewDevicePairing(st.db, "")

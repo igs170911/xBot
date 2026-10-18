@@ -422,3 +422,7 @@ func (h *fakeHost) Close() error            { return nil }
 func (h *fakeHost) PrepareIPC(id string) (string, error) {
 	return filepath.Join(h.dir, "bots", id, "ipc"), nil
 }
+
+func (f *fakeDocker) ImagePull(context.Context, string, client.ImagePullOptions) (client.ImagePullResponse, error) {
+	return nil, cerrdefs.ErrUnavailable.WithMessage("fake: no registry")
+}

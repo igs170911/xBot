@@ -6,11 +6,12 @@ import { Button, IconButton } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
 import { controlOf, useTakeover } from './hooks'
+import { WhereSection } from './MoveParts'
 import { BOX_SPEC, computerPanelStore, IDLE_SLEEP_MIN, useScreen } from './screenData'
 import { Stage } from './Stage'
 import type { VncHandle } from './vnc'
 
-/** 對話旁的電腦面板（design/E01）：即時畫面、接手／交還、電腦資訊。 */
+/** 對話旁的電腦面板（design/E01）：即時畫面、接手／交還、在哪裡跑（搬家、從家裡出去）、電腦資訊。 */
 export function ComputerPanel({ bot, className }: { bot: Bot; className?: string }) {
   const { screen, error, setScreen } = useScreen(bot.id)
   const vnc = useRef<VncHandle>(null)
@@ -80,6 +81,7 @@ export function ComputerPanel({ bot, className }: { bot: Bot; className?: string
                 </Button>
               </div>
             )}
+            <WhereSection botId={bot.id} botName={bot.name} hostId={screen.host_id} />
             <section className="flex flex-col gap-2.5 rounded-group bg-panel px-4 py-3.5">
               <h3 className="m-0 text-ui">電腦資訊</h3>
               <InfoRow icon={Cpu} label={`${BOX_SPEC} 記憶體`} aside={screen.box === 'running' ? '開機中' : screen.box === 'sleeping' ? '休眠中' : undefined} />

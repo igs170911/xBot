@@ -69,7 +69,14 @@ it('首次設定：偵測到已登入的 Claude Code 與本機模型，用這個
   fireEvent.click(within(meet).getByRole('button', { name: '換個樣子' }))
   fireEvent.click(within(meet).getByRole('radio', { name: '紫' }))
   fireEvent.click(within(meet).getByRole('radio', { name: '睜大' }))
-  expect(meet).toHaveTextContent('同意讓阿秘用你在這台電腦登入的 Claude 訂閱')
+  // EN-2b：訂閱要明確同意，預設不勾；沒有其他模型時不能開始，可以改貼金鑰
+  const consent = within(meet).getByTestId('consent')
+  expect(consent).toHaveTextContent('唯讀')
+  const box = within(consent).getByRole('checkbox', { name: '我同意讓阿秘使用我的 Claude 訂閱' })
+  expect(box).not.toBeChecked()
+  expect(within(meet).getByRole('button', { name: '開始' })).toBeDisabled()
+  expect(within(consent).getByRole('button', { name: '改用 API 金鑰' })).toBeInTheDocument()
+  fireEvent.click(box)
   fireEvent.click(within(meet).getByRole('button', { name: '開始' }))
 
   await waitFor(() => expect(window.location.pathname).toBe('/bots/x1'))
@@ -77,6 +84,26 @@ it('首次設定：偵測到已登入的 Claude Code 與本機模型，用這個
   expect(created).toMatchObject({ name: '阿秘', shape: 'cursor', color: 'purple', eyes: 'wide', engine: 'claude-code' })
   expect(api.calls.find((c) => c.path === 'engines.link_credentials')?.input).toEqual({ bot_id: 'x1', engine: 'claude-code' })
   expect(api.calls.find((c) => c.path === 'onboard.update')?.input).toEqual({ completed: true })
+})
+
+it('首次設定：選了 Claude Code 但不勾同意時，改用已設定的模型（Hermes），不連訂閱', async () => {
+  let bots: unknown[] = []
+  api.ops['bots.list'] = () => ({ bots })
+  api.ops['onboard.status'] = () => status()
+  api.ops['bots.create'] = (input) => {
+    bots = [{ ...BOT, ...input, engine: 'hermes' }]
+    return bots[0]
+  }
+  api.ops['onboard.update'] = () => ({ ...STATE, completed: true })
+  render(<App />)
+  const list = await screen.findByRole('list', { name: '找到的 AI' })
+  fireEvent.click(within(list).getByRole('button', { name: '用這個：Claude Code' }))
+  const meet = await screen.findByRole('region', { name: '認識小秘' })
+  expect(within(meet).getByTestId('consent')).toHaveTextContent('先用你設定好的模型（gpt-test）')
+  fireEvent.click(within(meet).getByRole('button', { name: '開始' }))
+  await waitFor(() => expect(window.location.pathname).toBe('/bots/x1'))
+  expect(api.calls.find((c) => c.path === 'bots.create')?.input.engine).toBeUndefined()
+  expect(api.calls.some((c) => c.path === 'engines.link_credentials')).toBe(false)
 })
 
 it('首次設定：沒偵測到時直接顯示金鑰欄位，貼上自動認出供應商', async () => {

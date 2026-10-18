@@ -64,6 +64,9 @@ test('首次設定 A03 → A04 → 首頁之後再做（A05）→ 導覽三站�
   await meet.getByRole('button', { name: '換個樣子' }).click()
   await meet.getByRole('radio', { name: '睜大' }).click()
   await page.screenshot({ path: shot(`${info.project.name}-w32-a04-looks`), fullPage: true })
+  // 訂閱要明確同意（EN-2b）：預設不勾，沒有其他模型時不能開始
+  await expect(meet.getByRole('button', { name: '開始' })).toBeDisabled()
+  await meet.getByText('我同意讓小秘使用我的 Claude 訂閱').click()
   await meet.getByRole('button', { name: '開始' }).click()
 
   await expect(page).toHaveURL(/\/bots\/bot\d+$/)

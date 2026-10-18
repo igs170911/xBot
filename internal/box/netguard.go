@@ -209,6 +209,10 @@ func NetAllowSetting(botID string) string { return "box.net_allow." + botID }
 type ruleBox struct {
 	IP    netip.Addr
 	Allow []Allow
+	// Egress 是這台電腦連外要經過的 Tailscale 小容器（「從家裡出去」，CL-7）在 xbot-box 網路上的 IP；無效值＝不用。
+	// hostRules 只標 wantEgress，IP 等 ensureNet 知道子網路後才填。
+	Egress     netip.Addr
+	wantEgress bool
 }
 
 // buildRules 產生 iptables-restore（--noflush）的內容：只動 XBot 自己的兩條鏈。
@@ -222,13 +226,21 @@ func buildRules(boxes []ruleBox) string {
 	w(":XBOT-IN - [0:0]")
 	w("-F XBOT-FWD")
 	w("-F XBOT-IN")
+	sorted := slices.Clone(boxes)
+	slices.SortFunc(sorted, func(a, b ruleBox) int { return a.IP.Compare(b.IP) })
+	// 從家裡出去（CL-7）：同一個 bridge 上只放行「這台電腦 → Tailscale 小容器的 proxy 埠」與它的回應，其餘電腦互連照樣擋。
+	for _, rb := range sorted {
+		if rb.Egress.IsValid() {
+			w("-A XBOT-FWD -s %s/32 %s -o %s -d %s/32 -p tcp -m tcp --dport %d -j ACCEPT", rb.IP, in, BridgeName, rb.Egress, limits.EgressProxyPort)
+			w("-A XBOT-FWD -s %s/32 %s -o %s -d %s/32 -p tcp -m tcp --sport %d -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT",
+				rb.Egress, in, BridgeName, rb.IP, limits.EgressProxyPort)
+		}
+	}
 	// 轉送（往其他網路）：先放行回應與 DNS，再放行白名單，最後擋電腦互連與私有網段；其餘（網際網路）交回 Docker 的規則。
 	w("-A XBOT-FWD %s -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN", in)
 	w("-A XBOT-FWD %s -o %s -j DROP", in, BridgeName)
 	w("-A XBOT-FWD %s -p udp -m udp --dport 53 -j RETURN", in)
 	w("-A XBOT-FWD %s -p tcp -m tcp --dport 53 -j RETURN", in)
-	sorted := slices.Clone(boxes)
-	slices.SortFunc(sorted, func(a, b ruleBox) int { return a.IP.Compare(b.IP) })
 	allow := func(chain string) {
 		for _, rb := range sorted {
 			for _, a := range rb.Allow {
@@ -305,8 +317,8 @@ func (e *NetError) Error() string {
 
 func (e *NetError) Unwrap() error { return e.Err }
 
-// ensureNet 確保這台主機有 xbot-box 網路、xbot-netguard 在跑，而且規則是最新的（rules 是要套用的內容）。
-func (m *Manager) ensureNet(ctx context.Context, h hosts.Host, rules string) (*hostNet, error) {
+// ensureNet 確保這台主機有 xbot-box 網路、xbot-netguard 在跑，而且規則是最新的（boxes 是 hostRules 的結果）。
+func (m *Manager) ensureNet(ctx context.Context, h hosts.Host, boxes []ruleBox) (*hostNet, error) {
 	hn := m.guard.host(h.ID())
 	hn.mu.Lock()
 	defer hn.mu.Unlock()
@@ -322,6 +334,12 @@ func (m *Manager) ensureNet(ctx context.Context, h hosts.Host, rules string) (*h
 	if err != nil {
 		return nil, &NetError{err}
 	}
+	for i := range boxes {
+		if boxes[i].wantEgress {
+			boxes[i].Egress = EgressAddr(hn.subnet)
+		}
+	}
+	rules := buildRules(boxes)
 	sum := sha256.Sum256([]byte(rules))
 	digest := hex.EncodeToString(sum[:])
 	if hn.applied == digest && hn.guardID == gid {
@@ -522,11 +540,11 @@ func applyRules(ctx context.Context, api hosts.DockerAPI, guardID, rules string)
 	return fmt.Errorf("套用網路防護規則失敗（主機要能用 iptables；rootless Docker 不支援）：%w", err)
 }
 
-// hostRules 依這台主機上有白名單的電腦產生規則。
-func (m *Manager) hostRules(ctx context.Context, hostID string) (string, error) {
+// hostRules 列出這台主機上有白名單或「從家裡出去」的電腦（ensureNet 依它產生規則）。
+func (m *Manager) hostRules(ctx context.Context, hostID string) ([]ruleBox, error) {
 	rows, err := m.db.ListBoxes(ctx, hostID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	var boxes []ruleBox
 	for _, r := range rows {
@@ -536,13 +554,17 @@ func (m *Manager) hostRules(ctx context.Context, hostID string) (string, error) 
 		}
 		allow, err := m.NetAllow(ctx, r.BotID)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		if len(allow) > 0 {
-			boxes = append(boxes, ruleBox{IP: ip, Allow: allow})
+		eg, err := m.EgressOn(ctx, r.BotID)
+		if err != nil {
+			return nil, err
+		}
+		if len(allow) > 0 || eg {
+			boxes = append(boxes, ruleBox{IP: ip, Allow: allow, wantEgress: eg})
 		}
 	}
-	return buildRules(boxes), nil
+	return boxes, nil
 }
 
 // NetAllow 讀一個 Bot 的私有網路白名單。
@@ -606,7 +628,7 @@ func (m *Manager) SetNetAllow(ctx context.Context, botID string, list []string) 
 // allocIP 挑 Bot 在 xbot-box 網路上的固定 IP：沿用原本的（還在子網路裡、沒被別人用），否則隨機挑一個沒人用的。
 // 呼叫時要拿著 guard.alloc。
 func (m *Manager) allocIP(ctx context.Context, h hosts.Host, hn *hostNet, b *store.Box) (netip.Addr, error) {
-	used := map[netip.Addr]bool{hn.subnet.Addr(): true, hn.gateway: true}
+	used := map[netip.Addr]bool{hn.subnet.Addr(): true, hn.gateway: true, EgressAddr(hn.subnet): true}
 	rows, err := m.db.ListBoxes(ctx, h.ID())
 	if err != nil {
 		return netip.Addr{}, err
