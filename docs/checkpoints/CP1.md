@@ -24,6 +24,7 @@ scripts/test-cp1.sh   # 全自動：開服務 → 設模型 → 配對 → Claud
 | G0：網頁同步看到對話 | ✅ 截圖 `docs/checkpoints/cp1-web.png` |
 | 真金鑰不進 Bot 電腦 | ✅ Docker 測試檢查容器環境變數與 /hermes 所有檔案 |
 | `make check`、`make test-race`、`make e2e`（17 通過）、`make test-docker`、`make e2e-docker` | ✅ |
+| **真模型**（OpenCode Go `deepseek-v4-flash`，2026-10-18）：同一套流程 | ✅ Bot 用真模型回答「OK」並自我介紹；截圖 `docs/checkpoints/cp1-web-real.png`；只跑一次 |
 | 含點的 MCP 工具名稱（`xbot.bots.create`）在 Claude Code 可用 | ✅（C04 的待確認事項已解決） |
 
 ## 3. M0 完成的卡
@@ -52,3 +53,8 @@ C00、C06、C01、B01、E01、W01、C02、B02、E02、C03、C04、C05、W02（�
 
 進行中：B11（遠端主機 SSH 轉發原型，用本機容器模擬遠端主機）、E11（Model Proxy 完整版）、C12（待我處理與核准）、W11（對話完整版）。
 接著：B12 主機管理（`make host-add`／`deploy`）、B13、B14、E12（Claude Code 當引擎）、E13、C11、W12 → CP2～CP4。
+
+
+## 7. 真模型驗收（2026-10-18 補做）
+
+使用者重新登入 OpenCode 後，E11 合併（自動帶 `x-opencode-session`）再跑一次 `scripts/test-cp1.sh`，用 OpenCode Go 最便宜的 `deepseek-v4-flash`：✅ 通過。注意 auth.json 裡要用 `opencode` 那把金鑰（`opencode-go` 那把無效）。
