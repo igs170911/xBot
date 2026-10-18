@@ -9,16 +9,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
 	"xbot/internal/api"
 	"xbot/internal/auth"
 	"xbot/internal/config"
-	"xbot/internal/hosts"
 	"xbot/internal/mcpserver"
-	"xbot/internal/store"
 	"xbot/internal/version"
 	"xbot/web"
 )
@@ -39,39 +36,31 @@ func cmdServe(args []string) error {
 	if err != nil {
 		return err
 	}
-	db, err := store.Open(context.Background(), filepath.Join(cfg.DataDir, store.FileName))
+	st, err := openStack(cfg)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		if err := db.Close(); err != nil {
-			slog.Error("關閉資料庫失敗", "err", err)
+		if err := st.Close(); err != nil {
+			slog.Error("關閉服務元件失敗", "err", err)
 		}
 	}()
-	// 本機一定是一台 Bot 電腦主機（host 表沒有就新增）；Docker 沒開時記成離線，服務照常啟動。
-	hostCtx, hostCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	local, err := hosts.EnsureLocal(hostCtx, db, cfg.DataDir)
-	hostCancel()
-	if err != nil {
-		return err
-	}
-	defer local.Close()
 
-	pairing := auth.NewPairing(db)
-	reg := buildRegistry(db, pairing)
+	pairing := auth.NewPairing(st.db)
+	reg := buildRegistry(st.db, pairing)
 	localOwner := os.Getenv("XBOT_MCP_LOCAL_OWNER") == "1"
 	if localOwner {
 		slog.Warn("XBOT_MCP_LOCAL_OWNER=1：這台機器上沒帶權杖的 MCP 連線都會被當成你本人")
 	}
 	mcpHandler := mcpserver.Handler(reg, mcpserver.HTTPOptions{
-		Auth:       &auth.Authenticator{DB: db, AccessToken: accessToken},
+		Auth:       &auth.Authenticator{DB: st.db, AccessToken: accessToken},
 		LocalOwner: localOwner,
 		Logger:     slog.Default(),
 	})
 
 	srv := &http.Server{
 		Addr:              cfg.Addr(),
-		Handler:           api.New(api.Options{Web: web.Dist(), MCP: mcpHandler, AgentPair: pairing.Handler()}),
+		Handler:           api.New(api.Options{Web: web.Dist(), ModelProxy: st.model, MCP: mcpHandler, AgentPair: pairing.Handler()}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

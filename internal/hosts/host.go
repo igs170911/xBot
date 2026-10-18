@@ -29,6 +29,9 @@ type DockerAPI interface {
 	VolumeCreate(ctx context.Context, options client.VolumeCreateOptions) (client.VolumeCreateResult, error)
 	VolumeInspect(ctx context.Context, id string, options client.VolumeInspectOptions) (client.VolumeInspectResult, error)
 	VolumeRemove(ctx context.Context, id string, options client.VolumeRemoveOptions) (client.VolumeRemoveResult, error)
+	// CopyToContainer、CopyFromContainer 用來在開機前把引擎設定寫進 Bot 的 volume（E02）。
+	CopyToContainer(ctx context.Context, id string, options client.CopyToContainerOptions) (client.CopyToContainerResult, error)
+	CopyFromContainer(ctx context.Context, id string, options client.CopyFromContainerOptions) (client.CopyFromContainerResult, error)
 }
 
 var _ DockerAPI = (*client.Client)(nil)

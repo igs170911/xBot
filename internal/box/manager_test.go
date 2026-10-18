@@ -337,3 +337,35 @@ func TestStatusReconciles(t *testing.T) {
 		t.Fatalf("同步刪除：%+v", s)
 	}
 }
+
+func TestPrepareRunsBeforeStart(t *testing.T) {
+	e := setup(t)
+	var calls []string
+	e.m.prepare = func(_ context.Context, h hosts.Host, botID, containerID string) error {
+		c := e.docker.find(containerID)
+		if c == nil || botID != e.bot || h.ID() != e.host.ID() {
+			t.Fatalf("Prepare 參數不對：%s %s", botID, containerID)
+		}
+		// 開機前呼叫：容器已建立但還沒執行（第一次），或已經在跑（之後）。
+		calls = append(calls, map[bool]string{true: "running", false: "stopped"}[c.State.Running])
+		return nil
+	}
+	ok[Status](t)(e.m.Start(ctx, e.bot))
+	ok[Status](t)(e.m.Start(ctx, e.bot))
+	if !slices.Equal(calls, []string{"stopped", "running"}) {
+		t.Fatalf("Prepare 呼叫：%v", calls)
+	}
+
+	// Prepare 失敗時不開機，錯誤記在 box 列上。
+	ok[Status](t)(e.m.Stop(ctx, e.bot))
+	e.m.prepare = func(context.Context, hosts.Host, string, string) error { return errors.New("寫不進去") }
+	if _, err := e.m.Start(ctx, e.bot); err == nil || !strings.Contains(err.Error(), "寫不進去") {
+		t.Fatalf("Prepare 失敗應該回報：%v", err)
+	}
+	if b, _ := e.db.GetBox(ctx, e.bot); !strings.Contains(b.Error, "寫不進去") {
+		t.Fatalf("錯誤應該記在 box 列：%+v", b)
+	}
+	if s := ok[Status](t)(e.m.Status(ctx, e.bot)); s.Running {
+		t.Fatal("Prepare 失敗時不應該開機")
+	}
+}

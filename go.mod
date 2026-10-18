@@ -3,10 +3,12 @@ module xbot
 go 1.27.2
 
 require (
+	github.com/coder/websocket v1.8.14
 	github.com/containerd/errdefs v1.0.0
 	github.com/moby/moby/api v1.56.1
 	github.com/moby/moby/client v0.6.2
 	github.com/modelcontextprotocol/go-sdk v1.8.0
+	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.60.1
 )
 
