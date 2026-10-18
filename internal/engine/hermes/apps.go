@@ -86,7 +86,9 @@ func applyApps(cfg map[string]any, apps []AppServer) []string {
 			continue
 		}
 		cmd, args := a.Launch()
-		entry := map[string]any{"command": cmd, "args": toAny(args)}
+		// 連接的應用程式一律 trust: untrusted：Hermes 會把會寫入的工具（發信、發文、改資料）送去核准，
+		// 走「待我處理」——對外發送一定先問你（G1 第 4 項、PRD §18「只有你能核准」）。唯讀工具照常使用。
+		entry := map[string]any{"command": cmd, "args": toAny(args), "trust": "untrusted"}
 		if len(a.Env) > 0 {
 			env := map[string]any{}
 			for k, v := range a.Env {

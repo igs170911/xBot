@@ -35,3 +35,13 @@ func TestApplyAppsReplacesOnlyManagedEntries(t *testing.T) {
 		t.Fatalf("記下管理的名字：%v", names)
 	}
 }
+
+// 連接的應用程式一律 untrusted：會寫入的工具要先核准（G1 第 4 項）。
+func TestAppServersAreUntrusted(t *testing.T) {
+	cfg := map[string]any{}
+	applyApps(cfg, []AppServer{{Name: "notes", Command: Python, Args: []string{XBotMCP}}})
+	entry := cfg["mcp_servers"].(map[string]any)["notes"].(map[string]any)
+	if entry["trust"] != "untrusted" {
+		t.Fatalf("應用程式應該是 untrusted：%v", entry)
+	}
+}
