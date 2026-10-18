@@ -11,7 +11,9 @@ import {
   resolveShape,
   resolveState,
   EYE,
+  EYE_VARIANTS,
   SHAPE_IDS,
+  type EyeVariant,
   type AvatarColor,
   type AvatarDot,
   type AvatarShape,
@@ -25,6 +27,8 @@ export type AvatarProps = {
   color?: AvatarColor | (string & {})
   /** 25 個狀態之一，決定眼睛（6 種）與自動小點。 */
   state?: AvatarState | (string & {})
+  /** 平常的眼睛（G03）：只在待命（state 沒給或 idle）時用，其他狀態照狀態換眼睛。 */
+  eyes?: EyeVariant | (string & {})
   /** 小點：auto 依狀態；只有 waiting（橘）與 error（紅）會畫出來。 */
   dot?: AvatarDot
   /** 像素大小，預設 40。 */
@@ -45,6 +49,7 @@ export function Avatar({
   shape,
   color,
   state,
+  eyes: restEyes,
   dot,
   size = 40,
   img,
@@ -59,7 +64,8 @@ export function Avatar({
   const bodyId = resolveShape(shape)
   const b = SHAPES[bodyId]
   const st = resolveState(state)
-  const eyes = eyePaths(EYE[st], b.g, small)
+  const variant: EyeVariant = st === 'idle' && restEyes && (EYE_VARIANTS as string[]).includes(restEyes) ? (restEyes as EyeVariant) : EYE[st]
+  const eyes = eyePaths(variant, b.g, small)
   const picture = img === 'sample' ? SAMPLE_IMAGE : img || ''
   const d = resolveDot(dot, state)
   const dotColor = DOT_COLORS[d]
@@ -82,7 +88,7 @@ export function Avatar({
       aria-label={label}
       aria-hidden={label ? undefined : true}
       data-shape={bodyId}
-      data-eyes={EYE[st]}
+      data-eyes={variant}
       data-dot={dotColor ? d : 'none'}
     >
       <svg viewBox="0 0 44 44" width={size} height={size} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>

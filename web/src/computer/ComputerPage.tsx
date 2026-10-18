@@ -1,6 +1,6 @@
 import { useRef, useState, type RefObject } from 'react'
 import { ArrowLeft, Check, CircleDot, Clipboard, Ellipsis, Expand, Hand, Keyboard, KeyRound, Maximize, RotateCw, ShieldCheck, X } from 'lucide-react'
-import { botsStore } from '../data/bots'
+import { botsStore, look } from '../data/bots'
 import { useStore } from '../data/store'
 import { navigate } from '../router'
 import { Avatar } from '../ui/Avatar'
@@ -92,7 +92,7 @@ export function ComputerPage({ botId }: { botId: string }) {
     <main className="flex h-[calc(100dvh-56px)] min-w-0 flex-1 flex-col bg-app md:h-dvh" aria-label={title} data-testid="computer-page">
       <header className="flex min-h-[60px] flex-none flex-wrap items-center gap-x-3 gap-y-2 border-b border-edge px-4 py-2 max-md:px-3">
         <IconButton icon={narrow ? X : ArrowLeft} label="回到對話" onClick={() => navigate(`/bots/${botId}`)} />
-        {bot && <Avatar shape={bot.shape} color={bot.color} state={you ? 'idle' : screen.working ? 'working' : 'idle'} dot="none" size={28} ring="#070707" />}
+        {bot && <Avatar {...look(bot)} state={you ? 'idle' : screen.working ? 'working' : 'idle'} dot="none" size={28} ring="#070707" />}
         <div className="flex min-w-0 flex-1 flex-col">
           <h1 className="m-0 truncate text-title">{title}</h1>
           <p className="m-0 truncate text-meta text-ink-2">{narrow ? `${screen.host_name || '這台主機'}${status.kind === 'connected' && status.width ? ` · ${status.width}×${status.height}` : ''}` : sub}</p>
@@ -191,7 +191,7 @@ export function ComputerPage({ botId }: { botId: string }) {
             {screen.request && (
               <section className="flex flex-col gap-2 rounded-card bg-panel px-4 py-3.5">
                 <h2 className="m-0 flex items-center gap-2 text-ui">
-                  {bot && <Avatar shape={bot.shape} color={bot.color} state="notifying" dot="none" size={22} ring="#111111" />}
+                  {bot && <Avatar {...look(bot)} state="notifying" dot="none" size={22} ring="#111111" />}
                   {name}需要你協助
                 </h2>
                 <p className="m-0 text-sub text-ink-2">{screen.request.reason}</p>

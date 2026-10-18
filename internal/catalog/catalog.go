@@ -9,6 +9,7 @@ import (
 	"xbot/internal/apps"
 	"xbot/internal/botops"
 	"xbot/internal/bots"
+	"xbot/internal/botshare"
 	"xbot/internal/chat"
 	"xbot/internal/collab"
 	"xbot/internal/computers"
@@ -21,6 +22,7 @@ import (
 	"xbot/internal/memory"
 	"xbot/internal/models"
 	"xbot/internal/network"
+	"xbot/internal/onboard"
 	"xbot/internal/ops"
 	"xbot/internal/org"
 	"xbot/internal/proxy"
@@ -123,6 +125,19 @@ func Register(reg *ops.Registry, d Deps) {
 	computers.Register(reg, d.Computers)
 	apps.Register(reg, d.Apps)
 	screen.Register(reg, d.Screen)
+	botshare.Register(reg, botshare.Deps{Skills: d.Skills})
+	od := onboard.Deps{}
+	if d.Engines != nil {
+		od.Engines = d.Engines.HostLogins
+	}
+	if d.Hosts != nil {
+		h := d.Hosts
+		od.Image = func(ctx context.Context) (string, bool, error) {
+			ref, err := h.BoxImage(ctx)
+			return ref.Name, ref.ID != "", err
+		}
+	}
+	onboard.Register(reg, od)
 	network.Register(reg, d.Network)
 }
 

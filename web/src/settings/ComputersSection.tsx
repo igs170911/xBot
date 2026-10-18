@@ -16,6 +16,7 @@ import { STATUS_LABEL, hostSub, loadHosts, useHosts, type HostView, type HostsSt
 import { PairPhoneDialog } from '../mobile/PhoneSettings'
 import { connectionKind } from '../mobile/pwa'
 import { useRemoveHost } from './removeHost'
+import { look } from '../data/bots'
 import { EgressSummary, MoveAllDialog, MovesBlock } from './MoveAll'
 import { moveTargets } from '../computer/moveData'
 
@@ -65,7 +66,7 @@ function BotFaces({ h }: { h: HostView }) {
     <span className="flex items-center" title={h.bots.map((b) => b.name).join('、')}>
       {shown.map((b, i) => (
         <span key={b.id} className={cx('rounded-full', i > 0 && '-ml-1.5')}>
-          <Avatar shape={b.shape} color={b.color} size={24} blink={false} state={h.status === 'offline' ? 'sleeping' : b.running ? 'working' : 'idle'} />
+          <Avatar {...look(b)} size={24} blink={false} state={h.status === 'offline' ? 'sleeping' : b.running ? 'working' : 'idle'} />
         </span>
       ))}
       {h.bots.length > shown.length && <span className="ml-1.5 text-meta text-ink-2">+{h.bots.length - shown.length}</span>}
@@ -218,7 +219,7 @@ export function ComputersSection() {
             {open &&
               bots.map((b) => (
                 <div key={b.id} className="flex items-center gap-3 border-t border-line px-4 py-2">
-                  <Avatar shape={b.shape} color={b.color} size={24} blink={false} />
+                  <Avatar {...look(b)} size={24} blink={false} />
                   <span className="min-w-0 flex-1 text-ui-sm">{b.name}</span>
                   <span className="text-[13px] text-ink-2">
                     {b.host.name} · {b.host.status === 'offline' ? '主機離線' : b.running ? '開機中' : b.state === 'none' ? '還沒開機' : '休眠'}

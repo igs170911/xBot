@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Send } from 'lucide-react'
 import { filesDelete, filesMove, filesMoveBetweenBots } from '../api/generated'
-import { botsStore } from '../data/bots'
+import { botsStore, look } from '../data/bots'
 import { useStore } from '../data/store'
 import { errText } from '../settings/format'
 import { Avatar } from '../ui/Avatar'
@@ -100,7 +100,7 @@ function SendDialog({ botId, entry, onClose }: { botId: string; entry: FileEntry
               onClick={() => setTo(b.id)}
               className={cx('flex min-h-12 items-center gap-2.5 rounded-menu px-2.5 text-left text-ink', to === b.id ? 'bg-control' : 'hover:bg-control/60')}
             >
-              <Avatar shape={b.shape} color={b.color} dot="none" size={30} ring="#111111" />
+              <Avatar {...look(b)} dot="none" size={30} ring="#111111" />
               <span className="flex min-w-0 flex-col">
                 <span className="truncate text-body">{b.name}</span>
                 {b.title && <span className="truncate text-sub text-ink-2">{b.title}</span>}

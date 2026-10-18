@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronRight, FolderOpen, LayoutGrid, List, Power, Search, Upload } from 'lucide-react'
 import { filesDownloadUrl, filesList, filesUploadForm, type FilesListOutput } from '../api/generated'
-import { botsStore, type Bot } from '../data/bots'
+import { botsStore, type Bot, look } from '../data/bots'
 import { useStore } from '../data/store'
 import { linkClick, navigate } from '../router'
 import { errText } from '../settings/format'
@@ -220,7 +220,7 @@ export function FilesPage() {
           return (
             <section key={b.id} aria-label={`${b.name}的檔案`} className="flex flex-col gap-2.5">
               <h2 className="m-0 flex items-center gap-2 text-[15.5px] font-normal">
-                <Avatar shape={b.shape} color={b.color} dot="none" size={24} ring="#070707" />
+                <Avatar {...look(b)} dot="none" size={24} ring="#070707" />
                 <span>{b.name}</span>
                 {state === 'ready' && <span className="text-sub text-ink-3">{files.length} 個</span>}
                 <span className="flex-1" />

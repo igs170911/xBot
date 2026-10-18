@@ -11,7 +11,10 @@ export type FakeApi = {
 
 const defaults: Record<string, OpHandler> = {
   'system.ping': () => ({ pong: true, api: 'xbot.v1', build: 'v-test', caller: 'owner' }),
-  'bots.list': () => ({ bots: [] }),
+  // 預設有一個 Bot（沒有 Bot 時首頁是「建立第一個 Bot」，A09）；要測空的就換掉
+  'bots.list': () => ({
+    bots: [{ id: 'b0', name: '小幫手', title: '', description: '', soul: '', color: 'green', shape: 'circle', engine: 'hermes', model: '', fallback: '', effort: '', approval_mode: 'ask', memory_enabled: true, archived: false, host_id: '', team_id: '', reports_to: '', can_manage: false, primary: false, created_at: 1, updated_at: 1 }],
+  }),
   'inbox.list': () => ({ items: [] }),
   'models.get': () => ({ providers: [], ready: true, default: { provider: 'openai', model: 'gpt-test' } }),
   'chat.list_threads': () => ({ threads: [] }),

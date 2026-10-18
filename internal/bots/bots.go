@@ -3,10 +3,12 @@ package bots
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"strings"
 
+	"xbot/internal/limits"
 	"xbot/internal/ops"
 	"xbot/internal/store"
 )
@@ -28,6 +30,16 @@ var Colors = []string{"green", "blue", "red", "orange", "purple", "cyan", "pink"
 
 // EnumValues 讓 JSON Schema 列出可用值。
 func (Color) EnumValues() []string { return Colors }
+
+// Eyes 是頭像平常的眼睛（G03：圓點、看旁邊、開心、睜大、半閉、閉眼；web/src/ui/avatar-data.ts EYE_VARIANTS）。
+// 只是待命時的樣子，對話中仍會跟著狀態變。
+type Eyes string
+
+// EyeVariants 是所有眼睛，順序同前端。
+var EyeVariants = []string{"dot", "aside", "happy", "wide", "half", "closed"}
+
+// EnumValues 讓 JSON Schema 列出可用值。
+func (Eyes) EnumValues() []string { return EyeVariants }
 
 // ApprovalMode 是權限等級（BT-5、design/specs/G08-Access）：先問我、自動接受編輯、自動、完全存取。
 // 值沿用 OpenMausBot shared/approval-mode.ts。
@@ -85,6 +97,8 @@ type View struct {
 	Soul          string       `json:"soul"`
 	Color         Color        `json:"color"`
 	Shape         Shape        `json:"shape"`
+	Eyes          Eyes         `json:"eyes,omitempty" desc:"平常的眼睛；空白是圓點"`
+	Image         string       `json:"image,omitempty" desc:"頭像圖片（裁成形狀的 data URL）；有圖片時不疊眼睛"`
 	Engine        string       `json:"engine"`
 	Model         string       `json:"model" desc:"空白表示用預設模型；「<供應商>/<模型>」或只寫模型"`
 	Fallback      string       `json:"fallback" desc:"備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback）"`
@@ -105,6 +119,8 @@ type View struct {
 
 type avatar struct {
 	Shape string `json:"shape,omitempty"`
+	Eyes  string `json:"eyes,omitempty"`
+	Image string `json:"image,omitempty"`
 }
 
 // ViewOf 把資料庫的 Bot 轉成對外的資料。
@@ -112,7 +128,7 @@ func ViewOf(b store.Bot) View {
 	var a avatar
 	_ = json.Unmarshal(b.Avatar, &a)
 	return View{ID: b.ID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul,
-		Color: Color(b.Color), Shape: Shape(a.Shape), Engine: b.Engine, Model: b.Model, Fallback: first(b.Fallback), Effort: b.Effort,
+		Color: Color(b.Color), Shape: Shape(a.Shape), Eyes: Eyes(a.Eyes), Image: a.Image, Engine: b.Engine, Model: b.Model, Fallback: first(b.Fallback), Effort: b.Effort,
 		ApprovalMode: ApprovalMode(b.ApprovalMode), MemoryEnabled: b.MemoryEnabled, Archived: b.Archived, HostID: b.HostID,
 		TeamID: b.TeamID, ReportsTo: b.ReportsTo, CanManage: b.CanManage, Primary: b.IsChief, CreatedBy: b.CreatedBy, UpdatedBy: b.UpdatedBy,
 		CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt}
@@ -143,6 +159,7 @@ type CreateIn struct {
 	Soul         string       `json:"soul,omitempty" max:"4000" desc:"常駐指示（SOUL.md）"`
 	Color        Color        `json:"color,omitempty" desc:"頭像顏色；不填自動挑"`
 	Shape        Shape        `json:"shape,omitempty" desc:"頭像形狀；不填自動挑"`
+	Eyes         Eyes         `json:"eyes,omitempty" desc:"頭像平常的眼睛；不填是圓點"`
 	Engine       Engine       `json:"engine,omitempty" desc:"引擎；預設 hermes。claude-code、codex 要再用 xbot.engines.link_credentials 同意使用你的訂閱"`
 	Model        string       `json:"model,omitempty" max:"200" desc:"模型；不填用預設模型（xbot.models.get 看設定）"`
 	Effort       Effort       `json:"effort,omitempty" desc:"思考強度；不填是 medium"`
@@ -158,6 +175,8 @@ type UpdateIn struct {
 	Soul          *string       `json:"soul,omitempty" max:"4000"`
 	Color         *Color        `json:"color,omitempty"`
 	Shape         *Shape        `json:"shape,omitempty"`
+	Eyes          *Eyes         `json:"eyes,omitempty" desc:"頭像平常的眼睛"`
+	Image         *string       `json:"image,omitempty" blob:"true" max:"400000" desc:"頭像圖片：裁成形狀、256×256 的 data URL（PNG、JPEG、GIF、WebP）；空白字串改回吉祥物"`
 	Engine        *Engine       `json:"engine,omitempty"`
 	Model         *string       `json:"model,omitempty" max:"200" desc:"空白字串表示改回預設模型"`
 	Fallback      *string       `json:"fallback,omitempty" max:"200" desc:"備援模型「<供應商>/<模型>」：主要模型忙碌或出錯時改用；空白字串表示用全域備援"`
@@ -365,7 +384,7 @@ func create(ctx context.Context, call *ops.Call, in CreateIn) (View, error) {
 	if shape == "" {
 		shape = Shapes[len(all)%len(Shapes)]
 	}
-	av, _ := json.Marshal(avatar{Shape: shape})
+	av, _ := json.Marshal(avatar{Shape: shape, Eyes: string(in.Eyes)})
 	b := store.Bot{Name: name, Title: strings.TrimSpace(in.Title), Description: strings.TrimSpace(in.Description), Soul: in.Soul,
 		Color: color, Avatar: av, Engine: string(in.Engine), Model: strings.TrimSpace(in.Model), Effort: string(in.Effort),
 		ApprovalMode: string(in.ApprovalMode), MemoryEnabled: true, CreatedBy: call.Identity.Actor()}
@@ -452,13 +471,29 @@ func apply(b *store.Bot, in UpdateIn) error {
 	if in.Color != nil {
 		b.Color = string(*in.Color)
 	}
-	if in.Shape != nil {
+	if in.Shape != nil || in.Eyes != nil || in.Image != nil {
 		a := map[string]any{} // 保留頭像的其他欄位
 		_ = json.Unmarshal(b.Avatar, &a)
 		if a == nil {
 			a = map[string]any{}
 		}
-		a["shape"] = string(*in.Shape)
+		if in.Shape != nil {
+			a["shape"] = string(*in.Shape)
+		}
+		if in.Eyes != nil {
+			a["eyes"] = string(*in.Eyes)
+		}
+		if in.Image != nil {
+			img := strings.TrimSpace(*in.Image)
+			if err := ValidImage(img); err != nil {
+				return err
+			}
+			if img == "" {
+				delete(a, "image")
+			} else {
+				a["image"] = img
+			}
+		}
 		b.Avatar, _ = json.Marshal(a)
 	}
 	if in.Engine != nil {
@@ -475,6 +510,29 @@ func apply(b *store.Bot, in UpdateIn) error {
 	}
 	if in.CanManage != nil {
 		b.CanManage = *in.CanManage
+	}
+	return nil
+}
+
+// ValidImage 檢查頭像圖片：空白（改回吉祥物），或 PNG、JPEG、GIF、WebP 的 base64 data URL，長度在上限內。
+func ValidImage(img string) error {
+	if img == "" {
+		return nil
+	}
+	if len(img) > limits.AvatarImageBytes {
+		return ops.InvalidInput(ops.FieldError{Field: "image", Message: "圖片太大；請裁小一點再試"})
+	}
+	head, data, ok := strings.Cut(img, ",")
+	if !ok || data == "" {
+		return ops.InvalidInput(ops.FieldError{Field: "image", Message: "要是圖片的 data URL"})
+	}
+	switch head {
+	case "data:image/png;base64", "data:image/jpeg;base64", "data:image/gif;base64", "data:image/webp;base64":
+	default:
+		return ops.InvalidInput(ops.FieldError{Field: "image", Message: "只接受 PNG、JPEG、GIF、WebP"})
+	}
+	if _, err := base64.StdEncoding.DecodeString(data); err != nil {
+		return ops.InvalidInput(ops.FieldError{Field: "image", Message: "圖片內容不對"})
 	}
 	return nil
 }

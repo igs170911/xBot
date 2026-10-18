@@ -7,6 +7,7 @@ import { Avatar } from '../ui/Avatar'
 import { Icon } from '../ui/Icon'
 import { filesHref, kindFromName } from './data'
 import { FileIcon } from './FilePreview'
+import { look } from '../data/bots'
 
 // 對話裡 kind=card 的卡片（Bot 用 xbot.cards.post 發的，C11）。檔案卡（E07 左側）：每個檔案一列，
 // 點了到檔案頁預覽，右邊可以直接下載（C33）。
@@ -19,7 +20,7 @@ export function ChatCardView({ msg, bot }: CardProps) {
     <section aria-label={c.title} className="flex max-w-[min(100%,560px)] gap-2.5 self-start" data-testid="chat-card">
       {bot && (
         <span className="pt-1">
-          <Avatar shape={bot.shape} color={bot.color} dot="none" size={26} ring="#070707" />
+          <Avatar {...look(bot)} dot="none" size={26} ring="#070707" />
         </span>
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-2.5 rounded-[22px] bg-bubble-bot px-4 py-3.5">

@@ -2205,6 +2205,10 @@ export interface BotsArchiveOutput {
   soul: string
   color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
   shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  /** 平常的眼睛；空白是圓點 */
+  eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
+  /** 頭像圖片（裁成形狀的 data URL）；有圖片時不疊眼睛 */
+  image?: string
   engine: string
   /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
   model: string
@@ -2259,6 +2263,8 @@ export interface BotsCreateInput {
   color?: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
   /** 頭像形狀；不填自動挑 */
   shape?: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  /** 頭像平常的眼睛；不填是圓點 */
+  eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
   /** 引擎；預設 hermes。claude-code、codex 要再用 xbot.engines.link_credentials 同意使用你的訂閱 */
   engine?: 'hermes' | 'claude-code' | 'codex'
   /** 模型；不填用預設模型（xbot.models.get 看設定） */
@@ -2277,6 +2283,10 @@ export interface BotsCreateOutput {
   soul: string
   color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
   shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  /** 平常的眼睛；空白是圓點 */
+  eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
+  /** 頭像圖片（裁成形狀的 data URL）；有圖片時不疊眼睛 */
+  image?: string
   engine: string
   /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
   model: string
@@ -2343,6 +2353,42 @@ export function botsDelete(input: BotsDeleteInput, opts?: CallOptions): Promise<
   return invoke('xbot.bots.delete', input, opts).then((r) => r.output)
 }
 
+// xbot.bots.export
+
+export interface BotsExportInput {
+  /** Bot id */
+  id: string
+  /** 不帶技能 */
+  no_skills?: boolean
+  /** 不帶要連的應用程式 */
+  no_apps?: boolean
+  /** 不帶人設（只帶名字、職稱、頭像） */
+  no_soul?: boolean
+}
+
+export interface BotsExportOutput {
+  /** 建議的檔名，例：小秘.xbot */
+  filename: string
+  /** .xbot 檔的內容（JSON） */
+  content: string
+  bytes: number
+  skills: number
+  apps: number
+  /** 例：Bot 還沒有電腦，技能沒有帶上 */
+  note?: string
+}
+
+/**
+ * 把一個 Bot 做成可以分享的 .xbot 檔
+ *
+ * 帶名字、職稱、介紹、人設、頭像、它自己的技能（只有文字）與要連的應用程式名稱。一律不帶登入資料、密碼、API 金鑰、對話紀錄、電腦裡的檔案與記憶。
+ *
+ * `xbot.bots.export`：權限 manage、風險 safe
+ */
+export function botsExport(input: BotsExportInput, opts?: CallOptions): Promise<BotsExportOutput> {
+  return invoke('xbot.bots.export', input, opts).then((r) => r.output)
+}
+
 // xbot.bots.get
 
 export interface BotsGetInput {
@@ -2358,6 +2404,10 @@ export interface BotsGetOutput {
   soul: string
   color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
   shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  /** 平常的眼睛；空白是圓點 */
+  eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
+  /** 頭像圖片（裁成形狀的 data URL）；有圖片時不疊眼睛 */
+  image?: string
   engine: string
   /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
   model: string
@@ -2395,6 +2445,98 @@ export function botsGet(input: BotsGetInput, opts?: CallOptions): Promise<BotsGe
   return invoke('xbot.bots.get', input, opts).then((r) => r.output)
 }
 
+// xbot.bots.import
+
+export interface BotsImportInput {
+  /** .xbot 檔的內容（JSON 文字） */
+  content: string
+  /** 檔名（記在技能的來源） */
+  filename?: string
+  /** 匯入後的名字；不填用檔案裡的，和現有的重複時自動加編號 */
+  name?: string
+  /** 只檢查內容、不建立（G14 第 2 步） */
+  preview?: boolean
+}
+
+export interface BotsImportOutput {
+  preview: boolean
+  /** 建立的 Bot（預覽時是會建立的樣子，沒有 id） */
+  bot: {
+    id: string
+    name: string
+    title: string
+    description: string
+    soul: string
+    color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+    shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+    /** 平常的眼睛；空白是圓點 */
+    eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
+    /** 頭像圖片（裁成形狀的 data URL）；有圖片時不疊眼睛 */
+    image?: string
+    engine: string
+    /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
+    model: string
+    /** 備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback） */
+    fallback: string
+    effort: string
+    approval_mode: 'ask' | 'edits' | 'auto' | 'full'
+    /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
+    memory_enabled: boolean
+    archived: boolean
+    /** 放在哪台主機（xbot.hosts.list）；空白＝第一次開機時自動擺放 */
+    host_id: string
+    /** 所在團隊；空白是未分區 */
+    team_id: string
+    /** 向哪個 Bot 報告；空白是直接向你報告 */
+    reports_to: string
+    /** 團隊管理權限：可以替你建團隊、調整別的 Bot；每天可建 20 個 Bot */
+    can_manage: boolean
+    /** 你的主要 Bot（is_chief） */
+    primary: boolean
+    /** 誰建立的：owner、agent:<id>、bot:<id> */
+    created_by?: string
+    /** 最後是誰改的；代理改的介面會標「由 ○○（MCP）修改」 */
+    updated_by?: string
+    created_at: number
+    updated_at: number
+  }
+  /** 和現有 Bot 同名，自動改了名字 */
+  renamed: boolean
+  original: string
+  items: {
+    /** persona、skills、apps、permissions */
+    kind: string
+    /** ok：直接帶入；action：要你處理；info：說明 */
+    status: string
+    title: string
+    detail?: string
+  }[]
+  /** 放進工作區技能庫（先停用）的技能 id */
+  skills_added: string[]
+  /** 技能庫已經有、合併掉的技能名稱 */
+  skills_merged: string[]
+  /** 還沒連接的應用程式（之後再登入） */
+  apps_missing: string[]
+  /** 還可以建立幾個 Bot（全部最多 50 個） */
+  remaining: number
+  can_create: boolean
+  /** 不能建立的原因 */
+  reason?: string
+  exported_at: number
+  bytes: number
+}
+
+/**
+ * 從 .xbot 檔匯入一個 Bot
+ *
+ * 匯入的 Bot 一律從「先問我」開始（SEC-1），引擎與模型用這裡的預設；技能放進工作區技能庫並先停用，要你看過再裝上；要連的應用程式只列名稱，之後再登入。和現有 Bot 同名時自動加編號。preview=true 只檢查不建立。建立數量照一般規則（全部最多 50 個）。
+ *
+ * `xbot.bots.import`：權限 manage、風險 safe
+ */
+export function botsImport(input: BotsImportInput, opts?: CallOptions): Promise<BotsImportOutput> {
+  return invoke('xbot.bots.import', input, opts).then((r) => r.output)
+}
+
 // xbot.bots.list
 
 export interface BotsListInput {
@@ -2411,6 +2553,10 @@ export interface BotsListOutput {
     soul: string
     color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
     shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+    /** 平常的眼睛；空白是圓點 */
+    eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
+    /** 頭像圖片（裁成形狀的 data URL）；有圖片時不疊眼睛 */
+    image?: string
     engine: string
     /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
     model: string
@@ -2491,6 +2637,10 @@ export interface BotsUpdateInput {
   soul?: string
   color?: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
   shape?: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  /** 頭像平常的眼睛 */
+  eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
+  /** 頭像圖片：裁成形狀、256×256 的 data URL（PNG、JPEG、GIF、WebP）；空白字串改回吉祥物 */
+  image?: string
   engine?: 'hermes' | 'claude-code' | 'codex'
   /** 空白字串表示改回預設模型 */
   model?: string
@@ -2515,6 +2665,10 @@ export interface BotsUpdateOutput {
   soul: string
   color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
   shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
+  /** 平常的眼睛；空白是圓點 */
+  eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
+  /** 頭像圖片（裁成形狀的 data URL）；有圖片時不疊眼睛 */
+  image?: string
   engine: string
   /** 空白表示用預設模型；「<供應商>/<模型>」或只寫模型 */
   model: string
@@ -7459,6 +7613,104 @@ export function networkTailscaleSet(input: NetworkTailscaleSetInput, opts?: Call
   return invoke('xbot.network.tailscale_set', input, opts).then((r) => r.output)
 }
 
+// xbot.onboard.status
+
+export interface OnboardStatusInput {
+  /** 不偵測本機模型與電腦映像（只看狀態，比較快） */
+  skip_detect?: boolean
+}
+
+export interface OnboardStatusOutput {
+  /** 還沒有任何 Bot、也還沒做完首次設定：顯示首次設定 */
+  first_run: boolean
+  /** Bot 數（含封存） */
+  bots: number
+  state: {
+    /** 首次設定做完或跳過了 */
+    completed: boolean
+    completed_at?: number
+    /** 導覽看完或跳過了（A10） */
+    tour_done: boolean
+    /** 首頁「之後再做」關掉的卡片：import、phone、tour */
+    dismissed: string[]
+  }
+  /** 這台電腦上已登入的訂閱 CLI */
+  engines: {
+    /** claude-code 或 codex */
+    engine: string
+    label: string
+    /** 訂閱方案名稱，例：Claude */
+    plan: string
+    logged_in: boolean
+    /** 沒有登入時，在這台電腦上執行的指令 */
+    login: string
+  }[]
+  /** 偵測到的本機模型服務（LM Studio、Ollama） */
+  local: {
+    id: string
+    label: string
+    base_url: string
+    /** 內建範本代號；沒有時用自訂供應商（base_url、chat_completions） */
+    preset?: string
+    /** 服務列出的模型 */
+    models: string[]
+  }[]
+  computer: {
+    /** 這台的 Docker 連得上 */
+    docker: boolean
+    /** Bot 電腦映像名稱 */
+    image: string
+    /** 映像已經建好；Bot 第一次收到工作時就能開機 */
+    ready: boolean
+    /** 還沒好時該怎麼做 */
+    hint?: string
+    error?: string
+  }
+}
+
+/**
+ * 首次設定的狀態：已登入的 AI 工具、本機模型、Bot 電腦映像
+ *
+ * 偵測這台電腦上已登入的 Claude Code、Codex（只看有沒有登入，不讀憑證），本機的 LM Studio、Ollama 有哪些模型，以及 Bot 電腦映像建好了沒。還沒有任何 Bot、也還沒做完首次設定時 first_run 是 true。
+ *
+ * `xbot.onboard.status`：權限 read、風險 safe
+ */
+export function onboardStatus(input: OnboardStatusInput = {}, opts?: CallOptions): Promise<OnboardStatusOutput> {
+  return invoke('xbot.onboard.status', input, opts).then((r) => r.output)
+}
+
+// xbot.onboard.update
+
+export interface OnboardUpdateInput {
+  /** 首次設定做完（或跳過） */
+  completed?: boolean
+  /** 導覽看完（或跳過）；false 表示再看一次 */
+  tour_done?: boolean
+  /** 關掉首頁的一張「之後再做」卡片 */
+  dismiss?: string
+  /** 把關掉的卡片都放回來 */
+  restore?: boolean
+}
+
+export interface OnboardUpdateOutput {
+  /** 首次設定做完或跳過了 */
+  completed: boolean
+  completed_at?: number
+  /** 導覽看完或跳過了（A10） */
+  tour_done: boolean
+  /** 首頁「之後再做」關掉的卡片：import、phone、tour */
+  dismissed: string[]
+}
+
+/**
+ * 記下首次設定、導覽與首頁卡片的狀態
+ *
+ * `xbot.onboard.update`：權限 manage、風險 safe
+ */
+export function onboardUpdate(input: OnboardUpdateInput = {}, opts?: CallOptions): Promise<OnboardUpdateOutput> {
+  return invoke('xbot.onboard.update', input, opts).then((r) => r.output)
+}
+
 // xbot.push.config
 
 export type PushConfigInput = Record<string, never>
@@ -10690,7 +10942,9 @@ export interface Ops {
   'xbot.bots.archive': { input: BotsArchiveInput; output: BotsArchiveOutput }
   'xbot.bots.create': { input: BotsCreateInput; output: BotsCreateOutput }
   'xbot.bots.delete': { input: BotsDeleteInput; output: BotsDeleteOutput }
+  'xbot.bots.export': { input: BotsExportInput; output: BotsExportOutput }
   'xbot.bots.get': { input: BotsGetInput; output: BotsGetOutput }
+  'xbot.bots.import': { input: BotsImportInput; output: BotsImportOutput }
   'xbot.bots.list': { input: BotsListInput; output: BotsListOutput }
   'xbot.bots.suggest': { input: BotsSuggestInput; output: BotsSuggestOutput }
   'xbot.bots.update': { input: BotsUpdateInput; output: BotsUpdateOutput }
@@ -10792,6 +11046,8 @@ export interface Ops {
   'xbot.network.funnel_set': { input: NetworkFunnelSetInput; output: NetworkFunnelSetOutput }
   'xbot.network.status': { input: NetworkStatusInput; output: NetworkStatusOutput }
   'xbot.network.tailscale_set': { input: NetworkTailscaleSetInput; output: NetworkTailscaleSetOutput }
+  'xbot.onboard.status': { input: OnboardStatusInput; output: OnboardStatusOutput }
+  'xbot.onboard.update': { input: OnboardUpdateInput; output: OnboardUpdateOutput }
   'xbot.push.config': { input: PushConfigInput; output: PushConfigOutput }
   'xbot.push.subscribe': { input: PushSubscribeInput; output: PushSubscribeOutput }
   'xbot.push.test': { input: PushTestInput; output: PushTestOutput }
@@ -10888,7 +11144,9 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.bots.archive': { path: '/api/v1/bots.archive', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.bots.create': { path: '/api/v1/bots.create', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.bots.delete': { path: '/api/v1/bots.delete', scope: 'manage', risk: 'confirm', mutates: true },
+  'xbot.bots.export': { path: '/api/v1/bots.export', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.bots.get': { path: '/api/v1/bots.get', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.bots.import': { path: '/api/v1/bots.import', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.bots.list': { path: '/api/v1/bots.list', scope: 'read', risk: 'safe', mutates: false },
   'xbot.bots.suggest': { path: '/api/v1/bots.suggest', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.bots.update': { path: '/api/v1/bots.update', scope: 'manage', risk: 'safe', mutates: true },
@@ -10990,6 +11248,8 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.network.funnel_set': { path: '/api/v1/network.funnel_set', scope: 'admin', risk: 'confirm', mutates: true },
   'xbot.network.status': { path: '/api/v1/network.status', scope: 'read', risk: 'safe', mutates: false },
   'xbot.network.tailscale_set': { path: '/api/v1/network.tailscale_set', scope: 'admin', risk: 'confirm', mutates: true },
+  'xbot.onboard.status': { path: '/api/v1/onboard.status', scope: 'read', risk: 'safe', mutates: false },
+  'xbot.onboard.update': { path: '/api/v1/onboard.update', scope: 'manage', risk: 'safe', mutates: true },
   'xbot.push.config': { path: '/api/v1/push.config', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.push.subscribe': { path: '/api/v1/push.subscribe', scope: 'admin', risk: 'safe', mutates: true },
   'xbot.push.test': { path: '/api/v1/push.test', scope: 'admin', risk: 'safe', mutates: true },

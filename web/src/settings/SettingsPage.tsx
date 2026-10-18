@@ -78,8 +78,8 @@ function Placeholder({ title, sub, note }: { title: string; sub: string; note: s
 }
 
 function Content({ path }: { path: string }) {
-  const bot = path.match(/^\/settings\/bots\/([^/]+)(?:\/(soul|skills|memory))?\/?$/)
-  if (bot) return <BotSettingsPage botId={decodeURIComponent(bot[1])} tab={bot[2] as BotTab | undefined} />
+  const bot = path.match(/^\/settings\/bots\/([^/]+)(?:\/(soul|skills|memory|abilities|permissions|advanced)(?:\/([a-z]+))?)?\/?$/)
+  if (bot) return <BotSettingsPage key={bot[1]} botId={decodeURIComponent(bot[1])} tab={bot[2] as BotTab | undefined} sub={bot[3]} />
   if (path === '/settings/general') return <GeneralSection />
   if (path.startsWith('/settings/models')) return <ModelsSection path={path} />
   if (path === '/settings/usage') return <UsageSection />
@@ -123,6 +123,7 @@ function backTarget(path: string): string {
 function simplified(path: string): string | null {
   if (path === '/settings/general' || path === '/settings') return '簡化：15 個區塊 → 5 個'
   if (path === '/settings/models') return '簡化：5 個欄位 → 1 個'
+  if (path.startsWith('/settings/bots/')) return '簡化：12 個分頁 → 4 個'
   if (path === '/settings/computers/add') return '簡化：手動設定 Docker／SSH／防火牆 → 貼一行指令'
   return null
 }

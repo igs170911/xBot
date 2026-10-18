@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, Moon, Plus, TriangleAlert } from 'lucide-react'
 import { routinesCalendar, type RoutinesCalendarOutput } from '../api/generated'
-import { botsStore, type Bot } from '../data/bots'
+import { botsStore, type Bot, look } from '../data/bots'
 import { useStore } from '../data/store'
 import { Avatar } from '../ui/Avatar'
 import { COLORS, resolveColor } from '../ui/avatar-data'
@@ -205,7 +205,7 @@ function ListView({ items, bots }: { items: Item[]; bots: Bot[] }) {
             return (
               <div key={(it.run_id ?? '') + it.routine_id + it.at} className="flex items-center gap-3 border-b border-divider/60 py-2.5 last:border-b-0">
                 <span className="w-[88px] flex-none text-sub text-ink-2">{clockText(new Date(it.at))}</span>
-                {bot && <Avatar shape={bot.shape} color={bot.color} size={28} dot="none" />}
+                {bot && <Avatar {...look(bot)} size={28} dot="none" />}
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-ui">{it.title}</span>
                   <span className="truncate text-meta text-ink-3">

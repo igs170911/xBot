@@ -2,6 +2,7 @@ package ops
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"unicode"
 )
@@ -78,6 +79,10 @@ func maskValue(v any, s *Schema) any {
 			}
 			if child != nil && ((cs != nil && cs.Secret) || IsSecretName(k)) {
 				val[k] = Masked
+				continue
+			}
+			if str, ok := child.(string); ok && cs != nil && cs.Blob {
+				val[k] = fmt.Sprintf("（%d 字元，不記錄內容）", len(str))
 				continue
 			}
 			val[k] = maskValue(child, cs)

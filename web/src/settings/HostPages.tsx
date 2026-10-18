@@ -33,6 +33,7 @@ import { useRemoveHost } from './removeHost'
 import { errText, fieldError } from './format'
 import { Block, Group, Row, SectionHeader } from './parts'
 import { STATUS_LABEL, ago, gb, hostSub, imageProgress, loadHosts, useHosts, type HostsState } from './hostsData'
+import { look } from '../data/bots'
 
 // 新增主機（J11，PRD §16 CL-2）：①在主機上貼一行安裝指令 ②XBot 自動檢查 ③取名、設同時開機上限 → 完成。
 // 和畫板不同：指令不需要主機連回 XBot（沒有一次性代碼），所以第 1 步要填主機的位址；「從家裡出去」（CL-7）之後做。
@@ -539,7 +540,7 @@ export function HostDetailPage({ hostId }: { hostId: string }) {
           {h.bots.length === 0 && <Row title="還沒有 Bot" sub="新 Bot 會依「新 Bot 放在」自動擺放，也可以在 Bot 設定指定主機。" />}
           {h.bots.map((b) => (
             <div key={b.id} className="flex items-center gap-3 border-line px-4 py-2.5 not-first:border-t">
-              <Avatar shape={b.shape} color={b.color} size={28} blink={false} />
+              <Avatar {...look(b)} size={28} blink={false} />
               <span className="flex-1 text-ui">{b.name}</span>
               <span className="text-[13px] text-ink-2">{h.status === 'offline' ? '主機離線' : b.running ? '開機中' : b.state === 'none' ? '還沒開機' : '休眠'}</span>
             </div>

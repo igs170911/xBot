@@ -567,6 +567,18 @@ func (s *Service) image(ctx context.Context) ImageRef {
 	return ref
 }
 
+// BoxImage 回傳這台的電腦映像（ID 空白＝還沒建，要 make box）；Docker 連不上時回錯誤。首次設定（ON-3）用。
+func (s *Service) BoxImage(ctx context.Context) (ImageRef, error) {
+	api := s.o.LocalDocker
+	if api == nil && s.o.Local != nil {
+		api = s.o.Local.Docker()
+	}
+	if api == nil {
+		return ImageRef{Name: s.o.Image}, errors.New("這台沒有 Docker")
+	}
+	return LocalImage(ctx, api, s.o.Image)
+}
+
 func (s *Service) inspect(ctx context.Context, h *SSH) (Report, error) {
 	ctx, cancel := context.WithTimeout(ctx, limits.HostCheckTimeout)
 	defer cancel()
