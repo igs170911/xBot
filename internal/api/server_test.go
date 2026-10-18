@@ -59,3 +59,22 @@ func TestSPAFallback(t *testing.T) {
 		t.Fatalf("未知的 API 應回 404，實際 %d", rec.Code)
 	}
 }
+
+func TestModelProxyMount(t *testing.T) {
+	rec := httptest.NewRecorder()
+	New(Options{}).ServeHTTP(rec, httptest.NewRequest("POST", "/model/openai/v1/chat/completions", nil))
+	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), "proxy_disabled") {
+		t.Fatalf("沒有代理時應回 503，實際 %d %s", rec.Code, rec.Body.String())
+	}
+
+	var got string
+	h := New(Options{ModelProxy: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.URL.Path
+		w.WriteHeader(http.StatusTeapot)
+	})})
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("POST", "/model/openai/v1/chat/completions", nil))
+	if rec.Code != http.StatusTeapot || got != "/model/openai/v1/chat/completions" {
+		t.Fatalf("代理沒有掛上：%d %q", rec.Code, got)
+	}
+}
