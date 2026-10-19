@@ -3554,6 +3554,31 @@ export function collabPostToGroup(input: CollabPostToGroupInput, opts?: CallOpti
   return invoke('xbot.collab.post_to_group', input, opts).then((r) => r.output)
 }
 
+// xbot.collab.remove_group
+
+export interface CollabRemoveGroupInput {
+  /** 要刪的群組（名稱或 id） */
+  room: string
+  /** 為什麼要刪（給使用者看） */
+  reason?: string
+}
+
+export interface CollabRemoveGroupOutput {
+  name: string
+  deleted: boolean
+}
+
+/**
+ * 刪除你所在的群組（要使用者按允許）
+ *
+ * 群組和它的訊息會刪掉，Bot 不受影響。會先送一張核准卡給使用者，使用者允許後才刪。只能刪你所在的群組。
+ *
+ * `xbot.collab.remove_group`：權限 manage、風險 confirm
+ */
+export function collabRemoveGroup(input: CollabRemoveGroupInput, opts?: CallOptions): Promise<CollabRemoveGroupOutput> {
+  return invoke('xbot.collab.remove_group', input, opts).then((r) => r.output)
+}
+
 // xbot.collab.room_read
 
 export interface CollabRoomReadInput {
@@ -13029,6 +13054,7 @@ export interface Ops {
   'xbot.collab.pause_state': { input: CollabPauseStateInput; output: CollabPauseStateOutput }
   'xbot.collab.peer_history': { input: CollabPeerHistoryInput; output: CollabPeerHistoryOutput }
   'xbot.collab.post_to_group': { input: CollabPostToGroupInput; output: CollabPostToGroupOutput }
+  'xbot.collab.remove_group': { input: CollabRemoveGroupInput; output: CollabRemoveGroupOutput }
   'xbot.collab.room_read': { input: CollabRoomReadInput; output: CollabRoomReadOutput }
   'xbot.collab.start_group': { input: CollabStartGroupInput; output: CollabStartGroupOutput }
   'xbot.collab.stop_chain': { input: CollabStopChainInput; output: CollabStopChainOutput }
@@ -13267,6 +13293,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.collab.pause_state': { path: '/api/v1/collab.pause_state', scope: 'read', risk: 'safe', mutates: false, summary: 'Bot 之間的往來是不是暫停中（全部停下）' },
   'xbot.collab.peer_history': { path: '/api/v1/collab.peer_history', scope: 'read', risk: 'safe', mutates: false, summary: '讀兩個 Bot 之間的往來（X ⇄ Y 的對話）' },
   'xbot.collab.post_to_group': { path: '/api/v1/collab.post_to_group', scope: 'operate', risk: 'safe', mutates: true, summary: '在你所在的群組發言（補充或交棒）' },
+  'xbot.collab.remove_group': { path: '/api/v1/collab.remove_group', scope: 'manage', risk: 'confirm', mutates: true, summary: '刪除你所在的群組（要使用者按允許）' },
   'xbot.collab.room_read': { path: '/api/v1/collab.room_read', scope: 'read', risk: 'safe', mutates: false, summary: '讀群組的訊息與成員狀態' },
   'xbot.collab.start_group': { path: '/api/v1/collab.start_group', scope: 'operate', risk: 'safe', mutates: true, summary: '和隊友開一個群組對話' },
   'xbot.collab.stop_chain': { path: '/api/v1/collab.stop_chain', scope: 'operate', risk: 'safe', mutates: true, summary: '停止一條 Bot 之間的往來' },

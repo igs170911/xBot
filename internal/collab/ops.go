@@ -293,6 +293,18 @@ type RoomDeleteOut struct {
 	Deleted bool `json:"deleted"`
 }
 
+// RemoveGroupIn 是 xbot.collab.remove_group 的輸入。
+type RemoveGroupIn struct {
+	Room   string `json:"room" required:"true" max:"100" desc:"要刪的群組（名稱或 id）"`
+	Reason string `json:"reason,omitempty" max:"500" desc:"為什麼要刪（給使用者看）"`
+}
+
+// RemoveGroupOut 是 xbot.collab.remove_group 的輸出（使用者允許後）。
+type RemoveGroupOut struct {
+	Name    string `json:"name"`
+	Deleted bool   `json:"deleted"`
+}
+
 // RoomPostIn 是 xbot.rooms.post 的輸入。
 type RoomPostIn struct {
 	RoomID string `json:"room_id" required:"true" max:"64"`
@@ -569,6 +581,42 @@ func Register(reg *ops.Registry, s *Service) {
 				return RoomDeleteOut{}, err
 			}
 			return RoomDeleteOut{Deleted: true}, nil
+		},
+	})
+	// Bot 也能請使用者刪群組（使用者決定 2026-10-19：「跟 agent 講話就可以刪除」）；刪除一律要使用者本人按允許（AGENTS.md）。
+	removeTarget := func(ctx context.Context, call *ops.Call, in RemoveGroupIn) (store.Room, error) {
+		if err := ready(s); err != nil {
+			return store.Room{}, err
+		}
+		if call.Identity.Kind != ops.KindBot {
+			return store.Room{}, ops.Forbidden("這是給 Bot 用的；你本人請用 xbot.rooms.delete")
+		}
+		return s.roomFor(ctx, call, in.Room)
+	}
+	ops.Register(reg, ops.Op[RemoveGroupIn, RemoveGroupOut]{
+		Name: "xbot.collab.remove_group", Summary: "刪除你所在的群組（要使用者按允許）",
+		Description: "群組和它的訊息會刪掉，Bot 不受影響。會先送一張核准卡給使用者，使用者允許後才刪。只能刪你所在的群組。",
+		Scope:       ops.ScopeManage, Risk: ops.RiskConfirm, NoDelegate: true, ForBot: true,
+		Precheck: func(ctx context.Context, call *ops.Call, in RemoveGroupIn) error {
+			_, err := removeTarget(ctx, call, in)
+			return err
+		},
+		Handle: func(ctx context.Context, call *ops.Call, in RemoveGroupIn) (RemoveGroupOut, error) {
+			r, err := removeTarget(ctx, call, in)
+			if err != nil {
+				return RemoveGroupOut{}, err
+			}
+			out := RemoveGroupOut{Name: r.Name}
+			if call.DryRun {
+				return out, nil
+			}
+			// 到這裡代表使用者已經按了允許；用使用者在網頁上刪群組的同一個操作
+			raw, _ := json.Marshal(map[string]string{"room_id": r.ID})
+			if _, err := reg.Invoke(ctx, ops.Owner("approved"), "xbot.rooms.delete", raw, ops.Options{}); err != nil {
+				return out, err
+			}
+			out.Deleted = true
+			return out, nil
 		},
 	})
 	ops.Register(reg, ops.Op[RoomPostIn, PostResult]{

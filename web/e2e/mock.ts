@@ -156,6 +156,15 @@ export class MockServer {
       return { room: r, messages: this.roomMessages[r.id] ?? [], has_more: false }
     },
     'collab.stop_room': () => ({ stopped: [] }),
+    'rooms.delete': (i) => {
+      this.rooms = this.rooms.filter((x) => x.id !== i.room_id)
+      return { deleted: true }
+    },
+    'bots.delete': (i) => {
+      const b = this.bots.find((x) => x.id === i.id)
+      this.bots = this.bots.filter((x) => x.id !== i.id)
+      return { id: i.id, name: b?.name ?? '', threads: 0, deleted: true }
+    },
     'collab.peer_history': () => this.peerHistory,
     'collab.stop_chain': () => ({ stopped: 1 }),
     'teams.list': () => ({ teams: [] }),

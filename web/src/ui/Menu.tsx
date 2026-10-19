@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type Ref, type RefObject } from 'react'
+import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode, type Ref, type RefObject, type TouchEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, ChevronDown, type LucideIcon } from 'lucide-react'
 import { Icon } from './Icon'
 import { cx } from './cx'
@@ -167,6 +168,97 @@ export function MenuButton({ label, items, trigger, align = 'start' }: MenuButto
         </div>
       )}
     </span>
+  )
+}
+
+type MenuAt = { x: number; y: number; label: string; items: MenuItem[] }
+
+const LONG_PRESS_MS = 500
+
+/**
+ * 右鍵選單（手機長按）：bind(標題, 項目) 展開到要接的元素上，menu 放在畫面任何地方。
+ * 選單貼著點下去的位置開，超出畫面就往內推；點外面、Esc、捲動都會關。長按開了選單就不算點擊。
+ */
+export function useContextMenu() {
+  const [at, setAt] = useState<MenuAt | null>(null)
+  const timer = useRef(0)
+  const fired = useRef(false)
+  const start = useRef<{ x: number; y: number } | null>(null)
+  const bind = (label: string, items: MenuItem[]) => ({
+    onContextMenu: (e: MouseEvent<HTMLElement>) => {
+      e.preventDefault()
+      window.clearTimeout(timer.current)
+      // 鍵盤（Shift+F10）沒有座標：貼著元素開
+      const r = e.currentTarget.getBoundingClientRect()
+      setAt(e.clientX || e.clientY ? { x: e.clientX, y: e.clientY, label, items } : { x: r.left + 12, y: r.bottom, label, items })
+    },
+    onTouchStart: (e: TouchEvent<HTMLElement>) => {
+      const t = e.touches[0]
+      fired.current = false
+      window.clearTimeout(timer.current)
+      if (!t || e.touches.length > 1) return
+      start.current = { x: t.clientX, y: t.clientY }
+      timer.current = window.setTimeout(() => {
+        fired.current = true
+        navigator.vibrate?.(10)
+        if (start.current) setAt({ ...start.current, label, items })
+      }, LONG_PRESS_MS)
+    },
+    onTouchMove: (e: TouchEvent<HTMLElement>) => {
+      const t = e.touches[0]
+      if (start.current && t && Math.hypot(t.clientX - start.current.x, t.clientY - start.current.y) > 10) window.clearTimeout(timer.current)
+    },
+    onTouchEnd: () => window.clearTimeout(timer.current),
+    onTouchCancel: () => window.clearTimeout(timer.current),
+    onClickCapture: (e: MouseEvent<HTMLElement>) => {
+      if (!fired.current) return
+      fired.current = false
+      e.preventDefault()
+      e.stopPropagation()
+    },
+  })
+  return { bind, menu: <ContextMenu at={at} onClose={() => setAt(null)} /> }
+}
+
+function ContextMenu({ at, onClose }: { at: MenuAt | null; onClose: () => void }) {
+  const pop = useRef<HTMLDivElement>(null)
+  const none = useRef<HTMLElement>(null)
+  useDismiss(!!at, onClose, pop, none)
+  useLayoutEffect(() => {
+    const el = pop.current
+    if (!at || !el) return
+    const r = el.getBoundingClientRect()
+    const m = 8
+    el.style.left = `${Math.max(m, Math.min(at.x, window.innerWidth - r.width - m))}px`
+    el.style.top = `${Math.max(m, at.y + r.height > window.innerHeight - m ? at.y - r.height : at.y)}px`
+    el.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')?.focus({ preventScroll: true })
+  }, [at])
+  useEffect(() => {
+    if (!at) return
+    const close = () => onClose()
+    window.addEventListener('resize', close)
+    window.addEventListener('scroll', close, true)
+    return () => {
+      window.removeEventListener('resize', close)
+      window.removeEventListener('scroll', close, true)
+    }
+  }, [at, onClose])
+  if (!at) return null
+  return createPortal(
+    <div
+      ref={pop}
+      style={{ left: at.x, top: at.y }}
+      className="fixed z-[70] [-webkit-touch-callout:none]"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' || e.key === 'Tab') {
+          e.preventDefault()
+          onClose()
+        }
+      }}
+    >
+      <MenuList label={at.label} items={at.items} onDone={onClose} className="w-[240px]" />
+    </div>,
+    document.body,
   )
 }
 

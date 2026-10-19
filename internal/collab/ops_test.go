@@ -5,6 +5,7 @@ package collab
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -99,5 +100,43 @@ func TestOpsGroupChatsAndBotMessages(t *testing.T) {
 	}
 	if list := must[RoomListOut](t)(call[RoomListOut](t, tm, reg, owner, "xbot.rooms.list", struct{}{})); len(list.Rooms) != 0 {
 		t.Fatalf("%+v", list)
+	}
+}
+
+// Bot 也能請使用者刪它所在的群組（使用者決定 2026-10-19），但一定要使用者按允許才真的刪。
+func TestBotRemovesGroupOnlyAfterOwnerApproves(t *testing.T) {
+	tm := setup(t)
+	reg := ops.New(ops.Config{DB: tm.db})
+	Register(reg, tm.s)
+	chief, writer := tm.bots["Chief"], tm.bots["Writer"]
+	room := must[RoomView](t)(call[RoomView](t, tm, reg, ops.Owner("ui"), "xbot.rooms.create", map[string]any{"member_ids": []string{chief, writer}, "name": "發表會"}))
+	scout := ops.Bot(tm.bots["Scout"], "Scout")
+	// 不在群組的 Bot：在送核准卡之前就擋下
+	if _, err := call[RemoveGroupOut](t, tm, reg, scout, "xbot.collab.remove_group", map[string]any{"room": "發表會"}); err == nil {
+		t.Fatal("不在群組的 Bot 不能刪")
+	}
+	if pending, _ := tm.db.ListApprovals(tm.ctx, "pending"); len(pending) != 0 {
+		t.Fatalf("不合格的請求不能送核准卡：%d", len(pending))
+	}
+	bot := ops.Bot(chief, "Chief")
+	var oe *ops.Error
+	if _, err := call[RemoveGroupOut](t, tm, reg, bot, "xbot.collab.remove_group", map[string]any{"room": "發表會", "reason": "做完了"}); !errors.As(err, &oe) || oe.Code != ops.CodePendingApproval {
+		t.Fatalf("要先核准：%v", err)
+	}
+	if _, err := tm.db.GetRoom(tm.ctx, room.ID); err != nil {
+		t.Fatal("還沒核准不能刪")
+	}
+	pending, _ := tm.db.ListApprovals(tm.ctx, "pending")
+	if len(pending) != 1 || pending[0].Action != "xbot.collab.remove_group" || pending[0].BotID != chief {
+		t.Fatalf("%+v", pending)
+	}
+	if err := tm.db.DecideApproval(tm.ctx, pending[0].ID, "approved", "owner"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reg.ExecuteApproved(tm.ctx, pending[0].ID); err != nil {
+		t.Fatalf("允許後執行：%v", err)
+	}
+	if _, err := tm.db.GetRoom(tm.ctx, room.ID); err == nil {
+		t.Fatal("允許後要刪掉")
 	}
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
-import { ArrowUp, AtSign, Check, ChevronDown, ChevronLeft, CirclePause, Ellipsis, Phone, CirclePlay, Info, OctagonPause, Pin, TriangleAlert, Users } from 'lucide-react'
+import { ArrowUp, AtSign, Check, ChevronDown, ChevronLeft, CirclePause, Ellipsis, Phone, CirclePlay, Info, OctagonPause, Pin, Settings, TriangleAlert, Users } from 'lucide-react'
 import { ApiError, collabRoomRead, collabStopRoom, roomsPauseMember, roomsPost, roomsUpdate, type CollabRoomReadOutput } from '../api/generated'
 import { onEvent, onReconnect } from '../data/events'
 import { loadRooms } from '../data/rooms'
@@ -11,6 +11,7 @@ import { StatusChip } from '../ui/Pill'
 import { cx } from '../ui/cx'
 import { Dialog } from '../ui/Dialog'
 import { MenuButton } from '../ui/Menu'
+import { EditRoomDialog } from './EditRoomDialog'
 import { goBack } from '../router'
 import { usePhone } from '../mobile/nav'
 import { botBubble } from '../chat/Message'
@@ -282,7 +283,7 @@ function RoomComposer({ room, text, setText, onSend }: { room: Read['room']; tex
 }
 
 /** 手機的群組頁首（L05）：返回、通話｜成員頭像｜成員、更多；下面一顆「群組名 · 成員」膠囊。 */
-function PhoneRoomHeader({ room, status, anyBusy, lead, onRule, onStop, onMembers }: { room: Read['room']; status: { text: string; tone: string }; anyBusy: boolean; lead: string; onRule: (r: Rule) => void; onStop: () => void; onMembers: () => void }) {
+function PhoneRoomHeader({ room, status, anyBusy, lead, onRule, onStop, onMembers, onEdit }: { room: Read['room']; status: { text: string; tone: string }; anyBusy: boolean; lead: string; onRule: (r: Rule) => void; onStop: () => void; onMembers: () => void; onEdit: () => void }) {
   const round = 'flex size-11 flex-none items-center justify-center rounded-full border border-divider bg-panel text-ink active:bg-control'
   const [a, b] = room.members
   return (
@@ -317,6 +318,8 @@ function PhoneRoomHeader({ room, status, anyBusy, lead, onRule, onStop, onMember
           align="end"
           items={[
             ...RULES.map((r) => ({ label: `沒點名時：${r.label(lead)}`, icon: r.value === room.responder_rule ? Check : undefined, onSelect: () => onRule(r.value) })),
+            { label: '編輯群組', icon: Settings, separator: true, onSelect: onEdit },
+            { label: '編輯群組', icon: Settings, separator: true, onSelect: onEdit },
             { label: '停止所有成員', icon: OctagonPause, separator: true, danger: true, disabled: !anyBusy, onSelect: onStop },
           ]}
           trigger={(p) => (
@@ -343,6 +346,7 @@ export function RoomPage({ roomId }: { roomId: string }) {
   const [text, setText] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
   const [members, setMembers] = useState(false)
+  const [editing, setEditing] = useState(false)
   const phone = usePhone()
   const scroller = useRef<HTMLDivElement>(null)
   const memberIds = useRef<string[]>([])
@@ -425,10 +429,11 @@ export function RoomPage({ roomId }: { roomId: string }) {
 
   return (
     <div className="flex h-[var(--app-h,100dvh)] min-w-0 flex-1 max-md:fixed max-md:inset-x-0 max-md:top-[var(--app-top,0px)] max-md:z-10">
+      {editing && <EditRoomDialog key={room.id} room={room} open onClose={() => setEditing(false)} onSaved={() => void load()} />}
       <main className="flex min-w-0 flex-1 flex-col bg-app" aria-label={`群組：${room.name}`}>
         {messages.length > 0 && <h1 className="sr-only-text">群組：{room.name}</h1>}
         {phone && (
-          <PhoneRoomHeader room={room} status={st} anyBusy={anyBusy} lead={lead} onRule={(r) => void setRule(r)} onStop={() => void stopAll()} onMembers={() => setMembers(true)} />
+          <PhoneRoomHeader room={room} status={st} anyBusy={anyBusy} lead={lead} onRule={(r) => void setRule(r)} onStop={() => void stopAll()} onMembers={() => setMembers(true)} onEdit={() => setEditing(true)} />
         )}
         {!phone && (
         <header>
@@ -456,6 +461,12 @@ export function RoomPage({ roomId }: { roomId: string }) {
               ))}
             </select>
           </label>
+          <Button size="sm" variant="ghost" icon={Settings} onClick={() => setEditing(true)}>
+            編輯群組
+          </Button>
+          <Button size="sm" variant="ghost" icon={Settings} onClick={() => setEditing(true)}>
+            編輯群組
+          </Button>
           <Button size="sm" variant="danger" icon={OctagonPause} onClick={() => void stopAll()} disabled={!anyBusy}>
             停止所有成員
           </Button>

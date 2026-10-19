@@ -9,14 +9,17 @@ import {
   Inbox,
   KeyRound,
   LayoutGrid,
+  MessageSquare,
   Monitor,
   Network,
+  Pencil,
   OctagonPause,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
   Puzzle,
   Settings,
+  Trash2,
   UsersRound,
   X,
 } from 'lucide-react'
@@ -24,7 +27,7 @@ import { Avatar, Mascot } from '../ui/Avatar'
 import { Button, IconButton } from '../ui/Button'
 import { CountBadge } from '../ui/Pill'
 import { Icon } from '../ui/Icon'
-import { MenuButton } from '../ui/Menu'
+import { MenuButton, useContextMenu, type MenuItem } from '../ui/Menu'
 import { cx } from '../ui/cx'
 import { linkClick, navigate } from '../router'
 import { botsStore, type Bot, look } from '../data/bots'
@@ -33,9 +36,31 @@ import { openNewRoom, roomsStore, type Room } from '../data/rooms'
 import { useStore } from '../data/store'
 import { openNewTeam, sectionsOf, teamsStore } from '../data/teams'
 import { openNewBot, setRail } from '../data/ui'
+import { EditRoomDialog } from '../rooms/EditRoomDialog'
+import { DeleteDialog, type DeleteTarget } from './DeleteDialog'
 import { usePauseAll } from './PauseBanner'
 
 type NavProps = { path: string; onNavigate?: () => void }
+
+/** 接右鍵／長按選單的事件（useContextMenu 的 bind 結果）。 */
+type MenuBind = ReturnType<ReturnType<typeof useContextMenu>['bind']>
+
+/** 側欄裡 Bot、群組、團隊的右鍵選單項目。 */
+function botItems(b: Bot, go: (to: string) => void, del: (t: DeleteTarget) => void): MenuItem[] {
+  return [
+    { label: '開啟對話', icon: MessageSquare, onSelect: () => go(`/bots/${b.id}`) },
+    { label: 'Bot 設定', icon: Settings, onSelect: () => go(`/settings/bots/${encodeURIComponent(b.id)}`) },
+    { label: '刪除 Bot', icon: Trash2, danger: true, separator: true, onSelect: () => del({ kind: 'bot', id: b.id, name: b.name }) },
+  ]
+}
+
+function roomItems(r: Room, go: (to: string) => void, edit: (r: Room) => void, del: (t: DeleteTarget) => void): MenuItem[] {
+  return [
+    { label: '開啟群組', icon: MessageSquare, onSelect: () => go(`/rooms/${r.id}`) },
+    { label: '編輯群組', icon: Pencil, onSelect: () => edit(r) },
+    { label: '刪除群組', icon: Trash2, danger: true, separator: true, onSelect: () => del({ kind: 'room', id: r.id, name: r.name }) },
+  ]
+}
 
 // 不常用的頁面收在「更多」裡。
 const MORE = [
@@ -95,7 +120,7 @@ function botStatus(state?: string): {
 }
 
 // 一行一個 Bot：頭像＋名字，有事的時候才在右邊標「工作中」「等你」。
-function BotRow({ bot, path, onNavigate, chief }: NavProps & { bot: Bot; chief?: boolean }) {
+function BotRow({ bot, path, onNavigate, chief, menu }: NavProps & { bot: Bot; chief?: boolean; menu?: MenuBind }) {
   const to = `/bots/${bot.id}`
   const active = path === to || path.startsWith(to + '/')
   const st = botStatus(useStore(botsStore).activity[bot.id]?.state)
@@ -105,7 +130,8 @@ function BotRow({ bot, path, onNavigate, chief }: NavProps & { bot: Bot; chief?:
       onClick={linkClick(to, onNavigate)}
       aria-current={active ? 'page' : undefined}
       title={bot.title || undefined}
-      className={cx('flex min-h-10 items-center gap-2.5 rounded-menu px-2.5 text-ink max-sm:min-h-11', active ? 'bg-control' : 'hover:bg-control/60')}
+      {...menu}
+      className={cx('flex min-h-10 items-center gap-2.5 rounded-menu px-2.5 text-ink [-webkit-touch-callout:none] max-sm:min-h-11', active ? 'bg-control' : 'hover:bg-control/60')}
     >
       <Avatar {...look(bot)} state={st.waiting ? 'notifying' : st.working ? 'working' : 'idle'} dot={st.waiting ? 'waiting' : 'none'} ring={active ? '#2F2F2F' : '#111111'} size={26} />
       <span className="min-w-0 flex-1 truncate text-ui">{bot.name}</span>
@@ -115,7 +141,7 @@ function BotRow({ bot, path, onNavigate, chief }: NavProps & { bot: Bot; chief?:
   )
 }
 
-function RoomRow({ room, path, onNavigate }: NavProps & { room: Room }) {
+function RoomRow({ room, path, onNavigate, menu }: NavProps & { room: Room; menu?: MenuBind }) {
   const to = `/rooms/${room.id}`
   const active = path === to
   const working = room.members.some((m) => m.seat === 'working' || m.seat === 'queued')
@@ -125,7 +151,8 @@ function RoomRow({ room, path, onNavigate }: NavProps & { room: Room }) {
       href={to}
       onClick={linkClick(to, onNavigate)}
       aria-current={active ? 'page' : undefined}
-      className={cx('flex min-h-10 items-center gap-2.5 rounded-menu px-2.5 text-ink max-sm:min-h-11', active ? 'bg-control' : 'hover:bg-control/60')}
+      {...menu}
+      className={cx('flex min-h-10 items-center gap-2.5 rounded-menu px-2.5 text-ink [-webkit-touch-callout:none] max-sm:min-h-11', active ? 'bg-control' : 'hover:bg-control/60')}
     >
       <RoomFace room={room} active={active} />
       <span className="min-w-0 flex-1 truncate text-ui">{room.name}</span>
@@ -147,7 +174,7 @@ function RoomFace({ room, active }: { room: Room; active: boolean }) {
   )
 }
 
-function Section({ title, children, action, team }: { title: string; children: ReactNode; action?: ReactNode; team?: string }) {
+function Section({ title, children, action, team, menu }: { title: string; children: ReactNode; action?: ReactNode; team?: string; menu?: MenuBind }) {
   const [open, setOpen] = useState(true)
   return (
     <div className="flex flex-col gap-px" role="group" aria-label={title} data-team={team}>
@@ -156,6 +183,7 @@ function Section({ title, children, action, team }: { title: string; children: R
           type="button"
           aria-expanded={open}
           data-section-toggle="1"
+          {...menu}
           onClick={() => setOpen((o) => !o)}
           className="relative flex min-h-7 items-center gap-1.5 self-start rounded-seg bg-transparent pb-0 pl-3 pr-2 pt-1 text-[13px] text-ink-3 touch-target hover:text-ink-2"
         >
@@ -195,6 +223,13 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
     onNavigate?.()
     openNewBot()
   }
+  const ctx = useContextMenu()
+  const [editRoom, setEditRoom] = useState<Room | null>(null)
+  const [deleting, setDeleting] = useState<DeleteTarget | null>(null)
+  const go = (to: string) => {
+    onNavigate?.()
+    navigate(to)
+  }
   return (
     <nav aria-label="側欄" className="flex h-full flex-col gap-2 overflow-hidden bg-panel px-2.5 pb-2.5 pt-3.5 text-ui-sm leading-[1.45] text-ink">
       <div className="flex min-h-9 items-center gap-1 pl-1.5 pr-0.5">
@@ -228,6 +263,14 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
             key={sec.key}
             title={sec.title}
             team={sec.team?.id}
+            menu={
+              sec.team
+                ? ctx.bind(`團隊 ${sec.title}`, [
+                    { label: '團隊地圖', icon: LayoutGrid, onSelect: () => go('/teams') },
+                    { label: '刪除團隊', icon: Trash2, danger: true, separator: true, onSelect: () => setDeleting({ kind: 'team', id: sec.team!.id, name: sec.team!.name }) },
+                  ])
+                : undefined
+            }
             action={
               i === 0 ? (
                 <IconButton
@@ -243,7 +286,7 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
             }
           >
             {sec.bots.map((b) => (
-              <BotRow key={b.id} bot={b} chief={!!sec.team && sec.team.chief_id === b.id} path={path} onNavigate={onNavigate} />
+              <BotRow key={b.id} bot={b} chief={!!sec.team && sec.team.chief_id === b.id} path={path} onNavigate={onNavigate} menu={ctx.bind(b.name, botItems(b, go, setDeleting))} />
             ))}
             {sec.team && sec.bots.length === 0 && <p className="m-0 px-3 py-1 text-sub text-ink-3">還沒有成員。</p>}
             {!sec.team && bots && bots.length === 0 && (
@@ -271,7 +314,7 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
           }
         >
           {rooms?.map((r) => (
-            <RoomRow key={r.id} room={r} path={path} onNavigate={onNavigate} />
+            <RoomRow key={r.id} room={r} path={path} onNavigate={onNavigate} menu={ctx.bind(r.name, roomItems(r, go, setEditRoom, setDeleting))} />
           ))}
           {rooms && rooms.length === 0 && <p className="m-0 px-3 py-1 text-sub text-ink-3">還沒有群組。</p>}
         </Section>
@@ -305,6 +348,9 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
           trigger={(t) => <IconButton {...t} icon={Ellipsis} label="更多" />}
         />
       </div>
+      {ctx.menu}
+      {editRoom && <EditRoomDialog key={editRoom.id} room={editRoom} open onClose={() => setEditRoom(null)} onSaved={() => undefined} />}
+      <DeleteDialog target={deleting} onClose={() => setDeleting(null)} />
     </nav>
   )
 }
@@ -312,13 +358,16 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
 // 窄版：只有圖示，滑過顯示名字；不常用的頁面在「更多」選單裡。
 function Rail({ path }: SidebarProps) {
   const pauseAll = usePauseAll()
+  const ctx = useContextMenu()
+  const [editRoom, setEditRoom] = useState<Room | null>(null)
+  const [deleting, setDeleting] = useState<DeleteTarget | null>(null)
   const { bots, activity } = useStore(botsStore)
   const inbox = useStore(inboxStore).items
   const rooms = useStore(roomsStore).rooms
   const count = inbox?.length ?? 0
   const item = (active: boolean) => cx('relative flex size-10 flex-none items-center justify-center rounded-menu text-ink', active ? 'bg-control' : 'hover:bg-control/60')
-  const link = (to: string, label: string, body: ReactNode, active = path === to, extra?: ReactNode) => (
-    <a key={to} href={to} onClick={linkClick(to)} aria-label={label} title={label} aria-current={active ? 'page' : undefined} className={item(active)}>
+  const link = (to: string, label: string, body: ReactNode, active = path === to, extra?: ReactNode, menu?: MenuBind) => (
+    <a key={to} href={to} onClick={linkClick(to)} aria-label={label} title={label} aria-current={active ? 'page' : undefined} {...menu} className={cx(item(active), '[-webkit-touch-callout:none]')}>
       {body}
       {extra}
     </a>
@@ -348,9 +397,13 @@ function Rail({ path }: SidebarProps) {
             st.text ? `${b.name}（${st.text}）` : b.name,
             <Avatar {...look(b)} state={st.waiting ? 'notifying' : st.working ? 'working' : 'idle'} dot={st.waiting ? 'waiting' : 'none'} size={26} ring={active ? '#2F2F2F' : '#111111'} />,
             active,
+            undefined,
+            ctx.bind(b.name, botItems(b, navigate, setDeleting)),
           )
         })}
-        {rooms?.map((r) => link(`/rooms/${r.id}`, r.name, <RoomFace room={r} active={path === `/rooms/${r.id}`} />))}
+        {rooms?.map((r) =>
+          link(`/rooms/${r.id}`, r.name, <RoomFace room={r} active={path === `/rooms/${r.id}`} />, undefined, undefined, ctx.bind(r.name, roomItems(r, navigate, setEditRoom, setDeleting))),
+        )}
       </div>
       <MenuButton
         label="更多"
@@ -361,6 +414,9 @@ function Rail({ path }: SidebarProps) {
         trigger={(t) => <IconButton {...t} icon={Ellipsis} label="更多" />}
       />
       {link('/settings', '設定', <Icon icon={Settings} size={18} />, path.startsWith('/settings'))}
+      {ctx.menu}
+      {editRoom && <EditRoomDialog key={editRoom.id} room={editRoom} open onClose={() => setEditRoom(null)} onSaved={() => undefined} />}
+      <DeleteDialog target={deleting} onClose={() => setDeleting(null)} />
     </nav>
   )
 }
