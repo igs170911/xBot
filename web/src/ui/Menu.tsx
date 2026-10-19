@@ -152,21 +152,25 @@ export function MenuButton({ label, items, trigger, align = 'start' }: MenuButto
   return (
     <span className="relative inline-flex">
       {trigger({ ref: btn, onClick: () => setOpen((o) => !o), 'aria-haspopup': 'menu', 'aria-expanded': open })}
-      {open && pos && (
-        <div
-          ref={pop}
-          style={pos}
-          className="fixed z-[70]"
-          onKeyDown={(e) => {
-            if (e.key === 'Escape' || e.key === 'Tab') {
-              if (e.key === 'Escape') e.preventDefault()
-              close()
-            }
-          }}
-        >
-          <MenuList label={label} items={items} onDone={close} />
-        </div>
-      )}
+      {/* 放到 body 底下：側欄是 sticky（自成一層），留在裡面會被右邊的頁面蓋住（縮小的側欄「⋯」，2026-10-19） */}
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            ref={pop}
+            style={pos}
+            className="fixed z-[70]"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' || e.key === 'Tab') {
+                if (e.key === 'Escape') e.preventDefault()
+                close()
+              }
+            }}
+          >
+            <MenuList label={label} items={items} onDone={close} />
+          </div>,
+          document.body,
+        )}
     </span>
   )
 }
