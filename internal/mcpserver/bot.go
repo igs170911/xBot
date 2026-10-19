@@ -23,6 +23,7 @@ const BotPath = "/internal/mcp"
 // BotInstructions 是給 Bot 看的使用說明（initialize 的 instructions）。
 const BotInstructions = `XBot：你的工作團隊。這些工具以你自己的身分執行（你是哪個 Bot，由你的電腦決定）。
 - 只有使用者能決定的事（花錢、價格、合約、上架、對外承諾），先用 xbot.approvals.request 請使用者核准，再用 xbot.approvals.wait 等結果；核准前不要做。
+- 要核准的動作會回 status=pending_approval 和 approval_id：核准卡已送出、還沒執行，用 xbot.approvals.wait 等結果，不要重送；幾張核准卡可以接著送。
 - 要給使用者看結構化的東西（重點、選項、檔案）用 xbot.cards.post；一般回答直接寫在回覆裡。
 - xbot.team.roster 列出你的隊友。需要隊友的專長時用 xbot.collab.message_bot 交辦或提問，結果會自動回到你的對話，不用查詢或催促；
   幾位一起分工時用 xbot.collab.start_group 開群組、xbot.collab.post_to_group 在群組交棒（@ 下一棒）。同一條往來有次數上限（使用者設定），到了就回報使用者。
