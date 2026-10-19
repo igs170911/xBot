@@ -6896,7 +6896,7 @@ export interface JudgeRunOutput {
     /** 要寫字的用途的其他欄位（例：建 Bot 建議的職稱、介紹） */
     fields?: Record<string, string>
   }
-  /** ok、low_confidence、invalid、timeout、error、rate_limited、capped、not_configured、locked、off */
+  /** ok、low_confidence、invalid、timeout、error、rate_limited、capped、not_configured、locked、off、no_funds、unsupported */
   outcome: string
   /** 回答的是哪一層：tier1、tier2、local */
   tier?: string
@@ -6992,7 +6992,7 @@ export interface JudgeSettingsGetOutput {
   min_p: number
   /** 今天遇到的供應商問題（已自動退回規則） */
   problems: {
-    /** no_funds 餘額不足 */
+    /** no_funds 餘額不足、unsupported 模型不支援 chat/completions */
     kind: string
     provider: string
     message: string
@@ -7113,7 +7113,7 @@ export interface JudgeSettingsSetOutput {
   min_p: number
   /** 今天遇到的供應商問題（已自動退回規則） */
   problems: {
-    /** no_funds 餘額不足 */
+    /** no_funds 餘額不足、unsupported 模型不支援 chat/completions */
     kind: string
     provider: string
     message: string

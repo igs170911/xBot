@@ -32,7 +32,12 @@ const (
 	OutcomeOff           = "off"
 	// OutcomeNoFunds：供應商說帳戶餘額不足（例：OpenCode Zen 沒有儲值，Jev 要 Zen 的隨用隨付餘額）。
 	OutcomeNoFunds = "no_funds"
+	// OutcomeUnsupported：這一層的模型不支援 chat/completions（例：只支援 Responses API），沒有呼叫就往下一層退。
+	OutcomeUnsupported = "unsupported"
 )
+
+// transportChat 是快判唯一會用的呼叫方式（proxy.TransportChat：POST chat/completions）。
+const transportChat = "chat_completions"
 
 // noFundsRe 認出「餘額不足」類的錯誤（OpenCode Zen：Upstream request failed: Insufficient account funds）。
 var noFundsRe = regexp.MustCompile(`(?i)insufficient (account )?(funds|balance|credits?)|out of credits|payment required|餘額不足`)
@@ -93,6 +98,9 @@ var ErrNotConfigured = errors.New("快判模型的供應商還沒設定")
 type Service struct {
 	DB   *store.DB
 	Call Caller
+	// Transport 回傳一個模型的呼叫方式（chat_completions、codex_responses、anthropic_messages；proxy.DBStore.TransportFor）。
+	// 快判只會打 chat/completions：別的方式的模型存設定時擋下、執行時略過這一層。nil 或回空白時不檢查。
+	Transport func(ctx context.Context, provider, model string) (string, error)
 	// Now 是現在時間（測試用假時鐘）；nil 用 time.Now。
 	Now func() time.Time
 	// Notify 在事件寫進 event 表之後呼叫（SSE 用）；可為 nil。
@@ -177,7 +185,7 @@ type Decision struct {
 	Mode     Mode    `json:"mode"`
 	Rule     Answer  `json:"rule" desc:"規則的判斷"`
 	Model    *Answer `json:"model,omitempty" desc:"模型的判斷（有回答時；影子模式時不生效）"`
-	Outcome  string  `json:"outcome" desc:"ok、low_confidence、invalid、timeout、error、rate_limited、capped、not_configured、locked、off"`
+	Outcome  string  `json:"outcome" desc:"ok、low_confidence、invalid、timeout、error、rate_limited、capped、not_configured、locked、off、no_funds、unsupported"`
 	Tier     string  `json:"tier,omitempty" desc:"回答的是哪一層：tier1、tier2、local"`
 	Provider string  `json:"provider,omitempty"`
 	ModelID  string  `json:"model_id,omitempty"`
@@ -284,6 +292,10 @@ func (s *Service) decide(ctx context.Context, u *Use, a Ask, force Mode) Decisio
 		if cctx.Err() != nil {
 			break
 		}
+		if s.unsupported(cctx, t.tm) != "" {
+			outcome = OutcomeUnsupported // 不呼叫（一定是 400），往下一層退；設定頁會列出這個問題
+			continue
+		}
 		if ok, capped := s.reserve(ctx, set, t.name == Tier2); !ok {
 			if capped {
 				outcome = OutcomeCapped
@@ -367,6 +379,30 @@ func (s *Service) ask(ctx context.Context, u *Use, a Ask, options []Option, t ti
 		return nil, oc
 	}
 	return &v, oc
+}
+
+// unsupported 回傳模型不能用 chat/completions 時它的呼叫方式（例：codex_responses）；能用或不知道時回空白。
+func (s *Service) unsupported(ctx context.Context, tm TierModel) string {
+	if s.Transport == nil || !tm.On() {
+		return ""
+	}
+	t, err := s.Transport(ctx, tm.Provider, tm.Model)
+	if err != nil || t == "" || t == transportChat {
+		return ""
+	}
+	return t
+}
+
+// unsupportedText 是介面上的白話：哪個模型、只支援什麼、改用什麼。
+func unsupportedText(tm TierModel, transport string) string {
+	name := transport
+	switch transport {
+	case "codex_responses":
+		name = "Responses API"
+	case "anthropic_messages":
+		name = "Anthropic Messages API"
+	}
+	return tm.Model + " 只支援 " + name + "，快判只能用支援 chat/completions 的模型（例：" + DefaultTier1.Model + "）"
 }
 
 // reserve 檢查每日上限並預留一次呼叫。capped=true 表示全部的每日上限到了；只有第二層到了時 ok=false、capped=false。

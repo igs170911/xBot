@@ -36,6 +36,9 @@ type Op[In, Out any] struct {
 	NoDelegate bool
 	// ForBot 表示 Bot 自己（經 product.sock 的 XBot MCP）可以用這個操作（C11）。Bot 只看得到、也只能呼叫這些。
 	ForBot bool
+	// ManagerOnly 表示 Bot 要有團隊管理權限才用得到（Handle 自己用 org.RequireManager 檢查）。沒有權限的 Bot
+	// 在 XBot MCP 的工具清單裡看不到，省得每次模型請求都送這些工具的說明。只對 Bot 有意義。
+	ManagerOnly bool
 	// RiskOf 依輸入決定風險（例：降低花費上限＝safe、提高＝confirm）。可空白。
 	RiskOf func(In) Risk
 	// AmountOf 回傳這次動作的金額（美元百萬分之一），花錢類的動作才設；代為核准用它算每日金額上限。
@@ -65,10 +68,11 @@ type Info struct {
 	DynamicRisk bool    `json:"dynamic_risk,omitempty"`
 	Category    string  `json:"category,omitempty"`
 	NoDelegate  bool    `json:"no_delegate,omitempty"`
-	Reversible  bool    `json:"reversible,omitempty"` // 有 Revert：代為核准後 10 分鐘內可以復原
-	HasAmount   bool    `json:"has_amount,omitempty"` // 有 AmountOf：花錢類，算進代為核准的每日金額
-	ForBot      bool    `json:"for_bot,omitempty"`    // Bot 經 product.sock 可以用（C11）
-	Mutates     bool    `json:"mutates"`              // 不是 read：出口應該提供 request_id 與 dry_run（MCP-4）
+	Reversible  bool    `json:"reversible,omitempty"`   // 有 Revert：代為核准後 10 分鐘內可以復原
+	HasAmount   bool    `json:"has_amount,omitempty"`   // 有 AmountOf：花錢類，算進代為核准的每日金額
+	ForBot      bool    `json:"for_bot,omitempty"`      // Bot 經 product.sock 可以用（C11）
+	ManagerOnly bool    `json:"manager_only,omitempty"` // Bot 要有團隊管理權限才看得到
+	Mutates     bool    `json:"mutates"`                // 不是 read：出口應該提供 request_id 與 dry_run（MCP-4）
 	Input       *Schema `json:"input_schema"`
 	Output      *Schema `json:"output_schema"`
 }
@@ -222,7 +226,7 @@ func register[In, Out any](r *Registry, op Op[In, Out]) error {
 	parts := strings.Split(op.Name, ".")
 	e := &entry{info: Info{
 		Name: op.Name, Domain: parts[1], Action: parts[2], Summary: op.Summary, Description: op.Description,
-		Scope: op.Scope, Risk: op.Risk, DynamicRisk: op.RiskOf != nil, Category: op.Category, NoDelegate: op.NoDelegate, ForBot: op.ForBot,
+		Scope: op.Scope, Risk: op.Risk, DynamicRisk: op.RiskOf != nil, Category: op.Category, NoDelegate: op.NoDelegate, ForBot: op.ForBot, ManagerOnly: op.ManagerOnly,
 		Reversible: op.Revert != nil, HasAmount: op.AmountOf != nil, Mutates: op.Scope != ScopeRead, Input: in, Output: out,
 	}}
 	decode := func(raw json.RawMessage) (In, error) {

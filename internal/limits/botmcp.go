@@ -1,5 +1,7 @@
 package limits
 
+import "time"
+
 // Bot 用的 XBot MCP（C11）：Bot 經 product.sock 呼叫的卡片、要求核准、隊友名冊。
 // 操作輸入的 struct 標籤（max:"…"）寫的是同一個數字。
 
@@ -28,4 +30,9 @@ const (
 
 	// CardPathMax 是檔案路徑的長度上限。XBot 新增（Linux PATH_MAX 4096 的四分之一，夠用）。
 	CardPathMax = 1024
+
+	// BotToolsReloadWait、BotToolsReloadPoll：Bot 的團隊管理權限改了以後（工具清單跟著變），最多等它做完手上這一輪多久
+	// 再請 Hermes 重新載入 MCP、多久看一次。XBot 新增。等不到就等電腦重開。
+	BotToolsReloadWait = 30 * time.Minute
+	BotToolsReloadPoll = 5 * time.Second
 )

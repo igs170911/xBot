@@ -246,6 +246,9 @@ func (s *Service) CreateTeam(ctx context.Context, sp TeamSpec) (TeamResult, erro
 		}
 	}
 	res.Team = team
+	if sp.LeadManage && s.o.ManageChanged != nil {
+		s.o.ManageChanged(ctx, res.LeadID)
+	}
 	lead, _ := s.db.GetBot(ctx, res.LeadID)
 	res.Note = fmt.Sprintf("已建立「%s」：%s 帶 %d 位成員", name, lead.Name, len(res.MemberIDs))
 	if res.RoomID != "" {

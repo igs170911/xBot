@@ -229,7 +229,7 @@ func Register(reg *ops.Registry, s *Service) {
 		Description: "一次建好：側欄分區、主管與成員（新建或既有的 Bot）、每位成員向主管報告、同名群組。" +
 			"有一位不對就什麼都不建。團隊含主管最多 10 位；全部 Bot 最多 50 個。" +
 			"Bot 要有團隊管理權限才能用，新建的 Bot 算進它每天的上限（預設 50 個，使用者可調）；動手前先跟使用者確認名單與分工。",
-		Scope: ops.ScopeManage, Risk: ops.RiskSafe, ForBot: true,
+		Scope: ops.ScopeManage, Risk: ops.RiskSafe, ForBot: true, ManagerOnly: true,
 		Handle: func(ctx context.Context, call *ops.Call, in CreateTeamIn) (CreateTeamOut, error) {
 			if err := ready(s); err != nil {
 				return CreateTeamOut{}, err
@@ -370,7 +370,7 @@ func Register(reg *ops.Registry, s *Service) {
 	ops.Register(reg, ops.Op[UpdateBotIn, UpdateBotOut]{
 		Name: "xbot.teams.update_bot", Summary: "調整另一個 Bot 的職稱、人設、報告對象或團隊",
 		Description: "要有團隊管理權限（使用者在「Bot 設定 → 權限與花費」或「組織架構」開啟）。刪 Bot 用 xbot.teams.remove_bot（要使用者按允許）。改報告對象時不能讓報告關係繞成一圈。",
-		Scope:       ops.ScopeManage, Risk: ops.RiskSafe, ForBot: true,
+		Scope:       ops.ScopeManage, Risk: ops.RiskSafe, ForBot: true, ManagerOnly: true,
 		Handle: func(ctx context.Context, call *ops.Call, in UpdateBotIn) (UpdateBotOut, error) {
 			if err := ready(s); err != nil {
 				return UpdateBotOut{}, err

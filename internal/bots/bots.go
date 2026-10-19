@@ -99,6 +99,8 @@ type Deps struct {
 	Active func(botID string) (threadID, taskID string)
 	// SoulChanged 在名稱、職稱、介紹或人設改了以後呼叫：把新的 SOUL.md 寫進 Bot 的電腦（C31）。可為 nil。
 	SoulChanged func(ctx context.Context, botID string)
+	// ManageChanged 在團隊管理權限開關以後呼叫：Bot 看得到的 XBot MCP 工具跟著變，要請引擎重新載入。可為 nil。
+	ManageChanged func(ctx context.Context, botID string)
 }
 
 // View 是對外的 Bot 資料。
@@ -283,7 +285,7 @@ func Register(reg *ops.Registry, d Deps) {
 			if err != nil {
 				return View{}, err
 			}
-			before := soulOf(b)
+			before, manage := soulOf(b), b.CanManage
 			if err := apply(&b, in); err != nil {
 				return View{}, err
 			}
@@ -303,6 +305,9 @@ func Register(reg *ops.Registry, d Deps) {
 			b, err = call.DB.UpdateBot(ctx, b)
 			if err == nil && d.SoulChanged != nil && soulOf(b) != before {
 				d.SoulChanged(ctx, b.ID)
+			}
+			if err == nil && d.ManageChanged != nil && b.CanManage != manage {
+				d.ManageChanged(ctx, b.ID)
 			}
 			return ViewOf(b), err
 		},

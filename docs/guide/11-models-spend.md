@@ -89,6 +89,7 @@ xbot usage caps
 - **開關**：關掉就全部照規則。打開時用你的預設模型（「方案」裡設的）。
 - **預設模型**：OpenCode Go 的 `deepseek-v4.1-flash`。想用 Jev 分類模型，改成 `opencode-zen / jev-1.13`（要另外加 OpenCode Zen 的金鑰並儲值；Go 訂閱不含 Jev）。
 - **選的供應商不存在**（例如選了 Zen 的 Jev，但只加了 Go 的金鑰）：頁面上方會提醒，按一下改用你的預設模型，或直接關掉。
+- **只能選一般聊天介面（chat/completions）的模型**：只支援 Responses API 的模型（例如 OpenCode Go 的 `muse-spark`、`gpt-5.6-luna`）存不進去。以前已經選了的，快判會跳過它、改用下一層或規則，頁面上方會提醒；換成 `deepseek-v4.1-flash` 這類模型就好。
 - **每個用途各自開關**（進階）：
   - 關：只用規則。
   - 影子：呼叫模型、把它和規則的判斷並排記下來，但照規則做。用來看準不準。

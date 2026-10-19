@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"xbot/internal/apps"
@@ -77,6 +78,9 @@ type stack struct {
 	teaching *teaching.Service // 示範教學（B32）
 	importer *importer.Service // 從 LazyBoy、OpenMausBot 匯入（V10）
 	voice    *voice.Service    // 語音（E32）：合成與辨識經 Model Proxy
+	// hermesDriver 是 Hermes 驅動（重新載入 MCP 用）；toolReloads 記著哪些 Bot 正在等空下來重新載入（reloadBotTools）。
+	hermesDriver *hermes.Driver
+	toolReloads  sync.Map
 }
 
 func openStack(cfg config.Config) (*stack, error) {
@@ -180,6 +184,7 @@ func openStack(cfg config.Config) (*stack, error) {
 	s.creds = &engines.Service{DB: db, HostHome: home, Locate: comp.Locate, UID: box.BotUID, GID: box.BotGID, Logger: logger}
 	comp.Creds = s.creds
 	hermesDriver := hermes.New(comp.Connect, logger)
+	s.hermesDriver = hermesDriver
 	drivers := []engine.Driver{hermesDriver}
 	for _, name := range acp.Engines {
 		drivers = append(drivers, acp.New(acp.Options{Agent: acp.Agents[name], Launch: comp.LaunchACP, Authorize: s.creds.Authorize,
@@ -190,7 +195,8 @@ func openStack(cfg config.Config) (*stack, error) {
 	}
 	s.driver = engine.NewRouter(hermes.Name, comp.EngineOf, drivers...)
 	// 快判（X05）：服務自己經 Model Proxy 呼叫模型（金鑰只在 Model Proxy），用量標記 judge。
-	s.judge = &judge.Service{DB: db, Logger: logger, Call: func(ctx context.Context, provider string, body []byte, session string) (int, []byte, error) {
+	// 只打 chat/completions；只支援別的呼叫方式的模型（例：Responses API）存設定時擋下、執行時略過（Transport）。
+	s.judge = &judge.Service{DB: db, Logger: logger, Transport: s.pstore.TransportFor, Call: func(ctx context.Context, provider string, body []byte, session string) (int, []byte, error) {
 		resp, err := s.model.Call(ctx, proxy.CallRequest{Provider: provider, Path: "chat/completions", Body: body, Engine: judge.UsageEngine,
 			Session: session, MaxBytes: limits.JudgeReplyBytes})
 		if errors.Is(err, proxy.ErrNotFound) {
@@ -242,7 +248,8 @@ func openStack(cfg config.Config) (*stack, error) {
 	// 檔案面板（C33）：經 Docker 讀寫 Bot 電腦的 /workspace；在電腦裡執行的指令用 Bot 自己的使用者。傳給別的 Bot 沿用 X02 帶檔。
 	s.files = &files.Service{Locate: files.DockerLocator(comp.BotFS, fmt.Sprintf("%d:%d", box.BotUID, box.BotGID)), Carry: carry}
 	// 團隊、匯報線、提案與討論（X03）。Bot 的系統提示：隊友名冊＋組織與回報。
-	s.org = org.New(org.Options{DB: db, Runtime: s.runtime, Collab: s.collab, Logger: logger})
+	s.org = org.New(org.Options{DB: db, Runtime: s.runtime, Collab: s.collab, Logger: logger,
+		ManageChanged: func(_ context.Context, botID string) { s.reloadBotTools(botID) }})
 	comp.Roster = func(ctx context.Context, botID string) (string, error) {
 		team, err := s.collab.RosterText(ctx, botID)
 		if err != nil {
@@ -355,6 +362,32 @@ func (s *stack) refreshApps(ctx context.Context, hd *hermes.Driver, botIDs []str
 			slog.Warn("請 Hermes 重新載入 MCP 失敗，下一個對話生效", "bot", id, "err", err)
 		}
 	}
+}
+
+// reloadBotTools 在 Bot 的團隊管理權限改了以後，請 Hermes 重新載入 MCP：XBot MCP 依權限列出不同的工具
+// （mcpserver.BotHandler），重新載入後新的清單才會進到模型請求。正在工作時等這一輪結束再載入（重新載入會中斷進行中的
+// 工具呼叫），最多等 limits.BotToolsReloadWait。電腦沒開時不用做（下次連線就拿到新的清單）；ACP 引擎在下一個 session 拿到。
+func (s *stack) reloadBotTools(botID string) {
+	if _, waiting := s.toolReloads.LoadOrStore(botID, true); waiting {
+		return // 已經在等這個 Bot 空下來
+	}
+	go func() {
+		deadline := time.Now().Add(limits.BotToolsReloadWait)
+		for thread, _ := s.runtime.Active(botID); thread != ""; thread, _ = s.runtime.Active(botID) {
+			if time.Now().After(deadline) {
+				s.toolReloads.Delete(botID)
+				slog.Warn("Bot 一直在工作，沒有重新載入 MCP；權限的改變等電腦重開生效", "bot", botID)
+				return
+			}
+			time.Sleep(limits.BotToolsReloadPoll)
+		}
+		s.toolReloads.Delete(botID) // 之後再改權限要再載入一次
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		if _, err := s.hermesDriver.ReloadMCP(ctx, botID); err != nil {
+			slog.Warn("請 Hermes 重新載入 MCP 失敗，權限的改變等電腦重開生效", "bot", botID, "err", err)
+		}
+	}()
 }
 
 // startBackground 開始服務才需要的背景工作：閒置休眠（BX-12、CL-9）；收尾上次沒做完的搬家，並定期刪掉搬家後保留期已過的舊資料（CL-5）；

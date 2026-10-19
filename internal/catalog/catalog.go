@@ -55,6 +55,8 @@ type Deps struct {
 	Memory *memory.Service
 	// SoulChanged 把新的 SOUL.md 寫進 Bot 的電腦（C31）。可為 nil。
 	SoulChanged func(ctx context.Context, botID string)
+	// ManageChanged 在 Bot 的團隊管理權限開關以後呼叫（重新載入它的 XBot MCP 工具）。可為 nil。
+	ManageChanged func(ctx context.Context, botID string)
 	// Collab 是 Bot 之間的傳話與群組（X02）；nil 時只登錄定義。
 	Collab *collab.Service
 	// Org 是團隊、匯報線、提案與討論（X03）；nil 時只登錄定義。
@@ -81,7 +83,7 @@ type Deps struct {
 
 // Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines、files、computers（生命週期、看畫面與接手）、judge（快判）、network（內建 Tailscale、外部入口）、teaching（示範教學）各領域的操作。
 func Register(reg *ops.Registry, d Deps) {
-	bd := bots.Deps{Teardown: d.Teardown, SoulChanged: d.SoulChanged}
+	bd := bots.Deps{Teardown: d.Teardown, SoulChanged: d.SoulChanged, ManageChanged: d.ManageChanged}
 	if d.Collab != nil {
 		// 刪除 Bot 時，還在等它回覆的隊友會收到「已經被刪除」（AA-6）。
 		teardown, c := d.Teardown, d.Collab
