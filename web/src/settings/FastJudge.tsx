@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRight, Info, ShieldCheck } from 'lucide-react'
+import { ChevronDown, Info } from 'lucide-react'
 import {
   judgeSettingsGet,
   judgeSettingsSet,
@@ -9,7 +9,7 @@ import {
   type JudgeStatsOutput,
 } from '../api/generated'
 import { Button } from '../ui/Button'
-import { SegmentedControl } from '../ui/Controls'
+import { SegmentedControl, Switch } from '../ui/Controls'
 import { TextInput } from '../ui/Field'
 import { Icon } from '../ui/Icon'
 import { Select } from '../ui/Menu'
@@ -20,8 +20,8 @@ import { Block, Group, Note, Row } from './parts'
 import { errText } from './format'
 import type { Provider } from './modelData'
 
-// 快判模型（J10，PRD §20）：第一層選擇題（OpenCode Zen 的 Jev）、第二層短文字（OpenCode Go flash）、本機小模型 → 規則；
-// 每個用途 關／影子／生效；每日呼叫上限；今天的用量與花費；影子模式和規則、和你的改正一致多少。
+// 快判模型（J10，PRD §20）：一個開關＋一個模型；細節（第二層、本機小模型、上限、各用途）收在「進階」。
+// 關掉＝全部照規則。設定的供應商不存在時（例：選了 Zen 的 Jev 但沒有 Zen 金鑰）提醒，並一鍵改用你的預設模型。
 
 type Mode = 'off' | 'shadow' | 'live'
 type Tier = { provider: string; model: string }
@@ -72,16 +72,16 @@ function pct(v: number): string {
 }
 
 function tierTag(u: UseRow): string {
-  if (u.tier === 'tier2') return 'Go'
-  return 'Jev'
+  return u.tier === 'tier2' ? '短文字' : '選擇題'
 }
 
-export function FastJudge({ providers }: { providers: Provider[] }) {
+export function FastJudge({ providers, defaultModel }: { providers: Provider[]; defaultModel?: Tier | null }) {
   const toast = useToast()
   const [data, setData] = useState<JudgeSettingsGetOutput | null>(null)
   const [stats, setStats] = useState<JudgeStatsOutput | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cap, setCap] = useState('')
+  const [more, setMore] = useState(false)
 
   useEffect(() => {
     Promise.all([judgeSettingsGet({}), judgeStats({})])
@@ -115,152 +115,164 @@ export function FastJudge({ providers }: { providers: Provider[] }) {
   if (!data) return <p className="m-0 text-ui-sm text-ink-2">讀取中…</p>
 
   const s = data.settings
-  const t1On = !!s.tier1.provider
-  const zen = providers.find((p) => p.id === 'opencode-zen')
-  const go = providers.find((p) => p.id === 'opencode-go')
+  const on = !!s.tier1.provider
   const today = data.today
-  // Jev 用不了時（例：Zen 沒儲值），選擇題改用第二層的 Go flash（Go 訂閱額度）。
-  const goFlash: Tier = s.tier2.provider ? s.tier2 : TIER2_SUGGEST[0]
+  const have = new Set(providers.map((p) => p.id))
+  // 設定的層用了不存在的供應商：快判其實一直在照規則。
+  const missing = [s.tier1, s.tier2].filter((t) => t.provider && !have.has(t.provider))
+  const fallback: Tier | null = defaultModel?.provider && have.has(defaultModel.provider) ? defaultModel : null
+  const turnOn = () => {
+    if (!fallback) {
+      toast.show({ kind: 'error', text: '先在「主要模型」設定一個預設模型' })
+      return
+    }
+    void save({ tier1: fallback, tier2: fallback }, '快判已開啟')
+  }
+  const turnOff = () => void save({ tier1: { provider: '', model: '' }, tier2: { provider: '', model: '' } }, '快判已關閉，全部照規則')
   const capNum = Number(cap)
   const capValid = Number.isInteger(capNum) && capNum >= 1 && capNum <= 100000
 
   return (
     <>
-      <Note icon={<Icon icon={ShieldCheck} />}>快判先用 OpenCode 的 Jev 做選擇題，只判斷、給建議；永遠不能自己刪除、花錢、對外發送或核准。</Note>
+      {missing.length > 0 && (
+        <Note
+          tone="warning"
+          icon={<Icon icon={Info} />}
+          action={
+            <span className="flex gap-2">
+              {fallback && (
+                <Button size="sm" variant="secondary" onClick={() => void save({ tier1: fallback, tier2: fallback }, '快判改用 ' + ref(fallback))}>
+                  改用 {fallback.model}
+                </Button>
+              )}
+              <Button size="sm" variant="ghost" onClick={turnOff}>
+                關掉
+              </Button>
+            </span>
+          }
+        >
+          {missing[0].provider} 還沒設定，快判現在只照規則。
+        </Note>
+      )}
       {data.problems.map((p) => (
         <Note
           key={p.provider + p.kind}
           tone="warning"
           icon={<Icon icon={Info} />}
           action={
-            p.provider === s.tier1.provider && goFlash.provider ? (
-              <Button size="sm" variant="secondary" onClick={() => void save({ tier1: goFlash }, '選擇題改用 ' + ref(goFlash))}>
-                改用 Go flash 做選擇題
+            fallback && p.provider === s.tier1.provider && fallback.provider !== p.provider ? (
+              <Button size="sm" variant="secondary" onClick={() => void save({ tier1: fallback }, '快判改用 ' + ref(fallback))}>
+                改用 {fallback.model}
               </Button>
             ) : undefined
           }
         >
-          {p.message}；這段時間快判先照規則。
+          {p.message}；先照規則。
         </Note>
       ))}
       {today.capped && (
         <Note tone="warning" icon={<Icon icon={Info} />}>
-          今天已經到每日上限（{today.daily_cap} 次），全部先照規則；明天自動恢復。
+          今天到上限了，先照規則，明天恢復。
         </Note>
       )}
 
-      <Block
-        title="用 OpenCode"
-        aside={
-          <span className="flex flex-wrap gap-1.5">
-            <StatusChip tone={zen?.api_key_set ? 'success' : 'neutral'}>{zen?.api_key_set ? 'Zen 已設定' : 'Zen 未設定'}</StatusChip>
-            <StatusChip tone={go?.api_key_set ? 'success' : 'neutral'}>{go?.api_key_set ? 'Go 已設定' : 'Go 未設定'}</StatusChip>
-          </span>
-        }
-      >
-        <Group label="快判模型">
-          <Row
-            title="今天"
-            sub={`快判 ${today.calls}／${today.daily_cap} 次 · 第二層 ${today.tier2_calls}／${today.tier2_cap} 次 · 花費 ${usd(today.cost_micros)}`}
-          />
-          <Row title="第一層 · 選擇題" sub={`所有「從幾個選項挑一個」的判斷；回傳機率，低於 ${data.min_p} 就照規則`} wrap>
+      <Group label="快判">
+        <Row title="快判" sub="用小模型做簡單判斷（做完了沒、要不要問你）。只給建議，不會自己花錢或刪東西。">
+          <Switch label="快判" checked={on} onChange={(v) => (v ? turnOn() : turnOff())} />
+        </Row>
+        {on && (
+          <Row title="模型" sub={`今天 ${today.calls}／${today.daily_cap} 次 · ${usd(today.cost_micros)}`} wrap>
             <Select
-              label="第一層模型"
+              label="快判模型"
               hideLabel
               look="compact"
               className="min-w-[240px]"
               value={ref(s.tier1)}
-              options={tierOptions(providers, TIER1_SUGGEST, s.tier1, '不用快判（只用規則）', (m) => !m.endsWith('-free'))}
-              onChange={(v) => void save({ tier1: split(v) }, v ? '第一層已更新' : '已改成只用規則')}
+              options={tierOptions(providers, TIER1_SUGGEST.filter((t) => have.has(t.provider)), s.tier1, '關掉（只用規則）', (m) => !m.endsWith('-free'))}
+              onChange={(v) => void save({ tier1: split(v) }, v ? '快判模型已更新' : '已改成只用規則')}
             />
           </Row>
-          <Row title="第二層 · 短文字" sub={`只用在摘要、命名、建 Bot 建議；每日上限 ${s.tier2_cap} 次，到了往下一層退`} wrap>
-            <Select
-              label="第二層模型"
-              hideLabel
-              look="compact"
-              className="min-w-[240px]"
-              value={ref(s.tier2)}
-              options={tierOptions(providers, TIER2_SUGGEST, s.tier2, '不用', (m) => /flash|mini|nano|lite/.test(m))}
-              onChange={(v) => void save({ tier2: split(v) }, '第二層已更新')}
-            />
-          </Row>
-          <Row title="本機小模型" sub="LM Studio／Ollama 等（先在「主要模型」加一個供應商）；完全離線時用" wrap>
-            <Select
-              label="本機小模型"
-              hideLabel
-              look="compact"
-              className="min-w-[240px]"
-              value={ref(s.local)}
-              options={tierOptions(providers, [], s.local, '不用')}
-              onChange={(v) => void save({ local: split(v) }, '本機小模型已更新')}
-            />
-          </Row>
-          <Row title="退路順序" sub="逾時、出錯、額度用完都往下一個">
-            <span className="flex flex-wrap items-center gap-1 text-meta text-ink-2" aria-label="退路順序">
-              {['OpenCode Jev', 'OpenCode Go flash', '本機小模型', '規則'].map((x, i) => (
-                <span key={x} className="flex items-center gap-1">
-                  {i > 0 && <Icon icon={ArrowRight} size={12} />}
-                  <span className="rounded-full border border-line px-2 py-0.5">{x}</span>
-                </span>
-              ))}
-            </span>
-          </Row>
-          <Row title="每日呼叫上限" sub="到了全部退回規則並通知一次；預設 300 次" wrap>
-            <span className="flex items-center gap-2">
-              <TextInput
-                label="每日呼叫上限"
-                hideLabel
-                inputMode="numeric"
-                wrapperClassName="w-24"
-                value={cap}
-                onChange={(e) => setCap(e.target.value.replace(/[^0-9]/g, ''))}
-              />
-              <Button size="sm" variant="secondary" disabled={!capValid || capNum === s.daily_cap} onClick={() => void save({ daily_cap: capNum }, '每日上限已更新')}>
-                儲存
-              </Button>
-            </span>
-          </Row>
-        </Group>
-      </Block>
+        )}
+      </Group>
 
-      <Block title="用途" sub="11–15 是工作開始前的「先判斷」；先用影子模式試，和規則、和你的改正一致 ≥ 95% 再生效">
-        <Group label="快判用途">
-          {data.uses.map((u) => {
-            const st = byUse.get(u.id)
-            const onlyRules = u.tier === 'tier1' && !t1On
-            const acc = st && st.corrected > 0 ? `和你一致 ${pct(st.corrected_agreement)}` : st && st.answered > 0 ? `和規則一致 ${pct(st.agreement)}` : '還沒有資料'
-            return (
-              <div key={u.id} className="flex items-center gap-3 border-line px-4 py-3 not-first:border-t max-sm:flex-col max-sm:items-stretch" data-testid={`judge-use-${u.id}`}>
-                <span className="w-6 flex-none text-meta text-ink-3">{u.n}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-1.5 text-ui leading-[1.45]">
-                    {u.name}
-                    <span className={cx('rounded-full px-1.5 text-[11px] leading-[18px]', u.tier === 'tier2' ? 'bg-warning-soft text-warning-ink' : 'bg-accent-soft text-accent-ink')}>{tierTag(u)}</span>
-                    {!u.wired && <span className="text-[11px] text-ink-3">尚未接上</span>}
-                    {st?.ready_for_live && u.mode === 'shadow' && <StatusChip tone="success">可以生效</StatusChip>}
-                  </span>
-                  <span className="mt-0.5 block text-[13px] leading-normal text-ink-2">
-                    {u.desc} · 等 {(u.wait_ms / 1000).toFixed(1)} 秒 · {acc}
-                    {st && st.calls > 0 ? ` · ${st.calls} 次` : ''}
-                  </span>
-                </span>
-                {onlyRules ? (
-                  <span className="text-meta text-ink-3">只用規則</span>
-                ) : (
-                  <SegmentedControl
-                    label={`${u.name}的開關`}
-                    className="w-[168px] flex-none max-sm:w-full"
-                    options={MODE_OPTIONS}
-                    value={u.mode as Mode}
-                    onChange={(m) => void save({ modes: { [u.id]: m } })}
-                  />
-                )}
-              </div>
-            )
-          })}
-        </Group>
-      </Block>
+      {on && (
+        <button type="button" aria-expanded={more} onClick={() => setMore((m) => !m)} className="flex items-center gap-1 self-start bg-transparent p-0 text-meta text-accent-ink">
+          進階
+          <Icon icon={ChevronDown} size={14} className={cx('transition-transform', more && 'rotate-180')} />
+        </button>
+      )}
+      {on && more && (
+        <>
+          <Group label="快判進階">
+            <Row title="短文字模型" sub="摘要、命名用" wrap>
+              <Select
+                label="第二層模型"
+                hideLabel
+                look="compact"
+                className="min-w-[240px]"
+                value={ref(s.tier2)}
+                options={tierOptions(providers, TIER2_SUGGEST.filter((t) => have.has(t.provider)), s.tier2, '不用')}
+                onChange={(v) => void save({ tier2: split(v) }, '短文字模型已更新')}
+              />
+            </Row>
+            <Row title="本機小模型" sub="離線時用" wrap>
+              <Select
+                label="本機小模型"
+                hideLabel
+                look="compact"
+                className="min-w-[240px]"
+                value={ref(s.local)}
+                options={tierOptions(providers, [], s.local, '不用')}
+                onChange={(v) => void save({ local: split(v) }, '本機小模型已更新')}
+              />
+            </Row>
+            <Row title="每日上限" wrap>
+              <span className="flex items-center gap-2">
+                <TextInput
+                  label="每日呼叫上限"
+                  hideLabel
+                  inputMode="numeric"
+                  wrapperClassName="w-24"
+                  value={cap}
+                  onChange={(e) => setCap(e.target.value.replace(/[^0-9]/g, ''))}
+                />
+                <Button size="sm" variant="secondary" disabled={!capValid || capNum === s.daily_cap} onClick={() => void save({ daily_cap: capNum }, '每日上限已更新')}>
+                  儲存
+                </Button>
+              </span>
+            </Row>
+          </Group>
+
+          <Block title="用途" sub="影子＝只記錄不採用；和你一致夠高再改成生效">
+            <Group label="快判用途">
+              {data.uses.map((u) => {
+                const st = byUse.get(u.id)
+                const acc = st && st.corrected > 0 ? `和你一致 ${pct(st.corrected_agreement)}` : st && st.answered > 0 ? `和規則一致 ${pct(st.agreement)}` : ''
+                return (
+                  <div key={u.id} className="flex items-center gap-3 border-line px-4 py-3 not-first:border-t max-sm:flex-col max-sm:items-stretch" data-testid={`judge-use-${u.id}`}>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-1.5 text-ui leading-[1.45]">
+                        {u.name}
+                        <span className={cx('rounded-full px-1.5 text-[11px] leading-[18px]', u.tier === 'tier2' ? 'bg-warning-soft text-warning-ink' : 'bg-accent-soft text-accent-ink')}>{tierTag(u)}</span>
+                        {!u.wired && <span className="text-[11px] text-ink-3">尚未接上</span>}
+                        {st?.ready_for_live && u.mode === 'shadow' && <StatusChip tone="success">可以生效</StatusChip>}
+                      </span>
+                      {acc && <span className="mt-0.5 block text-[13px] leading-normal text-ink-2">{acc}</span>}
+                    </span>
+                    <SegmentedControl
+                      label={`${u.name}的開關`}
+                      className="w-[168px] flex-none max-sm:w-full"
+                      options={MODE_OPTIONS}
+                      value={u.mode as Mode}
+                      onChange={(m) => void save({ modes: { [u.id]: m } })}
+                    />
+                  </div>
+                )
+              })}
+            </Group>
+          </Block>
+        </>
+      )}
     </>
   )
 }

@@ -50,6 +50,11 @@ export function parseModel(model: string, m: ModelsGetOutput | null): { provider
   return { provider: m?.default?.provider, model }
 }
 
+/** 這個 Bot 用的是訂閱 CLI（不是內建的 Hermes＋API 金鑰）。 */
+export function usesPlan(bot: Bot): boolean {
+  return !!bot.engine && bot.engine !== 'hermes'
+}
+
 /** 標題列膠囊上的模型名稱。 */
 export function modelLabel(bot: Bot, m: ModelsGetOutput | null): string {
   if (!m) return bot.model || ''

@@ -6,16 +6,11 @@ import { upsertBot, type Bot } from '../data/bots'
 import { navigate } from '../router'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
-import { modelLabel, parseModel } from './format'
+import { modelLabel, parseModel, usesPlan } from './format'
 import { Popover } from './Popover'
 
 type Provider = ModelsGetOutput['providers'][number]
 type EngineStatus = EnginesStatusOutput['bots'][number]
-
-/** 這個 Bot 用的是訂閱 CLI（不是內建的 Hermes＋API 金鑰）。 */
-export function usesPlan(bot: Bot): boolean {
-  return !!bot.engine && bot.engine !== 'hermes'
-}
 
 const EFFORTS = [
   { value: 'low', label: '低' },

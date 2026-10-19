@@ -57,6 +57,7 @@ test('J10 快判設定：逐項切換影子／生效、改每日上限、看一�
       if (i.modes) Object.assign(st.settings.modes, i.modes)
       if (typeof i.daily_cap === 'number') st.settings.daily_cap = i.daily_cap
       if (i.tier1) st.settings.tier1 = i.tier1 as typeof st.settings.tier1
+      if (i.tier2) st.settings.tier2 = i.tier2 as typeof st.settings.tier2
       return view()
     },
     'judge.stats': () => ({
@@ -73,20 +74,23 @@ test('J10 快判設定：逐項切換影子／生效、改每日上限、看一�
   await api.install()
   await page.goto('/settings/models/judge')
   const m = page.getByRole('main')
-  await expect(m.getByText('永遠不能自己刪除、花錢、對外發送或核准')).toBeVisible()
-  await expect(m.getByText('快判 128／300 次 · 第二層 23／100 次 · 花費 $0.0054')).toBeVisible()
-  await expect(m.getByText('Zen 已設定')).toBeVisible()
+  await expect(m.getByRole('switch', { name: '快判' })).toHaveAttribute('aria-checked', 'true')
+  await expect(m.getByText('今天 128／300 次 · $0.0054')).toBeVisible()
+
+  // Zen 沒儲值：顯示餘額不足，一鍵改用預設模型。
+  await expect(m.getByText('OpenCode Zen 餘額不足（Jev 需要 Zen 儲值）；先照規則。')).toBeVisible()
+  await m.getByRole('button', { name: '改用 deepseek-v4-flash' }).click()
+  await expect.poll(() => api.calls.find((c) => c.op === 'judge.settings_set')?.input).toEqual({ tier1: { provider: 'opencode-go', model: 'deepseek-v4-flash' } })
+  await expect(m.getByText(/餘額不足/)).toHaveCount(0)
+
+  // 細節收在「進階」。
+  await expect(m.getByTestId('judge-use-task_done')).toHaveCount(0)
+  await m.getByRole('button', { name: '進階' }).click()
   const done = m.getByTestId('judge-use-task_done')
   await expect(done).toContainText('和你一致 100%')
   await expect(done).toContainText('可以生效')
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-j10-fastjudge`), fullPage: true })
-
-  // Zen 沒儲值：顯示餘額不足，一鍵改用 Go flash 做選擇題。
-  await expect(m.getByText('OpenCode Zen 餘額不足（Jev 需要 Zen 儲值）；這段時間快判先照規則。')).toBeVisible()
-  await m.getByRole('button', { name: '改用 Go flash 做選擇題' }).click()
-  await expect.poll(() => api.calls.find((c) => c.op === 'judge.settings_set')?.input).toEqual({ tier1: { provider: 'opencode-go', model: 'deepseek-v4-flash' } })
-  await expect(m.getByText(/餘額不足/)).toHaveCount(0)
 
   // 逐項切換：立刻送出。
   await done.getByRole('radio', { name: '生效' }).click()
@@ -99,11 +103,33 @@ test('J10 快判設定：逐項切換影子／生效、改每日上限、看一�
   await m.getByRole('button', { name: '儲存' }).click()
   await expect.poll(() => api.calls.filter((c) => c.op === 'judge.settings_set').at(-1)?.input).toEqual({ daily_cap: 150 })
 
-  // 第一層設成不用快判：Jev 用途顯示「只用規則」。
-  await m.getByRole('button', { name: /第一層模型/ }).click()
-  await page.getByRole('option', { name: '不用快判（只用規則）' }).click()
-  await expect(m.getByTestId('judge-use-route')).toContainText('只用規則')
-  await expect(m.getByTestId('judge-use-summary').getByRole('radio', { name: '關' })).toBeVisible()
+  // 關掉：全部照規則。
+  await m.getByRole('switch', { name: '快判' }).click()
+  await expect.poll(() => api.calls.filter((c) => c.op === 'judge.settings_set').at(-1)?.input).toEqual({ tier1: { provider: '', model: '' }, tier2: { provider: '', model: '' } })
+  await expect(m.getByRole('switch', { name: '快判' })).toHaveAttribute('aria-checked', 'false')
+})
+
+// 設定的供應商不存在（例：選了 Zen 的 Jev，但只有 Go 的金鑰）：提醒並一鍵改用預設模型。
+test('J10 快判：供應商不存在時提醒', async ({ page }) => {
+  const api = new MockServer(page)
+  const { st, view } = judgeState()
+  Object.assign(api.override, {
+    'models.get': () => ({ providers: [{ id: 'openai', base_url: 'https://opencode.ai/zen/go/v1', api_key_set: true }], default: { provider: 'openai', model: 'deepseek-v4-flash' }, ready: true }),
+    'models.presets': () => ({ presets: [] }),
+    'judge.settings_get': () => ({ ...view(), problems: [] }),
+    'judge.settings_set': (i: Record<string, unknown>) => {
+      Object.assign(st.settings, i)
+      return { ...view(), problems: [] }
+    },
+    'judge.stats': () => ({ days: 7, today: view().today, recent: [], uses: [] }),
+  })
+  await api.install()
+  await page.goto('/settings/models/judge')
+  const m = page.getByRole('main')
+  await expect(m.getByText('opencode-zen 還沒設定，快判現在只照規則。')).toBeVisible()
+  await m.getByRole('button', { name: '改用 deepseek-v4-flash' }).click()
+  await expect.poll(() => api.calls.find((c) => c.op === 'judge.settings_set')?.input).toEqual({ tier1: { provider: 'openai', model: 'deepseek-v4-flash' }, tier2: { provider: 'openai', model: 'deepseek-v4-flash' } })
+  await expect(m.getByText(/還沒設定/)).toHaveCount(0)
 })
 
 test('C15 先判斷：訊息下方出現膠囊，「不對？」可改正', async ({ page }, info) => {

@@ -85,7 +85,7 @@ export function ModelsSection({ path }: { path: string }) {
       )}
       {tab === '/settings/models' && <MainModels {...data} />}
       {tab === '/settings/models/routing' && <Routing {...data} />}
-      {tab === '/settings/models/judge' && <FastJudge providers={data.models?.providers ?? []} />}
+      {tab === '/settings/models/judge' && <FastJudge providers={data.models?.providers ?? []} defaultModel={data.models?.default} />}
       {tab === '/settings/models/bots' && <BotsEngineList />}
     </>
   )
