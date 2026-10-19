@@ -56,6 +56,8 @@ test('新增群組（D03）：勾 2 個以上才能建立，建好進到開場�
 
 test('群組對話（D01）：交棒分隔線、輪數上限、成員狀態，你的發言送出', async ({ page }, info) => {
   const { m, chief, zhe, bian } = await team(page)
+  // 輪數上限照「設定 › 限制」的值（這裡設成 4），不是寫死
+  m.override['limits.get'] = () => ({ values: { room_rounds: 4 }, defaults: { room_rounds: 10 }, ranges: { room_rounds: [1, 50] } })
   const room = m.addRoom([chief.id, zhe.id, bian.id], '新品上架專案', 'auto', { [chief.id]: 'working', [bian.id]: 'waiting' })
   room.bulletin = '新品 10/20 上架。對外文案先給小秘看過；任何價格調整一律要我核准。'
   m.addRoomMessage(room.id, { sender: 'owner', content: '@阿哲 抓三家競品主力商品的價格，附上來源。@小編 寫新品貼文三版。', mentions: [zhe.id, bian.id], picked: [zhe.id, bian.id] })
@@ -142,7 +144,7 @@ test('側欄右鍵：編輯群組、刪除群組、刪除 Bot（都要先確認�
   await nav.getByRole('link', { name: /上架小組/ }).click({ button: 'right' })
   const menu = page.getByRole('menu', { name: '上架小組' })
   await expect(menu).toBeVisible()
-  await menu.getByRole('menuitem', { name: '編輯群組' }).click()
+  await menu.getByRole('menuitem', { name: '改名、換成員' }).click()
   const dialog = page.getByRole('dialog', { name: '編輯群組' })
   await dialog.getByRole('textbox', { name: '名稱' }).fill('發表會小組')
   await dialog.getByRole('checkbox', { name: /小編/ }).click()
@@ -198,6 +200,26 @@ test('手機長按群組：叫出同一個選單，放開不會進群組', async
   // 側欄的列
   await page.getByRole('button', { name: '打開側欄' }).click()
   await longPress(page.getByRole('navigation', { name: '側欄' }).getByRole('link', { name: /上架小組/ }))
-  await expect(page.getByRole('menu', { name: '上架小組' }).getByRole('menuitem', { name: '編輯群組' })).toBeVisible()
+  await expect(page.getByRole('menu', { name: '上架小組' }).getByRole('menuitem', { name: '改名、換成員' })).toBeVisible()
   await expect(page).toHaveURL(/\/chats$/)
+})
+
+// 2026-10-19：「畫面上沒有刪除群組的工具或幫群組改名的功能」——手機點群組名稱就看得到改名與刪除
+test('手機：點群組名稱 → 成員清單裡有「改名、換成員」和「刪除群組」', async ({ page }, info) => {
+  test.skip(info.project.name !== 'mobile', '桌面在右邊的成員欄')
+  const { m, chief, zhe } = await team(page)
+  m.addRoom([chief.id, zhe.id], '上架小組', 'auto')
+  await page.goto('/rooms/' + (m.rooms[0].id as string))
+  await page.getByRole('button', { name: /上架小組/ }).click()
+  const sheet = page.getByRole('dialog', { name: /成員/ })
+  await sheet.getByRole('button', { name: '改名、換成員' }).click()
+  const edit = page.getByRole('dialog', { name: '編輯群組' })
+  await edit.getByRole('textbox', { name: '名稱' }).fill('發表會小組')
+  await edit.getByRole('button', { name: '儲存' }).click()
+  await expect(edit).toBeHidden()
+  expect(m.calls.find((c) => c.op === 'rooms.update')?.input).toMatchObject({ name: '發表會小組' })
+  await page.getByRole('button', { name: /小組/ }).first().click()
+  await page.getByRole('dialog', { name: /成員/ }).getByRole('button', { name: '刪除群組' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '刪除' }).click()
+  await expect.poll(() => m.calls.some((c) => c.op === 'rooms.delete')).toBe(true)
 })

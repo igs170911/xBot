@@ -50,7 +50,7 @@ type RoomMessage struct {
 	Content     string   `json:"content"`
 	Mentions    []string `json:"mentions" desc:"@ 到的成員 id"`
 	Round       int      `json:"round,omitempty" desc:"這則是第幾輪的發言（你發言後從 0 算）"`
-	Handoff     int      `json:"handoff,omitempty" desc:"這則叫醒了別人：交棒後是第幾輪（第 N/4 輪）"`
+	Handoff     int      `json:"handoff,omitempty" desc:"這則叫醒了別人：交棒後是第幾輪（上限由使用者在「限制」設定，預設 10）"`
 	Capped      bool     `json:"capped,omitempty" desc:"輪數到上限，沒有再叫醒別人"`
 	Failed      bool     `json:"failed,omitempty"`
 	Notice      string   `json:"notice,omitempty" desc:"系統提示的種類（capped）"`
@@ -362,7 +362,7 @@ func Register(reg *ops.Registry, s *Service) {
 	})
 	ops.Register(reg, ops.Op[PostToGroupIn, PostGroupResult]{
 		Name: "xbot.collab.post_to_group", Summary: "在你所在的群組發言（補充或交棒）",
-		Description: "只會叫醒你 @ 的成員。在群組的一輪裡發言時輪數接著算，到 4 輪訊息照發但不再叫醒別人。",
+		Description: "只會叫醒你 @ 的成員。在群組的一輪裡發言時輪數接著算，到上限（使用者設定，預設 10 輪）訊息照發但不再叫醒別人。",
 		Scope:       ops.ScopeOperate, Risk: ops.RiskSafe, ForBot: true,
 		Handle: func(ctx context.Context, call *ops.Call, in PostToGroupIn) (PostGroupResult, error) {
 			if err := ready(s); err != nil {

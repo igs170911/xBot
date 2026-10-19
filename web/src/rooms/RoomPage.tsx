@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
-import { ArrowUp, AtSign, Check, ChevronDown, ChevronLeft, CirclePause, Ellipsis, Phone, CirclePlay, Info, OctagonPause, Pin, Settings, TriangleAlert, Users } from 'lucide-react'
-import { ApiError, collabRoomRead, collabStopRoom, roomsPauseMember, roomsPost, roomsUpdate, type CollabRoomReadOutput } from '../api/generated'
+import { ArrowUp, AtSign, Check, ChevronDown, ChevronLeft, CirclePause, Ellipsis, Pencil, Phone, CirclePlay, Info, OctagonPause, Pin, Trash2, TriangleAlert, Users } from 'lucide-react'
+import { ApiError, collabRoomRead, collabStopRoom, limitsGet, roomsPauseMember, roomsPost, roomsUpdate, type CollabRoomReadOutput } from '../api/generated'
 import { onEvent, onReconnect } from '../data/events'
 import { loadRooms } from '../data/rooms'
+import { createStore, useStore } from '../data/store'
+import { DeleteDialog, type DeleteTarget } from '../shell/DeleteDialog'
 import { linkClick } from '../router'
 import { Avatar } from '../ui/Avatar'
 import { Button, IconButton } from '../ui/Button'
@@ -17,7 +19,15 @@ import { usePhone } from '../mobile/nav'
 import { botBubble } from '../chat/Message'
 import { Markdown } from '../chat/markdown/Markdown'
 import { clockLabel } from '../chat/format'
-import { ROOM_ROUNDS as ROUNDS, RULES, type Rule } from './rules'
+import { ROOM_ROUNDS, RULES, type Rule } from './rules'
+
+// 每次你發言後 Bot 之間最多接幾輪：使用者可以在「設定 › 進階 › 限制」調（原本畫面寫死 4，和後端不一致）
+const roundsStore = createStore(ROOM_ROUNDS)
+function loadRounds() {
+  limitsGet({})
+    .then((o) => roundsStore.set(o.values.room_rounds))
+    .catch(() => {})
+}
 
 // 群組對話（design/D01；空白時 D04）：你和 2–10 個 Bot。@ 指定負責的 Bot；Bot 之間交棒的輪數上限在「設定 → 進階 → 限制」。
 
@@ -68,6 +78,7 @@ function Divider({ children }: { children: ReactNode }) {
 }
 
 function Timeline({ messages, members }: { messages: RoomMsg[]; members: Member[] }) {
+  const rounds = useStore(roundsStore)
   const out: ReactNode[] = []
   for (const m of messages) {
     if (m.sender === 'system') {
@@ -113,7 +124,7 @@ function Timeline({ messages, members }: { messages: RoomMsg[]; members: Member[
         </div>
       </div>,
     )
-    if (m.handoff) out.push(<Divider key={m.id + 'h'}>{`第 ${m.handoff}/${ROUNDS} 輪 · ${m.speaker_name} → ${names(m.mentions, members)}`}</Divider>)
+    if (m.handoff) out.push(<Divider key={m.id + 'h'}>{`第 ${m.handoff}/${rounds} 輪 · ${m.speaker_name} → ${names(m.mentions, members)}`}</Divider>)
   }
   return <>{out}</>
 }
@@ -141,6 +152,7 @@ function LiveCard({ members }: { members: Member[] }) {
 }
 
 function Suggestions({ members, onPick }: { members: Member[]; onPick: (t: string) => void }) {
+  const rounds = useStore(roundsStore)
   const [a, b, c] = members
   const ideas = [
     `@${a?.name} 先列出這件事要做哪些步驟，再分給 @${b?.name}${c ? ` 和 @${c.name}` : ''}`,
@@ -158,7 +170,7 @@ function Suggestions({ members, onPick }: { members: Member[]; onPick: (t: strin
       <ul className="m-0 flex list-none flex-col gap-1 p-0 text-ui-sm text-ink-2">
         <li>用 @名字 指定誰負責</li>
         <li>沒有點名時，照回應規則決定誰回答</li>
-        <li>你每發言一次，Bot 之間最多來回 {ROUNDS} 輪</li>
+        <li>你每發言一次，Bot 之間最多來回 {rounds} 輪</li>
       </ul>
       <div className="flex w-full flex-col gap-2">
         {ideas.map((t, i) => (
@@ -172,7 +184,8 @@ function Suggestions({ members, onPick }: { members: Member[]; onPick: (t: strin
   )
 }
 
-function MemberPanel({ room, onChanged, inSheet }: { room: Read['room']; onChanged: () => void; inSheet?: boolean }) {
+function MemberPanel({ room, onChanged, inSheet, onEdit, onDelete }: { room: Read['room']; onChanged: () => void; inSheet?: boolean; onEdit: () => void; onDelete: () => void }) {
+  const rounds = useStore(roundsStore)
   const toggle = async (m: Member) => {
     await roomsPauseMember({ room_id: room.id, bot_id: m.bot_id, paused: !m.paused }).catch(() => undefined)
     onChanged()
@@ -181,7 +194,7 @@ function MemberPanel({ room, onChanged, inSheet }: { room: Read['room']; onChang
     <aside aria-label="成員" className={inSheet ? 'flex flex-col gap-4' : 'flex w-[300px] flex-none flex-col gap-4 overflow-y-auto border-l border-divider px-5 py-4 max-lg:hidden'}>
       <div className="flex flex-col gap-1">
         <span className="text-ui-sm text-ink">接力規則</span>
-        <span className="text-meta text-ink-2">每次你發言後，Bot 之間最多交棒 {ROUNDS} 輪，避免互相丟來丟去。你的發言永遠優先。</span>
+        <span className="text-meta text-ink-2">每次你發言後，Bot 之間最多交棒 {rounds} 輪，避免互相丟來丟去。你的發言永遠優先。</span>
       </div>
       <div className="flex flex-col gap-2">
         <span className="text-ui-sm text-ink">成員 · {room.members.length}</span>
@@ -198,6 +211,15 @@ function MemberPanel({ room, onChanged, inSheet }: { room: Read['room']; onChang
             <IconButton icon={m.paused ? CirclePlay : CirclePause} label={m.paused ? `恢復 ${m.name}` : `先停 ${m.name}`} size="sm" onClick={() => void toggle(m)} />
           </div>
         ))}
+      </div>
+      {/* 改名、刪除放在看得到的地方（2026-10-19：「畫面上沒有刪除群組或改名的功能」） */}
+      <div className="flex flex-col gap-2 border-t border-line pt-4">
+        <Button variant="secondary" icon={Pencil} onClick={onEdit}>
+          改名、換成員
+        </Button>
+        <Button variant="danger" icon={Trash2} onClick={onDelete}>
+          刪除群組
+        </Button>
       </div>
     </aside>
   )
@@ -283,7 +305,7 @@ function RoomComposer({ room, text, setText, onSend }: { room: Read['room']; tex
 }
 
 /** 手機的群組頁首（L05）：返回、通話｜成員頭像｜成員、更多；下面一顆「群組名 · 成員」膠囊。 */
-function PhoneRoomHeader({ room, status, anyBusy, lead, onRule, onStop, onMembers, onEdit }: { room: Read['room']; status: { text: string; tone: string }; anyBusy: boolean; lead: string; onRule: (r: Rule) => void; onStop: () => void; onMembers: () => void; onEdit: () => void }) {
+function PhoneRoomHeader({ room, status, anyBusy, lead, onRule, onStop, onMembers, onEdit, onDelete }: { room: Read['room']; status: { text: string; tone: string }; anyBusy: boolean; lead: string; onRule: (r: Rule) => void; onStop: () => void; onMembers: () => void; onEdit: () => void; onDelete: () => void }) {
   const round = 'flex size-11 flex-none items-center justify-center rounded-full border border-divider bg-panel text-ink active:bg-control'
   const [a, b] = room.members
   return (
@@ -318,8 +340,8 @@ function PhoneRoomHeader({ room, status, anyBusy, lead, onRule, onStop, onMember
           align="end"
           items={[
             ...RULES.map((r) => ({ label: `沒點名時：${r.label(lead)}`, icon: r.value === room.responder_rule ? Check : undefined, onSelect: () => onRule(r.value) })),
-            { label: '編輯群組', icon: Settings, separator: true, onSelect: onEdit },
-            { label: '編輯群組', icon: Settings, separator: true, onSelect: onEdit },
+            { label: '改名、換成員', icon: Pencil, separator: true, onSelect: onEdit },
+            { label: '刪除群組', icon: Trash2, danger: true, onSelect: onDelete },
             { label: '停止所有成員', icon: OctagonPause, separator: true, danger: true, disabled: !anyBusy, onSelect: onStop },
           ]}
           trigger={(p) => (
@@ -347,6 +369,8 @@ export function RoomPage({ roomId }: { roomId: string }) {
   const [notice, setNotice] = useState<string | null>(null)
   const [members, setMembers] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [deleting, setDeleting] = useState<DeleteTarget | null>(null)
+  useEffect(loadRounds, [])
   const phone = usePhone()
   const scroller = useRef<HTMLDivElement>(null)
   const memberIds = useRef<string[]>([])
@@ -430,10 +454,11 @@ export function RoomPage({ roomId }: { roomId: string }) {
   return (
     <div className="flex h-[var(--app-h,100dvh)] min-w-0 flex-1 max-md:fixed max-md:inset-x-0 max-md:top-[var(--app-top,0px)] max-md:z-10">
       {editing && <EditRoomDialog key={room.id} room={room} open onClose={() => setEditing(false)} onSaved={() => void load()} />}
+      <DeleteDialog target={deleting} onClose={() => setDeleting(null)} />
       <main className="flex min-w-0 flex-1 flex-col bg-app" aria-label={`群組：${room.name}`}>
         {messages.length > 0 && <h1 className="sr-only-text">群組：{room.name}</h1>}
         {phone && (
-          <PhoneRoomHeader room={room} status={st} anyBusy={anyBusy} lead={lead} onRule={(r) => void setRule(r)} onStop={() => void stopAll()} onMembers={() => setMembers(true)} onEdit={() => setEditing(true)} />
+          <PhoneRoomHeader room={room} status={st} anyBusy={anyBusy} lead={lead} onRule={(r) => void setRule(r)} onStop={() => void stopAll()} onMembers={() => setMembers(true)} onEdit={() => setEditing(true)} onDelete={() => setDeleting({ kind: 'room', id: room.id, name: room.name })} />
         )}
         {!phone && (
         <header>
@@ -461,11 +486,8 @@ export function RoomPage({ roomId }: { roomId: string }) {
               ))}
             </select>
           </label>
-          <Button size="sm" variant="ghost" icon={Settings} onClick={() => setEditing(true)}>
-            編輯群組
-          </Button>
-          <Button size="sm" variant="ghost" icon={Settings} onClick={() => setEditing(true)}>
-            編輯群組
+          <Button size="sm" variant="ghost" icon={Pencil} onClick={() => setEditing(true)}>
+            改名、換成員
           </Button>
           <Button size="sm" variant="danger" icon={OctagonPause} onClick={() => void stopAll()} disabled={!anyBusy}>
             停止所有成員
@@ -497,9 +519,21 @@ export function RoomPage({ roomId }: { roomId: string }) {
           </div>
         </div>
       </main>
-      <MemberPanel room={room} onChanged={() => void load()} />
+      <MemberPanel room={room} onChanged={() => void load()} onEdit={() => setEditing(true)} onDelete={() => setDeleting({ kind: 'room', id: room.id, name: room.name })} />
       <Dialog open={members} onClose={() => setMembers(false)} title={`成員 · ${room.members.length}`}>
-        <MemberPanel inSheet room={room} onChanged={() => void load()} />
+        <MemberPanel
+          inSheet
+          room={room}
+          onChanged={() => void load()}
+          onEdit={() => {
+            setMembers(false)
+            setEditing(true)
+          }}
+          onDelete={() => {
+            setMembers(false)
+            setDeleting({ kind: 'room', id: room.id, name: room.name })
+          }}
+        />
       </Dialog>
     </div>
   )

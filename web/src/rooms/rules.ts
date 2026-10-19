@@ -2,7 +2,8 @@
 
 export const ROOM_MIN = 2
 export const ROOM_MAX = 10
-export const ROOM_ROUNDS = 4
+/** 每次你發言後 Bot 之間最多接幾輪的預設（limits.DefaultTunables.RoomRounds）；畫面會再讀「限制」的設定值。 */
+export const ROOM_ROUNDS = 10
 
 export type Rule = 'auto' | 'lead' | 'mentioned' | 'everyone'
 

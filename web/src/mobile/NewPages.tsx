@@ -206,7 +206,7 @@ export function NewRoomPage() {
               <span className="flex-1 text-right text-ui">{RULES.find((r) => r.value === 'auto')?.label(chosen[0]?.name ?? '') ?? '自動挑一位'}</span>
             </div>
           </div>
-          <p className="m-0 px-1 text-meta text-ink-3">之後可以在群組裡改名字和回應規則。Bot 之間每次最多交棒 4 輪。</p>
+          <p className="m-0 px-1 text-meta text-ink-3">之後可以在群組裡改名字、換成員和回應規則。Bot 之間每次最多交棒幾輪，可以在「設定 › 進階 › 限制」調。</p>
           {error && (
             <p role="alert" className="m-0 text-sub text-danger">
               {error}

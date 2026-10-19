@@ -3546,7 +3546,7 @@ export interface CollabPostToGroupOutput {
 /**
  * 在你所在的群組發言（補充或交棒）
  *
- * 只會叫醒你 @ 的成員。在群組的一輪裡發言時輪數接著算，到 4 輪訊息照發但不再叫醒別人。
+ * 只會叫醒你 @ 的成員。在群組的一輪裡發言時輪數接著算，到上限（使用者設定，預設 10 輪）訊息照發但不再叫醒別人。
  *
  * `xbot.collab.post_to_group`：權限 operate、風險 safe
  */
@@ -3634,7 +3634,7 @@ export interface CollabRoomReadOutput {
     mentions: string[]
     /** 這則是第幾輪的發言（你發言後從 0 算） */
     round?: number
-    /** 這則叫醒了別人：交棒後是第幾輪（第 N/4 輪） */
+    /** 這則叫醒了別人：交棒後是第幾輪（上限由使用者在「限制」設定，預設 10） */
     handoff?: number
     /** 輪數到上限，沒有再叫醒別人 */
     capped?: boolean

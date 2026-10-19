@@ -32,7 +32,7 @@ export function useRowMenu(onNavigate?: () => void) {
     room: (r: Room) =>
       ctx.bind(r.name, [
         { label: '開啟群組', icon: MessageSquare, onSelect: () => go(`/rooms/${r.id}`) },
-        { label: '編輯群組', icon: Pencil, onSelect: () => setEditRoom(r) },
+        { label: '改名、換成員', icon: Pencil, onSelect: () => setEditRoom(r) },
         { label: '刪除群組', icon: Trash2, danger: true, separator: true, onSelect: () => setDeleting({ kind: 'room', id: r.id, name: r.name }) },
       ]),
     team: (t: { id: string; name: string }) =>
