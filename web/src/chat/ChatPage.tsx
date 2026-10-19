@@ -9,6 +9,7 @@ import { stampLabel } from '../data/ui'
 import { goBack, navigate } from '../router'
 import { inboxStore, loadInbox } from '../data/inbox'
 import { AskCard } from './AskCard'
+import { ApprovalItem } from '../pages/InboxPage'
 import { askFromItem } from './ask'
 import { usePhone } from '../mobile/nav'
 import { Avatar } from '../ui/Avatar'
@@ -103,9 +104,16 @@ function Messages({ items, bot, threadId, onRetry, canRetry }: { items: ChatItem
 function PendingAsks({ threadId, shown, bot }: { threadId: string; shown: Set<string>; bot?: Bot }) {
   const items = useStore(inboxStore).items ?? []
   const asks = items.filter((it) => it.thread_id === threadId && it.task_id && (it.kind === 'question' || it.kind === 'approval' || it.kind === 'secret') && !shown.has(it.id))
-  if (!asks.length) return null
+  // 這個 Bot 要求執行、要你允許的操作（例：刪 Bot、分享登入）：不屬於某件工作，也在它的對話裡出現
+  const approvals = bot ? items.filter((it) => it.kind === 'approval' && it.ref && !it.task_id && it.bot_id === bot.id) : []
+  if (!asks.length && !approvals.length) return null
   return (
     <>
+      {approvals.map((it) => (
+        <div key={it.id} data-testid="pending-approval">
+          <ApprovalItem item={it} bot={{ name: bot!.name, shape: bot!.shape, color: bot!.color }} />
+        </div>
+      ))}
       {asks.map((it) => (
         <div key={it.id} data-testid="pending-ask">
           <AskCard ask={askFromItem(it)} bot={bot ? { name: bot.name, shape: bot.shape, color: bot.color } : undefined} onDone={() => void loadInbox()} />

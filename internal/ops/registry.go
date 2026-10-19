@@ -43,6 +43,9 @@ type Op[In, Out any] struct {
 	// Revert 復原一次已經執行的動作（代為核准的紀錄卡 10 分鐘內按「復原」時呼叫）。
 	// 沒設表示這個動作做了就不能復原（例：已經寄出的信）。
 	Revert func(ctx context.Context, call *Call, in In, out Out) error
+	// Precheck 在送出核准卡之前先檢查（confirm 級的操作才用得到）：權限不夠、對象不存在時直接回錯誤，
+	// 不要讓使用者白按一次允許。可空白；允許之後 Handle 照樣會再檢查一次。
+	Precheck func(ctx context.Context, call *Call, in In) error
 	// Handle 執行操作。call.DryRun 為 true 時只能讀、回傳「會發生什麼」；這時 call.DB 是唯讀的。
 	Handle func(ctx context.Context, call *Call, in In) (Out, error)
 }
@@ -141,6 +144,7 @@ type entry struct {
 	amount func(raw json.RawMessage) int64
 	revert func(ctx context.Context, call *Call, in, out json.RawMessage) error
 	refs   func(raw json.RawMessage) []resourceRef
+	check  func(ctx context.Context, call *Call, raw json.RawMessage) error
 }
 
 type resourceRef struct{ kind, id string }
@@ -249,6 +253,15 @@ func register[In, Out any](r *Registry, op Op[In, Out]) error {
 		return RiskConfirm // 不認得的值當成 confirm，寧可多問
 	}
 	e.refs = func(raw json.RawMessage) []resourceRef { return collectRefs(raw, in) }
+	if op.Precheck != nil {
+		e.check = func(ctx context.Context, call *Call, raw json.RawMessage) error {
+			v, err := decode(raw)
+			if err != nil {
+				return InvalidInput(FieldError{Message: "格式不對：" + err.Error()})
+			}
+			return op.Precheck(ctx, call, v)
+		}
+	}
 	e.amount = func(raw json.RawMessage) int64 {
 		if op.AmountOf == nil {
 			return 0

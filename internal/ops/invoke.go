@@ -86,6 +86,9 @@ func (r *Registry) invoke(ctx context.Context, id Identity, name string, raw jso
 		}
 	}
 	botID := firstBot(refs)
+	if botID == "" && id.Kind == KindBot {
+		botID = id.ID // Bot 自己發起、沒指定哪個 Bot 的操作（例：刪團隊）：算在它頭上，核准卡才出現在它的對話裡
+	}
 
 	// 4. request_id 去重（只針對會改東西、不是預演的呼叫）
 	claimed := false
@@ -128,8 +131,13 @@ func (r *Registry) invoke(ctx context.Context, id Identity, name string, raw jso
 		return res, nil
 	}
 
-	// 6. 風險
+	// 6. 風險（要送核准卡之前先跑 Precheck：不合格的請求不要打擾使用者）
 	if risk == RiskConfirm {
+		if e.check != nil {
+			if err := e.check(ctx, call, raw); err != nil {
+				return Result{}, release(AsError(err))
+			}
+		}
 		d, err := policy(ctx, call)
 		if err != nil {
 			return Result{}, release(Internal(err))

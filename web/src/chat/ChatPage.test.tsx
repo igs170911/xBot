@@ -327,3 +327,24 @@ it('這條對話串還沒回答的提問：對話裡也有同一張卡，可以�
   fireEvent.click(within(card).getByRole('button', { name: /內容團隊/ }))
   await waitFor(() => expect(api.calls.find((c) => c.path === 'chat.respond')?.input).toEqual({ inbox_id: 'q1', text: '內容團隊' }))
 })
+
+it('Bot 要求、要你允許的動作（例：分享登入、刪 Bot）也出現在它的對話裡，可以就地允許', async () => {
+  let open = true
+  api.ops['inbox.list'] = (input) => ({
+    items:
+      open && input.status === 'open'
+        ? [{ id: 'a1', kind: 'approval', group: 'decide', bot_id: 'b1', ref: 'ap1', title: '小秘 想要：請使用者把另一個 Bot 已登入的網站分享給你', body: '', payload: { op: 'xbot.logins.request_share', actor: 'bot:b1' }, status: 'open', read: false, created_at: 1 }]
+        : [],
+  })
+  api.ops['approvals.decide'] = () => {
+    open = false
+    return { approval_id: 'ap1', status: 'approved' }
+  }
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
+  const card = await within(main).findByTestId('pending-approval')
+  expect(card).toHaveTextContent('分享給你')
+  fireEvent.click(within(card).getByRole('button', { name: /允許/ }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'approvals.decide')?.input).toEqual({ approval_id: 'ap1', decision: 'allow' }))
+})

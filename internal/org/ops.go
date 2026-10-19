@@ -166,6 +166,7 @@ type DecideIn struct {
 
 // Register 登錄團隊與議程的操作。s 是 nil 時（指令列、產生前端型別）只登錄定義，呼叫回 internal。
 func Register(reg *ops.Registry, s *Service) {
+	registerRemove(reg, s)
 	ops.Register(reg, ops.Op[struct{}, TeamsListOut]{
 		Name: "xbot.teams.list", Summary: "列出團隊（側欄分區）",
 		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
@@ -368,7 +369,7 @@ func Register(reg *ops.Registry, s *Service) {
 	})
 	ops.Register(reg, ops.Op[UpdateBotIn, UpdateBotOut]{
 		Name: "xbot.teams.update_bot", Summary: "調整另一個 Bot 的職稱、人設、報告對象或團隊",
-		Description: "要有團隊管理權限（使用者在「Bot 設定 → 權限與花費」或「組織架構」開啟）。不能刪除 Bot。改報告對象時不能讓報告關係繞成一圈。",
+		Description: "要有團隊管理權限（使用者在「Bot 設定 → 權限與花費」或「組織架構」開啟）。刪 Bot 用 xbot.teams.remove_bot（要使用者按允許）。改報告對象時不能讓報告關係繞成一圈。",
 		Scope:       ops.ScopeManage, Risk: ops.RiskSafe, ForBot: true,
 		Handle: func(ctx context.Context, call *ops.Call, in UpdateBotIn) (UpdateBotOut, error) {
 			if err := ready(s); err != nil {

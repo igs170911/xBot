@@ -76,6 +76,7 @@ type UndoShareIn struct {
 
 // Register 登錄 xbot.apps.*、xbot.logins.* 操作。s 是 nil 時只登錄定義。
 func Register(reg *ops.Registry, s *Service) {
+	registerRequestShare(reg)
 	need := func() error {
 		if s == nil {
 			return ops.Internal(errors.New("連接應用程式的服務沒有啟動"))

@@ -87,13 +87,13 @@ function Head({ bot, chip, tone, sub, aside }: { bot: CardBot; chip: ReactNode; 
 }
 
 /** 操作的核准（MCP-9）：允許這次／退回。刪除類用危險樣式（F08）。 */
-function ApprovalItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
+export function ApprovalItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
   const [busy, setBusy] = useState<'allow' | 'deny' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const undoToast = useUndoToast()
   const p = (item.payload ?? {}) as { op?: string; actor?: string; actor_name?: string; via?: string; request_id?: string; delegable?: boolean }
   const op = p.op ?? ''
-  const danger = /\.(delete|remove)$/.test(op)
+  const danger = /\.(delete|remove)(_|$)/.test(op)
   const byAgent = !!p.actor?.startsWith('agent:')
   const decide = async (decision: 'allow' | 'deny') => {
     if (!item.ref) return

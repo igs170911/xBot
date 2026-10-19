@@ -3,6 +3,7 @@ package org
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"xbot/internal/bots"
@@ -159,5 +160,54 @@ func TestAgendaOpsPermissions(t *testing.T) {
 	var sg SuggestOut
 	if err := e.call(owner, "xbot.teams.suggest", SuggestIn{Sentence: "要做 App"}, &sg); err != nil || sg.Template.Key != "engineering" || !sg.Matched {
 		t.Fatalf("%+v %v", sg, err)
+	}
+}
+
+// 有團隊管理權限的 Bot 也能刪 Bot、刪團隊（使用者決定 2026-10-19），但一定要使用者按允許才真的刪。
+func TestManagerRemovesBotOnlyAfterOwnerApproves(t *testing.T) {
+	e := setupOps(t)
+	ceo := ops.Bot(e.bots["CEO"], "CEO")
+	// 沒有團隊管理權限：不能發起
+	if err := e.call(ceo, "xbot.teams.remove_bot", RemoveBotIn{Bot: "Dev"}, nil); codeOf(err) != ops.CodeForbidden {
+		t.Fatalf("沒權限：%v", err)
+	}
+	e.manage("CEO")
+	// 不合格的請求在送核准卡之前就擋下（不打擾使用者）
+	if err := e.call(ceo, "xbot.teams.remove_bot", RemoveBotIn{Bot: "CEO"}, nil); codeOf(err) != ops.CodeInvalidInput {
+		t.Fatalf("不能刪自己：%v", err)
+	}
+	if err := e.call(ceo, "xbot.teams.remove_bot", RemoveBotIn{Bot: "不存在"}, nil); codeOf(err) != ops.CodeNotFound {
+		t.Fatalf("找不到：%v", err)
+	}
+	if pending, _ := e.db.ListApprovals(e.ctx, "pending"); len(pending) != 0 {
+		t.Fatalf("不合格的請求不能送核准卡：%d", len(pending))
+	}
+	if err := e.call(ceo, "xbot.teams.remove_bot", RemoveBotIn{Bot: "Dev", Reason: "重建"}, nil); codeOf(err) != ops.CodePendingApproval {
+		t.Fatalf("要先核准：%v", err)
+	}
+	if _, err := e.db.GetBot(e.ctx, e.bots["Dev"]); err != nil {
+		t.Fatal("還沒核准不能刪")
+	}
+	pending, _ := e.db.ListApprovals(e.ctx, "pending")
+	var id string
+	for _, a := range pending {
+		if a.Action == "xbot.teams.remove_bot" && strings.Contains(string(a.Input), "Dev") {
+			id = a.ID
+			if a.BotID != e.bots["CEO"] {
+				t.Fatalf("核准卡算在發起的 Bot 頭上（才會出現在它的對話裡）：%q", a.BotID)
+			}
+		}
+	}
+	if id == "" {
+		t.Fatalf("找不到核准：%+v", pending)
+	}
+	if err := e.db.DecideApproval(e.ctx, id, "approved", "owner"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.reg.ExecuteApproved(e.ctx, id); err != nil {
+		t.Fatalf("允許後執行：%v", err)
+	}
+	if _, err := e.db.GetBot(e.ctx, e.bots["Dev"]); err == nil {
+		t.Fatal("允許後要刪掉")
 	}
 }

@@ -92,3 +92,39 @@ func TestOnlyChosenSitesAreCopiedValuesNeverListedAndShareCanBeUndone(t *testing
 		t.Fatalf("網站格式：%v", err)
 	}
 }
+
+// Bot 需要別的 Bot 已登入的網站：請使用者分享（使用者決定 2026-10-19）。不合格的請求不送卡；允許後才複製。
+func TestBotRequestsAShareAndOwnerApproves(t *testing.T) {
+	e := setup(t)
+	a, b := e.bot.ID, e.other.ID // 小秘有 Threads 登入；阿哲要
+	e.browser.jars[a] = []Cookie{{"name": "sessionid", "value": "s", "domain": ".threads.com", "path": "/"}}
+	zhe := ops.Bot(b, "阿哲")
+	if err := e.call(t, zhe, "xbot.logins.request_share", RequestShareIn{From: "不存在", Sites: []string{"threads.com"}}, nil); codeOf(err) != ops.CodeNotFound {
+		t.Fatalf("找不到：%v", err)
+	}
+	if err := e.call(t, zhe, "xbot.logins.request_share", RequestShareIn{From: "阿哲", Sites: []string{"threads.com"}}, nil); codeOf(err) != ops.CodeInvalidInput {
+		t.Fatalf("不能給自己：%v", err)
+	}
+	if pending, _ := e.db.ListApprovals(ctx, "pending"); len(pending) != 0 {
+		t.Fatalf("不合格的請求不送卡：%d", len(pending))
+	}
+	if err := e.call(t, zhe, "xbot.logins.request_share", RequestShareIn{From: "小秘", Sites: []string{"threads.com"}, Reason: "要發文"}, nil); codeOf(err) != ops.CodePendingApproval {
+		t.Fatalf("要使用者允許：%v", err)
+	}
+	if len(e.browser.jars[b]) != 0 {
+		t.Fatal("還沒允許不能複製")
+	}
+	pending, _ := e.db.ListApprovals(ctx, "pending")
+	if len(pending) != 1 || pending[0].BotID != b {
+		t.Fatalf("一張卡、算在發起的 Bot：%+v", pending)
+	}
+	if err := e.db.DecideApproval(ctx, pending[0].ID, "approved", "owner"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.reg.ExecuteApproved(ctx, pending[0].ID); err != nil {
+		t.Fatalf("允許後：%v", err)
+	}
+	if len(e.browser.jars[b]) != 1 || e.browser.jars[b][0]["name"] != "sessionid" {
+		t.Fatalf("複製到阿哲：%+v", e.browser.jars[b])
+	}
+}

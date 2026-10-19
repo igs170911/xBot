@@ -7297,6 +7297,34 @@ export function loginsList(input: LoginsListInput, opts?: CallOptions): Promise<
   return invoke('xbot.logins.list', input, opts).then((r) => r.output)
 }
 
+// xbot.logins.request_share
+
+export interface LoginsRequestShareInput {
+  /** 已經登入的 Bot（名字或 id） */
+  from: string
+  /** 要分享的網站，例：threads.com */
+  sites: string[]
+  /** 為什麼需要（給使用者看） */
+  reason?: string
+}
+
+export interface LoginsRequestShareOutput {
+  from: string
+  sites: string[]
+  share_id?: string
+}
+
+/**
+ * 請使用者把另一個 Bot 已登入的網站分享給你
+ *
+ * 例：水哥哥登入了 threads.com，你也需要時用它。會送一張核准卡給使用者，使用者允許後才複製登入（cookies，看不到密碼）；你原本同網站的登入會被取代。不要因為「登入不能共用」就放棄，先用這個問使用者。
+ *
+ * `xbot.logins.request_share`：權限 operate、風險 confirm
+ */
+export function loginsRequestShare(input: LoginsRequestShareInput, opts?: CallOptions): Promise<LoginsRequestShareOutput> {
+  return invoke('xbot.logins.request_share', input, opts).then((r) => r.output)
+}
+
 // xbot.logins.share
 
 export interface LoginsShareInput {
@@ -11832,6 +11860,56 @@ export function teamsList(input: TeamsListInput = {}, opts?: CallOptions): Promi
   return invoke('xbot.teams.list', input, opts).then((r) => r.output)
 }
 
+// xbot.teams.remove_bot
+
+export interface TeamsRemoveBotInput {
+  /** 要刪的 Bot（名字或 id） */
+  bot: string
+  /** 為什麼要刪（給使用者看） */
+  reason?: string
+}
+
+export interface TeamsRemoveBotOutput {
+  name: string
+  deleted: boolean
+}
+
+/**
+ * 刪除一個 Bot（有團隊管理權限的 Bot 用；要使用者按允許）
+ *
+ * 連同它的電腦、對話、任務一起刪除，無法復原。會先送一張核准卡給使用者，使用者允許後才刪；不能刪自己。你本人請用 xbot.bots.delete。
+ *
+ * `xbot.teams.remove_bot`：權限 manage、風險 confirm
+ */
+export function teamsRemoveBot(input: TeamsRemoveBotInput, opts?: CallOptions): Promise<TeamsRemoveBotOutput> {
+  return invoke('xbot.teams.remove_bot', input, opts).then((r) => r.output)
+}
+
+// xbot.teams.remove_team
+
+export interface TeamsRemoveTeamInput {
+  /** 要刪的團隊（名字或 id）；成員 Bot 不會被刪 */
+  team: string
+  /** 為什麼要刪（給使用者看） */
+  reason?: string
+}
+
+export interface TeamsRemoveTeamOutput {
+  name: string
+  deleted: boolean
+}
+
+/**
+ * 刪除一個團隊（有團隊管理權限的 Bot 用；要使用者按允許；Bot 不會被刪）
+ *
+ * 成員回到未分區，Bot、報告線、群組都保留；團隊記憶會一起刪掉。會先送一張核准卡給使用者，使用者允許後才刪。你本人請用 xbot.teams.delete。
+ *
+ * `xbot.teams.remove_team`：權限 manage、風險 confirm
+ */
+export function teamsRemoveTeam(input: TeamsRemoveTeamInput, opts?: CallOptions): Promise<TeamsRemoveTeamOutput> {
+  return invoke('xbot.teams.remove_team', input, opts).then((r) => r.output)
+}
+
 // xbot.teams.set_approval_items
 
 export interface TeamsSetApprovalItemsInput {
@@ -12097,7 +12175,7 @@ export interface TeamsUpdateBotOutput {
 /**
  * 調整另一個 Bot 的職稱、人設、報告對象或團隊
  *
- * 要有團隊管理權限（使用者在「Bot 設定 → 權限與花費」或「組織架構」開啟）。不能刪除 Bot。改報告對象時不能讓報告關係繞成一圈。
+ * 要有團隊管理權限（使用者在「Bot 設定 → 權限與花費」或「組織架構」開啟）。刪 Bot 用 xbot.teams.remove_bot（要使用者按允許）。改報告對象時不能讓報告關係繞成一圈。
  *
  * `xbot.teams.update_bot`：權限 manage、風險 safe
  */
@@ -12976,6 +13054,7 @@ export interface Ops {
   'xbot.limits.set': { input: LimitsSetInput; output: LimitsSetOutput }
   'xbot.logins.forget': { input: LoginsForgetInput; output: LoginsForgetOutput }
   'xbot.logins.list': { input: LoginsListInput; output: LoginsListOutput }
+  'xbot.logins.request_share': { input: LoginsRequestShareInput; output: LoginsRequestShareOutput }
   'xbot.logins.share': { input: LoginsShareInput; output: LoginsShareOutput }
   'xbot.logins.undo_share': { input: LoginsUndoShareInput; output: LoginsUndoShareOutput }
   'xbot.memory.add': { input: MemoryAddInput; output: MemoryAddOutput }
@@ -13055,6 +13134,8 @@ export interface Ops {
   'xbot.teams.create': { input: TeamsCreateInput; output: TeamsCreateOutput }
   'xbot.teams.delete': { input: TeamsDeleteInput; output: TeamsDeleteOutput }
   'xbot.teams.list': { input: TeamsListInput; output: TeamsListOutput }
+  'xbot.teams.remove_bot': { input: TeamsRemoveBotInput; output: TeamsRemoveBotOutput }
+  'xbot.teams.remove_team': { input: TeamsRemoveTeamInput; output: TeamsRemoveTeamOutput }
   'xbot.teams.set_approval_items': { input: TeamsSetApprovalItemsInput; output: TeamsSetApprovalItemsOutput }
   'xbot.teams.set_reports_to': { input: TeamsSetReportsToInput; output: TeamsSetReportsToOutput }
   'xbot.teams.suggest': { input: TeamsSuggestInput; output: TeamsSuggestOutput }
@@ -13209,6 +13290,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.limits.set': { path: '/api/v1/limits.set', scope: 'admin', risk: 'safe', mutates: true, summary: '改可以調的限制；只改有給的，reset 全部回到預設' },
   'xbot.logins.forget': { path: '/api/v1/logins.forget', scope: 'manage', risk: 'confirm', mutates: true, summary: '移除 Bot 瀏覽器裡某些網站的登入' },
   'xbot.logins.list': { path: '/api/v1/logins.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出 Bot 的瀏覽器登入了哪些網站' },
+  'xbot.logins.request_share': { path: '/api/v1/logins.request_share', scope: 'operate', risk: 'confirm', mutates: true, summary: '請使用者把另一個 Bot 已登入的網站分享給你' },
   'xbot.logins.share': { path: '/api/v1/logins.share', scope: 'manage', risk: 'confirm', mutates: true, summary: '把一個 Bot 的網站登入分享給其他 Bot' },
   'xbot.logins.undo_share': { path: '/api/v1/logins.undo_share', scope: 'manage', risk: 'safe', mutates: true, summary: '復原一次分享登入' },
   'xbot.memory.add': { path: '/api/v1/memory.add', scope: 'operate', risk: 'safe', mutates: true, summary: '記住一件事' },
@@ -13288,6 +13370,8 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.teams.create': { path: '/api/v1/teams.create', scope: 'manage', risk: 'safe', mutates: true, summary: '建立團隊：主管、成員、報告線，順便開群組' },
   'xbot.teams.delete': { path: '/api/v1/teams.delete', scope: 'manage', risk: 'confirm', mutates: true, summary: '刪除一個團隊（Bot 不會被刪）' },
   'xbot.teams.list': { path: '/api/v1/teams.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出團隊（側欄分區）' },
+  'xbot.teams.remove_bot': { path: '/api/v1/teams.remove_bot', scope: 'manage', risk: 'confirm', mutates: true, summary: '刪除一個 Bot（有團隊管理權限的 Bot 用；要使用者按允許）' },
+  'xbot.teams.remove_team': { path: '/api/v1/teams.remove_team', scope: 'manage', risk: 'confirm', mutates: true, summary: '刪除一個團隊（有團隊管理權限的 Bot 用；要使用者按允許；Bot 不會被刪）' },
   'xbot.teams.set_approval_items': { path: '/api/v1/teams.set_approval_items', scope: 'manage', risk: 'confirm', mutates: true, summary: '改「只有你能決定的事」清單' },
   'xbot.teams.set_reports_to': { path: '/api/v1/teams.set_reports_to', scope: 'manage', risk: 'safe', mutates: true, summary: '改 Bot 向誰報告' },
   'xbot.teams.suggest': { path: '/api/v1/teams.suggest', scope: 'read', risk: 'safe', mutates: false, summary: '依一句話建議團隊範本' },
