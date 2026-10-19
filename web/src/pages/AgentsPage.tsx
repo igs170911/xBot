@@ -99,14 +99,14 @@ function Entrances() {
   const extState = !ext || !ext.enabled ? (net?.proxy.enabled ? '反向代理' : '關閉') : ext.state === 'on' ? '開放中' : ext.state === 'error' ? '開不起來' : '等 Tailscale'
   const extOn = !!ext?.enabled || !!net?.proxy.enabled
   return (
-    <section aria-label="XBot MCP 入口" className="flex flex-col gap-3 rounded-card bg-panel px-5 py-4">
+    <section aria-label="XBot MCP 入口" className="flex flex-col gap-3 rounded-card bg-panel px-5 py-4 max-sm:px-3">
       <div className="flex items-center gap-3">
         <span className="flex size-9 flex-none items-center justify-center rounded-field bg-accent-soft text-accent-ink">
           <Icon icon={Server} size={18} />
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="text-body">XBot MCP</span>
-          <span className="text-meta text-ink-3">
+          <span className="text-meta text-ink-3 max-sm:hidden">
             一個伺服器：tailnet、本機{extOn ? '、外部' : ''}；工具名稱 <code className="font-mono">xbot.領域.動作</code>，這一版是 <code className="font-mono">xbot.v1</code>
           </span>
         </span>
@@ -723,11 +723,11 @@ export function AgentsPage() {
 
   return (
     // 放在設定頁的 <main> 裡，自己不再是 main（v1.0 無障礙：landmark 不重複）
-    <div className="flex flex-1 justify-center px-8 py-6 max-sm:px-4">
+    <div className="flex flex-1 justify-center px-8 py-6 max-md:p-0">
       <div className="flex w-full max-w-[1000px] flex-col gap-5">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex flex-col gap-0.5">
-            <h1 className="m-0 text-page">已連線的代理（MCP）</h1>
+            <h1 className="m-0 text-page max-md:sr-only-text">已連線的代理（MCP）</h1>
             <p className="m-0 text-sub text-ink-2">Claude Code、Codex、Cursor 或另一台 XBot 用 MCP 操作這台 XBot，只在你給的權限內。</p>
           </div>
           <Button variant="primary" icon={Plus} onClick={() => setDialog({ kind: 'new' })}>

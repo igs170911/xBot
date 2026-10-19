@@ -419,3 +419,88 @@ test('L16 行事曆與 L17 一句話建立定時任務', async ({ page, request 
   await page.waitForTimeout(800)
   await snap(page, info, 'L17')
 })
+
+// 破版檢查：手機寬度打開每一頁，不能有橫向捲動，也不能有元素超出畫面（可以橫向捲動的容器裡面的除外）。
+const AUDIT = [
+  '/', '/chats', '/office', '/notifications', '/agenda', '/files', '/apps', '/apps/mcp', '/apps/logins', '/teams', '/org', '/calendar',
+  '/settings', '/settings/general', '/settings/models', '/settings/models/judge', '/settings/models/routing', '/settings/computers', '/settings/usage',
+  '/settings/advanced', '/settings/advanced/backup', '/settings/advanced/people', '/settings/advanced/lab', '/settings/advanced/network', '/settings/advanced/agents',
+  '/new/bot', '/new/room', '/share', '/import', '/calendar/routines', 'LONG',
+  'BOT', 'BOT/computer', 'BOT/files', 'BOT/voice', 'BOT/profile', 'BOTSET', 'BOTSET/abilities', 'BOTSET/permissions', 'BOTSET/advanced', 'ROOM',
+]
+
+async function overflow(page: Page) {
+  return page.evaluate(() => {
+    const W = document.documentElement.clientWidth
+    const bad: string[] = []
+    if (document.documentElement.scrollWidth > W + 1) bad.push(`page scrollWidth ${document.documentElement.scrollWidth} > ${W}`)
+    const clipped = (el: Element) => {
+      for (let p = el.parentElement; p; p = p.parentElement) {
+        const s = getComputedStyle(p)
+        if (/(auto|scroll|hidden|clip)/.test(s.overflowX)) return p.getBoundingClientRect().right <= W + 1 && p.getBoundingClientRect().left >= -1
+      }
+      return false
+    }
+    for (const el of document.querySelectorAll('body *')) {
+      const r = el.getBoundingClientRect()
+      if (r.width === 0 || r.height === 0) continue
+      const s = getComputedStyle(el)
+      if (s.visibility === 'hidden' || s.position === 'fixed') continue
+      if ((r.right > W + 1 || r.left < -1) && !clipped(el) && !el.closest('.sr-only-text,[aria-hidden="true"]')) {
+        const label = el.tagName.toLowerCase() + (el.getAttribute('data-testid') ? `[${el.getAttribute('data-testid')}]` : '') + ' "' + (el.textContent ?? '').trim().slice(0, 30) + '"'
+        bad.push(`${label} ${Math.round(r.left)}..${Math.round(r.right)}`)
+      }
+    }
+    return bad.slice(0, 8)
+  })
+}
+
+test('破版檢查：每一頁在手機寬度都不超出畫面', async ({ page }, info) => {
+  test.setTimeout(240_000)
+  // Pixel 7 換成較窄的 360（常見的小 Android），iPhone 維持 390。
+  if (info.project.name === 'mobile') await page.setViewportSize({ width: 360, height: 780 })
+  const api = new MockServer(page)
+  const { mi, room } = seed(api)
+  // 很長的內容：沒有空白的網址、長程式碼、寬表格
+  const long = api.addThread(mi.id, '長內容')
+  api.addMessage(long.id, { sender: 'owner', content: '看這個 https://example.com/' + 'a'.repeat(120) })
+  api.addMessage(long.id, {
+    sender: 'bot:' + mi.id,
+    status: 'complete',
+    content: '結果：https://example.com/' + 'b'.repeat(120) + '\n\n```\n' + 'const x = ' + '"y"'.repeat(60) + '\n```\n\n| 欄位一 | 欄位二 | 欄位三 | 欄位四 | 欄位五 | 欄位六 |\n|---|---|---|---|---|---|\n| 很長很長的內容 | 很長很長的內容 | 很長很長的內容 | 很長很長的內容 | 很長很長的內容 | 很長很長的內容 |',
+  })
+  await api.install()
+  await page.goto('/')
+  const problems: Record<string, string[]> = {}
+  for (const raw of AUDIT) {
+    const path = raw.replace('LONG', `/bots/${mi.id}/threads/${long.id}`).replace('BOTSET', `/settings/bots/${mi.id}`).replace('BOT', `/bots/${mi.id}`).replace('ROOM', `/rooms/${room.id}`)
+    await page.goto(path)
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(400)
+    const bad = await overflow(page)
+    if (bad.length) problems[path] = bad
+    if (bad.length || process.env.XBOT_AUDIT_SHOTS) await page.screenshot({ path: shot(info, 'audit' + path.replace(/\//g, '_')) })
+  }
+  expect(problems).toEqual({})
+})
+
+// iPhone 點到字體小於 16px 的輸入框會把整頁放大（看起來像破版）；手機上所有輸入框都要 ≥ 16px。
+test('手機的輸入框字體 ≥ 16px（iPhone 才不會自動放大）', async ({ page }) => {
+  const { mi } = await open(page, '/')
+  for (const path of [`/bots/${mi.id}`, '/settings/models', '/files']) {
+    await page.goto(path)
+    await page.waitForTimeout(600)
+    const small = await page.evaluate(() =>
+      [...document.querySelectorAll('input, textarea, select')]
+        .filter((el) => (el as HTMLInputElement).type !== 'checkbox' && (el as HTMLInputElement).type !== 'radio' && (el as HTMLElement).offsetParent)
+        .map((el) => parseFloat(getComputedStyle(el).fontSize))
+        .filter((px) => px < 16),
+    )
+    expect(small, path).toEqual([])
+  }
+  // 對話頁的高度跟著看得到的高度（--app-h）
+  await page.goto(`/bots/${mi.id}`)
+  await expect(page.getByRole('main', { name: /^和/ })).toBeVisible()
+  const h = await page.evaluate(() => [document.querySelector('main[aria-label^="和"]')?.getBoundingClientRect().height, window.visualViewport?.height])
+  expect(Math.abs((h[0] ?? 0) - (h[1] ?? 0))).toBeLessThan(2)
+})

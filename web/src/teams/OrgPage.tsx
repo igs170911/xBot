@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Crown, Plus, X } from 'lucide-react'
+import { Crown, Plus, UserRound, X } from 'lucide-react'
 import { botsUpdate, teamsApprovalItems, teamsChart, teamsSetApprovalItems, teamsSetReportsTo } from '../api/generated'
 import { loadBots, look } from '../data/bots'
 import { onEvent, onReconnect } from '../data/events'
@@ -127,7 +127,7 @@ export function OrgPage() {
   return (
     <main aria-label="組織架構" className="flex min-w-0 flex-1 flex-col gap-4 px-6 pb-6 pt-4 max-sm:px-4">
       <header className="flex flex-col gap-0.5">
-        <h1 className="m-0 text-[22px]">組織架構</h1>
+        <h1 className="max-md:sr-only-text m-0 text-[22px]">組織架構</h1>
         <span className="text-sub text-ink-2">你是董事長。點一個 Bot，在右邊改它向誰報告、能不能替你管理團隊。改了立即生效。</span>
       </header>
       {err && (
@@ -138,8 +138,8 @@ export function OrgPage() {
       <div className="flex flex-wrap gap-4">
         <section aria-label="報告樹" className="flex min-w-0 flex-[999_1_420px] flex-col gap-1 rounded-card bg-card p-3">
           <div className="flex items-center gap-2 px-2 py-1.5 text-ui">
-            <span aria-hidden="true" className="flex size-7 items-center justify-center rounded-full bg-control text-meta text-ink-2">
-              王
+            <span aria-hidden="true" className="flex size-7 items-center justify-center rounded-full bg-control text-ink-2">
+              <Icon icon={UserRound} size={15} />
             </span>
             你（董事長）
           </div>

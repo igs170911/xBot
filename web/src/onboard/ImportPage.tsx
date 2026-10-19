@@ -121,7 +121,7 @@ function Progress({ onDone }: { onDone: () => void }) {
   return (
     <div className="mx-auto flex w-full max-w-[720px] flex-col gap-4 px-6 pb-8 pt-4 max-sm:px-4" data-testid="import-progress">
       <header className="flex flex-col gap-0.5">
-        <h1 className="m-0 flex items-center gap-2 text-[22px]">
+        <h1 className="m-0 flex items-center gap-2 text-[22px] max-md:sr-only-text">
           <Icon icon={FolderInput} size={22} color="var(--color-accent)" />
           {running ? `正在從 ${run.label} 帶進來` : failed.length ? '帶完了，有幾項沒成功' : '帶完了'}
         </h1>
@@ -262,7 +262,7 @@ export function ImportPage() {
       <div className="grid flex-1 grid-cols-[minmax(0,1fr)_380px] content-start items-start gap-5 px-6 pb-4 pt-4 max-[1100px]:grid-cols-1 max-sm:px-4">
         <main aria-label="帶入舊設定" className="flex min-w-0 flex-col gap-3">
           <header className="flex flex-col gap-0.5">
-            <h1 className="m-0 flex items-center gap-2 text-[22px]">
+            <h1 className="m-0 flex items-center gap-2 text-[22px] max-md:sr-only-text">
               <Icon icon={FolderInput} size={22} color="var(--color-accent)" />
               帶入舊設定
             </h1>

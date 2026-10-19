@@ -59,11 +59,11 @@ export function LoginsPage() {
 
   return (
     <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-4 px-7 py-6 max-sm:px-4">
+      <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-4 px-7 py-6 max-sm:px-4 max-sm:pt-2">
         <header className="flex items-start gap-3">
-          <Button variant="ghost" icon={ArrowLeft} onClick={() => navigate('/apps')} aria-label="回到連接應用程式" />
+          <Button variant="ghost" icon={ArrowLeft} onClick={() => navigate('/apps')} aria-label="回到連接應用程式" className="max-md:hidden" />
           <div className="min-w-0 flex-1">
-            <h1 className="m-0 text-page font-normal">網站登入</h1>
+            <h1 className="max-md:sr-only-text m-0 text-page font-normal">網站登入</h1>
             <p className="m-0 mt-0.5 text-sub text-ink-2">每個 Bot 的瀏覽器登入彼此獨立。登入資料只留在 Bot 的電腦裡，這裡只看得到網站名稱。</p>
           </div>
         </header>

@@ -380,3 +380,12 @@ html {
     scroll-behavior: auto !important;
   }
 }
+
+/* 手機：輸入框字體至少 16px，iPhone 點輸入框時才不會把整頁放大（放大後看起來像破版、也不會自己縮回）。 */
+@media (pointer: coarse) {
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='file']),
+  textarea,
+  select {
+    font-size: max(16px, 1em) !important;
+  }
+}

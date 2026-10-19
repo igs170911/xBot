@@ -143,7 +143,7 @@ export function FilesPage() {
       <div className="mx-auto flex max-w-[1180px] flex-col gap-4">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-col gap-0.5">
-            <h1 className="m-0 flex items-center gap-2.5 text-[22px] font-normal">
+            <h1 className="max-md:sr-only-text m-0 flex items-center gap-2.5 text-[22px] font-normal">
               <span className="text-accent-ink">
                 <Icon icon={FolderOpen} size={24} />
               </span>

@@ -82,10 +82,10 @@ export function AppsPage() {
 
   return (
     <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-5 px-7 py-6 max-sm:px-4">
+      <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-5 px-7 py-6 max-sm:px-4 max-sm:pt-2">
         <header className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <h1 className="m-0 text-page font-normal">連接應用程式</h1>
+            <h1 className="max-md:sr-only-text m-0 text-page font-normal">連接應用程式</h1>
             <p className="m-0 mt-0.5 text-sub text-ink-2">點一下、登入，Bot 就能讀寫裡面的資料。工具預設全開，所有 Bot 都能用。</p>
           </div>
           <IconButton icon={RefreshCw} label="重新整理" onClick={load} />

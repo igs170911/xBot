@@ -89,7 +89,7 @@ export function TeamMapPage() {
     <main aria-label="團隊地圖" className="flex min-w-0 flex-1 flex-col gap-3.5 px-5 pb-5 max-sm:px-4">
       <header className="flex min-h-16 flex-wrap items-center gap-2.5">
         <div className="flex min-w-[200px] flex-1 flex-col leading-[1.4]">
-          <h1 className="m-0 text-[18px]">團隊地圖</h1>
+          <h1 className="max-md:sr-only-text m-0 text-[18px]">團隊地圖</h1>
           <span className="text-[13px] text-ink-2">{chart ? `${chart.bots.length} 個 Bot · ${chart.teams.length} 個團隊。每個團隊含主管最多 ${chart.team_max} 位。` : '讀取中…'}</span>
         </div>
         <Button variant="secondary" icon={UsersRound} onClick={openNewTeam}>

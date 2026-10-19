@@ -31,7 +31,7 @@ export function AgendaPage() {
     <div className="grid flex-1 grid-cols-[minmax(0,1fr)_340px] content-start items-start gap-5 px-6 pb-6 pt-4 max-[1100px]:grid-cols-1 max-sm:px-4">
       <main aria-label="等你的事" className="flex min-w-0 flex-col gap-3">
         <header className="flex flex-col gap-0.5">
-          <h1 className="m-0 flex items-center gap-2 text-[22px]">
+          <h1 className="max-md:sr-only-text m-0 flex items-center gap-2 text-[22px]">
             <Icon icon={Inbox} size={22} color="var(--color-accent)" />
             等你的事
           </h1>

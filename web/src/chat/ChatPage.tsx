@@ -462,7 +462,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   return (
     <div className="flex min-w-0 flex-1">
     <main
-      className="relative flex h-dvh min-w-0 flex-1 flex-col bg-app"
+      className="relative flex h-[var(--app-h,100dvh)] min-w-0 flex-1 flex-col bg-app"
       aria-label={`和${name}的對話`}
       onDragEnter={(e) => {
         if (!hasFiles(e.dataTransfer)) return
