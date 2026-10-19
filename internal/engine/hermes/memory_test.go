@@ -25,3 +25,10 @@ func TestSoulWarnsAgainstMemorizingToolLimits(t *testing.T) {
 		t.Fatalf("SOUL：%q", soul)
 	}
 }
+
+// 2026-10-19：Bot 說「我沒有改群組名稱的工具」。SOUL.md 告訴它改群組、刪群組各用哪個工具。
+func TestSoulTellsHowToChangeAGroup(t *testing.T) {
+	if soul := Soul(Profile{Name: "水哥哥"}); !strings.Contains(soul, "xbot.collab.update_group") || !strings.Contains(soul, "xbot.collab.remove_group") {
+		t.Fatalf("SOUL：%q", soul)
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"xbot/internal/bots"
 	"xbot/internal/limits"
 	"xbot/internal/ops"
 	"xbot/internal/store"
@@ -108,12 +109,18 @@ type ReviewIn struct {
 }
 
 // UpdateBotIn 是 xbot.teams.update_bot 的輸入（有團隊管理權限的 Bot 用）。
+// 職稱、人設、報告對象、團隊直接改；引擎、模型、思考強度、團隊管理權限要使用者按允許（botchange.go）。
 type UpdateBotIn struct {
-	Bot       string `json:"bot" required:"true" max:"100" desc:"要調整的 Bot（名字或 id）"`
-	Title     string `json:"title,omitempty" max:"100" desc:"新的職稱"`
-	Persona   string `json:"persona,omitempty" max:"4000" desc:"新的人設（常駐指示）"`
-	ReportsTo string `json:"reports_to,omitempty" max:"100" desc:"新的報告對象（名字）；「使用者」表示直接向使用者報告"`
-	Team      string `json:"team,omitempty" max:"100" desc:"移到哪個團隊（名稱）；「未分區」表示離開團隊"`
+	Bot       string       `json:"bot" required:"true" max:"100" desc:"要調整的 Bot（名字或 id）"`
+	Title     string       `json:"title,omitempty" max:"100" desc:"新的職稱"`
+	Persona   string       `json:"persona,omitempty" max:"4000" desc:"新的人設（常駐指示）"`
+	ReportsTo string       `json:"reports_to,omitempty" max:"100" desc:"新的報告對象（名字）；「使用者」表示直接向使用者報告"`
+	Team      string       `json:"team,omitempty" max:"100" desc:"移到哪個團隊（名稱）；「未分區」表示離開團隊"`
+	Engine    *bots.Engine `json:"engine,omitempty" desc:"換引擎（要使用者按允許）；hermes 以外的用使用者的訂閱，使用者還要在 Bot 設定另外同意"`
+	Model     *string      `json:"model,omitempty" max:"200" desc:"換模型（要使用者按允許）：Hermes 寫「<供應商>/<模型>」或只寫模型；空白字串表示改回預設模型"`
+	Effort    *bots.Effort `json:"effort,omitempty" desc:"思考強度（要使用者按允許）"`
+	CanManage *bool        `json:"can_manage,omitempty" desc:"打開或關掉它的團隊管理權限（要使用者本人按允許）"`
+	Reason    string       `json:"reason,omitempty" max:"500" desc:"為什麼要改（寫在核准卡上給使用者看）"`
 }
 
 // UpdateBotOut 是 xbot.teams.update_bot 的輸出。
@@ -368,22 +375,30 @@ func Register(reg *ops.Registry, s *Service) {
 		},
 	})
 	ops.Register(reg, ops.Op[UpdateBotIn, UpdateBotOut]{
-		Name: "xbot.teams.update_bot", Summary: "調整另一個 Bot 的職稱、人設、報告對象或團隊",
-		Description: "要有團隊管理權限（使用者在「Bot 設定 → 權限與花費」或「組織架構」開啟）。刪 Bot 用 xbot.teams.remove_bot（要使用者按允許）。改報告對象時不能讓報告關係繞成一圈。",
-		Scope:       ops.ScopeManage, Risk: ops.RiskSafe, ForBot: true, ManagerOnly: true,
+		Name: "xbot.teams.update_bot", Summary: "調整另一個 Bot 的職稱、人設、報告對象、團隊、模型、引擎或團隊管理權限",
+		Description: "要有團隊管理權限（使用者在「Bot 設定 → 權限與花費」或「組織架構」開啟）。職稱、人設、報告對象、團隊直接改；" +
+			"換模型、引擎、思考強度（會改變花費）或開關團隊管理權限，會先送一張核准卡給使用者，寫出每一項從什麼改成什麼，使用者按允許才改，不能代為核准。" +
+			"刪 Bot 用 xbot.teams.remove_bot（要使用者按允許）。改報告對象時不能讓報告關係繞成一圈。",
+		Scope: ops.ScopeManage, Risk: ops.RiskSafe, NoDelegate: true, ForBot: true, ManagerOnly: true,
+		RiskOf: func(in UpdateBotIn) ops.Risk {
+			if in.needsOwner() {
+				return ops.RiskConfirm
+			}
+			return ops.RiskSafe
+		},
+		Precheck: func(ctx context.Context, call *ops.Call, in UpdateBotIn) error {
+			b, err := botTargetFor(ctx, s, call, in.Bot)
+			if err == nil && strings.TrimSpace(in.ReportsTo) != "" {
+				_, err = s.CheckManager(ctx, b.ID, in.ReportsTo)
+			}
+			return err
+		},
+		Explain: func(ctx context.Context, call *ops.Call, in UpdateBotIn) (string, error) {
+			b, err := botTargetFor(ctx, s, call, in.Bot)
+			return explainChange(b, in), err
+		},
 		Handle: func(ctx context.Context, call *ops.Call, in UpdateBotIn) (UpdateBotOut, error) {
-			if err := ready(s); err != nil {
-				return UpdateBotOut{}, err
-			}
-			if call.Identity.Kind != ops.KindBot {
-				return UpdateBotOut{}, ops.Forbidden("這是給有團隊管理權限的 Bot 用的；你本人請用 xbot.bots.update 與 xbot.teams.*")
-			}
-			if call.DryRun {
-				_, err := s.RequireManager(ctx, call.Identity.ID)
-				return UpdateBotOut{Fields: []string{}}, err
-			}
-			name, fields, err := s.UpdateBot(ctx, call.Identity.ID, in.Bot, BotUpdate{Title: in.Title, Persona: in.Persona, ReportsTo: in.ReportsTo, Team: in.Team})
-			return UpdateBotOut{Updated: name, Fields: fields}, err
+			return updateBot(ctx, reg, s, call, in)
 		},
 	})
 	ops.Register(reg, ops.Op[struct{}, ApprovalItemsOut]{

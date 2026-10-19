@@ -53,7 +53,7 @@ type RoomMessage struct {
 	Handoff     int      `json:"handoff,omitempty" desc:"這則叫醒了別人：交棒後是第幾輪（上限由使用者在「限制」設定，預設 10）"`
 	Capped      bool     `json:"capped,omitempty" desc:"輪數到上限，沒有再叫醒別人"`
 	Failed      bool     `json:"failed,omitempty"`
-	Notice      string   `json:"notice,omitempty" desc:"系統提示的種類（capped）"`
+	Notice      string   `json:"notice,omitempty" desc:"系統提示的種類：capped（輪數到上限）、updated（Bot 改了群組）"`
 	PickedBy    string   `json:"picked_by,omitempty" desc:"沒點名時誰挑的：lead、judge、everyone"`
 	Picked      []string `json:"picked,omitempty" desc:"被叫醒的成員 id"`
 	Paused      []string `json:"paused,omitempty" desc:"被點名但暫停中的成員名字"`
@@ -628,6 +628,7 @@ func Register(reg *ops.Registry, s *Service) {
 			return out, nil
 		},
 	})
+	registerGroupUpdate(reg, s)
 	ops.Register(reg, ops.Op[RoomPostIn, PostResult]{
 		Name: "xbot.rooms.post", Summary: "在群組發言",
 		Description: "@名字 叫醒指定的成員、@所有人 叫醒全部；沒點名時照回應規則。你的發言永遠優先：排隊中的接力排到你後面、" +

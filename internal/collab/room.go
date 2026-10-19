@@ -107,9 +107,11 @@ type RoomUpdate struct {
 	ResponderRule *string
 	LeadID        *string
 	Bulletin      *string
+	// Keep 是移出的成員裡不要停的那一輪（Bot 自己離開群組時，正在做的這一輪讓它做完）。
+	Keep string
 }
 
-// UpdateRoom 改群組（LazyBoy update_room）。
+// UpdateRoom 改群組（LazyBoy update_room）。移出的成員在這個群組還在做或排隊的工作會停掉，不會再貼到群組。
 func (s *Service) UpdateRoom(ctx context.Context, roomID string, u RoomUpdate) (store.Room, error) {
 	r, err := s.db.GetRoom(ctx, roomID)
 	if err != nil {
@@ -119,6 +121,7 @@ func (s *Service) UpdateRoom(ctx context.Context, roomID string, u RoomUpdate) (
 	if err != nil {
 		return r, err
 	}
+	before := members
 	var bots []store.Bot
 	if u.MemberIDs != nil {
 		if members, bots, err = s.cleanMembers(ctx, u.MemberIDs); err != nil {
@@ -170,8 +173,36 @@ func (s *Service) UpdateRoom(ctx context.Context, roomID string, u RoomUpdate) (
 	if err != nil {
 		return r, err
 	}
+	if u.MemberIDs != nil {
+		s.dropSeats(ctx, roomID, before, members, u.Keep)
+	}
 	s.publish("", r.ID, "", KindRoomUpdated, map[string]string{"room_id": r.ID})
 	return s.db.GetRoom(ctx, roomID)
+}
+
+// dropSeats 停掉移出的成員在這個群組還在做或排隊的工作（keep 那一輪除外）。
+func (s *Service) dropSeats(ctx context.Context, roomID string, before, after []string, keep string) {
+	var gone []string
+	for _, id := range before {
+		if !slices.Contains(after, id) {
+			gone = append(gone, id)
+		}
+	}
+	if len(gone) == 0 {
+		return
+	}
+	tasks, err := s.db.ListTasksByMeta(ctx, "$.room_id", roomID, true)
+	if err != nil {
+		s.log.Warn("讀不到移出成員的群組工作", "room", roomID, "err", err)
+		return
+	}
+	for _, t := range tasks {
+		if t.ID != keep && slices.Contains(gone, t.BotID) {
+			if _, err := s.rt.StopTask(ctx, t.ID); err != nil {
+				s.log.Warn("停掉移出成員的群組工作失敗", "task", t.ID, "err", err)
+			}
+		}
+	}
 }
 
 // DeleteRoom 停掉群組裡的工作，再刪群組（訊息、座位一起刪）。
@@ -295,7 +326,7 @@ type roomMeta struct {
 	Capped      bool     `json:"capped,omitempty"`        // 輪數到上限，沒有再叫醒別人
 	Failed      bool     `json:"failed,omitempty"`        // 這一輪沒有完成
 	TaskID      string   `json:"task_id,omitempty"`       // Bot 那一輪的工作
-	Notice      string   `json:"notice,omitempty"`        // 系統提示的種類：capped、paused
+	Notice      string   `json:"notice,omitempty"`        // 系統提示的種類：capped、paused、updated（Bot 改了群組）
 	RequestID   string   `json:"request_id,omitempty"`    // 你發言的請求編號
 	PickedBy    string   `json:"picked_by,omitempty"`     // 沒點名時誰挑的回應者：lead／judge／everyone
 	Picked      []string `json:"picked,omitempty"`        // 被叫醒的成員

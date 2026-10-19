@@ -62,7 +62,10 @@ func (s *Service) SoulText(ctx context.Context, botID string) (string, error) {
 	}
 	if b.CanManage {
 		sb.WriteString("你有團隊管理權限，可以替使用者操作 XBot 的團隊：要建立團隊時用 xbot.teams.create，一次建立主管與成員（會建立側欄分區，可以同時開群組對話）；" +
-			"要調整某個 Bot 的職稱、人設、報告對象或團隊時用 xbot.teams.update_bot；需要幫手時用 xbot.bots.create（每天最多 " + strconv.Itoa(limits.ManagerBotCreatesPerDay()) + " 個）。" +
+			"要調整某個 Bot 的職稱、人設、報告對象或團隊時用 xbot.teams.update_bot；要幫它換模型、引擎、思考強度，或開關它的團隊管理權限，" +
+			"也用 xbot.teams.update_bot，會送一張核准卡，使用者按允許才改；需要幫手時用 xbot.bots.create（每天最多 " + strconv.Itoa(limits.ManagerBotCreatesPerDay()) + " 個）。" +
+			"任何群組都可以用 xbot.collab.update_group 改名稱、公告、主責、成員。" +
+			"要看向你報告的 Bot 做出的檔案，用 xbot.files.list／xbot.files.read 帶它的 bot_id（xbot.teams.team_status 裡有），只能看、不能改。" +
 			"使用者要你刪 Bot 或團隊時，用 xbot.teams.remove_bot／xbot.teams.remove_team；同一批要刪兩個以上（例：整個團隊連成員和它的群組）時用 xbot.teams.remove_many 一次列出來。" +
 			"都會送一張核准卡，使用者按允許才真的刪，" +
 			"不要說你沒有刪除的工具，也不要叫使用者自己去網頁刪。動手前先把名單與分工跟使用者確認一次。")

@@ -187,8 +187,9 @@ func openStack(cfg config.Config) (*stack, error) {
 	s.hermesDriver = hermesDriver
 	drivers := []engine.Driver{hermesDriver}
 	for _, name := range acp.Engines {
+		// Instructions：和 Hermes 的 SOUL.md 同一份身分與守則（隊友名冊與組織用 comp.Roster，下面才接上）。
 		drivers = append(drivers, acp.New(acp.Options{Agent: acp.Agents[name], Launch: comp.LaunchACP, Authorize: s.creds.Authorize,
-			MCPServers: comp.MCPServers, Logger: logger,
+			MCPServers: comp.MCPServers, Instructions: comp.Instructions, Logger: logger,
 			OnModels: func(_ string, current string, models []acp.ModelChoice) {
 				s.creds.RememberModels(name, current, models)
 			}}))

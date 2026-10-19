@@ -317,8 +317,9 @@ func (p *peer) prompt(f frame) {
 	_ = json.Unmarshal(f.Params, &params)
 	sid := params.SessionID
 	text := ""
-	if len(params.Prompt) > 0 {
-		text = strings.TrimSpace(params.Prompt[0].Text)
+	if n := len(params.Prompt); n > 0 {
+		// 劇本看最後一段：前面可能是 XBot 在 session 第一則訊息前加的身分與守則
+		text = strings.TrimSpace(params.Prompt[n-1].Text)
 	}
 	cancel := make(chan struct{})
 	p.a.mu.Lock()

@@ -318,6 +318,23 @@ func (c *Computers) RefreshSoul(ctx context.Context, botID string) error {
 		Soul: b.Soul, Team: team, UID: box.BotUID, GID: box.BotGID})
 }
 
+// Instructions 是 ACP 引擎（Claude Code、Codex、Gemini、OpenCode、Grok）的 Bot 的身分與守則：和 Hermes 的 SOUL.md 同一份
+// （名稱、職稱、人設、基本守則、隊友名冊與組織）。ACP 驅動開 session 時拿（acp.Options.Instructions），所以改了人設或隊友，
+// 下一個新的對話就用新的。
+func (c *Computers) Instructions(ctx context.Context, botID string) (string, error) {
+	b, err := c.DB.GetBot(ctx, botID)
+	if err != nil {
+		return "", err
+	}
+	team := ""
+	if c.Roster != nil {
+		if team, err = c.Roster(ctx, botID); err != nil {
+			return "", err
+		}
+	}
+	return hermes.Soul(hermes.Profile{BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul, Team: team}), nil
+}
+
 func (c *Computers) hostOf(ctx context.Context, botID string) (hosts.Host, error) {
 	bx, err := c.DB.GetBox(ctx, botID)
 	if err != nil {

@@ -35,7 +35,12 @@ type Options struct {
 	MCPServers func(botID string) []MCPServer
 	// OnModels 在開 session 時收到 agent 列出的模型（和目前用的）；nil 表示不用。
 	OnModels func(botID string, current string, models []ModelChoice)
-	Logger   *slog.Logger
+	// Instructions 回傳 Bot 的身分與守則（和 Hermes 的 SOUL.md 同一份：名稱、人設、基本守則、隊友與組織）；nil 表示不給。
+	// agent 自己的系統提示只說它是 Claude Code、Grok…，不給的話它不知道自己是哪個 Bot（使用者回報 2026-10-19：
+	// Grok 的 Bot 回「我是 Grok」、用簡體中文）。開 session 時拿一次：Agent.SystemPrompt 的放進系統提示，
+	// 其他的加在新 session 的第一則訊息前面（接回的 session 歷史裡已經有了，不再重送）。
+	Instructions func(ctx context.Context, botID string) (string, error)
+	Logger       *slog.Logger
 }
 
 // ModelChoice 是 agent 列出的一個可選模型。
@@ -105,6 +110,8 @@ type session struct {
 	q          *queue
 	// resetAt 是 agent 最近報的訂閱用量恢復時間（毫秒，Claude Code 的 _claude/rateLimit）；額度錯誤沒寫時間時用它。
 	resetAt int64
+	// intro 是還沒送出的身分與守則：加在這個新 session 第一則訊息的前面，送出後清掉（Options.Instructions）。
+	intro string
 }
 
 func (s *session) ID() string { return s.id }
@@ -290,16 +297,24 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	if mcp == nil {
 		mcp = []MCPServer{}
 	}
+	inst := d.instructions(ctx, o.BotID)
+	withPrompt := func(params map[string]any) map[string]any {
+		if inst != "" && d.o.Agent.SystemPrompt {
+			params["_meta"] = map[string]any{"systemPrompt": map[string]any{"append": SystemPromptText(inst)}}
+		}
+		return params
+	}
 	sctx, cancel := context.WithTimeout(ctx, limits.ACPSessionTimeout)
 	defer cancel()
 	var res sessionResult
 	id := ""
+	loaded := false
 	if o.Resume != "" && ac.loadSession {
 		// session/load 會把舊的對話以 session/update 重播；這時 session 還沒登記，重播的內容不會變成事件。
-		raw, err := ac.c.call(sctx, "session/load", map[string]any{"sessionId": o.Resume, "cwd": Workspace, "mcpServers": mcp})
+		raw, err := ac.c.call(sctx, "session/load", withPrompt(map[string]any{"sessionId": o.Resume, "cwd": Workspace, "mcpServers": mcp}))
 		switch {
 		case err == nil:
-			id = o.Resume
+			id, loaded = o.Resume, true
 			_ = json.Unmarshal(raw, &res)
 		case errors.Is(err, engine.ErrDisconnected):
 			return nil, err
@@ -308,7 +323,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		}
 	}
 	if id == "" {
-		raw, err := ac.c.call(sctx, "session/new", map[string]any{"cwd": Workspace, "mcpServers": mcp})
+		raw, err := ac.c.call(sctx, "session/new", withPrompt(map[string]any{"cwd": Workspace, "mcpServers": mcp}))
 		if err != nil {
 			return nil, d.explain("無法開始對話", err)
 		}
@@ -318,6 +333,9 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		id = res.SessionID
 	}
 	s := &session{ac: ac, id: id, threadID: o.ThreadID, tools: map[string]*toolState{}, q: newQueue()}
+	if inst != "" && !d.o.Agent.SystemPrompt && !loaded {
+		s.intro = IntroText(inst)
+	}
 	ac.mu.Lock()
 	if old := ac.threads[o.ThreadID]; old != nil {
 		ac.mu.Unlock()
@@ -329,6 +347,32 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	ac.mu.Unlock()
 	d.configure(ctx, s, res, o)
 	return s, nil
+}
+
+// instructions 拿 Bot 的身分與守則；拿不到時記紀錄、照樣開 session（只是少了守則）。
+func (d *Driver) instructions(ctx context.Context, botID string) string {
+	if d.o.Instructions == nil {
+		return ""
+	}
+	text, err := d.o.Instructions(ctx, botID)
+	if err != nil {
+		d.log.Warn("讀不到 Bot 的身分與守則", "bot", botID, "err", err)
+		return ""
+	}
+	return strings.TrimSpace(text)
+}
+
+// identityNote：agent 自己的系統提示說它是 Claude Code、Grok…；在 XBot 裡它就是這個 Bot。
+const identityNote = "你在 XBot 裡就是下面這位 Bot：用它的名字、個性和語言（繁體中文）回應；被問到用的是哪個引擎或模型時可以照實說。" +
+	"XBot 的工具在 MCP 伺服器 xbot 裡（名稱是 xbot.<領域>.<動作>）。"
+
+// SystemPromptText 是放進 agent 系統提示的身分與守則（Agent.SystemPrompt，例：Claude Code）。
+func SystemPromptText(inst string) string { return "# XBot\n" + identityNote + "\n\n" + inst }
+
+// IntroText 是 agent 沒有系統提示可以放時，加在新 session 第一則訊息前面的身分與守則。
+func IntroText(inst string) string {
+	return "[XBot 系統設定] 以下是你的身分與守則，這整段對話都適用；這一段不用回覆，直接處理後面的訊息。" + identityNote +
+		"\n<xbot-instructions>\n" + inst + "\n</xbot-instructions>"
 }
 
 // configure 照 Bot 的權限等級設定 session 模式、照設定的模型選模型。agent 沒有對應的選項就不設定；設定失敗只記紀錄。
@@ -437,12 +481,19 @@ func (d *Driver) Send(ctx context.Context, s engine.Session, m engine.Message) e
 		return ErrBusy
 	}
 	as.running, as.cancelling = true, false
+	intro := as.intro
+	as.intro = ""
 	as.mu.Unlock()
-	params := map[string]any{"sessionId": as.id, "prompt": []map[string]string{{"type": "text", "text": m.Text}}}
+	prompt := []map[string]string{{"type": "text", "text": m.Text}}
+	if intro != "" {
+		prompt = append([]map[string]string{{"type": "text", "text": intro}}, prompt...)
+	}
+	params := map[string]any{"sessionId": as.id, "prompt": prompt}
 	_, err = as.ac.c.start("session/prompt", params, func(raw json.RawMessage, err error) { d.promptDone(as, raw, err) })
 	if err != nil {
 		as.mu.Lock()
 		as.running = false
+		as.intro = intro // 沒送出去：下一則再帶
 		as.mu.Unlock()
 		return err
 	}

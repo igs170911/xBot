@@ -81,6 +81,11 @@ function Timeline({ messages, members }: { messages: RoomMsg[]; members: Member[
   const rounds = useStore(roundsStore)
   const out: ReactNode[] = []
   for (const m of messages) {
+    if (m.sender === 'system' && m.notice === 'updated') {
+      // Bot 改了群組（xbot.collab.update_group）：一般的分隔線，不是警告
+      out.push(<Divider key={m.id}>{m.content}</Divider>)
+      continue
+    }
     if (m.sender === 'system') {
       out.push(
         <div key={m.id} data-testid="room-notice" className="flex items-center gap-2 self-center rounded-full bg-warning-soft px-3 py-1 text-meta text-warning-ink">

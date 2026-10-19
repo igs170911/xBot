@@ -122,6 +122,8 @@ function orgLine(event: string, content: string, p: { peer_id?: string; room_id?
       return { icon: PencilLine, text: content }
     case 'team_created':
       return { icon: UsersRound, text: `建立了團隊「${content}」`, to: p.room_id ? `/rooms/${p.room_id}` : '/teams' }
+    case 'group_updated':
+      return { icon: Users, text: content, to: p.room_id ? `/rooms/${p.room_id}` : undefined }
     case 'proposal':
       return { icon: CalendarClock, text: `送出提案：${content}`, to: '/agenda' }
     case 'discussion':

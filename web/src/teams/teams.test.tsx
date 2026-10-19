@@ -314,5 +314,7 @@ describe('對話裡的組織事件行', () => {
     expect(line('team_created', '行銷團隊', { room_id: 'r1' })).toEqual({ text: '建立了團隊「行銷團隊」', href: '/rooms/r1' })
     expect(line('proposal', '改成週報')).toEqual({ text: '送出提案：改成週報', href: '/agenda' })
     expect(line('discussion', '下季先做哪個')).toEqual({ text: '想找你討論：下季先做哪個', href: '/agenda' })
+    // Bot 改了群組（xbot.collab.update_group）
+    expect(line('group_updated', '改了群組「發表會」：名稱、加入成員', { room_id: 'r2' })).toEqual({ text: '改了群組「發表會」：名稱、加入成員', href: '/rooms/r2' })
   })
 })

@@ -688,6 +688,11 @@ func TestRegisterRules(t *testing.T) {
 		"範圍錯":      func() Op[PingIn, PingOut] { o := ok; o.Name = "xbot.a.d"; o.Scope = "root"; return o }(),
 		"風險錯":      func() Op[PingIn, PingOut] { o := ok; o.Name = "xbot.a.e"; o.Risk = ""; return o }(),
 		"沒 handle": func() Op[PingIn, PingOut] { o := ok; o.Name = "xbot.a.f"; o.Handle = nil; return o }(),
+		"主管改下屬": func() Op[PingIn, PingOut] {
+			o := ok
+			o.Name, o.Scope, o.TeamRead = "xbot.a.h", ScopeOperate, true
+			return o
+		}(),
 	} {
 		func() {
 			defer func() {
