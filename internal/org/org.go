@@ -37,6 +37,8 @@ type Options struct {
 	Logger *slog.Logger
 	// Now 是時間（測試可以換）；nil 用 time.Now。
 	Now func() time.Time
+	// ManageChanged 在建團隊順便打開主管的團隊管理權限以後呼叫（重新載入它的 XBot MCP 工具）。可為 nil。
+	ManageChanged func(ctx context.Context, botID string)
 }
 
 // Service 是團隊、匯報線、提案與討論。

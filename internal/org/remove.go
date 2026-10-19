@@ -87,7 +87,7 @@ func registerRemove(reg *ops.Registry, s *Service) {
 		Name: "xbot.teams.remove_bot", Summary: "刪除一個 Bot（有團隊管理權限的 Bot 用；要使用者按允許）",
 		Description: "連同它的電腦、對話、任務一起刪除，無法復原。會先送一張核准卡給使用者，使用者允許後才刪；不能刪自己。" +
 			"你本人請用 xbot.bots.delete。",
-		Scope: ops.ScopeManage, Risk: ops.RiskConfirm, NoDelegate: true, ForBot: true,
+		Scope: ops.ScopeManage, Risk: ops.RiskConfirm, NoDelegate: true, ForBot: true, ManagerOnly: true,
 		Precheck: func(ctx context.Context, call *ops.Call, in RemoveBotIn) error {
 			_, _, err := botTarget(ctx, s, call, in)
 			return err
@@ -118,7 +118,7 @@ func registerRemove(reg *ops.Registry, s *Service) {
 		Name: "xbot.teams.remove_team", Summary: "刪除一個團隊（有團隊管理權限的 Bot 用；要使用者按允許；Bot 不會被刪）",
 		Description: "成員回到未分區，Bot、報告線、群組都保留；團隊記憶會一起刪掉。會先送一張核准卡給使用者，使用者允許後才刪。" +
 			"你本人請用 xbot.teams.delete。",
-		Scope: ops.ScopeManage, Risk: ops.RiskConfirm, NoDelegate: true, ForBot: true,
+		Scope: ops.ScopeManage, Risk: ops.RiskConfirm, NoDelegate: true, ForBot: true, ManagerOnly: true,
 		Precheck: func(ctx context.Context, call *ops.Call, in RemoveTeamIn) error {
 			_, _, err := teamTarget(ctx, s, call, in)
 			return err
@@ -270,7 +270,7 @@ func registerRemoveMany(reg *ops.Registry, s *Service) {
 		Name: "xbot.teams.remove_many", Summary: "一次刪除好幾個 Bot、團隊、群組（有團隊管理權限的 Bot 用；使用者允許一次就全刪）",
 		Description: "同一批要刪的列在一起，只送一張核准卡；使用者允許後依序刪群組、Bot、團隊。刪 Bot 會連同它的電腦、對話、任務，無法復原。" +
 			"要刪兩個以上時用這個，不要一個一個送。你本人請用 xbot.bots.delete／xbot.teams.delete／xbot.rooms.delete。",
-		Scope: ops.ScopeManage, Risk: ops.RiskConfirm, NoDelegate: true, ForBot: true,
+		Scope: ops.ScopeManage, Risk: ops.RiskConfirm, NoDelegate: true, ForBot: true, ManagerOnly: true,
 		Precheck: func(ctx context.Context, call *ops.Call, in RemoveManyIn) error {
 			_, err := batchTarget(ctx, s, call, in)
 			return err

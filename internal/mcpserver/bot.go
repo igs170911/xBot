@@ -45,20 +45,36 @@ type BotOptions struct {
 	Logger *slog.Logger
 }
 
-// BotTools 回答一個操作是不是給 Bot 用的（product.sock 上只列出這些）。
+// BotTools 回答一個操作是不是給 Bot 用的（product.sock 上只列出這些）。有團隊管理權限的 Bot 看到全部。
 func BotTools(info ops.Info) bool { return info.ForBot }
+
+// MemberTools 是沒有團隊管理權限的 Bot 看到的工具：BotTools 去掉只給管理者的（ops.Info.ManagerOnly）。
+func MemberTools(info ops.Info) bool { return info.ForBot && !info.ManagerOnly }
+
+// managerKey 是權杖資訊裡「這個 Bot 現在有團隊管理權限」的標記（選工具清單用）。
+const managerKey = "xbot.manager"
 
 // BotHandler 回傳一個產生器：每個 Bot 的 product.sock 用它拿到自己的 MCP 處理器。
 //
 // 身分由 socket 決定（botID 是 product.sock 所屬的 Bot），不看任何標頭或參數，所以 Bot 冒充不了別人；
 // 另外要帶這個 Bot 的 worker-key（Authorization: Bearer），和模型請求一樣：拿到別的 Bot 的 key 也進不來。
 // MCP 用無狀態的 Streamable HTTP（每個請求獨立、回 JSON），讓容器裡的 stdio 橋接只要逐行轉送。
+//
+// 工具清單依 Bot 現在的團隊管理權限分兩份（每個請求重新看權限）：沒有權限的看不到只給管理者的工具，省 token。
+// 權限改了以後要請 Hermes 重新載入 MCP（cmd/xbot 的 reloadBotTools），新的清單才會進到模型請求。
 func BotHandler(reg *ops.Registry, o BotOptions) func(botID string) http.Handler {
 	if o.Keys == nil {
 		panic("mcpserver.BotHandler：要有 Keys")
 	}
-	srv := newServer(reg, TokenIdentity, BotInstructions, BotTools)
-	mcpHandler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv }, &mcp.StreamableHTTPOptions{
+	member := newServer(reg, TokenIdentity, BotInstructions, MemberTools, BotTool)
+	manager := newServer(reg, TokenIdentity, BotInstructions, BotTools, BotTool)
+	pick := func(r *http.Request) *mcp.Server {
+		if ti := sdkauth.TokenInfoFromContext(r.Context()); ti != nil && ti.Extra[managerKey] == true {
+			return manager
+		}
+		return member
+	}
+	mcpHandler := mcp.NewStreamableHTTPHandler(pick, &mcp.StreamableHTTPOptions{
 		Stateless:                  true,
 		JSONResponse:               true,
 		DisableLocalhostProtection: true, // Unix socket，沒有 Host 可以檢查
@@ -71,7 +87,8 @@ func BotHandler(reg *ops.Registry, o BotOptions) func(botID string) http.Handler
 			if err != nil || owner != botID {
 				return nil, fmt.Errorf("%w：需要這個 Bot 的 worker-key", sdkauth.ErrInvalidToken)
 			}
-			name := ""
+			// 沒有資料庫時看不到權限：列出全部（操作自己會檢查權限）。
+			name, manage := "", o.DB == nil
 			if o.DB != nil {
 				b, err := o.DB.GetBot(ctx, botID)
 				if errors.Is(err, store.ErrNotFound) {
@@ -80,11 +97,11 @@ func BotHandler(reg *ops.Registry, o BotOptions) func(botID string) http.Handler
 				if err != nil {
 					return nil, err
 				}
-				name = b.Name
+				name, manage = b.Name, b.CanManage
 			}
 			id := ops.Bot(botID, name)
 			return &sdkauth.TokenInfo{UserID: id.Actor(), Scopes: []string{string(ops.ScopeRead), string(ops.ScopeOperate)},
-				Extra: map[string]any{identityKey: id}}, nil
+				Extra: map[string]any{identityKey: id, managerKey: manage}}, nil
 		}
 		protected := sdkauth.RequireBearerToken(verify, &sdkauth.RequireBearerTokenOptions{AllowMissingExpiration: true})(mcpHandler)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

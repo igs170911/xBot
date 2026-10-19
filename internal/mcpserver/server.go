@@ -49,28 +49,39 @@ const identityKey = "xbot.identity"
 
 // NewServer 由登錄表產生 MCP 伺服器：每個操作一個工具。
 func NewServer(reg *ops.Registry, identity IdentityFunc) *mcp.Server {
-	return newServer(reg, identity, Instructions, func(ops.Info) bool { return true })
+	return newServer(reg, identity, Instructions, func(ops.Info) bool { return true }, Tool)
 }
 
-func newServer(reg *ops.Registry, identity IdentityFunc, instructions string, keep func(ops.Info) bool) *mcp.Server {
+func newServer(reg *ops.Registry, identity IdentityFunc, instructions string, keep func(ops.Info) bool, tool func(ops.Info) *mcp.Tool) *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{Name: Name, Title: "XBot", Version: version.Version},
 		&mcp.ServerOptions{Instructions: instructions, Capabilities: &mcp.ServerCapabilities{Tools: &mcp.ToolCapabilities{}}})
 	for _, info := range reg.List() {
 		if keep(info) {
-			srv.AddTool(Tool(info), handler(reg, info, identity))
+			srv.AddTool(tool(info), handler(reg, info, identity))
 		}
 	}
 	return srv
 }
 
-// Tool 把一個操作描述轉成 MCP 工具。
-func Tool(info ops.Info) *mcp.Tool {
+// Tool 把一個操作描述轉成 MCP 工具（代理用的完整版）。
+func Tool(info ops.Info) *mcp.Tool { return toolOf(info, false) }
+
+// BotTool 是給 Bot 的精簡版工具。Hermes 每次模型請求都送整份工具清單（關掉 tool_search 時，C11 的工具約 9.6K tokens），
+// 所以只留模型用得到的：
+//   - 不加 request_id、dry_run（Bot 有帶的話 SplitArgs 照樣收）。
+//   - schema 拿掉 maxLength、minimum、maximum、additionalProperties: false、x-*；伺服器照樣用操作的 schema 驗證（ops.Invoke）。
+//   - 說明不寫「需要權限」（Bot 的權限是固定的，看不到的工具就是不能用）。
+func BotTool(info ops.Info) *mcp.Tool { return toolOf(info, true) }
+
+func toolOf(info ops.Info, bot bool) *mcp.Tool {
 	schema := map[string]any{}
 	if b, err := json.Marshal(info.Input); err == nil {
 		_ = json.Unmarshal(b, &schema)
 	}
 	schema["type"] = "object"
-	if info.Mutates {
+	if bot {
+		slim(schema)
+	} else if info.Mutates {
 		props, _ := schema["properties"].(map[string]any)
 		if props == nil {
 			props = map[string]any{}
@@ -90,7 +101,7 @@ func Tool(info ops.Info) *mcp.Tool {
 	return &mcp.Tool{
 		Name:        info.Name,
 		Title:       info.Summary,
-		Description: describe(info),
+		Description: describe(info, bot),
 		InputSchema: schema,
 		Annotations: ann,
 	}
@@ -99,20 +110,55 @@ func Tool(info ops.Info) *mcp.Tool {
 var scopeLabel = map[ops.Scope]string{ops.ScopeRead: "read（查看）", ops.ScopeOperate: "operate（交辦工作）",
 	ops.ScopeManage: "manage（管理）", ops.ScopeAdmin: "admin（系統設定）"}
 
-func describe(info ops.Info) string {
+func describe(info ops.Info, bot bool) string {
 	var b strings.Builder
 	b.WriteString(info.Summary)
 	if info.Description != "" {
 		b.WriteString("\n\n" + info.Description)
 	}
-	fmt.Fprintf(&b, "\n\n需要權限：%s。", scopeLabel[info.Scope])
+	risk := ""
 	switch {
 	case info.Risk == ops.RiskConfirm:
-		b.WriteString("風險：confirm，代理呼叫會先送到使用者的「待我處理」，等允許才執行。")
+		risk = "風險：confirm，代理呼叫會先送到使用者的「待我處理」，等允許才執行。"
 	case info.DynamicRisk:
-		b.WriteString("風險：依輸入而定，可能要使用者核准。")
+		risk = "風險：依輸入而定，可能要使用者核准。"
+	}
+	switch {
+	case !bot:
+		fmt.Fprintf(&b, "\n\n需要權限：%s。%s", scopeLabel[info.Scope], risk)
+	case risk != "":
+		b.WriteString("\n\n" + risk)
 	}
 	return b.String()
+}
+
+// slim 拿掉 schema 裡模型用不到的限制（Bot 版工具用）。只走 schema 的結構（properties、items、additionalProperties），
+// 不會誤刪剛好叫 maximum 之類的欄位。
+func slim(s map[string]any) {
+	delete(s, "maxLength")
+	delete(s, "minimum")
+	delete(s, "maximum")
+	for k := range s {
+		if strings.HasPrefix(k, "x-") {
+			delete(s, k)
+		}
+	}
+	switch ap := s["additionalProperties"].(type) {
+	case bool:
+		delete(s, "additionalProperties") // 多餘的欄位由伺服器擋
+	case map[string]any:
+		slim(ap) // map 欄位：值的型別要留著
+	}
+	if props, ok := s["properties"].(map[string]any); ok {
+		for _, p := range props {
+			if m, ok := p.(map[string]any); ok {
+				slim(m)
+			}
+		}
+	}
+	if items, ok := s["items"].(map[string]any); ok {
+		slim(items)
+	}
 }
 
 func handler(reg *ops.Registry, info ops.Info, identity IdentityFunc) mcp.ToolHandler {
