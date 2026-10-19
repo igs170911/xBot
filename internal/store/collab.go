@@ -422,6 +422,17 @@ func (q *Queries) SetTaskCancelledIfQueued(ctx context.Context, id string) (bool
 	return n > 0, err
 }
 
+// RequeueTask 讓一件還沒結束（不是排隊中）的工作重新排隊：換成新的輸入、把 patch 併進 meta。
+// 服務重開時做到一半的工作接著做用；已經結束或本來就在排隊的不動（回 ErrNotFound）。
+func (q *Queries) RequeueTask(ctx context.Context, id, input string, patch any) error {
+	raw, err := json.Marshal(patch)
+	if err != nil {
+		return err
+	}
+	return affected(q.w.ExecContext(ctx, `UPDATE task SET state='queued', input=?, meta=json_patch(meta, ?), updated_at=?
+		WHERE id=? AND state NOT IN ('done', 'queued')`, input, string(raw), nowMS(), id))
+}
+
 // ListMessagesAfter 讀一個範圍裡 seq 比 after 大的訊息（由舊到新，最多 limit 則；0 不限）。
 func (q *Queries) ListMessagesAfter(ctx context.Context, scope, scopeID string, after int64, limit int) ([]Message, error) {
 	if limit <= 0 {

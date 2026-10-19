@@ -49,15 +49,16 @@ const identityKey = "xbot.identity"
 
 // NewServer 由登錄表產生 MCP 伺服器：每個操作一個工具。
 func NewServer(reg *ops.Registry, identity IdentityFunc) *mcp.Server {
-	return newServer(reg, identity, Instructions, func(ops.Info) bool { return true }, Tool)
+	return newServer(reg, identity, Instructions, func(ops.Info) bool { return true }, Tool, false)
 }
 
-func newServer(reg *ops.Registry, identity IdentityFunc, instructions string, keep func(ops.Info) bool, tool func(ops.Info) *mcp.Tool) *mcp.Server {
+// newServer 產生 MCP 伺服器。bot=true 是 Bot 的出口：等核准不算錯誤（見 pendingResult）。
+func newServer(reg *ops.Registry, identity IdentityFunc, instructions string, keep func(ops.Info) bool, tool func(ops.Info) *mcp.Tool, bot bool) *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{Name: Name, Title: "XBot", Version: version.Version},
 		&mcp.ServerOptions{Instructions: instructions, Capabilities: &mcp.ServerCapabilities{Tools: &mcp.ToolCapabilities{}}})
 	for _, info := range reg.List() {
 		if keep(info) {
-			srv.AddTool(tool(info), handler(reg, info, identity))
+			srv.AddTool(tool(info), handler(reg, info, identity, bot))
 		}
 	}
 	return srv
@@ -161,7 +162,7 @@ func slim(s map[string]any) {
 	}
 }
 
-func handler(reg *ops.Registry, info ops.Info, identity IdentityFunc) mcp.ToolHandler {
+func handler(reg *ops.Registry, info ops.Info, identity IdentityFunc, bot bool) mcp.ToolHandler {
 	return func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		id, ok := identity(ctx, req)
 		if !ok {
@@ -177,7 +178,11 @@ func handler(reg *ops.Registry, info ops.Info, identity IdentityFunc) mcp.ToolHa
 		}
 		res, err := reg.Invoke(ctx, id, info.Name, input, opts)
 		if err != nil {
-			return errorResult(ops.AsError(err)), nil
+			e := ops.AsError(err)
+			if bot && e.Code == ops.CodePendingApproval {
+				return pendingResult(e), nil
+			}
+			return errorResult(e), nil
 		}
 		return successResult(res), nil
 	}
@@ -248,6 +253,27 @@ func successResult(res ops.Result) *mcp.CallToolResult {
 		r.Content = append(r.Content, &mcp.TextContent{Text: strings.Join(notes, "")})
 	}
 	return r
+}
+
+// PendingOut 是 Bot 出口回的「已送出核准卡」（成功的工具結果，不是錯誤）。
+type PendingOut struct {
+	Status     string `json:"status"` // 固定是 pending_approval
+	ApprovalID string `json:"approval_id"`
+	Message    string `json:"message"`
+}
+
+// pendingResult 把 pending_approval 變成成功的工具結果（只給 Bot 的出口用）。
+//
+// 核准卡送出去是「照規矩做了」，不是失敗。Hermes 把 isError 的結果算成伺服器出錯，連續 3 次就把整個 xbot MCP
+// 暫停約 60 秒（tools/mcp_tool_handlers.py 的 circuit breaker），Bot 一次要送幾張核准卡時後面的全被擋。
+// 代理的出口照舊回錯誤（MCP-5、docs/mcp-setup.md 寫明的格式；外部代理會依 code 判斷）。
+func pendingResult(e *ops.Error) *mcp.CallToolResult {
+	out := PendingOut{Status: string(ops.CodePendingApproval), ApprovalID: e.NeedsApprovalID,
+		Message: fmt.Sprintf("已送出核准卡，還沒執行：等使用者在「待我處理」按允許才會做。核准 id：%s。"+
+			"用 xbot.approvals.wait（approval_id=%s）等結果；不要重送同一個動作。要送別的核准卡可以直接送。", e.NeedsApprovalID, e.NeedsApprovalID)}
+	b, _ := json.Marshal(out)
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(b)}}, StructuredContent: json.RawMessage(b),
+		Meta: mcp.Meta{"xbot/pending_approval": true}}
 }
 
 func errorResult(e *ops.Error) *mcp.CallToolResult {

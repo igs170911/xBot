@@ -3043,6 +3043,10 @@ export interface ChatReadOutput {
     streaming?: boolean
     /** Bot 回覆的結果：complete、interrupted、error */
     status?: string
+    /** 服務重開時這則回覆還在寫（status=interrupted：做到一半被中斷，可以 xbot.chat.resume） */
+    restart?: boolean
+    /** 被中斷的工作已經接著做了 */
+    resumed?: boolean
     silent?: boolean
     peer?: {
       /** message_out（已傳訊息給）、message_in（來自…的訊息）、group_created、group_post */
@@ -3189,6 +3193,36 @@ export interface ChatRespondOutput {
  */
 export function chatRespond(input: ChatRespondInput = {}, opts?: CallOptions): Promise<ChatRespondOutput> {
   return invoke('xbot.chat.respond', input, opts).then((r) => r.output)
+}
+
+// xbot.chat.resume
+
+export interface ChatResumeInput {
+  /** 做到一半被中斷的那件工作（訊息的 task_id，status=interrupted、restart=true） */
+  task_id: string
+}
+
+export interface ChatResumeOutput {
+  bot_id: string
+  /** 預演且沒給 thread_id 時是空白（會開新的對話串） */
+  thread_id: string
+  /** 這件工作的 id，交給 wait_until_settled */
+  task_id: string
+  /** 你這則訊息的 id */
+  message_id: string
+  /** Bot 正在做隊友交辦或群組的事，你的訊息排在第一個，做完那件就開始 */
+  queued?: boolean
+}
+
+/**
+ * 請 Bot 接著做被中斷的工作
+ *
+ * 服務重開時，你交辦和隊友交辦的工作會自動接著做一次；再被中斷，或定時任務、Webhook 的工作被中斷時，Bot 的回覆標成 status=interrupted、restart=true。用它在同一條對話串請 Bot 接著做（開一件你交辦的新工作，排在手上的工作後面），每件只能一次。不是被中斷的工作、群組的一輪回 conflict。
+ *
+ * `xbot.chat.resume`：權限 operate、風險 safe
+ */
+export function chatResume(input: ChatResumeInput, opts?: CallOptions): Promise<ChatResumeOutput> {
+  return invoke('xbot.chat.resume', input, opts).then((r) => r.output)
 }
 
 // xbot.chat.send
@@ -13105,6 +13139,7 @@ export interface Ops {
   'xbot.chat.list_threads': { input: ChatListThreadsInput; output: ChatListThreadsOutput }
   'xbot.chat.read': { input: ChatReadInput; output: ChatReadOutput }
   'xbot.chat.respond': { input: ChatRespondInput; output: ChatRespondOutput }
+  'xbot.chat.resume': { input: ChatResumeInput; output: ChatResumeOutput }
   'xbot.chat.send': { input: ChatSendInput; output: ChatSendOutput }
   'xbot.chat.steps': { input: ChatStepsInput; output: ChatStepsOutput }
   'xbot.chat.stop': { input: ChatStopInput; output: ChatStopOutput }
@@ -13346,6 +13381,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.chat.list_threads': { path: '/api/v1/chat.list_threads', scope: 'read', risk: 'safe', mutates: false, summary: '列出和一個 Bot 的對話串' },
   'xbot.chat.read': { path: '/api/v1/chat.read', scope: 'read', risk: 'safe', mutates: false, summary: '讀一條對話串的訊息' },
   'xbot.chat.respond': { path: '/api/v1/chat.respond', scope: 'operate', risk: 'safe', mutates: true, summary: '回覆 Bot 的提問（允許指令、回答問題、提供密碼）' },
+  'xbot.chat.resume': { path: '/api/v1/chat.resume', scope: 'operate', risk: 'safe', mutates: true, summary: '請 Bot 接著做被中斷的工作' },
   'xbot.chat.send': { path: '/api/v1/chat.send', scope: 'operate', risk: 'safe', mutates: true, summary: '對一個 Bot 說話（交辦一件事）' },
   'xbot.chat.steps': { path: '/api/v1/chat.steps', scope: 'read', risk: 'safe', mutates: false, summary: '讀一條對話串的工作步驟（工具、提問、回覆、狀態）' },
   'xbot.chat.stop': { path: '/api/v1/chat.stop', scope: 'operate', risk: 'safe', mutates: true, summary: '停止 Bot 正在做的事' },

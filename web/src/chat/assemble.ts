@@ -28,6 +28,10 @@ export type ChatMsg = {
   streaming: boolean
   /** complete、interrupted、error */
   status?: string
+  /** 服務重開時這則回覆還在寫：status=interrupted 時這件工作做到一半被中斷了（可以按「接著做」）；沒有 status 時已經自動接著做。 */
+  restart?: boolean
+  /** 被中斷的工作已經按過「接著做」。 */
+  resumed?: boolean
   createdAt: number
   updatedAt: number
   /** 這則回覆是從頭看著它串流的：內容完整，比資料庫的快照（每隔一段時間才存）新。 */
@@ -113,7 +117,7 @@ export type Activity = {
   threadId?: string
   /** queued、waiting_box、running、waiting_input、waiting_approval、stopping、done */
   state: string
-  /** answer、cancelled、failed */
+  /** answer、cancelled、failed、interrupted（服務重開時做到一半被中斷） */
   verdict?: string
   steps: Step[]
   thinking: boolean
@@ -181,6 +185,8 @@ type MessageMeta = {
   task_id?: string
   streaming?: boolean
   status?: string
+  restart?: boolean
+  resumed?: boolean
   actor?: string
   actor_name?: string
   via?: string
@@ -297,6 +303,13 @@ function putActivity(s: ChatState, a: Activity): ChatState {
   return { ...s, tasks: { ...s.tasks, [a.taskId]: a } }
 }
 
+/** 回覆的結果換成這件工作的結果：被服務重開中斷的（restart）是 interrupted，你停下的是 cancelled。 */
+function outcomeVerdict(status: string, restart?: boolean): string {
+  if (status === 'complete') return 'answer'
+  if (status === 'interrupted') return restart ? 'interrupted' : 'cancelled'
+  return 'failed'
+}
+
 /** 套用 chat.read 的結果。資料庫是準的，只有「從頭看著串流、比快照新」的內容保留本地版本。 */
 export function applyRead(s: ChatState, out: ChatReadOutput): ChatState {
   const threadId = out.thread.id
@@ -313,6 +326,8 @@ export function applyRead(s: ChatState, out: ChatReadOutput): ChatState {
       taskId: m.task_id,
       streaming: !!m.streaming,
       status: m.status,
+      ...(m.restart ? { restart: true } : {}),
+      ...(m.resumed ? { resumed: true } : {}),
       createdAt: m.created_at,
       updatedAt: m.updated_at,
       live: false,
@@ -350,7 +365,7 @@ export function applyRead(s: ChatState, out: ChatReadOutput): ChatState {
       } else if (m.status) {
         patch.state = 'done'
         patch.endedAt = a.endedAt ?? m.updated_at
-        patch.verdict = a.verdict ?? (m.status === 'complete' ? 'answer' : m.status === 'interrupted' ? 'cancelled' : 'failed')
+        patch.verdict = a.verdict ?? outcomeVerdict(m.status, m.restart)
       }
     }
     // 服務說這件工作已經結束（例：排隊後被停掉、沒有回覆訊息）：以它為準
@@ -391,6 +406,8 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
         taskId: meta.task_id,
         streaming: !!meta.streaming,
         status: meta.status,
+        ...(meta.restart ? { restart: true } : {}),
+        ...(meta.resumed ? { resumed: true } : {}),
         createdAt: m.created_at,
         updatedAt: m.updated_at,
         live: existing ? existing.live : !!meta.streaming && m.content === '',

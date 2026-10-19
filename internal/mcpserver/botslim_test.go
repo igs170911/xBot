@@ -173,3 +173,51 @@ func TestBotToolsStillValidated(t *testing.T) {
 		t.Fatal("沒有權限的 Bot 不應該叫得到 remove_team")
 	}
 }
+
+// Bot 送核准卡不算錯誤：Hermes 把 isError 算成伺服器出錯，連續 3 次就暫停整個 xbot MCP。
+// 連送幾張都要是成功的結果，帶核准 id 和怎麼等；代理的出口照舊回 pending_approval 錯誤（server_test.go）。
+func TestBotPendingApprovalIsNotAnError(t *testing.T) {
+	e := newSlimEnv(t)
+	ctx := context.Background()
+	e.bot.CanManage = true
+	if _, err := e.db.UpdateBot(ctx, e.bot); err != nil {
+		t.Fatal(err)
+	}
+	cs := e.session(t)
+	seen := map[string]bool{}
+	for i, name := range []string{"甲", "乙", "丙", "丁"} {
+		if _, err := e.db.CreateBot(ctx, store.Bot{Name: name, IdleMinutes: 30}); err != nil {
+			t.Fatal(err)
+		}
+		res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "xbot.teams.remove_bot", Arguments: map[string]any{"bot": name}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.IsError {
+			t.Fatalf("第 %d 張核准卡被當成錯誤：%s", i+1, res.Content[0].(*mcp.TextContent).Text)
+		}
+		var out mcpserver.PendingOut
+		if err := json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &out); err != nil {
+			t.Fatal(err)
+		}
+		if out.Status != "pending_approval" || out.ApprovalID == "" || seen[out.ApprovalID] {
+			t.Fatalf("結果：%+v", out)
+		}
+		seen[out.ApprovalID] = true
+		for _, want := range []string{"已送出核准卡", "按允許", out.ApprovalID, "xbot.approvals.wait"} {
+			if !strings.Contains(out.Message, want) {
+				t.Errorf("說明少了 %q：%s", want, out.Message)
+			}
+		}
+		if res.Meta["xbot/pending_approval"] != true {
+			t.Errorf("meta：%v", res.Meta)
+		}
+		if a, err := e.db.GetApproval(ctx, out.ApprovalID); err != nil || a.Status != "pending" {
+			t.Fatalf("核准紀錄：%+v %v", a, err)
+		}
+	}
+	// 還沒允許：Bot 都還在
+	if bots, _ := e.db.ListBots(ctx, true); len(bots) != 5 {
+		t.Fatalf("核准前不能刪：剩 %d 個", len(bots))
+	}
+}

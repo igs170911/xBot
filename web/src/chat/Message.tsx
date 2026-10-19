@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Check, ChevronDown, CircleX, Code, Copy, GraduationCap, Hand, OctagonPause, Phone, Repeat, RotateCcw, Square, Volume2 } from 'lucide-react'
+import { Check, ChevronDown, CircleX, Code, Copy, GraduationCap, Hand, OctagonPause, Phone, Play, Repeat, RotateCcw, Square, Unplug, Volume2 } from 'lucide-react'
 import { ApiError, judgeCorrect } from '../api/generated'
 import { AgentMark } from '../ui/AgentMark'
 import { colorHex } from '../ui/avatar-data'
@@ -140,8 +140,9 @@ export function BotMessage({ msg, last, botId, color }: { msg: ChatMsg; last: bo
 
 // ── 這一輪的結果（design/C11：已停止、工作未完成）────────────
 
-export function OutcomeRow({ msg, activity, onRetry, busy }: { msg: ChatMsg; activity?: Activity; onRetry?: () => void; busy?: boolean }) {
+export function OutcomeRow({ msg, activity, onRetry, onResume, busy }: { msg: ChatMsg; activity?: Activity; onRetry?: () => void; onResume?: () => void; busy?: boolean }) {
   if (msg.status !== 'error' && msg.status !== 'interrupted') return null
+  if (msg.status === 'interrupted' && msg.restart) return <RestartRow msg={msg} onResume={onResume} busy={busy} />
   const error = msg.status === 'error'
   const detail = error ? (activity?.error && activity.error !== msg.content ? activity.error : '') : '做到一半的檔案都還在'
   return (
@@ -156,6 +157,26 @@ export function OutcomeRow({ msg, activity, onRetry, busy }: { msg: ChatMsg; act
       {onRetry && (
         <Button size="sm" variant={error ? 'primary' : 'secondary'} icon={RotateCcw} onClick={onRetry} disabled={busy}>
           {error ? '再試一次' : '重做'}
+        </Button>
+      )}
+    </div>
+  )
+}
+
+// 服務重開時做到一半被中斷、沒有自動接著做的工作（系統已經接著做過一次，或是定時任務、Webhook 的工作）：「接著做」。
+function RestartRow({ msg, onResume, busy }: { msg: ChatMsg; onResume?: () => void; busy?: boolean }) {
+  return (
+    <div className="-mt-1 flex min-h-11 flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-group border border-line py-1.5 pl-3.5 pr-1.5" data-testid="outcome" data-restart="">
+      <span className="flex text-ink-2">
+        <Icon icon={Unplug} size={16} />
+      </span>
+      <span className="min-w-0 flex-1 text-ui-sm">
+        <span className="text-ink">做到一半被中斷了</span>
+        <span className="text-ink-2"> · {msg.resumed ? '已經接著做' : '服務重開過，檔案都還在'}</span>
+      </span>
+      {onResume && !msg.resumed && (
+        <Button size="sm" variant="primary" icon={Play} onClick={onResume} disabled={busy}>
+          接著做
         </Button>
       )}
     </div>
@@ -201,7 +222,10 @@ export function JudgeRow({ msg, threadId }: { msg: ChatMsg; threadId: string }) 
 export function ActivityLine({ msg }: CardProps) {
   return (
     <p className="m-0 flex items-center gap-1.5 self-center text-meta text-ink-3" data-testid="activity-line" data-activity={msg.activity}>
-      <Icon icon={msg.activity === 'call' ? Phone : msg.activity === 'teaching' ? GraduationCap : msg.activity === 'takeover' || msg.activity === 'handback' ? Hand : Repeat} size={14} />
+      <Icon
+        icon={msg.activity === 'call' ? Phone : msg.activity === 'teaching' ? GraduationCap : msg.activity === 'takeover' || msg.activity === 'handback' ? Hand : msg.activity === 'restart_resume' ? RotateCcw : Repeat}
+        size={14}
+      />
       {msg.content}
     </p>
   )

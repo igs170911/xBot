@@ -1,7 +1,7 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Activity as ActivityIcon, AudioLines, Brain, ChevronDown, ChevronLeft, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, Monitor, OctagonPause, Phone, Settings, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import { isRecording, teachStartStore, useLesson } from '../teaching/teachingData'
-import { ApiError, chatListThreads, chatSend, chatStop, filesUploadForm, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
+import { ApiError, chatListThreads, chatResume, chatSend, chatStop, filesUploadForm, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
 import { botsStore, type Bot, look } from '../data/bots'
 import { onEvent, onReconnect } from '../data/events'
 import { useStore } from '../data/store'
@@ -60,7 +60,24 @@ function Stamp({ at }: { at: number }) {
   return <span className="self-center pt-1.5 text-meta text-ink-3">{stampLabel(at)}</span>
 }
 
-function Messages({ items, bot, threadId, onRetry, canRetry }: { items: ChatItem[]; bot?: Bot; threadId: string; onRetry: (text: string) => void; canRetry: boolean }) {
+function Messages({
+  items,
+  bot,
+  threadId,
+  onRetry,
+  canRetry,
+  onResume,
+  resuming,
+}: {
+  items: ChatItem[]
+  bot?: Bot
+  threadId: string
+  onRetry: (text: string) => void
+  canRetry: boolean
+  /** 服務重開時被中斷的工作按「接著做」（xbot.chat.resume）。 */
+  onResume: (taskId: string) => void
+  resuming: boolean
+}) {
   const out: ReactNode[] = []
   let last = 0
   // 每件工作是哪句話交代的（重試時再送一次）
@@ -99,7 +116,19 @@ function Messages({ items, bot, threadId, onRetry, canRetry }: { items: ChatItem
     if (it.activity && live && lastOf.get(it.activity.taskId) === it) out.push(<WorkSteps key={'a' + it.activity.taskId} a={it.activity} bot={bot} />)
     const retryText = m.taskId ? asked.get(m.taskId) : undefined
     if (m.quota && bot) out.push(<QuotaCard key={'q' + m.id} quota={m.quota} botId={bot.id} bot={bot} />)
-    else out.push(<OutcomeRow key={'o' + m.id} msg={m} activity={it.activity} onRetry={isLast && canRetry && retryText ? () => onRetry(retryText) : undefined} />)
+    else {
+      const taskId = m.taskId
+      out.push(
+        <OutcomeRow
+          key={'o' + m.id}
+          msg={m}
+          activity={it.activity}
+          onRetry={isLast && canRetry && retryText ? () => onRetry(retryText) : undefined}
+          onResume={isLast && taskId ? () => onResume(taskId) : undefined}
+          busy={resuming}
+        />,
+      )
+    }
     if (m.sender !== 'owner' && !Card) out.push(<JudgeRow key={'j' + m.id} msg={m} threadId={threadId} />)
   }
   // 工作步驟裡已經畫了的提問卡
@@ -362,6 +391,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   const [noticeState, setNoticeState] = useState<{ n: Notice; thread: string } | null>(null)
   const [stopRequested, setStopRequested] = useState<string | null>(null)
   const [olderBusy, setOlderBusy] = useState(false)
+  const [resuming, setResuming] = useState(false)
   const phone = usePhone()
   const scroller = useRef<HTMLDivElement>(null)
   const composer = useRef<ComposerHandle>(null)
@@ -497,6 +527,20 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
     }
   }
 
+  // 服務重開時做到一半被中斷的工作：在這條對話串請它接著做（排在手上的工作後面）。
+  const resume = async (taskId: string) => {
+    setNotice(null)
+    stick.current = true
+    setResuming(true)
+    try {
+      await chatResume({ task_id: taskId })
+    } catch (err) {
+      setNotice({ kind: 'error', text: err instanceof Error ? err.message : String(err) })
+    } finally {
+      setResuming(false)
+    }
+  }
+
   const stop = async (onlyThisThread = true) => {
     if (act) setStopRequested(act.taskId)
     try {
@@ -588,7 +632,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
             </Button>
           )}
           {empty && (firstHome ? <FirstHome bot={bot} /> : <EmptyState bot={bot} onPick={(t) => composer.current?.fill(t)} onFree={() => composer.current?.fill()} />)}
-          {threadId && <Messages items={items} bot={bot} threadId={threadId} canRetry={!act} onRetry={(t) => void send(t)} />}
+          {threadId && <Messages items={items} bot={bot} threadId={threadId} canRetry={!act} onRetry={(t) => void send(t)} onResume={(id) => void resume(id)} resuming={resuming} />}
         </div>
       </div>
       <div className="flex-none px-6 pb-4 pt-2 max-sm:px-3 max-sm:pb-[max(12px,env(safe-area-inset-bottom))]">

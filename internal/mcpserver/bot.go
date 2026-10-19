@@ -67,8 +67,8 @@ func BotHandler(reg *ops.Registry, o BotOptions) func(botID string) http.Handler
 	if o.Keys == nil {
 		panic("mcpserver.BotHandler：要有 Keys")
 	}
-	member := newServer(reg, TokenIdentity, BotInstructions, MemberTools, BotTool)
-	manager := newServer(reg, TokenIdentity, BotInstructions, BotTools, BotTool)
+	member := newServer(reg, TokenIdentity, BotInstructions, MemberTools, BotTool, true)
+	manager := newServer(reg, TokenIdentity, BotInstructions, BotTools, BotTool, true)
 	pick := func(r *http.Request) *mcp.Server {
 		if ti := sdkauth.TokenInfoFromContext(r.Context()); ti != nil && ti.Extra[managerKey] == true {
 			return manager
