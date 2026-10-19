@@ -53,7 +53,12 @@ test('版型截圖：側欄＋待我處理', async ({ page, request }, info) => 
     await expect(nav).toBeVisible()
     await expect(page.getByRole('button', { name: '打開側欄' })).toBeHidden()
     const box = await nav.boundingBox()
-    expect(box?.width).toBe(300)
+    expect(box?.width).toBe(260)
+    // 縮成只有圖示
+    await nav.getByRole('button', { name: '縮小側欄' }).click()
+    await expect.poll(async () => (await page.getByRole('navigation', { name: '側欄' }).boundingBox())?.width).toBe(56)
+    await page.screenshot({ path: shot(`${info.project.name}-shell-rail`) })
+    await page.getByRole('button', { name: '展開側欄' }).click()
     return
   }
 

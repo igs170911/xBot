@@ -4,6 +4,7 @@ import App from './App'
 import { navigate } from './router'
 import { fakeApi, type FakeApi } from './test-api'
 import { resetBots } from './data/bots'
+import { setRail } from './data/ui'
 import { resetInbox } from './data/inbox'
 import { resetChat } from './chat/chatStore'
 import { dispatchEvent } from './data/events'
@@ -32,6 +33,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   resetBots()
+  setRail(false)
   resetInbox()
   resetChat()
   vi.unstubAllGlobals()
@@ -148,9 +150,27 @@ it('側欄的 Bot 清單來自 bots.list，有人改了 Bot 就重讀', async ()
   bots = [BOT, { ...BOT, id: 'b2', name: '小秘', shape: 'cursor', color: 'blue' }]
   act(() => dispatchEvent({ id: 9, kind: 'op', at: 1, payload: { op: 'xbot.bots.create', actor: 'agent:a', status: 'ok' } }))
   expect(await within(nav).findByRole('link', { name: /小秘/ })).toBeInTheDocument()
-  // 工作中的 Bot：副標變「工作中…」
+  // 工作中的 Bot：右邊標「工作中」
   act(() => dispatchEvent({ id: 10, kind: 'task.state', bot_id: 'b2', thread_id: 't', task_id: 'k', at: 2, payload: { state: 'running' } }))
-  expect(within(within(nav).getByRole('link', { name: /小秘/ })).getByText('工作中…')).toBeInTheDocument()
+  expect(within(within(nav).getByRole('link', { name: /小秘/ })).getByText('工作中')).toBeInTheDocument()
+})
+
+it('側欄可以縮成只有圖示，記在這個瀏覽器；不常用的頁面收在「更多」', async () => {
+  api.ops['bots.list'] = () => ({ bots: [BOT] })
+  render(<App />)
+  const nav = await screen.findByRole('navigation', { name: '側欄' })
+  expect(within(nav).queryByRole('link', { name: '全部檔案' })).toBeNull()
+  fireEvent.click(within(nav).getByRole('button', { name: '更多' }))
+  expect(within(nav).getByRole('link', { name: '全部檔案' })).toHaveAttribute('href', '/files')
+  fireEvent.click(within(nav).getByRole('button', { name: '縮小側欄' }))
+  await screen.findByRole('button', { name: '展開側欄' })
+  const rail = screen.getByRole('navigation', { name: '側欄' })
+  expect(await within(rail).findByRole('link', { name: /抓蟲/ })).toBeInTheDocument()
+  expect(within(rail).queryByText('待我處理')).toBeNull()
+  expect(window.localStorage.getItem('xbot.sidebar.rail')).toBe('1')
+  fireEvent.click(within(rail).getByRole('button', { name: '展開側欄' }))
+  expect(await within(screen.getByRole('navigation', { name: '側欄' })).findByText('待我處理')).toBeInTheDocument()
+  expect(window.localStorage.getItem('xbot.sidebar.rail')).toBe('0')
 })
 
 it('沒有 Bot 時側欄有新增按鈕；新增 Bot 表單呼叫 bots.create 並打開對話', async () => {

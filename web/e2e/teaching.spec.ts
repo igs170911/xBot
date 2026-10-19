@@ -93,7 +93,7 @@ test('教它一件事（E05→E04）：開始示範、即時步驟、補充、�
   await fakeVnc(page, () => frame)
 
   await page.goto(`/bots/${bot.id}/threads/${th.id}`)
-  await page.getByRole('button', { name: '更多' }).click()
+  await page.getByRole('main').getByRole('button', { name: '更多' }).click()
   await page.getByRole('menuitem', { name: '教它一件事' }).click()
   const dialog = page.getByRole('dialog', { name: /教抓蟲一件事/ })
   await expect(dialog).toBeVisible()

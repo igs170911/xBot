@@ -8,6 +8,25 @@ export const openNewBot = () => newBotDialog.set(true)
 /** 手機的側欄抽屜開著沒（L01 的吉祥物、分頁首頁從左邊緣滑都能打開）。 */
 export const drawerStore = createStore(false)
 
+// 桌面側欄縮成只有圖示（記在這個瀏覽器；讀不到 localStorage 時就是展開）。
+const RAIL_KEY = 'xbot.sidebar.rail'
+function readRail(): boolean {
+  try {
+    return window.localStorage.getItem(RAIL_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+export const railStore = createStore(readRail())
+export function setRail(on: boolean) {
+  railStore.set(on)
+  try {
+    window.localStorage.setItem(RAIL_KEY, on ? '1' : '0')
+  } catch {
+    // 私密視窗等：只在這次有效
+  }
+}
+
 /** 每秒更新一次的現在時間（只在需要時開計時器）。 */
 export function useNow(on: boolean): number {
   const [now, setNow] = useState(() => Date.now())

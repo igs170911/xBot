@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useRef, type ReactNode } from 'react'
-import { drawerStore } from '../data/ui'
+import { drawerStore, railStore } from '../data/ui'
 import { useStore } from '../data/store'
 import { useFocusTrap } from '../ui/useFocusTrap'
 import { goBack } from '../router'
 import { PhoneBar, TabBar } from '../mobile/Phone'
 import { backFallback, isTabPath, ownsPhoneHeader, useEdgeSwipe, usePhone } from '../mobile/nav'
 import { Sidebar } from './Sidebar'
+import { cx } from '../ui/cx'
 
-// 版型：桌面側欄 300 固定在左；手機寬度（< 768）照 L 畫板：分頁首頁下面是分頁列，
+// 版型：桌面側欄 260 固定在左（可以縮成 56 的圖示列）；手機寬度（< 768）照 L 畫板：分頁首頁下面是分頁列，
 // 其他頁有自己的頁首（或共用的返回列），從左邊緣往右滑可以返回；分頁首頁往右滑打開側欄（抽屜）。
 export function AppShell({ path, title, children }: { path: string; title: string; children: ReactNode }) {
   const phone = usePhone()
   const drawer = useStore(drawerStore)
+  const rail = useStore(railStore)
   const panel = useRef<HTMLDivElement>(null)
   const page = useRef<HTMLDivElement>(null)
   const close = () => drawerStore.set(false)
@@ -40,8 +42,8 @@ export function AppShell({ path, title, children }: { path: string; title: strin
       >
         跳到主要內容
       </a>
-      <div className="sticky top-0 hidden h-dvh w-[301px] flex-none border-r border-edge bg-panel md:block">
-        <Sidebar path={path} />
+      <div className={cx('sticky top-0 hidden h-dvh flex-none border-r border-edge bg-panel md:block', rail ? 'w-[57px]' : 'w-[261px]')}>
+        <Sidebar path={path} rail={rail} />
       </div>
 
       <div ref={page} data-phone-page="1" className={tab ? 'flex min-w-0 flex-1 flex-col max-md:pb-[calc(57px+env(safe-area-inset-bottom))]' : 'flex min-w-0 flex-1 flex-col'}>

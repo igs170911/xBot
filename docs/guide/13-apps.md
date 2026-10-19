@@ -1,6 +1,6 @@
 # 連接應用程式
 
-讓 Bot 用 GitHub、Notion、Linear 這類服務的工具（都是 MCP 服務）。在左邊「連接應用程式」。
+讓 Bot 用 GitHub、Notion、Linear 這類服務的工具（都是 MCP 服務）。在左邊「更多 → 連接應用程式」。
 
 ## 連一個
 
