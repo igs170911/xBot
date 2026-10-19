@@ -59,8 +59,8 @@ function seed(api: MockServer) {
   const room2 = api.addRoom([mi.id, miao.id, zhe.id, bian.id, kai.id, zf.id], '每週一早會')
   room2.last_message_at = at(9, 0, 3)
   api.addRoomMessage(room.id, { sender: 'owner', content: '@阿哲 先抓三家帆布包的價格，@小編 等價格出來再寫上架文案。' })
-  api.addRoomMessage(room.id, { sender: mi.id, sender_name: '小秘', content: '好，我來盯進度。價格出來我會整理成提案給你。' })
-  api.addRoomMessage(room.id, { sender: zhe.id, sender_name: '阿哲', content: '三家分別是 NT$990、NT$1,080、NT$1,150。建議定 NT$1,020，比價表在這裡。' })
+  api.addRoomMessage(room.id, { sender: 'bot:' + mi.id, sender_name: '小秘', content: '好，我來盯進度。價格出來我會整理成提案給你。' })
+  api.addRoomMessage(room.id, { sender: 'bot:' + zhe.id, sender_name: '阿哲', content: '三家分別是 NT$990、NT$1,080、NT$1,150。建議定 NT$1,020，比價表在這裡。' })
   // 待我處理
   api.inbox = [
     {

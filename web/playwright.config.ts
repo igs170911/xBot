@@ -15,6 +15,8 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Pixel 7'] } },
     // W31：手機畫面（L01～L21）另外用 iPhone 尺寸（390×844，和 L 畫板一樣）再跑一次；用 Chromium 模擬
     { name: 'iphone', testMatch: /phone\.spec\.ts/, use: { ...devices['iPhone 14'], viewport: { width: 390, height: 844 }, browserName: 'chromium' } },
+    // 真的 Safari 核心（WebKit）跑手機畫面：Arch 等沒有官方支援的系統用 scripts/test-webkit.sh 在 Playwright 的容器裡跑
+    ...(process.env.XBOT_E2E_WEBKIT ? [{ name: 'iphone-webkit', testMatch: /phone\.spec\.ts/, use: { ...devices['iPhone 14'], viewport: { width: 390, height: 844 } } }] : []),
   ],
   webServer: {
     command: `../bin/xbot serve`,
