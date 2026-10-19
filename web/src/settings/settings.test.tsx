@@ -143,3 +143,42 @@ it('用量：讀不到時顯示原因', async () => {
   )
   expect(await screen.findByText(/讀不到用量：資料庫忙碌/)).toBeInTheDocument()
 })
+
+it('用訂閱的 Bot：模型列出 CLI 回報的清單，選項多時可以打字篩選', async () => {
+  const models = Array.from({ length: 14 }, (_, i) => ({ value: `opencode/m${i}`, name: `Model ${i}` }))
+  api.ops['bots.get'] = () => ({ ...BOT, engine: 'opencode', model: '' })
+  api.ops['models.presets'] = () => ({ presets: [] })
+  api.ops['engines.status'] = () => ({
+    bots: [{ bot_id: 'b1', name: '小秘', engine: 'opencode', engine_label: 'OpenCode', needs_link: true, linked: true, agent_default: 'opencode/big-pickle', models }],
+    host: [{ engine: 'opencode', label: 'OpenCode', plan: 'OpenCode Go', logged_in: true, login: 'opencode auth login' }],
+  })
+  api.ops['bots.update'] = (input) => ({ ...BOT, engine: 'opencode', ...input })
+  render(
+    <ToastProvider>
+      <BotSettingsPage botId="b1" tab="advanced" />
+    </ToastProvider>,
+  )
+  fireEvent.click(await screen.findByRole('button', { name: /這個 Bot 的模型/ }))
+  const find = await screen.findByRole('textbox', { name: '找這個 Bot 的模型' })
+  fireEvent.change(find, { target: { value: 'model 13' } })
+  const list = screen.getByRole('listbox')
+  expect(within(list).getAllByRole('option')).toHaveLength(1)
+  fireEvent.click(within(list).getByRole('option', { name: /Model 13/ }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'bots.update')?.input).toEqual({ id: 'b1', model: 'opencode/m13' }))
+})
+
+it('用訂閱、CLI 還沒回報模型：可以直接輸入名稱', async () => {
+  api.ops['bots.get'] = () => ({ ...BOT, engine: 'grok', model: '' })
+  api.ops['models.presets'] = () => ({ presets: [] })
+  api.ops['engines.status'] = () => ({ bots: [{ bot_id: 'b1', name: '小秘', engine: 'grok', engine_label: 'Grok', needs_link: true, linked: true }], host: [] })
+  api.ops['bots.update'] = (input) => ({ ...BOT, engine: 'grok', ...input })
+  render(
+    <ToastProvider>
+      <BotSettingsPage botId="b1" tab="advanced" />
+    </ToastProvider>,
+  )
+  const box = await screen.findByRole('textbox', { name: '這個 Bot 的模型' })
+  fireEvent.change(box, { target: { value: 'grok-5' } })
+  fireEvent.blur(box)
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'bots.update')?.input).toEqual({ id: 'b1', model: 'grok-5' }))
+})

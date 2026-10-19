@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type Ref, type RefObject } from 'react'
+import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type Ref, type RefObject } from 'react'
 import { Check, ChevronDown, type LucideIcon } from 'lucide-react'
 import { Icon } from './Icon'
 import { cx } from './cx'
@@ -152,24 +152,72 @@ export type SelectProps<T extends string> = {
   disabled?: boolean
 }
 
-// 自畫下拉選單（不用原生 select）：按鈕＋listbox，方向鍵選、Enter 確定、Esc 取消。
+/** 選項多到這個數量就在清單上方加搜尋框（例：OpenCode 列出的幾十個模型）。 */
+const FILTER_AT = 12
+
+type PopPos = { left: number; width: number; top?: number; bottom?: number; maxHeight: number }
+
+/** 下拉清單的位置：用 fixed 貼著按鈕，不會被外面 overflow-hidden 的卡片裁掉；下面不夠就往上開。 */
+function placeBelow(el: HTMLElement): PopPos {
+  const r = el.getBoundingClientRect()
+  const gap = 4
+  const margin = 8
+  const below = window.innerHeight - r.bottom - gap - margin
+  const above = r.top - gap - margin
+  const width = Math.max(r.width, 180)
+  const left = Math.max(margin, Math.min(r.left, window.innerWidth - width - margin))
+  if (below >= 240 || below >= above) return { left, width, top: r.bottom + gap, maxHeight: Math.min(360, below) }
+  return { left, width, bottom: window.innerHeight - r.top + gap, maxHeight: Math.min(360, above) }
+}
+
+// 自畫下拉選單（不用原生 select）：按鈕＋listbox，方向鍵選、Enter 確定、Esc 取消。選項多時可以打字篩選。
 export function Select<T extends string>({ label, hideLabel, value, options, onChange, look = 'field', className, placeholder, disabled }: SelectProps<T>) {
   const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState<PopPos | null>(null)
+  const [filter, setFilter] = useState('')
   const btn = useRef<HTMLButtonElement>(null)
-  const pop = useRef<HTMLUListElement>(null)
+  const pop = useRef<HTMLDivElement>(null)
+  const input = useRef<HTMLInputElement>(null)
   const id = useId()
-  useDismiss(open, () => setOpen(false), btn, pop)
+  const close = () => {
+    setOpen(false)
+    setFilter('')
+  }
+  useDismiss(open, close, btn, pop)
+  const filterable = options.length >= FILTER_AT
+  useLayoutEffect(() => {
+    if (!open || !btn.current) return
+    const update = () => btn.current && setPos(placeBelow(btn.current))
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [open])
   useEffect(() => {
     if (!open) return
+    if (filterable) {
+      input.current?.focus()
+      return
+    }
     const els = [...(pop.current?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])]
     ;(els.find((el) => el.getAttribute('aria-selected') === 'true') ?? els[0])?.focus()
-  }, [open])
+  }, [open, filterable])
+  useEffect(() => {
+    if (!open || !filterable) return
+    pop.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' })
+  }, [open, filterable])
   const current = options.find((o) => o.value === value)
+  const q = filter.trim().toLowerCase()
+  const shown = q ? options.filter((o) => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q)) : options
   const pick = (v: T) => {
     onChange(v)
-    setOpen(false)
+    close()
     btn.current?.focus()
   }
+  const optionEls = () => [...(pop.current?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])]
   return (
     <div className={cx('relative flex flex-col gap-1', className)}>
       <span id={`${id}-l`} className={hideLabel ? 'sr-only-text' : 'text-meta text-ink-3'}>
@@ -182,7 +230,7 @@ export function Select<T extends string>({ label, hideLabel, value, options, onC
         aria-expanded={open}
         aria-labelledby={`${id}-l ${id}-v`}
         disabled={disabled}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (open ? close() : setOpen(true))}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault()
@@ -203,45 +251,71 @@ export function Select<T extends string>({ label, hideLabel, value, options, onC
           <Icon icon={ChevronDown} size={look === 'field' ? 18 : 16} />
         </span>
       </button>
-      {open && (
-        <ul
+      {open && pos && (
+        <div
           ref={pop}
-          role="listbox"
-          aria-labelledby={`${id}-l`}
+          style={{ left: pos.left, width: pos.width, top: pos.top, bottom: pos.bottom, maxHeight: pos.maxHeight }}
+          className="fixed z-[70] flex flex-col overflow-hidden rounded-menu border border-line bg-panel shadow-pop"
           onKeyDown={(e) => {
-            const els = [...(pop.current?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])]
-            if (moveFocus(e, els)) return
             if (e.key === 'Escape') {
               e.preventDefault()
-              setOpen(false)
+              close()
               btn.current?.focus()
-            } else if (e.key === 'Tab') setOpen(false)
+            } else if (e.key === 'Tab') close()
           }}
-          className="absolute left-0 right-0 top-full z-40 m-0 mt-1 max-h-[320px] min-w-[180px] list-none overflow-y-auto rounded-menu bg-card p-1.5 shadow-pop"
         >
-          {options.map((o) => {
-            const on = o.value === value
-            return (
-              <li
-                key={o.value}
-                role="option"
-                aria-selected={on}
-                tabIndex={-1}
-                onClick={() => pick(o.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    pick(o.value)
-                  }
-                }}
-                className="flex h-[34px] cursor-pointer items-center gap-2.5 rounded-seg px-2.5 text-ui outline-none hover:bg-hover focus:bg-hover max-sm:h-11"
-              >
-                <span className="flex-1">{o.label}</span>
-                {on && <Icon icon={Check} size={16} color="var(--color-accent-ink)" />}
-              </li>
-            )
-          })}
-        </ul>
+          {filterable && (
+            <input
+              ref={input}
+              aria-label={`找${label}`}
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault()
+                  optionEls()[0]?.focus()
+                } else if (e.key === 'Enter' && !e.nativeEvent.isComposing && shown.length) {
+                  e.preventDefault()
+                  pick(shown[0].value)
+                }
+              }}
+              placeholder="輸入文字篩選"
+              className="m-1.5 mb-0 h-9 flex-none rounded-field border border-line bg-inset px-3 text-ui-sm text-ink outline-none focus-visible:border-focus"
+            />
+          )}
+          <ul
+            role="listbox"
+            aria-labelledby={`${id}-l`}
+            onKeyDown={(e) => {
+              if (moveFocus(e, optionEls())) return
+            }}
+            className="m-0 min-h-0 flex-1 list-none overflow-y-auto p-1.5"
+          >
+            {shown.map((o) => {
+              const on = o.value === value
+              return (
+                <li
+                  key={o.value}
+                  role="option"
+                  aria-selected={on}
+                  tabIndex={-1}
+                  onClick={() => pick(o.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      pick(o.value)
+                    }
+                  }}
+                  className="flex min-h-[34px] cursor-pointer items-center gap-2.5 rounded-seg px-2.5 py-1 text-ui outline-none hover:bg-hover focus:bg-hover max-sm:min-h-11"
+                >
+                  <span className="min-w-0 flex-1 break-words">{o.label}</span>
+                  {on && <Icon icon={Check} size={16} color="var(--color-accent-ink)" />}
+                </li>
+              )
+            })}
+            {!shown.length && <li className="px-2.5 py-2 text-sub text-ink-3">沒有符合的</li>}
+          </ul>
+        </div>
       )}
     </div>
   )

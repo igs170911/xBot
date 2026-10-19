@@ -19,6 +19,8 @@ import { Button } from '../ui/Button'
 import { Checkbox } from '../ui/Controls'
 import { ConfirmDialog, Dialog } from '../ui/Dialog'
 import { Icon } from '../ui/Icon'
+import { TextInput } from '../ui/Field'
+import { Select } from '../ui/Menu'
 import { StatusChip } from '../ui/Pill'
 import { useToast } from '../ui/toast-context'
 import { cx } from '../ui/cx'
@@ -361,6 +363,8 @@ function EngineAndModel({
         </Group>
       </Block>
 
+      {engine !== 'hermes' && <PlanModel bot={bot} engine={engine} eng={eng} onPick={(m) => void update({ model: m }, m ? `${bot.name}改用 ${m}` : `${bot.name}改用 ${ENGINE_LABEL[engine]} 的預設模型`)} />}
+
       {engine === 'hermes' && (
         <Block title="模型" sub="沒有指定時用預設模型。主要模型出錯或限流時改用備援。">
           <Group>
@@ -386,6 +390,46 @@ function EngineAndModel({
         </Block>
       )}
     </>
+  )
+}
+
+/** 用訂閱的 Bot 選模型：列出 CLI 開對話時回報的模型；還沒回報（沒聊過、或 CLI 不列）時可以直接打名稱。 */
+function PlanModel({ bot, engine, eng, onPick }: { bot: Bot; engine: Engine; eng: EngineState | null; onPick: (model: string) => void }) {
+  const models = eng?.engine === engine ? (eng.models ?? []) : []
+  const [typed, setTyped] = useState(bot.model)
+  const [seen, setSeen] = useState(bot.model)
+  if (seen !== bot.model) {
+    setSeen(bot.model)
+    setTyped(bot.model)
+  }
+  const options = [
+    { value: '', label: eng?.agent_default ? `${ENGINE_LABEL[engine]} 預設（${eng.agent_default}）` : `${ENGINE_LABEL[engine]} 預設` },
+    ...(bot.model && !models.some((m) => m.value === bot.model) ? [{ value: bot.model, label: bot.model }] : []),
+    ...models.map((m) => ({ value: m.value, label: m.name && m.name !== m.value ? `${m.name}（${m.value}）` : m.value })),
+  ]
+  return (
+    <Block title="模型" sub={models.length ? `${PLAN_NAME[engine] ?? ENGINE_LABEL[engine]} 能用的模型。` : '聊過一次之後會列出能用的模型；也可以直接輸入名稱。'}>
+      <Group>
+        <div className="flex flex-col gap-3 px-4 py-3">
+          {models.length > 0 ? (
+            <Select label="這個 Bot 的模型" value={bot.model} options={options} onChange={onPick} />
+          ) : (
+            <TextInput
+              label="這個 Bot 的模型"
+              value={typed}
+              placeholder={`留空用 ${ENGINE_LABEL[engine]} 的預設`}
+              onChange={(e) => setTyped(e.target.value)}
+              onBlur={() => typed.trim() !== bot.model && onPick(typed.trim())}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' || e.nativeEvent.isComposing) return
+                e.preventDefault()
+                ;(e.target as HTMLInputElement).blur()
+              }}
+            />
+          )}
+        </div>
+      </Group>
+    </Block>
   )
 }
 
