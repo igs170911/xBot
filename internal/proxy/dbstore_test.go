@@ -164,3 +164,34 @@ func TestDBStoreHandlerRecordsUsage(t *testing.T) {
 		t.Fatalf("用量內容：%+v", u)
 	}
 }
+
+// OpenCode Zen 的 *-free 模型不給 XBot 用；OpenCode Go 的可以（2026-10-19 實測 beam-free 在 Go 回 200）。
+func TestFreeTierBlockedOnlyOnZen(t *testing.T) {
+	ctx := context.Background()
+	db := openDB(t)
+	s := NewDBStore(db)
+	p := NewProviders(s, testKeyring(t))
+	for _, pr := range []Provider{
+		{ID: "zen", BaseURL: "https://opencode.ai/zen/v1", APIKey: "k1"},
+		{ID: "openai", BaseURL: "https://opencode.ai/zen/go/v1", APIKey: "k2"},
+	} {
+		if err := p.Put(ctx, pr); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cases := []struct {
+		provider, model string
+		want            bool
+	}{
+		{"zen", "jev-1.13-free", true},
+		{"zen", "jev-1.13", false},
+		{"openai", "beam-free", false},
+		{"missing", "beam-free", false},
+	}
+	for _, c := range cases {
+		got, err := s.FreeTierBlocked(ctx, c.provider, c.model)
+		if err != nil || got != c.want {
+			t.Errorf("%s/%s = %v（%v），想要 %v", c.provider, c.model, got, err, c.want)
+		}
+	}
+}

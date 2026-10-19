@@ -212,8 +212,8 @@ func Register(reg *ops.Registry, s *Service) {
 				if tm.Provider != "" && tm.Model == "" {
 					return SettingsOut{}, ops.InvalidInput(ops.FieldError{Field: t.field + ".model", Message: "要選模型"})
 				}
-				if strings.HasSuffix(tm.Model, "-free") {
-					// 2026-10-18 實測：OpenCode Zen 的免費模型只給 OpenCode 自己的程式用。
+				if s.freeBlocked(ctx, tm) {
+					// 2026-10-18 實測：OpenCode Zen 的免費模型只給 OpenCode 自己的程式用（OpenCode Go 的可以用）。
 					return SettingsOut{}, ops.InvalidInput(ops.FieldError{Field: t.field + ".model", Message: "免費模型只給 OpenCode 自己的程式用，XBot 不能用，請選付費版"})
 				}
 				// 快判只打 chat/completions：只支援 Responses API 的模型（例：muse-spark）每次都會 400。沒改的層不擋（別的設定照樣能存）。

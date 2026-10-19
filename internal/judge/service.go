@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -103,6 +104,9 @@ type Service struct {
 	// Transport 回傳一個模型的呼叫方式（chat_completions、codex_responses、anthropic_messages；proxy.DBStore.TransportFor）。
 	// 快判只會打 chat/completions：別的方式的模型存設定時擋下、執行時略過這一層。nil 或回空白時不檢查。
 	Transport func(ctx context.Context, provider, model string) (string, error)
+	// FreeTierBlocked 回答模型是不是 OpenCode Zen 不給 XBot 用的免費模型（proxy.DBStore.FreeTierBlocked）。
+	// nil 時照名字擋（*-free 一律不行）。
+	FreeTierBlocked func(ctx context.Context, provider, model string) (bool, error)
 	// Now 是現在時間（測試用假時鐘）；nil 用 time.Now。
 	Now func() time.Time
 	// Notify 在事件寫進 event 表之後呼叫（SSE 用）；可為 nil。
@@ -117,6 +121,18 @@ type Service struct {
 	inflight2 int
 	// shadow 是還在背景判的影子呼叫（WaitShadow 等它們；關服務前、測試用）。
 	shadow sync.WaitGroup
+}
+
+// freeBlocked：OpenCode Zen 的 *-free 模型不給 XBot 用；沒接上 FreeTierBlocked 時照名字擋。
+func (s *Service) freeBlocked(ctx context.Context, tm TierModel) bool {
+	if !strings.HasSuffix(tm.Model, "-free") {
+		return false
+	}
+	if s.FreeTierBlocked == nil {
+		return true
+	}
+	blocked, err := s.FreeTierBlocked(ctx, tm.Provider, tm.Model)
+	return err != nil || blocked
 }
 
 // WaitShadow 等背景的影子判斷都寫完。

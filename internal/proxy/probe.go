@@ -97,19 +97,26 @@ var opencodeRules = map[string][]struct {
 	},
 }
 
+// OpenCodeFamily 回傳供應商是 OpenCode 的哪一種：opencode-go（訂閱方案）、opencode-zen（按量付費）；都不是時回空白。
+func OpenCodeFamily(providerID, baseURL string) string {
+	u, p := strings.ToLower(baseURL), strings.ToLower(providerID)
+	switch {
+	case p == "opencode-go" || strings.Contains(u, "opencode.ai/zen/go"):
+		return "opencode-go"
+	case p == "opencode-zen" || p == "opencode" || strings.Contains(u, "opencode.ai/zen"):
+		return "opencode-zen"
+	}
+	return ""
+}
+
 // RuleTransport 回傳 Hermes 規則決定的呼叫方式；規則不管時回空白（model_check.py rule_protocol）。
 func RuleTransport(providerID, baseURL, model string) string {
 	u, p := strings.ToLower(baseURL), strings.ToLower(providerID)
 	if p == "anthropic" || strings.Contains(u, "api.anthropic.com") || anthropicURL.MatchString(u) {
 		return TransportMessages
 	}
-	family := ""
-	switch {
-	case p == "opencode-go" || strings.Contains(u, "opencode.ai/zen/go"):
-		family = "opencode-go"
-	case p == "opencode-zen" || p == "opencode" || strings.Contains(u, "opencode.ai/zen"):
-		family = "opencode-zen"
-	default:
+	family := OpenCodeFamily(providerID, baseURL)
+	if family == "" {
 		return ""
 	}
 	name := strings.ToLower(model)

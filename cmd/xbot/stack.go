@@ -197,7 +197,7 @@ func openStack(cfg config.Config) (*stack, error) {
 	s.driver = engine.NewRouter(hermes.Name, comp.EngineOf, drivers...)
 	// 快判（X05）：服務自己經 Model Proxy 呼叫模型（金鑰只在 Model Proxy），用量標記 judge。
 	// 只打 chat/completions；只支援別的呼叫方式的模型（例：Responses API）存設定時擋下、執行時略過（Transport）。
-	s.judge = &judge.Service{DB: db, Logger: logger, Transport: s.pstore.TransportFor, ShadowInBackground: true, Call: func(ctx context.Context, provider string, body []byte, session string) (int, []byte, error) {
+	s.judge = &judge.Service{DB: db, Logger: logger, Transport: s.pstore.TransportFor, FreeTierBlocked: s.pstore.FreeTierBlocked, ShadowInBackground: true, Call: func(ctx context.Context, provider string, body []byte, session string) (int, []byte, error) {
 		resp, err := s.model.Call(ctx, proxy.CallRequest{Provider: provider, Path: "chat/completions", Body: body, Engine: judge.UsageEngine,
 			Session: session, MaxBytes: limits.JudgeReplyBytes})
 		if errors.Is(err, proxy.ErrNotFound) {

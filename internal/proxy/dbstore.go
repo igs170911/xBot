@@ -189,6 +189,22 @@ func (s *DBStore) PutProbe(ctx context.Context, r ProbeResult) error {
 
 // TransportFor 決定一個模型的呼叫方式：探測確認過的 → 範本對這個模型的記載 → Hermes 規則 → 供應商預設。
 // 供應商不存在時回空白。
+// FreeTierBlocked 回答這個模型是不是 OpenCode Zen 只給 OpenCode 自己程式用的免費模型（*-free）。
+// 只限 Zen（按量付費）：OpenCode Go 的 *-free 模型 XBot 照樣能用（2026-10-19 實測 beam-free 回 200）。
+func (s *DBStore) FreeTierBlocked(ctx context.Context, providerID, model string) (bool, error) {
+	if !strings.HasSuffix(model, "-free") {
+		return false, nil
+	}
+	rec, err := s.GetProvider(ctx, providerID)
+	if errors.Is(err, ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return OpenCodeFamily(providerID, rec.BaseURL) == "opencode-zen", nil
+}
+
 func (s *DBStore) TransportFor(ctx context.Context, providerID, model string) (string, error) {
 	if t, err := s.ProbedTransport(ctx, providerID, model); err != nil || t != "" {
 		return t, err
