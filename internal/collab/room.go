@@ -535,6 +535,11 @@ func (s *Service) prompt(ctx context.Context, task store.Task) (string, bool, er
 		_ = s.db.SetAssignmentStatus(ctx, m.AssignmentID, store.AssignRunning, -1)
 	}
 	if m.RoomID == "" {
+		if m.Intent == IntentResult {
+			if p, ok := s.mergeResults(ctx, task, m); ok {
+				return p, true, nil
+			}
+		}
 		return "", false, nil
 	}
 	p, err := s.roomPrompt(ctx, task, m)
@@ -543,6 +548,47 @@ func (s *Service) prompt(ctx context.Context, task store.Task) (string, bool, er
 	}
 	s.publish("", m.RoomID, "", KindRoomSeat, map[string]string{"room_id": m.RoomID, "bot_id": task.BotID, "state": "working"})
 	return p, true, nil
+}
+
+// mergeResults：Bot 忙的時候好幾位隊友的回覆都到了（同一條對話串、回覆同一件工作），開始第一則時把其他還在排隊的一起帶上，
+// 一輪整合完、只送出一個最終結果（2026-10-19「為啥會一直排隊」：主管一則一則處理，每則都要重讀整串對話；
+// 而且處理第一則時其他人都回過了，第一則的回答就被當成最終結果送回交辦人，後面幾則還沒看）。
+func (s *Service) mergeResults(ctx context.Context, task store.Task, m taskMeta) (string, bool) {
+	tasks, err := s.db.ListTasks(ctx, task.BotID, true)
+	if err != nil {
+		return "", false
+	}
+	var ids []string
+	inputs := map[string]string{}
+	names := []string{m.FromName}
+	for _, t := range tasks {
+		if t.ID == task.ID || t.State != store.TaskQueued || t.ThreadID != task.ThreadID {
+			continue
+		}
+		tm := metaOf(t)
+		if tm.Intent != IntentResult || tm.RoomID != "" || tm.Answers != m.Answers {
+			continue
+		}
+		ids = append(ids, t.ID)
+		inputs[t.ID] = t.Input
+		if !slices.Contains(names, tm.FromName) {
+			names = append(names, tm.FromName)
+		}
+	}
+	if len(ids) == 0 {
+		return "", false
+	}
+	merged := s.rt.MergeQueued(ctx, ids, task.ID)
+	if len(merged) == 0 {
+		return "", false
+	}
+	_ = s.db.PatchTaskMeta(ctx, task.ID, map[string]any{"merged": merged})
+	parts := []string{task.Input}
+	for _, id := range merged {
+		parts = append(parts, inputs[id])
+	}
+	head := fmt.Sprintf("（你在忙的時候，%d 則隊友的回覆一起到了（%s）。全部看完再一起整合，只寫一個最終結果。）\n\n", len(parts), strings.Join(names, "、"))
+	return head + strings.Join(parts, "\n\n---\n\n"), true
 }
 
 // roomPrompt 用成員還沒讀過的群組訊息組這一輪的 prompt（LazyBoy room_prompt）。群組裡其他 Bot 的話包在資料框架裡（SEC-8）。

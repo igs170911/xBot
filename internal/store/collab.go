@@ -412,9 +412,14 @@ func (q *Queries) ChainTokens(ctx context.Context, chainID string) (int64, error
 
 // SetTaskCancelledIfQueued 只在任務還在排隊時把它改成已取消（避免和開始執行搶）；回傳有沒有改到。
 func (q *Queries) SetTaskCancelledIfQueued(ctx context.Context, id string) (bool, error) {
+	return q.SetTaskDoneIfQueued(ctx, id, "cancelled")
+}
+
+// SetTaskDoneIfQueued 只在任務還在排隊時把它結束成 verdict（例：cancelled、merged＝併進別的一輪）；回傳有沒有改到。
+func (q *Queries) SetTaskDoneIfQueued(ctx context.Context, id, verdict string) (bool, error) {
 	now := nowMS()
-	res, err := q.w.ExecContext(ctx, `UPDATE task SET state='done', verdict='cancelled', finished_at=?, updated_at=? WHERE id=? AND state='queued'`,
-		now, now, id)
+	res, err := q.w.ExecContext(ctx, `UPDATE task SET state='done', verdict=?, finished_at=?, updated_at=? WHERE id=? AND state='queued'`,
+		verdict, now, now, id)
 	if err != nil {
 		return false, err
 	}

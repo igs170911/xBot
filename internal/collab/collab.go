@@ -26,6 +26,7 @@ type Runtime interface {
 	StopTask(ctx context.Context, taskID string) (bool, error)
 	SetHooks(h runtime.Hooks)
 	Bus() *events.Bus
+	MergeQueued(ctx context.Context, ids []string, into string) []string
 }
 
 // Judge 是群組回應規則「自動挑一位」用的快判（PRD §20 用途 7；X05 才接上）。

@@ -100,7 +100,18 @@ func (f *fakeRT) StopTask(ctx context.Context, id string) (bool, error) {
 }
 
 func (f *fakeRT) SetHooks(h runtime.Hooks) { f.hooks = h }
-func (f *fakeRT) Bus() *events.Bus         { return f.bus }
+
+// MergeQueued 和 runtime 一樣：只併還在排隊的。
+func (f *fakeRT) MergeQueued(ctx context.Context, ids []string, into string) []string {
+	var out []string
+	for _, id := range ids {
+		if ok, err := f.db.SetTaskDoneIfQueued(ctx, id, runtime.VerdictMerged); err == nil && ok {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+func (f *fakeRT) Bus() *events.Bus { return f.bus }
 
 // team 是三個 Bot 的測試環境（LazyBoy tests/test_collab.py team）。
 type team struct {

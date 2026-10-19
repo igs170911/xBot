@@ -44,6 +44,8 @@ const (
 	VerdictAnswer    = "answer"
 	VerdictCancelled = "cancelled"
 	VerdictFailed    = "failed"
+	// VerdictMerged：排隊中的工作併進同一個 Bot 正要開始的那一輪（例：幾位隊友的回覆一次整合），自己不跑。
+	VerdictMerged = "merged"
 )
 
 // DonePayload 是 chat.done 的內容。Judge 是做完了沒的判斷（X04；停掉的、中斷的沒有）。
@@ -937,6 +939,28 @@ func (r *Runtime) StopTask(ctx context.Context, taskID string) (bool, error) {
 		return false, nil
 	}
 	return r.stopTurn(ctx, t)
+}
+
+// MergeQueued 把還在排隊的工作標成已併入 into 這一輪（不跑、不呼叫 Finished：結果由 into 那一輪一起處理）；
+// 回傳真的併進去的 id（已經開始或結束的不動）。由 Hooks.Prompt 在 into 開始時呼叫，這時 Bot 正忙，排隊的不會被別人拿走。
+func (r *Runtime) MergeQueued(ctx context.Context, ids []string, into string) []string {
+	var merged []string
+	for _, id := range ids {
+		task, err := r.o.DB.GetTask(ctx, id)
+		if err != nil {
+			continue
+		}
+		r.dispatchMu.Lock()
+		ok, err := r.o.DB.SetTaskDoneIfQueued(ctx, id, VerdictMerged)
+		r.dispatchMu.Unlock()
+		if err != nil || !ok {
+			continue
+		}
+		_ = r.o.DB.PatchTaskMeta(ctx, id, map[string]any{"merged_into": into})
+		r.publish(task.BotID, task.ThreadID, task.ID, KindTaskState, map[string]string{"state": store.TaskDone, "verdict": VerdictMerged}, true)
+		merged = append(merged, id)
+	}
+	return merged
 }
 
 // cancelQueued 取消一件還在排隊的工作；已經開始了就不動。
