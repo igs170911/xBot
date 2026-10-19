@@ -153,8 +153,8 @@ func (s *Service) Submit(ctx context.Context, botID string, in SubmitIn) (Submit
 			return SubmitOut{Sent: false, AgendaID: a.ID, DueAt: a.DueAt, Note: "這件事已經在行事曆上等使用者了，不需要重送。"}, nil
 		}
 	}
-	if len(mine) >= limits.AgendaOpenMax {
-		return SubmitOut{}, ops.Limit(fmt.Sprintf("你已經有 %d 件事在等使用者；先把相關的事合併成一件，或等使用者處理", limits.AgendaOpenMax))
+	if len(mine) >= limits.AgendaOpenMax() {
+		return SubmitOut{}, ops.Limit(fmt.Sprintf("你已經有 %d 件事在等使用者；先把相關的事合併成一件，或等使用者處理", limits.AgendaOpenMax()))
 	}
 	now := s.now()
 	details := strings.TrimSpace(in.Details)
@@ -528,7 +528,7 @@ func (s *Service) List(ctx context.Context, days int, botID string) (ListOut, er
 	}
 	now := s.now()
 	out := ListOut{From: now.UnixMilli(), To: now.Add(time.Duration(days) * 24 * time.Hour).UnixMilli(), Pending: []Item{}, Decided: []Item{},
-		Calendar: []CalendarEntry{}, Approvals: []ApprovalRef{}, OpenMax: limits.AgendaOpenMax}
+		Calendar: []CalendarEntry{}, Approvals: []ApprovalRef{}, OpenMax: limits.AgendaOpenMax()}
 	r, err := s.roster(ctx)
 	if err != nil {
 		return out, err

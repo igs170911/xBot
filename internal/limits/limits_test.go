@@ -13,25 +13,18 @@ func TestCollabLimitsMatchLazyBoy(t *testing.T) {
 		name      string
 		got, want int64
 	}{
-		{"MaxHops", MaxHops, 6},
 		{"BotMessageMax", BotMessageMax, 12000},
 		{"ResultPreview", ResultPreview, 3000},
 		{"CarryFilesMax", CarryFilesMax, 10},
 		{"CarryBytesMax", CarryBytesMax, 50 * 1024 * 1024},
 		{"RoomMembersMin", RoomMembersMin, 2},
 		{"RoomMembersMax", RoomMembersMax, 10},
-		{"RoomRounds", RoomRounds, 4},
 		{"RoomBacklog", RoomBacklog, 20},
-		{"BotCreatesPerDay", BotCreatesPerDay, 3},
-		{"ManagerBotCreatesPerDay", ManagerBotCreatesPerDay, 20},
-		{"BotsMax", BotsMax, 50},
 		{"TeamMax", TeamMax, 10},
 		{"ApprovalPendingMax", ApprovalPendingMax, 10},
 		{"ApprovalItemsMax", ApprovalItemsMax, 20},
 		{"ApprovalItemMax", ApprovalItemMax, 40},
-		{"AgendaOpenMax", AgendaOpenMax, 3},
 		{"ProposalDaysMax", ProposalDaysMax, 14},
-		{"AutoContinueMax", AutoContinueMax, 2},
 		{"StallNudgesMax", StallNudgesMax, 2},
 		{"PromiseMaxChars", PromiseMaxChars, 70},
 		{"ChatTextMax", ChatTextMax, 64000},
@@ -104,10 +97,32 @@ func TestLimitsConsistent(t *testing.T) {
 	if RoomMembersMax < TeamMax {
 		t.Error("整個團隊（TeamMax）要能放進一個群組（RoomMembersMax）")
 	}
-	if BotCreatesPerDay > ManagerBotCreatesPerDay || ManagerBotCreatesPerDay > BotsMax {
+	if BotCreatesPerDay() > ManagerBotCreatesPerDay() || ManagerBotCreatesPerDay() > BotsMax() {
 		t.Error("建立 Bot 上限應為 一般 ≤ 管理者 ≤ 總數")
 	}
 	if len(ProviderRetryDelays()) != 3 {
 		t.Error("暫時性錯誤應重試 3 次")
+	}
+}
+
+// 可以調的限制：預設比 LazyBoy 寬（使用者決定 2026-10-19），而且都在允許範圍內。
+func TestDefaultTunables(t *testing.T) {
+	d := DefaultTunables
+	if d.MaxHops != 20 || d.RoomRounds != 10 || d.BotCreatesPerDay != 10 || d.ManagerBotCreatesPerDay != 50 || d.BotsMax != 200 || d.AutoContinueMax != 5 || d.AgendaOpenMax != 10 {
+		t.Fatalf("%+v", d)
+	}
+	vals := map[string]int{"max_hops": d.MaxHops, "room_rounds": d.RoomRounds, "bot_creates_per_day": d.BotCreatesPerDay,
+		"manager_bot_creates_per_day": d.ManagerBotCreatesPerDay, "bots_max": d.BotsMax, "auto_continue_max": d.AutoContinueMax, "agenda_open_max": d.AgendaOpenMax}
+	if len(vals) != len(TunableRange) {
+		t.Fatalf("每個限制都要有範圍：%v", TunableRange)
+	}
+	for k, v := range vals {
+		r := TunableRange[k]
+		if v < r[0] || v > r[1] {
+			t.Errorf("%s=%d 不在 %v", k, v, r)
+		}
+	}
+	if CurrentTunables() != d || MaxHops() != 20 {
+		t.Fatalf("一開始就是預設值")
 	}
 }

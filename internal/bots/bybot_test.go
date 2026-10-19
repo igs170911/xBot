@@ -98,7 +98,7 @@ func TestHelperBotsAreRateLimitedAndAnnounced(t *testing.T) {
 
 func TestBotCreationRespectsTheRosterCap(t *testing.T) {
 	e := setupBots(t)
-	for i := 1; i < limits.BotsMax; i++ {
+	for i := 1; i < limits.BotsMax(); i++ {
 		if _, err := e.db.CreateBot(ctx, store.Bot{Name: "b" + string(rune('A'+i%26)) + strings.Repeat("x", i/26)}); err != nil {
 			t.Fatal(err)
 		}

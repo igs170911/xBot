@@ -259,14 +259,14 @@ export function BotSettingsPage({ botId, tab, sub }: { botId: string; tab?: BotT
           <BotCaps botId={bot.id} name={bot.name} />
           <Block title="可以找誰" sub={`${bot.name}可以交辦、詢問哪些 Bot`}>
             <Group>
-              <Row title="團隊管理權限" sub={`開了以後${bot.name}可以幫你建隊友、組團隊、調整誰向誰報告（每天最多建 20 個 Bot；沒開時 3 個）。刪除 Bot 一定要你核准。`}>
+              <Row title="團隊管理權限" sub={`開了以後${bot.name}可以幫你建隊友、組團隊、調整誰向誰報告（每天能建幾個 Bot 在「設定 → 進階 → 限制」調）。刪除 Bot 一定要你核准。`}>
                 <Switch
                   label="團隊管理權限"
                   checked={!!bot.can_manage}
                   onChange={(on) => void update({ can_manage: on }, on ? `${bot.name}可以管理團隊了` : `已關閉${bot.name}的團隊管理權限`)}
                 />
               </Row>
-              <Row title="同團隊與你指定的匯報線" sub="在「團隊地圖」調整團隊與向誰報告；Bot 之間同一條往來最多 6 次，超過就停下來回報你。">
+              <Row title="同團隊與你指定的匯報線" sub="在「團隊地圖」調整團隊與向誰報告；Bot 之間同一條往來的次數上限在「設定 → 進階 → 限制」調。">
                 <a href="/teams" onClick={linkClick('/teams')} className="text-ui-sm">
                   團隊地圖
                 </a>

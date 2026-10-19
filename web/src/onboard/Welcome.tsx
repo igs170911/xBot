@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { ArrowUp, FileDown, LoaderCircle, Sparkles } from 'lucide-react'
-import { botsCreate, botsSuggest, type BotsSuggestOutput } from '../api/generated'
+import { botsCreate, botsSuggest, limitsGet, type BotsSuggestOutput } from '../api/generated'
 import { botsStore, upsertBot } from '../data/bots'
 import { useStore } from '../data/store'
 import { navigate } from '../router'
@@ -16,7 +16,6 @@ import { openImportBot } from '../settings/bot/import-store'
 // 還沒有 Bot（A09、BT-1、§21「建立 Bot：1 個欄位＋確認」）：一句話說要它做什麼 → 系統建議名字、職稱、它會做什麼 → 建立；
 // 下面 10 個範本點一下就建立。權限預設「先問我」。
 
-const BOTS_MAX = 50
 
 type Template = { name: string; title: string; desc: string; shape: AvatarShape; color: AvatarColor }
 
@@ -47,7 +46,14 @@ export function WelcomePage() {
   const [thinking, setThinking] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [seed, setSeed] = useState(1)
-  const left = Math.max(0, BOTS_MAX - (bots?.length ?? 0))
+  // 全部 Bot 上限（設定 → 進階 → 限制）；讀不到時當成預設 200
+  const [botsMax, setBotsMax] = useState(200)
+  useEffect(() => {
+    limitsGet({})
+      .then((l) => setBotsMax(l.values.bots_max))
+      .catch(() => {})
+  }, [])
+  const left = Math.max(0, botsMax - (bots?.length ?? 0))
 
   const suggest = async (e?: FormEvent) => {
     e?.preventDefault()

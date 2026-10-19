@@ -351,7 +351,7 @@ func TestTheCalendarListsWhatWaitsForTheUser(t *testing.T) {
 		t.Fatal(err)
 	}
 	week := must[ListOut](t)(co.s.List(co.ctx, 7, ""))
-	if len(week.Pending) != 3 || len(week.Calendar) != 2 || week.OpenMax != limits.AgendaOpenMax {
+	if len(week.Pending) != 3 || len(week.Calendar) != 2 || week.OpenMax != limits.AgendaOpenMax() {
 		t.Fatalf("%+v", week)
 	}
 	if week.Calendar[0].Title != "選路線" || week.Calendar[1].Title != "改成週報" || week.Calendar[0].BotName != "Dev" {

@@ -591,7 +591,7 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 		s.log.Warn("貼到群組失敗", "room", room.ID, "err", err)
 		return
 	}
-	if round > limits.RoomRounds || failed {
+	if round > limits.RoomRounds() || failed {
 		return
 	}
 	s.wake(ctx, room, named, msg.ID, round, true)
@@ -629,7 +629,7 @@ func (s *Service) speak(ctx context.Context, room store.Room, botID, text string
 		}
 		named = append(named, byID[f.ID])
 	}
-	capped := handoff > limits.RoomRounds
+	capped := handoff > limits.RoomRounds()
 	if len(named) > 0 && !meta.Failed {
 		if capped {
 			meta.Capped = true
@@ -643,7 +643,7 @@ func (s *Service) speak(ctx context.Context, room store.Room, botID, text string
 	}
 	if meta.Capped {
 		_, _ = s.addRoomMessage(ctx, room.ID, "system",
-			fmt.Sprintf("這段群組討論已經來回 %d 輪了，訊息照發但不再喚醒別人；需要的話請你接手。", limits.RoomRounds), roomMeta{Notice: "capped"})
+			fmt.Sprintf("這段群組討論已經來回 %d 輪了，訊息照發但不再喚醒別人；需要的話請你接手。", limits.RoomRounds()), roomMeta{Notice: "capped"})
 	}
 	return msg, named, nil
 }
@@ -773,7 +773,7 @@ func (s *Service) PostGroup(ctx context.Context, botID, ref, message string) (Po
 	if ok && om.RoomID == room.ID {
 		round = om.Round + 1
 	}
-	capped := round > limits.RoomRounds
+	capped := round > limits.RoomRounds()
 	posted, named, err := s.speak(ctx, room, botID, text, roomMeta{ByStartTool: true, Round: round - 1}, round)
 	if err != nil {
 		return PostGroupResult{}, err
@@ -788,7 +788,7 @@ func (s *Service) PostGroup(ctx context.Context, botID, ref, message string) (Po
 	s.note(ctx, botID, origin.ThreadID, origin.ID, text, PeerEvent{Event: "group_post", RoomID: room.ID, PeerName: room.Name})
 	out := PostGroupResult{Posted: true, Group: room.Name, Woke: woke}
 	if capped {
-		out.Note = fmt.Sprintf("這段群組討論已經來回 %d 輪了，訊息已發出但不再喚醒別人；需要的話請使用者接手。", limits.RoomRounds)
+		out.Note = fmt.Sprintf("這段群組討論已經來回 %d 輪了，訊息已發出但不再喚醒別人；需要的話請使用者接手。", limits.RoomRounds())
 	}
 	return out, nil
 }

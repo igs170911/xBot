@@ -66,11 +66,11 @@ function StepList({ steps, compact, now }: { steps: Step[]; compact?: boolean; n
   )
 }
 
-// 工作進度（CH-1，design/C01、C02）：進行中是「思考中 · 1 分 12 秒 · 6 個步驟」加步驟清單；
+// 工作進度（CH-1，design/C01、C02）：進行中是「思考中 · 1 分 12 秒 · 6 個步驟」，預設收合、只露出最新一步（點開看全部）；
 // 做完摺疊成「工作了 N 分鐘 · M 步」，點開看步驟。沒有用到工具的回合不顯示。
 export function WorkSteps({ a, bot }: { a: Activity; bot?: Bot }) {
   const active = isActive(a)
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const [openDone, setOpenDone] = useState(false)
   const now = useNow(active)
   const name = bot?.name ?? 'Bot'
@@ -128,6 +128,7 @@ export function WorkSteps({ a, bot }: { a: Activity; bot?: Bot }) {
         )}
       </button>
       {open && a.steps.length > 0 && <StepList steps={a.steps} now={now} />}
+      {!open && a.steps.length > 0 && <StepList steps={a.steps.slice(-1)} now={now} compact />}
       {answered}
       {a.request?.inboxId ? (
         <AskCard ask={a.request} bot={bot ? { name: bot.name, shape: bot.shape, color: bot.color } : undefined} />

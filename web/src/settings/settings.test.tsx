@@ -235,3 +235,25 @@ it('Bot 的權限：團隊管理權限在「權限與花費」就能開', async 
   fireEvent.click(await screen.findByRole('switch', { name: '團隊管理權限' }))
   await waitFor(() => expect(api.calls.find((c) => c.path === 'bots.update')?.input).toEqual({ id: 'b1', can_manage: true }))
 })
+
+it('限制：列出可以調的數字與預設值，改了就存；超出範圍不送出', async () => {
+  const { LimitsPage } = await import('./LimitsPage')
+  const values = { max_hops: 20, room_rounds: 10, bot_creates_per_day: 10, manager_bot_creates_per_day: 50, bots_max: 200, auto_continue_max: 5, agenda_open_max: 10 }
+  const ranges = { max_hops: [1, 100], room_rounds: [1, 50], bot_creates_per_day: [0, 500], manager_bot_creates_per_day: [0, 500], bots_max: [1, 1000], auto_continue_max: [0, 20], agenda_open_max: [1, 50] }
+  api.ops['limits.get'] = () => ({ values, defaults: values, ranges })
+  api.ops['limits.set'] = (input) => ({ values: { ...values, ...input }, defaults: values, ranges })
+  render(
+    <ToastProvider>
+      <LimitsPage />
+    </ToastProvider>,
+  )
+  const hops = await screen.findByRole('textbox', { name: 'Bot 之間同一條往來' })
+  expect(hops).toHaveValue('20')
+  fireEvent.change(hops, { target: { value: '30' } })
+  fireEvent.blur(hops)
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'limits.set')?.input).toEqual({ max_hops: 30 }))
+  const n = api.calls.length
+  fireEvent.change(hops, { target: { value: '999' } })
+  fireEvent.blur(hops)
+  expect(api.calls.length).toBe(n)
+})

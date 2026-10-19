@@ -8,6 +8,7 @@ export const SETTINGS_NAV: NavItem[] = [
   { to: '/settings/computers', label: '電腦與裝置', icon: Monitor },
   { to: '/settings/usage', label: '用量與花費', icon: Wallet },
   { to: '/settings/advanced', label: '進階', icon: SlidersHorizontal },
+  { to: '/settings/advanced/limits', label: '限制', sub: true },
   { to: '/settings/advanced/backup', label: '備份與更新', sub: true },
   { to: '/settings/advanced/people', label: '成員與紀錄', sub: true },
   { to: '/settings/advanced/lab', label: '技能庫與實驗', sub: true },

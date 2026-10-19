@@ -104,7 +104,7 @@ func TestExportImportRoundTrip(t *testing.T) {
 	// 預覽：不建立；同名自動改名
 	var pv ImportOut
 	e.must(t, "xbot.bots.import", map[string]any{"content": ex.Content, "preview": true}, &pv)
-	if !pv.Preview || pv.Bot.ID != "" || pv.Bot.Name != "小秘 2" || !pv.Renamed || !pv.CanCreate || pv.Remaining != limits.BotsMax-1 {
+	if !pv.Preview || pv.Bot.ID != "" || pv.Bot.Name != "小秘 2" || !pv.Renamed || !pv.CanCreate || pv.Remaining != limits.BotsMax()-1 {
 		t.Fatalf("預覽：%+v", pv)
 	}
 	if n, _ := e.db.CountBots(ctx); n != 1 {
@@ -157,7 +157,7 @@ func TestImportRejectsBadFiles(t *testing.T) {
 
 func TestImportQuota(t *testing.T) {
 	e := setup(t)
-	for i := 0; i < limits.BotsMax; i++ {
+	for i := 0; i < limits.BotsMax(); i++ {
 		if _, err := e.db.CreateBot(ctx, store.Bot{Name: "b" + string(rune('A'+i%26)) + string(rune('a'+i/26)), ApprovalMode: "ask", Engine: "hermes"}); err != nil {
 			t.Fatal(err)
 		}

@@ -1,7 +1,7 @@
 package runtime
 
 // X04 任務完成判定（PRD §19、§20 用途 2）：一輪結束時判斷做完了沒（judge），記在任務與回覆上、放進 chat.done；
-// 只說要做、把工作丟回來、計畫沒做完、背景子任務失敗沒人接手的，叫 Bot 自己接著做（最多 limits.AutoContinueMax 次，
+// 只說要做、把工作丟回來、計畫沒做完、背景子任務失敗沒人接手的，叫 Bot 自己接著做（最多 limits.AutoContinueMax() 次，
 // LazyBoy auto_continue）；要你本人的開一張「需要你」卡；丟回來又不能再續做的通知你。
 
 import (
@@ -124,14 +124,14 @@ func (r *Runtime) judgeTurn(t *turn, task store.Task, verdict, final string, sta
 // continuation 決定要不要叫 Bot 自己接著做（LazyBoy auto_continue）。不續做時回 nil。
 // 你的工作、定時任務、Webhook：只說要做、丟回來、計畫沒做完、背景子任務失敗都續做；要你本人的不續做。
 // 隊友交辦的：只有「只說要做」才續做（Hooks.ContinueMeta 帶上原本的交辦，續做的那一輪的回答才是給隊友的答案）；
-// 群組的一輪不續做。同一個請求最多續做 limits.AutoContinueMax 次；有待核准的動作、你又傳了新訊息時不續做。
+// 群組的一輪不續做。同一個請求最多續做 limits.AutoContinueMax() 次；有待核准的動作、你又傳了新訊息時不續做。
 func (r *Runtime) continuation(t *turn, task store.Task, in judge.Input, res judge.Result) *ChatRequest {
 	if !judge.Continues(in, res) {
 		return nil
 	}
 	var am autoMeta
 	_ = json.Unmarshal(task.Meta, &am)
-	if am.Depth >= limits.AutoContinueMax {
+	if am.Depth >= limits.AutoContinueMax() {
 		return nil
 	}
 	meta := map[string]any{}

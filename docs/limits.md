@@ -226,7 +226,7 @@ PRD MM-1 的「每回合載入前 200 行／24 KB」是 OpenMausBot 的做法；
 | §12 每 Bot 進行中對話 | 3 | LazyBoy 程式找不到對應限制（Hermes 的 `delegation.max_concurrent_children` 預設是 10，也不是 3）。**待確認**，還沒有常數 |
 | §12 Box 閒置休眠 | 30 分鐘 | LazyBoy 程式沒有休眠，XBot 依 BX-12 新增（`BoxIdleMinutes`） |
 | §19 隊友沒動靜回報主管／沒回覆提醒 | 20／30 分鐘 | LazyBoy 規劃 X-TEAM-4／6，程式沒有；還沒有常數 |
-| BL-3、LP-8 每條工作鏈的 token 預算 | — | XBot 新增，數字未定 |
+| BL-3、LP-8 每條工作鏈的 token 預算 | 不限（`limits.ChainBudgetTokens = 0`） | XBot 新增；2026-10-19 使用者決定取消 |
 | MCP-10 代為核准可復原 | 10 分鐘 | XBot 新增（`UndoWindow`） |
 
 ## 12. 給 X02～X04 的提醒

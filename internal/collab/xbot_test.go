@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"xbot/internal/limits"
 	"xbot/internal/runtime"
 	"xbot/internal/store"
 )
@@ -234,5 +235,25 @@ func TestAHandOffThatIsItselfDeferredStillCountsAsWaiting(t *testing.T) {
 	}
 	if metaOf(tm.task(request.ID)).Deferred == nil {
 		t.Fatal("要延後回覆")
+	}
+}
+
+// 使用者決定（2026-10-19）：工作鏈的 token 預算預設不限，用掉再多 token 也不會把 Bot 之間的工作切斷。
+func TestChainBudgetUnlimitedByDefault(t *testing.T) {
+	if limits.ChainBudgetTokens != 0 {
+		t.Fatalf("預設要不限：%d", limits.ChainBudgetTokens)
+	}
+	tm := setup(t)
+	if tm.s.o.ChainBudget != 0 {
+		t.Fatalf("服務的預設也要不限：%d", tm.s.o.ChainBudget)
+	}
+	chief := tm.bots["Chief"]
+	origin := tm.running(chief, nil)
+	must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Writer", "做第一段", "request", SendOptions{}))
+	if _, err := tm.db.AddUsage(tm.ctx, store.UsageEntry{BotID: chief, TaskID: origin, InputTokens: 3_000_000, OutputTokens: 300_000}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tm.s.Send(tm.ctx, chief, "Writer", "做第二段", "request", SendOptions{}); err != nil {
+		t.Fatalf("不限時不能擋：%v", err)
 	}
 }

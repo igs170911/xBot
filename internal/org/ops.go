@@ -208,7 +208,7 @@ func Register(reg *ops.Registry, s *Service) {
 		Name: "xbot.teams.templates", Summary: "團隊範本（行銷、工程、公司）",
 		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
 		Handle: func(ctx context.Context, call *ops.Call, _ struct{}) (TemplatesOut, error) {
-			out := TemplatesOut{Templates: Templates, TeamMax: limits.TeamMax, BotsMax: limits.BotsMax}
+			out := TemplatesOut{Templates: Templates, TeamMax: limits.TeamMax, BotsMax: limits.BotsMax()}
 			n, err := call.DB.CountBots(ctx)
 			out.BotsTotal = n
 			return out, err
@@ -227,7 +227,7 @@ func Register(reg *ops.Registry, s *Service) {
 		Name: "xbot.teams.create", Summary: "建立團隊：主管、成員、報告線，順便開群組",
 		Description: "一次建好：側欄分區、主管與成員（新建或既有的 Bot）、每位成員向主管報告、同名群組。" +
 			"有一位不對就什麼都不建。團隊含主管最多 10 位；全部 Bot 最多 50 個。" +
-			"Bot 要有團隊管理權限才能用，新建的 Bot 算進它每天 20 個的上限；動手前先跟使用者確認名單與分工。",
+			"Bot 要有團隊管理權限才能用，新建的 Bot 算進它每天的上限（預設 50 個，使用者可調）；動手前先跟使用者確認名單與分工。",
 		Scope: ops.ScopeManage, Risk: ops.RiskSafe, ForBot: true,
 		Handle: func(ctx context.Context, call *ops.Call, in CreateTeamIn) (CreateTeamOut, error) {
 			if err := ready(s); err != nil {
@@ -419,7 +419,7 @@ func Register(reg *ops.Registry, s *Service) {
 		Name: "xbot.agenda.propose", Summary: "提案：幾天後沒意見就照做",
 		Description: "你有把握、但想留給使用者否決機會的事（改變做法、調整頻率、要花時間的新嘗試）：寫清楚打算怎麼做、為什麼、幾天後生效（1–14 天，預設 3）。" +
 			"期限內使用者沒意見就視同同意，到時你會收到通知再做；在那之前不要做。花錢、簽約、上架、對客承諾不能用提案，要用 xbot.approvals.request。" +
-			"提案＋討論每個 Bot 合計最多 3 件；被否決的事 14 天內不能原樣再提。",
+			"提案＋討論每個 Bot 合計有件數上限（預設 10 件，使用者可調）；被否決的事 14 天內不能原樣再提。",
 		Scope: ops.ScopeOperate, Risk: ops.RiskSafe, ForBot: true,
 		Handle: func(ctx context.Context, call *ops.Call, in ProposeIn) (SubmitOut, error) {
 			return submit(ctx, s, call, SubmitIn{Kind: KindPropose, Subject: in.Subject, Details: in.Details, Days: in.Days})
@@ -428,7 +428,7 @@ func Register(reg *ops.Registry, s *Service) {
 	ops.Register(reg, ops.Op[DiscussIn, SubmitOut]{
 		Name: "xbot.agenda.request_discussion", Summary: "約使用者討論一件事",
 		Description: "需要使用者的想法或方向（選哪條路線、優先順序、看不懂的目標），而不是同意與否時用：附背景、兩三個選項、你的建議和建議時間。" +
-			"使用者可能直接用文字回覆、改時間或說不用討論；時間到你會收到提醒再整理說明。提案＋討論每個 Bot 合計最多 3 件。",
+			"使用者可能直接用文字回覆、改時間或說不用討論；時間到你會收到提醒再整理說明。提案＋討論每個 Bot 合計有件數上限（預設 10 件）。",
 		Scope: ops.ScopeOperate, Risk: ops.RiskSafe, ForBot: true,
 		Handle: func(ctx context.Context, call *ops.Call, in DiscussIn) (SubmitOut, error) {
 			return submit(ctx, s, call, SubmitIn{Kind: KindDiscuss, Subject: in.Subject, Details: in.Details, When: in.When})

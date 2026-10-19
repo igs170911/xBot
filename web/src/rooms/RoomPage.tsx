@@ -18,7 +18,7 @@ import { Markdown } from '../chat/markdown/Markdown'
 import { clockLabel } from '../chat/format'
 import { ROOM_ROUNDS as ROUNDS, RULES, type Rule } from './rules'
 
-// 群組對話（design/D01；空白時 D04）：你和 2–10 個 Bot。@ 指定負責的 Bot；Bot 之間交棒每次最多 4 輪。
+// 群組對話（design/D01；空白時 D04）：你和 2–10 個 Bot。@ 指定負責的 Bot；Bot 之間交棒的輪數上限在「設定 → 進階 → 限制」。
 
 
 

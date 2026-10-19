@@ -20,6 +20,7 @@ import (
 	"xbot/internal/importer"
 	"xbot/internal/inbox"
 	"xbot/internal/judge"
+	"xbot/internal/limitsops"
 	"xbot/internal/memory"
 	"xbot/internal/models"
 	"xbot/internal/network"
@@ -137,6 +138,7 @@ func Register(reg *ops.Registry, d Deps) {
 	models.Register(reg, models.Deps{Providers: d.Providers, Lister: d.Lister, Prober: d.Prober})
 	usage.Register(reg, usage.Deps{Budgets: d.Budgets})
 	engines.Register(reg, d.Engines)
+	limitsops.Register(reg)
 	routines.Register(reg, d.Routines)
 	skills.Register(reg, d.Skills)
 	memory.Register(reg, d.Memory)

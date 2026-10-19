@@ -8,10 +8,6 @@ import "time"
 
 // 傳話（PRD §18、AA-*、LP-*）。
 const (
-	// MaxHops 是同一條 Bot 往來最多幾次；超過就拒絕並要 Bot 回報使用者。結果回傳（relay）不擋。
-	// LazyBoy server/collab.py:30 MAX_HOPS
-	MaxHops = 6
-
 	// BotMessageMax 是 Bot 一則傳話（也是群組一則訊息）的字元上限。Bot 主動送的超過就拒絕；
 	// 交回的結果超過就存成檔案、訊息只帶 ResultPreview 字預覽。
 	// LazyBoy server/collab.py:64 MESSAGE_MAX
@@ -41,10 +37,6 @@ const (
 	RoomMembersMin = 2
 	RoomMembersMax = 10
 
-	// RoomRounds 是使用者每發言一次，Bot 互相喚醒最多幾輪；超過時訊息照發、不再喚醒別人。失敗的回合也中止接力。
-	// LazyBoy server/collab.py:41 ROOM_ROUNDS（用在 :495 room_answer、:550 post_group）
-	RoomRounds = 4
-
 	// RoomBacklog 是成員第一次輪到（還沒有 seen 紀錄）時，從群組帶入的最近幾則訊息。
 	// LazyBoy server/collab.py:468 room_prompt（len(transcript) - 20）
 	RoomBacklog = 20
@@ -61,9 +53,11 @@ const (
 
 // 工作鏈預算與往來紀錄（X02；XBot 新增，LazyBoy 沒有）。
 const (
-	// ChainBudgetTokens 是一條 Bot 往來的工作鏈（同一個 chain 的所有工作）最多用掉多少 token（輸入＋輸出）。
-	// 超過就不再傳話，並發一張「花費」卡給你（PRD LP-8、BL-3）。PRD 沒有定數字：XBot 先訂 200 萬，待確認。
-	ChainBudgetTokens int64 = 2_000_000
+	// ChainBudgetTokens 是一條 Bot 往來的工作鏈（同一個 chain 的所有工作）最多用掉多少 token（輸入＋輸出）；0＝不限。
+	// 超過就不再傳話，並發一張「花費」卡給你（PRD LP-8、BL-3）。
+	// 使用者決定（2026-10-19）：取消這個限制。用訂閱的引擎不按 token 計費，卻一直被切斷；
+	// 防無限互傳靠同一條往來最多 MaxHops 次，花錢靠每月花費上限。
+	ChainBudgetTokens int64 = 0
 
 	// PeerHistoryMax 是讀兩個 Bot 之間往來紀錄一次最多幾則（xbot.collab.peer_history，RM-12、C13）。XBot 新增。
 	PeerHistoryMax = 200
@@ -71,19 +65,8 @@ const (
 
 // Bot 建立 Bot（PRD §18、LP-9）。
 const (
-	// BotCreatesPerDay 是一般 Bot 每 24 小時（滾動）最多建立幾個 Bot。
-	// LazyBoy server/collab.py:32 BOTS_PER_DAY
-	BotCreatesPerDay = 3
-
-	// ManagerBotCreatesPerDay 是有團隊管理權限的 Bot 每 24 小時最多建立幾個（建團隊也算在內）。
-	// LazyBoy server/collab.py:34 MANAGER_BOTS_PER_DAY（org.py:319 create_team 也用它）
-	ManagerBotCreatesPerDay = 20
-
 	// BotCreateWindow 是計算「每天」建立數的滾動時間窗。LazyBoy server/collab.py:564 create_bot（timedelta(days=1)）
 	BotCreateWindow = 24 * time.Hour
-
-	// BotsMax 是全部 Bot 的上限（Bot 建 Bot、建團隊時檢查）。LazyBoy server/collab.py:35 MAX_BOTS
-	BotsMax = 50
 
 	// BotCreateNameMax 是 Bot 建立的新 Bot 名稱長度（使用者自己建的上限是 BotNameMax）。
 	// LazyBoy server/collab.py:568 create_bot（plain(name, 40)）
@@ -118,9 +101,6 @@ const (
 
 // 提案與討論（PRD §18、TM-5；LazyBoy agenda.py）。
 const (
-	// AgendaOpenMax 是一個 Bot 同時在等你的提案＋討論合計件數。LazyBoy server/agenda.py:28 MAX_OPEN
-	AgendaOpenMax = 3
-
 	// ProposalDaysMin、ProposalDaysMax、ProposalDaysDefault 是提案「幾天後沒意見就生效」的範圍與預設。
 	// LazyBoy server/agenda.py:29 MIN_DAYS, MAX_DAYS；:87 submit（days=3）
 	ProposalDaysMin     = 1
@@ -184,10 +164,6 @@ const (
 
 	// WatchInterval 是看門狗檢查的間隔（也是檢查提問是否過期的間隔）。LazyBoy server/runtime.py:556 WATCH_INTERVAL
 	WatchInterval = 5 * time.Second
-
-	// AutoContinueMax 是同一個請求最多自動續做幾次（只承諾沒做、計畫沒做完、把工作丟回來、背景子任務失敗）。
-	// LazyBoy server/runtime.py:696 AUTO_CONTINUE
-	AutoContinueMax = 2
 
 	// StallNudgesMax 是同一個失敗的背景子任務最多被叫回去處理幾次。LazyBoy server/runtime.py:709 STALL_NUDGES
 	StallNudgesMax = 2

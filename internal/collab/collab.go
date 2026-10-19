@@ -42,7 +42,7 @@ type Options struct {
 	Logger *slog.Logger
 	// Now 是時間（測試可以換）；nil 用 time.Now。
 	Now func() time.Time
-	// ChainBudget 是每條工作鏈的 token 預算；0 用 limits.ChainBudgetTokens（測試可以調小）。
+	// ChainBudget 是每條工作鏈的 token 預算；0 用 limits.ChainBudgetTokens（也是 0＝不限；測試可以設一個數字）。
 	ChainBudget int64
 }
 
@@ -423,8 +423,8 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	if hasOrigin && om.FromBot != "" {
 		hop = om.Hop + 1
 	}
-	if hop > limits.MaxHops && !o.Relay {
-		return SendResult{}, &Error{Code: CodeLimit, Msg: fmt.Sprintf("這段 Bot 之間的往來已經 %d 次了。先停下來，把目前結果回報給使用者，由使用者決定下一步。", limits.MaxHops)}
+	if hop > limits.MaxHops() && !o.Relay {
+		return SendResult{}, &Error{Code: CodeLimit, Msg: fmt.Sprintf("這段 Bot 之間的往來已經 %d 次了。先停下來，把目前結果回報給使用者，由使用者決定下一步。", limits.MaxHops())}
 	}
 	chain := om.Chain
 	if chain == "" && hasOrigin {
@@ -539,6 +539,9 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 
 // checkBudget 檢查工作鏈的 token 預算（LP-8）；超過時發一張「花費」卡給你（同一條鏈只發一次）。
 func (s *Service) checkBudget(ctx context.Context, senderID, senderName, chain string) error {
+	if s.o.ChainBudget <= 0 {
+		return nil // 不限
+	}
 	used, err := s.db.ChainTokens(ctx, chain)
 	if err != nil {
 		return err

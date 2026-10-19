@@ -415,7 +415,7 @@ func (s *Service) Chart(ctx context.Context) (ChartOut, error) {
 	if err != nil {
 		return ChartOut{}, err
 	}
-	out := ChartOut{Bots: []MemberStatus{}, BotsTotal: len(f.r.list), BotsMax: limits.BotsMax, TeamMax: limits.TeamMax}
+	out := ChartOut{Bots: []MemberStatus{}, BotsTotal: len(f.r.list), BotsMax: limits.BotsMax(), TeamMax: limits.TeamMax}
 	for _, b := range f.r.list {
 		if b.Archived {
 			continue

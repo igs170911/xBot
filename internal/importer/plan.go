@@ -157,7 +157,7 @@ func (s *Service) buildPlan(ctx context.Context, db *store.DB, src *Source, foun
 	}
 	p := &plan{src: src, m: m, items: map[string]*Item{}, bots: map[string]Bot{}}
 	p.out = PlanOut{Source: found, Items: []Item{}, NotCarried: NotCarried, Notes: append([]string{}, src.Notes...),
-		Remaining: max(0, limits.BotsMax-len(all)), CanCreate: true}
+		Remaining: max(0, limits.BotsMax()-len(all)), CanCreate: true}
 	add := func(it Item) {
 		p.out.Items = append(p.out.Items, it)
 	}
@@ -322,7 +322,7 @@ func (s *Service) buildPlan(ctx context.Context, db *store.DB, src *Source, foun
 	}
 	if p.out.NewBots > p.out.Remaining {
 		p.out.CanCreate = false
-		p.out.Reason = fmt.Sprintf("Bot 最多 %d 個，還可以建立 %d 個；請少勾幾個，或先封存、刪除不用的 Bot", limits.BotsMax, p.out.Remaining)
+		p.out.Reason = fmt.Sprintf("Bot 最多 %d 個，還可以建立 %d 個；請少勾幾個，或先封存、刪除不用的 Bot", limits.BotsMax(), p.out.Remaining)
 	}
 	return p, nil
 }

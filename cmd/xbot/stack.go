@@ -25,6 +25,7 @@ import (
 	"xbot/internal/ipc"
 	"xbot/internal/judge"
 	"xbot/internal/limits"
+	"xbot/internal/limitsops"
 	"xbot/internal/memory"
 	"xbot/internal/network"
 	"xbot/internal/org"
@@ -87,6 +88,10 @@ func openStack(cfg config.Config) (*stack, error) {
 		return nil, err
 	}
 	s := &stack{db: db, dataDir: cfg.DataDir}
+	// 你調過的限制（設定 → 進階 → 限制）；讀不到就用預設，不擋啟動
+	if err := limitsops.Load(context.Background(), db); err != nil {
+		slog.Warn("讀不到調過的限制，先用預設", "err", err)
+	}
 	// 本機一定是一台 Bot 電腦主機（host 表沒有就新增）；Docker 沒開時記成離線，服務照常啟動。
 	hostCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	s.local, err = hosts.EnsureLocal(hostCtx, db, cfg.DataDir)

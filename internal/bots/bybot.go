@@ -45,8 +45,8 @@ func CheckQuota(ctx context.Context, db *store.DB, creator *store.Bot, n int) er
 	if err != nil {
 		return err
 	}
-	if total+n > limits.BotsMax {
-		return ops.Limit(fmt.Sprintf("Bot 最多 %d 個，目前已有 %d 個；請先整理（封存或刪除不用的 Bot）", limits.BotsMax, total))
+	if total+n > limits.BotsMax() {
+		return ops.Limit(fmt.Sprintf("Bot 最多 %d 個，目前已有 %d 個；請先整理（封存或刪除不用的 Bot）", limits.BotsMax(), total))
 	}
 	if creator == nil {
 		return nil
@@ -55,13 +55,13 @@ func CheckQuota(ctx context.Context, db *store.DB, creator *store.Bot, n int) er
 	if err != nil {
 		return err
 	}
-	limit := limits.BotCreatesPerDay
+	limit := limits.BotCreatesPerDay()
 	if creator.CanManage {
-		limit = limits.ManagerBotCreatesPerDay
+		limit = limits.ManagerBotCreatesPerDay()
 	}
 	if made+n > limit {
 		if n == 1 && !creator.CanManage {
-			return ops.Limit(fmt.Sprintf("你今天已經建立 %d 個 Bot；需要更多請使用者到「Bot 設定 → 權限與花費」開啟你的「團隊管理權限」（每天可建 %d 個）", made, limits.ManagerBotCreatesPerDay))
+			return ops.Limit(fmt.Sprintf("你今天已經建立 %d 個 Bot；需要更多請使用者到「Bot 設定 → 權限與花費」開啟你的「團隊管理權限」（每天可建 %d 個），或到「設定 → 進階 → 限制」調高", made, limits.ManagerBotCreatesPerDay()))
 		}
 		if n == 1 {
 			return ops.Limit(fmt.Sprintf("你今天已經建立 %d 個 Bot；需要更多請先問使用者", made))

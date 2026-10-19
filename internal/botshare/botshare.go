@@ -275,7 +275,7 @@ func (d Deps) importBot(ctx context.Context, call *ops.Call, in ImportIn) (Impor
 	name, renamed := uniqueName(want, taken)
 
 	out := ImportOut{Preview: in.Preview, Original: f.Bot.Name, Renamed: renamed, ExportedAt: f.ExportedAt, Bytes: len(in.Content),
-		SkillsAdded: []string{}, SkillsMerged: []string{}, AppsMissing: []string{}, Remaining: max(0, limits.BotsMax-len(all)), CanCreate: true}
+		SkillsAdded: []string{}, SkillsMerged: []string{}, AppsMissing: []string{}, Remaining: max(0, limits.BotsMax()-len(all)), CanCreate: true}
 	if err := bots.CheckQuota(ctx, call.DB, nil, 1); err != nil {
 		out.CanCreate, out.Reason = false, err.Error()
 	}

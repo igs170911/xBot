@@ -140,7 +140,7 @@ func TestSilentAnswersAreHiddenAndNotSentBack(t *testing.T) {
 func TestAnExchangeStopsAfterMaxHops(t *testing.T) {
 	tm := setup(t)
 	chief := tm.bots["Chief"]
-	tm.running(chief, map[string]any{"from_bot": tm.bots["Writer"], "hop": limits.MaxHops, "chain": "c1", "intent": "request"})
+	tm.running(chief, map[string]any{"from_bot": tm.bots["Writer"], "hop": limits.MaxHops(), "chain": "c1", "intent": "request"})
 	_, err := tm.s.Send(tm.ctx, chief, "Scout", "再問一次", "request", SendOptions{})
 	if err == nil || !strings.Contains(err.Error(), "回報給使用者") {
 		t.Fatalf("超過往來次數：%v", err)
@@ -255,7 +255,7 @@ func TestGroupAnswersArePostedAndMentionsHandOff(t *testing.T) {
 	if log := tm.roomLog(room.ID); log[len(log)-1].ID != posted.ID {
 		t.Fatal("[silent] 不貼到群組")
 	}
-	tired := tm.running(writer, map[string]any{"room_id": room.ID, "round": limits.RoomRounds})
+	tired := tm.running(writer, map[string]any{"room_id": room.ID, "round": limits.RoomRounds()})
 	tm.finish(tired, runtime.VerdictAnswer, "@Chief 換你")
 	if len(tm.queued(chief)) != 0 {
 		t.Fatal("到上限不再叫醒別人")
@@ -614,7 +614,7 @@ func TestPostingToAGroupFromInsideItContinuesTheRoundCountAndStopsAtTheLimit(t *
 	for _, c := range []struct {
 		round int
 		wakes bool
-	}{{0, true}, {limits.RoomRounds - 1, true}, {limits.RoomRounds, false}} {
+	}{{0, true}, {limits.RoomRounds() - 1, true}, {limits.RoomRounds(), false}} {
 		tm.running(chief, map[string]any{"room_id": room.ID, "round": c.round})
 		res := must[PostGroupResult](t)(tm.s.PostGroup(tm.ctx, chief, "群", "@Writer 接著做"))
 		if (len(res.Woke) > 0) != c.wakes {

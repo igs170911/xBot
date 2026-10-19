@@ -14,6 +14,7 @@ import { BotSettingsPage, type BotTab } from './BotSettings'
 import { SkillsLabPage } from './SkillsLab'
 import { NetworkPage } from './NetworkPage'
 import { BackupPage } from './BackupPage'
+import { LimitsPage } from './LimitsPage'
 import { PeoplePage } from './PeoplePage'
 import { SettingsOverview } from './SettingsOverview'
 import { SectionHeader } from './parts'
@@ -76,6 +77,7 @@ function Content({ path }: { path: string }) {
   if (host) return <HostDetailPage hostId={decodeURIComponent(host[1])} />
   if (path === '/settings/advanced/agents') return <AgentsPage />
   if (path === '/settings/advanced/network') return <NetworkPage />
+  if (path === '/settings/advanced/limits') return <LimitsPage />
   if (path === '/settings/advanced/backup') return <BackupPage />
   if (path === '/settings/advanced/people') return <PeoplePage />
   if (path === '/settings/advanced/lab') return <SkillsLabPage />

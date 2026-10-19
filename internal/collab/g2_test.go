@@ -169,10 +169,10 @@ func TestG2ThreeBotsInARoom(t *testing.T) {
 			bots = append(bots, m)
 		}
 	}
-	if len(bots) != limits.RoomRounds+1 {
-		t.Fatalf("你發言一次，Bot 互相叫醒最多 %d 輪：%d 則", limits.RoomRounds, len(bots))
+	if len(bots) != limits.RoomRounds()+1 {
+		t.Fatalf("你發言一次，Bot 互相叫醒最多 %d 輪：%d 則", limits.RoomRounds(), len(bots))
 	}
-	for i, m := range bots[:limits.RoomRounds] {
+	for i, m := range bots[:limits.RoomRounds()] {
 		if m.Handoff != i+1 || m.Round != i {
 			t.Fatalf("第 %d 則：%+v", i, m)
 		}
@@ -284,8 +284,8 @@ func TestG2ThreeBotsInARoom(t *testing.T) {
 			results++
 		}
 	}
-	if maxReq != limits.MaxHops || results != limits.MaxHops {
-		t.Fatalf("請求最多到第 %d 次（%d）、每一棒都有結果回傳（%d）", limits.MaxHops, maxReq, results)
+	if maxReq != limits.MaxHops() || results != limits.MaxHops() {
+		t.Fatalf("請求最多到第 %d 次（%d）、每一棒都有結果回傳（%d）", limits.MaxHops(), maxReq, results)
 	}
 	// 第 6 棒的長回答存在 Scout 的電腦，訊息只放開頭。
 	var long *store.BotMessage
@@ -304,7 +304,7 @@ func TestG2ThreeBotsInARoom(t *testing.T) {
 	}
 	// 交辦紀錄：每一棒都是 done（轉派的在結果回來後結案）。
 	asgs, _ := e.db.ListAssignments(e.ctx, start.TaskID)
-	if len(asgs) != limits.MaxHops {
+	if len(asgs) != limits.MaxHops() {
 		t.Fatalf("交辦 %d 筆", len(asgs))
 	}
 	for _, a := range asgs {
