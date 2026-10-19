@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatReadOutput, XBotEvent } from '../api/generated'
-import { activeTask, applyEvent, applyRead, applySteps, emptyChat, formatElapsed, threadItems, workSummary, type ChatState } from './assemble'
+import { activeTask, applyEvent, applyRead, applySteps, emptyChat, formatElapsed, memoryStepLabel, threadItems, workSummary, type ChatState } from './assemble'
 
 const T = 'th1'
 const TASK = 'task1'
@@ -208,5 +208,33 @@ describe('時間格式', () => {
     expect(formatElapsed(40_000)).toBe('40 秒')
     expect(formatElapsed(72_000)).toBe('1 分 12 秒')
     expect(formatElapsed(120_000)).toBe('2 分')
+  })
+})
+
+// 2026-10-19：水哥哥記錯了一件事，你在對話裡看不出它記了什麼。記憶工具那一步要說白話，旁邊有「看記憶」。
+describe('記憶工具的步驟', () => {
+  it('新增是「記住了：…」，改掉或刪掉是「更新記憶」', () => {
+    expect(memoryStepLabel({ action: 'add', target: 'memory', content: 'xbot 工具沒有刪除 Bot／團隊的能力' })).toBe('記住了：xbot 工具沒有刪除 Bot／團隊的能力')
+    expect(memoryStepLabel({ action: 'add', target: 'user', content: '喜歡簡短回答，不要列一大堆選項，也不要每次都先道歉再回答問題' })).toBe(
+      '記住了：喜歡簡短回答，不要列一大堆選項，也不要每次都先道…',
+    )
+    expect(memoryStepLabel({ target: 'memory', operations: [{ action: 'add', content: '週一開會' }, { action: 'add', content: '客戶 A 月結' }] })).toBe('記住了：週一開會 等 2 條')
+    expect(memoryStepLabel({ action: 'replace', target: 'memory', old_text: '週一', content: '週二開會' })).toBe('更新記憶')
+    expect(memoryStepLabel({ target: 'memory', operations: [{ action: 'remove', old_text: '舊的' }, { action: 'add', content: '新的' }] })).toBe('更新記憶')
+    expect(memoryStepLabel(undefined)).toBe('更新記憶')
+    expect(memoryStepLabel({ action: 'add', content: '  ' })).toBe('更新記憶')
+  })
+
+  it('步驟標上 memory，結束時用結束事件的參數重寫標籤', () => {
+    const s = run([
+      tool(1, 'chat.tool_call', 'm1', 1000, { name: 'memory', context: '+memory: "xbot 工具…"' }),
+      tool(2, 'chat.tool_result', 'm1', 1100, { name: 'memory', ok: true, args: { action: 'add', target: 'memory', content: '客戶 A 用月結' } }),
+      tool(3, 'chat.tool_call', 't2', 1200, { context: '打開蝦皮' }),
+    ])
+    expect(s.tasks[TASK].steps).toEqual([
+      { id: 'm1', name: 'memory', label: '記住了：客戶 A 用月結', status: 'ok', at: 1000, endAt: 1100, memory: true },
+      { id: 't2', name: 'browser_open', label: '打開蝦皮', status: 'running', at: 1200 },
+    ])
+    expect(s.tasks[TASK].steps[1]).not.toHaveProperty('memory')
   })
 })

@@ -7510,8 +7510,14 @@ export interface MemoryHistoryOutput {
     actor: string
     /** 新增的條目 */
     added: string[]
-    /** 拿掉的條目 */
+    /** 拿掉的條目（和 added 都是空的：只調整了順序或拿掉重複的條目） */
     removed: string[]
+    /** Bot 在哪條對話串裡記的（看得出來時才有） */
+    thread_id?: string
+    /** 那條對話串的標題；在群組裡記的是群組名稱 */
+    thread_title?: string
+    /** 在群組裡記的：群組 id */
+    room_id?: string
     created_at: number
     /** 之後沒有再改過，可以復原 */
     undoable: boolean
@@ -7521,7 +7527,7 @@ export interface MemoryHistoryOutput {
 /**
  * 看 Bot 記憶最近的變更
  *
- * 每次修改（你、代理、或 Bot 自己在電腦裡改的）都記一筆，每份最多留 20 筆。可以復原的會標 undoable。
+ * 每次修改（你、代理、或 Bot 自己在電腦裡改的）都記一筆，每份最多留 20 筆。可以復原的會標 undoable。Bot 在對話裡記的會帶 thread_id／thread_title（在哪條對話串記的）。
  *
  * `xbot.memory.history`：權限 read、風險 safe
  */

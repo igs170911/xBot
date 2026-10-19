@@ -5,6 +5,7 @@ import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
 import type { Bot } from '../data/bots'
 import { useNow } from '../data/ui'
+import { linkClick } from '../router'
 import { AnsweredChip, AskCard } from './AskCard'
 import { formatElapsed, isActive, waitText, workSummary, type Activity, type Step } from './assemble'
 
@@ -43,7 +44,7 @@ function StepIcon({ s }: { s: Step }) {
   )
 }
 
-function StepList({ steps, compact, now }: { steps: Step[]; compact?: boolean; now?: number }) {
+function StepList({ steps, compact, now, botId }: { steps: Step[]; compact?: boolean; now?: number; botId?: string }) {
   return (
     <ol
       className={cx(
@@ -60,9 +61,20 @@ function StepList({ steps, compact, now }: { steps: Step[]; compact?: boolean; n
             {s.name}
           </span>
           {now && s.status === 'running' && <span className="text-meta text-ink-3">{formatElapsed(Math.max(0, now - s.at))}</span>}
+          {s.memory && botId && <MemoryLink botId={botId} />}
         </li>
       ))}
     </ol>
+  )
+}
+
+// Bot 用記憶工具改了記憶：到「Bot 設定 → 能力 → 記憶」看它記了什麼、改掉記錯的。
+function MemoryLink({ botId }: { botId: string }) {
+  const to = `/settings/bots/${botId}/abilities/memory`
+  return (
+    <a href={to} onClick={linkClick(to)} className="text-meta text-accent-ink underline-offset-2 hover:underline">
+      看記憶
+    </a>
   )
 }
 
@@ -74,6 +86,7 @@ export function WorkSteps({ a, bot }: { a: Activity; bot?: Bot }) {
   const [openDone, setOpenDone] = useState(false)
   const now = useNow(active)
   const name = bot?.name ?? 'Bot'
+  const botId = a.botId ?? bot?.id
 
   const answered = a.answered?.length ? (
     <div className="flex flex-wrap gap-1.5">
@@ -100,7 +113,7 @@ export function WorkSteps({ a, bot }: { a: Activity; bot?: Bot }) {
             <Icon icon={ChevronRight} size={16} />
           </span>
         </button>
-        {openDone && <StepList steps={a.steps} compact />}
+        {openDone && <StepList steps={a.steps} compact botId={botId} />}
       </section>
     )
   }
@@ -127,8 +140,8 @@ export function WorkSteps({ a, bot }: { a: Activity; bot?: Bot }) {
           </span>
         )}
       </button>
-      {open && a.steps.length > 0 && <StepList steps={a.steps} now={now} />}
-      {!open && a.steps.length > 0 && <StepList steps={a.steps.slice(-1)} now={now} compact />}
+      {open && a.steps.length > 0 && <StepList steps={a.steps} now={now} botId={botId} />}
+      {!open && a.steps.length > 0 && <StepList steps={a.steps.slice(-1)} now={now} compact botId={botId} />}
       {answered}
       {a.request?.inboxId ? (
         <AskCard ask={a.request} bot={bot ? { name: bot.name, shape: bot.shape, color: bot.color } : undefined} />

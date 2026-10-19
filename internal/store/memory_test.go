@@ -12,7 +12,7 @@ func TestMemoryVersionsKeepOnlyTheLatest(t *testing.T) {
 	for i, s := range []string{"a", "b", "c", "d"} {
 		must[MemoryVersion](t)(db.AddMemoryVersion(ctx, MemoryVersion{BotID: b.ID, Target: "memory", Before: "", After: s, Actor: "owner", CreatedAt: int64(i + 1)}, 3))
 	}
-	must[MemoryVersion](t)(db.AddMemoryVersion(ctx, MemoryVersion{BotID: b.ID, Target: "user", After: "u", CreatedAt: 9}, 3))
+	must[MemoryVersion](t)(db.AddMemoryVersion(ctx, MemoryVersion{BotID: b.ID, Target: "user", After: "u", ThreadID: "th1", CreatedAt: 9}, 3))
 	must[MemoryVersion](t)(db.AddMemoryVersion(ctx, MemoryVersion{BotID: other.ID, Target: "memory", After: "x"}, 3))
 
 	mem := must[[]MemoryVersion](t)(db.ListMemoryVersions(ctx, b.ID, "memory"))
@@ -20,7 +20,7 @@ func TestMemoryVersionsKeepOnlyTheLatest(t *testing.T) {
 		t.Fatalf("只留最新 3 筆，新的在前：%+v", mem)
 	}
 	all := must[[]MemoryVersion](t)(db.ListMemoryVersions(ctx, b.ID, ""))
-	if len(all) != 4 || all[0].Target != "user" {
+	if len(all) != 4 || all[0].Target != "user" || all[0].ThreadID != "th1" || all[1].ThreadID != "" {
 		t.Fatalf("兩份都列：%+v", all)
 	}
 	got := must[MemoryVersion](t)(db.GetMemoryVersion(ctx, mem[1].ID))

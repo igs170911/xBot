@@ -18,6 +18,8 @@ type Service struct {
 	DB *store.DB
 	// Locate 找 Bot 的電腦（runtime.Computers.BotFS）。
 	Locate boxfs.Locator
+	// Active 回傳 Bot 正在做事的對話串（runtime.Active）：Bot 用 xbot.memory.add 記的事記下是在哪條對話串。可以是 nil。
+	Active func(botID string) (thread, task string)
 
 	mu    sync.Mutex
 	locks map[string]*sync.Mutex
@@ -74,13 +76,16 @@ type HistoryIn struct {
 
 // Change 是一次變更。
 type Change struct {
-	ID        string   `json:"id"`
-	Target    Target   `json:"target"`
-	Actor     string   `json:"actor" desc:"誰改的：owner、agent:<id>、bot:<id>"`
-	Added     []string `json:"added" desc:"新增的條目"`
-	Removed   []string `json:"removed" desc:"拿掉的條目"`
-	CreatedAt int64    `json:"created_at"`
-	Undoable  bool     `json:"undoable" desc:"之後沒有再改過，可以復原"`
+	ID          string   `json:"id"`
+	Target      Target   `json:"target"`
+	Actor       string   `json:"actor" desc:"誰改的：owner、agent:<id>、bot:<id>"`
+	Added       []string `json:"added" desc:"新增的條目"`
+	Removed     []string `json:"removed" desc:"拿掉的條目（和 added 都是空的：只調整了順序或拿掉重複的條目）"`
+	ThreadID    string   `json:"thread_id,omitempty" desc:"Bot 在哪條對話串裡記的（看得出來時才有）"`
+	ThreadTitle string   `json:"thread_title,omitempty" desc:"那條對話串的標題；在群組裡記的是群組名稱"`
+	RoomID      string   `json:"room_id,omitempty" desc:"在群組裡記的：群組 id"`
+	CreatedAt   int64    `json:"created_at"`
+	Undoable    bool     `json:"undoable" desc:"之後沒有再改過，可以復原"`
 }
 
 // HistoryOut 是 xbot.memory.history 的輸出。
@@ -152,8 +157,9 @@ func Register(reg *ops.Registry, s *Service) {
 	})
 	ops.Register(reg, ops.Op[HistoryIn, HistoryOut]{
 		Name: "xbot.memory.history", Summary: "看 Bot 記憶最近的變更",
-		Description: "每次修改（你、代理、或 Bot 自己在電腦裡改的）都記一筆，每份最多留 20 筆。可以復原的會標 undoable。",
-		Scope:       ops.ScopeRead, Risk: ops.RiskSafe,
+		Description: "每次修改（你、代理、或 Bot 自己在電腦裡改的）都記一筆，每份最多留 20 筆。可以復原的會標 undoable。" +
+			"Bot 在對話裡記的會帶 thread_id／thread_title（在哪條對話串記的）。",
+		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
 		Handle: func(ctx context.Context, call *ops.Call, in HistoryIn) (HistoryOut, error) {
 			if err := need(); err != nil {
 				return HistoryOut{}, err
@@ -220,22 +226,57 @@ func (s *Service) Read(ctx context.Context, db *store.DB, botID string) (ReadOut
 	if err != nil {
 		return ReadOut{}, err
 	}
-	for _, t := range []Target{TargetUser, TargetMemory} {
-		if err := s.noticeBot(ctx, botID, t, Join(st.Get(t).Entries)); err != nil {
-			return ReadOut{}, err
-		}
+	if err := s.noticeAll(ctx, botID, st, "", 0); err != nil {
+		return ReadOut{}, err
 	}
 	return ReadOut{State: st, Enabled: b.MemoryEnabled, Computer: true}, nil
 }
 
-// noticeBot 比對檔案和最後一次紀錄；不同就是 Bot 自己改的，記一筆。
-func (s *Service) noticeBot(ctx context.Context, botID string, t Target, current string) error {
-	vs, err := s.DB.ListMemoryVersions(ctx, botID, string(t))
-	if err != nil || len(vs) == 0 || Join(Entries(vs[0].After)) == current {
+// Notice 讀 Bot 的記憶檔，Bot 改過就記一筆（Bot 用記憶工具之後馬上呼叫，時間和對話串才對）。
+// thread 是 Bot 在哪條對話串改的；at 是什麼時候（毫秒，0 表示現在）。Bot 還沒有電腦時不做事。
+func (s *Service) Notice(ctx context.Context, botID, thread string, at int64) error {
+	f, err := s.Locate(ctx, botID, false)
+	if errors.Is(err, boxfs.ErrNoComputer) {
+		return nil
+	}
+	if err != nil {
 		return err
 	}
-	_, err = s.DB.AddMemoryVersion(ctx, store.MemoryVersion{BotID: botID, Target: string(t), Before: vs[0].After, After: current,
-		Actor: "bot:" + botID}, limits.MemoryVersionsKept)
+	defer s.lock(botID)()
+	st, err := Read(ctx, f)
+	if err != nil {
+		return err
+	}
+	return s.noticeAll(ctx, botID, st, thread, at)
+}
+
+func (s *Service) noticeAll(ctx context.Context, botID string, st State, thread string, at int64) error {
+	for _, t := range []Target{TargetUser, TargetMemory} {
+		if err := s.noticeBot(ctx, botID, t, Join(st.Get(t).Entries), thread, at); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// noticeBot 比對檔案和最後一次紀錄；不同就是 Bot 自己改的，記一筆。還沒有任何紀錄時從空白算起
+// （否則 Bot 自己記的事要等你改過一次才看得到）。thread、at 見 Notice。
+func (s *Service) noticeBot(ctx context.Context, botID string, t Target, current, thread string, at int64) error {
+	vs, err := s.DB.ListMemoryVersions(ctx, botID, string(t))
+	if err != nil {
+		return err
+	}
+	v := store.MemoryVersion{BotID: botID, Target: string(t), After: current, Actor: "bot:" + botID, ThreadID: thread, CreatedAt: at}
+	if len(vs) > 0 {
+		v.Before = vs[0].After
+		if at <= vs[0].CreatedAt {
+			v.CreatedAt = 0 // 不要排到最後一筆紀錄前面：用現在
+		}
+	}
+	if Join(Entries(v.Before)) == current {
+		return nil
+	}
+	_, err = s.DB.AddMemoryVersion(ctx, v, limits.MemoryVersionsKept)
 	return err
 }
 
@@ -264,7 +305,7 @@ func (s *Service) Write(ctx context.Context, botID string, t Target, entries, pr
 		return ReadOut{}, err
 	}
 	unlock := s.lock(botID)
-	if err := s.write(ctx, f, botID, t, entries, previous, actor); err != nil {
+	if err := s.write(ctx, f, botID, t, entries, previous, actor, ""); err != nil {
 		unlock()
 		return ReadOut{}, err
 	}
@@ -276,12 +317,13 @@ func (s *Service) Write(ctx context.Context, botID string, t Target, entries, pr
 	return ReadOut{State: st, Enabled: b.MemoryEnabled, Computer: true}, nil
 }
 
-func (s *Service) write(ctx context.Context, f boxfs.FS, botID string, t Target, entries, previous []string, actor string) error {
+// write 換掉一份記憶並記一筆變更；thread 是 Bot 在哪條對話串改的（不是 Bot 時空白）。
+func (s *Service) write(ctx context.Context, f boxfs.FS, botID string, t Target, entries, previous []string, actor, thread string) error {
 	raw, err := ReadRaw(ctx, f, t)
 	if err != nil {
 		return err
 	}
-	if err := s.noticeBot(ctx, botID, t, Join(Entries(raw))); err != nil {
+	if err := s.noticeBot(ctx, botID, t, Join(Entries(raw)), "", 0); err != nil {
 		return err
 	}
 	before, after, err := Write(ctx, f, t, entries, previous)
@@ -291,8 +333,8 @@ func (s *Service) write(ctx context.Context, f boxfs.FS, botID string, t Target,
 	if Join(Entries(before)) == after {
 		return nil
 	}
-	_, err = s.DB.AddMemoryVersion(ctx, store.MemoryVersion{BotID: botID, Target: string(t), Before: Join(Entries(before)), After: after, Actor: actor},
-		limits.MemoryVersionsKept)
+	_, err = s.DB.AddMemoryVersion(ctx, store.MemoryVersion{BotID: botID, Target: string(t), Before: Join(Entries(before)), After: after, Actor: actor,
+		ThreadID: thread}, limits.MemoryVersionsKept)
 	return err
 }
 
@@ -330,7 +372,11 @@ func (s *Service) Add(ctx context.Context, db *store.DB, botID string, t Target,
 	if len(clean) == 1 && !containsStr(current, clean[0]) {
 		next = append(append([]string{}, current...), clean[0])
 	}
-	if err := s.write(ctx, f, botID, t, next, current, actor); err != nil {
+	var thread string
+	if s.Active != nil {
+		thread, _ = s.Active(botID)
+	}
+	if err := s.write(ctx, f, botID, t, next, current, actor, thread); err != nil {
 		var oe *ops.Error
 		if errors.As(err, &oe) && oe.Code == ops.CodeInvalidInput {
 			return ReadOut{}, ops.Limit("這份記憶滿了：" + oe.Message + "。請使用者整理，或改寫成更短的一條")
@@ -374,15 +420,43 @@ func (s *Service) History(ctx context.Context, db *store.DB, botID string, t Tar
 	}
 	out := HistoryOut{Changes: []Change{}}
 	seen := map[Target]bool{}
+	places := map[string]place{}
 	for _, v := range vs {
 		tt := Target(v.Target)
 		before, after := Entries(v.Before), Entries(v.After)
 		c := Change{ID: v.ID, Target: tt, Actor: v.Actor, Added: diff(after, before), Removed: diff(before, after), CreatedAt: v.CreatedAt}
+		if v.ThreadID != "" {
+			p, ok := places[v.ThreadID]
+			if !ok {
+				p = where(ctx, db, v.ThreadID)
+				places[v.ThreadID] = p
+			}
+			c.ThreadID, c.ThreadTitle, c.RoomID = p.thread, p.title, p.room
+		}
 		c.Undoable = !seen[tt] && cur[tt] == Join(after)
 		seen[tt] = true
 		out.Changes = append(out.Changes, c)
 	}
 	return out, nil
+}
+
+// place 是一次變更在哪裡記的：對話串（標題），或群組（名稱）。
+type place struct{ thread, title, room string }
+
+// where 找對話串的標題；Bot 在群組裡的座位用群組名稱。對話串刪掉了就什麼都不給。
+func where(ctx context.Context, db *store.DB, threadID string) place {
+	th, err := db.GetThread(ctx, threadID)
+	if err != nil {
+		return place{}
+	}
+	p := place{thread: th.ID, title: th.Title}
+	if th.RoomID != "" {
+		p.room, p.title = th.RoomID, ""
+		if r, err := db.GetRoom(ctx, th.RoomID); err == nil {
+			p.title = r.Name
+		}
+	}
+	return p
 }
 
 func diff(a, b []string) []string {

@@ -206,6 +206,7 @@
 | `SkillNameMax`／`SkillDescriptionMax`／`SkillContentMax`／`SkillFileBytes` | 64／1,024／100,000 字／1 MiB | Hermes tools/skill_manager_tool.py（LazyBoy 內容上限 200,000，比 Hermes 能讀的大，照 Hermes） | 照 Hermes |
 | `SkillImportBytes`／`SkillImportFilesMax`／`SkillTreeBytes` | 8 MiB／64 個／64 MiB | XBot 新增 | — |
 | `MemoryEntriesMax`／`MemoryVersionsKept` | 500 條／20 版 | XBot 新增（PRD MM-3 只說可復原） | — |
+| `MemoryWatchQueue` | 256 個事件 | XBot 新增（Bot 用記憶工具後馬上記下變更；滿了就丟，打開記憶頁時補記） | — |
 
 PRD MM-1 的「每回合載入前 200 行／24 KB」是 OpenMausBot 的做法；Hermes 實際是兩份清單各有字數上限、每個對話開始時載入固定快照（tools/memory_tool_store.py），照 Hermes。
 
