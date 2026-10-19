@@ -262,3 +262,20 @@ it('刪除對話串：確認後呼叫 chat.delete_thread，回到新對話串', 
   await waitFor(() => expect(api.calls.find((c) => c.path === 'chat.delete_thread')?.input).toEqual({ thread_id: 't1' }))
   await waitFor(() => expect(window.location.pathname).toBe('/bots/b1/threads/new'))
 })
+
+it('用訂閱的 Bot：模型膠囊顯示方案，列出 CLI 回報的模型，選了只改這個 Bot', async () => {
+  api.ops['bots.list'] = () => ({ bots: [{ ...BOT, engine: 'opencode' }] })
+  api.ops['engines.status'] = () => ({
+    bots: [{ bot_id: 'b1', name: '小秘', engine: 'opencode', engine_label: 'OpenCode', needs_link: true, linked: true, plan: 'OpenCode Go', agent_default: 'opencode/big-pickle', models: [{ value: 'opencode/big-pickle' }, { value: 'opencode-go/glm-5', name: 'GLM 5' }] }],
+    host: [],
+  })
+  api.ops['bots.update'] = (input) => ({ ...BOT, engine: 'opencode', ...input })
+  render(<App />)
+  const pill = await screen.findByRole('button', { name: /模型：OpenCode · opencode\/big-pickle/ })
+  expect(screen.queryByText('還沒設定模型')).toBeNull()
+  fireEvent.click(pill)
+  const dialog = await screen.findByRole('dialog', { name: '選擇模型' })
+  expect(within(dialog).getByText('OpenCode Go 訂閱')).toBeInTheDocument()
+  fireEvent.click(within(dialog).getByRole('menuitemradio', { name: /GLM 5/ }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'bots.update')?.input).toEqual({ id: 'b1', model: 'opencode-go/glm-5' }))
+})

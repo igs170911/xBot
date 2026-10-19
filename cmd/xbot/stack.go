@@ -178,7 +178,10 @@ func openStack(cfg config.Config) (*stack, error) {
 	drivers := []engine.Driver{hermesDriver}
 	for _, name := range acp.Engines {
 		drivers = append(drivers, acp.New(acp.Options{Agent: acp.Agents[name], Launch: comp.LaunchACP, Authorize: s.creds.Authorize,
-			MCPServers: comp.MCPServers, Logger: logger}))
+			MCPServers: comp.MCPServers, Logger: logger,
+			OnModels: func(_ string, current string, models []acp.ModelChoice) {
+				s.creds.RememberModels(name, current, models)
+			}}))
 	}
 	s.driver = engine.NewRouter(hermes.Name, comp.EngineOf, drivers...)
 	// 快判（X05）：服務自己經 Model Proxy 呼叫模型（金鑰只在 Model Proxy），用量標記 judge。

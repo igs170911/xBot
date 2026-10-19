@@ -4942,6 +4942,14 @@ export interface EnginesLinkCredentialsOutput {
   /** 已收回，憑證等 Bot 的電腦連得上時清掉 */
   pending_clear?: boolean
   marker?: string
+  plan?: string
+  /** 這個訂閱能用的模型（CLI 上次開對話時列出的）；空的表示還沒用過 */
+  models?: {
+    value: string
+    name?: string
+  }[]
+  /** CLI 自己的預設模型（Bot 沒指定模型時用） */
+  agent_default?: string
 }
 
 /**
@@ -4977,6 +4985,14 @@ export interface EnginesStatusOutput {
     /** 已收回，憑證等 Bot 的電腦連得上時清掉 */
     pending_clear?: boolean
     marker?: string
+    plan?: string
+    /** 這個訂閱能用的模型（CLI 上次開對話時列出的）；空的表示還沒用過 */
+    models?: {
+      value: string
+      name?: string
+    }[]
+    /** CLI 自己的預設模型（Bot 沒指定模型時用） */
+    agent_default?: string
   }[]
   /** 這台電腦上各訂閱 CLI 的登入狀態 */
   host: {
@@ -5033,6 +5049,14 @@ export interface EnginesSwitchOutput {
     /** 已收回，憑證等 Bot 的電腦連得上時清掉 */
     pending_clear?: boolean
     marker?: string
+    plan?: string
+    /** 這個訂閱能用的模型（CLI 上次開對話時列出的）；空的表示還沒用過 */
+    models?: {
+      value: string
+      name?: string
+    }[]
+    /** CLI 自己的預設模型（Bot 沒指定模型時用） */
+    agent_default?: string
   }
   /** Bot 現在的模型設定；空白是預設 */
   model: string
@@ -5072,6 +5096,14 @@ export interface EnginesUnlinkCredentialsOutput {
   /** 已收回，憑證等 Bot 的電腦連得上時清掉 */
   pending_clear?: boolean
   marker?: string
+  plan?: string
+  /** 這個訂閱能用的模型（CLI 上次開對話時列出的）；空的表示還沒用過 */
+  models?: {
+    value: string
+    name?: string
+  }[]
+  /** CLI 自己的預設模型（Bot 沒指定模型時用） */
+  agent_default?: string
 }
 
 /**

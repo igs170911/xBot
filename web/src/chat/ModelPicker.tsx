@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Check, ChevronDown, ChevronRight, Settings } from 'lucide-react'
-import { botsUpdate, type ModelsGetOutput } from '../api/generated'
+import { botsUpdate, enginesStatus, type EnginesStatusOutput, type ModelsGetOutput } from '../api/generated'
+import { ENGINE_LABEL, PLAN_NAME } from '../settings/botModes'
 import { upsertBot, type Bot } from '../data/bots'
 import { navigate } from '../router'
 import { Icon } from '../ui/Icon'
@@ -9,6 +10,12 @@ import { modelLabel, parseModel } from './format'
 import { Popover } from './Popover'
 
 type Provider = ModelsGetOutput['providers'][number]
+type EngineStatus = EnginesStatusOutput['bots'][number]
+
+/** 這個 Bot 用的是訂閱 CLI（不是內建的 Hermes＋API 金鑰）。 */
+export function usesPlan(bot: Bot): boolean {
+  return !!bot.engine && bot.engine !== 'hermes'
+}
 
 const EFFORTS = [
   { value: 'low', label: '低' },
@@ -111,7 +118,7 @@ function Body({ bot, models, close }: { bot: Bot; models: ModelsGetOutput; close
               <div className="flex items-start gap-2">
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span className="text-title">{p.id}</span>
-                  <span className="truncate text-sub text-ink-2">{host(p.base_url)} · 用你的 API 金鑰，用量算進花費上限</span>
+                  <span className="truncate text-sub text-ink-2">{host(p.base_url)} · API 金鑰</span>
                 </div>
                 {p.api_key_set ? (
                   <span className="flex h-6 flex-none items-center rounded-full bg-success-soft px-2.5 text-[12px] text-success">金鑰已設定</span>
@@ -121,13 +128,16 @@ function Body({ bot, models, close }: { bot: Bot; models: ModelsGetOutput; close
                   </button>
                 )}
               </div>
-              <span className="mt-2 px-2.5 text-meta text-ink-3">建議</span>
-              <div role="menu" aria-label="模型" className="flex flex-col gap-0.5">
+              <div role="menu" aria-label="模型" className="mt-2 flex max-h-[min(260px,40dvh)] flex-col gap-0.5 overflow-y-auto">
                 {isDefaultProvider && models.default && <Row label={models.default.model} tag="預設" on={!bot.model} disabled={busy} onClick={() => void pick('')} />}
                 {custom && <Row label={custom} on onClick={close} />}
-                {!isDefaultProvider && !custom && <span className="px-2.5 py-1.5 text-sub text-ink-3">在下面輸入要用的模型名稱。</span>}
+                {(p.models ?? [])
+                  .filter((m) => m !== custom && !(isDefaultProvider && m === models.default?.model))
+                  .map((m) => (
+                    <Row key={m} label={m} on={false} disabled={busy} onClick={() => void pick(`${pid}/${m}`)} />
+                  ))}
+                {!isDefaultProvider && !custom && !p.models?.length && <span className="px-2.5 py-1.5 text-sub text-ink-3">按「探測」後會列出模型，或在下面輸入名稱。</span>}
               </div>
-              <span className="mt-2 px-2.5 text-meta text-ink-3">其他</span>
               <form onSubmit={submitOther} className="flex items-center gap-2 px-1">
                 <label className="flex min-w-0 flex-1">
                   <span className="sr-only-text">其他模型名稱</span>
@@ -185,11 +195,111 @@ function Body({ bot, models, close }: { bot: Bot; models: ModelsGetOutput; close
   )
 }
 
-// 模型選擇器（design/C06）：標題列的模型膠囊打開；左邊供應商、右邊模型與推理強度。
-// 只影響這個 Bot（xbot.bots.update 的 model、effort）。還沒有任何供應商時，按膠囊直接打開模型設定。
+// 用訂閱 CLI 的 Bot：列出這個方案能用的模型（CLI 上次開對話時回報的，engines.status）。
+function PlanBody({ bot, st, close }: { bot: Bot; st: EngineStatus | null; close: () => void }) {
+  const [other, setOther] = useState('')
+  const [filter, setFilter] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const plan = PLAN_NAME[bot.engine] ?? ENGINE_LABEL[bot.engine] ?? bot.engine
+  const models = st?.models ?? []
+  const shown = filter ? models.filter((m) => (m.value + ' ' + (m.name ?? '')).toLowerCase().includes(filter.toLowerCase())) : models
+  const settings = `/settings/bots/${encodeURIComponent(bot.id)}/advanced`
+  const pick = async (model: string) => {
+    setBusy(true)
+    setErr('')
+    try {
+      upsertBot(await botsUpdate({ id: bot.id, model }))
+      close()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div role="dialog" aria-label="選擇模型" className="flex w-[400px] max-w-full flex-col overflow-hidden rounded-menu bg-card shadow-pop max-sm:w-full">
+      <div className="flex flex-col gap-1 px-4 pb-3 pt-3.5">
+        <span className="text-title">{plan} 訂閱</span>
+        {st?.needs_link && !st.linked && (
+          <button type="button" onClick={() => navigate(settings)} className="mt-1 self-start rounded-full bg-warning-soft px-2.5 py-1 text-[12.5px] text-warning-ink">
+            還沒同意用你的訂閱，去設定
+          </button>
+        )}
+        {models.length > 8 && (
+          <input
+            aria-label="找模型"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="找模型"
+            className="mt-2 h-9 w-full rounded-field border border-line bg-inset px-3 text-ui-sm text-ink outline-none focus-visible:border-focus"
+          />
+        )}
+        <div role="menu" aria-label="模型" className="mt-1 flex max-h-[min(320px,45dvh)] flex-col gap-0.5 overflow-y-auto">
+          {!filter && <Row label={st?.agent_default ? `預設（${st.agent_default}）` : '預設'} on={!bot.model} disabled={busy} onClick={() => void pick('')} />}
+          {shown.map((m) => (
+            <Row key={m.value} label={m.name && m.name !== m.value ? m.name : m.value} note={m.name && m.name !== m.value ? m.value : undefined} on={bot.model === m.value} disabled={busy} onClick={() => void pick(m.value)} />
+          ))}
+          {bot.model && !models.some((m) => m.value === bot.model) && <Row label={bot.model} on onClick={close} />}
+        </div>
+        {st && !models.length && <span className="px-2.5 pt-1 text-sub text-ink-3">聊過一次之後，這裡會列出能用的模型。</span>}
+        {!models.length && (
+          <form
+            onSubmit={(e: FormEvent) => {
+              e.preventDefault()
+              if (other.trim()) void pick(other.trim())
+            }}
+            className="mt-2 flex items-center gap-2 px-1"
+          >
+            <label className="flex min-w-0 flex-1">
+              <span className="sr-only-text">其他模型名稱</span>
+              <input value={other} onChange={(e) => setOther(e.target.value)} placeholder="模型名稱" className="h-9 w-full min-w-0 rounded-field border border-line bg-inset px-3 text-ui-sm text-ink outline-none focus-visible:border-focus" />
+            </label>
+            <button type="submit" disabled={!other.trim() || busy} className="h-9 flex-none rounded-full bg-control px-3.5 text-ui-sm text-ink hover:bg-hover disabled:opacity-40">
+              使用
+            </button>
+          </form>
+        )}
+        {err && (
+          <span role="alert" className="px-1 pt-1 text-sub text-danger">
+            {err}
+          </span>
+        )}
+      </div>
+      <button type="button" onClick={() => navigate(settings)} className="flex h-12 items-center gap-2.5 border-t border-line bg-transparent px-4 text-left text-ui text-ink hover:bg-control">
+        <Icon icon={Settings} size={18} className="text-ink-2" />
+        <span className="flex-1">換方案</span>
+        <Icon icon={ChevronRight} size={16} className="text-ink-2" />
+      </button>
+    </div>
+  )
+}
+
+/** 訂閱 CLI 的狀態（模型清單）；不是訂閱的 Bot 不讀。 */
+function usePlanStatus(bot: Bot): EngineStatus | null {
+  const [st, setSt] = useState<EngineStatus | null>(null)
+  const plan = usesPlan(bot)
+  useEffect(() => {
+    if (!plan) return
+    let live = true
+    enginesStatus({ bot_id: bot.id })
+      .then((o) => live && setSt(o.bots[0] ?? null))
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [bot.id, bot.engine, plan])
+  return plan ? st : null
+}
+
+// 模型選擇器（design/C06）：標題列的模型膠囊打開。只影響這個 Bot（xbot.bots.update 的 model、effort）。
+// 用 API 金鑰（Hermes）：左邊供應商、右邊模型與推理強度；還沒有任何供應商時，按膠囊直接打開模型設定。
+// 用訂閱 CLI：列出這個方案能用的模型。
 export function ModelPicker({ bot, models, onSetup, className }: { bot: Bot; models: ModelsGetOutput | null; onSetup: () => void; className?: string }) {
-  const label = modelLabel(bot, models)
-  const empty = !models?.providers.length
+  const plan = usesPlan(bot)
+  const st = usePlanStatus(bot)
+  const label = plan ? `${ENGINE_LABEL[bot.engine] ?? bot.engine} · ${bot.model || st?.agent_default || '預設'}` : modelLabel(bot, models)
+  const empty = !plan && !models?.providers.length
   return (
     <Popover
       kind="dialog"
@@ -202,7 +312,7 @@ export function ModelPicker({ bot, models, onSetup, className }: { bot: Bot; mod
           type="button"
           aria-label={`模型：${label}（選擇模型）`}
           className={cx(
-            'relative flex h-8 min-w-0 max-w-[220px] items-center gap-1.5 whitespace-nowrap rounded-full bg-card pl-3.5 pr-2.5 text-sub text-ink touch-target hover:bg-control aria-expanded:outline aria-expanded:outline-2 aria-expanded:outline-accent',
+            'relative flex h-8 min-w-0 max-w-[260px] items-center gap-1.5 whitespace-nowrap rounded-full bg-card pl-3.5 pr-2.5 text-sub text-ink touch-target hover:bg-control aria-expanded:outline aria-expanded:outline-2 aria-expanded:outline-accent',
             className,
           )}
         >
@@ -211,7 +321,7 @@ export function ModelPicker({ bot, models, onSetup, className }: { bot: Bot; mod
         </button>
       )}
     >
-      {(close) => (models ? <Body bot={bot} models={models} close={close} /> : null)}
+      {(close) => (plan ? <PlanBody bot={bot} st={st} close={close} /> : models ? <Body bot={bot} models={models} close={close} /> : null)}
     </Popover>
   )
 }

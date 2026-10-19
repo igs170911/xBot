@@ -26,7 +26,7 @@ import { BotMessage, JudgeRow, OutcomeRow, OwnerMessage } from './Message'
 import { QuotaCard } from './QuotaCard'
 import { PreCheckRow } from './PreCheck'
 import { runPreCheck } from './precheckData'
-import { ModelPicker } from './ModelPicker'
+import { ModelPicker, usesPlan } from './ModelPicker'
 import { ProgressDialog } from './ProgressDialog'
 import { ThreadMenu, type Thread } from './ThreadMenu'
 import { DeleteThreadDialog } from './DeleteThread'
@@ -373,7 +373,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   const busyElsewhere = !act && !!botAct && botAct.state !== 'done' && botAct.threadId !== threadId
   const stopping = act?.state === 'stopping' || (!!act && stopRequested === act.taskId)
   const mode: ComposerMode = act ? (stopping ? 'stopping' : 'working') : 'idle'
-  const noModel = models !== null && !models.ready && !bot?.model
+  const noModel = models !== null && !models.ready && !bot?.model && !(bot && usesPlan(bot))
   const name = bot?.name ?? 'Bot'
   const firstHome = useFirstHome(bots)
 

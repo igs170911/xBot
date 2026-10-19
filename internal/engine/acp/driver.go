@@ -33,7 +33,15 @@ type Options struct {
 	Authorize Authorizer
 	// MCPServers 回傳要交給 agent 的 MCP 伺服器（desktop_mcp、XBot MCP）。
 	MCPServers func(botID string) []MCPServer
-	Logger     *slog.Logger
+	// OnModels 在開 session 時收到 agent 列出的模型（和目前用的）；nil 表示不用。
+	OnModels func(botID string, current string, models []ModelChoice)
+	Logger   *slog.Logger
+}
+
+// ModelChoice 是 agent 列出的一個可選模型。
+type ModelChoice struct {
+	Value string `json:"value"`
+	Name  string `json:"name,omitempty"`
 }
 
 // Driver 實作 engine.Driver。每個 Bot 開一個 agent 行程，所有對話串的 session 共用。
@@ -215,11 +223,47 @@ type sessionResult struct {
 	} `json:"modes"`
 	ConfigOptions []struct {
 		ID           string `json:"id"`
+		Category     string `json:"category"`
 		CurrentValue any    `json:"currentValue"`
-		Options      []struct {
-			Value string `json:"value"`
+		// Options 可能是平的 [{value,name}]，也可能分組 [{group,name,options:[...]}]（ACP SessionConfigSelectOptions）。
+		Options []struct {
+			Value   string        `json:"value"`
+			Name    string        `json:"name"`
+			Options []ModelChoice `json:"options"`
 		} `json:"options"`
 	} `json:"configOptions"`
+	// Models 是較舊的 agent 用的欄位（ACP unstable session models）。
+	Models *struct {
+		CurrentModelID  string `json:"currentModelId"`
+		AvailableModels []struct {
+			ModelID string `json:"modelId"`
+			Name    string `json:"name"`
+		} `json:"availableModels"`
+	} `json:"models"`
+}
+
+// models 整理 agent 列出的模型與目前用的；沒有列時 list 是空的。
+func (r sessionResult) models() (current string, list []ModelChoice) {
+	for _, opt := range r.ConfigOptions {
+		if opt.ID != "model" && opt.Category != "model" {
+			continue
+		}
+		current, _ = opt.CurrentValue.(string)
+		for _, v := range opt.Options {
+			if v.Value != "" {
+				list = append(list, ModelChoice{Value: v.Value, Name: v.Name})
+			}
+			list = append(list, v.Options...)
+		}
+		return current, list
+	}
+	if r.Models != nil {
+		for _, m := range r.Models.AvailableModels {
+			list = append(list, ModelChoice{Value: m.ModelID, Name: m.Name})
+		}
+		return r.Models.CurrentModelID, list
+	}
+	return "", nil
 }
 
 // Start 實作 engine.Driver：同一個對話串只開一個 session；有存下的 sessionId 且 agent 支援時先用 session/load 接回，
@@ -297,14 +341,18 @@ func (d *Driver) configure(ctx context.Context, s *session, res sessionResult, o
 			d.log.Warn("設定 session 模式失敗", "bot", o.BotID, "mode", mode, "err", err)
 		}
 	}
-	if o.Model == "" {
+	current, models := res.models()
+	if d.o.OnModels != nil && len(models) > 0 {
+		d.o.OnModels(o.BotID, current, models)
+	}
+	if o.Model == "" || current == o.Model {
 		return
 	}
 	for _, opt := range res.ConfigOptions {
-		if opt.ID != "model" || opt.CurrentValue == o.Model {
+		if opt.ID != "model" {
 			continue
 		}
-		for _, v := range opt.Options {
+		for _, v := range models {
 			if v.Value == o.Model {
 				if _, err := s.ac.c.call(cctx, "session/set_config_option", map[string]any{"sessionId": s.id, "configId": "model", "value": o.Model}); err != nil {
 					d.log.Warn("設定模型失敗", "bot", o.BotID, "model", o.Model, "err", err)

@@ -371,3 +371,25 @@ func TestUnlinkWhileHostOffline(t *testing.T) {
 		t.Fatal("清掉後刪掉紀錄")
 	}
 }
+
+// 訂閱 CLI 回報的模型按引擎記下來，engines.status 帶給用這個引擎的 Bot。
+func TestRememberModels(t *testing.T) {
+	e := setup(t)
+	b := e.bot(t, "opencode")
+	read := func() BotStatus {
+		raw, err := e.call(owner, "xbot.engines.status", map[string]any{"bot_id": b.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var st StatusOut
+		_ = json.Unmarshal(raw, &st)
+		return st.Bots[0]
+	}
+	if v := read(); len(v.Models) != 0 || v.Plan != "OpenCode Go" {
+		t.Fatalf("還沒用過：%+v", v)
+	}
+	e.svc.RememberModels("opencode", "opencode/big-pickle", []acp.ModelChoice{{Value: "opencode/big-pickle"}, {Value: "opencode-go/deepseek-v4-flash", Name: "DeepSeek"}})
+	if v := read(); len(v.Models) != 2 || v.AgentDefault != "opencode/big-pickle" || v.Models[1].Name != "DeepSeek" {
+		t.Fatalf("記下後：%+v", v)
+	}
+}

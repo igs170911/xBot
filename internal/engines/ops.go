@@ -50,6 +50,11 @@ type BotStatus struct {
 	Pending bool `json:"pending_clear,omitempty" desc:"已收回，憑證等 Bot 的電腦連得上時清掉"`
 	// Marker 是介面上的標示，例：「這個 Bot 用你的 Claude 訂閱」。沒有連結時空白。
 	Marker string `json:"marker,omitempty"`
+	// Plan 是訂閱方案的名稱（例：Claude、ChatGPT、OpenCode Go）；Hermes 空白。
+	Plan string `json:"plan,omitempty"`
+	// Models、AgentDefault：訂閱 CLI 上次開 session 時列出的模型與它自己的預設；還沒用過時是空的。
+	Models       []acp.ModelChoice `json:"models,omitempty" desc:"這個訂閱能用的模型（CLI 上次開對話時列出的）；空的表示還沒用過"`
+	AgentDefault string            `json:"agent_default,omitempty" desc:"CLI 自己的預設模型（Bot 沒指定模型時用）"`
 }
 
 // HostLogin 是這台電腦上某個 CLI 有沒有登入。
@@ -136,8 +141,15 @@ func (s *Service) view(ctx context.Context, b store.Bot) (BotStatus, error) {
 	if engine == "" {
 		engine = hermes.Name
 	}
-	_, needs := Specs[engine]
-	v := BotStatus{BotID: b.ID, Name: b.Name, Engine: engine, EngineLabel: label(engine), NeedsLink: needs}
+	sp, needs := Specs[engine]
+	v := BotStatus{BotID: b.ID, Name: b.Name, Engine: engine, EngineLabel: label(engine), NeedsLink: needs, Plan: sp.Plan}
+	if needs {
+		m, err := s.engineModels(ctx, engine)
+		if err != nil {
+			return v, err
+		}
+		v.Models, v.AgentDefault = m.Models, m.Default
+	}
 	l, ok, err := s.Get(ctx, b.ID)
 	if err != nil || !ok {
 		return v, err

@@ -22,6 +22,8 @@ type harness struct {
 	mu      sync.Mutex
 	allowed map[string]bool
 	mcp     []acp.MCPServer
+	models  []acp.ModelChoice
+	current string
 }
 
 func setup(t *testing.T) *harness {
@@ -45,6 +47,11 @@ func setup(t *testing.T) *harness {
 			return nil
 		},
 		MCPServers: func(string) []acp.MCPServer { return h.mcp },
+		OnModels: func(_ string, current string, models []acp.ModelChoice) {
+			h.mu.Lock()
+			h.current, h.models = current, models
+			h.mu.Unlock()
+		},
 	})
 	return h
 }
@@ -396,5 +403,16 @@ func TestLaunchFailure(t *testing.T) {
 	}
 	if _, err := d.Start(context.Background(), engine.StartOptions{BotID: "b", ThreadID: "t"}); err == nil {
 		t.Error("開不了行程應該失敗")
+	}
+}
+
+// 開 session 時把 agent 列出的模型回報出去（對話頁的模型選擇器用）。
+func TestReportsModels(t *testing.T) {
+	h := setup(t)
+	start(t, h, "th1")
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.current != "default" || len(h.models) != 2 || h.models[0].Value != "default" || h.models[1].Value != "sonnet" {
+		t.Fatalf("current=%q models=%+v", h.current, h.models)
 	}
 }
