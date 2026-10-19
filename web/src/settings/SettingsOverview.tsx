@@ -103,8 +103,7 @@ export function SettingsOverview() {
       </Card>
       <Label>AI 模型</Label>
       <Card>
-        <LinkRow to="/settings/models" title="主要模型" note={models?.default?.model ?? '還沒設定'} />
-        <LinkRow to="/settings/models/bots" title="各個 Bot 的引擎與權限" />
+        <LinkRow to="/settings/models" title="AI 模型" note={models?.default?.model ?? '還沒設定'} />
       </Card>
       <Label>電腦與裝置</Label>
       <Card>

@@ -5,12 +5,10 @@ import {
   ClipboardPaste,
   Ellipsis,
   FlaskConical,
-  Info,
   KeyRound,
   LaptopMinimal,
   Plus,
   RefreshCw,
-  Server,
   SquareTerminal,
   Trash2,
   Zap,
@@ -39,18 +37,17 @@ import { cx } from '../ui/cx'
 import { BotsEngineList } from './BotSettings'
 import { FastJudge } from './FastJudge'
 import { ModelChooser } from './ModelChooser'
-import { OAuthCard } from './OAuthLogin'
-import { Block, Group, Note, Row, SectionHeader } from './parts'
+import { OAuthDialog } from './OAuthLogin'
+import { Block, Group, SectionHeader } from './parts'
 import { errText, fieldError, isPending } from './format'
 import { PROBE_STATUS, TRANSPORT_LABEL, guessPreset, maskKey, providerName, useModelData, type Preset, type Provider } from './modelData'
 
-// AI 模型（J02／J03／J10）：主要模型、快判模型、進階（備援）、各個 Bot 的引擎。
+// AI 模型（J02／J03／J10）：方案（訂閱、API 金鑰、各個 Bot 用哪個）、快判、進階（備援）。
 
 const TABS = [
-  { to: '/settings/models', label: '主要模型' },
-  { to: '/settings/models/judge', label: '快判模型' },
-  { to: '/settings/models/routing', label: '進階：備援' },
-  { to: '/settings/models/bots', label: '各個 Bot' },
+  { to: '/settings/models', label: '方案' },
+  { to: '/settings/models/judge', label: '快判' },
+  { to: '/settings/models/routing', label: '進階' },
 ]
 
 function Tabs({ path }: { path: string }) {
@@ -73,10 +70,11 @@ function Tabs({ path }: { path: string }) {
 
 export function ModelsSection({ path }: { path: string }) {
   const data = useModelData()
+  // 舊的「各個 Bot」分頁併進「方案」
   const tab = TABS.find((t) => t.to === path) ? path : '/settings/models'
   return (
     <>
-      <SectionHeader title="AI 模型" sub="Bot 優先用你已經登入的訂閱；沒有的話貼一把 API 金鑰就好。" />
+      <SectionHeader title="AI 模型" />
       <Tabs path={tab} />
       {data.error && (
         <p role="alert" className="m-0 text-ui-sm text-danger">
@@ -86,18 +84,20 @@ export function ModelsSection({ path }: { path: string }) {
       {tab === '/settings/models' && <MainModels {...data} />}
       {tab === '/settings/models/routing' && <Routing {...data} />}
       {tab === '/settings/models/judge' && <FastJudge providers={data.models?.providers ?? []} defaultModel={data.models?.default} />}
-      {tab === '/settings/models/bots' && <BotsEngineList />}
     </>
   )
 }
 
 type Data = ReturnType<typeof useModelData>
 
-// ── 主要模型 ─────────────────────────────────────────
+// ── 方案 ─────────────────────────────────────────
 
 function MainModels({ models, presets, reload }: Data) {
   const toast = useToast()
   const providers = models?.providers ?? []
+  const host = useHostLogins()
+  const [adding, setAdding] = useState(false)
+  const [oauth, setOauth] = useState(false)
   const setDefault = async (v: { provider: string; model: string } | null) => {
     if (!v) return
     try {
@@ -108,89 +108,92 @@ function MainModels({ models, presets, reload }: Data) {
       toast.show({ kind: 'error', text: errText(e) })
     }
   }
+  const loggedIn = host.list.filter((h) => h.logged_in)
+  const notIn = host.list.filter((h) => !h.logged_in)
+  const nothing = models && providers.length === 0 && !host.busy && loggedIn.length === 0
   return (
     <>
-      <HostEngines />
-      <Block title="模型供應商" sub="金鑰只存在這台主機的 Model Proxy，不會進 Bot 的電腦，也不會再顯示。">
-        {models && providers.length === 0 && <p className="m-0 rounded-group bg-card px-4 py-3 text-ui-sm text-ink-2">還沒有任何供應商。在下面貼一把 API 金鑰就能開始。</p>}
-        {providers.length > 0 && (
-          <Group label="已設定的供應商">
+      <Block
+        title="你的方案"
+        sub="訂閱：用你登入的帳號。API 金鑰：按用量付費。"
+        aside={
+          <Button variant="ghost" size="sm" icon={RefreshCw} loading={host.busy} onClick={host.reload}>
+            重新偵測
+          </Button>
+        }
+      >
+        {nothing && <p className="m-0 rounded-group bg-card px-4 py-3 text-ui-sm text-ink-2">還沒有方案。登入一個訂閱 CLI，或加一把 API 金鑰。</p>}
+        {(loggedIn.length > 0 || providers.length > 0) && (
+          <Group label="你的方案">
+            {loggedIn.map((h) => (
+              <div key={h.engine} className="flex min-h-14 items-center gap-3 border-line px-4 py-2.5 not-first:border-t">
+                <span className="flex size-9 flex-none items-center justify-center rounded-field bg-control text-ink-2">
+                  <Icon icon={SquareTerminal} size={18} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px]">{h.plan || h.label}</span>
+                  <span className="block truncate text-[13px] text-ink-2">訂閱 · {h.label}</span>
+                </span>
+                <StatusChip tone="success" size="sm">
+                  已登入
+                </StatusChip>
+              </div>
+            ))}
             {providers.map((p) => (
               <ProviderRow key={p.id} p={p} presets={presets} isDefault={models?.default?.provider === p.id} isFallback={models?.fallback?.provider === p.id} onChanged={reload} />
             ))}
           </Group>
         )}
+        {notIn.length > 0 && (
+          <p className="m-0 text-meta text-ink-3" title={notIn.map((h) => `${h.label}：${h.login}`).join('\n')}>
+            還沒登入：{notIn.map((h) => h.label).join('、')}（在這台電腦執行 {notIn.map((h) => <code key={h.engine} className="mx-0.5 font-mono">{h.login.split('（')[0]}</code>)}，再按重新偵測）
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button icon={Plus} onClick={() => setAdding((a) => !a)} aria-expanded={adding}>
+            加 API 金鑰
+          </Button>
+          <Button icon={FlaskConical} onClick={() => setOauth(true)}>
+            {providers.some((p) => p.auth === 'oauth_codex') ? '重新登入 ChatGPT' : '用 ChatGPT 帳號登入'}
+          </Button>
+        </div>
+        {adding && <AddProvider presets={presets} providers={providers} hasDefault={!!models?.default} onAdded={reload} />}
       </Block>
-      <Block title="預設模型" sub="沒有指定模型的 Bot 用這個。改了之後，新的對話串就會用新的模型。">
-        <Group>
-          <div className="px-4 py-3">
-            <ModelChooser label="預設模型" value={models?.default} providers={providers} presets={presets} onCommit={setDefault} disabled={providers.length === 0} />
-          </div>
-        </Group>
-      </Block>
-      <AddProvider presets={presets} providers={providers} hasDefault={!!models?.default} onAdded={reload} />
-      <OAuthCard providers={providers} onDone={reload} />
+      {providers.length > 0 && (
+        <Block title="API 金鑰的預設模型" sub="用 API 金鑰、又沒指定模型的 Bot 用這個。">
+          <Group>
+            <div className="px-4 py-3">
+              <ModelChooser label="預設模型" value={models?.default} providers={providers} presets={presets} onCommit={setDefault} />
+            </div>
+          </Group>
+        </Block>
+      )}
+      <BotsEngineList />
+      {oauth && <OAuthDialog onClose={() => setOauth(false)} onDone={reload} />}
     </>
   )
 }
 
 /** 這台電腦上已登入的訂閱 CLI（engines.status 的 host）。 */
-function HostEngines() {
-  const [st, setSt] = useState<EnginesStatusOutput | null>(null)
+function useHostLogins() {
+  const [list, setList] = useState<EnginesStatusOutput['host']>([])
   const [busy, setBusy] = useState(true)
   const fetchStatus = () =>
     enginesStatus({})
-      .then(setSt)
-      .catch(() => setSt({ bots: [], host: [] }))
+      .then((st) => setList(st.host))
+      .catch(() => setList([]))
       .finally(() => setBusy(false))
-  const load = () => {
-    setBusy(true)
-    void fetchStatus()
-  }
   useEffect(() => {
     void fetchStatus()
   }, [])
-  const host = st?.host ?? []
-  return (
-    <Block
-      title="這台電腦上的訂閱"
-      sub="直接用你已登入的訂閱，不另外算 API 費用。要逐個 Bot 同意才會用。"
-      aside={
-        <Button variant="ghost" size="sm" icon={RefreshCw} loading={busy} onClick={load}>
-          重新偵測
-        </Button>
-      }
-    >
-      <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-        {host.map((h) => (
-          <div key={h.engine} className="flex min-h-16 items-center gap-3 rounded-group bg-card px-3.5 py-3">
-            <span className="flex size-9 flex-none items-center justify-center rounded-field bg-control text-ink-2">
-              <Icon icon={SquareTerminal} size={18} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px]">{h.label}</span>
-              <span className="block truncate text-[13px] text-ink-2">
-                {h.logged_in ? `已登入${h.plan ? ` · ${h.plan}` : ''}` : <>沒有登入 · 在這台電腦執行 <code className="font-mono text-meta">{h.login}</code></>}
-              </span>
-            </span>
-            {h.logged_in ? (
-              <a href="/settings/models/bots" onClick={linkClick('/settings/models/bots')} className="flex h-[30px] flex-none items-center rounded-full bg-control px-3 text-sub text-ink hover:bg-hover">
-                給 Bot 用
-              </a>
-            ) : (
-              <StatusChip tone="warning">要登入</StatusChip>
-            )}
-          </div>
-        ))}
-        <div className="flex min-h-16 items-center gap-3 rounded-group border border-dashed border-line px-3.5 py-3">
-          <span className="flex size-9 flex-none items-center justify-center rounded-full border border-line text-ink-2">
-            <Icon icon={Server} size={18} />
-          </span>
-          <span className="text-[13px] text-ink-2">Hermes 是內建引擎，搭配下面的 API 金鑰或本機模型使用。</span>
-        </div>
-      </div>
-    </Block>
-  )
+  return {
+    list,
+    busy,
+    reload: () => {
+      setBusy(true)
+      void fetchStatus()
+    },
+  }
 }
 
 function probeLine(r: ModelsProbeOutput) {
@@ -426,13 +429,10 @@ function AddProvider({ presets, providers, hasDefault, onAdded }: { presets: Pre
   const dup = !custom && providers.some((p) => p.id === (id.trim() || presetId))
 
   return (
-    <Block title="用 API 金鑰（選用）">
+    <>
       <Group>
         <div className="flex flex-col gap-3 px-4 pb-4 pt-3">
-          <span>
-            <span className="block text-ui">貼上 API 金鑰</span>
-            <span className="block text-[13px] text-ink-2">自動認出供應商、選好建議的模型。金鑰只存在這台主機，不會進 Bot 的電腦。</span>
-          </span>
+          <span className="block text-[13px] text-ink-2">貼上金鑰，自動認出是哪一家。金鑰只存在這台主機，不會進 Bot 的電腦。</span>
           <div className="flex items-end gap-2">
             <TextInput
               label="API 金鑰"
@@ -503,7 +503,7 @@ function AddProvider({ presets, providers, hasDefault, onAdded }: { presets: Pre
           </div>
         </div>
       </Group>
-    </Block>
+    </>
   )
 }
 
@@ -527,23 +527,11 @@ function Routing({ models, presets, reload }: Data) {
   }
   return (
     <>
-      <Note icon={<Icon icon={Info} />}>這頁是「進階」，一般人不用動。沒設定的地方全部沿用主要模型。</Note>
-      <Block title="備援模型" sub="主要模型限流（429）、出錯（5xx）或連不上，而且還沒開始回覆時，改用備援模型重試一次。已經開始送出的回覆不會重播。">
+      <Block title="備援模型" sub="主要模型限流、出錯時，改用這個重試一次。">
         <Group>
           <div className="flex flex-col gap-2 px-4 py-3">
             <ModelChooser label="備援模型" value={models?.fallback} providers={providers} presets={presets} onCommit={setFallback} noneLabel="不用備援" disabled={providers.length === 0} />
-            <p className="m-0 text-meta text-ink-3">Bot 自己設定的備援優先（在「各個 Bot」裡改）。備援是按用量計費的 API 時，花費一樣算進花費上限。</p>
           </div>
-        </Group>
-      </Block>
-      <Block title="之後會放在這裡">
-        <Group>
-          <Row title="網路搜尋服務" sub="Exa、Tavily、Brave 與金鑰">
-            <StatusChip size="sm">還沒開放</StatusChip>
-          </Row>
-          <Row title="聊天與工作分流" sub="閒聊用便宜快速的模型，動手做事時換工作模型">
-            <StatusChip size="sm">還沒開放</StatusChip>
-          </Row>
         </Group>
       </Block>
     </>

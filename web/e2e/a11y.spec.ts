@@ -35,7 +35,6 @@ for (const theme of ['dark', 'light'] as const) {
         ['settings', '/settings'],
         ['settings-general', '/settings/general'],
         ['settings-models', '/settings/models'],
-        ['settings-models-bots', '/settings/models/bots'],
         ['settings-computers', '/settings/computers'],
         ['settings-computers-add', '/settings/computers/add'],
         ['settings-usage', '/settings/usage'],

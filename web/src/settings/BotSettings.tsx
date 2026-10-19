@@ -52,7 +52,7 @@ export function BotsEngineList() {
   }, [])
   const live = (bots ?? []).filter((b) => !b.archived)
   return (
-    <Block title="各個 Bot 的引擎與權限" sub="每個 Bot 可以用不同的引擎；用你的訂閱要逐個 Bot 同意。">
+    <Block title="各個 Bot 用哪個" sub="點一個 Bot 換方案；用你的訂閱要逐個同意。">
       {bots && live.length === 0 && <p className="m-0 rounded-group bg-card px-4 py-3 text-ui-sm text-ink-2">還沒有 Bot。</p>}
       {live.length > 0 && (
         <Group label="Bot 清單">
@@ -206,12 +206,12 @@ export function BotSettingsPage({ botId, tab, sub }: { botId: string; tab?: BotT
   return (
     <>
       <a
-        href="/settings/models/bots"
-        onClick={linkClick('/settings/models/bots')}
+        href="/settings/models"
+        onClick={linkClick('/settings/models')}
         className="-mb-2 flex w-fit items-center gap-1 text-meta text-ink-2 hover:text-ink max-md:hidden"
       >
         <Icon icon={ChevronLeft} size={16} />
-        各個 Bot
+        AI 模型
       </a>
       <div className="flex items-center gap-3 max-sm:flex-wrap">
         <Avatar {...look(bot)} size={40} blink={false} />

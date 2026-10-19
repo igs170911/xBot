@@ -189,9 +189,9 @@ test('一般：主題切換立刻生效、重新整理後還在', async ({ page 
 test('AI 模型：探測、貼金鑰認出供應商、換預設模型、移除要確認', async ({ page }, info) => {
   const { api } = await open(page, '/settings/models')
   const m = main(page)
-  const list = m.getByRole('group', { name: '已設定的供應商' })
+  const list = m.getByRole('group', { name: '你的方案' })
   await expect(list.getByText('OpenAI API')).toBeVisible()
-  await expect(m.getByText('Claude Code', { exact: true })).toBeVisible()
+  await expect(list.getByText('訂閱 · Claude Code')).toBeVisible()
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-w12-models`), fullPage: true })
 
@@ -201,7 +201,8 @@ test('AI 模型：探測、貼金鑰認出供應商、換預設模型、移除�
   await list.getByRole('button', { name: '探測 OpenCode Go' }).click()
   await expect(list.getByText('金鑰不對：供應商回 401')).toBeVisible()
 
-  // 貼金鑰 → 認出 OpenRouter → 加入並探測
+  // 貼金鑰 → 認出 OpenRouter → 加入並探測（按「加 API 金鑰」才出現）
+  await m.getByRole('button', { name: '加 API 金鑰' }).click()
   await m.getByRole('textbox', { name: 'API 金鑰' }).fill('sk-or-v1-abcdef0123456789abcdef3f9a')
   await expect(m.getByText(/認出是 OpenRouter/)).toBeVisible()
   await m.getByRole('button', { name: '加入並探測' }).click()
@@ -230,8 +231,7 @@ test('AI 模型：探測、貼金鑰認出供應商、換預設模型、移除�
 test('ChatGPT 方案登入：說明條款風險，直接走裝置代碼（使用者決定正式使用）', async ({ page }, info) => {
   const { api } = await open(page, '/settings/models')
   const m = main(page)
-  const block = m.getByRole('region', { name: '用 ChatGPT 方案登入' })
-  await block.getByRole('button', { name: '登入' }).click()
+  await m.getByRole('button', { name: '用 ChatGPT 帳號登入' }).click()
   const dlg = page.getByRole('dialog', { name: /ChatGPT 方案登入/ })
   await expect(dlg).toContainText('使用條款')
   await dlg.getByRole('button', { name: '開始登入' }).click()
@@ -241,13 +241,12 @@ test('ChatGPT 方案登入：說明條款風險，直接走裝置代碼（使用
   await expect(dlg).toContainText('登入完成', { timeout: 10_000 })
   expect(api.calls.filter((c) => c.op === 'models.oauth_complete').length).toBeGreaterThanOrEqual(2)
   await dlg.getByRole('button', { name: '完成' }).click()
-  await expect(m.getByRole('group', { name: '已設定的供應商' }).getByText('ChatGPT 方案')).toBeVisible()
+  await expect(m.getByRole('group', { name: '你的方案' }).getByText('ChatGPT 方案')).toBeVisible()
 })
 
 test('進階：備援模型可以設定或關掉', async ({ page }) => {
   const { api } = await open(page, '/settings/models/routing')
   const m = main(page)
-  await expect(m.getByText('一般人不用動')).toBeVisible()
   await m.getByRole('button', { name: /備援模型：供應商/ }).click()
   await page.getByRole('option', { name: '不用備援' }).click()
   await expect.poll(() => api.calls.find((c) => c.op === 'models.set_fallback')?.input).toEqual({})
@@ -292,8 +291,8 @@ test('用量與花費：圖表、沒價格的模型、上限（提高要確認�
 })
 
 test('Bot 的引擎：換 Claude Code、同意使用訂閱並標示、權限等級白話', async ({ page }, info) => {
-  const { api, xm } = await open(page, '/settings/models/bots')
-  await main(page).getByRole('link', { name: /小秘/ }).click()
+  const { api, xm } = await open(page, '/settings/models')
+  await main(page).getByRole('region', { name: '各個 Bot 用哪個' }).getByRole('link', { name: /小秘/ }).click()
   await expect(page).toHaveURL(new RegExp(`/settings/bots/${xm.id}$`))
   const m = main(page)
   // 12 個分頁 → 4 個（G02）：引擎與模型在「進階」，權限在「權限與花費」
