@@ -97,7 +97,7 @@ function Body({ d, raw, onSheet, sheet }: { d: FilesReadOutput; raw: boolean; on
   if (d.archive) {
     return (
       <div className="flex flex-col gap-2">
-        <ul className="m-0 flex max-h-[60vh] list-none flex-col overflow-auto rounded-group bg-inset p-0">
+        <ul className="m-0 flex list-none flex-col rounded-group bg-inset p-0">
           {d.archive.entries.map((e) => (
             <li key={e.name} className="flex justify-between gap-3 border-b border-divider px-3 py-2 text-ui-sm last:border-0">
               <span className="min-w-0 truncate font-mono text-[13px]">{e.name}</span>
@@ -131,7 +131,8 @@ function Body({ d, raw, onSheet, sheet }: { d: FilesReadOutput; raw: boolean; on
     }
     return (
       <div className="flex flex-col gap-2">
-        <pre tabIndex={0} className="m-0 max-h-[70vh] overflow-auto whitespace-pre-wrap break-words rounded-group bg-inset px-4 py-3 font-mono text-[13px] leading-relaxed">{d.text}</pre>
+        {/* 不另外限高：預覽本身就會捲，裡面再一層捲動在手機上會卡（手指在外層時滑不動內文） */}
+        <pre tabIndex={0} className="m-0 whitespace-pre-wrap break-words rounded-group bg-inset px-4 py-3 font-mono text-[13px] leading-relaxed">{d.text}</pre>
         {more}
       </div>
     )
