@@ -41,8 +41,9 @@ const context = browser.contexts()[0];
 if (!context) process.exit(2);
 `
 
-const exportJS = connectJS + `process.stdout.write(JSON.stringify(await context.cookies()));
-process.exit(0);
+// 寫完才結束：輸出是 pipe，write 之後馬上 process.exit 會把超過 64 KB 的部分丟掉（cookies 多的時候 JSON 被截斷，
+// 分享登入一直「瀏覽器回傳的登入資料無法讀取」；2026-10-19 水哥哥 349 個 cookies、76 KB 只收到 65536 位元組）。
+const exportJS = connectJS + `process.stdout.write(JSON.stringify(await context.cookies()), () => process.exit(0));
 `
 
 func (d *DockerBrowser) computer(ctx context.Context, botID string) (*boxfs.Docker, error) {
@@ -108,8 +109,7 @@ const file = ` + strconv.Quote(p) + `;
 const cookies = JSON.parse(await readFile(file, 'utf8'));
 await unlink(file).catch(() => {});
 ` + connectJS + `await context.addCookies(cookies);
-process.stdout.write(String(cookies.length));
-process.exit(0);
+process.stdout.write(String(cookies.length), () => process.exit(0));
 `
 	out, err := d.run(ctx, dk, script)
 	if err != nil {
