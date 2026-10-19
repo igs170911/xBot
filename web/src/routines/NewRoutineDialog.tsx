@@ -14,6 +14,7 @@ import { useToast } from '../ui/toast-context'
 import { useFocusTrap } from '../ui/useFocusTrap'
 import { cx } from '../ui/cx'
 import { JITTER_CHOICES, jitterText, loadRoutines, newRoutineDialog, whenText, type Proposal } from './data'
+import { useLockBody } from '../ui/useLockBody'
 
 // 一句話建立定時任務（H02、L17；PRD §21：15 個欄位 → 1 句話＋確認）。
 // 打字就解析（xbot.routines.propose），確認卡列出誰做／做什麼／什麼時候／結果貼到／下次執行；其他收在「進階設定」。
@@ -296,6 +297,7 @@ export function NewRoutineDialog() {
   const ref = useRef<HTMLDivElement>(null)
   const close = () => newRoutineDialog.set({ open: false })
   const onKeyDown = useFocusTrap(ref, open, close)
+  useLockBody(open) // 手機上它蓋滿整個畫面：後面的頁面不跟著捲
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && close()}>

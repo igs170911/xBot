@@ -4,6 +4,7 @@ import { cx } from './cx'
 import { Button } from './Button'
 import { useFocusTrap } from './useFocusTrap'
 import { slide, useDrag } from './useDrag'
+import { useLockBody } from './useLockBody'
 
 export type DialogProps = {
   open: boolean
@@ -32,7 +33,9 @@ export function Dialog({ open, onClose, title, description, children, actions, r
   })
 
   // 手機的 sheet：往下拖就關（內容捲在最上面時才接手，避免和捲動打架）
-  const sheet = open && !busy && typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches
+  const narrow = typeof window !== 'undefined' && !!window.matchMedia?.('(max-width: 767px)').matches
+  const sheet = open && !busy && narrow
+  useLockBody(open && narrow) // sheet 開著時後面的頁面不跟著捲（iPhone 在不能捲的地方滑會改捲後面）
   useDrag(ref, {
     axis: 'y',
     dir: 1,

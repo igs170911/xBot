@@ -186,7 +186,9 @@ test('L01 對話分頁：清單、狀態、分頁列、抽屜', async ({ page },
   // 從左邊緣滑：分頁首頁打開側欄
   await page.getByRole('button', { name: '打開側欄' }).click()
   await expect(page.getByRole('dialog', { name: '側欄' })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe('hidden') // 側欄開著：後面不跟著捲
   await page.getByRole('button', { name: '關閉側欄' }).click()
+  await expect.poll(() => page.evaluate(() => document.documentElement.style.overflow)).toBe('')
   // 點一列進對話；返回鈕回到清單
   await page.getByRole('link', { name: /阿哲/ }).click()
   await expect(page).toHaveURL(/\/bots\//)
@@ -254,9 +256,13 @@ test('L07 從通知打開的核定 sheet', async ({ page }, info) => {
   const sheet = page.getByRole('dialog', { name: '帳房想付款' })
   await expect(sheet).toContainText('只有你能決定')
   await snap(page, info, 'L07')
+  // sheet 開著時後面的頁面鎖住（iPhone 在 sheet 不能捲的地方滑，會改捲後面）；關掉就放開
+  expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe('hidden')
   api.override['chat.respond'] = () => ({ ok: true })
   await sheet.getByRole('button', { name: '允許這次' }).click()
   await expect(page.getByText(/已允許這次/)).toBeVisible()
+  await expect(sheet).toBeHidden()
+  expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe('')
   expect(api.calls.find((c) => c.op === 'chat.respond')?.input).toEqual({ inbox_id: 'pay', choice: 'once' })
 })
 
@@ -569,6 +575,37 @@ test('iPhone 原生感：瀏海和底部橫條不蓋到能點的東西、分頁�
     }
   }
   expect(problems).toEqual({})
+})
+
+test('打開對話停在最新一則：訊息晚一點才排好（變高）也跟著到底；往上看時不跟', async ({ page }) => {
+  const api = new MockServer(page)
+  const { mi } = seed(api)
+  const long = api.addThread(mi.id, '長內容')
+  for (let i = 0; i < 30; i++) api.addMessage(long.id, { sender: i % 2 ? 'bot:' + mi.id : 'owner', status: 'complete', content: `第 ${i + 1} 則：` + '內容很長的一段話。'.repeat(6) })
+  await api.install()
+  await page.goto(`/bots/${mi.id}/threads/${long.id}`)
+  await expect(page.getByText('第 30 則', { exact: false })).toBeVisible()
+  const scroller = page.locator('main [class*="overflow-y-auto"]').first()
+  const gap = () => scroller.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight)
+  await expect.poll(gap).toBeLessThan(5)
+  // 最後一則晚一點才變高（例：程式碼上色、圖片載入）
+  const grow = () => scroller.evaluate((el) => {
+    const last = [...el.querySelectorAll('[data-testid="message"], .group')].at(-1) ?? el.firstElementChild!.lastElementChild!
+    const pad = document.createElement('div')
+    pad.style.height = '240px'
+    last.appendChild(pad)
+  })
+  await grow()
+  await expect.poll(gap, { message: '內容變高後沒有跟著捲到底' }).toBeLessThan(5)
+  // 往上看舊訊息時，內容變高不能把人拉回去
+  await scroller.evaluate((el) => {
+    el.scrollTop = 0
+    el.dispatchEvent(new Event('scroll'))
+  })
+  await page.waitForTimeout(200)
+  await grow()
+  await page.waitForTimeout(300)
+  expect(await scroller.evaluate((el) => el.scrollTop)).toBe(0)
 })
 
 test('Bot 一邊回覆，手指往上滑不會被拉回最底下（對話不像被鎖住）', async ({ page, browserName }, info) => {

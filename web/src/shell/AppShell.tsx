@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { drawerStore, railStore } from '../data/ui'
 import { useStore } from '../data/store'
 import { useFocusTrap } from '../ui/useFocusTrap'
+import { useLockBody } from '../ui/useLockBody'
 import { slide, useDrag } from '../ui/useDrag'
 import { useSlideOver } from '../ui/useSlideOver'
 import { goBack } from '../router'
@@ -29,6 +30,7 @@ export function AppShell({ path, title, children }: { path: string; title: strin
   const tab = isTabPath(path)
   // 側欄（手機）：分頁首頁從左邊緣拉出來、打開時往左拖收回；位置由 useSlideOver 決定
   const side = useSlideOver({ side: 'left', open: drawer, setOpen: (v) => drawerStore.set(v), enabled: phone && tab, size: () => Math.min(300, window.innerWidth * 0.85) })
+  useLockBody(phone && drawer) // 側欄開著：iPhone 上在側欄裡滑，後面的頁面不跟著捲
 
   // 分頁標題跟著頁面換（WCAG 2.4.2；螢幕閱讀器換頁時會念、瀏覽器分頁與歷史紀錄也看得出是哪一頁）
   useEffect(() => {
