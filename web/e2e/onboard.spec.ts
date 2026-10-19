@@ -304,6 +304,8 @@ test('分享 Bot（G13）與匯入 Bot（G14）', async ({ page }, info) => {
 
   // 從新增 Bot 對話框的「匯入 Bot」進來（G01 的次要入口）；手機版的新增 Bot 是 W31 的獨立頁，匯入只在桌面測
   if (info.project.name === 'mobile') return
+  // 桌面的設定是跳出來的視窗：先關掉再按側欄
+  await page.getByRole('button', { name: '關閉設定' }).click()
   await page.getByRole('button', { name: '新增 Bot' }).first().click()
   await page.getByRole('dialog', { name: '新增 Bot' }).getByRole('button', { name: '匯入 Bot' }).click()
   const imp = page.getByRole('dialog', { name: '匯入 Bot' })

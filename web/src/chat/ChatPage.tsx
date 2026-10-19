@@ -32,6 +32,7 @@ import { ProgressDialog } from './ProgressDialog'
 import { ThreadMenu, type Thread } from './ThreadMenu'
 import { DeleteThreadDialog } from './DeleteThread'
 import { ThreadDrawer } from './ThreadDrawer'
+import { TakeoverBar } from './TakeoverBar'
 import { WorkSteps } from './WorkSteps'
 import { FirstHome, FirstTasks, useFirstHome } from '../onboard/FirstHome'
 import { startTour } from '../onboard/state'
@@ -131,6 +132,7 @@ function statusOf(bot: Bot, act: Activity | undefined, busyElsewhere: boolean): 
   if (act?.state === 'stopping') return { text: '正在停止', color: '#5A5A5A' }
   if (act?.state === 'waiting_input' || act?.state === 'waiting_approval') return { text: '等你回覆', color: 'var(--color-warning)' }
   if (act?.state === 'waiting_box') return { text: '開機中', color: 'var(--color-accent)', pulse: true }
+  if (act?.state === 'queued') return { text: '排隊中', color: 'var(--color-warning)' }
   if (act) return { text: '工作中', color: 'var(--color-accent)', pulse: true }
   if (busyElsewhere) return { text: '工作中 · 另一個對話串', color: 'var(--color-accent)' }
   return { text: bot.archived ? '已封存' : '待命' }
@@ -553,6 +555,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
       <div className="flex-none px-6 pb-4 pt-2 max-sm:px-3 max-sm:pb-[max(12px,env(safe-area-inset-bottom))]">
         <div className="mx-auto flex max-w-[780px] flex-col gap-2">
           {noModel && <NoModelCard name={name} onSetup={() => setModelDialog(true)} />}
+          <TakeoverBar botId={botId} name={name} queued={act?.state === 'queued'} />
           {notice && <NoticeRow notice={notice} onStop={() => void stop(false)} onClose={() => setNotice(null)} />}
           {empty && firstHome && <FirstTasks onPick={(t) => composer.current?.fill(t)} />}
           <div data-tour="composer" className="rounded-[26px]">

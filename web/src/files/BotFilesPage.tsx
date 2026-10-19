@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
-import { AtSign, ChevronRight, Download, FolderPlus, Power, RefreshCw, Search, Send, Upload } from 'lucide-react'
+import { ArrowLeft, AtSign, ChevronRight, Download, FolderPlus, Power, RefreshCw, Search, Send, Upload } from 'lucide-react'
 import { filesList, filesUploadForm, type FilesListOutput } from '../api/generated'
 import { botsStore, look } from '../data/bots'
 import { useStore } from '../data/store'
@@ -251,6 +251,9 @@ export function BotFilesPage({ botId }: { botId: string }) {
         )}
         <header className="flex flex-none flex-col gap-2.5 px-3 pb-2 pt-3 max-md:pt-1">
           <div className="flex items-center gap-2.5 px-1 max-md:hidden">
+            <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => navigate(`/bots/${botId}`)}>
+              回到對話
+            </Button>
             {bot && <Avatar {...look(bot)} dot="none" size={30} ring="#070707" />}
             <div className="flex min-w-0 flex-1 flex-col">
               <h1 className="m-0 truncate text-title font-normal">{name}的檔案</h1>

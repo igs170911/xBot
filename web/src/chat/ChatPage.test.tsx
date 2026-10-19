@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, screen as screen_, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import App from '../App'
 import type { XBotEvent } from '../api/generated'
@@ -278,4 +278,21 @@ it('用訂閱的 Bot：模型膠囊顯示方案，列出 CLI 回報的模型，�
   expect(within(dialog).getByText('OpenCode Go 訂閱')).toBeInTheDocument()
   fireEvent.click(within(dialog).getByRole('menuitemradio', { name: /GLM 5/ }))
   await waitFor(() => expect(api.calls.find((c) => c.path === 'bots.update')?.input).toEqual({ id: 'b1', model: 'opencode-go/glm-5' }))
+})
+
+it('接手中：輸入框上方說明 Bot 暫停、訊息會排隊，可以一鍵交還', async () => {
+  let taken = true
+  const screen = () => ({ bot_id: 'b1', box: 'running', working: false, viewers: 1, ...(taken ? { takeover: { by: 'owner', by_name: '你', since: 1 } } : {}) })
+  api.ops['computers.screen'] = screen
+  api.ops['computers.handback'] = () => {
+    taken = false
+    return { screen: screen(), note: '' }
+  }
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  const bar = await screen_.findByTestId('takeover-bar')
+  expect(bar).toHaveTextContent('你正在操作小秘的電腦，小秘暫停中；交還後才會處理新訊息')
+  fireEvent.click(within(bar).getByRole('button', { name: '交還電腦' }))
+  await waitFor(() => expect(api.calls.some((c) => c.path === 'computers.handback')).toBe(true))
+  await waitFor(() => expect(screen_.queryByTestId('takeover-bar')).toBeNull())
 })

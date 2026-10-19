@@ -1,7 +1,9 @@
 import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react'
 import { Construction } from 'lucide-react'
 import { authStatus } from './api/generated'
-import { usePath } from './router'
+import { navigate, usePath } from './router'
+import { useNarrow } from './files/useNarrow'
+import { SettingsModal } from './shell/SettingsModal'
 import { AppShell } from './shell/AppShell'
 import { InboxPage } from './pages/InboxPage'
 import { LoginPage } from './pages/LoginPage'
@@ -136,6 +138,10 @@ function useAuth(): [Auth, () => void] {
 
 function Main() {
   const path = usePath()
+  const narrow = useNarrow()
+  // 打開設定之前所在的頁面（桌面的設定視窗後面顯示它，關掉就回去）
+  const [bgPath, setBgPath] = useState('/')
+  if (!(path === '/settings' || path.startsWith('/settings/')) && bgPath !== path) setBgPath(path)
   const bots = useStore(botsStore).bots
   useEffect(() => {
     startEvents()
@@ -154,7 +160,6 @@ function Main() {
   const computer = path.match(COMPUTER_PATH)
   const room = path.match(ROOM_PATH)
   const botFiles = path.match(BOT_FILES_PATH)
-  const profile = path.match(PROFILE_PATH)
   const call = path.match(CALL_PATH)
   const voice = path.match(VOICE_PATH)
   const botName = (id: string) => bots?.find((b) => b.id === id)?.name
@@ -171,37 +176,64 @@ function Main() {
   }
   const noBots = !!bots && bots.every((b) => b.archived) && inbox !== null && inbox.length === 0
 
-  let page
-  if (path === '/' && noBots) page = <FirstBotPage />
-  else if (path === '/') page = <InboxPage />
-  else if (path === '/chats') page = <ChatListPage />
-  else if (path === '/office') page = <OfficePage />
-  else if (path === '/notifications') page = <NotificationsPage />
-  else if (path === '/share') page = <SharePage />
-  else if (path === '/new/bot') page = <NewBotPage />
-  else if (path === '/new/room') page = <NewRoomPage />
-  else if (path === '/welcome') page = <WelcomePage />
-  else if (profile) page = <BotProfilePage key={profile[1]} botId={profile[1]} />
-  else if (call) page = <CallPage key={call[1]} botId={call[1]} />
-  else if (voice) page = <VoiceSetupPage key={voice[1]} botId={voice[1]} />
-  else if (computer) page = <ComputerPage key={computer[1]} botId={computer[1]} />
-  else if (botFiles) page = <BotFilesPage key={botFiles[1]} botId={botFiles[1]} />
-  else if (path === '/files') page = <FilesPage />
-  else if (bot) page = <ChatPage key={bot[1]} botId={bot[1]} threadParam={bot[2]} />
-  else if (ROUTINES_PATH.test(path)) page = <RoutinesPage path={path} />
-  else if (room) page = <RoomPage key={room[1]} roomId={room[1]} />
-  else if (path === '/teams') page = <TeamMapPage />
-  else if (path === '/org') page = <OrgPage />
-  else if (path === '/agenda') page = <AgendaPage />
-  else if (APPS_PATH.test(path))
-    page = path.startsWith('/apps/mcp') ? <McpPage /> : path.startsWith('/apps/logins') ? <LoginsPage /> : <AppsPage />
-  else if (path === '/settings' || path.startsWith('/settings/'))
-    page = <SettingsPage path={path === '/settings/agents' ? '/settings/advanced/agents' : path} />
-  else page = <Placeholder title={title} />
+  const pageFor = (path: string) => {
+    const bot = path.match(BOT_PATH)
+    const computer = path.match(COMPUTER_PATH)
+    const room = path.match(ROOM_PATH)
+    const botFiles = path.match(BOT_FILES_PATH)
+    const profile = path.match(PROFILE_PATH)
+    const call = path.match(CALL_PATH)
+    const voice = path.match(VOICE_PATH)
+    let page
+    if (path === '/' && noBots) page = <FirstBotPage />
+    else if (path === '/') page = <InboxPage />
+    else if (path === '/chats') page = <ChatListPage />
+    else if (path === '/office') page = <OfficePage />
+    else if (path === '/notifications') page = <NotificationsPage />
+    else if (path === '/share') page = <SharePage />
+    else if (path === '/new/bot') page = <NewBotPage />
+    else if (path === '/new/room') page = <NewRoomPage />
+    else if (path === '/welcome') page = <WelcomePage />
+    else if (profile) page = <BotProfilePage key={profile[1]} botId={profile[1]} />
+    else if (call) page = <CallPage key={call[1]} botId={call[1]} />
+    else if (voice) page = <VoiceSetupPage key={voice[1]} botId={voice[1]} />
+    else if (computer) page = <ComputerPage key={computer[1]} botId={computer[1]} />
+    else if (botFiles) page = <BotFilesPage key={botFiles[1]} botId={botFiles[1]} />
+    else if (path === '/files') page = <FilesPage />
+    else if (bot) page = <ChatPage key={bot[1]} botId={bot[1]} threadParam={bot[2]} />
+    else if (ROUTINES_PATH.test(path)) page = <RoutinesPage path={path} />
+    else if (room) page = <RoomPage key={room[1]} roomId={room[1]} />
+    else if (path === '/teams') page = <TeamMapPage />
+    else if (path === '/org') page = <OrgPage />
+    else if (path === '/agenda') page = <AgendaPage />
+    else if (APPS_PATH.test(path))
+      page = path.startsWith('/apps/mcp') ? <McpPage /> : path.startsWith('/apps/logins') ? <LoginsPage /> : <AppsPage />
+    else if (path === '/settings' || path.startsWith('/settings/')) page = null
+    else page = <Placeholder title={TITLES[path] ?? 'XBot'} />
+    return page
+  }
+  const settings = path === '/settings' || path.startsWith('/settings/')
+  const settingsPath = path === '/settings/agents' ? '/settings/advanced/agents' : path
+  const page = settings ? <SettingsPage path={settingsPath} /> : pageFor(path)
 
+  // 桌面：設定是跳出來的視窗，背景留著原本的頁面（背景對螢幕閱讀器與鍵盤先藏起來）
+  const modal = settings && !narrow
   return (
-    <AppShell path={path} title={title}>
-      <Suspense fallback={<PageLoading />}>{page}</Suspense>
+    <AppShell path={modal ? bgPath : path} title={title}>
+      {modal ? (
+        <>
+          <div aria-hidden="true" inert className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <Suspense fallback={<PageLoading />}>{pageFor(bgPath)}</Suspense>
+          </div>
+          <SettingsModal onClose={() => navigate(bgPath)}>
+            <Suspense fallback={<PageLoading />}>
+              <SettingsPage path={settingsPath} onClose={() => navigate(bgPath)} />
+            </Suspense>
+          </SettingsModal>
+        </>
+      ) : (
+        <Suspense fallback={<PageLoading />}>{page}</Suspense>
+      )}
       <MountWhen store={newBotDialog} open={(v) => v}>
         <NewBotDialog />
       </MountWhen>

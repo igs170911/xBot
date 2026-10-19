@@ -121,7 +121,7 @@ test('主機清單「搬家」（J06、16.1a）：整台搬到另一台，搬家
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-b31-computers`), fullPage: true })
   await rows.nth(0).getByRole('button', { name: '搬家' }).click()
-  const dlg = page.getByRole('dialog')
+  const dlg = page.getByRole('dialog').filter({ hasText: '全部搬走' })
   await expect(dlg).toContainText('把 這台主機 上的 Bot 全部搬走')
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-b31-move-all`) })

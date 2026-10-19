@@ -1,6 +1,7 @@
 import { AgentsPage } from '../pages/AgentsPage'
 import { useEffect, useState, type ReactNode } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { IconButton } from '../ui/Button'
 import { linkClick, navigate } from '../router'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
@@ -108,7 +109,7 @@ function backTarget(path: string): string {
 
 
 /** /settings 與底下的每一頁。 */
-export function SettingsPage({ path }: { path: string }) {
+export function SettingsPage({ path, onClose }: { path: string; /** 桌面：設定是跳出來的視窗，按 ✕ 回原本的頁面。 */ onClose?: () => void }) {
   const narrow = useNarrow()
   // 桌面打開 /settings 直接進「一般」
   useEffect(() => {
@@ -124,7 +125,7 @@ export function SettingsPage({ path }: { path: string }) {
   else body = <Content path={path} />
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col bg-sheet md:h-dvh md:flex-none max-md:min-h-dvh max-md:bg-app">
+    <main className={cx('flex min-h-0 flex-1 flex-col bg-sheet max-md:min-h-dvh max-md:bg-app', onClose ? 'h-full' : 'md:h-dvh md:flex-none')}>
       {narrow && <PhoneBar title={overview ? '設定' : title} back={overview ? '/chats' : backTarget(path)} center />}
       <header className={cx('flex h-16 flex-none items-center gap-3 border-b border-divider pl-[22px] pr-3.5', narrow && 'hidden')}>
         {narrow && !overview && (
@@ -139,6 +140,7 @@ export function SettingsPage({ path }: { path: string }) {
         )}
         <h1 className="m-0 flex-1 text-title max-md:text-center">{narrow && !overview ? title : '設定'}</h1>
         {narrow && !overview && <span className="size-11" aria-hidden="true" />}
+        {onClose && <IconButton icon={X} label="關閉設定" onClick={onClose} />}
       </header>
       <div className="flex min-h-0 flex-1">
         <SettingsNav path={path} />

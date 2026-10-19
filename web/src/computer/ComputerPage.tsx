@@ -104,7 +104,13 @@ export function ComputerPage({ botId }: { botId: string }) {
   return (
     <main className="flex h-[calc(100dvh-56px)] min-w-0 flex-1 flex-col bg-app md:h-dvh" aria-label={title} data-testid="computer-page">
       <header className="flex min-h-[60px] flex-none flex-wrap items-center gap-x-3 gap-y-2 border-b border-edge px-4 py-2 max-md:px-3">
-        <IconButton icon={narrow ? X : ArrowLeft} label="回到對話" onClick={() => navigate(`/bots/${botId}`)} />
+        {narrow ? (
+          <IconButton icon={X} label="回到對話" onClick={() => navigate(`/bots/${botId}`)} />
+        ) : (
+          <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => navigate(`/bots/${botId}`)}>
+            回到對話
+          </Button>
+        )}
         {bot && <Avatar {...look(bot)} state={you ? 'idle' : screen.working ? 'working' : 'idle'} dot="none" size={28} ring="#070707" />}
         <div className="flex min-w-0 flex-1 flex-col">
           <h1 className="m-0 truncate text-title">{title}</h1>
