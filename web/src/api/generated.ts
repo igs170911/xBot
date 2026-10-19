@@ -7755,12 +7755,14 @@ export interface ModelsRemoveProviderOutput {
   affected_bots: string[]
   /** 全域備援模型用的是這個供應商，一起清掉 */
   cleared_fallback: boolean
+  /** 預設模型用的是這個供應商，一起清掉（用 API 金鑰又沒指定模型的 Bot 要重新設定） */
+  cleared_default: boolean
 }
 
 /**
  * 移除一個模型供應商（連同金鑰）
  *
- * 預設模型用的供應商不能移除，先換預設模型。用到它的 Bot 之後會改用預設模型。
+ * 預設模型用的是這個供應商時，預設模型一起清掉（cleared_default）。用到它的 Bot 之後會改用預設模型。
  *
  * `xbot.models.remove_provider`：權限 admin、風險 confirm
  */

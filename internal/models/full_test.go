@@ -105,10 +105,6 @@ func TestUpdateAndRemoveProvider(t *testing.T) {
 	if _, err := e.call(owner, "xbot.models.update_provider", map[string]any{"id": "zz"}); code(err) != ops.CodeNotFound {
 		t.Fatalf("%v", err)
 	}
-	// 預設模型用的不能移除。
-	if _, err := e.call(owner, "xbot.models.remove_provider", map[string]any{"id": "a"}); code(err) != ops.CodeConflict {
-		t.Fatalf("%v", err)
-	}
 	bot, _ := e.db.CreateBot(bg, store.Bot{Name: "x", Model: "b/m2"})
 	_, _ = e.call(owner, "xbot.models.set_fallback", map[string]any{"provider": "b", "model": "m3"})
 	// 代理要求移除：一定要核准。
@@ -129,6 +125,15 @@ func TestUpdateAndRemoveProvider(t *testing.T) {
 	}
 	if _, err := e.db.GetSetting(bg, runtime.FallbackModelSetting); err == nil {
 		t.Fatal("全域備援應該清掉")
+	}
+	// 預設模型用的也能移除：預設模型一起清掉。
+	raw, err = e.call(owner, "xbot.models.remove_provider", map[string]any{"id": "a"})
+	out = RemoveProviderOut{}
+	if err != nil || json.Unmarshal(raw, &out) != nil || !out.Removed || !out.ClearedDefault {
+		t.Fatalf("%v %s", err, raw)
+	}
+	if _, err := e.db.GetSetting(bg, runtime.DefaultModelSetting); err == nil {
+		t.Fatal("預設模型應該清掉")
 	}
 }
 

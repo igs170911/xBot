@@ -182,3 +182,27 @@ it('用訂閱、CLI 還沒回報模型：可以直接輸入名稱', async () => 
   fireEvent.blur(box)
   await waitFor(() => expect(api.calls.find((c) => c.path === 'bots.update')?.input).toEqual({ id: 'b1', model: 'grok-5' }))
 })
+
+it('模型下拉：還沒探測時先列範本的模型；「其他」可以自己輸入', async () => {
+  const { ModelChooser } = await import('./ModelChooser')
+  const onCommit = vi.fn()
+  const presets: Preset[] = [{ ...preset('opencode-go', 'OpenCode Go'), base_url: 'https://opencode.ai/zen/go/v1', models: ['deepseek-v4-flash', 'glm-5.3'] }]
+  render(
+    <ModelChooser
+      label="預設模型"
+      value={{ provider: 'openai', model: 'deepseek-v4-flash' }}
+      providers={[{ id: 'openai', base_url: 'https://opencode.ai/zen/go/v1', api_key_set: true }]}
+      presets={presets}
+      onCommit={onCommit}
+    />,
+  )
+  fireEvent.click(screen.getByRole('button', { name: /預設模型：模型/ }))
+  fireEvent.click(screen.getByRole('option', { name: 'glm-5.3' }))
+  expect(onCommit).toHaveBeenCalledWith({ provider: 'openai', model: 'glm-5.3' })
+  fireEvent.click(screen.getByRole('button', { name: /預設模型：模型/ }))
+  fireEvent.click(screen.getByRole('option', { name: '其他（自己輸入）' }))
+  const box = screen.getByRole('textbox', { name: '預設模型：模型' })
+  fireEvent.change(box, { target: { value: 'kimi-k3' } })
+  fireEvent.blur(box)
+  expect(onCommit).toHaveBeenLastCalledWith({ provider: 'openai', model: 'kimi-k3' })
+})

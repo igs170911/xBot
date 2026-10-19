@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   CircleAlert,
   CircleCheck,
@@ -108,6 +108,14 @@ function MainModels({ models, presets, reload }: Data) {
       toast.show({ kind: 'error', text: errText(e) })
     }
   }
+  // 有金鑰但還沒探測的供應商：背景探測一次，模型才有清單可以選
+  const probed = useRef(new Set<string>())
+  useEffect(() => {
+    const todo = providers.filter((p) => !p.probed_at && !p.models?.length && !probed.current.has(p.id))
+    if (!todo.length) return
+    todo.forEach((p) => probed.current.add(p.id))
+    void Promise.allSettled(todo.map((p) => modelsProbe({ provider: p.id }))).then(() => reload())
+  }, [providers, reload])
   const loggedIn = host.list.filter((h) => h.logged_in)
   const notIn = host.list.filter((h) => !h.logged_in)
   const nothing = models && providers.length === 0 && !host.busy && loggedIn.length === 0
@@ -247,7 +255,7 @@ function ProviderRow({ p, presets, isDefault, isFallback, onChanged }: { p: Prov
       const r = await modelsRemoveProvider({ id: p.id })
       setRemoving(false)
       await onChanged()
-      toast.show({ kind: 'done', text: r.affected_bots.length ? `已移除 ${name}；${r.affected_bots.length} 個 Bot 改用預設模型` : `已移除 ${name}` })
+      toast.show({ kind: 'done', text: r.cleared_default ? `已移除 ${name}，預設模型也清掉了` : r.affected_bots.length ? `已移除 ${name}；${r.affected_bots.length} 個 Bot 改用預設模型` : `已移除 ${name}` })
     } catch (e) {
       setRemoving(false)
       toast.show({ kind: isPending(e) ? 'info' : 'error', text: errText(e) })
@@ -305,7 +313,7 @@ function ProviderRow({ p, presets, isDefault, isFallback, onChanged }: { p: Prov
         title={`移除 ${name}？`}
         description={
           isDefault
-            ? '這是預設模型用的供應商，要先換預設模型才能移除。'
+            ? '金鑰會一起刪掉，無法復原。預設模型也會清掉；用 API 金鑰的 Bot 要重新選模型（用訂閱的 Bot 不受影響）。'
             : '金鑰會一起刪掉，無法復原。指定了這個供應商的 Bot 之後會改用預設模型。'
         }
         confirmText="移除"

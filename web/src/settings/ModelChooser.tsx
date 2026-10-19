@@ -5,9 +5,10 @@ import { cx } from '../ui/cx'
 import { providerName, type ModelRef, type Preset, type Provider } from './modelData'
 
 const NONE = '__none__'
+const OTHER = '__other__'
 
 /**
- * 供應商＋模型兩個下拉（G09）。供應商沒有模型清單（還沒探測）時，模型改成可以打字。
+ * 供應商＋模型兩個下拉（G09）。還沒探測的供應商先列範本的建議模型；最後一項「其他」可以自己打字。都沒有清單時直接打字。
  * 選了就呼叫 onCommit（自動儲存）；noneLabel 有給時，供應商可以選「不用」。
  */
 export function ModelChooser({
@@ -41,8 +42,11 @@ export function ModelChooser({
     setTyped(value?.model ?? '')
   }
 
+  const [custom, setCustom] = useState(false)
   const p = providers.find((x) => x.id === prov)
-  const list = [...(p?.models ?? [])]
+  // 還沒探測的供應商：先用同網址（或同代號）範本的建議模型
+  const preset = p ? (presets.find((x) => x.id === p.preset) ?? presets.find((x) => x.base_url === p.base_url) ?? presets.find((x) => x.id === p.id)) : undefined
+  const list = [...(p?.models?.length ? p.models : (preset?.models ?? []))]
   if (value && value.provider === prov && value.model && !list.includes(value.model)) list.unshift(value.model)
 
   const provOptions = [
@@ -52,6 +56,7 @@ export function ModelChooser({
 
   const pickProvider = (id: string) => {
     setProv(id)
+    setCustom(false)
     if (id === NONE) {
       onCommit(null)
       return
@@ -68,12 +73,17 @@ export function ModelChooser({
       <Select label={`${label}：供應商`} value={prov} options={provOptions} onChange={pickProvider} placeholder="選供應商" disabled={disabled} />
       {prov === NONE ? (
         <span />
-      ) : list.length > 0 ? (
+      ) : list.length > 0 && !custom ? (
         <Select
           label={`${label}：模型`}
           value={value?.provider === prov ? value.model : ''}
-          options={list.map((m) => ({ value: m, label: m }))}
-          onChange={(m) => onCommit({ provider: prov, model: m })}
+          options={[...list.map((m) => ({ value: m, label: m })), { value: OTHER, label: '其他（自己輸入）' }]}
+          onChange={(m) => {
+            if (m === OTHER) {
+              setTyped('')
+              setCustom(true)
+            } else onCommit({ provider: prov, model: m })
+          }}
           placeholder="選模型"
           disabled={disabled || !prov}
         />
@@ -87,6 +97,7 @@ export function ModelChooser({
           onBlur={() => {
             const m = typed.trim()
             if (m && prov && (m !== value?.model || prov !== value?.provider)) onCommit({ provider: prov, model: m })
+            if (m || list.length) setCustom(false)
           }}
           onKeyDown={(e) => {
             if (e.key !== 'Enter' || e.nativeEvent.isComposing) return

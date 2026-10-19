@@ -65,6 +65,7 @@ type RemoveProviderOut struct {
 	Removed         bool     `json:"removed" desc:"預演時是 false"`
 	AffectedBots    []string `json:"affected_bots" desc:"模型或備援模型指定了這個供應商的 Bot（之後會改用預設模型）"`
 	ClearedFallback bool     `json:"cleared_fallback" desc:"全域備援模型用的是這個供應商，一起清掉"`
+	ClearedDefault  bool     `json:"cleared_default" desc:"預設模型用的是這個供應商，一起清掉（用 API 金鑰又沒指定模型的 Bot 要重新設定）"`
 }
 
 // SetFallbackIn 是 xbot.models.set_fallback 的輸入。兩個都空白表示不用備援。
@@ -100,7 +101,7 @@ func registerProviders(reg *ops.Registry, d Deps) {
 	})
 	ops.Register(reg, ops.Op[RemoveProviderIn, RemoveProviderOut]{
 		Name: "xbot.models.remove_provider", Summary: "移除一個模型供應商（連同金鑰）",
-		Description: "預設模型用的供應商不能移除，先換預設模型。用到它的 Bot 之後會改用預設模型。",
+		Description: "預設模型用的是這個供應商時，預設模型一起清掉（cleared_default）。用到它的 Bot 之後會改用預設模型。",
 		Scope:       ops.ScopeAdmin, Risk: ops.RiskConfirm, NoDelegate: true,
 		Handle: d.removeProvider,
 	})
@@ -265,13 +266,10 @@ func (d Deps) removeProvider(ctx context.Context, call *ops.Call, in RemoveProvi
 	if _, err := call.DB.GetSettingInto(ctx, runtime.DefaultModelSetting, &def); err != nil {
 		return RemoveProviderOut{}, err
 	}
-	if def.Provider == in.ID {
-		return RemoveProviderOut{}, ops.Conflict("預設模型用的是這個供應商，先用 xbot.models.set_default 換一個")
-	}
 	if _, err := call.DB.GetSettingInto(ctx, runtime.FallbackModelSetting, &fb); err != nil {
 		return RemoveProviderOut{}, err
 	}
-	out := RemoveProviderOut{ID: in.ID, AffectedBots: []string{}, ClearedFallback: fb.Provider == in.ID}
+	out := RemoveProviderOut{ID: in.ID, AffectedBots: []string{}, ClearedFallback: fb.Provider == in.ID, ClearedDefault: def.Provider == in.ID}
 	bots, err := call.DB.ListBots(ctx, true)
 	if err != nil {
 		return RemoveProviderOut{}, err
@@ -293,6 +291,11 @@ func (d Deps) removeProvider(ctx context.Context, call *ops.Call, in RemoveProvi
 	}
 	if out.ClearedFallback {
 		if err := call.DB.DeleteSetting(ctx, runtime.FallbackModelSetting); err != nil {
+			return RemoveProviderOut{}, err
+		}
+	}
+	if out.ClearedDefault {
+		if err := call.DB.DeleteSetting(ctx, runtime.DefaultModelSetting); err != nil {
 			return RemoveProviderOut{}, err
 		}
 	}

@@ -108,20 +108,40 @@ export function MenuButton({ label, items, trigger, align = 'start' }: MenuButto
   const btn = useRef<HTMLButtonElement>(null)
   const pop = useRef<HTMLDivElement>(null)
   useDismiss(open, () => setOpen(false), btn, pop)
-  useEffect(() => {
-    if (open) pop.current?.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')?.focus()
-  }, [open])
   const close = () => {
     setOpen(false)
     btn.current?.focus()
   }
+  // 用 fixed 貼著按鈕：不會被外面 overflow-hidden 的卡片裁掉；下面不夠就往上開。
+  const [pos, setPos] = useState<{ left?: number; right?: number; top?: number; bottom?: number } | null>(null)
+  const placed = open && !!pos
+  useEffect(() => {
+    if (placed) pop.current?.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')?.focus()
+  }, [placed])
+  useLayoutEffect(() => {
+    if (!open || !btn.current) return
+    const update = () => {
+      if (!btn.current) return
+      const r = btn.current.getBoundingClientRect()
+      const x = align === 'end' ? { right: Math.max(8, window.innerWidth - r.right) } : { left: Math.max(8, r.left) }
+      setPos(window.innerHeight - r.bottom < 260 && r.top > window.innerHeight - r.bottom ? { ...x, bottom: window.innerHeight - r.top + 4 } : { ...x, top: r.bottom + 4 })
+    }
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [open, align])
   return (
     <span className="relative inline-flex">
       {trigger({ ref: btn, onClick: () => setOpen((o) => !o), 'aria-haspopup': 'menu', 'aria-expanded': open })}
-      {open && (
+      {open && pos && (
         <div
           ref={pop}
-          className={cx('absolute top-full z-40 mt-1', align === 'end' ? 'right-0' : 'left-0')}
+          style={pos}
+          className="fixed z-[70]"
           onKeyDown={(e) => {
             if (e.key === 'Escape' || e.key === 'Tab') {
               if (e.key === 'Escape') e.preventDefault()
@@ -196,19 +216,20 @@ export function Select<T extends string>({ label, hideLabel, value, options, onC
       window.removeEventListener('scroll', update, true)
     }
   }, [open])
+  const shownPop = open && !!pos
   useEffect(() => {
-    if (!open) return
+    if (!shownPop) return
     if (filterable) {
       input.current?.focus()
       return
     }
     const els = [...(pop.current?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])]
     ;(els.find((el) => el.getAttribute('aria-selected') === 'true') ?? els[0])?.focus()
-  }, [open, filterable])
+  }, [shownPop, filterable])
   useEffect(() => {
-    if (!open || !filterable) return
-    pop.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' })
-  }, [open, filterable])
+    if (!shownPop || !filterable) return
+    pop.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' })
+  }, [shownPop, filterable])
   const current = options.find((o) => o.value === value)
   const q = filter.trim().toLowerCase()
   const shown = q ? options.filter((o) => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q)) : options
