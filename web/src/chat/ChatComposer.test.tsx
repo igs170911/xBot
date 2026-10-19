@@ -1,6 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { expect, it, vi } from 'vitest'
 import { ChatComposer } from './ChatComposer'
+import { expandSkill, slashQuery } from './SkillMenu'
+import { fakeApi } from '../test-api'
 
 const box = () => screen.getByRole('textbox')
 
@@ -119,4 +121,39 @@ it('一則最多 10 個附件', async () => {
   expect(await screen.findByText(/最多附 10 個檔案，多的沒有加進來/)).toBeInTheDocument()
   expect(onUpload).toHaveBeenCalledTimes(10)
   expect(screen.getByRole('button', { name: '附加檔案' })).toBeDisabled()
+})
+
+it('打「/」列出這個 Bot 的技能；選了送出時改寫成「使用技能」', async () => {
+  const api = fakeApi({
+    'skills.list': () => ({
+      skills: [
+        { id: 'price', name: '比價', description: '比三家價格', place: 'list', enabled: true, source: 'custom', created_at: 1, updated_at: 1 },
+        { id: 'news', name: '新聞摘要', description: '整理今天新聞', place: 'library', enabled: true, source: 'custom', created_at: 1, updated_at: 1 },
+        { id: 'old', name: '舊的', description: '', place: 'off', enabled: false, source: 'custom', created_at: 1, updated_at: 1 },
+      ],
+      counts: {},
+      computer: true,
+    }),
+  })
+  const onSend = vi.fn(async () => true)
+  render(<ChatComposer name="小秘" mode="idle" onSend={onSend} onStop={() => {}} botId="b1" />)
+  await waitFor(() => expect(api.calls.some((c) => c.path === 'skills.list')).toBe(true))
+  fireEvent.change(box(), { target: { value: '/' } })
+  const menu = await screen.findByRole('listbox', { name: '技能' })
+  expect(within(menu).getAllByRole('option')).toHaveLength(2)
+  expect(within(menu).getByText('技能庫')).toBeInTheDocument()
+  fireEvent.change(box(), { target: { value: '/新聞' } })
+  fireEvent.keyDown(box(), { key: 'Enter' })
+  expect(box()).toHaveValue('/新聞摘要 ')
+  expect(onSend).not.toHaveBeenCalled()
+  fireEvent.change(box(), { target: { value: '/新聞摘要 只要科技類' } })
+  fireEvent.keyDown(box(), { key: 'Enter' })
+  await waitFor(() => expect(onSend).toHaveBeenCalledWith('使用技能「新聞摘要」：只要科技類'))
+})
+
+it('「/」開頭但不是技能名稱：原樣送出', () => {
+  expect(expandSkill('/tmp 裡有什麼', [])).toBe('/tmp 裡有什麼')
+  expect(slashQuery('/ab')).toBe('ab')
+  expect(slashQuery('看 /ab')).toBeNull()
+  expect(slashQuery('/ab c')).toBeNull()
 })

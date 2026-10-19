@@ -3,6 +3,7 @@ import { ArrowUp, FileText, LoaderCircle, Plus, TriangleAlert, X } from 'lucide-
 import { ATTACH_MAX, filesFrom, withAttachments, type Attachment, type Uploaded } from './attachments'
 import { MentionMenu } from './MentionMenu'
 import { mentionQuery } from './mentionQuery'
+import { expandSkill, matchSkills, slashQuery, SkillMenu, useBotSkills, type Skill } from './SkillMenu'
 import { usePhone } from '../mobile/nav'
 import { IconButton } from '../ui/Button'
 import { Icon } from '../ui/Icon'
@@ -62,6 +63,11 @@ export function ChatComposer({ name, mode, onSend, onStop, hint, handle, onUploa
   const query = mentionQuery(text)
   const [closedAt, setClosedAt] = useState<string | null>(null)
   const showMention = query !== null && closedAt !== text
+  const skills = useBotSkills(botId)
+  const slash = slashQuery(text)
+  const showSkills = !!botId && slash !== null && closedAt !== text
+  const [active, setActive] = useState(0)
+  const skillHits = showSkills ? matchSkills(skills, slash ?? '') : []
 
   const caretToEnd = useRef(false)
   // 語音輸入：聽到的字接在輸入框後面，可以再改了才送。
@@ -73,6 +79,12 @@ export function ChatComposer({ name, mode, onSend, onStop, hint, handle, onUploa
       input.current?.focus()
     },
   })
+  const pickSkill = (s: Skill) => {
+    setText('/' + s.name + ' ')
+    setActive(0)
+    caretToEnd.current = true
+    input.current?.focus()
+  }
   const pickMention = (who: string) => {
     setText(text.replace(/@([^\s@]*)$/, '@' + who + ' '))
     caretToEnd.current = true
@@ -150,7 +162,7 @@ export function ChatComposer({ name, mode, onSend, onStop, hint, handle, onUploa
   const submit = async (e?: FormEvent) => {
     e?.preventDefault()
     if (empty || sending || uploading) return
-    const t = withAttachments(text, ready.map((f) => f.path ?? ''))
+    const t = withAttachments(expandSkill(text, skills), ready.map((f) => f.path ?? ''))
     setSending(true)
     try {
       if (await onSend(t)) {
@@ -167,9 +179,19 @@ export function ChatComposer({ name, mode, onSend, onStop, hint, handle, onUploa
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // 中文輸入法選字時的 Enter 不是送出
-    if (e.key === 'Escape' && showMention) {
+    if (e.key === 'Escape' && (showMention || showSkills)) {
       e.preventDefault()
       setClosedAt(text)
+      return
+    }
+    if (showSkills && skillHits.length && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      e.preventDefault()
+      setActive((a) => (a + (e.key === 'ArrowDown' ? 1 : skillHits.length - 1)) % skillHits.length)
+      return
+    }
+    if (showSkills && skillHits.length && (e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) {
+      e.preventDefault()
+      pickSkill(skillHits[Math.min(active, skillHits.length - 1)])
       return
     }
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) {
@@ -184,6 +206,7 @@ export function ChatComposer({ name, mode, onSend, onStop, hint, handle, onUploa
   return (
     <div className="relative flex flex-col gap-2">
       {showMention && <MentionMenu query={query ?? ''} exclude={name} onPick={pickMention} />}
+      {showSkills && <SkillMenu skills={skills} query={slash ?? ''} active={Math.min(active, Math.max(0, skillHits.length - 1))} onPick={pickSkill} />}
       {files.length > 0 && (
         <ul className="m-0 flex list-none flex-wrap gap-2 p-0" aria-label="附件" data-testid="attachments">
           {files.map((f) => (
