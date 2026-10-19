@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"xbot/internal/limits"
 	"xbot/internal/notify"
@@ -260,7 +261,12 @@ func (r *Registry) createApproval(ctx context.Context, call *Call, raw, masked j
 	var t ApprovalTicket
 	var ev, cardEv *store.Event
 	if c.Title == "" {
-		c.Title = fmt.Sprintf("%s 想要：%s", id.DisplayName(), info.Summary)
+		// 說明後面的括號是給 Bot 看的用法（例：「（有團隊管理權限的 Bot 用；要使用者按允許）」），卡片標題不放
+		summary := info.Summary
+		if i := strings.Index(summary, "（"); i > 0 && strings.HasSuffix(summary, "）") {
+			summary = summary[:i]
+		}
+		c.Title = fmt.Sprintf("%s 想要：%s", id.DisplayName(), summary)
 	}
 	if c.Body == "" {
 		c.Body = "要允許嗎？按允許才會執行。"
