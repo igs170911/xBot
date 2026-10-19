@@ -338,6 +338,11 @@ func (c *Computers) Connect(ctx context.Context, botID string) (hermes.Endpoint,
 	if s.HermesAddr == "" {
 		return hermes.Endpoint{}, errors.New("電腦沒有發布 Hermes 的埠")
 	}
+	// 電腦本來就開著時 Start 不會再 Prepare；服務重開過的話 product.sock 已經被關掉，
+	// Bot 連不到模型也拿不到 XBot 工具。每次接上前補開（已經在聽就什麼都不做）。
+	if err := c.ensureSocket(nil, botID); err != nil {
+		return hermes.Endpoint{}, err
+	}
 	key, err := c.Keys.Issue(ctx, botID)
 	if err != nil {
 		return hermes.Endpoint{}, err
@@ -364,6 +369,9 @@ func (c *Computers) LaunchACP(ctx context.Context, botID string, a acp.Agent) (a
 	}
 	if s.ContainerID == "" {
 		return nil, errors.New("找不到 Bot 的電腦")
+	}
+	if err := c.ensureSocket(nil, botID); err != nil { // 同 Connect：服務重開後補開 product.sock
+		return nil, err
 	}
 	h, err := c.Hosts.Get(s.HostID)
 	if err != nil {

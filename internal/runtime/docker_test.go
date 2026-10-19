@@ -230,6 +230,15 @@ func TestDockerChatEndToEnd(t *testing.T) {
 		t.Fatalf("XBot 的工具要直接給模型看（tool_search 關掉）：%s", cfgOut)
 	}
 
+	// 服務重開時 product.sock 會被關掉，電腦還開著；下一次接上要補開，不然 Bot 連不到模型和 XBot 工具。
+	_ = env.comp.Sockets.Close(bot.ID)
+	if _, err := env.comp.Connect(ctx, bot.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(env.comp.Sockets.Path(bot.ID)); err != nil {
+		t.Fatalf("電腦開著時接上要補開 product.sock：%v", err)
+	}
+
 	// 同一條對話串再說一次（沿用連線與 session），再測停止。
 	res2, err := rt.Chat(ctx, bot.ID, res.ThreadID, "再回覆一次 OK")
 	if err != nil {
