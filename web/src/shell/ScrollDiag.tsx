@@ -87,16 +87,28 @@ export function startScrollWatch(version: () => string) {
   watching = true
   let sent = 0
   const health = { ok: 0, stuck: 0, edge: 0 }
-  const nav: (number | null)[] = []
-  window.setTimeout(() => nav.push(navTop()), 150)
-  window.setTimeout(() => nav.push(navTop()), 2500)
+  // 打開後的時間線：iPhone 主畫面 App 剛打開時畫面高度會少算狀態列，分頁列先浮在上面、之後才掉下去
+  // （2026-10-20 真機：2.5 秒時分頁列在 702，應該在 761）。記下高度何時、怎麼變回來，才修得準。
+  const t0 = performance.now()
+  const timeline: string[] = []
+  const sample = (label: string) => {
+    const vv = window.visualViewport
+    timeline.push(`${label}:in${window.innerHeight}/vv${Math.round(vv?.height ?? 0)}/ch${document.documentElement.clientHeight}/nav${navTop() ?? '-'}`)
+  }
+  for (const ms of [150, 500, 1000, 2500, 5000, 10000]) window.setTimeout(() => sample(String(ms)), ms)
+  let resized = 0
+  const onResize = () => resized++ < 3 && sample(`resize@${Math.round(performance.now() - t0)}`)
+  window.addEventListener('resize', onResize)
+  window.visualViewport?.addEventListener('resize', onResize)
+  window.addEventListener('touchstart', () => timeline.length < 14 && !timeline.some((x) => x.startsWith('touch')) && sample(`touch@${Math.round(performance.now() - t0)}`), { passive: true, once: true })
   let summarized = false
   const summary = () => {
-    if (summarized || health.ok + health.stuck + health.edge < HEALTH_MIN) return
+    // 滑得太少看不出順不順，但打開後 10 秒的時間線齊了就照樣送（要看分頁列有沒有先高後低）
+    if (summarized || (health.ok + health.stuck + health.edge < HEALTH_MIN && !timeline.some((x) => x.startsWith('10000:')))) return
     summarized = true
     const data = [
       `swipes ok=${health.ok} stuck=${health.stuck} edge=${health.edge}`,
-      `nav ${nav.map((n) => n ?? '-').join('→') || '-'}`, // 打開後 150ms、2.5 秒時分頁列的位置；沒有分頁列的頁面是 -
+      `screen ${window.screen.height} | ${timeline.join(' ')}`, // 打開後各時間點的高度與分頁列位置（沒有分頁列的頁面是 -）
       `inset top=${inset('top')} bottom=${inset('bottom')}`,
       `view in=${window.innerHeight}x${window.innerWidth} docW=${document.documentElement.scrollWidth}`,
       `standalone=${(navigator as Navigator & { standalone?: boolean }).standalone ?? matchMedia('(display-mode: standalone)').matches}`,
