@@ -13,7 +13,7 @@ import { TABS } from './nav'
 export function TabBar({ path }: { path: string }) {
   const count = useStore(inboxStore).items?.length ?? 0
   return (
-    <nav aria-label="分頁" className="fixed inset-x-0 bottom-0 z-30 flex border-t border-edge bg-app/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+    <nav aria-label="分頁" className="fixed inset-x-0 bottom-0 z-30 flex border-t border-edge bg-app pb-[env(safe-area-inset-bottom)] md:hidden">
       {TABS.map((t) => {
         const on = t.to === path || (t.to === '/calendar' && path.startsWith('/calendar'))
         return (
@@ -77,7 +77,7 @@ export function PhoneBar({
   heading?: boolean
 }) {
   return (
-    <header className={cx('sticky top-0 z-20 flex min-h-[60px] flex-none items-center gap-3 bg-app/95 px-3 pb-2 pt-[max(8px,env(safe-area-inset-top))] backdrop-blur', className)}>
+    <header className={cx('sticky top-0 z-20 flex min-h-[60px] flex-none items-center gap-3 bg-app px-3 pb-2 pt-[max(8px,env(safe-area-inset-top))]', className)}>
       {back !== undefined && <BackButton fallback={back} onBack={onBack} />}
       <div className={cx('flex min-w-0 flex-1 flex-col', center && 'items-center text-center')}>
         {heading ? <h1 className="m-0 truncate text-title">{title}</h1> : <span className="truncate text-title">{title}</span>}

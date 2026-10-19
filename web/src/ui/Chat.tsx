@@ -15,7 +15,7 @@ export function Bubble({ from, children, bot, name }: { from: 'me' | 'bot'; chil
   return (
     <div className="mt-1 flex max-w-[75%] flex-col gap-1 self-start">
       <span className="flex items-center gap-1.5 pl-1 text-meta text-ink-2">
-        {bot && <Avatar {...bot} dot="none" size={20} />}
+        {bot && <Avatar {...bot} dot="none" size={20} blink={false} />}
         {name}
       </span>
       {body}

@@ -99,7 +99,7 @@ function Timeline({ messages, members }: { messages: RoomMsg[]; members: Member[
     const who = members.find((x) => 'bot:' + x.bot_id === m.sender)
     out.push(
       <div key={m.id} data-testid="room-bot" className="flex gap-2.5">
-        {who ? <Avatar shape={who.shape} color={who.color} dot="none" size={30} /> : <span className="size-[30px] flex-none rounded-full bg-control" />}
+        {who ? <Avatar shape={who.shape} color={who.color} dot="none" size={30} blink={false} /> : <span className="size-[30px] flex-none rounded-full bg-control" />}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="flex flex-wrap items-center gap-1.5 text-meta text-ink-2">
             <span className="text-ui-sm text-ink">{m.speaker_name}</span>

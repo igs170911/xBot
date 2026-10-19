@@ -71,7 +71,7 @@ export function PeerCard({ msg, bot }: CardProps) {
   return (
     <div data-testid="peer-line" data-event={p.event} className={cx('flex max-w-[85%] flex-col gap-1.5', out ? 'self-end items-end' : 'self-start')}>
       <div className="flex flex-wrap items-center gap-1.5 text-meta text-ink-2">
-        {!out && peer && <Avatar shape={peer.shape} color={peer.color} dot="none" size={20} />}
+        {!out && peer && <Avatar shape={peer.shape} color={peer.color} dot="none" size={20} blink={false} />}
         <Icon icon={out ? ArrowRight : InboxIcon} size={14} />
         <span>{out ? `已傳訊息給 ${name}` : `來自 ${name} 的${INTENT_LABEL[intent] ?? '訊息'}`}</span>
         <IntentChip intent={intent} />
@@ -206,7 +206,7 @@ export function PeerDialog({ a, b, onClose }: { a: string; b: string; onClose: (
           return (
             <div key={m.id} className="flex flex-col gap-1.5">
               <div className="flex gap-2.5">
-                {from ? <Avatar shape={from.shape} color={from.color} dot="none" size={28} /> : <span className="size-7 flex-none rounded-full bg-control" />}
+                {from ? <Avatar shape={from.shape} color={from.color} dot="none" size={28} blink={false} /> : <span className="size-7 flex-none rounded-full bg-control" />}
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-1.5 text-meta text-ink-2">
                     <span className="text-ui-sm text-ink">{m.from_name}</span>

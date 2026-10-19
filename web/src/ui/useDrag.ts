@@ -62,7 +62,7 @@ export function useDrag(target: RefObject<HTMLElement | null> | 'document', opts
         }
       }
       if (!locked) return
-      if (e.cancelable) e.preventDefault()
+      if (!passive && e.cancelable) e.preventDefault()
       const d = Math.max(0, Math.min(along, o.current.size()))
       prev = last
       last = { d, t: e.timeStamp }
@@ -83,7 +83,10 @@ export function useDrag(target: RefObject<HTMLElement | null> | 'document', opts
       locked = false
     }
     el.addEventListener('touchstart', down, { passive: true })
-    el.addEventListener('touchmove', move, { passive: false })
+    // 左右的拖拉（抽屜、返回）不擋捲動：passive 的 touchmove 不用等 JS，上下捲才會順（手機回報 2026-10-19：對話上下滑超不順）。
+    // 頁面本來就不會左右捲，不 preventDefault 也不會一起動。上下的（底部 sheet）要擋住內容捲動，只掛在 sheet 本身。
+    const passive = o.current.axis === 'x'
+    el.addEventListener('touchmove', move, { passive })
     el.addEventListener('touchend', up)
     el.addEventListener('touchcancel', cancel)
     return () => {
