@@ -11953,6 +11953,37 @@ export function teamsRemoveBot(input: TeamsRemoveBotInput, opts?: CallOptions): 
   return invoke('xbot.teams.remove_bot', input, opts).then((r) => r.output)
 }
 
+// xbot.teams.remove_many
+
+export interface TeamsRemoveManyInput {
+  /** 要刪的 Bot（名字或 id） */
+  bots?: string[]
+  /** 要刪的團隊（名字或 id）；成員 Bot 要一起刪就列在 bots */
+  teams?: string[]
+  /** 要刪的群組對話（名稱或 id） */
+  groups?: string[]
+  /** 為什麼要刪（給使用者看） */
+  reason?: string
+}
+
+export interface TeamsRemoveManyOutput {
+  bots: string[]
+  teams: string[]
+  groups: string[]
+  deleted: boolean
+}
+
+/**
+ * 一次刪除好幾個 Bot、團隊、群組（有團隊管理權限的 Bot 用；使用者允許一次就全刪）
+ *
+ * 同一批要刪的列在一起，只送一張核准卡；使用者允許後依序刪群組、Bot、團隊。刪 Bot 會連同它的電腦、對話、任務，無法復原。要刪兩個以上時用這個，不要一個一個送。你本人請用 xbot.bots.delete／xbot.teams.delete／xbot.rooms.delete。
+ *
+ * `xbot.teams.remove_many`：權限 manage、風險 confirm
+ */
+export function teamsRemoveMany(input: TeamsRemoveManyInput = {}, opts?: CallOptions): Promise<TeamsRemoveManyOutput> {
+  return invoke('xbot.teams.remove_many', input, opts).then((r) => r.output)
+}
+
 // xbot.teams.remove_team
 
 export interface TeamsRemoveTeamInput {
@@ -13206,6 +13237,7 @@ export interface Ops {
   'xbot.teams.delete': { input: TeamsDeleteInput; output: TeamsDeleteOutput }
   'xbot.teams.list': { input: TeamsListInput; output: TeamsListOutput }
   'xbot.teams.remove_bot': { input: TeamsRemoveBotInput; output: TeamsRemoveBotOutput }
+  'xbot.teams.remove_many': { input: TeamsRemoveManyInput; output: TeamsRemoveManyOutput }
   'xbot.teams.remove_team': { input: TeamsRemoveTeamInput; output: TeamsRemoveTeamOutput }
   'xbot.teams.set_approval_items': { input: TeamsSetApprovalItemsInput; output: TeamsSetApprovalItemsOutput }
   'xbot.teams.set_reports_to': { input: TeamsSetReportsToInput; output: TeamsSetReportsToOutput }
@@ -13445,6 +13477,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.teams.delete': { path: '/api/v1/teams.delete', scope: 'manage', risk: 'confirm', mutates: true, summary: '刪除一個團隊（Bot 不會被刪）' },
   'xbot.teams.list': { path: '/api/v1/teams.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出團隊（側欄分區）' },
   'xbot.teams.remove_bot': { path: '/api/v1/teams.remove_bot', scope: 'manage', risk: 'confirm', mutates: true, summary: '刪除一個 Bot（有團隊管理權限的 Bot 用；要使用者按允許）' },
+  'xbot.teams.remove_many': { path: '/api/v1/teams.remove_many', scope: 'manage', risk: 'confirm', mutates: true, summary: '一次刪除好幾個 Bot、團隊、群組（有團隊管理權限的 Bot 用；使用者允許一次就全刪）' },
   'xbot.teams.remove_team': { path: '/api/v1/teams.remove_team', scope: 'manage', risk: 'confirm', mutates: true, summary: '刪除一個團隊（有團隊管理權限的 Bot 用；要使用者按允許；Bot 不會被刪）' },
   'xbot.teams.set_approval_items': { path: '/api/v1/teams.set_approval_items', scope: 'manage', risk: 'confirm', mutates: true, summary: '改「只有你能決定的事」清單' },
   'xbot.teams.set_reports_to': { path: '/api/v1/teams.set_reports_to', scope: 'manage', risk: 'safe', mutates: true, summary: '改 Bot 向誰報告' },

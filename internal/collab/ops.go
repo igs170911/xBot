@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"xbot/internal/limits"
 	"xbot/internal/ops"
@@ -600,6 +601,14 @@ func Register(reg *ops.Registry, s *Service) {
 		Precheck: func(ctx context.Context, call *ops.Call, in RemoveGroupIn) error {
 			_, err := removeTarget(ctx, call, in)
 			return err
+		},
+		Explain: func(ctx context.Context, call *ops.Call, in RemoveGroupIn) (string, error) {
+			r, err := removeTarget(ctx, call, in)
+			text := "允許後會刪掉群組對話「" + r.Name + "」和裡面的訊息；Bot 本身不受影響。"
+			if reason := strings.TrimSpace(in.Reason); reason != "" {
+				text += "\n\n原因：" + reason
+			}
+			return text, err
 		},
 		Handle: func(ctx context.Context, call *ops.Call, in RemoveGroupIn) (RemoveGroupOut, error) {
 			r, err := removeTarget(ctx, call, in)

@@ -44,6 +44,9 @@ const (
 	// RoomNameMax 是群組名稱長度。LazyBoy server/collab.py:379 create_room（plain(name, 60)）
 	RoomNameMax = 60
 
+	// RemoveBatchMax 是一張核准卡一次最多刪幾個（Bot、團隊、群組合計；xbot.teams.remove_many）。XBot 自訂。
+	RemoveBatchMax = 50
+
 	// RoomBulletinMax 是群組公告（共同指示，RM-7）長度。XBot 新增（同 AgendaDetailsMax）。
 	RoomBulletinMax = 4000
 

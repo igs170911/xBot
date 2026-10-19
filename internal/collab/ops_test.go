@@ -140,3 +140,25 @@ func TestBotRemovesGroupOnlyAfterOwnerApproves(t *testing.T) {
 		t.Fatal("允許後要刪掉")
 	}
 }
+
+// 刪 Bot 時，剩不到 2 位成員的群組一起刪；還有 2 位以上的留著（2026-10-19：Bot 都刪了，同名群組還留著）。
+func TestPruneRoomsWhenBotGoes(t *testing.T) {
+	tm := setup(t)
+	chief, writer, scout := tm.bots["Chief"], tm.bots["Writer"], tm.bots["Scout"]
+	pair := must[store.Room](t)(tm.s.CreateRoom(tm.ctx, []string{chief, writer}, RoomOptions{Name: "兩人"}))
+	trio := must[store.Room](t)(tm.s.CreateRoom(tm.ctx, []string{chief, writer, scout}, RoomOptions{Name: "三人"}))
+	gone := must[[]string](t)(tm.s.PruneRooms(tm.ctx, writer))
+	if len(gone) != 1 || gone[0] != "兩人" {
+		t.Fatalf("%v", gone)
+	}
+	if _, err := tm.db.GetRoom(tm.ctx, pair.ID); err == nil {
+		t.Fatal("剩一位的群組要刪")
+	}
+	if _, err := tm.db.GetRoom(tm.ctx, trio.ID); err != nil {
+		t.Fatal("還有兩位的群組要留著")
+	}
+	// 服務啟動時的掃描：都夠人數就不動
+	if gone := must[[]string](t)(tm.s.PruneRooms(tm.ctx, "")); len(gone) != 0 {
+		t.Fatalf("%v", gone)
+	}
+}

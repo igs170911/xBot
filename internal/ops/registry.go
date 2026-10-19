@@ -46,6 +46,9 @@ type Op[In, Out any] struct {
 	// Precheck 在送出核准卡之前先檢查（confirm 級的操作才用得到）：權限不夠、對象不存在時直接回錯誤，
 	// 不要讓使用者白按一次允許。可空白；允許之後 Handle 照樣會再檢查一次。
 	Precheck func(ctx context.Context, call *Call, in In) error
+	// Explain 寫在核准卡上的說明：這次具體要做什麼（例：要刪的是哪幾個 Bot）。空白用預設「要允許嗎？」。
+	// 在 Precheck 通過之後、送出核准卡之前呼叫。
+	Explain func(ctx context.Context, call *Call, in In) (string, error)
 	// Handle 執行操作。call.DryRun 為 true 時只能讀、回傳「會發生什麼」；這時 call.DB 是唯讀的。
 	Handle func(ctx context.Context, call *Call, in In) (Out, error)
 }
@@ -138,13 +141,14 @@ type Registry struct {
 }
 
 type entry struct {
-	info   Info
-	run    func(ctx context.Context, call *Call, raw json.RawMessage) (json.RawMessage, error)
-	risk   func(raw json.RawMessage) Risk
-	amount func(raw json.RawMessage) int64
-	revert func(ctx context.Context, call *Call, in, out json.RawMessage) error
-	refs   func(raw json.RawMessage) []resourceRef
-	check  func(ctx context.Context, call *Call, raw json.RawMessage) error
+	info    Info
+	run     func(ctx context.Context, call *Call, raw json.RawMessage) (json.RawMessage, error)
+	risk    func(raw json.RawMessage) Risk
+	amount  func(raw json.RawMessage) int64
+	revert  func(ctx context.Context, call *Call, in, out json.RawMessage) error
+	refs    func(raw json.RawMessage) []resourceRef
+	check   func(ctx context.Context, call *Call, raw json.RawMessage) error
+	explain func(ctx context.Context, call *Call, raw json.RawMessage) (string, error)
 }
 
 type resourceRef struct{ kind, id string }
@@ -260,6 +264,15 @@ func register[In, Out any](r *Registry, op Op[In, Out]) error {
 				return InvalidInput(FieldError{Message: "格式不對：" + err.Error()})
 			}
 			return op.Precheck(ctx, call, v)
+		}
+	}
+	if op.Explain != nil {
+		e.explain = func(ctx context.Context, call *Call, raw json.RawMessage) (string, error) {
+			v, err := decode(raw)
+			if err != nil {
+				return "", InvalidInput(FieldError{Message: "格式不對：" + err.Error()})
+			}
+			return op.Explain(ctx, call, v)
 		}
 	}
 	e.amount = func(raw json.RawMessage) int64 {

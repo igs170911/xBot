@@ -977,6 +977,12 @@ func (s *Service) StopChain(ctx context.Context, chain string) ([]string, error)
 
 // ForgetBot：Bot 被刪除了。還在等它回覆的隊友會收到「已經被刪除」（AA-6，LazyBoy forget_agent）。群組成員由資料庫一起刪。
 func (s *Service) ForgetBot(ctx context.Context, botID string) {
+	// 它在的群組少於 2 位成員就一起刪（同名的團隊群組不會留一個空殼）
+	if gone, err := s.PruneRooms(ctx, botID); err != nil {
+		s.log.Warn("刪 Bot 時清掉沒人的群組失敗", "bot", botID, "err", err)
+	} else if len(gone) > 0 {
+		s.log.Info("刪 Bot 時一起刪掉人數不夠的群組", "bot", botID, "rooms", gone)
+	}
 	msgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{To: botID, Intents: []string{IntentRequest, IntentQuestion}, Unanswered: true})
 	if err != nil {
 		return

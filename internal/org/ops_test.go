@@ -211,3 +211,55 @@ func TestManagerRemovesBotOnlyAfterOwnerApproves(t *testing.T) {
 		t.Fatal("允許後要刪掉")
 	}
 }
+
+// 同一批刪除只送一張核准卡，卡上寫出每一個要刪的名字；允許一次就全刪（使用者決定 2026-10-19）。
+func TestManagerRemovesManyWithOneApproval(t *testing.T) {
+	e := setupOps(t)
+	ceo := ops.Bot(e.bots["CEO"], "CEO")
+	e.manage("CEO")
+	var made CreateTeamOut
+	if err := e.call(ops.Owner("ui"), "xbot.teams.create", CreateTeamIn{Template: "marketing", Name: "行銷部"}, &made); err != nil {
+		t.Fatal(err)
+	}
+	// 有一個找不到就整批不送
+	if err := e.call(ceo, "xbot.teams.remove_many", RemoveManyIn{Bots: []string{"Dev", "不存在"}}, nil); codeOf(err) != ops.CodeNotFound {
+		t.Fatalf("%v", err)
+	}
+	in := RemoveManyIn{Bots: []string{"Dev", "QA", "Dev"}, Teams: []string{"行銷部"}, Reason: "重建"}
+	if err := e.call(ceo, "xbot.teams.remove_many", in, nil); codeOf(err) != ops.CodePendingApproval {
+		t.Fatalf("要先核准：%v", err)
+	}
+	pending, _ := e.db.ListApprovals(e.ctx, "pending")
+	if len(pending) != 1 {
+		t.Fatalf("同一批只要一張核准卡：%d", len(pending))
+	}
+	cards, _ := e.db.ListInbox(e.ctx, "open")
+	body := ""
+	for _, c := range cards {
+		if c.Kind == "approval" {
+			body = c.Body
+		}
+	}
+	for _, want := range []string{"Bot：Dev", "Bot：QA", "團隊：行銷部", "原因：重建"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("卡上要寫出 %q：%s", want, body)
+		}
+	}
+	if strings.Count(body, "Bot：Dev") != 1 {
+		t.Fatalf("重複的只列一次：%s", body)
+	}
+	if err := e.db.DecideApproval(e.ctx, pending[0].ID, "approved", "owner"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.reg.ExecuteApproved(e.ctx, pending[0].ID); err != nil {
+		t.Fatalf("允許後執行：%v", err)
+	}
+	for _, n := range []string{"Dev", "QA"} {
+		if _, err := e.db.GetBot(e.ctx, e.bots[n]); err == nil {
+			t.Fatalf("%s 要刪掉", n)
+		}
+	}
+	if teams := must[[]store.Team](t)(e.db.ListTeams(e.ctx)); len(teams) != 0 {
+		t.Fatalf("團隊要刪掉：%+v", teams)
+	}
+}

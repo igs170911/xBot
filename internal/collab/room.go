@@ -189,6 +189,36 @@ func (s *Service) DeleteRoom(ctx context.Context, roomID string) error {
 	return nil
 }
 
+// PruneRooms 刪掉少於 limits.RoomMembersMin 位成員的群組（不能用也不能編輯）；except 是要當成已經不在的 Bot（正要刪的）。
+// 刪 Bot 時呼叫（使用者回報 2026-10-19：Bot 都刪了，同名群組還留著）；服務啟動時也掃一次，清掉以前留下的。
+func (s *Service) PruneRooms(ctx context.Context, except string) ([]string, error) {
+	rooms, err := s.db.ListRooms(ctx, except)
+	if err != nil {
+		return nil, err
+	}
+	var gone []string
+	for _, r := range rooms {
+		ids, err := s.memberIDs(ctx, r.ID)
+		if err != nil {
+			return gone, err
+		}
+		n := 0
+		for _, id := range ids {
+			if id != except {
+				n++
+			}
+		}
+		if n >= limits.RoomMembersMin {
+			continue
+		}
+		if err := s.DeleteRoom(ctx, r.ID); err != nil {
+			return gone, err
+		}
+		gone = append(gone, r.Name)
+	}
+	return gone, nil
+}
+
 func (s *Service) memberIDs(ctx context.Context, roomID string) ([]string, error) {
 	ms, err := s.db.ListRoomMembers(ctx, roomID)
 	if err != nil {

@@ -143,7 +143,15 @@ func (r *Registry) invoke(ctx context.Context, id Identity, name string, raw jso
 			return Result{}, release(Internal(err))
 		}
 		if d == NeedApproval {
-			perr := r.requestApproval(ctx, call, raw, masked, botID, audit.target, claimed)
+			card := ApprovalCard{}
+			if e.explain != nil {
+				body, err := e.explain(ctx, call, raw)
+				if err != nil {
+					return Result{}, release(AsError(err))
+				}
+				card.Body = body
+			}
+			perr := r.requestApproval(ctx, call, raw, masked, botID, audit.target, claimed, card)
 			if perr.Code != CodePendingApproval {
 				return Result{}, release(perr)
 			}
@@ -208,8 +216,8 @@ type approvalPayload struct {
 }
 
 // requestApproval 建立核准與待我處理卡片，回傳 pending_approval 錯誤（失敗時回其他錯誤）。
-func (r *Registry) requestApproval(ctx context.Context, call *Call, raw, masked json.RawMessage, botID, target string, claimed bool) *Error {
-	t, err := r.createApproval(ctx, call, raw, masked, botID, target, claimed, ApprovalCard{})
+func (r *Registry) requestApproval(ctx context.Context, call *Call, raw, masked json.RawMessage, botID, target string, claimed bool, card ApprovalCard) *Error {
+	t, err := r.createApproval(ctx, call, raw, masked, botID, target, claimed, card)
 	if err != nil {
 		return AsError(err)
 	}

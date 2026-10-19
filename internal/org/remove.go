@@ -3,8 +3,10 @@ package org
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
+	"xbot/internal/limits"
 	"xbot/internal/ops"
 )
 
@@ -90,6 +92,10 @@ func registerRemove(reg *ops.Registry, s *Service) {
 			_, _, err := botTarget(ctx, s, call, in)
 			return err
 		},
+		Explain: func(ctx context.Context, call *ops.Call, in RemoveBotIn) (string, error) {
+			_, name, err := botTarget(ctx, s, call, in)
+			return explain([]string{"Bot：" + name + "（連同它的電腦、檔案、對話）"}, in.Reason), err
+		},
 		Handle: func(ctx context.Context, call *ops.Call, in RemoveBotIn) (RemoveOut, error) {
 			id, name, err := botTarget(ctx, s, call, in)
 			if err != nil {
@@ -117,6 +123,10 @@ func registerRemove(reg *ops.Registry, s *Service) {
 			_, _, err := teamTarget(ctx, s, call, in)
 			return err
 		},
+		Explain: func(ctx context.Context, call *ops.Call, in RemoveTeamIn) (string, error) {
+			_, name, err := teamTarget(ctx, s, call, in)
+			return explain([]string{"團隊：" + name + "（成員 Bot 不會被刪）"}, in.Reason), err
+		},
 		Handle: func(ctx context.Context, call *ops.Call, in RemoveTeamIn) (RemoveOut, error) {
 			id, name, err := teamTarget(ctx, s, call, in)
 			if err != nil {
@@ -129,6 +139,175 @@ func registerRemove(reg *ops.Registry, s *Service) {
 			raw, _ := json.Marshal(map[string]string{"id": id})
 			if _, err := reg.Invoke(ctx, ops.Owner("approved"), "xbot.teams.delete", raw, ops.Options{}); err != nil {
 				return out, err
+			}
+			out.Deleted = true
+			return out, nil
+		},
+	})
+	registerRemoveMany(reg, s)
+}
+
+// explain 是刪除核准卡上的說明：要刪什麼、為什麼。
+func explain(lines []string, reason string) string {
+	text := "允許後會刪掉：\n- " + strings.Join(lines, "\n- ")
+	if r := strings.TrimSpace(reason); r != "" {
+		text += "\n\n原因：" + r
+	}
+	return text + "\n\n刪了就無法復原。"
+}
+
+// RemoveManyIn 是 xbot.teams.remove_many 的輸入。
+type RemoveManyIn struct {
+	Bots   []string `json:"bots,omitempty" desc:"要刪的 Bot（名字或 id）"`
+	Teams  []string `json:"teams,omitempty" desc:"要刪的團隊（名字或 id）；成員 Bot 要一起刪就列在 bots"`
+	Groups []string `json:"groups,omitempty" desc:"要刪的群組對話（名稱或 id）"`
+	Reason string   `json:"reason,omitempty" max:"500" desc:"為什麼要刪（給使用者看）"`
+}
+
+// RemoveManyOut 是 xbot.teams.remove_many 的輸出（使用者允許後）。
+type RemoveManyOut struct {
+	Bots    []string `json:"bots"`
+	Teams   []string `json:"teams"`
+	Groups  []string `json:"groups"`
+	Deleted bool     `json:"deleted"`
+}
+
+type batchItem struct{ id, name string }
+
+type batch struct{ bots, teams, groups []batchItem }
+
+func (b batch) lines() []string {
+	var out []string
+	for _, x := range b.bots {
+		out = append(out, "Bot："+x.name)
+	}
+	for _, x := range b.teams {
+		out = append(out, "團隊："+x.name)
+	}
+	for _, x := range b.groups {
+		out = append(out, "群組對話："+x.name)
+	}
+	return out
+}
+
+func itemNames(xs []batchItem) []string {
+	out := []string{}
+	for _, x := range xs {
+		out = append(out, x.name)
+	}
+	return out
+}
+
+// batchTarget 檢查發起的 Bot 有團隊管理權限、每一個要刪的都找得到；重複的只算一次。
+func batchTarget(ctx context.Context, s *Service, call *ops.Call, in RemoveManyIn) (batch, error) {
+	var b batch
+	n := len(in.Bots) + len(in.Teams) + len(in.Groups)
+	if n == 0 {
+		return b, ops.InvalidInput(ops.FieldError{Field: "bots", Message: "至少要列一個要刪的 Bot、團隊或群組"})
+	}
+	if n > limits.RemoveBatchMax {
+		return b, ops.InvalidInput(ops.FieldError{Field: "bots", Message: fmt.Sprintf("一次最多刪 %d 個", limits.RemoveBatchMax)})
+	}
+	if err := ready(s); err != nil {
+		return b, err
+	}
+	if call.Identity.Kind != ops.KindBot {
+		return b, ops.Forbidden("這是給有團隊管理權限的 Bot 用的；你本人請用 xbot.bots.delete／xbot.teams.delete／xbot.rooms.delete")
+	}
+	if _, err := s.RequireManager(ctx, call.Identity.ID); err != nil {
+		return b, err
+	}
+	seen := map[string]bool{}
+	for _, ref := range in.Bots {
+		id, name, err := botTarget(ctx, s, call, RemoveBotIn{Bot: ref})
+		if err != nil {
+			return b, err
+		}
+		if !seen[id] {
+			seen[id] = true
+			b.bots = append(b.bots, batchItem{id, name})
+		}
+	}
+	for _, ref := range in.Teams {
+		id, name, err := teamTarget(ctx, s, call, RemoveTeamIn{Team: ref})
+		if err != nil {
+			return b, err
+		}
+		if !seen[id] {
+			seen[id] = true
+			b.teams = append(b.teams, batchItem{id, name})
+		}
+	}
+	if len(in.Groups) > 0 {
+		rooms, err := call.DB.ListRooms(ctx, "")
+		if err != nil {
+			return b, err
+		}
+		for _, ref := range in.Groups {
+			ref = strings.TrimSpace(ref)
+			found := false
+			for _, r := range rooms {
+				if r.ID == ref || r.Name == ref {
+					found = true
+					if !seen[r.ID] {
+						seen[r.ID] = true
+						b.groups = append(b.groups, batchItem{r.ID, r.Name})
+					}
+					break
+				}
+			}
+			if !found {
+				return b, ops.NotFound("找不到這個群組：" + ref)
+			}
+		}
+	}
+	return b, nil
+}
+
+// registerRemoveMany：一次刪好幾個，只要使用者允許一次（使用者決定 2026-10-19：「同一批的刪除只批准一次就全刪」）。
+func registerRemoveMany(reg *ops.Registry, s *Service) {
+	ops.Register(reg, ops.Op[RemoveManyIn, RemoveManyOut]{
+		Name: "xbot.teams.remove_many", Summary: "一次刪除好幾個 Bot、團隊、群組（有團隊管理權限的 Bot 用；使用者允許一次就全刪）",
+		Description: "同一批要刪的列在一起，只送一張核准卡；使用者允許後依序刪群組、Bot、團隊。刪 Bot 會連同它的電腦、對話、任務，無法復原。" +
+			"要刪兩個以上時用這個，不要一個一個送。你本人請用 xbot.bots.delete／xbot.teams.delete／xbot.rooms.delete。",
+		Scope: ops.ScopeManage, Risk: ops.RiskConfirm, NoDelegate: true, ForBot: true,
+		Precheck: func(ctx context.Context, call *ops.Call, in RemoveManyIn) error {
+			_, err := batchTarget(ctx, s, call, in)
+			return err
+		},
+		Explain: func(ctx context.Context, call *ops.Call, in RemoveManyIn) (string, error) {
+			b, err := batchTarget(ctx, s, call, in)
+			return explain(b.lines(), in.Reason), err
+		},
+		Handle: func(ctx context.Context, call *ops.Call, in RemoveManyIn) (RemoveManyOut, error) {
+			b, err := batchTarget(ctx, s, call, in)
+			if err != nil {
+				return RemoveManyOut{}, err
+			}
+			out := RemoveManyOut{Bots: itemNames(b.bots), Teams: itemNames(b.teams), Groups: itemNames(b.groups)}
+			if call.DryRun {
+				return out, nil
+			}
+			// 到這裡代表使用者已經按了允許；用使用者在網頁上刪除的同一組操作
+			run := func(op string, in map[string]string) error {
+				raw, _ := json.Marshal(in)
+				_, err := reg.Invoke(ctx, ops.Owner("approved"), op, raw, ops.Options{})
+				return err
+			}
+			for _, g := range b.groups {
+				if err := run("xbot.rooms.delete", map[string]string{"room_id": g.id}); err != nil && ops.AsError(err).Code != ops.CodeNotFound {
+					return out, err
+				}
+			}
+			for _, x := range b.bots {
+				if err := run("xbot.bots.delete", map[string]string{"id": x.id}); err != nil && ops.AsError(err).Code != ops.CodeNotFound {
+					return out, err
+				}
+			}
+			for _, t := range b.teams {
+				if err := run("xbot.teams.delete", map[string]string{"id": t.id}); err != nil && ops.AsError(err).Code != ops.CodeNotFound {
+					return out, err
+				}
 			}
 			out.Deleted = true
 			return out, nil

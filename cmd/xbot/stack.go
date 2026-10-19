@@ -357,7 +357,8 @@ func (s *stack) refreshApps(ctx context.Context, hd *hermes.Driver, botIDs []str
 	}
 }
 
-// startBackground 開始服務才需要的背景工作：閒置休眠（BX-12、CL-9）；收尾上次沒做完的搬家，並定期刪掉搬家後保留期已過的舊資料（CL-5）。
+// startBackground 開始服務才需要的背景工作：閒置休眠（BX-12、CL-9）；收尾上次沒做完的搬家，並定期刪掉搬家後保留期已過的舊資料（CL-5）；
+// 清掉人數不夠的群組。
 func (s *stack) startBackground() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.stopIdle = cancel
@@ -366,6 +367,12 @@ func (s *stack) startBackground() {
 		slog.Warn("收尾上次沒做完的搬家失敗", "err", err)
 	}
 	go s.computers.RunMoveCleanup(ctx)
+	// 以前刪 Bot 留下的空群組（少於 2 位成員，不能用也不能編輯）
+	if gone, err := s.collab.PruneRooms(ctx, ""); err != nil {
+		slog.Warn("清掉人數不夠的群組失敗", "err", err)
+	} else if len(gone) > 0 {
+		slog.Info("清掉人數不夠的群組", "rooms", gone)
+	}
 }
 
 func (s *stack) Close() error {
