@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { chatDeleteThread } from '../api/generated'
 import { ConfirmDialog } from '../ui/Dialog'
 import { useToast } from '../ui/toast-context'
+import { forgetThread } from './assemble'
 import { chatStore } from './chatStore'
 
 // 刪除對話串（xbot.chat.delete_thread）：訊息刪了無法復原；Bot 的電腦、檔案、記憶不受影響。
@@ -13,11 +14,7 @@ export function DeleteThreadDialog({ threadId, open, onClose, onDeleted }: { thr
     setBusy(true)
     try {
       await chatDeleteThread({ thread_id: threadId })
-      chatStore.set((s) => {
-        const threads = { ...s.threads }
-        delete threads[threadId]
-        return { ...s, threads }
-      })
+      chatStore.set((s) => forgetThread(s, threadId))
       onClose()
       onDeleted()
       toast.show({ kind: 'done', text: '已刪除對話串' })

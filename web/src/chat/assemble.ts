@@ -606,6 +606,21 @@ export function threadItems(s: ChatState, threadId: string): ChatItem[] {
   return items
 }
 
+/** 刪掉對話串後把它的訊息與工作一起忘掉（不然工作步驟留在記憶體裡，可能跑到別的畫面）。 */
+export function forgetThread(s: ChatState, threadId: string): ChatState {
+  const threads = { ...s.threads }
+  delete threads[threadId]
+  const tasks = { ...s.tasks }
+  const taskThread: Record<string, string> = {}
+  for (const [taskId, tid] of Object.entries(s.taskThread)) {
+    if (tid === threadId) delete tasks[taskId]
+    else taskThread[taskId] = tid
+  }
+  // 只收到工具事件、還沒有對照的工作：記在工作本身的 threadId
+  for (const [taskId, a] of Object.entries(tasks)) if (a.threadId === threadId) delete tasks[taskId]
+  return { ...s, threads, tasks, taskThread }
+}
+
 /** 這條對話串正在進行的工作（最後一件）。 */
 export function activeTask(s: ChatState, threadId: string): Activity | undefined {
   let found: Activity | undefined

@@ -18,7 +18,7 @@ import { Icon } from '../ui/Icon'
 import { MenuButton } from '../ui/Menu'
 import { cx } from '../ui/cx'
 import { ModelSettingsDialog } from '../pages/ModelSettings'
-import { activeTask, isActive, threadItems, type Activity, type ChatItem } from './assemble'
+import { activeTask, isActive, threadItems, type Activity, type ChatItem, type ChatMsg } from './assemble'
 import { cardFor } from './cards'
 import { takeMention } from '../files/mention'
 import { ChatComposer, type ComposerHandle, type ComposerMode } from './ChatComposer'
@@ -39,6 +39,7 @@ import { TakeoverBar } from './TakeoverBar'
 import { PauseBanner, usePauseAll } from '../shell/PauseBanner'
 import { WorkSteps } from './WorkSteps'
 import { FirstHome, FirstTasks, useFirstHome } from '../onboard/FirstHome'
+import { dismissCard } from '../onboard/state'
 import { ChatAnnouncer } from './Announcer'
 import { ComputerPanel } from '../computer/ComputerPanel'
 import { useNarrow } from '../computer/hooks'
@@ -66,18 +67,28 @@ function Messages({ items, bot, threadId, onRetry, canRetry }: { items: ChatItem
   const asked = new Map<string, string>()
   for (const it of items) if (it.type === 'message' && it.msg.sender === 'owner' && it.msg.taskId) asked.set(it.msg.taskId, it.msg.content)
   const lastBot = items.findLast((it) => it.type === 'message' && it.msg.sender !== 'owner')
+  // 一件工作只畫一次步驟（一件工作可能有好幾則訊息，例：Bot 調整五個隊友＝五行；2026-10-19 同一個「工作了…」重複五次）：
+  // 做完的放在第一則上面，進行中的接在最後一則下面
+  const firstOf = new Map<string, ChatItem>()
+  const lastOf = new Map<string, ChatItem>()
+  const hidden = (m: ChatMsg) => m.silent || (m.sender !== 'owner' && !m.streaming && isSilentText(m.content))
+  for (const it of items) {
+    if (it.type !== 'message' || !it.activity || hidden(it.msg)) continue
+    if (!firstOf.has(it.activity.taskId)) firstOf.set(it.activity.taskId, it)
+    lastOf.set(it.activity.taskId, it)
+  }
   for (const it of items) {
     if (it.type === 'activity') {
       out.push(<WorkSteps key={'a' + it.activity.taskId} a={it.activity} bot={bot} />)
       continue
     }
     const m = it.msg
-    if (m.silent || (m.sender !== 'owner' && !m.streaming && isSilentText(m.content))) continue
+    if (hidden(m)) continue
     if (m.createdAt && m.seq !== Number.MAX_SAFE_INTEGER && (!last || m.createdAt - last > GAP)) out.push(<Stamp key={'t' + m.id} at={m.createdAt} />)
     if (m.createdAt) last = m.createdAt
     // 進行中：進度接在回覆下面（C01，最新的動態靠近輸入框）；做完：摺疊的步驟放在回答上面（C02）
     const live = it.activity && isActive(it.activity)
-    if (it.activity && !live) out.push(<WorkSteps key={'a' + it.activity.taskId} a={it.activity} bot={bot} />)
+    if (it.activity && !live && firstOf.get(it.activity.taskId) === it) out.push(<WorkSteps key={'a' + it.activity.taskId} a={it.activity} bot={bot} />)
     const Card = cardFor(m.kind)
     const isLast = it === lastBot
     if (Card) out.push(createElement(Card, { key: m.id, msg: m, bot, threadId, activity: it.activity }))
@@ -85,7 +96,7 @@ function Messages({ items, bot, threadId, onRetry, canRetry }: { items: ChatItem
       // 先判斷列（C15）放在泡泡下面、懸停的複製列上面
       if (m.content || !m.streaming) out.push(<OwnerMessage key={m.id} msg={m} below={<PreCheckRow taskId={m.taskId} />} />)
     } else if (m.content) out.push(<BotMessage key={m.id} msg={m} last={isLast} botId={bot?.id} color={bot?.color} />)
-    if (it.activity && live) out.push(<WorkSteps key={'a' + it.activity.taskId} a={it.activity} bot={bot} />)
+    if (it.activity && live && lastOf.get(it.activity.taskId) === it) out.push(<WorkSteps key={'a' + it.activity.taskId} a={it.activity} bot={bot} />)
     const retryText = m.taskId ? asked.get(m.taskId) : undefined
     if (m.quota && bot) out.push(<QuotaCard key={'q' + m.id} quota={m.quota} botId={bot.id} bot={bot} />)
     else out.push(<OutcomeRow key={'o' + m.id} msg={m} activity={it.activity} onRetry={isLast && canRetry && retryText ? () => onRetry(retryText) : undefined} />)
@@ -426,7 +437,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   const mode: ComposerMode = act ? (stopping ? 'stopping' : 'working') : 'idle'
   const noModel = models !== null && !models.ready && !bot?.model && !(bot && usesPlan(bot))
   const name = bot?.name ?? 'Bot'
-  const firstHome = useFirstHome(bots)
+  const firstHome = useFirstHome(bots, threads)
 
   // 新內容進來時，如果本來就在最下面，就跟著捲到底；載入更早的訊息時保持畫面不跳
   const lastItem = items[items.length - 1]
@@ -465,6 +476,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
     stick.current = true
     try {
       const out = await chatSend({ bot_id: botId, text, thread_id: threadId })
+      if (firstHome) dismissCard('home') // 開始聊了：首次歡迎不再出現
       if (out.task_id) runPreCheck(botId, text, out.task_id) // 先判斷（C15）：只是建議，背景跑
       if (out.thread_id !== threadId) {
         void reloadThreads()

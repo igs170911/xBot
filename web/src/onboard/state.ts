@@ -77,7 +77,7 @@ export function endTour() {
   void updateOnboard({ tour_done: true })
 }
 
-export function dismissCard(card: 'import' | 'phone' | 'tour') {
+export function dismissCard(card: 'import' | 'phone' | 'tour' | 'home') {
   const s = onboardStore.get().status
   if (s && s !== 'off') patchState({ ...s.state, dismissed: [...s.state.dismissed, card] })
   void updateOnboard({ dismiss: card })

@@ -18,10 +18,14 @@ const CARDS: Card[] = [
   { id: 'tour', icon: Compass, title: '看導覽', body: '1 分鐘認識三個地方：輸入框、電腦、待我處理。', action: '開始導覽', go: startTour },
 ]
 
-/** 首次設定剛做完、只有一個 Bot、對話還是空的：顯示這個首頁。 */
-export function useFirstHome(bots: Bot[] | null): boolean {
+/**
+ * 首次設定剛做完、只有一個 Bot、還沒有任何對話串：顯示這個首頁。
+ * 送出第一句話就記下 home，之後不再出現（2026-10-19：刪掉其他 Bot、開新對話串時又跑出歡迎畫面）。
+ */
+export function useFirstHome(bots: Bot[] | null, threads: unknown[] | null): boolean {
   const s = useStore(onboardStore).status
-  return !!s && s !== 'off' && s.state.completed && (bots?.filter((b) => !b.archived).length ?? 0) === 1
+  if (!s || s === 'off' || !s.state.completed || s.state.dismissed.includes('home')) return false
+  return threads !== null && threads.length === 0 && (bots?.filter((b) => !b.archived).length ?? 0) === 1
 }
 
 export function FirstHome({ bot }: { bot: Bot }) {
@@ -43,7 +47,7 @@ export function FirstHome({ bot }: { bot: Bot }) {
           <span className="text-meta text-ink-2">都可以跳過，隨時在設定找到</span>
         </div>
         {cards.length === 0 ? (
-          <p className="m-0 text-sub text-ink-2">都關掉了。連手機在「設定 › 電腦與裝置」，導覽在對話的「更多」選單。</p>
+          <p className="m-0 text-sub text-ink-2">都關掉了。連手機在「設定 › 電腦與裝置」，導覽在「設定 › 一般」。</p>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3">
             {cards.map((c) => (

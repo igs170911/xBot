@@ -22,7 +22,7 @@ import (
 const Setting = "onboard"
 
 // Cards 是首頁「之後再做」卡片（A05）。
-var Cards = []string{"import", "phone", "tour"}
+var Cards = []string{"import", "phone", "tour", "home"}
 
 // LocalServer 是一個要偵測的本機模型服務。
 type LocalServer struct {
@@ -64,7 +64,7 @@ type State struct {
 	Completed   bool     `json:"completed" desc:"首次設定做完或跳過了"`
 	CompletedAt int64    `json:"completed_at,omitempty"`
 	TourDone    bool     `json:"tour_done" desc:"導覽看完或跳過了（A10）"`
-	Dismissed   []string `json:"dismissed" desc:"首頁「之後再做」關掉的卡片：import、phone、tour"`
+	Dismissed   []string `json:"dismissed" desc:"首頁「之後再做」關掉的卡片：import、phone、tour；home＝已經開始聊了，不再顯示首次歡迎"`
 }
 
 // Engine 是這台電腦上一個訂閱 CLI 的登入狀態。
@@ -134,7 +134,7 @@ func Register(reg *ops.Registry, d Deps) {
 		Scope: ops.ScopeManage, Risk: ops.RiskSafe,
 		Handle: func(ctx context.Context, call *ops.Call, in UpdateIn) (State, error) {
 			if in.Dismiss != "" && !slices.Contains(Cards, in.Dismiss) {
-				return State{}, ops.InvalidInput(ops.FieldError{Field: "dismiss", Message: "只能是 import、phone、tour"})
+				return State{}, ops.InvalidInput(ops.FieldError{Field: "dismiss", Message: "只能是 import、phone、tour、home"})
 			}
 			st, err := Load(ctx, call.DB)
 			if err != nil {

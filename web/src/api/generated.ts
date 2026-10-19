@@ -8427,7 +8427,7 @@ export interface OnboardStatusOutput {
     completed_at?: number
     /** 導覽看完或跳過了（A10） */
     tour_done: boolean
-    /** 首頁「之後再做」關掉的卡片：import、phone、tour */
+    /** 首頁「之後再做」關掉的卡片：import、phone、tour；home＝已經開始聊了，不再顯示首次歡迎 */
     dismissed: string[]
   }
   /** 這台電腦上已登入的訂閱 CLI */
@@ -8503,7 +8503,7 @@ export interface OnboardUpdateOutput {
   completed_at?: number
   /** 導覽看完或跳過了（A10） */
   tour_done: boolean
-  /** 首頁「之後再做」關掉的卡片：import、phone、tour */
+  /** 首頁「之後再做」關掉的卡片：import、phone、tour；home＝已經開始聊了，不再顯示首次歡迎 */
   dismissed: string[]
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatReadOutput, XBotEvent } from '../api/generated'
-import { activeTask, applyEvent, applyRead, applySteps, emptyChat, formatElapsed, memoryStepLabel, threadItems, workSummary, toolStep, xbotOp, type ChatState } from './assemble'
+import { activeTask, forgetThread, applyEvent, applyRead, applySteps, emptyChat, formatElapsed, memoryStepLabel, threadItems, workSummary, toolStep, xbotOp, type ChatState } from './assemble'
 
 const T = 'th1'
 const TASK = 'task1'
@@ -248,4 +248,15 @@ it('工具步驟：XBot 的工具寫操作名稱和白話，xbot.memory.add 也�
   expect(toolStep('mcp__xbot__xbot_teams_remove_many', {})).toEqual({ name: 'xbot.teams.remove_many', label: '一次刪除好幾個 Bot、團隊、群組' })
   expect(toolStep('mcp__context7__query_docs', {}, '查 React 文件')).toEqual({ name: 'context7 · query_docs', label: '查 React 文件' })
   expect(toolStep('terminal', {}).name).toBe('terminal')
+})
+
+it('刪掉對話串：訊息和它的工作一起忘掉，別的對話串不動', () => {
+  let s = emptyChat
+  s = applyEvent(s, { id: 1, kind: 'chat.tool_call', bot_id: 'b', thread_id: 't1', task_id: 'k1', at: 1, payload: { tool: { id: 'a', name: 'terminal' } } } as XBotEvent)
+  s = applyEvent(s, { id: 2, kind: 'chat.tool_call', bot_id: 'b', thread_id: 't2', task_id: 'k2', at: 2, payload: { tool: { id: 'b', name: 'terminal' } } } as XBotEvent)
+  s = forgetThread(s, 't1')
+  expect(s.tasks.k1).toBeUndefined()
+  expect(s.taskThread.k1).toBeUndefined()
+  expect(s.tasks.k2).toBeDefined()
+  expect(threadItems(s, 't1')).toEqual([])
 })

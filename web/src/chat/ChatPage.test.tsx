@@ -348,3 +348,20 @@ it('Bot 要求、要你允許的動作（例：分享登入、刪 Bot）也出�
   fireEvent.click(within(card).getByRole('button', { name: /允許/ }))
   await waitFor(() => expect(api.calls.find((c) => c.path === 'approvals.decide')?.input).toEqual({ approval_id: 'ap1', decision: 'allow' }))
 })
+
+// 2026-10-19 實機：Bot 一件工作講了好幾則（例：調整五個隊友＝五行），「工作了…」重複畫五次
+it('一件工作有好幾則 Bot 訊息：工作步驟只畫一次', async () => {
+  render(<App />)
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
+  await waitFor(() => expect(window.location.pathname).toBe('/bots/b1/threads/t1'))
+  emit(
+    ev({ id: 1, kind: 'message.created', payload: storeMsg('m1', 1, 'owner', { task_id: 'k1' }, '調整隊友') }),
+    ev({ id: 2, kind: 'task.state', payload: { state: 'running' } }),
+    ev({ id: 3, kind: 'chat.tool_call', payload: { type: 'tool_call', tool: { id: 'x1', name: 'terminal' } } }),
+    ev({ id: 4, kind: 'chat.tool_result', payload: { type: 'tool_result', tool: { id: 'x1', ok: true } } }),
+  )
+  for (let i = 0; i < 3; i++) emit(ev({ id: 10 + i, kind: 'message.created', payload: storeMsg('p' + i, 2 + i, 'bot:b1', { task_id: 'k1' }, `調整了第 ${i + 1} 位`) }))
+  emit(ev({ id: 20, kind: 'task.state', payload: { state: 'done', verdict: 'answer' } }))
+  await waitFor(() => expect(within(main).getAllByTestId('msg-bot')).toHaveLength(3))
+  expect(within(main).getAllByRole('button', { name: /工作了/ })).toHaveLength(1)
+})
