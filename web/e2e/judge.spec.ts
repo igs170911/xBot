@@ -131,7 +131,7 @@ test('C15 先判斷：訊息下方出現膠囊，「不對？」可改正', asyn
   const row = main.getByTestId('precheck-row')
   await expect(row).toContainText('夠清楚')
   await expect(row).toContainText('不用開電腦 · 先查網路')
-  await expect(row).toContainText('Jev · 96%')
+  await expect(row).toContainText('96%')
   expect(api.calls.find((c) => c.op === 'judge.precheck')?.input).toEqual({ bot_id: bot.id, text: '幫我查這週台北飛東京最便宜的是哪一天', task_id: s.taskId })
   await settle(page)
   await row.screenshot({ path: shot(`${info.project.name}-c15-precheck`) })

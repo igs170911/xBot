@@ -58,7 +58,7 @@ export function JudgeTag({
   onDispute,
   menu,
   menuLabel = '應該是哪一種？',
-  prefix = '系統判斷：',
+  prefix = '',
 }: {
   children: ReactNode
   onDispute?: () => void

@@ -34,7 +34,7 @@ function ChipTag({ chip, taskId }: { chip: Chip; taskId: string }) {
           <Icon icon={ICONS[chip.use] ?? ListChecks} size={13} />
           {chip.shown}
         </span>{' '}
-        · Jev · {Math.round(chip.p * 100)}%{fixedShown && <span className="text-ink"> · 已記下：{fixedShown}</span>}
+        · {Math.round(chip.p * 100)}%{fixedShown && <span className="text-ink"> · 已記下：{fixedShown}</span>}
       </JudgeTag>
       {error && (
         <span role="alert" className="text-meta text-danger">
@@ -51,7 +51,6 @@ export function PreCheckRow({ taskId }: { taskId?: string }) {
   if (!taskId || !chips?.length) return null
   return (
     <div className="flex flex-wrap items-center justify-end gap-1.5" data-testid="precheck-row" aria-label="先判斷">
-      <span className="text-meta text-ink-3">先判斷 · 交給主力引擎之前</span>
       {chips.map((c) => (
         <ChipTag key={c.use} chip={c} taskId={taskId} />
       ))}

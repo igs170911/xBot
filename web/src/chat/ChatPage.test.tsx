@@ -211,7 +211,7 @@ it('Markdown 回覆與重試：工作未完成的最後一則可以再送一次�
   await waitFor(() => expect(api.calls.find((c) => c.path === 'chat.send')?.input).toEqual({ bot_id: 'b1', text: '匯出訂單', thread_id: 't1' }))
 })
 
-it('X04：回覆下面有系統判斷「已完成 · 規則」；不對？選正確的一種會記下來；自動繼續是一行系統紀錄', async () => {
+it('X04：判斷不是「已完成」才在回覆下面標出來；不對？選正確的一種會記下來；自動繼續是一行系統紀錄', async () => {
   api.ops['judge.correct'] = (input) => ({ correction: { ...input, judged: 'done', corrected: input.verdict } })
   messages = [
     { id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '查價格', task_id: 'k1', created_at: Date.now(), updated_at: Date.now() },
@@ -233,18 +233,19 @@ it('X04：回覆下面有系統判斷「已完成 · 規則」；不對？選正
   render(<App />)
   const main = await screen.findByRole('main', { name: '和小秘的對話' })
   const tag = await within(main).findByTestId('judge-tag')
-  expect(tag).toHaveTextContent('系統判斷：只說要做 · 規則')
+  expect(tag).toHaveTextContent('只說要做')
+  expect(tag).not.toHaveTextContent('規則')
   expect(within(main).getByTestId('activity-line')).toHaveTextContent('自動繼續：剛才只說要做，現在真的去做')
   // 新的一輪做完：chat.done 帶判斷。
   emit(
     ev({ id: 1, task_id: 'k2', kind: 'message.created', payload: storeMsg('m4', 4, 'bot:b1', { task_id: 'k2', streaming: true }) }),
     ev({ id: 2, task_id: 'k2', kind: 'chat.done', payload: { message_id: 'm4', status: 'complete', verdict: 'answer', text: 'A 店 120 元。', judge: { verdict: 'done', label: '已完成', reason: '', by: 'rules' } } }),
   )
-  const tags = within(main).getAllByTestId('judge-tag')
-  expect(tags).toHaveLength(2)
-  expect(tags[1]).toHaveTextContent('系統判斷：已完成 · 規則')
-  fireEvent.click(within(tags[1]).getByRole('button', { name: '不對？' }))
+  // 「已完成」是常態，不標（避免每則回覆下面都一行雜訊）。
+  await within(main).findByText('A 店 120 元。')
+  expect(within(main).getAllByTestId('judge-tag')).toHaveLength(1)
+  fireEvent.click(within(tag).getByRole('button', { name: '不對？' }))
   fireEvent.click(await screen.findByRole('menuitem', { name: '卡住了' }))
-  await waitFor(() => expect(api.calls.find((c) => c.path === 'judge.correct')?.input).toEqual({ task_id: 'k2', verdict: 'stuck' }))
-  await waitFor(() => expect(within(main).getAllByTestId('judge-tag')[1]).toHaveTextContent('你改成卡住了'))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'judge.correct')?.input).toEqual({ task_id: 'k1', verdict: 'stuck' }))
+  await waitFor(() => expect(within(main).getAllByTestId('judge-tag')[0]).toHaveTextContent('你改成卡住了'))
 })

@@ -36,6 +36,7 @@ function Collapsible({ long, mine, children }: { long: boolean; mine: boolean; c
 }
 
 // ── 訊息動作（design/C02）──────────────────────────────
+// 動作列排在泡泡下面（佔自己的高度），懸停才顯示；不疊在下一則訊息上面。
 
 function ActionButton({ icon, label, onClick, pressed, tone }: { icon: typeof Copy; label: string; onClick: () => void; pressed?: boolean; tone?: string }) {
   return (
@@ -60,7 +61,7 @@ function BotActions({ msg, raw, onRaw, always, botId }: { msg: ChatMsg; raw: boo
     <div
       role="toolbar"
       aria-label="訊息動作"
-      className={cx('flex items-center gap-0.5 self-start transition-opacity', always ? '-mt-2' : 'absolute left-0 top-full z-10 -mt-1 rounded-seg bg-app opacity-0 focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:hidden')}
+      className={cx('-my-1.5 flex h-8 items-center gap-0.5 self-start transition-opacity', !always && 'opacity-0 focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:hidden')}
     >
       <ActionButton icon={copied ? Check : Copy} label={copied ? '已複製' : '複製'} tone={copied ? 'text-success' : undefined} onClick={() => void copy(msg.content)} />
       <ActionButton icon={Code} label="原始內容" pressed={raw} onClick={onRaw} />
@@ -73,7 +74,7 @@ function BotActions({ msg, raw, onRaw, always, botId }: { msg: ChatMsg; raw: boo
 function OwnerActions({ msg }: { msg: ChatMsg }) {
   const [copied, copy] = useCopy()
   return (
-    <div className="absolute right-0 top-full z-10 -mt-1 flex items-center gap-0.5 rounded-seg bg-app opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:hidden">
+    <div className="-my-1.5 flex h-8 items-center gap-0.5 self-end opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:hidden">
       <span className="pr-1.5 text-meta text-ink-3">{clockLabel(msg.createdAt)}</span>
       <ActionButton icon={copied ? Check : Copy} label={copied ? '已複製' : '複製'} tone={copied ? 'text-success' : undefined} onClick={() => void copy(msg.content)} />
     </div>
@@ -85,7 +86,7 @@ function OwnerActions({ msg }: { msg: ChatMsg }) {
 /** 你的訊息：#5A5A5A 靠右；照原樣顯示（不轉 Markdown）。 */
 export function OwnerMessage({ msg, below }: { msg: ChatMsg; below?: ReactNode }) {
   return (
-    <div className="group relative flex flex-col gap-2">
+    <div className="group flex flex-col gap-2">
       <div data-testid="msg-owner" className="max-w-[75%] self-end whitespace-pre-wrap break-words rounded-bubble bg-bubble-user px-4 py-2.5 text-[15px] leading-[1.6] text-ink">
         <Collapsible long={isLong(msg)} mine>
           {msg.content}
@@ -104,7 +105,7 @@ export function BotMessage({ msg, last, botId }: { msg: ChatMsg; last: boolean; 
   const rich = isRich(msg.content)
   const done = !msg.streaming
   return (
-    <div className="group relative flex flex-col gap-2">
+    <div className="group flex flex-col gap-2">
       <div
         data-testid="msg-bot"
         data-streaming={msg.streaming || undefined}
@@ -147,11 +148,13 @@ export function OutcomeRow({ msg, activity, onRetry, busy }: { msg: ChatMsg; act
 
 // ── 系統判斷（X04，PRD §20 FJ-7：「系統判斷：已完成 · 規則 · 不對？」）────────────
 
-// Bot 回完一輪後的系統判斷；「不對？」選正確的那一種，記下來給快判校正（xbot.judge.correct）。只在正常結束的回覆下面顯示。
+// Bot 回完一輪後的系統判斷；「不對？」選正確的那一種，記下來給快判校正（xbot.judge.correct）。
+// 只在正常結束、而且判斷不是「已完成」時顯示（已完成是常態，每則都標會變雜訊）；你改過的照樣顯示。
 export function JudgeRow({ msg, threadId }: { msg: ChatMsg; threadId: string }) {
   const [error, setError] = useState<string | null>(null)
   const j = msg.judge
   if (!j || msg.streaming || msg.status !== 'complete' || !msg.taskId) return null
+  if (j.verdict === 'done' && !j.corrected) return null
   const taskId = msg.taskId
   const pick = (verdict: string) => {
     setError(null)
@@ -165,7 +168,8 @@ export function JudgeRow({ msg, threadId }: { msg: ChatMsg; threadId: string }) 
   return (
     <div className="-mt-1 flex flex-wrap items-center gap-2" data-testid="judge-row" title={j.reason}>
       <JudgeTag menu={menu}>
-        {VERDICT_LABEL[j.verdict] ?? j.label} · {judgeBy(j.by, j.confidence)}
+        {VERDICT_LABEL[j.verdict] ?? j.label}
+        {j.by === 'model' && j.confidence ? <span className="text-ink-3"> · {judgeBy(j.by, j.confidence)}</span> : null}
         {j.corrected && <span className="text-ink"> · 你改成{VERDICT_LABEL[j.corrected] ?? j.corrected}</span>}
       </JudgeTag>
       {error && (
