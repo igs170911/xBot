@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"xbot/internal/judge"
 	"xbot/internal/ops"
@@ -70,8 +71,14 @@ func TestProgressOp(t *testing.T) {
 	raw, err = e.call(owner, "xbot.chat.send", map[string]any{"bot_id": e.bot.ID, "text": "回覆 OK"})
 	sent := must[SendOut](t, raw, err)
 	e.waitFor(t, owner, sent.TaskID)
-	raw, err = e.call(owner, "xbot.tasks.progress", map[string]any{"bot_id": e.bot.ID})
-	p = must[runtime.Progress](t, raw, err)
+	// 快判在工作結束後才判，機器忙的時候會晚一點寫進去：等到有判斷（最多 5 秒）
+	for deadline := time.Now().Add(5 * time.Second); ; time.Sleep(20 * time.Millisecond) {
+		raw, err = e.call(owner, "xbot.tasks.progress", map[string]any{"bot_id": e.bot.ID})
+		p = must[runtime.Progress](t, raw, err)
+		if (p.Last != nil && p.Last.Judge != nil) || time.Now().After(deadline) {
+			break
+		}
+	}
 	if p.Last == nil || p.Last.TaskID != sent.TaskID || p.Last.Judge == nil || p.Last.Result != "OK" {
 		t.Fatalf("%+v", p.Last)
 	}

@@ -56,9 +56,10 @@ func (f *fakeRT) Active(botID string) (string, string) {
 	return t.ThreadID, t.ID
 }
 
-func (f *fakeRT) StopTask(context.Context, string) (bool, error) { return false, nil }
-func (f *fakeRT) SetHooks(runtime.Hooks)                         {}
-func (f *fakeRT) Bus() *events.Bus                               { return f.bus }
+func (f *fakeRT) StopTask(context.Context, string) (bool, error)         { return false, nil }
+func (f *fakeRT) SetHooks(runtime.Hooks)                                 {}
+func (f *fakeRT) MergeQueued(context.Context, []string, string) []string { return nil }
+func (f *fakeRT) Bus() *events.Bus                                       { return f.bus }
 
 func (f *fakeRT) messages() []runtime.ChatRequest {
 	f.mu.Lock()
