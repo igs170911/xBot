@@ -74,7 +74,7 @@ test('J10 快判設定：逐項切換影子／生效、改每日上限、看一�
   await api.install()
   await page.goto('/settings/models/judge')
   const m = page.getByRole('main')
-  await expect(m.getByRole('switch', { name: '快判' })).toHaveAttribute('aria-checked', 'true')
+  await expect(m.getByRole('switch', { name: '快速判斷' })).toHaveAttribute('aria-checked', 'true')
   await expect(m.getByText('今天 128／300 次 · $0.0054')).toBeVisible()
 
   // Zen 沒儲值：顯示餘額不足，一鍵改用預設模型。
@@ -104,9 +104,9 @@ test('J10 快判設定：逐項切換影子／生效、改每日上限、看一�
   await expect.poll(() => api.calls.filter((c) => c.op === 'judge.settings_set').at(-1)?.input).toEqual({ daily_cap: 150 })
 
   // 關掉：全部照規則。
-  await m.getByRole('switch', { name: '快判' }).click()
+  await m.getByRole('switch', { name: '快速判斷' }).click()
   await expect.poll(() => api.calls.filter((c) => c.op === 'judge.settings_set').at(-1)?.input).toEqual({ tier1: { provider: '', model: '' }, tier2: { provider: '', model: '' } })
-  await expect(m.getByRole('switch', { name: '快判' })).toHaveAttribute('aria-checked', 'false')
+  await expect(m.getByRole('switch', { name: '快速判斷' })).toHaveAttribute('aria-checked', 'false')
 })
 
 // 設定的供應商不存在（例：選了 Zen 的 Jev，但只有 Go 的金鑰）：提醒並一鍵改用預設模型。
@@ -126,7 +126,7 @@ test('J10 快判：供應商不存在時提醒', async ({ page }) => {
   await api.install()
   await page.goto('/settings/models/judge')
   const m = page.getByRole('main')
-  await expect(m.getByText('opencode-zen 還沒設定，快判現在只照規則。')).toBeVisible()
+  await expect(m.getByText('opencode-zen 還沒設定，快速判斷現在只照規則。')).toBeVisible()
   await m.getByRole('button', { name: '改用 deepseek-v4-flash' }).click()
   await expect.poll(() => api.calls.find((c) => c.op === 'judge.settings_set')?.input).toEqual({ tier1: { provider: 'openai', model: 'deepseek-v4-flash' }, tier2: { provider: 'openai', model: 'deepseek-v4-flash' } })
   await expect(m.getByText(/還沒設定/)).toHaveCount(0)

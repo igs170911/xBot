@@ -60,7 +60,8 @@ export function BotsEngineList() {
         <Group label="Bot 清單">
           {live.map((b) => {
             const e = st?.bots.find((x) => x.bot_id === b.id)
-            const to = `/settings/bots/${encodeURIComponent(b.id)}`
+            // 這裡要換的是引擎與模型：直接開「進階 › 模型」
+            const to = `/settings/bots/${encodeURIComponent(b.id)}/advanced`
             return (
               <a key={b.id} href={to} onClick={linkClick(to)} className="flex min-h-14 items-center gap-3 border-line px-4 py-2.5 text-ink not-first:border-t hover:bg-control/50">
                 <Avatar {...look(b)} size={32} blink={false} />
@@ -142,7 +143,7 @@ function TabLink({ to, on, children, small }: { to: string; on: boolean; childre
 }
 
 /** /settings/bots/:id[/abilities|permissions|advanced[/子分頁]]（舊網址 soul、skills、memory 也可以）。 */
-export function BotSettingsPage({ botId, tab, sub }: { botId: string; tab?: BotTab; sub?: string }) {
+export function BotSettingsPage({ botId, tab, sub, back = { to: '/settings/models', label: 'AI 模型' } }: { botId: string; tab?: BotTab; sub?: string; /** 返回鈕：從哪裡打開的就回哪裡（設定頁算好給的）。 */ back?: { to: string; label: string } }) {
   const toast = useToast()
   const [bot, setBot] = useState<Bot | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -207,13 +208,9 @@ export function BotSettingsPage({ botId, tab, sub }: { botId: string; tab?: BotT
 
   return (
     <>
-      <a
-        href="/settings/models"
-        onClick={linkClick('/settings/models')}
-        className="-mb-2 flex w-fit items-center gap-1 text-meta text-ink-2 hover:text-ink max-md:hidden"
-      >
+      <a href={back.to} onClick={linkClick(back.to)} className="-mb-2 flex w-fit items-center gap-1 text-meta text-ink-2 hover:text-ink max-md:hidden" data-testid="bot-settings-back">
         <Icon icon={ChevronLeft} size={16} />
-        AI 模型
+        {back.label}
       </a>
       <div className="flex items-center gap-3 max-sm:flex-wrap">
         <Avatar {...look(bot)} size={40} blink={false} />

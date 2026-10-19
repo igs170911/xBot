@@ -594,7 +594,7 @@ function ComponentsBoard() {
             </SettingsGroup>
           </Panel>
 
-          <Panel title="標註：簡化 · 快判 · 狀態">
+          <Panel title="標註：簡化 · 快速判斷 · 狀態">
             <div className="flex flex-wrap items-center gap-2">
               <SimplifiedTag>簡化：6 步 → 2 步</SimplifiedTag>
               <span className="text-meta text-ink-3">放在被簡化畫板的右上角</span>

@@ -1,4 +1,9 @@
 import { Check } from 'lucide-react'
+import { botsStore } from '../data/bots'
+import { useStore } from '../data/store'
+import { startTour } from '../onboard/state'
+import { navigate } from '../router'
+import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { Select } from '../ui/Menu'
 import { cx } from '../ui/cx'
@@ -73,10 +78,31 @@ export function ThemePicker() {
   )
 }
 
+/** 再看一次導覽（A10）：導覽要對著對話頁的輸入框和電腦鈕，所以先開主要 Bot 的對話。 */
+function TourRow() {
+  const bots = useStore(botsStore).bots
+  const bot = bots?.find((b) => b.primary && !b.archived) ?? bots?.find((b) => !b.archived)
+  return (
+    <Row title="看導覽" sub="1 分鐘認識三個地方：輸入框、電腦、待我處理。">
+      <Button
+        size="sm"
+        disabled={!bot}
+        onClick={() => {
+          if (!bot) return
+          navigate(`/bots/${bot.id}`)
+          startTour()
+        }}
+      >
+        開始導覽
+      </Button>
+    </Row>
+  )
+}
+
 export function GeneralSection() {
   return (
     <>
-      <SectionHeader title="一般" sub="外觀與語言。改了馬上生效，不用按儲存。" />
+      <SectionHeader title="一般" sub="外觀、語言與導覽。改了馬上生效，不用按儲存。" />
       <Block title="外觀">
         <Group>
           <div className="flex flex-col gap-2.5 px-4 pb-4 pt-3">
@@ -96,6 +122,11 @@ export function GeneralSection() {
           <Row title="介面語言" sub="目前只有繁體中文。用注音、倉頡選字時按 Enter 不會送出訊息。" wrap>
             <Select label="介面語言" hideLabel value="zh-TW" options={[{ value: 'zh-TW', label: '繁體中文（台灣）' }]} onChange={() => {}} className="w-[220px] max-sm:w-full" />
           </Row>
+        </Group>
+      </Block>
+      <Block title="說明">
+        <Group>
+          <TourRow />
         </Group>
       </Block>
     </>

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from './fixtures'
 import { MockServer, settle } from './mock'
+import { overflow } from './overflow'
 
 // W31 手機版：L01～L21 每個畫面在 Pixel 7（mobile）與 iPhone（iphone）各截一張，和 design/L*.dc.html 畫板並排比對。
 // 用瀏覽器層的假服務（資料照畫板）；L16／L17 用真的服務（定時任務）。桌面跳過。
@@ -428,32 +429,6 @@ const AUDIT = [
   '/new/bot', '/new/room', '/share', '/calendar/routines', 'LONG',
   'BOT', 'BOT/computer', 'BOT/files', 'BOT/voice', 'BOT/profile', 'BOTSET', 'BOTSET/abilities', 'BOTSET/permissions', 'BOTSET/advanced', 'ROOM',
 ]
-
-async function overflow(page: Page) {
-  return page.evaluate(() => {
-    const W = document.documentElement.clientWidth
-    const bad: string[] = []
-    if (document.documentElement.scrollWidth > W + 1) bad.push(`page scrollWidth ${document.documentElement.scrollWidth} > ${W}`)
-    const clipped = (el: Element) => {
-      for (let p = el.parentElement; p; p = p.parentElement) {
-        const s = getComputedStyle(p)
-        if (/(auto|scroll|hidden|clip)/.test(s.overflowX)) return p.getBoundingClientRect().right <= W + 1 && p.getBoundingClientRect().left >= -1
-      }
-      return false
-    }
-    for (const el of document.querySelectorAll('body *')) {
-      const r = el.getBoundingClientRect()
-      if (r.width === 0 || r.height === 0) continue
-      const s = getComputedStyle(el)
-      if (s.visibility === 'hidden' || s.position === 'fixed') continue
-      if ((r.right > W + 1 || r.left < -1) && !clipped(el) && !el.closest('.sr-only-text,[aria-hidden="true"]')) {
-        const label = el.tagName.toLowerCase() + (el.getAttribute('data-testid') ? `[${el.getAttribute('data-testid')}]` : '') + ' "' + (el.textContent ?? '').trim().slice(0, 30) + '"'
-        bad.push(`${label} ${Math.round(r.left)}..${Math.round(r.right)}`)
-      }
-    }
-    return bad.slice(0, 8)
-  })
-}
 
 test('破版檢查：每一頁在手機寬度都不超出畫面', async ({ page }, info) => {
   test.setTimeout(240_000)

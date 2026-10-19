@@ -7,6 +7,7 @@ import { dispatchEvent } from '../data/events'
 import { resetInbox } from '../data/inbox'
 import { fakeApi, opError, type FakeApi } from '../test-api'
 import { askFromEvent, askFromItem } from './ask'
+import { AskCard } from './AskCard'
 import { applyEvent, applySteps, emptyChat } from './assemble'
 import { resetChat } from './chatStore'
 
@@ -55,6 +56,28 @@ describe('ask', () => {
     expect(r.taskThread.k1).toBe('t1')
     // 再讀一次不會重複
     expect(applySteps(r, steps).tasks.k1.steps).toHaveLength(1)
+  })
+})
+
+describe('核准卡的內容', () => {
+  it('先寫白話的說明，原始指令收在「細節」裡（預設收起）', () => {
+    render(<AskCard ask={{ inboxId: 'i1', kind: 'approval', prompt: 'pay', command: 'python3 /workspace/pay.py --amount 1280', description: '付款 NT$1,280 給晨光廣告' }} bot={{ name: '帳房' }} />)
+    const card = screen.getByTestId('ask-card')
+    expect(card.textContent?.indexOf('付款 NT$1,280')).toBeLessThan(card.textContent?.indexOf('細節') ?? -1)
+    const details = within(card).getByTestId('ask-details')
+    expect(details).not.toHaveAttribute('open')
+    expect(within(details).getByText('細節')).toBeInTheDocument()
+    expect(within(details).getByText('python3 /workspace/pay.py --amount 1280')).toBeInTheDocument()
+  })
+
+  it('沒有說明時直接給看指令（沒有別的可以看）；說明和指令一樣時不重複', () => {
+    const { unmount } = render(<AskCard ask={{ inboxId: 'i1', kind: 'approval', prompt: 'rm -rf build', command: 'rm -rf build' }} />)
+    expect(screen.getByTestId('ask-card')).toHaveTextContent('rm -rf build')
+    expect(screen.queryByTestId('ask-details')).toBeNull()
+    unmount()
+    render(<AskCard ask={{ inboxId: 'i2', kind: 'approval', prompt: 'Run ls -la', description: '列出資料夾內容' }} />)
+    expect(screen.getByTestId('ask-card')).toHaveTextContent('列出資料夾內容')
+    expect(screen.queryByTestId('ask-details')).toBeNull()
   })
 })
 

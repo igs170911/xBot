@@ -107,7 +107,7 @@ export function LimitsPage() {
           })}
         </Group>
       </Block>
-      <p className="m-0 text-meta text-ink-3">每月花費上限在「用量與花費」；快判每天幾次在「AI 模型 → 快判 → 進階」。刪除 Bot、花錢、對外發送一定要你核准，這裡改不到。</p>
+      <p className="m-0 text-meta text-ink-3">每月花費上限在「用量與花費」；快速判斷每天幾次在「AI 模型 → 快速判斷 → 進階」。刪除 Bot、花錢、對外發送一定要你核准，這裡改不到。</p>
     </>
   )
 }
