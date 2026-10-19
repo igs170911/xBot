@@ -171,6 +171,10 @@ const (
 	// StallNudgesMax 是同一個失敗的背景子任務最多被叫回去處理幾次。LazyBoy server/runtime.py:709 STALL_NUDGES
 	StallNudgesMax = 2
 
+	// RestartResumeMax 是服務重開時做到一半的同一件工作，最多自動接著做幾次。XBot 新增：LazyBoy 標成 interrupted、
+	// 不重播，每次部署都讓 Bot 之間的交辦變成「做到一半被中斷」；接著做一次，再被中斷才回報沒有完成。
+	RestartResumeMax = 1
+
 	// StrandedWindow 是找「失敗後沒人接手的背景子任務」時只看最近多久的工作。LazyBoy server/runtime.py:715（timedelta(hours=3)）
 	StrandedWindow = 3 * time.Hour
 

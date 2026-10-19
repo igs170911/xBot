@@ -121,6 +121,50 @@ it('停止：呼叫 chat.stop，輸入框變成正在停止；收到 cancelled �
   expect(within(main).getByRole('button', { name: '送出' })).toBeInTheDocument()
 })
 
+it('服務重開時做到一半被中斷：顯示「做到一半被中斷了」，按「接著做」呼叫 chat.resume；按過後按鈕收掉', async () => {
+  messages = [
+    { id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '整理出貨單', task_id: 'k1', created_at: Date.now(), updated_at: Date.now() },
+    { id: 'm2', seq: 2, sender: 'bot:b1', kind: 'text', content: '整理到一半', task_id: 'k1', status: 'interrupted', restart: true, created_at: Date.now(), updated_at: Date.now() },
+  ]
+  api.ops['chat.resume'] = () => ({ bot_id: 'b1', thread_id: 't1', task_id: 'k2', message_id: 'm3' })
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
+  const row = await within(main).findByTestId('outcome')
+  expect(row).toHaveTextContent('做到一半被中斷了')
+  expect(row).toHaveTextContent('服務重開過，檔案都還在')
+  expect(within(main).queryByText('已停止')).toBeNull()
+  fireEvent.click(within(row).getByRole('button', { name: '接著做' }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'chat.resume')?.input).toEqual({ task_id: 'k1' }))
+
+  // 服務記下已經接著做了：按鈕收掉，你的「接著做」和新的工作接在後面
+  emit(
+    ev({ id: 1, kind: 'message.created', payload: storeMsg('m2', 2, 'bot:b1', { task_id: 'k1', status: 'interrupted', restart: true, resumed: true }, '整理到一半') }),
+    ev({ id: 2, kind: 'message.created', task_id: 'k2', payload: storeMsg('m3', 3, 'owner', { task_id: 'k2' }, '接著做') }),
+  )
+  expect(within(main).getByTestId('outcome')).toHaveTextContent('已經接著做')
+  expect(within(main).queryByRole('button', { name: '接著做' })).toBeNull()
+})
+
+it('服務重開後系統自動接著做：寫到一半的回覆照常顯示，接著一行「服務剛重開，接著做」，沒有中斷的提示', async () => {
+  messages = [
+    { id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '整理出貨單', task_id: 'k1', created_at: Date.now(), updated_at: Date.now() },
+    { id: 'm2', seq: 2, sender: 'bot:b1', kind: 'text', content: '先整理了三筆', task_id: 'k1', restart: true, created_at: Date.now(), updated_at: Date.now() },
+    { id: 'm3', seq: 3, sender: 'system', kind: 'activity', content: '服務剛重開，接著做', task_id: 'k1', activity: 'restart_resume', created_at: Date.now(), updated_at: Date.now() },
+    { id: 'm4', seq: 4, sender: 'bot:b1', kind: 'text', content: '', task_id: 'k1', streaming: true, created_at: Date.now(), updated_at: Date.now() },
+  ]
+  api.ops['chat.read'] = () => ({ thread: THREAD, messages, has_more: false, tasks: { k1: 'running' } })
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
+  expect(await within(main).findByText('先整理了三筆')).toBeInTheDocument()
+  expect(within(main).getByTestId('activity-line')).toHaveTextContent('服務剛重開，接著做')
+  expect(within(main).queryByTestId('outcome')).toBeNull()
+  expect(within(main).queryByRole('button', { name: '接著做' })).toBeNull()
+  // 還在做：停止鈕
+  expect(within(main).getByRole('button', { name: '停止小秘' })).toBeInTheDocument()
+})
+
 it('新 Bot 沒有對話串：顯示空狀態（C03），送出後開新的對話串', async () => {
   api.ops['chat.list_threads'] = () => ({ threads: [] })
   api.ops['chat.send'] = () => ({ bot_id: 'b1', thread_id: 't9', task_id: 'k9', message_id: 'm9' })

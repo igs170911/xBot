@@ -47,6 +47,10 @@ const (
 	XBotMCPServer = "xbot"
 	// Python 是映像裡 Hermes 的 Python（desktop_mcp 也用它跑）。
 	Python = "/opt/hermes/.venv/bin/python"
+	// ExtractBackend 是 web_extract（讀網頁內容）用的後端：Firecrawl 的免金鑰雲端版。沒有選後端時 Hermes 自動挑到
+	// ddgs（DuckDuckGo 只能搜尋），web_extract 每次都回「search-only backend」；Firecrawl 免金鑰版被限流時，
+	// Hermes 自己輪到 Exa、Parallel、Keenable 的免費版（plugins/web/keyless_mcp.py）。只送網址，不送使用者資料。
+	ExtractBackend = "firecrawl"
 )
 
 // webHint 取代 Hermes 對 cli 平台「終端機不顯示 Markdown」的提示（LazyBoy WEB_HINT）。
@@ -238,6 +242,12 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 	approvals["mode"] = ApprovalsMode(p.ApprovalMode)
 	web := sub("web")
 	delete(web, "provider") // Hermes 讀 web.backend（LazyBoy 同樣清掉 web.provider）。
+	// 讀網頁內容：沒有選後端（或選了只能搜尋的 ddgs）時用 ExtractBackend；使用者自己選的保留。
+	if b, _ := web["extract_backend"].(string); b == "" {
+		if shared, _ := web["backend"].(string); shared == "" || shared == "ddgs" {
+			web["extract_backend"] = ExtractBackend
+		}
+	}
 	// context_length：Hermes 經 Model Proxy 量不到視窗，會用內建表猜（常猜成 1M），摘要就幾乎不會發生。
 	cfg["model"] = map[string]any{"default": p.Model, "provider": Provider, "base_url": base, "supports_vision": false,
 		"context_length": limits.HermesContextLength}
@@ -246,8 +256,10 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 	}}
 	cfg["terminal"] = map[string]any{"backend": "local", "cwd": "/workspace", "timeout": limits.HermesTerminalTimeoutSeconds}
 	cfg["browser"] = map[string]any{"backend": "browser-use", "cdp_url": "http://127.0.0.1:9222", "allow_private_urls": true}
+	// 不開 delegation（delegate_task）：Hermes 的子代理一律在背景跑，這一輪先結束，結果十分鐘後才當成新訊息回來；
+	// XBot 看不到、也停不了（2026-10-19：「為啥停止不了？背景做的事情有在做嗎」）。要分工用 XBot 的隊友交辦。
 	cfg["platform_toolsets"] = map[string]any{"cli": []any{"terminal", "file", "web", "browser", "skills", "memory", "todo",
-		"clarify", "mcp", "delegation", "code_execution", "session_search"}}
+		"clarify", "mcp", "code_execution", "session_search"}}
 	cfg["agent"] = map[string]any{"max_iterations": limits.HermesMaxIterations, "reasoning_effort": effort, "image_input_mode": "text",
 		"tool_use_enforcement": false, "execution_guidance": false}
 	cfg["display"] = map[string]any{"busy_input_mode": "steer", "interim_assistant_messages": true}

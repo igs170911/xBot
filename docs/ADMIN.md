@@ -221,6 +221,8 @@ make update
 
 `XBOT_BOX_IMAGE` 改過映像名稱時，`make update BOX_IMAGE=<名稱>`。
 
+服務重啟時 Bot 正在做的工作：你交辦的、隊友交辦的，服務起來後自動接著做一次（同一件工作重新排隊，對話裡多一行「服務剛重開，接著做」；隊友交辦的結果照常送回交辦人）。接著做時又遇到重啟，或是定時任務、Webhook、群組的一輪，就標成「做到一半被中斷了」，交辦的 Bot 會收到沒有完成；對話裡可以按「接著做」（`xbot chat resume --task_id …`）。按了停止、還沒停好就重啟的照停止收尾。
+
 部署到另一台：`make deploy HOST=…`（見 [安裝與更新](guide/01-install.md#部署到另一台機器)）。`make deploy` 也會把 Bot 電腦映像傳過去：那台沒有、或和這台的不同時，用你的 SSH 串流 `docker save | docker load`（不落地）。那台的帳號要能用 Docker；不能用、架構不同、或這台沒有映像時只提醒、不擋部署。`NO_IMAGE=1` 不傳，`xbot deploy --host … --image-only` 只傳映像。
 
 ## 紀錄

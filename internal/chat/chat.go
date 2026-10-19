@@ -28,6 +28,7 @@ type Runtime interface {
 	Bus() *events.Bus
 	Respond(ctx context.Context, itemID string, a runtime.Answer, by string) (store.InboxItem, error)
 	AskAgain(ctx context.Context, itemID string) (runtime.ChatResult, store.InboxItem, error)
+	ResumeInterrupted(ctx context.Context, taskID string, req runtime.ChatRequest) (runtime.ChatResult, error)
 	Progress(ctx context.Context, botID, skipTask string) (runtime.Progress, error)
 }
 
@@ -98,6 +99,10 @@ type Message struct {
 	Via       string `json:"via,omitempty" desc:"從哪裡送的：mcp、http、cli"`
 	Streaming bool   `json:"streaming,omitempty" desc:"Bot 還在寫這則回覆"`
 	Status    string `json:"status,omitempty" desc:"Bot 回覆的結果：complete、interrupted、error"`
+	// Restart：服務重開時這則回覆還在寫。status=interrupted 時這件工作做到一半被中斷了，可以用 xbot.chat.resume 接著做；
+	// 沒有 status 時系統已經自動接著做（下一則回覆接在後面）。Resumed：已經按過「接著做」。
+	Restart bool `json:"restart,omitempty" desc:"服務重開時這則回覆還在寫（status=interrupted：做到一半被中斷，可以 xbot.chat.resume）"`
+	Resumed bool `json:"resumed,omitempty" desc:"被中斷的工作已經接著做了"`
 	// Silent：隊友交辦或群組裡 Bot 回 [silent]（沒有要補充），畫面不顯示。
 	Silent bool `json:"silent,omitempty"`
 	// Peer：kind=peer 時這一行是什麼（已傳訊息給…、來自…的訊息、開了群組…，X02）。
@@ -231,6 +236,11 @@ type RespondOut struct {
 	Resolution string `json:"resolution,omitempty" desc:"once、always、deny、answered、provided、declined"`
 }
 
+// ResumeIn 是 xbot.chat.resume 的輸入。
+type ResumeIn struct {
+	TaskID string `json:"task_id" required:"true" max:"64" desc:"做到一半被中斷的那件工作（訊息的 task_id，status=interrupted、restart=true）"`
+}
+
 // AskAgainIn 是 xbot.chat.ask_again 的輸入。
 type AskAgainIn struct {
 	InboxID string `json:"inbox_id" required:"true" max:"64" desc:"過期的那張提問卡"`
@@ -313,6 +323,14 @@ func Register(reg *ops.Registry, d Deps) {
 		Description: "無人在場的提問 10 分鐘沒回會過期；之後用它在原本的對話串請 Bot 再問一次。Bot 正在忙時回 conflict（retryable）。",
 		Scope:       ops.ScopeOperate, Risk: ops.RiskSafe,
 		Handle: d.askAgain,
+	})
+	ops.Register(reg, ops.Op[ResumeIn, SendOut]{
+		Name: "xbot.chat.resume", Summary: "請 Bot 接著做被中斷的工作",
+		Description: "服務重開時，你交辦和隊友交辦的工作會自動接著做一次；再被中斷，或定時任務、Webhook 的工作被中斷時，" +
+			"Bot 的回覆標成 status=interrupted、restart=true。用它在同一條對話串請 Bot 接著做（開一件你交辦的新工作，" +
+			"排在手上的工作後面），每件只能一次。不是被中斷的工作、群組的一輪回 conflict。",
+		Scope: ops.ScopeOperate, Risk: ops.RiskSafe,
+		Handle: d.resume,
 	})
 	ops.Register(reg, ops.Op[StepsIn, StepsOut]{
 		Name: "xbot.chat.steps", Summary: "讀一條對話串的工作步驟（工具、提問、回覆、狀態）",
@@ -556,6 +574,8 @@ type messageMeta struct {
 	Via       string             `json:"via"`
 	Streaming bool               `json:"streaming"`
 	Status    string             `json:"status"`
+	Restart   bool               `json:"restart"`
+	Resumed   bool               `json:"resumed"`
 	Silent    bool               `json:"silent"`
 	Peer      *PeerLine          `json:"peer"`
 	Activity  string             `json:"activity"`
@@ -569,7 +589,7 @@ func messageView(m store.Message) Message {
 	var meta messageMeta
 	_ = json.Unmarshal(m.Meta, &meta)
 	out := Message{ID: m.ID, Seq: m.Seq, Sender: m.Sender, Kind: m.Kind, Content: m.Content, TaskID: meta.TaskID,
-		Actor: meta.Actor, ActorName: meta.ActorName, Via: meta.Via, Streaming: meta.Streaming, Status: meta.Status, Silent: meta.Silent, Peer: meta.Peer,
+		Actor: meta.Actor, ActorName: meta.ActorName, Via: meta.Via, Streaming: meta.Streaming, Status: meta.Status, Restart: meta.Restart, Resumed: meta.Resumed, Silent: meta.Silent, Peer: meta.Peer,
 		Activity: meta.Activity, Card: meta.Card, Quota: meta.Quota, Voice: meta.Voice, CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
 	if meta.Judge != nil && meta.Judge.Verdict != "" {
 		out.Judge = &Judgment{Judgment: *meta.Judge}
@@ -791,6 +811,43 @@ func (d Deps) askAgain(ctx context.Context, call *ops.Call, in AskAgainIn) (Send
 		return SendOut{}, err
 	}
 	return SendOut{BotID: it.BotID, ThreadID: res.ThreadID, TaskID: res.TaskID, MessageID: res.MessageID}, nil
+}
+
+func (d Deps) resume(ctx context.Context, call *ops.Call, in ResumeIn) (SendOut, error) {
+	rt, err := d.runtime()
+	if err != nil {
+		return SendOut{}, err
+	}
+	task, err := call.DB.GetTask(ctx, in.TaskID)
+	if errors.Is(err, store.ErrNotFound) {
+		return SendOut{}, ops.NotFound("找不到這件工作")
+	}
+	if err != nil {
+		return SendOut{}, err
+	}
+	if !call.Identity.CanAccess(ops.ResourceBot, task.BotID) {
+		return SendOut{}, ops.Forbidden(call.Identity.DisplayName() + " 不能碰這件工作的 Bot")
+	}
+	if call.DryRun {
+		if task.State != store.TaskDone || task.Verdict != runtime.VerdictInterrupted || task.Source == runtime.SourceRoom {
+			return SendOut{}, ops.Conflict(runtime.ErrNotInterrupted.Error())
+		}
+		return SendOut{BotID: task.BotID, ThreadID: task.ThreadID}, nil
+	}
+	id := call.Identity
+	res, err := rt.ResumeInterrupted(ctx, task.ID, runtime.ChatRequest{Actor: id.Actor(), ActorName: id.DisplayName(), Via: id.Via})
+	var over *proxy.BudgetError
+	switch {
+	case errors.Is(err, runtime.ErrNotInterrupted), errors.Is(err, runtime.ErrResumed):
+		return SendOut{}, ops.Conflict(err.Error())
+	case errors.As(err, &over):
+		return SendOut{}, ops.Budget(over.Error())
+	case errors.Is(err, runtime.ErrNoModel):
+		return SendOut{}, ops.Conflict("還沒設定模型：請先用 xbot.models.set_provider 設定模型供應商與預設模型")
+	case err != nil:
+		return SendOut{}, err
+	}
+	return SendOut{BotID: task.BotID, ThreadID: res.ThreadID, TaskID: res.TaskID, MessageID: res.MessageID, Queued: res.Queued}, nil
 }
 
 func steps(ctx context.Context, call *ops.Call, in StepsIn) (StepsOut, error) {

@@ -97,3 +97,37 @@ func TestProvisionWritesConfigWithoutRealKey(t *testing.T) {
 		t.Fatal("缺少模型時應該失敗")
 	}
 }
+
+// web_extract 不能落到只能搜尋的 ddgs（每次都失敗）；使用者自己選的後端保留。
+// delegate_task 不開：Hermes 的子代理一律在背景跑，XBot 看不到、停不了。
+func TestConfigWebExtractAndNoBackgroundDelegation(t *testing.T) {
+	p := Profile{BotID: "b1", Name: "小幫手", ProviderID: "openai", Model: "gpt-x"}
+	for _, c := range []struct {
+		web  map[string]any
+		want any
+	}{
+		{nil, ExtractBackend},
+		{map[string]any{"backend": "ddgs"}, ExtractBackend},
+		{map[string]any{"backend": "tavily"}, nil},        // 共用的後端會讀網頁
+		{map[string]any{"extract_backend": "exa"}, "exa"}, // 使用者選的
+		{map[string]any{"backend": "", "extract_backend": ""}, ExtractBackend},
+	} {
+		cfg := map[string]any{}
+		if c.web != nil {
+			cfg["web"] = c.web
+		}
+		cfg = Config(cfg, p)
+		if got := cfg["web"].(map[string]any)["extract_backend"]; got != c.want {
+			t.Errorf("web=%v：extract_backend=%v，要 %v", c.web, got, c.want)
+		}
+		tools := cfg["platform_toolsets"].(map[string]any)["cli"].([]any)
+		for _, ts := range tools {
+			if ts == "delegation" {
+				t.Fatalf("不能開 delegation：%v", tools)
+			}
+		}
+		if len(tools) == 0 || tools[0] != "terminal" {
+			t.Fatalf("工具組：%v", tools)
+		}
+	}
+}

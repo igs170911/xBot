@@ -152,7 +152,9 @@ func TestRecoverTasksInterruptsStaleWorkAndStartsTheQueue(t *testing.T) {
 	ctx := context.Background()
 	f := setup(t)
 	th, _ := f.db.CreateThread(ctx, store.Thread{BotID: f.bot.ID})
-	stale, _ := f.db.CreateTask(ctx, store.Task{BotID: f.bot.ID, ThreadID: th.ID, Source: SourceBot, State: store.TaskRunning, Input: "做到一半"})
+	// 已經接著做過一次（restart.go）：這次就收掉。
+	stale, _ := f.db.CreateTask(ctx, store.Task{BotID: f.bot.ID, ThreadID: th.ID, Source: SourceBot, State: store.TaskRunning, Input: "做到一半",
+		Meta: []byte(`{"restart_resumes":1}`)})
 	queued, _ := f.db.CreateTask(ctx, store.Task{BotID: f.bot.ID, ThreadID: th.ID, Source: SourceBot, State: store.TaskQueued, Input: "排隊中", LowPriority: true})
 	var got []string
 	f.rt.SetHooks(Hooks{Finished: func(task store.Task, verdict, _ string) { got = append(got, task.ID+":"+verdict) }})

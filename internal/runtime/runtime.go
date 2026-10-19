@@ -128,6 +128,9 @@ type Runtime struct {
 	// stallNudged：同一個失敗的背景子任務已經叫 Bot 回去處理幾次（botID＋目標前 80 字，LazyBoy stall_nudged）。
 	stallMu     sync.Mutex
 	stallNudged map[string]int
+
+	// resumeMu 讓同一件被中斷的工作按兩次「接著做」只開一件（ResumeInterrupted）。
+	resumeMu sync.Mutex
 }
 
 // New 建立 Runtime。
@@ -996,10 +999,12 @@ func (r *Runtime) Busy(botID string) (busy, lowPriority bool) {
 	return false, false
 }
 
-// VerdictInterrupted 是服務重開時還沒做完的工作（LazyBoy interrupted）：沒有自動重播，等它的 Bot 會收到「做到一半被中斷」。
+// VerdictInterrupted 是服務重開時還沒做完、也沒有自動接著做的工作（LazyBoy interrupted；見 restart.go）：
+// 等它的 Bot 會收到「做到一半被中斷」，對話裡有「接著做」。
 const VerdictInterrupted = "interrupted"
 
-// RecoverTasks 在服務啟動時（接上 Hooks 之後）收掉上次沒做完的工作，並開始排隊中的工作（AA-10）。
+// RecoverTasks 在服務啟動時（接上 Hooks 之後）處理上次沒做完的工作，並開始排隊中的工作（AA-10）：
+// 你的、隊友交辦的接著做（同一件工作重新排隊，restart.go）；其餘收掉。
 func (r *Runtime) RecoverTasks(ctx context.Context) error {
 	tasks, err := r.o.DB.ListOpenTasks(ctx)
 	if err != nil {
@@ -1013,12 +1018,17 @@ func (r *Runtime) RecoverTasks(ctx context.Context) error {
 		if running {
 			continue
 		}
-		if task.State != store.TaskQueued {
-			if err := r.o.DB.SetTaskState(ctx, task.ID, store.TaskDone, VerdictInterrupted); err != nil {
+		if task.State != store.TaskQueued && !r.requeue(ctx, task) {
+			verdict := VerdictInterrupted
+			if task.State == store.TaskStopping {
+				verdict = VerdictCancelled // 你按了停止、還沒停好服務就重開了：照停止收尾
+			}
+			if err := r.o.DB.SetTaskState(ctx, task.ID, store.TaskDone, verdict); err != nil {
 				return err
 			}
-			r.publish(task.BotID, task.ThreadID, task.ID, KindTaskState, map[string]string{"state": store.TaskDone, "verdict": VerdictInterrupted}, true)
-			r.finished(task.ID, VerdictInterrupted, "")
+			r.closeReply(ctx, task, verdict)
+			r.publish(task.BotID, task.ThreadID, task.ID, KindTaskState, map[string]string{"state": store.TaskDone, "verdict": verdict}, true)
+			r.finished(task.ID, verdict, "")
 		}
 		bots[task.BotID] = true
 	}

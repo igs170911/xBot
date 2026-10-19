@@ -94,6 +94,7 @@
 | `ProviderRetryDelays()` | 2／10／30 | 分鐘（3 次） | server/runtime.py:670 `RETRY_DELAYS` | §12、§19 | — |
 | `AutoContinueMax` | 2 | 次 | server/runtime.py:696 `AUTO_CONTINUE` | §12、§19 | — |
 | `StallNudgesMax` | 2 | 次／背景子任務 | server/runtime.py:709 `STALL_NUDGES` | §19 | — |
+| `RestartResumeMax` | 1 | 次／工作 | XBot 新增（服務重開時做到一半的工作自動接著做） | — | LazyBoy 標成 interrupted、不重播 |
 | `StrandedWindow` | 3 | 小時 | server/runtime.py:715 | — | PRD 沒寫 |
 | `PromiseMaxChars` | 70 | 字元 | server/runtime.py:736 | §19 | — |
 | `HandBackTailChars` | 300 | 字元 | server/runtime.py:747 | — | PRD 沒寫 |
