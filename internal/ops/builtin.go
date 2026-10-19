@@ -20,6 +20,18 @@ func RegisterBuiltin(r *Registry) {
 			return PingOut{Pong: true, Echo: in.Echo, API: Version, Build: version.Version, Caller: call.Identity.Actor()}, nil
 		},
 	})
+	// 網頁自己偵測到的問題（例：手機上滑了卻沒有捲動）寫進服務日誌，開發者不用等使用者截圖（2026-10-19 手機捲不動在模擬器重現不了）。
+	// 唯讀範圍：不寫稽核、不推事件，不會灌進活動紀錄；只記在日誌（journalctl）。
+	Register(r, Op[ClientReportIn, ClientReportOut]{
+		Name:    "xbot.system.client_report",
+		Summary: "網頁回報自己遇到的問題（記在服務日誌）",
+		Scope:   ScopeRead,
+		Risk:    RiskSafe,
+		Handle: func(_ context.Context, call *Call, in ClientReportIn) (ClientReportOut, error) {
+			r.cfg.Logger.Warn("網頁回報", "kind", in.Kind, "version", in.Version, "data", in.Data, "actor", call.Identity.Actor())
+			return ClientReportOut{Logged: true}, nil
+		},
+	})
 	Register(r, Op[SettingsGetIn, SettingsGetOut]{
 		Name:    "xbot.settings.get",
 		Summary: "讀一項設定",
@@ -41,6 +53,18 @@ type PingOut struct {
 	API    string `json:"api" desc:"操作的版本，例：xbot.v1"`
 	Build  string `json:"build" desc:"XBot 的建置版本"`
 	Caller string `json:"caller" desc:"呼叫者代號：owner、agent:<id>、bot:<id>"`
+}
+
+// ClientReportIn 是 xbot.system.client_report 的輸入。
+type ClientReportIn struct {
+	Kind    string `json:"kind" required:"true" max:"40" desc:"問題種類，例：scroll_stuck"`
+	Version string `json:"version,omitempty" max:"60" desc:"網頁的版本"`
+	Data    string `json:"data" required:"true" max:"4000" desc:"偵測到的細節（不含對話內容）"`
+}
+
+// ClientReportOut 是 xbot.system.client_report 的輸出。
+type ClientReportOut struct {
+	Logged bool `json:"logged"`
 }
 
 // SettingsGetIn 是 xbot.settings.get 的輸入。

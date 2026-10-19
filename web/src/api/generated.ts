@@ -10679,6 +10679,30 @@ export function skillsUpdate(input: SkillsUpdateInput, opts?: CallOptions): Prom
   return invoke('xbot.skills.update', input, opts).then((r) => r.output)
 }
 
+// xbot.system.client_report
+
+export interface SystemClientReportInput {
+  /** 問題種類，例：scroll_stuck */
+  kind: string
+  /** 網頁的版本 */
+  version?: string
+  /** 偵測到的細節（不含對話內容） */
+  data: string
+}
+
+export interface SystemClientReportOutput {
+  logged: boolean
+}
+
+/**
+ * 網頁回報自己遇到的問題（記在服務日誌）
+ *
+ * `xbot.system.client_report`：權限 read、風險 safe
+ */
+export function systemClientReport(input: SystemClientReportInput, opts?: CallOptions): Promise<SystemClientReportOutput> {
+  return invoke('xbot.system.client_report', input, opts).then((r) => r.output)
+}
+
 // xbot.system.ping
 
 export interface SystemPingInput {
@@ -13224,6 +13248,7 @@ export interface Ops {
   'xbot.skills.list': { input: SkillsListInput; output: SkillsListOutput }
   'xbot.skills.propose': { input: SkillsProposeInput; output: SkillsProposeOutput }
   'xbot.skills.update': { input: SkillsUpdateInput; output: SkillsUpdateOutput }
+  'xbot.system.client_report': { input: SystemClientReportInput; output: SystemClientReportOutput }
   'xbot.system.ping': { input: SystemPingInput; output: SystemPingOutput }
   'xbot.tasks.progress': { input: TasksProgressInput; output: TasksProgressOutput }
   'xbot.teaching.discard': { input: TeachingDiscardInput; output: TeachingDiscardOutput }
@@ -13464,6 +13489,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.skills.list': { path: '/api/v1/skills.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出技能' },
   'xbot.skills.propose': { path: '/api/v1/skills.propose', scope: 'operate', risk: 'safe', mutates: true, summary: '提議把一個做法存成你的技能' },
   'xbot.skills.update': { path: '/api/v1/skills.update', scope: 'manage', risk: 'safe', mutates: true, summary: '修改一個技能' },
+  'xbot.system.client_report': { path: '/api/v1/system.client_report', scope: 'read', risk: 'safe', mutates: false, summary: '網頁回報自己遇到的問題（記在服務日誌）' },
   'xbot.system.ping': { path: '/api/v1/system.ping', scope: 'read', risk: 'safe', mutates: false, summary: '確認 XBot 有在運作' },
   'xbot.tasks.progress': { path: '/api/v1/tasks.progress', scope: 'read', risk: 'safe', mutates: false, summary: '看 Bot 的目前進度（正在做什麼、卡在哪、等誰）' },
   'xbot.teaching.discard': { path: '/api/v1/teaching.discard', scope: 'operate', risk: 'safe', mutates: true, summary: '取消示範或捨棄技能草稿（錄到的步驟與截圖會刪掉）' },

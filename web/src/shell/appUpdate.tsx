@@ -14,6 +14,9 @@ export const updateStore = createStore(false)
 let booted: string | null = null
 let started = false
 
+/** 這個網頁開的時候的版本（還沒問到是空白）。 */
+export const bootedVersion = () => booted ?? ''
+
 /** 沒有打到一半的字、沒有開著的對話框：重新載入不會弄丟東西。 */
 function safeToReload(): boolean {
   if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return false

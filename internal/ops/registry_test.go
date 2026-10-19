@@ -719,7 +719,7 @@ func TestList(t *testing.T) {
 	for _, i := range list {
 		names = append(names, i.Name)
 	}
-	if strings.Join(names, ",") != "xbot.settings.get,xbot.system.ping,xbot.test.create,xbot.test.delete,xbot.test.evil" {
+	if strings.Join(names, ",") != "xbot.settings.get,xbot.system.client_report,xbot.system.ping,xbot.test.create,xbot.test.delete,xbot.test.evil" {
 		t.Fatalf("要依名稱排序：%v", names)
 	}
 	del, ok := env.reg.Get("xbot.test.delete")
