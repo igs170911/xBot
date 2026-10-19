@@ -1,4 +1,4 @@
-import type { ChatReadOutput, ChatStepsOutput, XBotEvent } from '../api/generated'
+import { OPS, type ChatReadOutput, type ChatStepsOutput, type OpName, type XBotEvent } from '../api/generated'
 import { quotaFrom, type Quota } from './quota'
 import { askFromEvent, type Answered, type Ask } from './ask'
 
@@ -220,6 +220,35 @@ export function memoryStepLabel(args: unknown): string {
   return `記住了：${text}${adds.length > 1 ? ` 等 ${adds.length} 條` : ''}`
 }
 
+const OP_BY_TOOL = new Map(Object.keys(OPS).map((k) => [k.replace(/\./g, '_'), k as OpName]))
+
+/** MCP 工具名稱對回 XBot 的操作（mcp__xbot__xbot_memory_add → xbot.memory.add）；不是 XBot 的回 undefined。 */
+export function xbotOp(tool: string): OpName | undefined {
+  const raw = tool.replace(/^mcp__xbot__/, '')
+  return raw in OPS ? (raw as OpName) : OP_BY_TOOL.get(raw.replace(/\./g, '_'))
+}
+
+/** 操作的白話（拿掉後面給 Bot 看的括號用法）。 */
+function opSummary(op: OpName): string {
+  const s = OPS[op].summary
+  const i = s.indexOf('（')
+  return i > 0 && s.endsWith('）') ? s.slice(0, i) : s
+}
+
+/**
+ * 一個工具步驟怎麼顯示（2026-10-19：步驟上寫著 mcp__xbot__xbot_memory_add 看不懂）：
+ * XBot 的工具寫操作名稱（xbot.memory.add）＋白話；其他 MCP 工具寫「伺服器 · 工具」；
+ * 記憶（Hermes 的 memory 或 xbot.memory.add）寫「記住了：…」並放「看記憶」。
+ */
+export function toolStep(tool: string, args: unknown, hint?: string): Pick<Step, 'name' | 'label' | 'memory'> {
+  const op = xbotOp(tool)
+  if (tool === MEMORY_TOOL) return { name: tool, label: memoryStepLabel(args), memory: true }
+  if (op === 'xbot.memory.add') return { name: op, label: memoryStepLabel({ ...(args as object), action: 'add' }), memory: true }
+  if (op) return { name: op, label: hint || opSummary(op) }
+  const mcp = tool.match(/^mcp__([^_]+(?:_[^_]+)*?)__(.+)$/)
+  return { name: mcp ? `${mcp[1]} · ${mcp[2]}` : tool, label: hint }
+}
+
 function parseMeta(raw: unknown): MessageMeta {
   if (raw && typeof raw === 'object') return raw as MessageMeta
   if (typeof raw === 'string' && raw) {
@@ -415,11 +444,7 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
       const a = activity(s, e.task_id)
       const id = ev.tool?.id || `${e.task_id}:${a.steps.length}`
       if (a.steps.some((x) => x.id === id)) return s
-      const name = ev.tool?.name || '工具'
-      const step: Step =
-        name === MEMORY_TOOL
-          ? { id, name, label: memoryStepLabel(ev.tool?.args), status: 'running', at: e.at, memory: true }
-          : { id, name, label: ev.tool?.context || ev.tool?.summary || undefined, status: 'running', at: e.at }
+      const step: Step = { id, ...toolStep(ev.tool?.name || '工具', ev.tool?.args, ev.tool?.context || ev.tool?.summary || undefined), status: 'running', at: e.at }
       return putActivity(s, { ...a, thinking: false, steps: [...a.steps, step], threadId: a.threadId ?? e.thread_id, startedAt: a.startedAt ?? e.at })
     }
     case 'chat.tool_result': {
@@ -431,7 +456,7 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
       if (i < 0) return s
       const steps = a.steps.slice()
       // 記憶工具：開始時可能沒帶參數，結束時一定有，用結束時的重寫一次
-      const label = steps[i].memory && ev.tool?.args ? memoryStepLabel(ev.tool.args) : (steps[i].label ?? (ev.tool?.summary || undefined))
+      const label = steps[i].memory && ev.tool?.args ? toolStep(steps[i].name, ev.tool.args).label : (steps[i].label ?? (ev.tool?.summary || undefined))
       steps[i] = { ...steps[i], status: ev.tool?.ok === false ? 'fail' : 'ok', endAt: e.at, label }
       return putActivity(s, { ...a, steps })
     }

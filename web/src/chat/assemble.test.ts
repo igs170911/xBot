@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatReadOutput, XBotEvent } from '../api/generated'
-import { activeTask, applyEvent, applyRead, applySteps, emptyChat, formatElapsed, memoryStepLabel, threadItems, workSummary, type ChatState } from './assemble'
+import { activeTask, applyEvent, applyRead, applySteps, emptyChat, formatElapsed, memoryStepLabel, threadItems, workSummary, toolStep, xbotOp, type ChatState } from './assemble'
 
 const T = 'th1'
 const TASK = 'task1'
@@ -237,4 +237,15 @@ describe('記憶工具的步驟', () => {
     ])
     expect(s.tasks[TASK].steps[1]).not.toHaveProperty('memory')
   })
+})
+
+// 2026-10-19 實機：步驟上寫著 mcp__xbot__xbot_memory_add，看不懂
+it('工具步驟：XBot 的工具寫操作名稱和白話，xbot.memory.add 也算記憶', () => {
+  expect(xbotOp('mcp__xbot__xbot_memory_add')).toBe('xbot.memory.add')
+  expect(xbotOp('mcp__xbot__xbot_teams_remove_many')).toBe('xbot.teams.remove_many')
+  expect(xbotOp('mcp__context7__query_docs')).toBeUndefined()
+  expect(toolStep('mcp__xbot__xbot_memory_add', { target: 'user', content: '使用者喜歡藍色' })).toEqual({ name: 'xbot.memory.add', label: '記住了：使用者喜歡藍色', memory: true })
+  expect(toolStep('mcp__xbot__xbot_teams_remove_many', {})).toEqual({ name: 'xbot.teams.remove_many', label: '一次刪除好幾個 Bot、團隊、群組' })
+  expect(toolStep('mcp__context7__query_docs', {}, '查 React 文件')).toEqual({ name: 'context7 · query_docs', label: '查 React 文件' })
+  expect(toolStep('terminal', {}).name).toBe('terminal')
 })
