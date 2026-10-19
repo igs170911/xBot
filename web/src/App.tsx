@@ -28,6 +28,7 @@ import { newRoutineDialog } from './routines/data'
 import { teachStartStore } from './teaching/teachingData'
 import { importBotDialog } from './settings/bot/import-store'
 import { ScrollDiag } from './shell/ScrollDiag'
+import { startAppUpdate, UpdateBanner } from './shell/appUpdate'
 
 // v1.0 效能：待我處理與對話（最常開的兩頁）跟著主程式載入；其他頁面與對話框按需載入（React.lazy），
 // 第一次打開時才下載那一頁的程式。
@@ -153,6 +154,7 @@ function Main() {
     startChat()
     startRooms()
     startTeams()
+    startAppUpdate()
     void loadOnboard()
   }, [])
   const rooms = useStore(roomsStore).rooms
@@ -224,6 +226,7 @@ function Main() {
   return (
     <AppShell path={modal ? bgPath : path} title={title}>
       <ScrollDiag />
+      <UpdateBanner />
       {modal ? (
         <>
           <div aria-hidden="true" inert className="flex min-h-0 min-w-0 flex-1 flex-col">
