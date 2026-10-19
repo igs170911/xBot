@@ -2947,6 +2947,29 @@ export function chatAskAgain(input: ChatAskAgainInput, opts?: CallOptions): Prom
   return invoke('xbot.chat.ask_again', input, opts).then((r) => r.output)
 }
 
+// xbot.chat.delete_thread
+
+export interface ChatDeleteThreadInput {
+  /** 要刪的對話串 */
+  thread_id: string
+}
+
+export interface ChatDeleteThreadOutput {
+  deleted: boolean
+  bot_id: string
+}
+
+/**
+ * 刪除一條對話串和裡面的訊息
+ *
+ * 訊息刪了無法復原；Bot 的電腦、檔案、記憶不受影響。Bot 正在這條對話串做事時回 conflict，先 xbot.chat.stop。群組的座位不能刪。
+ *
+ * `xbot.chat.delete_thread`：權限 operate、風險 confirm
+ */
+export function chatDeleteThread(input: ChatDeleteThreadInput, opts?: CallOptions): Promise<ChatDeleteThreadOutput> {
+  return invoke('xbot.chat.delete_thread', input, opts).then((r) => r.output)
+}
+
 // xbot.chat.list_threads
 
 export interface ChatListThreadsInput {
@@ -12715,6 +12738,7 @@ export interface Ops {
   'xbot.bots.update_my_profile': { input: BotsUpdateMyProfileInput; output: BotsUpdateMyProfileOutput }
   'xbot.cards.post': { input: CardsPostInput; output: CardsPostOutput }
   'xbot.chat.ask_again': { input: ChatAskAgainInput; output: ChatAskAgainOutput }
+  'xbot.chat.delete_thread': { input: ChatDeleteThreadInput; output: ChatDeleteThreadOutput }
   'xbot.chat.list_threads': { input: ChatListThreadsInput; output: ChatListThreadsOutput }
   'xbot.chat.read': { input: ChatReadInput; output: ChatReadOutput }
   'xbot.chat.respond': { input: ChatRespondInput; output: ChatRespondOutput }
@@ -12944,6 +12968,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.bots.update_my_profile': { path: '/api/v1/bots.update_my_profile', scope: 'operate', risk: 'safe', mutates: true, summary: '改自己的職稱或頭像' },
   'xbot.cards.post': { path: '/api/v1/cards.post', scope: 'operate', risk: 'safe', mutates: true, summary: '在對話裡發一張卡片給使用者' },
   'xbot.chat.ask_again': { path: '/api/v1/chat.ask_again', scope: 'operate', risk: 'safe', mutates: true, summary: '請 Bot 把過期的問題再問一次' },
+  'xbot.chat.delete_thread': { path: '/api/v1/chat.delete_thread', scope: 'operate', risk: 'confirm', mutates: true, summary: '刪除一條對話串和裡面的訊息' },
   'xbot.chat.list_threads': { path: '/api/v1/chat.list_threads', scope: 'read', risk: 'safe', mutates: false, summary: '列出和一個 Bot 的對話串' },
   'xbot.chat.read': { path: '/api/v1/chat.read', scope: 'read', risk: 'safe', mutates: false, summary: '讀一條對話串的訊息' },
   'xbot.chat.respond': { path: '/api/v1/chat.respond', scope: 'operate', risk: 'safe', mutates: true, summary: '回覆 Bot 的提問（允許指令、回答問題、提供密碼）' },

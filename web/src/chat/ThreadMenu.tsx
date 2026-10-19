@@ -1,4 +1,4 @@
-import { Check, ChevronDown, MessageSquare, MessagesSquare, Plus } from 'lucide-react'
+import { Check, ChevronDown, MessageSquare, MessagesSquare, Plus, Trash2 } from 'lucide-react'
 import type { ChatListThreadsOutput } from '../api/generated'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
@@ -7,14 +7,14 @@ import { Popover } from './Popover'
 
 export type Thread = ChatListThreadsOutput['threads'][number]
 
-// 對話串選單（CH-2，design/C03）：列出和這個 Bot 的對話串（目前的打勾），最下面開新的。
-// 重新命名、釘選、刪除對話串還沒有操作（chat.* 只有 list_threads），先不放。
+// 對話串選單（CH-2，design/C03）：列出和這個 Bot 的對話串（目前的打勾），最下面開新的、刪掉目前這條。
 export function ThreadMenu({
   botName,
   threads,
   threadId,
   onPick,
   onNew,
+  onDelete,
   look = 'default',
 }: {
   botName: string
@@ -22,6 +22,8 @@ export function ThreadMenu({
   threadId?: string
   onPick: (id: string) => void
   onNew: () => void
+  /** 刪除目前的對話串（有 threadId 時才出現）。 */
+  onDelete?: () => void
   /** phone：手機頁首右上的「對話串」膠囊（L03）。 */
   look?: 'default' | 'phone'
 }) {
@@ -104,6 +106,21 @@ export function ThreadMenu({
             <Icon icon={Plus} size={18} />
             新對話串
           </button>
+          {threadId && onDelete && (
+            <button
+              type="button"
+              role="menuitem"
+              tabIndex={-1}
+              onClick={() => {
+                close()
+                onDelete()
+              }}
+              className="flex h-[34px] w-full items-center gap-2.5 rounded-seg bg-transparent px-2.5 text-left text-ui text-danger outline-none hover:bg-hover focus-visible:bg-hover max-sm:h-11"
+            >
+              <Icon icon={Trash2} size={18} />
+              刪除這個對話串
+            </button>
+          )}
         </div>
       )}
     </Popover>

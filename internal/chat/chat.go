@@ -66,6 +66,17 @@ type StopOut struct {
 	TaskID  string `json:"task_id,omitempty"`
 }
 
+// DeleteThreadIn 是 xbot.chat.delete_thread 的輸入。
+type DeleteThreadIn struct {
+	ThreadID string `json:"thread_id" required:"true" max:"64" desc:"要刪的對話串"`
+}
+
+// DeleteThreadOut 是 xbot.chat.delete_thread 的輸出。
+type DeleteThreadOut struct {
+	Deleted bool   `json:"deleted"`
+	BotID   string `json:"bot_id"`
+}
+
 // ReadIn 是 xbot.chat.read 的輸入。
 type ReadIn struct {
 	ThreadID string `json:"thread_id" required:"true" max:"64"`
@@ -280,6 +291,13 @@ func Register(reg *ops.Registry, d Deps) {
 		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
 		Handle: listThreads,
 	})
+	ops.Register(reg, ops.Op[DeleteThreadIn, DeleteThreadOut]{
+		Name: "xbot.chat.delete_thread", Summary: "刪除一條對話串和裡面的訊息",
+		Description: "訊息刪了無法復原；Bot 的電腦、檔案、記憶不受影響。Bot 正在這條對話串做事時回 conflict，先 xbot.chat.stop。" +
+			"群組的座位不能刪。",
+		Scope: ops.ScopeOperate, Risk: ops.RiskConfirm,
+		Handle: d.deleteThread,
+	})
 	ops.Register(reg, ops.Op[RespondIn, RespondOut]{
 		Name: "xbot.chat.respond", Summary: "回覆 Bot 的提問（允許指令、回答問題、提供密碼）",
 		Description: "Bot 在等人時（needs_person）用它回覆；對話裡和待我處理用的是同一個操作。inbox_id 或 task_id 擇一。" +
@@ -414,6 +432,31 @@ func (d Deps) stop(ctx context.Context, call *ops.Call, in StopIn) (StopOut, err
 		task = ""
 	}
 	return StopOut{Stopped: stopped, TaskID: task}, nil
+}
+
+func (d Deps) deleteThread(ctx context.Context, call *ops.Call, in DeleteThreadIn) (DeleteThreadOut, error) {
+	rt, err := d.runtime()
+	if err != nil {
+		return DeleteThreadOut{}, err
+	}
+	th, err := thread(ctx, call, in.ThreadID)
+	if err != nil {
+		return DeleteThreadOut{}, err
+	}
+	if th.RoomID != "" {
+		return DeleteThreadOut{}, ops.Conflict("這是群組的座位，不能單獨刪除")
+	}
+	if active, _ := rt.Active(th.BotID); active == th.ID {
+		return DeleteThreadOut{}, ops.Conflict("Bot 正在這條對話串做事，先停止它再刪")
+	}
+	out := DeleteThreadOut{Deleted: true, BotID: th.BotID}
+	if call.DryRun {
+		return out, nil
+	}
+	if err := call.DB.DeleteThread(ctx, th.ID); err != nil {
+		return DeleteThreadOut{}, err
+	}
+	return out, nil
 }
 
 func read(ctx context.Context, call *ops.Call, in ReadIn) (ReadOut, error) {

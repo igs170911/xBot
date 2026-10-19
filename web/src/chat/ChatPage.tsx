@@ -1,5 +1,5 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Activity as ActivityIcon, AudioLines, ChevronDown, ChevronLeft, Compass, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, Monitor, Phone, Plus, Settings, Volume2, VolumeX, X } from 'lucide-react'
+import { Activity as ActivityIcon, AudioLines, ChevronDown, ChevronLeft, Compass, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, Monitor, Phone, Plus, Settings, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import { isRecording, teachStartStore, useLesson } from '../teaching/teachingData'
 import { ApiError, chatListThreads, chatSend, chatStop, filesUploadForm, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
 import { botsStore, type Bot, look } from '../data/bots'
@@ -29,6 +29,7 @@ import { runPreCheck } from './precheckData'
 import { ModelPicker } from './ModelPicker'
 import { ProgressDialog } from './ProgressDialog'
 import { ThreadMenu, type Thread } from './ThreadMenu'
+import { DeleteThreadDialog } from './DeleteThread'
 import { WorkSteps } from './WorkSteps'
 import { FirstHome, FirstTasks, useFirstHome } from '../onboard/FirstHome'
 import { startTour } from '../onboard/state'
@@ -147,6 +148,7 @@ function Header({
   onComputer,
   autoRead,
   onAutoRead,
+  onDelete,
 }: {
   bot: Bot
   act?: Activity
@@ -160,6 +162,7 @@ function Header({
   onComputer: () => void
   autoRead: boolean
   onAutoRead?: () => void
+  onDelete: () => void
 }) {
   const st = statusOf(bot, act, busyElsewhere)
   const { lesson } = useLesson(bot.id)
@@ -186,6 +189,7 @@ function Header({
         threadId={threadId}
         onPick={(id) => navigate(`/bots/${bot.id}/threads/${id}`)}
         onNew={() => navigate(`/bots/${bot.id}/threads/new`)}
+        onDelete={onDelete}
       />
       <span className="flex-1" />
       <ModelPicker bot={bot} models={models} onSetup={onSetupModels} className="max-sm:max-w-[124px]" />
@@ -205,6 +209,7 @@ function Header({
           { label: '聲音與朗讀', icon: AudioLines, onSelect: () => navigate(`/bots/${bot.id}/voice`) },
           { label: 'Bot 設定', icon: Settings, separator: true, onSelect: () => navigate(`/settings/bots/${encodeURIComponent(bot.id)}`) },
           { label: '模型與金鑰設定', icon: Settings, onSelect: () => navigate('/settings/models') },
+          ...(threadId ? [{ label: '刪除這個對話串', icon: Trash2, danger: true, separator: true, onSelect: onDelete }] : []),
         ]}
         trigger={(p) => <IconButton {...p} icon={Ellipsis} label="更多" />}
       />
@@ -213,7 +218,7 @@ function Header({
 }
 
 /** 手機的頁首（L03）：返回（帶等你的件數）、通話｜大頭像｜對話串、電腦；下面置中一顆「名字 · 對話串標題」膠囊，點了看 Bot 資料（L10）。 */
-function PhoneHeader({ bot, act, busyElsewhere, threads, threadId, onProgress }: { bot: Bot; act?: Activity; busyElsewhere: boolean; threads: Thread[] | null; threadId?: string; onProgress: () => void }) {
+function PhoneHeader({ bot, act, busyElsewhere, threads, threadId, onProgress, onDelete }: { bot: Bot; act?: Activity; busyElsewhere: boolean; threads: Thread[] | null; threadId?: string; onProgress: () => void; onDelete: () => void }) {
   const st = statusOf(bot, act, busyElsewhere)
   const waiting = useStore(inboxStore).items?.length ?? 0
   const current = threads?.find((t) => t.id === threadId)
@@ -238,7 +243,7 @@ function PhoneHeader({ bot, act, busyElsewhere, threads, threadId, onProgress }:
             {st.text}
           </span>
         </span>
-        <ThreadMenu look="phone" botName={bot.name} threads={threads} threadId={threadId} onPick={(id) => navigate(`/bots/${bot.id}/threads/${id}`)} onNew={() => navigate(`/bots/${bot.id}/threads/new`)} />
+        <ThreadMenu look="phone" botName={bot.name} threads={threads} threadId={threadId} onPick={(id) => navigate(`/bots/${bot.id}/threads/${id}`)} onNew={() => navigate(`/bots/${bot.id}/threads/new`)} onDelete={onDelete} />
         <button type="button" aria-label={`${bot.name}的電腦`} className={round} onClick={() => navigate(`/bots/${bot.id}/computer`)}>
           <Icon icon={Monitor} size={20} />
         </button>
@@ -291,6 +296,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   const [models, setModels] = useState<ModelsGetOutput | null>(null)
   const [modelDialog, setModelDialog] = useState(false)
   const [progress, setProgress] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [noticeState, setNoticeState] = useState<{ n: Notice; thread: string } | null>(null)
   const [stopRequested, setStopRequested] = useState<string | null>(null)
   const [olderBusy, setOlderBusy] = useState(false)
@@ -490,7 +496,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
       {/* 頁面標題給螢幕閱讀器（畫面上的名字在頁首）；空白對話的歡迎畫面自己有 h1 */}
       {!(empty && !firstHome) && <h1 className="sr-only-text">和{name}的對話</h1>}
       {phone ? (
-        <PhoneHeader bot={bot} act={act} busyElsewhere={busyElsewhere} threads={threads} threadId={threadId} onProgress={() => setProgress(true)} />
+        <PhoneHeader bot={bot} act={act} busyElsewhere={busyElsewhere} threads={threads} threadId={threadId} onProgress={() => setProgress(true)} onDelete={() => setDeleting(true)} />
       ) : (
       <Header
         bot={bot}
@@ -501,6 +507,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
         models={models}
         onSetupModels={() => setModelDialog(true)}
         onProgress={() => setProgress(true)}
+        onDelete={() => setDeleting(true)}
         computerOpen={showPanel}
         onComputer={onComputer}
         autoRead={auto.autoRead}
@@ -533,6 +540,15 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
       </div>
       <ChatAnnouncer key={threadId ?? ''} items={items} name={name} ready={!threadId || !!th?.loaded} />
       <ModelSettingsDialog open={modelDialog} onClose={() => setModelDialog(false)} onSaved={(m) => setModels(m)} />
+      <DeleteThreadDialog
+        threadId={threadId}
+        open={deleting}
+        onClose={() => setDeleting(false)}
+        onDeleted={() => {
+          navigate(`/bots/${botId}/threads/new`, { replace: true })
+          void reloadThreads()
+        }}
+      />
       <ProgressDialog open={progress} onClose={() => setProgress(false)} bot={bot} chat={chat} threadId={threadId} act={act} botAct={botAct} />
     </main>
     {showPanel && <ComputerPanel key={bot.id} bot={bot} />}

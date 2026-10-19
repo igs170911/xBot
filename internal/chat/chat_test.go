@@ -347,3 +347,36 @@ func TestMessageViewCarriesCard(t *testing.T) {
 		t.Fatal("一般訊息沒有卡片")
 	}
 }
+
+func TestDeleteThread(t *testing.T) {
+	e := setup(t)
+	raw, err := e.call(owner, "xbot.chat.send", map[string]any{"bot_id": e.bot.ID, "text": "hi"})
+	sent := must[SendOut](t, raw, err)
+	e.waitFor(t, owner, sent.TaskID)
+
+	// 代理要等你核准（刪資料是 confirm 級）。
+	if _, err := e.call(agent(e.bot.ID), "xbot.chat.delete_thread", map[string]any{"thread_id": sent.ThreadID}); code(err) != ops.CodePendingApproval {
+		t.Fatalf("代理刪對話串要核准：%v", err)
+	}
+	if _, err := e.db.GetThread(bg, sent.ThreadID); err != nil {
+		t.Fatalf("還沒核准不能刪：%v", err)
+	}
+	raw, err = e.call(owner, "xbot.chat.delete_thread", map[string]any{"thread_id": sent.ThreadID})
+	if out := must[DeleteThreadOut](t, raw, err); !out.Deleted || out.BotID != e.bot.ID {
+		t.Fatalf("%+v", out)
+	}
+	if _, err := e.db.GetThread(bg, sent.ThreadID); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("對話串應該刪掉了：%v", err)
+	}
+	if msgs, _ := e.db.ListMessages(bg, store.ScopeThread, sent.ThreadID, 0, 10); len(msgs) != 0 {
+		t.Fatalf("訊息應該一起刪掉：%d", len(msgs))
+	}
+	if _, err := e.call(owner, "xbot.chat.delete_thread", map[string]any{"thread_id": sent.ThreadID}); code(err) != ops.CodeNotFound {
+		t.Fatalf("再刪一次是 not_found：%v", err)
+	}
+	// 群組座位不能刪。
+	seat, _ := e.db.CreateThread(bg, store.Thread{BotID: e.bot.ID, RoomID: "r1"})
+	if _, err := e.call(owner, "xbot.chat.delete_thread", map[string]any{"thread_id": seat.ID}); code(err) != ops.CodeConflict {
+		t.Fatalf("座位不能刪：%v", err)
+	}
+}

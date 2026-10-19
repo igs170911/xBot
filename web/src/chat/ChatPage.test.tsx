@@ -249,3 +249,16 @@ it('X04：判斷不是「已完成」才在回覆下面標出來；不對？選�
   await waitFor(() => expect(api.calls.find((c) => c.path === 'judge.correct')?.input).toEqual({ task_id: 'k1', verdict: 'stuck' }))
   await waitFor(() => expect(within(main).getAllByTestId('judge-tag')[0]).toHaveTextContent('你改成卡住了'))
 })
+
+it('刪除對話串：確認後呼叫 chat.delete_thread，回到新對話串', async () => {
+  api.ops['chat.delete_thread'] = () => ({ deleted: true, bot_id: 'b1' })
+  messages = [{ id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '查價格', created_at: Date.now(), updated_at: Date.now() }]
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
+  fireEvent.click(within(main).getByRole('button', { name: '更多' }))
+  fireEvent.click(await screen.findByRole('menuitem', { name: '刪除這個對話串' }))
+  fireEvent.click(await screen.findByRole('button', { name: '刪除' }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'chat.delete_thread')?.input).toEqual({ thread_id: 't1' }))
+  await waitFor(() => expect(window.location.pathname).toBe('/bots/b1/threads/new'))
+})
