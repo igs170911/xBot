@@ -504,3 +504,68 @@ test('手機的輸入框字體 ≥ 16px（iPhone 才不會自動放大）', asyn
   const h = await page.evaluate(() => [document.querySelector('main[aria-label^="和"]')?.getBoundingClientRect().height, window.visualViewport?.height])
   expect(Math.abs((h[0] ?? 0) - (h[1] ?? 0))).toBeLessThan(2)
 })
+
+// 「/」叫出技能：選了帶入輸入框，送出的是「使用技能「…」：…」（任何引擎都看得懂）。手機與桌面都跑。
+test('「/」技能選單：列出技能、選了送出變成使用技能', async ({ page }) => {
+  const api = new MockServer(page)
+  const { mi } = seed(api)
+  api.override['skills.list'] = () => ({
+    skills: [
+      { id: 'price', name: '比價', description: '比三家價格', place: 'list', enabled: true, source: 'custom', created_at: 1, updated_at: 1 },
+      { id: 'news', name: '新聞摘要', description: '整理今天的新聞', place: 'library', enabled: true, source: 'custom', created_at: 1, updated_at: 1 },
+    ],
+    counts: {},
+    computer: true,
+  })
+  await api.install()
+  await page.goto(`/bots/${mi.id}`)
+  const box = page.getByRole('main', { name: /^和/ }).getByRole('textbox')
+  await box.fill('/')
+  const menu = page.getByRole('listbox', { name: '技能' })
+  await expect(menu.getByRole('option')).toHaveCount(2)
+  // 選單整個在畫面裡
+  const r = await menu.boundingBox()
+  const vw = page.viewportSize()!.width
+  expect(r && r.x >= 0 && r.x + r.width <= vw && r.y >= 0).toBe(true)
+  await menu.getByRole('option', { name: /新聞摘要/ }).click()
+  await expect(box).toHaveValue('/新聞摘要 ')
+  await box.pressSequentially('只要科技類')
+  await box.press('Enter')
+  await expect.poll(() => api.lastSend?.text).toBe('使用技能「新聞摘要」：只要科技類')
+})
+
+// iPhone 鍵盤彈出：看得到的高度（visualViewport）變小、整頁被往上推。對話頁要跟著縮，頁首和輸入框都還在畫面裡。
+test('鍵盤彈出時（iPhone）：頁首和輸入框都在看得到的範圍裡', async ({ page }) => {
+  // 假的 visualViewport：可以從測試裡改高度並送出 resize（模擬鍵盤）
+  await page.addInitScript(() => {
+    const t = new EventTarget() as EventTarget & { height: number; width: number; offsetTop: number; scale: number }
+    t.height = window.innerHeight
+    t.width = window.innerWidth
+    t.offsetTop = 0
+    t.scale = 1
+    Object.defineProperty(window, 'visualViewport', { value: t, configurable: true })
+    ;(window as unknown as { __kb: (h: number) => void }).__kb = (h: number) => {
+      t.height = h
+      window.scrollTo(0, 300) // iPhone 會把整頁往上推
+      t.dispatchEvent(new Event('resize'))
+    }
+  })
+  const api = new MockServer(page)
+  const { mi } = seed(api)
+  await api.install()
+  await page.goto(`/bots/${mi.id}`)
+  const main = page.getByRole('main', { name: /^和/ })
+  await expect(main).toBeVisible()
+  const box = main.getByRole('textbox')
+  await box.focus()
+  const kb = Math.round(page.viewportSize()!.height * 0.55) // 鍵盤佔掉約 45%
+  await page.evaluate((h) => (window as unknown as { __kb: (h: number) => void }).__kb(h), kb)
+  await expect.poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--app-h'))).toBe(`${kb}px`)
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
+  const m = await main.boundingBox()
+  const b = await box.boundingBox()
+  expect(Math.abs((m?.height ?? 0) - kb)).toBeLessThan(2)
+  expect(m!.y).toBeGreaterThanOrEqual(-1) // 頁首沒被推出去
+  expect(b!.y + b!.height).toBeLessThanOrEqual(kb + 1) // 輸入框在鍵盤上面
+  await expect(page.getByRole('button', { name: /對話串/ })).toBeInViewport()
+})
