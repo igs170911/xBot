@@ -241,6 +241,9 @@ func (s *Service) startSignin(ctx context.Context, a store.AppConnection, redire
 		if err != nil {
 			return nil, ops.Errorf(ops.CodeInvalidInput, "找不到 %s 的登入方式：%v", a.Title, err)
 		}
+		if app, ok := Lookup(a.AppID); ok && len(app.Scopes) > 0 {
+			fresh.Scopes = app.Scopes // 目錄寫好的最小權限，不要服務列出的全部
+		}
 		if clientID == "" && st != nil && !st.Registered && st.ClientID != "" {
 			clientID, clientSecret = st.ClientID, st.ClientSecret // 沿用你之前給的用戶端
 		}

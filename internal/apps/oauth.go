@@ -226,6 +226,11 @@ func authorizeURL(st *oauthState, state, challenge string) string {
 	if len(st.Scopes) > 0 {
 		q.Set("scope", strings.Join(st.Scopes, " "))
 	}
+	// Google 要 access_type=offline 才會給 refresh token（只要 offline_access 不夠），不然大約每小時要重新登入
+	if u, err := url.Parse(st.AuthURL); err == nil && u.Hostname() == "accounts.google.com" {
+		q.Set("access_type", "offline")
+		q.Set("prompt", "consent")
+	}
 	sep := "?"
 	if strings.Contains(st.AuthURL, "?") {
 		sep = "&"

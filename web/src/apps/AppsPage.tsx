@@ -302,7 +302,8 @@ export function AppsPage() {
         title={keyFor?.app.title ?? ''}
         kind={keyFor?.app.auth === 'api_key' ? 'api_key' : 'client'}
         hint={keyFor?.app.token_hint ?? keyFor?.app.client_hint}
-        link={keyFor?.app.token_url}
+        link={keyFor?.app.token_url ?? (keyFor?.app.needs_client ? keyFor.app.source : undefined)}
+        redirectUri={keyFor?.app.needs_client ? `${window.location.origin}/api/v1/apps/oauth/callback` : undefined}
         onClose={() => setKeyFor(null)}
         onSubmit={async (a, b) => {
           if (!keyFor) return

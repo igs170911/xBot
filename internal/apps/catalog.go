@@ -30,6 +30,7 @@ type App struct {
 	TokenURL    string   `json:"token_url,omitempty"`
 	NeedsClient bool     `json:"needs_client,omitempty" desc:"授權伺服器不開放動態註冊：要你自己的 OAuth 用戶端 ID"`
 	ClientHint  string   `json:"client_hint,omitempty"`
+	Scopes      []string `json:"scopes,omitempty" desc:"登入時要的權限；有寫就用這裡的，不用服務列出的全部（例：Gmail 列出可以寄信、全權管理信箱，只要讀信與草稿）"`
 	Featured    bool     `json:"featured,omitempty"`
 	Source      string   `json:"source,omitempty"`
 }

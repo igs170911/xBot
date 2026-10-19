@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ExternalLink, KeyRound, MonitorSmartphone, ShieldCheck } from 'lucide-react'
+import { Check, Copy, ExternalLink, KeyRound, MonitorSmartphone, ShieldCheck, TriangleAlert } from 'lucide-react'
 import { appsCancelSignin, appsFinishSignin, appsSigninStatus, type AppsConnectOutput } from '../api/generated'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
@@ -8,6 +8,7 @@ import { Icon } from '../ui/Icon'
 import { Select } from '../ui/Menu'
 import { errText } from '../settings/format'
 import { AppIcon } from './shared'
+import { useCopy } from '../chat/useCopy'
 
 export type Signin = NonNullable<AppsConnectOutput['signin']>
 
@@ -186,6 +187,7 @@ export function KeyDialog({
   kind,
   hint,
   link,
+  redirectUri,
   onSubmit,
   onClose,
 }: {
@@ -194,9 +196,14 @@ export function KeyDialog({
   kind: 'api_key' | 'client'
   hint?: string
   link?: string
+  /** 自己的 OAuth 用戶端要登記的「已授權的重新導向 URI」（XBot 的回呼網址）。 */
+  redirectUri?: string
   onSubmit: (a: string, b: string) => Promise<void>
   onClose: () => void
 }) {
+  const [copied, copy] = useCopy()
+  // Google 等服務只接受 https 或 localhost 的回呼網址：用區網 IP 的 http 打開 XBot 會被拒絕
+  const plainHttp = !!redirectUri && /^http:\/\/(?!localhost[:/]|127\.0\.0\.1[:/])/.test(redirectUri)
   const [a, setA] = useState('')
   const [b, setB] = useState('')
   const [busy, setBusy] = useState(false)
@@ -240,6 +247,23 @@ export function KeyDialog({
           error={err ?? undefined}
         />
         {kind === 'client' && <TextInput label="Client Secret（有的話）" type="password" autoComplete="off" value={b} onChange={(e) => setB(e.target.value)} />}
+        {kind === 'client' && redirectUri && (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-meta text-ink-2">建立用戶端時，「已授權的重新導向 URI」填這個：</span>
+            <div className="flex items-center gap-2 rounded-field bg-inset px-3 py-2">
+              <code className="min-w-0 flex-1 break-all font-mono text-[12.5px] text-ink">{redirectUri}</code>
+              <Button size="sm" variant="ghost" icon={copied ? Check : Copy} onClick={() => void copy(redirectUri)}>
+                {copied ? '已複製' : '複製'}
+              </Button>
+            </div>
+            {plainHttp && (
+              <p className="m-0 flex items-start gap-2 text-meta text-warning-ink">
+                <Icon icon={TriangleAlert} size={14} className="mt-0.5 flex-none" />
+                Google 等服務只接受 https 或 localhost 的網址。請在架 XBot 的那台電腦用 http://localhost 打開 XBot 再連接，或改用「設定 › 進階 › 網路與 Tailscale」的 https 網址。
+              </p>
+            )}
+          </div>
+        )}
         {link && (
           <a href={link} target="_blank" rel="noreferrer" className="text-ui-sm">
             去哪裡拿？

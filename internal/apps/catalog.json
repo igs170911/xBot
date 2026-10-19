@@ -22,6 +22,87 @@
    "featured": true
   },
   {
+   "id": "gmail",
+   "title": "Gmail",
+   "description": "讀信、搜尋、整理標籤、寫草稿（不能直接寄出，草稿由你在 Gmail 寄）。Google 預覽版",
+   "category": "工作",
+   "site": "mail.google.com",
+   "icon": "mail",
+   "transport": "http",
+   "url": "https://gmailmcp.googleapis.com/mcp/v1",
+   "auth": "oauth2",
+   "needs_client": true,
+   "client_hint": "Google Cloud 的 OAuth 用戶端 ID 與密鑰：先加入 Google Workspace Developer Preview Program；在 Google Cloud 專案啟用 Gmail API 與 Gmail MCP API，設定 OAuth 同意畫面，建立「網頁應用程式」用戶端並勾選「Use this client for an AI-powered agent」，已授權的重新導向 URI 填 XBot 顯示的回呼網址",
+   "scopes": [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.compose"
+   ],
+   "exclude": [],
+   "source": "https://developers.google.com/workspace/gmail/api/guides/configure-mcp-server",
+   "featured": true
+  },
+  {
+   "id": "google-calendar",
+   "title": "Google 日曆",
+   "description": "看行程、查空檔（只讀）。Google 預覽版",
+   "category": "工作",
+   "site": "calendar.google.com",
+   "icon": "calendar-days",
+   "transport": "http",
+   "url": "https://calendarmcp.googleapis.com/mcp/v1",
+   "auth": "oauth2",
+   "needs_client": true,
+   "client_hint": "Google Cloud 的 OAuth 用戶端 ID 與密鑰：先加入 Google Workspace Developer Preview Program；在 Google Cloud 專案啟用 Google Calendar API 與 Calendar MCP API，設定 OAuth 同意畫面，建立「網頁應用程式」用戶端並勾選「Use this client for an AI-powered agent」，已授權的重新導向 URI 填 XBot 顯示的回呼網址",
+   "scopes": [
+    "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+    "https://www.googleapis.com/auth/calendar.events.freebusy",
+    "https://www.googleapis.com/auth/calendar.events.readonly"
+   ],
+   "exclude": [],
+   "source": "https://developers.google.com/workspace/guides/configure-mcp-servers",
+   "featured": true
+  },
+  {
+   "id": "google-drive",
+   "title": "Google 雲端硬碟",
+   "description": "找檔案、讀內容、建立檔案。Google 預覽版",
+   "category": "工作",
+   "site": "drive.google.com",
+   "icon": "folder",
+   "transport": "http",
+   "url": "https://drivemcp.googleapis.com/mcp/v1",
+   "auth": "oauth2",
+   "needs_client": true,
+   "client_hint": "Google Cloud 的 OAuth 用戶端 ID 與密鑰：先加入 Google Workspace Developer Preview Program；在 Google Cloud 專案啟用 Google Drive API 與 Drive MCP API，設定 OAuth 同意畫面，建立「網頁應用程式」用戶端並勾選「Use this client for an AI-powered agent」，已授權的重新導向 URI 填 XBot 顯示的回呼網址",
+   "scopes": [
+    "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/drive.file"
+   ],
+   "exclude": [],
+   "source": "https://developers.google.com/workspace/guides/configure-mcp-servers"
+  },
+  {
+   "id": "google-sheets",
+   "title": "Google 試算表",
+   "description": "讀寫試算表。Google 預覽版",
+   "category": "工作",
+   "site": "sheets.google.com",
+   "icon": "table",
+   "transport": "http",
+   "url": "https://sheetsmcp.googleapis.com/mcp/v1",
+   "auth": "oauth2",
+   "needs_client": true,
+   "client_hint": "Google Cloud 的 OAuth 用戶端 ID 與密鑰：先加入 Google Workspace Developer Preview Program；在 Google Cloud 專案啟用 Google Sheets API 與 Sheets MCP API，設定 OAuth 同意畫面，建立「網頁應用程式」用戶端並勾選「Use this client for an AI-powered agent」，已授權的重新導向 URI 填 XBot 顯示的回呼網址",
+   "scopes": [
+    "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/spreadsheets.readonly",
+    "https://www.googleapis.com/auth/spreadsheets"
+   ],
+   "exclude": [],
+   "source": "https://developers.google.com/workspace/guides/configure-mcp-servers"
+  },
+  {
    "id": "atlassian",
    "title": "Jira 與 Confluence",
    "description": "Atlassian 的 Jira 議題與 Confluence 頁面",

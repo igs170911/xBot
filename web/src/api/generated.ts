@@ -1230,6 +1230,8 @@ export interface AppsCatalogOutput {
     /** 授權伺服器不開放動態註冊：要你自己的 OAuth 用戶端 ID */
     needs_client?: boolean
     client_hint?: string
+    /** 登入時要的權限；有寫就用這裡的，不用服務列出的全部（例：Gmail 列出可以寄信、全權管理信箱，只要讀信與草稿） */
+    scopes?: string[]
     featured?: boolean
     source?: string
     /** available：還沒連接；其他是第一個帳號的狀態（ok、needs_signin、expired、error、disabled、checking、signing_in） */
