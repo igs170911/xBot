@@ -172,10 +172,8 @@ test('手機長按群組：叫出同一個選單，放開不會進群組', async
   const { m, chief, zhe } = await team(page)
   m.addRoom([chief.id, zhe.id], '上架小組', 'auto')
   await page.goto('/chats')
-  await page.getByRole('button', { name: '打開側欄' }).click()
-  const row = page.getByRole('navigation', { name: '側欄' }).getByRole('link', { name: /上架小組/ })
-  await expect(row).toBeVisible()
-  const touch = (type: string) =>
+  const longPress = async (row: import('@playwright/test').Locator) => {
+    const touch = (type: string) =>
     row.evaluate((el, type) => {
       const r = el.getBoundingClientRect()
       const t = { clientX: r.left + 20, clientY: r.top + 10, identifier: 1, target: el }
@@ -183,10 +181,23 @@ test('手機長按群組：叫出同一個選單，放開不會進群組', async
       Object.assign(e, { touches: type === 'touchend' ? [] : [t], changedTouches: [t], targetTouches: type === 'touchend' ? [] : [t] })
       el.dispatchEvent(e)
     }, type)
-  await touch('touchstart')
-  await page.waitForTimeout(650)
-  await touch('touchend')
-  await row.dispatchEvent('click')
+    await touch('touchstart')
+    await page.waitForTimeout(650)
+    await touch('touchend')
+    await row.dispatchEvent('click')
+  }
+  // 「對話」分頁的列
+  await longPress(page.getByRole('main', { name: '對話' }).getByRole('link', { name: /上架小組/ }))
   await expect(page.getByRole('menu', { name: '上架小組' }).getByRole('menuitem', { name: '刪除群組' })).toBeVisible()
-  await expect(page).not.toHaveURL(/\/rooms\//)
+  await expect(page).toHaveURL(/\/chats$/)
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await longPress(page.getByRole('main', { name: '對話' }).getByRole('link', { name: /帳房/ }))
+  await expect(page.getByRole('menu', { name: '帳房' }).getByRole('menuitem', { name: '刪除 Bot' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  // 側欄的列
+  await page.getByRole('button', { name: '打開側欄' }).click()
+  await longPress(page.getByRole('navigation', { name: '側欄' }).getByRole('link', { name: /上架小組/ }))
+  await expect(page.getByRole('menu', { name: '上架小組' }).getByRole('menuitem', { name: '編輯群組' })).toBeVisible()
+  await expect(page).toHaveURL(/\/chats$/)
 })
