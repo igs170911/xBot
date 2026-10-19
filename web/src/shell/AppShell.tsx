@@ -8,6 +8,7 @@ import { goBack } from '../router'
 import { PhoneBar, TabBar } from '../mobile/Phone'
 import { backFallback, isTabPath, ownsPhoneHeader, usePhone } from '../mobile/nav'
 import { Sidebar } from './Sidebar'
+import { PauseBanner } from './PauseBanner'
 import { cx } from '../ui/cx'
 
 /** 從左邊緣幾 px 內開始拖才算（避開頁面本身的左右滑動）。 */
@@ -87,6 +88,8 @@ export function AppShell({ path, title, children }: { path: string; title: strin
       </div>
 
       <div ref={page} data-phone-page="1" className={tab ? 'flex min-w-0 flex-1 flex-col bg-app max-md:pb-[calc(57px+env(safe-area-inset-bottom))]' : 'flex min-w-0 flex-1 flex-col bg-app'}>
+        {/* 全部停下中的提示；手機的對話頁是貼著可見範圍的 fixed 版面，提示改放在輸入框上面 */}
+        {!(phone && /^\/(bots\/[^/]+(\/threads\/[^/]+)?|rooms\/[^/]+)\/?$/.test(path)) && <PauseBanner />}
         {phone && !ownsPhoneHeader(path) && <PhoneBar title={title} back={backFallback(path)} heading={false} />}
         {children}
       </div>

@@ -245,3 +245,17 @@ it('/dev/components 列出元件與頭像矩陣（7 列 × 10 形狀）', async 
   expect(within(table).getAllByRole('row')).toHaveLength(8)
   expect(table.querySelectorAll('[data-shape]')).toHaveLength(70)
 })
+
+it('全部停下中：最上方有提示，按「繼續」恢復', async () => {
+  let paused = true
+  api.ops['collab.pause_state'] = () => ({ paused })
+  api.ops['collab.pause_all'] = (input) => {
+    paused = !!input.paused
+    return { paused }
+  }
+  render(<App />)
+  const banner = await screen.findByTestId('pause-banner')
+  fireEvent.click(within(banner).getByRole('button', { name: '繼續' }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'collab.pause_all')?.input).toEqual({ paused: false }))
+  await waitFor(() => expect(screen.queryByTestId('pause-banner')).toBeNull())
+})

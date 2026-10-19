@@ -116,7 +116,7 @@ test('兩個 Bot 的往來（C13）：對話裡的往來行，打開看整條', 
   const lines = page.getByTestId('peer-line')
   await expect(lines).toHaveCount(2)
   await expect(lines.first()).toContainText('已傳訊息給 阿哲')
-  await expect(lines.first()).toContainText('第 1/6 次')
+  await expect(lines.first()).toContainText('第 1 次')
   await expect(lines.last()).toContainText('來自 阿哲 的回覆')
   await expect(page.getByText('[silent]')).toHaveCount(0)
   await settle(page)

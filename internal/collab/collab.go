@@ -399,6 +399,13 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	if err != nil {
 		return SendResult{}, err
 	}
+	if s.AllPaused(ctx) {
+		if o.Relay || o.intent == IntentResult {
+			s.log.Info("Bot 之間的往來暫停中，結果不送回（不叫醒交辦的 Bot）", "from", senderID, "to", ref)
+			return SendResult{}, nil
+		}
+		return SendResult{}, errPaused()
+	}
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return SendResult{}, invalid("訊息內容是空的")
@@ -1000,6 +1007,9 @@ func (s *Service) ForgetBot(ctx context.Context, botID string) {
 			}
 		}
 		raw, _ := json.Marshal(tm)
+		if s.AllPaused(ctx) {
+			continue // 全部停下中：不叫醒任何 Bot
+		}
 		if _, err := s.rt.Start(ctx, runtime.ChatRequest{BotID: sender.ID, ThreadID: thread, Text: text, Source: runtime.SourceBot,
 			Prompt: framed(store.Bot{Name: gone}, Mate{ID: sender.ID, Name: sender.Name}, text, IntentResult, ""), Sender: "system", Kind: "peer",
 			MessageMeta: map[string]any{"peer": PeerEvent{Event: "message_in", PeerID: botID, PeerName: gone, Intent: IntentResult, MessageID: m.ID}},

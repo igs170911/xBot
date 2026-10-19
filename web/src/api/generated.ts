@@ -3424,6 +3424,49 @@ export function collabMessageBot(input: CollabMessageBotInput, opts?: CallOption
   return invoke('xbot.collab.message_bot', input, opts).then((r) => r.output)
 }
 
+// xbot.collab.pause_all
+
+export interface CollabPauseAllInput {
+  /** true＝全部停下並暫停 Bot 之間的往來；false＝繼續 */
+  paused?: boolean
+}
+
+export interface CollabPauseAllOutput {
+  paused: boolean
+  /** 這次停掉幾件工作 */
+  stopped?: number
+}
+
+/**
+ * 全部停下：停掉所有 Bot 的工作，並暫停 Bot 之間的往來（paused=false 恢復）
+ *
+ * 暫停時 Bot 不能交辦隊友，隊友的結果、群組接力都不會再叫醒任何 Bot；你自己對 Bot 說話不受影響。只有你本人能用。
+ *
+ * `xbot.collab.pause_all`：權限 operate、風險 safe
+ */
+export function collabPauseAll(input: CollabPauseAllInput = {}, opts?: CallOptions): Promise<CollabPauseAllOutput> {
+  return invoke('xbot.collab.pause_all', input, opts).then((r) => r.output)
+}
+
+// xbot.collab.pause_state
+
+export type CollabPauseStateInput = Record<string, never>
+
+export interface CollabPauseStateOutput {
+  paused: boolean
+  /** 這次停掉幾件工作 */
+  stopped?: number
+}
+
+/**
+ * Bot 之間的往來是不是暫停中（全部停下）
+ *
+ * `xbot.collab.pause_state`：權限 read、風險 safe
+ */
+export function collabPauseState(input: CollabPauseStateInput = {}, opts?: CallOptions): Promise<CollabPauseStateOutput> {
+  return invoke('xbot.collab.pause_state', input, opts).then((r) => r.output)
+}
+
 // xbot.collab.peer_history
 
 export interface CollabPeerHistoryInput {
@@ -12982,6 +13025,8 @@ export interface Ops {
   'xbot.chat.wait_until_settled': { input: ChatWaitUntilSettledInput; output: ChatWaitUntilSettledOutput }
   'xbot.collab.assignment_status': { input: CollabAssignmentStatusInput; output: CollabAssignmentStatusOutput }
   'xbot.collab.message_bot': { input: CollabMessageBotInput; output: CollabMessageBotOutput }
+  'xbot.collab.pause_all': { input: CollabPauseAllInput; output: CollabPauseAllOutput }
+  'xbot.collab.pause_state': { input: CollabPauseStateInput; output: CollabPauseStateOutput }
   'xbot.collab.peer_history': { input: CollabPeerHistoryInput; output: CollabPeerHistoryOutput }
   'xbot.collab.post_to_group': { input: CollabPostToGroupInput; output: CollabPostToGroupOutput }
   'xbot.collab.room_read': { input: CollabRoomReadInput; output: CollabRoomReadOutput }
@@ -13218,6 +13263,8 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.chat.wait_until_settled': { path: '/api/v1/chat.wait_until_settled', scope: 'read', risk: 'safe', mutates: false, summary: '等 Bot 做完（或需要人）再回傳它的回覆' },
   'xbot.collab.assignment_status': { path: '/api/v1/collab.assignment_status', scope: 'read', risk: 'safe', mutates: false, summary: '看一件交辦給隊友的工作現在的狀態' },
   'xbot.collab.message_bot': { path: '/api/v1/collab.message_bot', scope: 'operate', risk: 'safe', mutates: true, summary: '傳訊息給隊友（交辦、提問、通知）' },
+  'xbot.collab.pause_all': { path: '/api/v1/collab.pause_all', scope: 'operate', risk: 'safe', mutates: true, summary: '全部停下：停掉所有 Bot 的工作，並暫停 Bot 之間的往來（paused=false 恢復）' },
+  'xbot.collab.pause_state': { path: '/api/v1/collab.pause_state', scope: 'read', risk: 'safe', mutates: false, summary: 'Bot 之間的往來是不是暫停中（全部停下）' },
   'xbot.collab.peer_history': { path: '/api/v1/collab.peer_history', scope: 'read', risk: 'safe', mutates: false, summary: '讀兩個 Bot 之間的往來（X ⇄ Y 的對話）' },
   'xbot.collab.post_to_group': { path: '/api/v1/collab.post_to_group', scope: 'operate', risk: 'safe', mutates: true, summary: '在你所在的群組發言（補充或交棒）' },
   'xbot.collab.room_read': { path: '/api/v1/collab.room_read', scope: 'read', risk: 'safe', mutates: false, summary: '讀群組的訊息與成員狀態' },

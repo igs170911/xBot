@@ -15,10 +15,37 @@ export function slashQuery(text: string): string | null {
   return m ? m[1] : null
 }
 
-/** 送出前：開頭是「/技能名稱」就改寫成請 Bot 使用那個技能；不是技能名稱就原樣送出。 */
+// 內建的指令（列在技能前面）：/plan 先規劃（使用者決定 2026-10-19：大頭要先規劃方向、拆解給我確認，再交代下去）。
+const PLAN_NAMES = ['plan', '規劃', '計畫']
+
+/** /plan 的內容：先拆解成計畫給使用者確認；確認前不動手、不交辦隊友、不建 Bot。 */
+export function planPrompt(task: string): string {
+  return (
+    '【先規劃，先不要動手】\n' +
+    '請先把下面這件事拆成步驟計畫給我確認：目標、怎麼做、要交給哪些隊友做什麼、順序、需要我決定的事、預計產出。\n' +
+    '在我回覆「開始」或確認之前：不要動手執行、不要交辦或傳話給隊友、不要建 Bot 或團隊。\n' +
+    '我調整計畫時照我的意見改，再給我看一次。\n\n' +
+    '要規劃的事：' +
+    (task.trim() || '（請先問我要規劃什麼）')
+  )
+}
+
+export const BUILTIN_PLAN: Skill = {
+  id: '__plan__',
+  name: 'plan',
+  description: '先規劃：拆成步驟給你確認，確認前不動手、不交辦隊友',
+  place: 'list',
+  enabled: true,
+  source: 'xbot',
+  created_at: 0,
+  updated_at: 0,
+}
+
+/** 送出前：「/plan …」改寫成先規劃；開頭是「/技能名稱」就改寫成請 Bot 使用那個技能；都不是就原樣送出。 */
 export function expandSkill(text: string, skills: Skill[]): string {
   const m = text.match(/^\/(\S+)(?:\s+([\s\S]*))?$/)
   if (!m) return text
+  if (PLAN_NAMES.includes(m[1].toLowerCase())) return planPrompt(m[2] ?? '')
   const s = skills.find((x) => x.name === m[1] || x.id === m[1])
   if (!s) return text
   const rest = (m[2] ?? '').trim()
@@ -47,15 +74,15 @@ export function useBotSkills(botId?: string): Skill[] {
 
 export function matchSkills(skills: Skill[], query: string): Skill[] {
   const q = query.toLowerCase()
-  return skills.filter((s) => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)).slice(0, 30)
+  return [BUILTIN_PLAN, ...skills].filter((s) => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)).slice(0, 30)
 }
 
 export function SkillMenu({ skills, query, active, onPick }: { skills: Skill[]; query: string; active: number; onPick: (s: Skill) => void }) {
   const list = matchSkills(skills, query)
   return (
     <div role="listbox" aria-label="技能" className="absolute inset-x-0 bottom-full z-20 mb-2 flex max-h-[min(380px,50dvh)] flex-col overflow-y-auto rounded-menu border border-divider bg-panel p-1.5 shadow-pop">
-      <span className="px-2.5 pb-1 pt-1 text-meta text-ink-3">技能</span>
-      {list.length === 0 && <span className="px-2.5 py-2 text-sub text-ink-3">{skills.length ? '沒有符合的技能' : '這個 Bot 還沒有技能'}</span>}
+      <span className="px-2.5 pb-1 pt-1 text-meta text-ink-3">指令與技能</span>
+      {list.length === 0 && <span className="px-2.5 py-2 text-sub text-ink-3">沒有符合的指令或技能</span>}
       {list.map((s, i) => (
         <button
           key={s.id}
@@ -73,7 +100,7 @@ export function SkillMenu({ skills, query, active, onPick }: { skills: Skill[]; 
             <span className="truncate text-ui text-ink">/{s.name}</span>
             {s.description && <span className="truncate text-meta text-ink-3">{s.description}</span>}
           </span>
-          {s.place === 'library' && <span className="flex-none text-meta text-ink-3">技能庫</span>}
+          {s.id === BUILTIN_PLAN.id ? <span className="flex-none text-meta text-accent-ink">內建</span> : s.place === 'library' && <span className="flex-none text-meta text-ink-3">技能庫</span>}
         </button>
       ))}
     </div>

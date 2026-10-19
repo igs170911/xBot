@@ -650,6 +650,9 @@ func (s *Service) speak(ctx context.Context, room store.Room, botID, text string
 
 // wake 叫醒被交棒的成員（LazyBoy wake）。
 func (s *Service) wake(ctx context.Context, room store.Room, members []store.Bot, cause string, round int, addressed bool) {
+	if s.AllPaused(ctx) {
+		return // 全部停下中：群組裡 Bot 之間不再接力
+	}
 	for _, b := range members {
 		if err := s.seat(ctx, room, b.ID, cause, addressed, round, false); err != nil {
 			s.log.Warn("群組交棒失敗", "room", room.ID, "bot", b.Name, "err", err)

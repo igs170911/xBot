@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeftRight, ArrowRight, Bot as BotIcon, CalendarClock, Clock, FileText, Inbox as InboxIcon, MessageCircle, OctagonPause, PencilLine, Users, UsersRound, type LucideIcon } from 'lucide-react'
+import { ArrowLeftRight, ArrowRight, ChevronDown, Bot as BotIcon, CalendarClock, Clock, FileText, Inbox as InboxIcon, MessageCircle, OctagonPause, PencilLine, Users, UsersRound, type LucideIcon } from 'lucide-react'
 import { collabPeerHistory, collabStopChain, type CollabPeerHistoryOutput } from '../api/generated'
 import { botsStore } from '../data/bots'
 import { onEvent } from '../data/events'
@@ -15,8 +15,6 @@ import type { CardProps } from './cards'
 import { clockLabel } from './format'
 
 // 和隊友往來的那一行（C14 事件行）＋「X ⇄ Y 的對話」（C13，RM-12）。kind=peer 的訊息用這裡畫。
-
-const MAX_HOPS = 6
 
 const INTENT_LABEL: Record<string, string> = { request: '請求', question: '提問', result: '回覆', fyi: '通知' }
 const INTENT_TONE: Record<string, Tone> = { request: 'neutral', question: 'accent', result: 'success', fyi: 'neutral' }
@@ -37,6 +35,8 @@ export function PeerCard({ msg, bot }: CardProps) {
   const p = msg.peer
   const peer = useBot(p?.peer_id)
   const [open, setOpen] = useState(false)
+  // 往來的內容預設收成一行，點開才看全文（對話裡不要被長長的交辦洗版）
+  const [full, setFull] = useState(false)
   if (!p) return null
   const name = p.peer_name ?? peer?.name ?? '隊友'
   if (p.event === 'group_created' || p.event === 'group_post') {
@@ -75,11 +75,7 @@ export function PeerCard({ msg, bot }: CardProps) {
         <Icon icon={out ? ArrowRight : InboxIcon} size={14} />
         <span>{out ? `已傳訊息給 ${name}` : `來自 ${name} 的${INTENT_LABEL[intent] ?? '訊息'}`}</span>
         <IntentChip intent={intent} />
-        {intent !== 'result' && p.hop ? (
-          <span className="text-ink-3">
-            第 {p.hop}/{MAX_HOPS} 次
-          </span>
-        ) : null}
+        {intent !== 'result' && p.hop ? <span className="text-ink-3">第 {p.hop} 次</span> : null}
         {p.files ? (
           <span className="inline-flex items-center gap-1 text-ink-3">
             <Icon icon={FileText} size={13} />
@@ -88,9 +84,19 @@ export function PeerCard({ msg, bot }: CardProps) {
         ) : null}
         <span className="text-ink-3">{clockLabel(msg.createdAt)}</span>
       </div>
-      <div className={cx('whitespace-pre-wrap break-words rounded-group border border-line px-3.5 py-2 text-ui-sm text-ink', out ? 'bg-transparent' : 'bg-inset')}>
-        {msg.content.length > 600 ? msg.content.slice(0, 600) + '…' : msg.content}
-      </div>
+      <button
+        type="button"
+        aria-expanded={full}
+        onClick={() => setFull((f) => !f)}
+        title={full ? '收起' : '看全文'}
+        className={cx(
+          'flex max-w-full items-start gap-2 rounded-group border border-line px-3.5 py-2 text-left text-ui-sm text-ink',
+          out ? 'bg-transparent' : 'bg-inset',
+        )}
+      >
+        <span className={cx('min-w-0 flex-1 break-words', full ? 'whitespace-pre-wrap' : 'truncate')}>{full ? msg.content : firstLine(msg.content)}</span>
+        <Icon icon={ChevronDown} size={16} className={cx('mt-0.5 flex-none text-ink-3 transition-transform', full && 'rotate-180')} />
+      </button>
       {bot && p.peer_id && (
         <button type="button" onClick={() => setOpen(true)} className="relative inline-flex items-center gap-1 rounded-full bg-transparent px-1 text-meta text-accent-ink touch-target hover:underline">
           <Icon icon={ArrowLeftRight} size={13} />看 {bot.name} ⇄ {name} 的對話
@@ -99,6 +105,12 @@ export function PeerCard({ msg, bot }: CardProps) {
       {open && bot && p.peer_id && <PeerDialog a={bot.id} b={p.peer_id} onClose={() => setOpen(false)} />}
     </div>
   )
+}
+
+/** 往來內容收起時的那一行：第一個有字的行（去掉【】標題）。 */
+function firstLine(text: string): string {
+  const line = text.split('\n').map((l) => l.trim()).find((l) => l && !/^【.*】$/.test(l)) ?? text.trim()
+  return line
 }
 
 /** X03 的事件行：Bot 建了幫手、改了資料、建了團隊、送出提案或討論（一行膠囊，不是傳話）。 */

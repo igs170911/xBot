@@ -1,5 +1,5 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Activity as ActivityIcon, AudioLines, ChevronDown, ChevronLeft, Compass, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, Monitor, Phone, Plus, Settings, Trash2, Volume2, VolumeX, X } from 'lucide-react'
+import { Activity as ActivityIcon, AudioLines, ChevronDown, ChevronLeft, Compass, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, Monitor, OctagonPause, Phone, Plus, Settings, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import { isRecording, teachStartStore, useLesson } from '../teaching/teachingData'
 import { ApiError, chatListThreads, chatSend, chatStop, filesUploadForm, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
 import { botsStore, type Bot, look } from '../data/bots'
@@ -36,6 +36,7 @@ import { ThreadMenu, type Thread } from './ThreadMenu'
 import { DeleteThreadDialog } from './DeleteThread'
 import { ThreadDrawer } from './ThreadDrawer'
 import { TakeoverBar } from './TakeoverBar'
+import { PauseBanner, usePauseAll } from '../shell/PauseBanner'
 import { WorkSteps } from './WorkSteps'
 import { FirstHome, FirstTasks, useFirstHome } from '../onboard/FirstHome'
 import { startTour } from '../onboard/state'
@@ -200,6 +201,7 @@ function Header({
   onAutoRead?: () => void
   onDelete: () => void
 }) {
+  const pauseAll = usePauseAll()
   const st = statusOf(bot, act, busyElsewhere)
   const { lesson } = useLesson(bot.id)
   return (
@@ -245,6 +247,7 @@ function Header({
           { label: '聲音與朗讀', icon: AudioLines, onSelect: () => navigate(`/bots/${bot.id}/voice`) },
           { label: 'Bot 設定', icon: Settings, separator: true, onSelect: () => navigate(`/settings/bots/${encodeURIComponent(bot.id)}`) },
           { label: '模型與金鑰設定', icon: Settings, onSelect: () => navigate('/settings/models') },
+          { label: '全部停下（所有 Bot）', icon: OctagonPause, separator: true, onSelect: () => void pauseAll() },
           ...(threadId ? [{ label: '刪除這個對話串', icon: Trash2, danger: true, separator: true, onSelect: onDelete }] : []),
         ]}
         trigger={(p) => <IconButton {...p} icon={Ellipsis} label="更多" />}
@@ -583,6 +586,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
         <div className="mx-auto flex max-w-[780px] flex-col gap-2">
           {noModel && <NoModelCard name={name} onSetup={() => setModelDialog(true)} />}
           <TakeoverBar botId={botId} name={name} queued={act?.state === 'queued'} />
+          {phone && <PauseBanner />}
           {notice && <NoticeRow notice={notice} onStop={() => void stop(false)} onClose={() => setNotice(null)} />}
           {empty && firstHome && <FirstTasks onPick={(t) => composer.current?.fill(t)} />}
           <div data-tour="composer" className="rounded-[26px]">

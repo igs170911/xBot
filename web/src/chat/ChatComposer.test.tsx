@@ -140,7 +140,9 @@ it('打「/」列出這個 Bot 的技能；選了送出時改寫成「使用技�
   await waitFor(() => expect(api.calls.some((c) => c.path === 'skills.list')).toBe(true))
   fireEvent.change(box(), { target: { value: '/' } })
   const menu = await screen.findByRole('listbox', { name: '技能' })
-  expect(within(menu).getAllByRole('option')).toHaveLength(2)
+  // 內建的 /plan 在最前面，再來是技能清單與技能庫（停用的不列）
+  expect(within(menu).getAllByRole('option').map((o) => o.textContent?.split(' ')[0])).toHaveLength(3)
+  expect(within(menu).getAllByRole('option')[0]).toHaveTextContent('/plan')
   expect(within(menu).getByText('技能庫')).toBeInTheDocument()
   fireEvent.change(box(), { target: { value: '/新聞' } })
   fireEvent.keyDown(box(), { key: 'Enter' })
@@ -156,4 +158,17 @@ it('「/」開頭但不是技能名稱：原樣送出', () => {
   expect(slashQuery('/ab')).toBe('ab')
   expect(slashQuery('看 /ab')).toBeNull()
   expect(slashQuery('/ab c')).toBeNull()
+})
+
+it('/plan：先規劃，送出的是「先拆成計畫給我確認、確認前不動手不交辦」', async () => {
+  const onSend = vi.fn(async (t: string) => t.length > 0)
+  render(<ChatComposer name="小秘" mode="idle" onSend={onSend} onStop={() => {}} />)
+  fireEvent.change(box(), { target: { value: '/plan 幫我經營 Threads 帳號' } })
+  fireEvent.keyDown(box(), { key: 'Enter' })
+  await waitFor(() => expect(onSend).toHaveBeenCalled())
+  const sent = onSend.mock.calls[0][0]
+  expect(sent).toContain('【先規劃，先不要動手】')
+  expect(sent).toContain('不要交辦或傳話給隊友')
+  expect(sent).toContain('要規劃的事：幫我經營 Threads 帳號')
+  expect(expandSkill('/計畫 做網站', [])).toContain('要規劃的事：做網站')
 })

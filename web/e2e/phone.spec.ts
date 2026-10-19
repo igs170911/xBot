@@ -522,7 +522,7 @@ test('「/」技能選單：列出技能、選了送出變成使用技能', asyn
   const box = page.getByRole('main', { name: /^和/ }).getByTestId('composer-input')
   await box.fill('/')
   const menu = page.getByRole('listbox', { name: '技能' })
-  await expect(menu.getByRole('option')).toHaveCount(2)
+  await expect(menu.getByRole('option')).toHaveCount(3) // 內建的 /plan ＋ 兩個技能
   // 選單整個在畫面裡
   const r = await menu.boundingBox()
   const vw = page.viewportSize()!.width
