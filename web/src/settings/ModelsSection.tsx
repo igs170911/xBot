@@ -119,6 +119,8 @@ function MainModels({ models, presets, reload }: Data) {
   const loggedIn = host.list.filter((h) => h.logged_in)
   const notIn = host.list.filter((h) => !h.logged_in)
   const nothing = models && providers.length === 0 && !host.busy && loggedIn.length === 0
+  // 方案與訂閱登入都讀到了才畫：先畫一半、資料回來再把下面整段往下推，手機上會整頁跳（2026-10-20）
+  if (!models || !host.loaded) return <p className="m-0 text-ui-sm text-ink-2">讀取中…</p>
   return (
     <>
       <Block
@@ -186,17 +188,23 @@ function MainModels({ models, presets, reload }: Data) {
 function useHostLogins() {
   const [list, setList] = useState<EnginesStatusOutput['host']>([])
   const [busy, setBusy] = useState(true)
+  const [loaded, setLoaded] = useState(false)
   const fetchStatus = () =>
     enginesStatus({})
       .then((st) => setList(st.host))
       .catch(() => setList([]))
-      .finally(() => setBusy(false))
+      .finally(() => {
+        setBusy(false)
+        setLoaded(true)
+      })
   useEffect(() => {
     void fetchStatus()
   }, [])
   return {
     list,
     busy,
+    /** 第一次讀完了沒（重新偵測時不算）。 */
+    loaded,
     reload: () => {
       setBusy(true)
       void fetchStatus()

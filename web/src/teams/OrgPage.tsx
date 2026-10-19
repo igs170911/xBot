@@ -194,7 +194,8 @@ export function OrgPage() {
           </section>
         )}
       </div>
-      <ApprovalItems />
+      {/* 報告樹讀到了才畫：不然它先畫在上面、報告樹回來再被往下推（手機整頁跳，2026-10-20） */}
+      {(chart || err) && <ApprovalItems />}
     </main>
   )
 }

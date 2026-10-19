@@ -87,7 +87,7 @@ export function AppShell({ path, title, children }: { path: string; title: strin
         <Sidebar path={path} rail={rail} />
       </div>
 
-      <div ref={page} data-phone-page="1" className={tab ? 'flex min-w-0 flex-1 flex-col bg-app max-md:pb-[calc(57px+env(safe-area-inset-bottom))]' : 'flex min-w-0 flex-1 flex-col bg-app max-md:pb-[env(safe-area-inset-bottom)]'}>
+      <div ref={page} data-phone-page="1" className={tab ? 'flex min-w-0 flex-1 flex-col bg-app max-md:pb-[calc(57px+env(safe-area-inset-bottom))]' : 'flex min-w-0 flex-1 flex-col bg-app'}>
         {/* 全部停下中的提示；手機的對話頁是貼著可見範圍的 fixed 版面，提示改放在輸入框上面 */}
         {!(phone && /^\/(bots\/[^/]+(\/threads\/[^/]+)?|rooms\/[^/]+)\/?$/.test(path)) && <PauseBanner />}
         {phone && !ownsPhoneHeader(path) && <PhoneBar title={title} back={backFallback(path)} heading={false} />}

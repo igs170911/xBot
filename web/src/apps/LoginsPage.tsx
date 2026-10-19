@@ -133,7 +133,7 @@ export function LoginsPage() {
               </div>
             )}
           </section>
-          <aside className="flex w-[300px] flex-none flex-col gap-3 rounded-[18px] bg-inset p-4 text-sub text-ink-2 max-md:w-auto">
+          <aside className="flex w-[300px] flex-none flex-col gap-3 rounded-[18px] bg-inset p-4 text-sub text-ink-2 max-md:order-first max-md:w-auto">
             <p className="m-0 flex gap-2">
               <span className="text-success">
                 <Icon icon={ShieldCheck} size={18} />

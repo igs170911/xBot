@@ -236,6 +236,9 @@ export function ComputersSection() {
           </Group>
         )}
       </Block>
+      {/* 主機清單讀到了才畫下面：不然下面先畫好、主機清單回來再整段往下推（手機上整頁跳，2026-10-20） */}
+      {(s.hosts || s.error) && (
+        <>
       <MovesBlock />
       {s.hosts && hosts.length > 0 && (
         <Block title="預設值" aside={<span className="text-[13px] text-ink-2 max-md:hidden">同一個電腦映像，每台主機都一樣；主機滿了會排隊</span>}>
@@ -257,6 +260,8 @@ export function ComputersSection() {
       <Note tone="warning" icon={<Icon icon={TriangleAlert} size={18} />}>
         XBot 能控制每台主機的 Docker，等於有那台主機的最高權限：建議整台主機專給 XBot。
       </Note>
+        </>
+      )}
       {remove.dialog}
       <MoveAllDialog from={moveFrom} hosts={hosts} onClose={() => setMoveFrom(null)} />
     </>

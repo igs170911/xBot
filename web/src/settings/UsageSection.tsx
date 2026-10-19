@@ -111,6 +111,11 @@ export function UsageSection() {
           讀不到用量：{err}
         </p>
       )}
+      {/* 第一次的數字回來才畫：先畫空的、數字回來卡片長高，手機上整頁跳（2026-10-20） */}
+      {!sum && !err ? (
+        <p className="m-0 text-ui-sm text-ink-2">讀取中…</p>
+      ) : (
+        <>
       <div className="grid grid-cols-3 gap-3 max-sm:grid-cols-1">
         <Tile label="今天" value={usd(g?.spent_today_usd ?? 0)} sub={caps ? `${caps.day}` : ''} />
         <Tile
@@ -178,6 +183,8 @@ export function UsageSection() {
       )}
 
       {caps && <CapsEditor caps={caps} onSaved={load} />}
+        </>
+      )}
     </>
   )
 }

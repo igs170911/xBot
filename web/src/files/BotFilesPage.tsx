@@ -227,7 +227,7 @@ export function BotFilesPage({ botId }: { botId: string }) {
 
   const count = state?.out?.state === 'ready' ? state.out.total : null
   return (
-    <main className="flex min-h-0 min-w-0 flex-1 max-md:flex-col md:h-dvh" aria-label={`${name}的檔案`}>
+    <main className="flex h-dvh min-h-0 min-w-0 flex-1 max-md:flex-col" aria-label={`${name}的檔案`}>
       <section
         aria-label={`${name}的檔案`}
         className={cx('relative flex min-h-0 flex-col border-r border-divider md:w-[380px] md:flex-none', 'max-md:flex-1')}
@@ -282,7 +282,7 @@ export function BotFilesPage({ botId }: { botId: string }) {
             ))}
           </div>
         </header>
-        <div className="min-h-0 flex-1 overflow-auto px-2 pb-3" data-testid="file-list">
+        <div className="min-h-0 flex-1 overflow-auto overscroll-y-contain px-2 pb-3" data-testid="file-list">
           {list}
         </div>
         <footer className="flex flex-none items-center gap-2 border-t border-divider px-3 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))]">
@@ -318,7 +318,7 @@ export function BotFilesPage({ botId }: { botId: string }) {
       {selected && narrow && (
         <div className="fixed inset-0 z-40 flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/60" onClick={() => go({ path: null })} aria-hidden="true" />
-          <div role="dialog" aria-modal="true" aria-label={`預覽：${selectedEntry?.name ?? ''}`} className="relative flex max-h-[85dvh] flex-col rounded-t-[22px] border-t border-divider bg-panel pb-[env(safe-area-inset-bottom)] shadow-dialog">
+          <div role="dialog" aria-modal="true" aria-label={`預覽：${selectedEntry?.name ?? ''}`} className="relative flex h-[85dvh] flex-col rounded-t-[22px] border-t border-divider bg-panel pb-[env(safe-area-inset-bottom)] shadow-dialog">
             <span aria-hidden="true" className="mx-auto mt-2 h-1 w-10 flex-none rounded-full bg-control" />
             <FilePreview
               key={selected}
