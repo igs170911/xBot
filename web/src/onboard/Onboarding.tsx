@@ -13,7 +13,7 @@ import {
 import { loadBots, upsertBot } from '../data/bots'
 import { navigate } from '../router'
 import { Avatar, Mascot } from '../ui/Avatar'
-import type { AvatarColor, EyeVariant } from '../ui/avatar-data'
+import type { EyeVariant } from '../ui/avatar-data'
 import { Button } from '../ui/Button'
 import { Checkbox } from '../ui/Controls'
 import { TextInput } from '../ui/Field'
@@ -353,7 +353,7 @@ function MeetBot({
 }) {
   const toast = useToast()
   const [name, setName] = useState(DEFAULT_NAME)
-  const [color, setColor] = useState<AvatarColor>('blue')
+  const [color, setColor] = useState<string>('blue')
   const [eyes, setEyes] = useState<EyeVariant>('happy')
   const [looks, setLooks] = useState(false)
   const [busy, setBusy] = useState(false)

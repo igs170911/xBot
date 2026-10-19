@@ -302,6 +302,12 @@ export function applyRead(s: ChatState, out: ChatReadOutput): ChatState {
         patch.verdict = a.verdict ?? (m.status === 'complete' ? 'answer' : m.status === 'interrupted' ? 'cancelled' : 'failed')
       }
     }
+    // 服務說這件工作已經結束（例：排隊後被停掉、沒有回覆訊息）：以它為準
+    if (out.tasks?.[m.task_id] === 'done' && (patch.state ?? a.state) !== 'done') {
+      patch.state = 'done'
+      patch.endedAt = a.endedAt ?? m.updated_at
+      patch.thinking = false
+    }
     next = putActivity(next, { ...a, ...patch })
   }
   return next
@@ -434,6 +440,8 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
       const st = (p.state as string | undefined) ?? ''
       if (!st) return s
       const a = activity(s, e.task_id)
+      // 已經知道做完了（服務的 tasks、回覆訊息）：做完的工作不會再開始（下一輪是新的 task id），補讀到的舊狀態不能蓋回去
+      if (a.state === 'done' && st !== 'done') return s
       const patch: Partial<Activity> = { state: st, botId: a.botId ?? e.bot_id, threadId: a.threadId ?? e.thread_id, startedAt: a.startedAt ?? e.at }
       if (st !== 'waiting_input' && st !== 'waiting_approval') patch.request = undefined
       patch.wait = st === 'waiting_box' ? (p.wait as BoxWait | undefined) : undefined

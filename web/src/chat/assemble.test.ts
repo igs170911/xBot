@@ -56,6 +56,23 @@ const turn: XBotEvent[] = [
 ]
 
 describe('事件組成對話', () => {
+  // 2026-10-19 實際遇到：工作早就結束，但重新整理後畫面一直顯示「排隊中 · 30 分」。
+  // 原因：補讀的步驟只讀到舊的 queued／running，沒讀到最後的 done。chat.read 的 tasks 說了算，舊狀態也不能蓋掉。
+  it('服務說工作做完了：補讀到的舊狀態不會把它變回排隊中', () => {
+    const read = {
+      thread: { id: T, bot_id: 'b1', title: '', pinned: false, archived: false, unread: 0, last_message_at: 1, created_at: 1 },
+      messages: [{ id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '/goal 有這個技能嗎', task_id: 'k1', created_at: 1000, updated_at: 1000 }],
+      has_more: false,
+      tasks: { k1: 'done' },
+    } as unknown as ChatReadOutput
+    let s = applyRead(emptyChat, read)
+    expect(activeTask(s, T)).toBeUndefined()
+    s = applyEvent(s, { id: 1, kind: 'task.state', bot_id: 'b1', thread_id: T, task_id: 'k1', at: 1000, payload: { state: 'queued' } })
+    s = applyEvent(s, { id: 2, kind: 'task.state', bot_id: 'b1', thread_id: T, task_id: 'k1', at: 1001, payload: { state: 'running' } })
+    expect(activeTask(s, T)).toBeUndefined()
+    expect(s.tasks.k1.state).toBe('done')
+  })
+
   it('文字增量依序接起來，Bot 的回覆前面接著工作進度', () => {
     const s = run(turn)
     const items = threadItems(s, T)

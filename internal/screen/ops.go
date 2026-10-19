@@ -63,6 +63,12 @@ type HandbackOut struct {
 	Screen Screen `json:"screen"`
 }
 
+// CloseTabsOut 是 xbot.computers.close_tabs 的輸出。
+type CloseTabsOut struct {
+	BotID  string `json:"bot_id"`
+	Closed int    `json:"closed" desc:"關了幾個分頁；電腦沒開機時是 0"`
+}
+
 // SnapshotOut 是 xbot.computers.snapshot 的輸出。
 type SnapshotOut struct {
 	BotID string `json:"bot_id"`
@@ -175,6 +181,30 @@ func Register(reg *ops.Registry, svc *Service) {
 				note = "你已經請過使用者接手了，還在等使用者。請結束這一輪，等使用者交還。"
 			}
 			return RequestOut{RequestResult: res, Note: note}, nil
+		},
+	})
+	ops.Register(reg, ops.Op[BotIn, CloseTabsOut]{
+		Name: "xbot.computers.close_tabs", Summary: "關掉 Bot 電腦瀏覽器裡的分頁，只留一個空白分頁（查完網頁沒關的）",
+		Description: "電腦沒開機時 closed=0，不會叫醒它。瀏覽器登入不受影響。",
+		Scope:       ops.ScopeOperate, Risk: ops.RiskSafe,
+		Handle: func(ctx context.Context, call *ops.Call, in BotIn) (CloseTabsOut, error) {
+			if err := need(); err != nil {
+				return CloseTabsOut{}, err
+			}
+			if !CanView(call.Identity, in.BotID) {
+				return CloseTabsOut{}, ops.Forbidden(call.Identity.DisplayName() + " 不能碰這個 Bot 的電腦")
+			}
+			if call.DryRun {
+				return CloseTabsOut{BotID: in.BotID}, nil
+			}
+			n, err := svc.CloseTabs(ctx, in.BotID)
+			if errors.Is(err, ErrNotRunning) {
+				return CloseTabsOut{BotID: in.BotID}, nil
+			}
+			if err != nil {
+				return CloseTabsOut{}, opErr(err)
+			}
+			return CloseTabsOut{BotID: in.BotID, Closed: n}, nil
 		},
 	})
 	ops.Register(reg, ops.Op[BotIn, SnapshotOut]{

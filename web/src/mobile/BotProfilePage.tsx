@@ -7,7 +7,8 @@ import { linkClick, navigate } from '../router'
 import { SkillsTab } from '../settings/BotCapabilities'
 import { MODES } from '../settings/botModes'
 import { Avatar } from '../ui/Avatar'
-import { COLORS, COLOR_IDS, COLOR_LABELS, SHAPE_IDS, SHAPE_LABELS, type AvatarColor, type AvatarShape } from '../ui/avatar-data'
+import { COLOR_LABELS, SHAPE_IDS, SHAPE_LABELS, type AvatarColor, type AvatarShape } from '../ui/avatar-data'
+import { ColorPicker } from '../settings/bot/pickers'
 import { Button } from '../ui/Button'
 import { SegmentedControl } from '../ui/Controls'
 import { Dialog } from '../ui/Dialog'
@@ -48,7 +49,7 @@ function useSave(bot: Bot | undefined) {
 /** L11 換頭像 sheet：上方預覽立即更新；「完成」才套用，「取消」不變。 */
 export function AvatarSheet({ bot, open, onClose }: { bot: Bot; open: boolean; onClose: () => void }) {
   const [shape, setShape] = useState<AvatarShape>(bot.shape)
-  const [color, setColor] = useState<AvatarColor>(bot.color)
+  const [color, setColor] = useState<string>(bot.color)
   const [busy, setBusy] = useState(false)
   const save = useSave(bot)
   const done = async () => {
@@ -73,7 +74,7 @@ export function AvatarSheet({ bot, open, onClose }: { bot: Bot; open: boolean; o
       }
     >
       <div className="flex items-center gap-4 py-1">
-        <Avatar shape={shape} color={color} state="happy" dot="none" size={84} ring="#111111" label={`${SHAPE_LABELS[shape]}、${COLOR_LABELS[color]}`} />
+        <Avatar shape={shape} color={color} state="happy" dot="none" size={84} ring="#111111" label={`${SHAPE_LABELS[shape]}、${COLOR_LABELS[color as AvatarColor] ?? '自選顏色'}`} />
         <p className="m-0 flex-1 text-sub text-ink-2">「{SHAPE_LABELS[shape]}」· 平面，只有眼睛、沒有嘴巴；眼睛跟著狀態變。</p>
       </div>
       <div className="flex items-baseline justify-between pt-1">
@@ -96,13 +97,7 @@ export function AvatarSheet({ bot, open, onClose }: { bot: Bot; open: boolean; o
         ))}
       </div>
       <span className="pt-1 text-sub text-ink-2">顏色</span>
-      <div role="radiogroup" aria-label="顏色" className="grid grid-cols-5 gap-1.5">
-        {COLOR_IDS.map((c) => (
-          <button key={c} type="button" role="radio" aria-checked={c === color} aria-label={COLOR_LABELS[c]} onClick={() => setColor(c)} className="flex h-11 items-center justify-center">
-            <span className={cx('size-8 rounded-full', c === color && 'ring-2 ring-ink ring-offset-2 ring-offset-panel')} style={{ background: COLORS[c] }} />
-          </button>
-        ))}
-      </div>
+      <ColorPicker value={color} onChange={setColor} />
       <p className="m-0 rounded-field bg-inset px-3 py-2 text-meta text-ink-3">
         要用照片當頭像，到「
         <a href={`/settings/bots/${bot.id}`} onClick={linkClick(`/settings/bots/${bot.id}`)}>

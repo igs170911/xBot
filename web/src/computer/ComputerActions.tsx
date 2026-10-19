@@ -16,6 +16,7 @@ import { ConfirmDialog } from '../ui/Dialog'
 import { Icon } from '../ui/Icon'
 import { useToast } from '../ui/toast-context'
 import { cx } from '../ui/cx'
+import { CloseTabsButton } from './CloseTabsButton'
 
 // 電腦的動作（E01 面板、E02 全視窗、Bot 設定 › 應用程式與電腦）：休眠、重新開機、重建、刪除電腦資料，
 // 以及這台電腦可以連的私有網路（SEC-4 白名單）。以前只有指令列（xbot computers …）。
@@ -126,6 +127,7 @@ export function ComputerActions({ botId, botName, state, className }: { botId: s
         <p className="m-0 mt-0.5 text-meta text-ink-2">休眠或重開都會保留檔案與登入；有新工作會自動開機。</p>
       </div>
       <div className="flex flex-wrap gap-2">
+        <CloseTabsButton botId={botId} disabled={v?.computer?.state !== 'running'} />
         {btn('sleep', '休眠', Moon)}
         {btn('restart', '重新開機', RotateCw)}
         {btn('rebuild', '重建', Hammer)}

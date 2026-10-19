@@ -14,6 +14,7 @@ import { TeachSection } from '../teaching/TeachPanel'
 import { controlOf, useNarrow, useTakeover } from './hooks'
 import { useScreen } from './screenData'
 import { Stage } from './Stage'
+import { CloseTabsButton } from './CloseTabsButton'
 import { ComputerActions, NetworkAllow, useComputer } from './ComputerActions'
 import { KEY, statusText, type VncHandle, type VncStatus } from './vnc'
 
@@ -177,6 +178,7 @@ export function ComputerPage({ botId }: { botId: string }) {
                 貼上文字
               </Button>
               {keys}
+              <CloseTabsButton botId={botId} disabled={screen.box !== 'running'} />
               <Button size="sm" variant="outline" icon={Maximize} onClick={() => setFit((f) => !f)} aria-pressed={!fit}>
                 {fit ? '原始大小' : '符合視窗'}
               </Button>

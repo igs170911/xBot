@@ -148,6 +148,8 @@ type ReadOut struct {
 	Messages   []Message `json:"messages" desc:"由舊到新"`
 	HasMore    bool      `json:"has_more" desc:"還有更早的訊息"`
 	NextBefore int64     `json:"next_before,omitempty" desc:"讀更早一頁時帶的 before"`
+	// Tasks 是這一頁訊息提到的工作現在的狀態（task id → queued／running／done…）；畫面以它為準，不用從事件推。
+	Tasks map[string]string `json:"tasks,omitempty" desc:"這一頁訊息提到的工作現在的狀態（task id → 狀態）"`
 }
 
 // Thread 是對外的對話串。
@@ -485,6 +487,23 @@ func read(ctx context.Context, call *ops.Call, in ReadIn) (ReadOut, error) {
 		out.NextBefore = msgs[0].Seq
 	}
 	judgments(ctx, call.DB, out.Messages)
+	out.Tasks = map[string]string{}
+	for _, m := range out.Messages {
+		if m.TaskID == "" {
+			continue
+		}
+		if _, ok := out.Tasks[m.TaskID]; ok {
+			continue
+		}
+		t, err := call.DB.GetTask(ctx, m.TaskID)
+		if errors.Is(err, store.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return ReadOut{}, err
+		}
+		out.Tasks[m.TaskID] = t.State
+	}
 	return out, nil
 }
 

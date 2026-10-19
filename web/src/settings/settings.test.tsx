@@ -206,3 +206,18 @@ it('模型下拉：還沒探測時先列範本的模型；「其他」可以自�
   fireEvent.blur(box)
   expect(onCommit).toHaveBeenLastCalledWith({ provider: 'openai', model: 'kimi-k3' })
 })
+
+it('頭像顏色：最後一顆是調色盤，可以自己選顏色；選了之後它是選中的那顆', async () => {
+  const { ColorPicker } = await import('./bot/pickers')
+  const { colorHex, isCustomColor } = await import('../ui/avatar-data')
+  const onChange = vi.fn()
+  const { container, rerender } = render(<ColorPicker value="blue" onChange={onChange} />)
+  const custom = screen.getByRole('radio', { name: '自己選顏色' })
+  expect(custom).toHaveAttribute('aria-checked', 'false')
+  fireEvent.change(container.querySelector('input[type="color"]')!, { target: { value: '#12ABEF' } })
+  expect(onChange).toHaveBeenCalledWith('#12abef')
+  rerender(<ColorPicker value="#12abef" onChange={onChange} />)
+  expect(screen.getByRole('radio', { name: '自己選顏色' })).toHaveAttribute('aria-checked', 'true')
+  expect(isCustomColor('#12abef') && colorHex('#12abef')).toBe('#12abef')
+  expect(colorHex('blue')).toBe('#3f8cff')
+})

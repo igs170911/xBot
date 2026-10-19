@@ -2347,7 +2347,7 @@ export interface BotsArchiveOutput {
   title: string
   description: string
   soul: string
-  color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+  color: string
   shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
   /** 平常的眼睛；空白是圓點 */
   eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
@@ -2404,7 +2404,7 @@ export interface BotsCreateInput {
   /** 常駐指示（SOUL.md） */
   soul?: string
   /** 頭像顏色；不填自動挑 */
-  color?: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+  color?: string
   /** 頭像形狀；不填自動挑 */
   shape?: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
   /** 頭像平常的眼睛；不填是圓點 */
@@ -2425,7 +2425,7 @@ export interface BotsCreateOutput {
   title: string
   description: string
   soul: string
-  color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+  color: string
   shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
   /** 平常的眼睛；空白是圓點 */
   eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
@@ -2546,7 +2546,7 @@ export interface BotsGetOutput {
   title: string
   description: string
   soul: string
-  color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+  color: string
   shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
   /** 平常的眼睛；空白是圓點 */
   eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
@@ -2611,7 +2611,7 @@ export interface BotsImportOutput {
     title: string
     description: string
     soul: string
-    color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+    color: string
     shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
     /** 平常的眼睛；空白是圓點 */
     eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
@@ -2695,7 +2695,7 @@ export interface BotsListOutput {
     title: string
     description: string
     soul: string
-    color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+    color: string
     shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
     /** 平常的眼睛；空白是圓點 */
     eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
@@ -2779,7 +2779,8 @@ export interface BotsUpdateInput {
   title?: string
   description?: string
   soul?: string
-  color?: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+  /** 頭像顏色：green、blue… 或自選 #RRGGBB */
+  color?: string
   shape?: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
   /** 頭像平常的眼睛 */
   eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
@@ -2807,7 +2808,7 @@ export interface BotsUpdateOutput {
   title: string
   description: string
   soul: string
-  color: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+  color: string
   shape: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
   /** 平常的眼睛；空白是圓點 */
   eyes?: 'dot' | 'aside' | 'happy' | 'wide' | 'half' | 'closed'
@@ -2858,7 +2859,7 @@ export interface BotsUpdateMyProfileInput {
   /** 新的職稱（60 字內） */
   title?: string
   /** 頭像顏色 */
-  color?: 'green' | 'blue' | 'red' | 'orange' | 'purple' | 'cyan' | 'pink' | 'yellow' | 'teal' | 'coral'
+  color?: string
   /** 頭像形狀 */
   shape?: 'cursor' | 'blob' | 'circle' | 'squircle' | 'capsule' | 'drop' | 'shield' | 'hexagon' | 'diamond' | 'star'
 }
@@ -3131,6 +3132,8 @@ export interface ChatReadOutput {
   has_more: boolean
   /** 讀更早一頁時帶的 before */
   next_before?: number
+  /** 這一頁訊息提到的工作現在的狀態（task id → 狀態） */
+  tasks?: Record<string, string>
 }
 
 /**
@@ -3667,6 +3670,30 @@ export interface CollabStopRoomOutput {
  */
 export function collabStopRoom(input: CollabStopRoomInput, opts?: CallOptions): Promise<CollabStopRoomOutput> {
   return invoke('xbot.collab.stop_room', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.close_tabs
+
+export interface ComputersCloseTabsInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface ComputersCloseTabsOutput {
+  bot_id: string
+  /** 關了幾個分頁；電腦沒開機時是 0 */
+  closed: number
+}
+
+/**
+ * 關掉 Bot 電腦瀏覽器裡的分頁，只留一個空白分頁（查完網頁沒關的）
+ *
+ * 電腦沒開機時 closed=0，不會叫醒它。瀏覽器登入不受影響。
+ *
+ * `xbot.computers.close_tabs`：權限 operate、風險 safe
+ */
+export function computersCloseTabs(input: ComputersCloseTabsInput, opts?: CallOptions): Promise<ComputersCloseTabsOutput> {
+  return invoke('xbot.computers.close_tabs', input, opts).then((r) => r.output)
 }
 
 // xbot.computers.egress_status
@@ -12788,6 +12815,7 @@ export interface Ops {
   'xbot.collab.start_group': { input: CollabStartGroupInput; output: CollabStartGroupOutput }
   'xbot.collab.stop_chain': { input: CollabStopChainInput; output: CollabStopChainOutput }
   'xbot.collab.stop_room': { input: CollabStopRoomInput; output: CollabStopRoomOutput }
+  'xbot.computers.close_tabs': { input: ComputersCloseTabsInput; output: ComputersCloseTabsOutput }
   'xbot.computers.egress_status': { input: ComputersEgressStatusInput; output: ComputersEgressStatusOutput }
   'xbot.computers.handback': { input: ComputersHandbackInput; output: ComputersHandbackOutput }
   'xbot.computers.move': { input: ComputersMoveInput; output: ComputersMoveOutput }
@@ -13018,6 +13046,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.collab.start_group': { path: '/api/v1/collab.start_group', scope: 'operate', risk: 'safe', mutates: true, summary: '和隊友開一個群組對話' },
   'xbot.collab.stop_chain': { path: '/api/v1/collab.stop_chain', scope: 'operate', risk: 'safe', mutates: true, summary: '停止一條 Bot 之間的往來' },
   'xbot.collab.stop_room': { path: '/api/v1/collab.stop_room', scope: 'operate', risk: 'safe', mutates: true, summary: '停止群組裡所有成員的工作' },
+  'xbot.computers.close_tabs': { path: '/api/v1/computers.close_tabs', scope: 'operate', risk: 'safe', mutates: true, summary: '關掉 Bot 電腦瀏覽器裡的分頁，只留一個空白分頁（查完網頁沒關的）' },
   'xbot.computers.egress_status': { path: '/api/v1/computers.egress_status', scope: 'read', risk: 'safe', mutates: false, summary: '看「從家裡出去」的設定與各主機上 Tailscale 小容器的狀態' },
   'xbot.computers.handback': { path: '/api/v1/computers.handback', scope: 'operate', risk: 'safe', mutates: true, summary: '把電腦交還給 Bot，可以附一句說明；Bot 會從目前的畫面接著做原本的工作' },
   'xbot.computers.move': { path: '/api/v1/computers.move', scope: 'manage', risk: 'safe', mutates: true, summary: '搬家：把一個 Bot 的電腦搬到另一台主機，家目錄、工作資料夾、引擎紀錄與瀏覽器登入都跟著走' },

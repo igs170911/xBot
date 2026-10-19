@@ -479,3 +479,24 @@ func (fakeHosts) Get(string) (hosts.Host, error) { return fakeHost{}, nil }
 type fakeHost struct{ hosts.Host }
 
 func (fakeHost) Docker() hosts.DockerAPI { return nil }
+
+// 查完網頁沒關的分頁：一鍵關掉；電腦沒開機時不叫醒、關 0 個。
+func TestCloseTabs(t *testing.T) {
+	f := setup(t)
+	f.svc.o.Hosts = fakeHosts{}
+	var calls atomic.Int32
+	f.svc.o.CloseTabs = func(context.Context, hosts.DockerAPI, string) (int, error) {
+		calls.Add(1)
+		return 3, nil
+	}
+	var out CloseTabsOut
+	if err := f.call(t, "owner", "xbot.computers.close_tabs", BotIn{BotID: f.bot.ID}, &out); err != nil || out.Closed != 3 {
+		t.Fatalf("%+v %v", out, err)
+	}
+	f.boxes.mu.Lock()
+	f.boxes.running = false
+	f.boxes.mu.Unlock()
+	if err := f.call(t, "owner", "xbot.computers.close_tabs", BotIn{BotID: f.bot.ID}, &out); err != nil || out.Closed != 0 || calls.Load() != 1 {
+		t.Fatalf("沒開機：%+v %v %d", out, err, calls.Load())
+	}
+}

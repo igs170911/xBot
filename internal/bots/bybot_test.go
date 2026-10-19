@@ -127,7 +127,7 @@ func TestABotUpdatesItsOwnProfileWithinBounds(t *testing.T) {
 	if text, peer := e.lastPeer(t); peer["event"] != "profile_updated" || !strings.Contains(text, "職稱") {
 		t.Fatalf("%q %v", text, peer)
 	}
-	if _, err := e.call(t, chief, "xbot.bots.update_my_profile", map[string]string{"color": "#ff0000"}); code(err) != ops.CodeInvalidInput {
+	if _, err := e.call(t, chief, "xbot.bots.update_my_profile", map[string]string{"color": "neon"}); code(err) != ops.CodeInvalidInput {
 		t.Fatalf("顏色要是可用的顏色：%v", err)
 	}
 	if _, err := e.call(t, chief, "xbot.bots.update_my_profile", ProfileIn{}); code(err) != ops.CodeInvalidInput || !strings.Contains(err.Error(), "沒有要更新") {

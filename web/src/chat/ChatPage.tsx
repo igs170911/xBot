@@ -81,7 +81,7 @@ function Messages({ items, bot, threadId, onRetry, canRetry }: { items: ChatItem
     else if (m.sender === 'owner') {
       // 先判斷列（C15）放在泡泡下面、懸停的複製列上面
       if (m.content || !m.streaming) out.push(<OwnerMessage key={m.id} msg={m} below={<PreCheckRow taskId={m.taskId} />} />)
-    } else if (m.content) out.push(<BotMessage key={m.id} msg={m} last={isLast} botId={bot?.id} />)
+    } else if (m.content) out.push(<BotMessage key={m.id} msg={m} last={isLast} botId={bot?.id} color={bot?.color} />)
     if (it.activity && live) out.push(<WorkSteps key={'a' + it.activity.taskId} a={it.activity} bot={bot} />)
     const retryText = m.taskId ? asked.get(m.taskId) : undefined
     if (m.quota && bot) out.push(<QuotaCard key={'q' + m.id} quota={m.quota} botId={bot.id} bot={bot} />)

@@ -6,6 +6,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"regexp"
+	"slices"
 	"strings"
 
 	"xbot/internal/limits"
@@ -28,8 +30,17 @@ type Color string
 // Colors 是所有顏色，順序同前端。
 var Colors = []string{"green", "blue", "red", "orange", "purple", "cyan", "pink", "yellow", "teal", "coral"}
 
-// EnumValues 讓 JSON Schema 列出可用值。
-func (Color) EnumValues() []string { return Colors }
+// colorHex 是自選的顏色（調色盤）：#RRGGBB。
+var colorHex = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
+// ValidColor 回答是不是能用的頭像顏色：內建的 10 色之一，或自選的 #RRGGBB。空白表示不改／自動挑。
+func ValidColor(c string) bool {
+	return c == "" || slices.Contains(Colors, c) || colorHex.MatchString(c)
+}
+
+func colorErr() error {
+	return ops.InvalidInput(ops.FieldError{Field: "color", Message: "要是 " + strings.Join(Colors, "、") + " 之一，或 #RRGGBB"})
+}
 
 // Eyes 是頭像平常的眼睛（G03：圓點、看旁邊、開心、睜大、半閉、閉眼；web/src/ui/avatar-data.ts EYE_VARIANTS）。
 // 只是待命時的樣子，對話中仍會跟著狀態變。
@@ -175,7 +186,7 @@ type UpdateIn struct {
 	Title         *string       `json:"title,omitempty" max:"100"`
 	Description   *string       `json:"description,omitempty" max:"1000"`
 	Soul          *string       `json:"soul,omitempty" max:"4000"`
-	Color         *Color        `json:"color,omitempty"`
+	Color         *Color        `json:"color,omitempty" desc:"頭像顏色：green、blue… 或自選 #RRGGBB"`
 	Shape         *Shape        `json:"shape,omitempty"`
 	Eyes          *Eyes         `json:"eyes,omitempty" desc:"頭像平常的眼睛"`
 	Image         *string       `json:"image,omitempty" blob:"true" max:"400000" desc:"頭像圖片：裁成形狀、256×256 的 data URL（PNG、JPEG、GIF、WebP）；空白字串改回吉祥物"`
@@ -380,6 +391,9 @@ func create(ctx context.Context, call *ops.Call, in CreateIn) (View, error) {
 	}
 	// 沒指定時依現有 Bot 數輪流挑顏色與形狀，新 Bot 一眼就和別人不一樣。
 	color, shape := string(in.Color), string(in.Shape)
+	if !ValidColor(color) {
+		return View{}, colorErr()
+	}
 	if color == "" {
 		color = Colors[len(all)%len(Colors)]
 	}
@@ -471,6 +485,9 @@ func apply(b *store.Bot, in UpdateIn) error {
 		b.Soul = *in.Soul
 	}
 	if in.Color != nil {
+		if !ValidColor(string(*in.Color)) {
+			return colorErr()
+		}
 		b.Color = string(*in.Color)
 	}
 	if in.Shape != nil || in.Eyes != nil || in.Image != nil {

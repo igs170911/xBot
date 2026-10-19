@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Check, ChevronDown, CircleX, Code, Copy, GraduationCap, Hand, OctagonPause, Phone, Repeat, RotateCcw, Square, Volume2 } from 'lucide-react'
 import { ApiError, judgeCorrect } from '../api/generated'
 import { AgentMark } from '../ui/AgentMark'
+import { colorHex } from '../ui/avatar-data'
 import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
@@ -83,6 +84,11 @@ function OwnerActions({ msg }: { msg: ChatMsg }) {
 
 // ── 泡泡 ─────────────────────────────────────────────
 
+/** Bot 的氣泡：底色混一點 Bot 的頭像顏色（深淺主題都看得清楚字）。 */
+export function botBubble(color: string): string {
+  return `color-mix(in srgb, ${colorHex(color)} 20%, var(--color-bubble-bot))`
+}
+
 /** 你的訊息：#5A5A5A 靠右；照原樣顯示（不轉 Markdown）。 */
 export function OwnerMessage({ msg, below }: { msg: ChatMsg; below?: ReactNode }) {
   return (
@@ -100,7 +106,7 @@ export function OwnerMessage({ msg, below }: { msg: ChatMsg; below?: ReactNode }
 }
 
 /** Bot 的回覆：Markdown 排版；有表格、程式碼、標題時泡泡放寬（C02、C07）。 */
-export function BotMessage({ msg, last, botId }: { msg: ChatMsg; last: boolean; botId?: string }) {
+export function BotMessage({ msg, last, botId, color }: { msg: ChatMsg; last: boolean; botId?: string; /** Bot 的頭像顏色：氣泡帶一點這個顏色 */ color?: string }) {
   const [raw, setRaw] = useState(false)
   const rich = isRich(msg.content)
   const done = !msg.streaming
@@ -110,6 +116,7 @@ export function BotMessage({ msg, last, botId }: { msg: ChatMsg; last: boolean; 
         data-testid="msg-bot"
         data-streaming={msg.streaming || undefined}
         aria-busy={msg.streaming || undefined}
+        style={color ? { background: botBubble(color) } : undefined}
         className={cx('min-w-0 self-start rounded-bubble bg-bubble-bot text-[15px]', rich ? 'w-full px-6 pb-[22px] pt-5 leading-[1.75] max-sm:px-4 max-sm:pb-4 max-sm:pt-3.5' : 'max-w-[85%] px-4 py-2.5 leading-[1.6]')}
       >
         {msg.voice && done && <VoiceNoteBar botId={botId} msg={msg} note={msg.voice} />}

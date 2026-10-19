@@ -23,7 +23,7 @@ export async function loadThread(threadId: string): Promise<void> {
 /** 補回工作步驟（重新整理後 chat.read 只有訊息）。讀不到不影響對話。 */
 async function loadSteps(threadId: string): Promise<void> {
   let after = 0
-  for (let page = 0; page < 4; page++) {
+  for (let page = 0; page < 20; page++) {
     const out = await chatSteps({ thread_id: threadId, after: after || undefined }).catch(() => null)
     if (!out) return
     chatStore.set((s) => applySteps(s, out.events))

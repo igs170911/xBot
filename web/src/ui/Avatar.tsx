@@ -1,13 +1,12 @@
 import { useId } from 'react'
 import { useReducedMotion } from './useReducedMotion'
 import {
-  COLORS,
   DOT_COLORS,
   EYE_INK,
   SAMPLE_IMAGE,
   SHAPES,
   eyePaths,
-  resolveColor,
+  colorHex,
   resolveDot,
   resolveShape,
   resolveState,
@@ -61,7 +60,7 @@ export function Avatar({
 }: AvatarProps) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
   const small = size < 28
-  const fill = COLORS[resolveColor(color)]
+  const fill = colorHex(color)
   const bodyId = resolveShape(shape)
   const b = SHAPES[bodyId]
   const st = resolveState(state)

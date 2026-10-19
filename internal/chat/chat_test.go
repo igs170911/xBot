@@ -380,3 +380,16 @@ func TestDeleteThread(t *testing.T) {
 		t.Fatalf("座位不能刪：%v", err)
 	}
 }
+
+// chat.read 帶上每件工作現在的狀態：重新整理後畫面以它為準，不會把做完的工作顯示成「排隊中」。
+func TestReadCarriesTaskStates(t *testing.T) {
+	e := setup(t)
+	raw, err := e.call(owner, "xbot.chat.send", map[string]any{"bot_id": e.bot.ID, "text": "hi"})
+	sent := must[SendOut](t, raw, err)
+	e.waitFor(t, owner, sent.TaskID)
+	raw, err = e.call(owner, "xbot.chat.read", map[string]any{"thread_id": sent.ThreadID})
+	out := must[ReadOut](t, raw, err)
+	if out.Tasks[sent.TaskID] != "done" {
+		t.Fatalf("工作狀態：%v", out.Tasks)
+	}
+}

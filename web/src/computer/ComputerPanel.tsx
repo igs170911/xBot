@@ -12,6 +12,7 @@ import { ComputerActions, NetworkAllow, useComputer } from './ComputerActions'
 import { WhereSection } from './MoveParts'
 import { BOX_SPEC, computerPanelStore, IDLE_SLEEP_MIN, useScreen } from './screenData'
 import { Stage } from './Stage'
+import { CloseTabsButton } from './CloseTabsButton'
 import type { VncHandle } from './vnc'
 
 /** 對話旁的電腦面板（design/E01）：即時畫面、接手／交還、在哪裡跑（搬家、從家裡出去）、休眠／重開／重建／刪除、私有網路例外、電腦資訊。 */
@@ -95,6 +96,7 @@ export function ComputerPanel({ bot, className }: { bot: Bot; className?: string
                 <Button className="flex-1" icon={Hand} loading={busy === 'take'} disabled={who === 'other' || screen.box !== 'running'} onClick={() => void take()}>
                   {who === 'other' ? `${screen.takeover?.by_name} 正在操作` : '接手操作'}
                 </Button>
+                <CloseTabsButton botId={bot.id} disabled={screen.box !== 'running'} className="h-auto" />
               </div>
             )}
             <button

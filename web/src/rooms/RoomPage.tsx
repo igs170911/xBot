@@ -13,6 +13,7 @@ import { Dialog } from '../ui/Dialog'
 import { MenuButton } from '../ui/Menu'
 import { goBack } from '../router'
 import { usePhone } from '../mobile/nav'
+import { botBubble } from '../chat/Message'
 import { Markdown } from '../chat/markdown/Markdown'
 import { clockLabel } from '../chat/format'
 import { ROOM_ROUNDS as ROUNDS, RULES, type Rule } from './rules'
@@ -105,7 +106,7 @@ function Timeline({ messages, members }: { messages: RoomMsg[]; members: Member[
             {m.failed && <StatusChip size="sm" tone="danger">沒有完成</StatusChip>}
             <span className="text-ink-3">{clockLabel(m.created_at)}</span>
           </span>
-          <div className="min-w-0 self-start rounded-bubble bg-bubble-bot px-4 py-2.5 text-[15px] leading-[1.6]">
+          <div className="min-w-0 self-start rounded-bubble bg-bubble-bot px-4 py-2.5 text-[15px] leading-[1.6]" style={who ? { background: botBubble(who.color) } : undefined}>
             <Markdown text={m.content} />
           </div>
         </div>

@@ -65,6 +65,16 @@ export function resolveColor(color: string | undefined): AvatarColor {
   return c in COLORS ? (c as AvatarColor) : 'green'
 }
 
+/** 自選的顏色（調色盤）：#RRGGBB。 */
+export function isCustomColor(color: string | undefined): color is string {
+  return !!color && /^#[0-9a-fA-F]{6}$/.test(color) && !LEGACY_COLOR[color.toUpperCase()]
+}
+
+/** 實際畫出來的顏色：內建 10 色、舊版的色碼，或自選的 #RRGGBB。 */
+export function colorHex(color: string | undefined): string {
+  return isCustomColor(color) ? color : COLORS[resolveColor(color)]
+}
+
 export function resolveShape(shape: string | undefined): AvatarShape {
   if (shape && shape in SHAPES) return shape as AvatarShape
   return (shape && LEGACY_SHAPE[shape]) || 'cursor'

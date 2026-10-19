@@ -4,7 +4,7 @@ import { routinesCalendar, type RoutinesCalendarOutput } from '../api/generated'
 import { botsStore, type Bot, look } from '../data/bots'
 import { useStore } from '../data/store'
 import { Avatar } from '../ui/Avatar'
-import { COLORS, resolveColor } from '../ui/avatar-data'
+import { colorHex } from '../ui/avatar-data'
 import { Button, IconButton } from '../ui/Button'
 import { SegmentedControl } from '../ui/Controls'
 import { Icon } from '../ui/Icon'
@@ -71,7 +71,7 @@ function collapse(items: Item[]): Array<Item & { more: number }> {
 
 function EventBlock({ it, bot, compact }: { it: Item & { more: number }; bot?: Bot; compact?: boolean }) {
   const d = new Date(it.at)
-  const color = COLORS[resolveColor(bot?.color)]
+  const color = colorHex(bot?.color)
   const st = RUN_STATUS[it.status] ?? RUN_STATUS.scheduled
   const failed = it.status === 'failed'
   const past = it.status !== 'scheduled'

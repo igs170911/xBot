@@ -1,5 +1,6 @@
+import { useRef } from 'react'
 import { Avatar } from '../../ui/Avatar'
-import { COLORS, COLOR_IDS, COLOR_LABELS, EYE_VARIANTS, SHAPE_IDS, SHAPE_LABELS, type AvatarColor, type AvatarShape, type EyeVariant } from '../../ui/avatar-data'
+import { COLORS, COLOR_IDS, COLOR_LABELS, EYE_VARIANTS, SHAPE_IDS, SHAPE_LABELS, isCustomColor, type AvatarShape, type EyeVariant } from '../../ui/avatar-data'
 import { cx } from '../../ui/cx'
 
 // 頭像的形狀、眼睛、顏色選擇（A04「換個樣子」、G03 外觀）：點了立刻套用，選中的有 2px #1084FE 外框。
@@ -40,7 +41,9 @@ export function EyePicker({ value, onChange, dim }: { value: Look; onChange: (e:
   )
 }
 
-export function ColorPicker({ value, onChange }: { value: string; onChange: (c: AvatarColor) => void }) {
+export function ColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
+  const custom = isCustomColor(value)
+  const picker = useRef<HTMLInputElement>(null)
   return (
     <div role="radiogroup" aria-label="顏色" className="flex flex-wrap gap-2.5">
       {COLOR_IDS.map((c) => (
@@ -55,6 +58,28 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (c: 
           style={{ background: COLORS[c] }}
         />
       ))}
+      {/* 調色盤：自己選任何顏色（#RRGGBB）。按鈕打開系統的取色器（input 藏起來、不重複出現在 Tab 順序裡） */}
+      <span className="relative">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={custom}
+          aria-label="自己選顏色"
+          title="自己選顏色"
+          onClick={() => picker.current?.click()}
+          className={cx('relative size-8 rounded-full touch-target', custom && 'ring-2 ring-accent ring-offset-2 ring-offset-panel')}
+          style={{ background: custom ? value : 'conic-gradient(#e5484d, #f2c230, #46a758, #2ab0d4, #3f8cff, #8e4ec6, #e5579a, #e5484d)' }}
+        />
+        <input
+          ref={picker}
+          type="color"
+          tabIndex={-1}
+          aria-hidden="true"
+          value={custom ? value : '#3f8cff'}
+          onChange={(e) => onChange(e.target.value.toLowerCase())}
+          className="pointer-events-none absolute inset-0 size-8 opacity-0"
+        />
+      </span>
     </div>
   )
 }

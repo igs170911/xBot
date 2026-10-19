@@ -107,6 +107,9 @@ func (d Deps) createByBot(ctx context.Context, reg *ops.Registry, call *ops.Call
 	if name == "" {
 		return View{}, ops.InvalidInput(ops.FieldError{Field: "name", Message: "請提供新 Bot 的名字"})
 	}
+	if !ValidColor(string(in.Color)) {
+		return View{}, colorErr()
+	}
 	all, err := call.DB.ListBots(ctx, true)
 	if err != nil {
 		return View{}, err
@@ -158,6 +161,9 @@ func (d Deps) updateProfile(ctx context.Context, reg *ops.Registry, call *ops.Ca
 		out.Updated, labels = append(out.Updated, "title"), append(labels, "職稱")
 	}
 	if in.Color != "" {
+		if !ValidColor(string(in.Color)) {
+			return out, colorErr()
+		}
 		b.Color = string(in.Color)
 		out.Updated, labels = append(out.Updated, "color"), append(labels, "頭像顏色")
 	}

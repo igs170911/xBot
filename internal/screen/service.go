@@ -66,6 +66,8 @@ type Options struct {
 	Logger  *slog.Logger
 	// Snapshot 擷取一張畫面（JPEG）；nil 用 docker exec import（測試換成假的）。
 	Snapshot func(ctx context.Context, api hosts.DockerAPI, containerID string) ([]byte, error)
+	// CloseTabs 關掉瀏覽器的分頁、只留一個空白分頁，回傳關了幾個；nil 用 docker exec 經 Chromium 的 DevTools（測試換成假的）。
+	CloseTabs func(ctx context.Context, api hosts.DockerAPI, containerID string) (int, error)
 	// TakeoverIdle、TouchInterval：0 用 limits 的值（測試調短）。
 	TakeoverIdle, TouchInterval time.Duration
 	// Now：0 值用 time.Now（測試用）。
@@ -112,6 +114,9 @@ type Request struct {
 func New(o Options) *Service {
 	if o.Logger == nil {
 		o.Logger = slog.Default()
+	}
+	if o.CloseTabs == nil {
+		o.CloseTabs = dockerCloseTabs
 	}
 	if o.Snapshot == nil {
 		o.Snapshot = dockerSnapshot

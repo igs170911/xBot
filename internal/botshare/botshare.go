@@ -284,9 +284,13 @@ func (d Deps) importBot(ctx context.Context, call *ops.Call, in ImportIn) (Impor
 	if bots.ValidImage(image) != nil {
 		image = "" // 圖片不對就用吉祥物，不擋匯入
 	}
+	color := f.Bot.Color // 自選的 #RRGGBB 也帶得過來
+	if color == "" || !bots.ValidColor(color) {
+		color = bots.Colors[len(all)%len(bots.Colors)]
+	}
 	av, _ := json.Marshal(map[string]string{"shape": oneOf(f.Bot.Shape, bots.Shapes, "cursor"), "eyes": oneOf(f.Bot.Eyes, bots.EyeVariants, ""), "image": image})
 	b := store.Bot{Name: name, Title: clip(f.Bot.Title, 100), Description: clip(f.Bot.Description, 1000), Soul: clip(f.Bot.Soul, limits.BotSoulMax),
-		Color: oneOf(f.Bot.Color, bots.Colors, bots.Colors[len(all)%len(bots.Colors)]), Avatar: av,
+		Color: color, Avatar: av,
 		Engine: string(bots.EngineHermes), Effort: oneOf(f.Settings.Effort, []string{"low", "medium", "high"}, ""),
 		ApprovalMode:  string(bots.ModeAsk), // SEC-1：匯入的 Bot 一律先問我
 		MemoryEnabled: true, CreatedBy: call.Identity.Actor()}
