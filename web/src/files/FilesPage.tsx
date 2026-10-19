@@ -186,7 +186,8 @@ export function FilesPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           <TextInput label="搜尋檔名" hideLabel icon={Search} placeholder="搜尋檔名" value={q} onChange={(e) => setQ(e.target.value)} wrapperClassName="w-[260px] max-sm:w-full" />
-          <div role="radiogroup" aria-label="種類" className="flex flex-wrap rounded-field bg-inset p-[3px]">
+          {/* 手機上排成一列、左右滑：數字讀進來時寬度變了也不會換行讓下面整片往下跳 */}
+          <div role="radiogroup" aria-label="種類" className="flex flex-wrap rounded-field bg-inset p-[3px] max-sm:w-full max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:[scrollbar-width:none]">
             {([['all', '全部'] as const, ...GROUPS.map((g) => [g.key, g.label] as const)]).map(([k, label]) => (
               <button
                 key={k}
@@ -194,7 +195,7 @@ export function FilesPage() {
                 role="radio"
                 aria-checked={filter === k}
                 onClick={() => setFilter(k)}
-                className={cx('h-8 whitespace-nowrap rounded-seg px-3 text-ui-sm max-sm:h-10', filter === k ? 'bg-control text-ink' : 'text-ink-2 hover:text-ink')}
+                className={cx('h-8 flex-none whitespace-nowrap rounded-seg px-3 text-ui-sm max-sm:h-10', filter === k ? 'bg-control text-ink' : 'text-ink-2 hover:text-ink')}
               >
                 {label} <span className="text-ink-3">{count(k)}</span>
               </button>
@@ -272,7 +273,7 @@ export function FilesPage() {
             </section>
           )
         })}
-        <p className="m-0 text-meta text-ink-3">成果不會自動刪除。這裡只列出成果；建置檔和快取到各 Bot 的檔案頁用資料夾瀏覽。</p>
+        {(settled || shownBots.every((b) => results[b.id])) && <p className="m-0 text-meta text-ink-3">成果不會自動刪除。這裡只列出成果；建置檔和快取到各 Bot 的檔案頁用資料夾瀏覽。</p>}
       </div>
     </main>
   )

@@ -81,6 +81,13 @@
   --shadow-pop: 0 12px 32px rgb(0 0 0 / 0.5);
   --shadow-dialog: 0 24px 64px rgb(0 0 0 / 0.6);
 
+  /* 手機從底部拉出的 sheet：滑上來，不是突然出現 */
+  --animate-sheet-in: sheet-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  @keyframes sheet-in {
+    from {
+      transform: translateY(100%);
+    }
+  }
   --animate-toast-in: toast-in 160ms ease-out;
   @keyframes toast-in {
     from {
@@ -201,11 +208,15 @@
    *   後面的頁面（不然 iPhone 會改捲 sheet 後面的頁面、或把整個 App 拉動，看起來就是「滑不動」）。
    *   不能一律加在 overflow-y-auto 上：有的頁面那一層沒有限高、其實是整頁在捲，加了反而整頁滑不動。
    * - 按鈕、分頁列、頁首長按不會選到字、不跳出系統選單（訊息內文照樣可以選）。
+   * - 連點兩下不會把整頁放大（App 不會這樣）；兩指縮放照樣可以。
    */
   @media (width < 48rem) {
     html,
     body {
       overscroll-behavior: none;
+    }
+    html {
+      touch-action: manipulation;
     }
     :is(button, nav, header, [role="tab"], [role="button"], [role="menuitem"]) {
       -webkit-user-select: none;

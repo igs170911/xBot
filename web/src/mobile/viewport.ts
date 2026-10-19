@@ -11,6 +11,7 @@ export function watchViewport() {
   if (!vv) return
   const root = document.documentElement
   let frame = 0
+  let open = false
   const update = () => {
     cancelAnimationFrame(frame)
     frame = requestAnimationFrame(() => {
@@ -21,7 +22,11 @@ export function watchViewport() {
       } else {
         root.style.removeProperty('--app-h')
         root.style.removeProperty('--app-top')
+        // 鍵盤收起來後 iPhone 有時把整頁留在往上推的位置，對話頁下面空一塊、像超出範圍。
+        // 整頁本來就不能捲（對話頁鎖住了）時，把它放回原位；可以捲的頁面不動，免得跳回最上面。
+        if (open && root.style.overflow === 'hidden' && window.scrollY !== 0) window.scrollTo(0, 0)
       }
+      open = keyboard
     })
   }
   update()

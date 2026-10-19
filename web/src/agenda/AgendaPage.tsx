@@ -52,6 +52,7 @@ export function AgendaPage() {
             讀不到：{error}
           </p>
         )}
+        {!data && !error && <p className="m-0 py-6 text-center text-sub text-ink-3">讀取中…</p>}
         {pending.map((it) => (
           <AgendaCard key={it.id} item={it} bot={bot(it.bot_id)} sub={sinceLabel(it.created_at)} />
         ))}
@@ -73,6 +74,8 @@ export function AgendaPage() {
           </section>
         )}
       </main>
+      {/* 讀到資料再畫：手機上它排在下面，先畫出來會被上面讀進來的提案往下推 */}
+      {(data || error) && (
       <aside aria-label="接下來一週" className="flex min-w-0 flex-col gap-3">
         <section className="flex flex-col gap-2 rounded-card bg-card p-4">
           <h2 className="m-0 text-body">接下來一週</h2>
@@ -101,6 +104,7 @@ export function AgendaPage() {
           </p>
         </section>
       </aside>
+      )}
     </div>
   )
 }

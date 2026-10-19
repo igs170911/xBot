@@ -45,6 +45,8 @@ import { ComputerPanel } from '../computer/ComputerPanel'
 import { useNarrow } from '../computer/hooks'
 import { useAutoRead, useAutoReadReplies } from '../voice/useChatVoice'
 import { computerPanelStore } from '../computer/screenData'
+import { useLockBody } from '../ui/useLockBody'
+import { useFollowBottom } from './useFollowBottom'
 
 const GAP = 30 * 60 * 1000
 
@@ -393,6 +395,8 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   const [olderBusy, setOlderBusy] = useState(false)
   const [resuming, setResuming] = useState(false)
   const phone = usePhone()
+  // 手機的對話是貼著畫面的 fixed 版面：後面的整頁不能被拖動，手指只捲訊息（2026-10-20：滑動像被鎖住、會拉出範圍）
+  useLockBody(phone)
   const scroller = useRef<HTMLDivElement>(null)
   const composer = useRef<ComposerHandle>(null)
   // 從檔案頁按「在對話中提到」：把檔案路徑放進輸入框（C33、L19）。
@@ -402,7 +406,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
     const t = takeMention(botId)
     if (t) composer.current?.fill(t)
   }, [hasBot, botId])
-  const stick = useRef(true)
+  const { stickRef, follow, handlers: scrollHandlers } = useFollowBottom(scroller)
   const keepFromBottom = useRef<number | null>(null)
   // 把檔案拖進對話（C05「8 · 附件」）：放開就上傳到它電腦的 /workspace/uploads/，送出時附上路徑。
   const [dropping, setDropping] = useState(false)
@@ -439,7 +443,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
 
   useEffect(() => {
     if (!threadId) return
-    stick.current = true
+    stickRef.current = true
     const load = () => loadThread(threadId).catch((err: unknown) => setNotice({ kind: 'error', text: err instanceof Error ? err.message : String(err) }))
     void load()
     return onReconnect(() => void load())
@@ -478,13 +482,8 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
     if (keepFromBottom.current !== null) {
       el.scrollTop = el.scrollHeight - keepFromBottom.current
       keepFromBottom.current = null
-    } else if (stick.current) el.scrollTop = el.scrollHeight
-  }, [items.length, lastLen, act?.steps.length, noModel, notice])
-
-  const onScroll = () => {
-    const el = scroller.current
-    if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-  }
+    } else follow()
+  }, [items.length, lastLen, act?.steps.length, noModel, notice, follow])
 
   const older = async () => {
     if (!threadId || olderBusy) return
@@ -503,7 +502,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
 
   const send = async (text: string): Promise<boolean> => {
     setNotice(null)
-    stick.current = true
+    stickRef.current = true
     try {
       const out = await chatSend({ bot_id: botId, text, thread_id: threadId })
       if (firstHome) dismissCard('home') // 開始聊了：首次歡迎不再出現
@@ -530,7 +529,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   // 服務重開時做到一半被中斷的工作：在這條對話串請它接著做（排在手上的工作後面）。
   const resume = async (taskId: string) => {
     setNotice(null)
-    stick.current = true
+    stickRef.current = true
     setResuming(true)
     try {
       await chatResume({ task_id: taskId })
@@ -621,7 +620,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
         onAutoRead={threadId ? auto.toggle : undefined}
       />
       )}
-      <div ref={scroller} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+      <div ref={scroller} {...scrollHandlers} className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
         <div
           className={cx('mx-auto box-border flex min-h-full max-w-[828px] flex-col gap-3.5 px-6 pb-2 pt-3 max-sm:px-3', empty ? (firstHome ? 'justify-start pt-8' : 'justify-center') : 'justify-end')}
           aria-busy={loading || undefined}

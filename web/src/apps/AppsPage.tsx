@@ -229,6 +229,10 @@ export function AppsPage() {
           </div>
         )}
 
+        {!data && !err && <p className="m-0 py-6 text-center text-sub text-ink-3">讀取中…</p>}
+
+        {/* 讀到目錄再畫：先畫出來會被上面讀進來的應用程式往下推（手機上整片跳） */}
+        {(data || err) && (
         <section aria-label="進階設定" className="rounded-[14px] border border-solid border-line">
           <button
             type="button"
@@ -256,6 +260,7 @@ export function AppsPage() {
             </div>
           )}
         </section>
+        )}
       </div>
 
       <AppSheet

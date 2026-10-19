@@ -126,7 +126,7 @@ export function TeachBar({ lesson, botName, className }: { lesson: Lesson; botNa
       {steps.length === 0 ? (
         <p className="m-0 rounded-[10px] bg-inset px-3 py-3 text-sub text-ink-2">在下面的畫面上照平常的方式操作，每一步都會出現在這裡。</p>
       ) : (
-        <ol ref={list} className="m-0 flex max-h-[300px] list-none flex-col gap-0.5 overflow-y-auto p-0" aria-label="示範的步驟">
+        <ol ref={list} className="m-0 flex max-h-[300px] list-none flex-col gap-0.5 overflow-y-auto overscroll-y-contain p-0" aria-label="示範的步驟">
           {steps.map((s, i) => (
             <StepRow
               key={s.id}

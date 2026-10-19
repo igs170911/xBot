@@ -20,6 +20,8 @@ import { botBubble } from '../chat/Message'
 import { Markdown } from '../chat/markdown/Markdown'
 import { clockLabel } from '../chat/format'
 import { ROOM_ROUNDS, RULES, type Rule } from './rules'
+import { useLockBody } from '../ui/useLockBody'
+import { useFollowBottom } from '../chat/useFollowBottom'
 
 // 每次你發言後 Bot 之間最多接幾輪：使用者可以在「設定 › 進階 › 限制」調（原本畫面寫死 4，和後端不一致）
 const roundsStore = createStore(ROOM_ROUNDS)
@@ -123,7 +125,7 @@ function Timeline({ messages, members }: { messages: RoomMsg[]; members: Member[
             {m.failed && <StatusChip size="sm" tone="danger">沒有完成</StatusChip>}
             <span className="text-ink-3">{clockLabel(m.created_at)}</span>
           </span>
-          <div className="min-w-0 self-start rounded-bubble bg-bubble-bot px-4 py-2.5 text-[15px] leading-[1.6]" style={who ? { background: botBubble(who.color) } : undefined}>
+          <div className="min-w-0 max-w-full self-start rounded-bubble bg-bubble-bot px-4 py-2.5 text-[15px] leading-[1.6]" style={who ? { background: botBubble(who.color) } : undefined}>
             <Markdown text={m.content} />
           </div>
         </div>
@@ -377,6 +379,8 @@ export function RoomPage({ roomId }: { roomId: string }) {
   const [deleting, setDeleting] = useState<DeleteTarget | null>(null)
   useEffect(loadRounds, [])
   const phone = usePhone()
+  // 手機的對話是貼著畫面的 fixed 版面：後面的整頁不能被拖動，手指只捲訊息（2026-10-20：滑動像被鎖住、會拉出範圍）
+  useLockBody(phone)
   const scroller = useRef<HTMLDivElement>(null)
   const memberIds = useRef<string[]>([])
   useEffect(() => {
@@ -417,10 +421,11 @@ export function RoomPage({ roomId }: { roomId: string }) {
   }, [roomId, load])
 
   const count = data?.messages.length ?? 0
+  const { stickRef, follow, handlers: scrollHandlers } = useFollowBottom(scroller)
   useEffect(() => {
-    const el = scroller.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [count])
+    stickRef.current = true
+  }, [roomId, stickRef])
+  useEffect(() => follow(), [count, follow])
 
   if (err && !data)
     return (
@@ -439,6 +444,7 @@ export function RoomPage({ roomId }: { roomId: string }) {
     try {
       const res = await roomsPost({ room_id: room.id, text: text.trim() })
       setText('')
+      stickRef.current = true // 自己送出的一定要看得到
       if (res.paused?.length) setNotice(`${res.paused.join('、')} 已暫停，沒有叫醒；要恢復的話到右邊成員清單按恢復。`)
       void load()
       void loadRooms()
@@ -506,7 +512,7 @@ export function RoomPage({ roomId }: { roomId: string }) {
             <span className="min-w-0 flex-1 truncate">群組指示：{room.bulletin}</span>
           </div>
         )}
-        <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+        <div ref={scroller} {...scrollHandlers} className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
           <div className={cx('mx-auto box-border flex min-h-full max-w-[828px] flex-col gap-3.5 px-6 pb-2 pt-3 max-sm:px-3', messages.length ? 'justify-end' : 'justify-center')} aria-live="polite">
             {messages.length === 0 ? <Suggestions members={room.members} onPick={setText} /> : <Timeline messages={messages} members={room.members} />}
             <LiveCard members={room.members} />

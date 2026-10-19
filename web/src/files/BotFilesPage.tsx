@@ -11,6 +11,7 @@ import { TextInput } from '../ui/Field'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
 import { useLockBody } from '../ui/useLockBody'
+import { slide, useDrag } from '../ui/useDrag'
 import { useToast } from '../ui/toast-context'
 import { FileDialogs } from './FileDialogs'
 import { fileMenu, type FileDialog } from './menu'
@@ -124,6 +125,28 @@ export function BotFilesPage({ botId }: { botId: string }) {
   const name = bot?.name ?? 'Bot'
   const narrow = useNarrow()
   useLockBody(!!selected && narrow) // 手機的檔案預覽 sheet 開著：後面的清單不跟著捲
+  // 手機的預覽 sheet 往下拖就關；手指下的內容捲在最上面才接手，不然是在捲內容
+  const sheet = useRef<HTMLDivElement>(null)
+  useDrag(sheet, {
+    axis: 'y',
+    dir: 1,
+    enabled: !!selected && narrow,
+    size: () => sheet.current?.offsetHeight ?? 600,
+    canStart: (_x, _y, t) => {
+      for (let el = t instanceof Element ? t : null; el && el !== sheet.current; el = el.parentElement) if (el.scrollTop > 0) return false
+      return true
+    },
+    onMove: (d) => {
+      const el = sheet.current
+      if (!el) return
+      el.style.transition = 'none'
+      el.style.transform = `translateY(${d}px)`
+    },
+    onEnd: (commit) => {
+      if (commit) slide(sheet.current, 'translateY(100%)', () => go({ path: null }))
+      else slide(sheet.current, 'translateY(0)')
+    },
+  })
 
   const go = (patch: Record<string, string | null>, replace = false) => {
     const p = new URLSearchParams(window.location.search)
@@ -227,7 +250,7 @@ export function BotFilesPage({ botId }: { botId: string }) {
 
   const count = state?.out?.state === 'ready' ? state.out.total : null
   return (
-    <main className="flex h-dvh min-h-0 min-w-0 flex-1 max-md:flex-col" aria-label={`${name}的檔案`}>
+    <main className="flex h-dvh min-h-0 min-w-0 flex-none max-md:flex-col" aria-label={`${name}的檔案`}>
       <section
         aria-label={`${name}的檔案`}
         className={cx('relative flex min-h-0 flex-col border-r border-divider md:w-[380px] md:flex-none', 'max-md:flex-1')}
@@ -318,7 +341,7 @@ export function BotFilesPage({ botId }: { botId: string }) {
       {selected && narrow && (
         <div className="fixed inset-0 z-40 flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/60" onClick={() => go({ path: null })} aria-hidden="true" />
-          <div role="dialog" aria-modal="true" aria-label={`預覽：${selectedEntry?.name ?? ''}`} className="relative flex h-[85dvh] flex-col rounded-t-[22px] border-t border-divider bg-panel pb-[env(safe-area-inset-bottom)] shadow-dialog">
+          <div ref={sheet} role="dialog" aria-modal="true" aria-label={`預覽：${selectedEntry?.name ?? ''}`} className="relative flex h-[85dvh] animate-sheet-in flex-col rounded-t-[22px] border-t border-divider bg-panel pb-[env(safe-area-inset-bottom)] shadow-dialog motion-reduce:animate-none">
             <span aria-hidden="true" className="mx-auto mt-2 h-1 w-10 flex-none rounded-full bg-control" />
             <FilePreview
               key={selected}

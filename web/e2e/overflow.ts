@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test'
 
 // 破版檢查（手機 phone.spec、平板 settings.spec 共用）：不能有橫向捲動，也不能有元素超出畫面（可以橫向捲動的容器裡面的除外）。
 // root：只看這個元素裡面（例：桌面的設定視窗），超出它的邊也算破版——外框 overflow:hidden 會把超出的部分直接切掉，畫面上看不到。
-// 給 root 時，裡面大的捲動區（例：設定的內容欄）也不能被撐寬到要左右捲。
+// 大的捲動區（例：設定的內容欄、對話）也不能被撐寬到要左右捲：裡面的東西被切掉，手指上下滑還會左右晃。
 export async function overflow(page: Page, root?: string) {
   return page.evaluate((sel) => {
     const W = document.documentElement.clientWidth
@@ -26,7 +26,7 @@ export async function overflow(page: Page, root?: string) {
       const s = getComputedStyle(el)
       if (s.visibility === 'hidden' || s.position === 'fixed') continue
       if (!inside(r) && !clipped(el) && !el.closest('.sr-only-text,[aria-hidden="true"]')) bad.push(`${label(el)} ${Math.round(r.left)}..${Math.round(r.right)}`)
-      if (top && /(auto|scroll)/.test(s.overflowY) && el.clientHeight > 200 && el.scrollWidth > el.clientWidth + 1) bad.push(`${label(el)} 要左右捲：${el.scrollWidth} > ${el.clientWidth}`)
+      if (/(auto|scroll)/.test(s.overflowY) && el.clientHeight > 200 && el.scrollWidth > el.clientWidth + 1) bad.push(`${label(el)} 要左右捲：${el.scrollWidth} > ${el.clientWidth}`)
     }
     return bad.slice(0, 8)
   }, root)

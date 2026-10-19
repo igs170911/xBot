@@ -376,6 +376,54 @@ test('L19 Bot 的檔案：分組與 CSV 預覽 sheet', async ({ page }, info) =>
   await snap(page, info, 'L19')
 })
 
+test('L19 檔案很多時只有清單在捲，整頁不跟著動（上傳鈕一直在底部）', async ({ page }) => {
+  const { api, mi } = await open(page, '/chats')
+  api.override['files.list'] = (i) => ({
+    bot_id: i.bot_id, path: '/workspace', state: 'ready', total: 40, offset: 0, truncated: false,
+    entries: Array.from({ length: 40 }, (_, n) => ({ name: `報告-${n}.md`, path: `/workspace/報告-${n}.md`, dir: false, size: 1000, modified: Date.now() - n * 60_000, kind: 'markdown', group: 'result', important: true })),
+  })
+  await page.goto(`/bots/${mi.id}/files`)
+  await expect(page.getByRole('button', { name: /報告-39\.md/ })).toBeAttached()
+  const sizes = await page.evaluate(() => ({ doc: document.scrollingElement!.scrollHeight, vh: innerHeight, list: document.querySelector('[data-testid="file-list"]')!.scrollHeight - document.querySelector('[data-testid="file-list"]')!.clientHeight }))
+  expect(sizes.doc).toBeLessThanOrEqual(sizes.vh + 1)
+  expect(sizes.list).toBeGreaterThan(0)
+  await expect(page.getByRole('button', { name: /上傳檔案給/ })).toBeInViewport()
+})
+
+test('L19 預覽 sheet：手指在裡面滑是捲內容，後面不動；捲到最上面再往下拉就關掉', async ({ page, browserName }, info) => {
+  test.skip(browserName !== 'chromium' || info.project.name === 'desktop', '要用 Chromium 模擬觸控')
+  const { api, mi } = await open(page, '/chats')
+  const text = Array.from({ length: 60 }, (_, i) => `## 第 ${i + 1} 段\n\n這是一段很長的報告內容，用來測試手機上能不能順順地往下捲。`).join('\n\n')
+  api.override['files.read'] = (i) => ({ name: '報告.md', path: i.path, dir: false, size: text.length, modified: Date.now(), kind: 'markdown', group: 'result', important: true, download_url: '/x', truncated: false, binary: false, text, encoding: 'utf-8' })
+  await page.goto(`/bots/${mi.id}/files?path=${encodeURIComponent('/workspace/報告.md')}`)
+  const sheet = page.getByRole('dialog', { name: /預覽/ })
+  await expect(sheet.getByText('第 60 段')).toBeAttached()
+  await page.waitForTimeout(400) // 滑上來的動畫
+  const cdp = await page.context().newCDPSession(page)
+  const drag = async (y0: number, y1: number) => {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 195, y: y0 }] })
+    for (let i = 1; i <= 12; i++) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 195, y: y0 + ((y1 - y0) * i) / 12 }] })
+      await page.waitForTimeout(16)
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await page.waitForTimeout(400)
+  }
+  const inner = () => sheet.evaluate((d) => Math.max(0, ...[...d.querySelectorAll<HTMLElement>('*')].filter((e) => /(auto|scroll)/.test(getComputedStyle(e).overflowY)).map((e) => e.scrollTop)))
+  const behind = () => page.evaluate(() => [document.scrollingElement!.scrollTop, document.querySelector('[data-testid="file-list"]')!.scrollTop])
+  const before = await behind()
+  await drag(700, 350)
+  expect(await inner(), '預覽內容沒有捲動').toBeGreaterThan(100)
+  expect(await behind()).toEqual(before)
+  await drag(350, 700) // 捲回最上面：還是捲內容，不是拉 sheet（慣性長短不一，還沒到頂就像人一樣再滑一次）
+  if ((await inner()) > 0) await drag(350, 700)
+  await expect(sheet).toBeVisible()
+  expect(await inner()).toBe(0)
+  await drag(300, 780) // 在最上面往下拉：關掉
+  await expect(sheet).toBeHidden()
+  expect(page.url()).not.toContain('path=')
+})
+
 test('L20 @ 提到選單與停止鈕', async ({ page }, info) => {
   const { api, mi, t1 } = await open(page, '/chats')
   await page.goto(`/bots/${mi.id}/threads/${t1.id}`)
@@ -523,6 +571,46 @@ test('iPhone 原生感：瀏海和底部橫條不蓋到能點的東西、分頁�
   expect(problems).toEqual({})
 })
 
+test('Bot 一邊回覆，手指往上滑不會被拉回最底下（對話不像被鎖住）', async ({ page, browserName }, info) => {
+  test.skip(browserName !== 'chromium' || info.project.name === 'desktop', '要用 Chromium 模擬觸控')
+  const api = new MockServer(page)
+  const { mi } = seed(api)
+  const long = api.addThread(mi.id, '長內容')
+  for (let i = 0; i < 30; i++) api.addMessage(long.id, { sender: i % 2 ? 'bot:' + mi.id : 'owner', status: 'complete', content: `第 ${i + 1} 則：` + '內容很長的一段話。'.repeat(6) })
+  const reply = api.addMessage(long.id, { sender: 'bot:' + mi.id, content: '', streaming: true, task_id: 'k-live' })
+  await api.install()
+  await page.goto(`/bots/${mi.id}/threads/${long.id}`)
+  await expect(page.getByText('第 30 則', { exact: false })).toBeVisible()
+  const gap = () => page.evaluate(() => {
+    const el = [...document.querySelectorAll<HTMLElement>('main *')].find((e) => getComputedStyle(e).overflowY === 'auto' && e.scrollHeight > e.clientHeight + 40)!
+    return el.scrollHeight - el.scrollTop - el.clientHeight
+  })
+  expect(await gap()).toBeLessThan(5)
+  // Bot 每 60ms 多吐一段字
+  let text = ''
+  let on = true
+  const stream = (async () => {
+    while (on) {
+      text += '回覆一段。'
+      await api.emit({ kind: 'message.created', bot_id: mi.id, thread_id: long.id, task_id: 'k-live', persist: false, payload: api.storeMessage(long.id, { ...reply, content: text, streaming: true }) })
+      await page.waitForTimeout(60)
+    }
+  })()
+  // 手指按住往下拉 50px（內容往上捲），停住不放，等 Bot 再更新幾次
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 195, y: 400 }] })
+  for (let i = 1; i <= 10; i++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 195, y: 400 + i * 5 }] })
+    await page.waitForTimeout(16)
+  }
+  await page.waitForTimeout(400)
+  const held = await gap()
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  on = false
+  await stream
+  expect(held, '手指按著時被拉回最底下').toBeGreaterThan(20)
+})
+
 test('破版檢查：每一頁在手機寬度都不超出畫面', async ({ page }, info) => {
   test.setTimeout(240_000)
   // Pixel 7 換成較窄的 360（常見的小 Android），iPhone 維持 390。
@@ -532,11 +620,10 @@ test('破版檢查：每一頁在手機寬度都不超出畫面', async ({ page 
   // 很長的內容：沒有空白的網址、長程式碼、寬表格
   const long = api.addThread(mi.id, '長內容')
   api.addMessage(long.id, { sender: 'owner', content: '看這個 https://example.com/' + 'a'.repeat(120) })
-  api.addMessage(long.id, {
-    sender: 'bot:' + mi.id,
-    status: 'complete',
-    content: '結果：https://example.com/' + 'b'.repeat(120) + '\n\n```\n' + 'const x = ' + '"y"'.repeat(60) + '\n```\n\n| 欄位一 | 欄位二 | 欄位三 | 欄位四 | 欄位五 | 欄位六 |\n|---|---|---|---|---|---|\n| 很長很長的內容 | 很長很長的內容 | 很長很長的內容 | 很長很長的內容 | 很長很長的內容 | 很長很長的內容 |',
-  })
+  const wide = '結果：https://example.com/' + 'b'.repeat(120) + '\n\n```\n' + 'const x = ' + '"y"'.repeat(60) + '\n```\n\n| 欄位一 | 欄位二 | 欄位三 | 欄位四 | 欄位五 | 欄位六 |\n|---|---|---|---|---|---|\n| 很長很長的內容 | 很長很長的內容 | 很長很長的內容 | 很長很長的內容 | 很長很長的內容 | 很長很長的內容 |\n\n文件：`/workspace/reports/final-decision-memo-2026-10-19-very-long-name.md`'
+  api.addMessage(long.id, { sender: 'bot:' + mi.id, status: 'complete', content: wide })
+  // 群組裡同樣的長內容（2026-10-20 手機：群組的 Bot 訊息撐出畫面，整個對話可以左右拖）
+  api.addRoomMessage(room.id, { sender: 'bot:' + mi.id, sender_name: '小秘', content: wide })
   await api.install()
   await page.goto('/')
   const problems: Record<string, string[]> = {}
