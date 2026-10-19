@@ -5,7 +5,7 @@ import { ToastProvider } from '../ui/Toast'
 import { dispatchEvent } from '../data/events'
 import { botsStore } from '../data/bots'
 import { BackupPage } from './BackupPage'
-import { PeoplePage, auditInput, opText } from './PeoplePage'
+import { PeoplePage, auditInput, isChange, opText } from './PeoplePage'
 import { UpdateComputers, planSummary, type UpdatePlan } from './UpdateComputers'
 import { AccessTab } from './bot/AccessTab'
 
@@ -61,20 +61,33 @@ it('備份與更新：還沒有備份時說會放在哪', async () => {
 
 it('紀錄的篩選 → audit.list 的輸入', () => {
   const now = new Date(2026, 9, 19, 15, 30).getTime()
-  expect(auditInput({ actor: '', domain: '', status: '', days: 'all' }, now)).toEqual({ limit: 50 })
+  expect(auditInput({ actor: '', domain: 'all', status: '', days: 'all' }, now)).toEqual({ limit: 50 })
+  // 只看變更要在畫面這邊濾，一次多讀一點
+  expect(auditInput({ actor: '', domain: 'changes', status: '', days: 'all' }, now)).toEqual({ limit: 200 })
   expect(auditInput({ actor: 'agent:a1', domain: 'bots', status: 'error', days: '1' }, now)).toEqual({
-    limit: 50,
+    limit: 200,
     actor: 'agent:a1',
     op: 'xbot.bots',
     status: 'error',
     since: new Date(2026, 9, 19).getTime(),
   })
-  expect(auditInput({ actor: '', domain: '', status: '', days: '7' }, now).since).toBe(new Date(2026, 9, 13).getTime())
+  expect(auditInput({ actor: '', domain: 'changes', status: '', days: '7' }, now).since).toBe(new Date(2026, 9, 13).getTime())
   expect(opText('xbot.bots.create')).toBe('建立一個 Bot')
   expect(opText('xbot.unknown.op')).toBe('xbot.unknown.op')
 })
 
-it('成員與紀錄：你、連線的代理、紀錄依誰與種類篩選、載入更早的', async () => {
+it('只看變更：查看類與例行操作（標已讀、擷取縮圖、列出代理）不算', () => {
+  expect(isChange('xbot.bots.update')).toBe(true)
+  expect(isChange('xbot.approvals.decide')).toBe(true)
+  expect(isChange('xbot.bots.list')).toBe(false)
+  expect(isChange('xbot.inbox.mark_read')).toBe(false)
+  expect(isChange('xbot.computers.snapshot')).toBe(false)
+  expect(isChange('xbot.agents.list')).toBe(false)
+  // 認不得的操作照樣列出來，不要藏起來
+  expect(isChange('xbot.unknown.op')).toBe(true)
+})
+
+it('成員與紀錄：你、連線的代理、預設只看變更、紀錄依誰與種類篩選、載入更早的', async () => {
   botsStore.set({ bots: [{ id: 'b1', name: '小秘', shape: 'circle', color: 'blue' }] as never, activity: {} })
   const entry = (id: number, actor: string, op: string, status = 'ok') => ({ id, actor, via: 'mcp', op, request_id: '', target: 'b1', params: {}, status, error_code: status === 'error' ? 'forbidden' : '', created_at: new Date(2026, 9, 19, 9, id).getTime() })
   api = fakeApi({
@@ -82,7 +95,7 @@ it('成員與紀錄：你、連線的代理、紀錄依誰與種類篩選、載�
     'audit.list': (i) => {
       if (i.before) return { entries: [entry(1, 'owner', 'xbot.bots.update')] }
       if (i.actor === 'agent:a1') return { entries: [entry(5, 'agent:a1', 'xbot.bots.delete', 'error')] }
-      return { entries: [entry(3, 'bot:b1', 'xbot.collab.message_bot'), entry(2, 'agent:a1', 'xbot.bots.create')], next_before: 2 }
+      return { entries: [entry(4, 'owner', 'xbot.inbox.mark_read'), entry(3, 'bot:b1', 'xbot.collab.message_bot'), entry(2, 'agent:a1', 'xbot.bots.create')], next_before: 2 }
     },
   })
   wrap(<PeoplePage />)
@@ -90,16 +103,25 @@ it('成員與紀錄：你、連線的代理、紀錄依誰與種類篩選、載�
   expect(await screen.findByText('已連線的代理 · 1')).toBeInTheDocument()
   expect(screen.getByTestId('member-agents')).toHaveAttribute('href', '/settings/advanced/agents')
 
-  await waitFor(() => expect(screen.getAllByTestId('audit-row')).toHaveLength(2))
+  // 預設只看變更：「把通知標為已讀」不列；不夠一頁就自己再往前讀
+  await waitFor(() => expect(screen.getAllByTestId('audit-row')).toHaveLength(3))
   const rows = screen.getAllByTestId('audit-row')
   expect(rows[0]).toHaveTextContent('小秘')
   expect(rows[1]).toHaveTextContent('Claude Code')
   expect(rows[1]).toHaveTextContent('建立一個 Bot')
-  expect(calls('audit.list')[0].input).toMatchObject({ limit: 50 })
+  expect(screen.queryByText('把通知標為已讀')).toBeNull()
+  expect(calls('audit.list')[0].input).toMatchObject({ limit: 200 })
   expect(calls('audit.list')[0].input.since).toBeGreaterThan(0)
+  expect(calls('audit.list')[1].input.before).toBe(2)
 
-  fireEvent.click(screen.getByRole('button', { name: '載入更早的紀錄' }))
+  // 全部，含查看：一頁一頁讀，按「載入更早的紀錄」才往前
+  fireEvent.click(screen.getByRole('button', { name: /只看變更/ }))
+  fireEvent.click(await screen.findByRole('option', { name: '全部，含查看' }))
   await waitFor(() => expect(screen.getAllByTestId('audit-row')).toHaveLength(3))
+  expect(screen.getByText('把通知標為已讀')).toBeInTheDocument()
+  expect(calls('audit.list').at(-1)?.input).toMatchObject({ limit: 50 })
+  fireEvent.click(screen.getByRole('button', { name: '載入更早的紀錄' }))
+  await waitFor(() => expect(screen.getAllByTestId('audit-row')).toHaveLength(4))
   expect(calls('audit.list').at(-1)?.input.before).toBe(2)
 
   fireEvent.click(screen.getByRole('button', { name: /所有人與 Bot/ }))

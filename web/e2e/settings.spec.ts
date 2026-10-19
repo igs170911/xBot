@@ -1,5 +1,6 @@
 import { expect, test, type Page } from './fixtures'
 import { MockServer, settle } from './mock'
+import { overflow } from './overflow'
 
 // W12 設定：用假服務測一般／AI 模型／用量與花費／Bot 的引擎與權限，截圖和 J01～J04、G09、L06 畫板並排比對。
 const shot = (name: string) => `e2e-results/screens/${name}.png`
@@ -292,12 +293,16 @@ test('用量與花費：圖表、沒價格的模型、上限（提高要確認�
 
 test('Bot 的引擎：換 Claude Code、同意使用訂閱並標示、權限等級白話', async ({ page }, info) => {
   const { api, xm } = await open(page, '/settings/models')
+  // 這裡要換的是引擎與模型：直接開「進階」（12 個分頁 → 4 個，G02：引擎與模型在「進階」，權限在「權限與花費」）
   await main(page).getByRole('region', { name: '各個 Bot 用哪個' }).getByRole('link', { name: /小秘/ }).click()
-  await expect(page).toHaveURL(new RegExp(`/settings/bots/${xm.id}$`))
-  const m = main(page)
-  // 12 個分頁 → 4 個（G02）：引擎與模型在「進階」，權限在「權限與花費」
-  await m.getByRole('navigation', { name: 'Bot 設定分頁' }).getByRole('link', { name: '進階' }).click()
   await expect(page).toHaveURL(new RegExp(`/settings/bots/${xm.id}/advanced$`))
+  const m = main(page)
+  await expect(m.getByRole('navigation', { name: 'Bot 設定分頁' }).getByRole('link', { name: '進階' })).toHaveAttribute('aria-current', 'page')
+  // 從 AI 模型點進來的：返回鈕回 AI 模型，導覽亮 AI 模型
+  if (info.project.name === 'desktop') {
+    await expect(m.getByTestId('bot-settings-back')).toHaveText('AI 模型')
+    await expect(page.getByRole('navigation', { name: '設定分類' }).getByRole('link', { name: 'AI 模型' })).toHaveAttribute('aria-current', 'page')
+  }
   await m.getByRole('radiogroup', { name: '引擎' }).getByRole('radio', { name: 'Claude Code' }).click()
   await expect.poll(() => api.calls.find((c) => c.op === 'bots.update')?.input).toEqual({ id: xm.id, engine: 'claude-code' })
   await m.getByRole('button', { name: '同意使用我的訂閱' }).click()
@@ -345,8 +350,91 @@ test('手機：設定總覽（L06）→ 點進一區 → 返回', async ({ page 
   await expect(page).toHaveURL(/\/settings$/)
 })
 
+test('桌面：從對話打開 Bot 設定，返回鈕回對話，導覽不亮 AI 模型', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', '只有桌面')
+  const api = new MockServer(page)
+  const { xm } = seed(api)
+  const th = api.addThread(xm.id, '比價')
+  await api.install()
+  await page.goto(`/bots/${xm.id}/threads/${th.id}`)
+  await page.getByRole('main').getByRole('button', { name: '更多' }).click()
+  // 更多選單：記憶直達；導覽、模型與金鑰、新對話串不在這裡（各有地方）
+  const menu = page.getByRole('menu')
+  await expect(menu.getByRole('menuitem', { name: '記憶' })).toBeVisible()
+  for (const gone of ['看導覽', '模型與金鑰設定', '聲音與朗讀', '新對話串']) await expect(menu.getByRole('menuitem', { name: gone })).toHaveCount(0)
+  await menu.getByRole('menuitem', { name: 'Bot 設定' }).click()
+  const m = page.getByTestId('settings-modal')
+  await expect(m.getByTestId('bot-settings-back')).toHaveText('回到對話')
+  await expect(page.getByRole('navigation', { name: '設定分類' }).locator('[aria-current="page"]')).toHaveCount(0)
+  // 切分頁後還是回對話
+  await m.getByRole('navigation', { name: 'Bot 設定分頁' }).getByRole('link', { name: '進階' }).click()
+  await expect(m.getByTestId('bot-settings-back')).toHaveText('回到對話')
+  await m.getByTestId('bot-settings-back').click()
+  await expect(page).toHaveURL(new RegExp(`/bots/${xm.id}/threads/${th.id}$`))
+  await expect(page.getByTestId('settings-modal')).toHaveCount(0)
+  // 更多 → 記憶：直接到 Bot 設定的記憶
+  await page.getByRole('main').getByRole('button', { name: '更多' }).click()
+  await page.getByRole('menu').getByRole('menuitem', { name: '記憶' }).click()
+  await expect(page).toHaveURL(new RegExp(`/settings/bots/${xm.id}/abilities/memory$`))
+  // 導覽改在「設定 › 一般」：先開 Bot 的對話，再開始
+  await page.goto('/settings/general')
+  await page.getByTestId('settings-modal').getByRole('button', { name: '開始導覽' }).click()
+  await expect(page).toHaveURL(new RegExp(`/bots/${xm.id}`))
+  await expect(page.getByRole('dialog', { name: /^導覽 1 \// })).toBeVisible()
+})
+
 test('桌面：/settings 直接進「一般」', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', '只有桌面')
   await open(page, '/settings')
   await expect(page).toHaveURL(/\/settings\/general$/)
+})
+
+// 平板寬度（768～1024）：桌面的設定視窗裡，內容不能被切掉或要左右捲（2026-10-19：820 寬時內容延伸到 1153，右邊被切掉）。
+test('平板：設定視窗的內容不超出畫面', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', '只有桌面')
+  test.setTimeout(120_000)
+  const api = new MockServer(page)
+  const { xm } = seed(api)
+  const now = Date.now()
+  const audit = ['xbot.bots.update', 'xbot.computers.purge', 'xbot.usage.set_caps', 'xbot.collab.message_bot', 'xbot.models.set_default', 'xbot.approvals.decide']
+  Object.assign(api.override, {
+    'agents.list': () => ({ agents: [{ id: 'a1', name: 'Claude Code（工作筆電上的那一台）', status: 'active', scopes: ['read', 'operate'] }] }),
+    'audit.list': () => ({
+      entries: audit.map((op, i) => ({ id: 10 - i, actor: i % 2 ? 'agent:a1' : `bot:${xm.id}`, via: 'mcp', op, request_id: '', target: 'b-0123456789abcdef-很長的目標名稱', params: {}, status: i === 1 ? 'error' : 'ok', error_code: i === 1 ? 'forbidden' : '', created_at: now - i * 600_000 })),
+    }),
+    'memory.read': () => ({
+      user: { entries: ['你喜歡簡短的回覆，重點放前面；週一早上不要排會議。', 'https://example.com/' + 'a'.repeat(80)], used: 180, limit: 1375 },
+      memory: { entries: ['競品清單：三家，每週一更新價格與上架商品，比對結果貼到 #選品 群組。'], used: 60, limit: 2200 },
+      enabled: true,
+      computer: true,
+    }),
+    'memory.history': () => ({ changes: [{ id: 'c1', target: 'memory', actor: `bot:${xm.id}`, added: ['競品清單：三家，每週一更新價格與上架商品'], removed: [], created_at: now - 3_600_000, undoable: true }] }),
+    'skills.list': () => ({
+      skills: [
+        { id: 'compare-prices', name: '比價', description: '比較三家競品的價格，整理成表格', place: 'list', enabled: true, source: 'learned', created_at: now, updated_at: now },
+        { id: 'daily-news', name: '每日新聞整理', description: '每天早上整理新聞重點', place: 'library', enabled: false, source: 'custom', created_at: now, updated_at: now },
+      ],
+      counts: { list: 1, library: 1, off: 0 },
+      computer: true,
+    }),
+  })
+  await api.install()
+  const pages = ['/settings/general', '/settings/models', '/settings/usage', '/settings/advanced/people', `/settings/bots/${xm.id}`, `/settings/bots/${xm.id}/abilities`, `/settings/bots/${xm.id}/abilities/memory`, `/settings/bots/${xm.id}/advanced`]
+  const problems: Record<string, string[]> = {}
+  for (const width of [820, 768, 1000]) {
+    await page.setViewportSize({ width, height: 1180 })
+    for (const path of pages) {
+      await page.goto(path)
+      await expect(page.getByTestId('settings-modal')).toBeVisible()
+      await page.waitForLoadState('networkidle')
+      await page.waitForTimeout(300)
+      const bad = await overflow(page, '[data-testid="settings-modal"]')
+      if (bad.length) problems[`${width} ${path}`] = bad
+      if (width === 820 && (bad.length || /general|people|memory/.test(path))) {
+        await settle(page)
+        await page.screenshot({ path: shot(`desktop-tablet${path.replace(xm.id, 'bot').replace(/\//g, '_')}`) })
+      }
+    }
+  }
+  expect(problems).toEqual({})
 })

@@ -1,5 +1,5 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Activity as ActivityIcon, AudioLines, ChevronDown, ChevronLeft, Compass, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, Monitor, OctagonPause, Phone, Plus, Settings, Trash2, Volume2, VolumeX, X } from 'lucide-react'
+import { Activity as ActivityIcon, AudioLines, Brain, ChevronDown, ChevronLeft, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, Monitor, OctagonPause, Phone, Settings, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import { isRecording, teachStartStore, useLesson } from '../teaching/teachingData'
 import { ApiError, chatListThreads, chatSend, chatStop, filesUploadForm, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
 import { botsStore, type Bot, look } from '../data/bots'
@@ -39,7 +39,6 @@ import { TakeoverBar } from './TakeoverBar'
 import { PauseBanner, usePauseAll } from '../shell/PauseBanner'
 import { WorkSteps } from './WorkSteps'
 import { FirstHome, FirstTasks, useFirstHome } from '../onboard/FirstHome'
-import { startTour } from '../onboard/state'
 import { ChatAnnouncer } from './Announcer'
 import { ComputerPanel } from '../computer/ComputerPanel'
 import { useNarrow } from '../computer/hooks'
@@ -239,14 +238,12 @@ function Header({
         label="更多"
         align="end"
         items={[
+          // 新對話串在對話串選單；模型在模型膠囊；聲音在 Bot 設定 › 進階；導覽在設定 › 一般
           { label: '目前進度', icon: ActivityIcon, onSelect: onProgress },
-          { label: '新對話串', icon: Plus, onSelect: () => navigate(`/bots/${bot.id}/threads/new`) },
           { label: '教它一件事', icon: GraduationCap, onSelect: () => teachStartStore.set({ botId: bot.id, threadId }) },
-          { label: '看導覽', icon: Compass, onSelect: startTour },
+          { label: '記憶', icon: Brain, onSelect: () => navigate(`/settings/bots/${encodeURIComponent(bot.id)}/abilities/memory`) },
           ...(onAutoRead ? [{ label: autoRead ? '這個對話串不要自動朗讀' : '這個對話串自動朗讀回覆', icon: autoRead ? VolumeX : Volume2, onSelect: onAutoRead }] : []),
-          { label: '聲音與朗讀', icon: AudioLines, onSelect: () => navigate(`/bots/${bot.id}/voice`) },
           { label: 'Bot 設定', icon: Settings, separator: true, onSelect: () => navigate(`/settings/bots/${encodeURIComponent(bot.id)}`) },
-          { label: '模型與金鑰設定', icon: Settings, onSelect: () => navigate('/settings/models') },
           { label: '全部停下（所有 Bot）', icon: OctagonPause, separator: true, onSelect: () => void pauseAll() },
           ...(threadId ? [{ label: '刪除這個對話串', icon: Trash2, danger: true, separator: true, onSelect: onDelete }] : []),
         ]}

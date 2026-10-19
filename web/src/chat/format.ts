@@ -75,5 +75,5 @@ export const VERDICT_LABEL: Record<string, string> = {
 /** 誰判的：規則寫「規則」，快判模型寫機率（92%）。 */
 export function judgeBy(by: string, confidence?: number): string {
   if (by === 'model' && confidence) return `${Math.round(confidence * 100)}%`
-  return by === 'model' ? '快判' : '規則'
+  return by === 'model' ? '快速判斷' : '規則'
 }

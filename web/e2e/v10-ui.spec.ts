@@ -182,6 +182,9 @@ test('成員與紀錄（J08）：你、連線的代理；活動紀錄依誰、�
     { id: 6, actor: 'owner', via: 'http', op: 'xbot.usage.set_caps', target: '', status: 'ok', created_at: t(200) },
     { id: 5, actor: 'agent:a1', via: 'mcp', op: 'xbot.computers.purge', target: mi.id, status: 'error', error_code: 'forbidden', created_at: t(400) },
     { id: 4, actor: `bot:${zf.id}`, via: 'mcp', op: 'xbot.approvals.request', target: '', status: 'ok', created_at: t(900) },
+    // 例行操作：預設不列（只看變更）
+    { id: 3, actor: 'owner', via: 'http', op: 'xbot.inbox.mark_read', target: '', status: 'ok', created_at: t(901) },
+    { id: 2, actor: `bot:${mi.id}`, via: 'mcp', op: 'xbot.computers.snapshot', target: mi.id, status: 'ok', created_at: t(902) },
   ].map((e) => ({ request_id: '', params: {}, error_code: '', ...e }))
   Object.assign(api.override, {
     'agents.list': () => ({ agents: [{ id: 'a1', name: 'Claude Code', status: 'active', scopes: ['read', 'operate'] }] }),
@@ -196,11 +199,15 @@ test('成員與紀錄（J08）：你、連線的代理；活動紀錄依誰、�
   await expect(page.getByTestId('audit-row')).toHaveCount(6)
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-v10-people`), fullPage: true })
-  await page.getByRole('button', { name: /所有種類/ }).click()
+  await expect(page.getByText('把通知標為已讀')).toHaveCount(0)
+  await page.getByRole('button', { name: /只看變更/ }).click()
+  await page.getByRole('option', { name: '全部，含查看' }).click()
+  await expect(page.getByTestId('audit-row')).toHaveCount(8)
+  await page.getByRole('button', { name: /全部，含查看/ }).click()
   await page.getByRole('option', { name: '電腦' }).click()
   await expect(page.getByTestId('audit-row')).toHaveCount(1)
   await expect(page.getByTestId('audit-row')).toContainText('被拒：權限不足')
-  expect(api.calls.filter((c) => c.op === 'audit.list').at(-1)?.input).toMatchObject({ op: 'xbot.computers', limit: 50 })
+  expect(api.calls.filter((c) => c.op === 'audit.list').at(-1)?.input).toMatchObject({ op: 'xbot.computers', limit: 200 })
 })
 
 async function dropFiles(page: Page, selector: string, files: Array<{ name: string; type: string; text: string }>) {

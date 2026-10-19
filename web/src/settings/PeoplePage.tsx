@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Bot as BotIcon, ChevronRight, Crown, PlugZap } from 'lucide-react'
 import { agentsList, auditList, OPS, type AuditListInput, type OpName } from '../api/generated'
 import { auditResult, type Agent, type AuditEntry } from '../data/agents'
@@ -15,6 +15,8 @@ import { Block, Group, SectionHeader } from './parts'
 
 // 設定 › 進階 › 成員與紀錄（J08）：目前的成員（v1.0 只有你本人，加上連線的外部代理）與活動紀錄（xbot.audit.list）。
 // 和畫板不同：多人帳號、邀請、匯出 CSV 還沒有（v1.0 只有一個使用者）；紀錄依誰、種類、結果、日期篩選。
+// 種類預設「只看變更」：查看類與例行的操作（標已讀、擷取畫面縮圖…）會洗版，選「全部，含查看」才列。
+// xbot.audit.list 不能依「是不是變更」篩，所以在這裡濾，一次多讀幾頁湊滿一頁。
 
 const DOMAIN: Record<string, string> = {
   bots: 'Bot',
@@ -41,7 +43,7 @@ const DOMAIN: Record<string, string> = {
   backup: '備份',
   teaching: '教學',
   import: '匯入',
-  judge: '快判',
+  judge: '快速判斷',
   devices: '裝置',
   push: '推播',
 }
@@ -61,13 +63,44 @@ const STATUS = [
   { value: 'reverted', label: '已復原' },
 ] as const
 
+/** 種類：changes 只看變更（預設）、all 全部含查看；其他是一個領域（那個領域的變更）。 */
 type Filters = { actor: string; domain: string; status: string; days: string }
 
-/** 篩選條件 → xbot.audit.list 的輸入。 */
+const KIND_ALL = 'all'
+const KIND_CHANGES = 'changes'
+
+/** 會寫進紀錄、但其實沒改東西的例行操作（大多是畫面自己在背景呼叫的）。 */
+const ROUTINE = new Set([
+  'xbot.inbox.mark_read',
+  'xbot.computers.snapshot',
+  'xbot.agents.list',
+  'xbot.backup.list',
+  'xbot.devices.pair_status',
+  'xbot.push.config',
+  'xbot.settings.get',
+  'xbot.teaching.draft',
+  'xbot.models.probe',
+  'xbot.models.oauth_complete',
+  'xbot.apps.test',
+  'xbot.bots.suggest',
+  'xbot.hosts.install_script',
+  'xbot.onboard.update',
+  'xbot.voice.speak',
+  'xbot.voice.transcribe',
+])
+
+/** 這筆紀錄是不是真的改了東西：查看類（Bot、代理讀東西也會記）與例行操作不算。 */
+export function isChange(op: string): boolean {
+  if (ROUTINE.has(op)) return false
+  const info = OPS[op as OpName] as { mutates?: boolean } | undefined
+  return info?.mutates !== false
+}
+
+/** 篩選條件 → xbot.audit.list 的輸入。只看變更時一次讀多一點（要在這裡濾掉查看類）。 */
 export function auditInput(f: Filters, now = Date.now()): AuditListInput {
-  const in_: AuditListInput = { limit: 50 }
+  const in_: AuditListInput = { limit: f.domain === KIND_ALL ? 50 : 200 }
   if (f.actor) in_.actor = f.actor
-  if (f.domain) in_.op = 'xbot.' + f.domain
+  if (f.domain && f.domain !== KIND_ALL && f.domain !== KIND_CHANGES) in_.op = 'xbot.' + f.domain
   if (f.status) in_.status = f.status as AuditListInput['status']
   if (f.days !== 'all') {
     const d = new Date(now)
@@ -76,6 +109,23 @@ export function auditInput(f: Filters, now = Date.now()): AuditListInput {
     in_.since = d.getTime()
   }
   return in_
+}
+
+const WANT = 30
+const MAX_PAGES = 5
+
+/** 從 before 往前讀紀錄：只看變更時濾掉查看類，湊到 WANT 筆或讀了 MAX_PAGES 頁就停。 */
+export async function fetchAudit(f: Filters, before = 0): Promise<{ entries: AuditEntry[]; next: number }> {
+  const all = f.domain === KIND_ALL
+  const out: AuditEntry[] = []
+  let next = before
+  for (let i = 0; i < MAX_PAGES; i++) {
+    const o = await auditList({ ...auditInput(f), ...(next ? { before: next } : {}) })
+    out.push(...(all ? o.entries : o.entries.filter((e) => isChange(e.op))))
+    next = o.next_before ?? 0
+    if (all || !next || out.length >= WANT) break
+  }
+  return { entries: out, next }
 }
 
 /** 一筆紀錄做了什麼：操作的白話說明，找不到時用操作名稱。 */
@@ -93,7 +143,7 @@ const VIA: Record<string, string> = { http: '網頁', ui: '網頁', mcp: 'MCP', 
 export function PeoplePage() {
   const bots = useStore(botsStore).bots
   const [agents, setAgents] = useState<Agent[]>([])
-  const [filters, setFilters] = useState<Filters>({ actor: '', domain: '', status: '', days: '7' })
+  const [filters, setFilters] = useState<Filters>({ actor: '', domain: KIND_CHANGES, status: '', days: '7' })
   const [entries, setEntries] = useState<AuditEntry[] | null>(null)
   const [next, setNext] = useState(0)
   const [err, setErr] = useState<string | null>(null)
@@ -105,23 +155,27 @@ export function PeoplePage() {
       .catch(() => setAgents([]))
   }, [])
 
-  const load = useCallback((f: Filters) => {
-    auditList(auditInput(f))
+  useEffect(() => {
+    let live = true
+    fetchAudit(filters)
       .then((o) => {
+        if (!live) return
         setEntries(o.entries)
-        setNext(o.next_before ?? 0)
+        setNext(o.next)
         setErr(null)
       })
-      .catch((e: unknown) => setErr(errText(e)))
-  }, [])
-  useEffect(() => load(filters), [filters, load])
+      .catch((e: unknown) => live && setErr(errText(e)))
+    return () => {
+      live = false
+    }
+  }, [filters])
 
   const loadMore = async () => {
     setMore(true)
     try {
-      const o = await auditList({ ...auditInput(filters), before: next })
+      const o = await fetchAudit(filters, next)
       setEntries((cur) => [...(cur ?? []), ...o.entries])
-      setNext(o.next_before ?? 0)
+      setNext(o.next)
     } catch (e) {
       setErr(errText(e))
     } finally {
@@ -148,7 +202,7 @@ export function PeoplePage() {
     ...agents.map((a) => ({ value: `agent:${a.id}`, label: `${a.name}（代理）` })),
     ...(bots ?? []).map((b) => ({ value: `bot:${b.id}`, label: b.name })),
   ]
-  const domainOptions = [{ value: '', label: '所有種類' }, ...Object.entries(DOMAIN).map(([value, label]) => ({ value, label }))]
+  const domainOptions = [{ value: KIND_CHANGES, label: '只看變更' }, { value: KIND_ALL, label: '全部，含查看' }, ...Object.entries(DOMAIN).map(([value, label]) => ({ value, label }))]
   const set = (k: keyof Filters) => (v: string) => {
     setEntries(null)
     setFilters((f) => ({ ...f, [k]: v }))
@@ -202,7 +256,12 @@ export function PeoplePage() {
         </div>
         {err && <p className="m-0 rounded-group bg-card px-4 py-3 text-ui-sm text-danger">讀不到紀錄：{err}</p>}
         {!entries && !err && <p className="m-0 rounded-group bg-card px-4 py-3 text-ui-sm text-ink-2">讀取中…</p>}
-        {entries && entries.length === 0 && <p className="m-0 rounded-group bg-card px-4 py-3 text-ui-sm text-ink-2">這段時間沒有符合的紀錄。</p>}
+        {entries && entries.length === 0 && (
+          <p className="m-0 rounded-group bg-card px-4 py-3 text-ui-sm text-ink-2">
+            {next > 0 ? '最近的紀錄裡沒有變更。' : '這段時間沒有符合的紀錄。'}
+            {filters.domain !== KIND_ALL && '查看與例行的紀錄沒有列出，種類選「全部，含查看」可以看到。'}
+          </p>
+        )}
         {entries && entries.length > 0 && (
           <Group label="活動紀錄">
             {entries.map((e) => {

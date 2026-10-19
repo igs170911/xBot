@@ -14,7 +14,7 @@
 | 每天固定做的事、外部服務觸發 | [定時任務與 Webhook](08-routines-webhooks.md) |
 | 上傳、預覽、下載 Bot 的檔案 | [檔案](09-files.md) |
 | 教 Bot 做法、讓它記住事情 | [技能與記憶](10-skills-memory.md) |
-| 接上模型、看花費、設上限、快判 | [模型與花費](11-models-spend.md) |
+| 接上模型、看花費、設上限、快速判斷 | [模型與花費](11-models-spend.md) |
 | 用 Claude Code、Codex、Gemini CLI 等當 Bot 的大腦；額度用完怎麼辦 | [引擎](12-engines.md) |
 | 讓 Bot 用 GitHub、Notion 等服務 | [連接應用程式](13-apps.md) |
 | 在手機上用、收推播 | [手機](14-phone.md) |

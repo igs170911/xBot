@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { ArrowUp, Check, Clock, Eye, EyeOff, KeyRound, Lock, ShieldAlert, X } from 'lucide-react'
+import { ArrowUp, Check, ChevronRight, Clock, Eye, EyeOff, KeyRound, Lock, ShieldAlert, X } from 'lucide-react'
 import { ApiError, chatRespond, type ChatRespondInput, type ChatRespondOutput } from '../api/generated'
 import { useNow } from '../data/ui'
 import { Avatar } from '../ui/Avatar'
@@ -84,12 +84,24 @@ export function AskCard({
 
   if (ask.kind === 'approval') {
     const choices = ask.choices?.length ? ask.choices : ['once', 'deny']
+    // 先寫白話的說明；原始指令收在「細節」裡。沒有說明時只能直接給看指令。
+    const human = ask.description || (ask.prompt && ask.prompt !== ask.command ? ask.prompt : '')
+    const raw = ask.command && ask.command !== human ? ask.command : ''
+    const code = (text: string, more?: string) => <code className={cx('block whitespace-pre-wrap break-all font-mono text-[13px] text-ink-2', more)}>{text}</code>
     return (
       <section aria-label="需要允許這項操作" data-testid="ask-card" data-kind="approval" className="flex flex-col gap-3 rounded-card bg-card px-5 py-4">
         <Head bot={bot} title="需要允許這項操作" sub={sub ?? `${name} 想執行指令`} aside={expiry} />
         <div className="flex flex-col gap-1 rounded-menu bg-inset px-3.5 py-3">
-          {ask.description && <span className="text-ui">{ask.description}</span>}
-          <code className="whitespace-pre-wrap break-all font-mono text-[13px] text-ink-2">{ask.command || ask.prompt}</code>
+          {human ? <span className="text-ui">{human}</span> : code(raw || ask.prompt)}
+          {human && raw && (
+            <details className="group" data-testid="ask-details">
+              <summary className="inline-flex w-fit cursor-pointer select-none list-none items-center gap-1 text-meta text-ink-2 touch-target hover:text-ink [&::-webkit-details-marker]:hidden">
+                <Icon icon={ChevronRight} size={14} className="transition-transform group-open:rotate-90" />
+                細節
+              </summary>
+              {code(raw, 'mt-1.5')}
+            </details>
+          )}
         </div>
         {alert}
         <div className="flex flex-wrap items-center gap-2" data-card-actions="1">

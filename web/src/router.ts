@@ -18,11 +18,29 @@ export function historyDepth(): number {
   return typeof d === 'number' ? d : 0
 }
 
+// 上一個網址（例：Bot 設定的返回鈕要知道是從聊天還是從設定打開的）。上一頁／下一頁也算。
+let here = typeof window === 'undefined' ? '' : window.location.pathname
+let before = ''
+function track() {
+  const p = window.location.pathname
+  if (p === here) return
+  before = here
+  here = p
+}
+if (typeof window !== 'undefined') window.addEventListener('popstate', track)
+
+/** 走到現在這個網址之前在哪一頁（直接打開的是空字串）。 */
+export function previousPath(): string {
+  track()
+  return before
+}
+
 export function navigate(to: string, opts: { replace?: boolean } = {}) {
   if (to === window.location.pathname + window.location.search) return
   const d = historyDepth()
   if (opts.replace) window.history.replaceState({ d }, '', to)
   else window.history.pushState({ d: d + 1 }, '', to)
+  track()
   listeners.forEach((fn) => fn())
 }
 

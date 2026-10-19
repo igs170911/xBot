@@ -211,7 +211,7 @@ function Perm({ bot }: { bot: Bot }) {
 
 function More({ bot }: { bot: Bot }) {
   const links = [
-    { to: `/settings/bots/${bot.id}`, label: '引擎與模型' },
+    { to: `/settings/bots/${bot.id}/advanced`, label: '引擎與模型' },
     { to: `/settings/bots/${bot.id}/soul`, label: '人設（常駐指示）' },
     { to: `/settings/bots/${bot.id}/memory`, label: '記憶' },
     { to: `/bots/${bot.id}/files`, label: '檔案' },

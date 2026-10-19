@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { fakeApi, opError, type FakeApi } from '../test-api'
 import { ToastProvider } from '../ui/Toast'
-import { activeNav } from './nav'
+import { activeNav, botBack, botOrigin } from './nav'
 import { guessPreset, maskKey, splitRef, type Preset } from './modelData'
 import { usd, pct, tokens, errText } from './format'
 import { ApiError } from '../api/generated'
@@ -26,8 +26,27 @@ afterEach(() => vi.unstubAllGlobals())
 it('導覽：子頁也算在它的分類', () => {
   expect(activeNav('/settings/general')).toBe('/settings/general')
   expect(activeNav('/settings/models/routing')).toBe('/settings/models')
-  expect(activeNav('/settings/bots/b1')).toBe('/settings/models')
   expect(activeNav('/settings/advanced/agents')).toBe('/settings/advanced/agents')
+  // Bot 設定不屬於「AI 模型」：要看是從哪裡打開的
+  expect(activeNav('/settings/bots/b1')).toBe('')
+})
+
+it('Bot 設定的返回：從聊天回聊天、從設定的某一頁回那一頁、直接打開回 AI 模型的 Bot 清單', () => {
+  expect(botBack('/bots/b1/threads/t1')).toEqual({ to: '/bots/b1/threads/t1', label: '回到對話', nav: '' })
+  expect(botBack('/rooms/r1')).toEqual({ to: '/rooms/r1', label: '回到群組', nav: '' })
+  expect(botBack('/settings/models')).toEqual({ to: '/settings/models', label: 'AI 模型', nav: '/settings/models' })
+  expect(botBack('/settings/usage')).toEqual({ to: '/settings/usage', label: '用量與花費', nav: '/settings/usage' })
+  expect(botBack('')).toEqual({ to: '/settings/models', label: 'AI 模型', nav: '' })
+  expect(botBack('/teams')).toEqual({ to: '/settings/models', label: 'AI 模型', nav: '' })
+  // 從聊天打開，切分頁、上一頁回到前一個分頁，都還是回聊天
+  expect(botOrigin('/settings/bots/b1', '/bots/b1/threads/t1')).toBe('/bots/b1/threads/t1')
+  expect(botOrigin('/settings/bots/b1/advanced', '/settings/bots/b1')).toBe('/bots/b1/threads/t1')
+  expect(botOrigin('/settings/bots/b1', '/settings/bots/b1/advanced')).toBe('/bots/b1/threads/t1')
+  // 之後從 AI 模型點進來就回 AI 模型
+  expect(botOrigin('/settings/bots/b1/advanced', '/settings/models')).toBe('/settings/models')
+  // 換一個 Bot：重新算
+  expect(botOrigin('/settings/bots/b2', '')).toBe('')
+  expect(botOrigin('/settings/bots/b2/advanced', '/settings/bots/b1')).toBe('/settings/bots/b1')
 })
 
 it('貼上金鑰：從開頭認出供應商，認不出就不猜', () => {

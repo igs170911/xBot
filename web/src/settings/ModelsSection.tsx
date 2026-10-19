@@ -46,7 +46,7 @@ import { PROBE_STATUS, TRANSPORT_LABEL, guessPreset, maskKey, providerName, useM
 
 const TABS = [
   { to: '/settings/models', label: '方案' },
-  { to: '/settings/models/judge', label: '快判' },
+  { to: '/settings/models/judge', label: '快速判斷' },
   { to: '/settings/models/routing', label: '進階' },
 ]
 

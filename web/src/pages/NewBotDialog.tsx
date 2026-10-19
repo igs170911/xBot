@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { FileDown } from 'lucide-react'
 import { ApiError, botsCreate, botsSuggest, type BotsSuggestOutput } from '../api/generated'
 import { upsertBot } from '../data/bots'
@@ -26,15 +26,24 @@ function NewBotForm({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<unknown>(null)
   const [hint, setHint] = useState<BotsSuggestOutput | null>(null)
+  // 「幫我想」填進去的名字：之後再想一次時可以換掉（你自己改過的就不動）
+  const [autoName, setAutoName] = useState('')
   const [thinking, setThinking] = useState(false)
+  const typed = useRef('')
 
   const suggest = async () => {
     setThinking(true)
     setErr(null)
     try {
-      const s = await botsSuggest({ text: description.trim() })
+      const asked = description.trim()
+      const s = await botsSuggest({ text: asked })
+      // 想的時候說明又改了：這份建議已經不對，丟掉
+      if (typed.current.trim() !== asked) return
       setHint(s)
-      if (!name.trim() || name === hint?.name) setName(s.name)
+      if (!name.trim() || name === autoName) {
+        setName(s.name)
+        setAutoName(s.name)
+      }
     } catch (e2) {
       setErr(e2)
     } finally {
@@ -84,7 +93,12 @@ function NewBotForm({ onDone }: { onDone: () => void }) {
       <TextInput
         label="它負責什麼（一句話）"
         value={description}
-        onChange={(e) => setDescription(e.target.value)}
+        onChange={(e) => {
+          setDescription(e.target.value)
+          typed.current = e.target.value
+          // 說明改了，之前想好的職稱與常駐指示就不對了：拿掉，不要在建立時偷偷用舊的
+          setHint(null)
+        }}
         placeholder="例：每天早上整理新聞給我"
         maxLength={200}
         error={fieldErr('description')}
@@ -95,7 +109,7 @@ function NewBotForm({ onDone }: { onDone: () => void }) {
         </Button>
         {hint && (
           <span className="text-meta text-ink-2" data-testid="bot-suggest">
-            {hint.by === 'model' ? `系統判斷 · ${Math.round((hint.p ?? 0) * 100)}%` : `照範本「${hint.title}」`}：職稱 {hint.title} · 常駐指示已填好，之後可以改
+            {hint.by === 'model' ? '系統建議' : `照範本「${hint.title}」`}：職稱 {hint.title} · 常駐指示已填好，之後可以改
           </span>
         )}
       </div>

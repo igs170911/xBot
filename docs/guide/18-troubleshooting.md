@@ -74,9 +74,9 @@ docker logs --tail 50 xbot-netguard               # 網路防護
 | 「模型供應商太久沒有送資料（串流閒置逾時）」 | 供應商 5 分鐘沒回應。XBot 會在 2、10、30 分鐘後重試；一直這樣就換模型或設備援模型 |
 | OpenCode 回「Invalid credential」 | 用 `auth.json` 裡 `opencode` 那把金鑰；或到 opencode.ai 看額度 |
 | OpenCode Zen 回「Model is unavailable」 | 用了 `-free` 模型，XBot 不能用免費版。改用付費模型或 OpenCode Go |
-| 快判出現「Insufficient account funds」 | 快判設成 Zen 的 `jev-1.13`，但 Zen 沒儲值。在快判設定按一鍵改用預設模型 |
-| 快判說「opencode-zen 還沒設定」 | 選了 Jev，但沒加 OpenCode Zen 的金鑰。按「改用」換成你的預設模型，或把快判關掉 |
-| 快判沒效果 | 用途預設是「影子」或「關」。看快判統計，準了再改「生效」 |
+| 快速判斷出現「Insufficient account funds」 | 快速判斷設成 Zen 的 `jev-1.13`，但 Zen 沒儲值。在快速判斷設定按一鍵改用預設模型 |
+| 快速判斷說「opencode-zen 還沒設定」 | 選了 Jev，但沒加 OpenCode Zen 的金鑰。按「改用」換成你的預設模型，或把快速判斷關掉 |
+| 快速判斷沒效果 | 用途預設是「影子」或「關」。看快速判斷統計，準了再改「生效」 |
 | Bot 換了供應商沒生效 | 重開它的電腦：`xbot computers restart --bot_id <id>` |
 
 ## 引擎與訂閱

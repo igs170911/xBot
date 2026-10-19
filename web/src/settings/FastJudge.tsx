@@ -108,7 +108,7 @@ export function FastJudge({ providers, defaultModel }: { providers: Provider[]; 
   if (error) {
     return (
       <p role="alert" className="m-0 text-ui-sm text-danger">
-        讀不到快判設定：{error}
+        讀不到快速判斷設定：{error}
       </p>
     )
   }
@@ -126,9 +126,9 @@ export function FastJudge({ providers, defaultModel }: { providers: Provider[]; 
       toast.show({ kind: 'error', text: '先在「方案」設定一個預設模型' })
       return
     }
-    void save({ tier1: fallback, tier2: fallback }, '快判已開啟')
+    void save({ tier1: fallback, tier2: fallback }, '快速判斷已開啟')
   }
-  const turnOff = () => void save({ tier1: { provider: '', model: '' }, tier2: { provider: '', model: '' } }, '快判已關閉，全部照規則')
+  const turnOff = () => void save({ tier1: { provider: '', model: '' }, tier2: { provider: '', model: '' } }, '快速判斷已關閉，全部照規則')
   const capNum = Number(cap)
   const capValid = Number.isInteger(capNum) && capNum >= 1 && capNum <= 100000
 
@@ -141,7 +141,7 @@ export function FastJudge({ providers, defaultModel }: { providers: Provider[]; 
           action={
             <span className="flex gap-2">
               {fallback && (
-                <Button size="sm" variant="secondary" onClick={() => void save({ tier1: fallback, tier2: fallback }, '快判改用 ' + ref(fallback))}>
+                <Button size="sm" variant="secondary" onClick={() => void save({ tier1: fallback, tier2: fallback }, '快速判斷改用 ' + ref(fallback))}>
                   改用 {fallback.model}
                 </Button>
               )}
@@ -151,7 +151,7 @@ export function FastJudge({ providers, defaultModel }: { providers: Provider[]; 
             </span>
           }
         >
-          {missing[0].provider} 還沒設定，快判現在只照規則。
+          {missing[0].provider} 還沒設定，快速判斷現在只照規則。
         </Note>
       )}
       {data.problems.map((p) => (
@@ -161,7 +161,7 @@ export function FastJudge({ providers, defaultModel }: { providers: Provider[]; 
           icon={<Icon icon={Info} />}
           action={
             fallback && p.provider === s.tier1.provider && fallback.provider !== p.provider ? (
-              <Button size="sm" variant="secondary" onClick={() => void save({ tier1: fallback }, '快判改用 ' + ref(fallback))}>
+              <Button size="sm" variant="secondary" onClick={() => void save({ tier1: fallback }, '快速判斷改用 ' + ref(fallback))}>
                 改用 {fallback.model}
               </Button>
             ) : undefined
@@ -176,20 +176,20 @@ export function FastJudge({ providers, defaultModel }: { providers: Provider[]; 
         </Note>
       )}
 
-      <Group label="快判">
-        <Row title="快判" sub="用小模型做簡單判斷（做完了沒、要不要問你）。只給建議，不會自己花錢或刪東西。">
-          <Switch label="快判" checked={on} onChange={(v) => (v ? turnOn() : turnOff())} />
+      <Group label="快速判斷">
+        <Row title="快速判斷" sub="用小模型做簡單判斷（做完了沒、要不要問你）。只給建議，不會自己花錢或刪東西。">
+          <Switch label="快速判斷" checked={on} onChange={(v) => (v ? turnOn() : turnOff())} />
         </Row>
         {on && (
           <Row title="模型" sub={`今天 ${today.calls}／${today.daily_cap} 次 · ${usd(today.cost_micros)}`} wrap>
             <Select
-              label="快判模型"
+              label="快速判斷模型"
               hideLabel
               look="compact"
               className="min-w-[240px]"
               value={ref(s.tier1)}
               options={tierOptions(providers, TIER1_SUGGEST.filter((t) => have.has(t.provider)), s.tier1, '關掉（只用規則）', (m) => !m.endsWith('-free'))}
-              onChange={(v) => void save({ tier1: split(v) }, v ? '快判模型已更新' : '已改成只用規則')}
+              onChange={(v) => void save({ tier1: split(v) }, v ? '快速判斷模型已更新' : '已改成只用規則')}
             />
           </Row>
         )}
@@ -203,7 +203,7 @@ export function FastJudge({ providers, defaultModel }: { providers: Provider[]; 
       )}
       {on && more && (
         <>
-          <Group label="快判進階">
+          <Group label="快速判斷進階">
             <Row title="短文字模型" sub="摘要、命名用" wrap>
               <Select
                 label="第二層模型"
@@ -244,7 +244,7 @@ export function FastJudge({ providers, defaultModel }: { providers: Provider[]; 
           </Group>
 
           <Block title="用途" sub="影子＝只記錄不採用；和你一致夠高再改成生效">
-            <Group label="快判用途">
+            <Group label="快速判斷用途">
               {data.uses.map((u) => {
                 const st = byUse.get(u.id)
                 const acc = st && st.corrected > 0 ? `和你一致 ${pct(st.corrected_agreement)}` : st && st.answered > 0 ? `和規則一致 ${pct(st.agreement)}` : ''
