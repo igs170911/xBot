@@ -4,6 +4,10 @@ import "time"
 
 // 引擎驅動與對話（E02）。
 
+// InterimNarrationMax：ACP 引擎在用工具前寫的文字不超過這麼多字（「我先看一下…」）時，最後的回答只取用完工具後的那段；
+// 比這長就整段保留（可能是先寫完答案再存檔）。XBot 自訂。
+const InterimNarrationMax = 200
+
 const (
 	// HermesReadyTimeout 是連上 Hermes gateway 後等 gateway.ready 的時限。出自 LazyBoy server/rpc.py:25 open()（wait_for(ready, 15)）。
 	HermesReadyTimeout = 15 * time.Second

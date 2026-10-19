@@ -416,3 +416,22 @@ func TestReportsModels(t *testing.T) {
 		t.Fatalf("current=%q models=%+v", h.current, h.models)
 	}
 }
+
+// 用工具前的一兩句「我先看一下」不算最後的回答（同 Hermes 的 interim message）；先寫完答案再存檔的，答案要留著。
+func TestFinalAnswerSkipsShortNarration(t *testing.T) {
+	h := setup(t)
+	s := start(t, h, "th1")
+	done := func(prompt string) engine.Event {
+		if err := h.d.Send(context.Background(), s, engine.Message{Text: prompt}); err != nil {
+			t.Fatal(err)
+		}
+		evs := collect(t, h.d.Events(s))
+		return evs[len(evs)-1]
+	}
+	if e := done(acptest.PromptNarrate); e.Type != engine.EventDone || e.Text != "答案是 42。" {
+		t.Fatalf("最後的回答只要用完工具後那段：%+v", e)
+	}
+	if e := done(acptest.PromptAnswerFirst); e.Type != engine.EventDone || e.Text != "" {
+		t.Fatalf("前面是一大段答案就整段保留（Text 空白＝用串流的全部）：%q", e.Text)
+	}
+}

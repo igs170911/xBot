@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"xbot/internal/engine"
 	"xbot/internal/limits"
@@ -112,6 +113,9 @@ type session struct {
 	resetAt int64
 	// intro 是還沒送出的身分與守則：加在這個新 session 第一則訊息的前面，送出後清掉（Options.Instructions）。
 	intro string
+	// all 是這一輪全部的回覆文字；tail 是最後一次呼叫工具之後的文字。用工具前說的「我先看一下…」不算最後的回答
+	// （同 Hermes 的 interim message；2026-10-19 Grok 的 Bot 把開頭那句一起交回給隊友）。
+	all, tail strings.Builder
 }
 
 func (s *session) ID() string { return s.id }
@@ -506,6 +510,9 @@ func (d *Driver) promptDone(s *session, raw json.RawMessage, err error) {
 	cancelling := s.cancelling
 	s.cancelling = false
 	s.tools = map[string]*toolState{}
+	all, tail := s.all.String(), strings.TrimSpace(s.tail.String())
+	s.all.Reset()
+	s.tail.Reset()
 	s.mu.Unlock()
 	if errors.Is(err, engine.ErrDisconnected) {
 		return // disconnected 會送出連線中斷
@@ -539,6 +546,10 @@ func (d *Driver) promptDone(s *session, raw json.RawMessage, err error) {
 	if note != "" && status != engine.StatusError {
 		s.q.push(engine.Event{Type: engine.EventStatus, Session: s.id, Text: note})
 		note = ""
+	}
+	if note == "" && status == engine.StatusComplete && tail != "" && tail != strings.TrimSpace(all) &&
+		utf8.RuneCountInString(strings.TrimSpace(all))-utf8.RuneCountInString(tail) <= limits.InterimNarrationMax {
+		note = tail // 最後的回答是用完工具之後寫的那段；前面只是一兩句「我先看一下」
 	}
 	s.q.push(engine.Event{Type: engine.EventDone, Session: s.id, Status: status, Text: note})
 }
@@ -677,6 +688,15 @@ func (d *Driver) notification(ac *agentConn, method string, params json.RawMessa
 		s.resetAt = rl.ResetsAt * 1000
 	}
 	evs := normalize(p.Update, s.tools, time.Now())
+	for _, e := range evs {
+		switch e.Type {
+		case engine.EventText:
+			s.all.WriteString(e.Text)
+			s.tail.WriteString(e.Text)
+		case engine.EventToolCall:
+			s.tail.Reset()
+		}
+	}
 	s.mu.Unlock()
 	for _, e := range evs {
 		e.Session = s.id

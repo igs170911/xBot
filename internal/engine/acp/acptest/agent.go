@@ -27,7 +27,14 @@ const (
 	PromptRefuse = "refuse"
 	// PromptQuota：回一段文字後，照 Profile 的格式回額度用完的錯誤（EN-7）。
 	PromptQuota = "quota"
+	// PromptNarrate：先說一句「我先看一下」、用一個工具、再寫答案（最後的回答只該是答案）。
+	PromptNarrate = "narrate"
+	// PromptAnswerFirst：先寫完一大段答案、再用工具存檔、最後說「已存檔」（答案不能被丟掉）。
+	PromptAnswerFirst = "answer-first"
 )
+
+// AnswerFirstText 是 PromptAnswerFirst 先寫的那一大段答案。
+var AnswerFirstText = strings.Repeat("這是完整的答案內容。", 30)
 
 // Profile 是一種引擎的假 agent 長相：session/new 回的模式、額度用完時的錯誤格式（照各 CLI 實際的寫法）。
 type Profile struct {
@@ -329,6 +336,16 @@ func (p *peer) prompt(f frame) {
 		p.result(f.ID, map[string]any{"stopReason": reason, "usage": map[string]int{"inputTokens": 10, "outputTokens": 5, "totalTokens": 15}})
 	}
 	switch text {
+	case PromptNarrate, PromptAnswerFirst:
+		first, last := "我先看一下檔案。", "答案是 42。"
+		if text == PromptAnswerFirst {
+			first, last = AnswerFirstText, "已存檔。"
+		}
+		p.chunk(sid, "agent_message_chunk", first)
+		p.update(sid, map[string]any{"sessionUpdate": "tool_call", "toolCallId": "n1", "title": "cat a.txt", "kind": "read", "status": "pending"})
+		p.update(sid, map[string]any{"sessionUpdate": "tool_call_update", "toolCallId": "n1", "status": "completed"})
+		p.chunk(sid, "agent_message_chunk", last)
+		end("end_turn")
 	case PromptHello:
 		p.chunk(sid, "agent_thought_chunk", "thinking…")
 		p.chunk(sid, "agent_message_chunk", "Hel")
