@@ -96,7 +96,7 @@ export function startScrollWatch(version: () => string) {
     summarized = true
     const data = [
       `swipes ok=${health.ok} stuck=${health.stuck} edge=${health.edge}`,
-      `nav ${nav.join('→') || '-'}`,
+      `nav ${nav.map((n) => n ?? '-').join('→') || '-'}`, // 打開後 150ms、2.5 秒時分頁列的位置；沒有分頁列的頁面是 -
       `inset top=${inset('top')} bottom=${inset('bottom')}`,
       `view in=${window.innerHeight}x${window.innerWidth} docW=${document.documentElement.scrollWidth}`,
       `standalone=${(navigator as Navigator & { standalone?: boolean }).standalone ?? matchMedia('(display-mode: standalone)').matches}`,
