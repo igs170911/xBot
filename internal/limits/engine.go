@@ -24,10 +24,35 @@ const (
 	// HermesTerminalTimeoutSeconds 是 Hermes 終端機指令的時限（秒）。出自 LazyBoy server/computers.py:202 _prepare()（terminal.timeout 120）。
 	HermesTerminalTimeoutSeconds = 120
 
-	// HermesPruneTokens、HermesCompressTokens：舊的大型工具結果超過 48K tokens 時修剪、對話超過 100K 時摘要。
-	// 出自 LazyBoy server/computers.py:222–223 _prepare()（compression.proactive_prune_tokens／threshold_tokens）。
-	HermesPruneTokens    = 48000
-	HermesCompressTokens = 100000
+	// HermesPruneTokens：舊的大型工具結果超過 48K tokens 時修剪。出自 LazyBoy server/computers.py:222 _prepare()
+	// （compression.proactive_prune_tokens）。
+	HermesPruneTokens = 48000
+
+	// HermesCompressTokens 是對話超過多少 tokens 時摘要（compression.threshold_tokens）。
+	// 和 LazyBoy 不同：LazyBoy server/computers.py:223 是 100K。實測（2026-10-19，水哥哥一天 20.9M 輸入 tokens）每次請求
+	// 都停在 86–100K，幾乎沒有摘要過；降到 72K 讓摘要真的發生，每次請求少送約 20K。
+	HermesCompressTokens = 72000
+	// HermesCompressTokensOld 是舊版寫進 config.yaml 的值（LazyBoy 的 100K）；看到它就換成 HermesCompressTokens，
+	// 使用者自己改過的其他值保留。
+	HermesCompressTokensOld = 100000
+
+	// HermesContextLength 是告訴 Hermes 的模型視窗大小（model.context_length）。Hermes 經 Model Proxy 量不到視窗，
+	// 會用自己內建的表（deepseek-v4-flash 當成 1M），lean 模式摘要後留下的尾巴是視窗的 2.5%（上限 25K）。
+	// 定成 200K：尾巴變 10K（下限），背景檢討的預算也跟著變小。XBot 新增（LazyBoy 沒有設定）。
+	HermesContextLength = 200000
+
+	// HermesSkillNudgeInterval 是 Hermes 每幾次工具迴圈才在背景檢討「要不要寫成技能」（skills.creation_nudge_interval）。
+	// Hermes 預設 10：幾乎每一輪做完都會跑一次，每次把整段對話重送 4–7 遍（實測 158K–553K tokens，一天多花約 27%）。
+	// XBot 新增（LazyBoy 沒有設定）。
+	HermesSkillNudgeInterval = 40
+
+	// HermesReviewInputTokens 是一次背景檢討最多送多少輸入 tokens（auxiliary.background_review.max_input_tokens，
+	// 所有請求加總；到了就停）。Hermes 預設是視窗的 75%（上限 600K）。XBot 新增。
+	HermesReviewInputTokens = 150000
+
+	// HermesDelegationMaxIterations 是 Hermes 子代理（delegate_task）一次最多幾次工具迴圈（delegation.max_iterations）。
+	// Hermes 預設 250，比主代理的 HermesMaxIterations 還多；子代理只做一小段，60 次夠用。XBot 新增。
+	HermesDelegationMaxIterations = 60
 
 	// HermesIdleWait 是送出新訊息前，最多等 Hermes 把這個 session 的上一輪收完尾（session.info running=false）多久。
 	// Hermes 在 message.complete 之後還要跑 /loop 檢查、寫標題、發布控制快照，跑完才放開 running（tui_gateway/prompt_turn.py

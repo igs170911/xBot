@@ -180,7 +180,9 @@
 | `HermesReadyTimeout`／`HermesCallTimeout` | 15／90 秒 | server/rpc.py:25、:31 | 正確 |
 | `HermesPingInterval`／`HermesPingTimeout`／`HermesMaxFrameBytes` | 15 秒／30 秒／16 MiB | server/rpc.py:21 | 正確 |
 | `HermesMaxIterations`／`HermesTerminalTimeoutSeconds` | 200／120 秒 | server/computers.py:213、:202 | 正確 |
-| `HermesPruneTokens`／`HermesCompressTokens` | 48,000／100,000 | server/computers.py:222–223 | 正確 |
+| `HermesPruneTokens` | 48,000 | server/computers.py:222 | 正確 |
+| `HermesCompressTokens` | **72,000** | server/computers.py:223 是 100,000 | **刻意不同**（見 §10）；舊版寫進 config.yaml 的 100,000（`HermesCompressTokensOld`）開機前換成新值，使用者改過的保留 |
+| `HermesContextLength`／`HermesSkillNudgeInterval`／`HermesReviewInputTokens`／`HermesDelegationMaxIterations` | 200,000／40 次／150,000／60 次 | XBot 新增（2026-10-19 省 token）：Hermes 的 `model.context_length`、`skills.creation_nudge_interval`、`auxiliary.background_review.max_input_tokens`、`delegation.max_iterations`；LazyBoy 沒有設定（用 Hermes 預設 自動偵測／10／視窗 75%／250） | — |
 | `HermesIdleWait` | 30 秒 | XBot 新增：送出前等 Hermes 收完上一輪的尾（`session.info` running=false）；LazyBoy 兩輪之間有路由與設定呼叫，碰不到這個時間差 | — |
 | `HermesStartTimeout` | 630 秒 | Hermes tui_gateway/server.py `_agent_build_wait_cap`（600 秒）＋30 秒：送出後等 `message.start` 的上限 | — |
 | `SessionTTL` | 30 天 | server/main.py:192 | 正確 |
@@ -215,6 +217,7 @@ PRD MM-1 的「每回合載入前 200 行／24 KB」是 OpenMausBot 的做法；
 |---|---|---|---|
 | `ChatTextMax`（連帶 `AnswerTextMax`、`chat.send` 與 `chat.answer` 的 `max` 標籤） | 100,000 | **64,000** | 原註解說「LazyBoy 對使用者的訊息沒有設上限」，但 server/runtime.py:333 有 `len(text)>64000` 就拒絕；PRD §12 也寫 64,000 |
 | `CardFilesMax` | 10（獨立數字） | `= CarryFilesMax` | 值不變，改成直接引用傳話帶檔上限 |
+| `HermesCompressTokens` | 100,000 | **72,000** | 和 LazyBoy 不同（2026-10-19）。實測水哥哥一天 20.9M 輸入 tokens：Hermes 經 Model Proxy 量不到視窗、把 deepseek-v4-flash 當成 1M，每次請求停在 86–100K 幾乎不摘要。同時把 `model.context_length` 定成 200,000（`HermesContextLength`），72K 才真的會摘要、摘要後的尾巴從 25K 變 10K |
 
 既有常數的註解都補上了 LazyBoy 行號。
 

@@ -221,14 +221,7 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 	if cfg == nil {
 		cfg = map[string]any{}
 	}
-	sub := func(k string) map[string]any {
-		if m, ok := cfg[k].(map[string]any); ok {
-			return m
-		}
-		m := map[string]any{}
-		cfg[k] = m
-		return m
-	}
+	sub := func(k string) map[string]any { return child(cfg, k) }
 	base := ModelBaseURL(p.ProviderID)
 	transport := p.Transport
 	if transport == "" {
@@ -245,7 +238,9 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 	approvals["mode"] = ApprovalsMode(p.ApprovalMode)
 	web := sub("web")
 	delete(web, "provider") // Hermes 讀 web.backend（LazyBoy 同樣清掉 web.provider）。
-	cfg["model"] = map[string]any{"default": p.Model, "provider": Provider, "base_url": base, "supports_vision": false}
+	// context_length：Hermes 經 Model Proxy 量不到視窗，會用內建表猜（常猜成 1M），摘要就幾乎不會發生。
+	cfg["model"] = map[string]any{"default": p.Model, "provider": Provider, "base_url": base, "supports_vision": false,
+		"context_length": limits.HermesContextLength}
 	cfg["providers"] = map[string]any{"product": map[string]any{
 		"api": base, "key_env": TokenEnv, "default_model": p.Model, "transport": transport,
 	}}
@@ -263,17 +258,19 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 	if _, ok := compression["proactive_prune_tokens"]; !ok {
 		compression["proactive_prune_tokens"] = limits.HermesPruneTokens
 	}
-	if _, ok := compression["threshold_tokens"]; !ok {
-		compression["threshold_tokens"] = limits.HermesCompressTokens
+	if v, ok := compression["threshold_tokens"]; !ok || v == limits.HermesCompressTokensOld {
+		compression["threshold_tokens"] = limits.HermesCompressTokens // 舊版寫的 100K 換成新的；使用者改過的保留
 	}
+	// 省 token（2026-10-19 實測）：背景檢討「要不要寫成技能」不要每輪都跑，一次的輸入有上限；記憶的檢討照 Hermes 預設。
+	sub("skills")["creation_nudge_interval"] = limits.HermesSkillNudgeInterval
+	aux := sub("auxiliary")
+	child(aux, "background_review")["max_input_tokens"] = limits.HermesReviewInputTokens
+	// 對話串標題由 XBot 自己取（開 session 時帶 title、快判用途 10），Hermes 取的標題沒人用（session.title 略過），
+	// 還會因為帶 reasoning_effort 被供應商拒絕（400）。
+	child(aux, "title_generation")["enabled"] = false
+	sub("delegation")["max_iterations"] = limits.HermesDelegationMaxIterations
 	// 中斷後要不要續跑由 XBot 決定，不讓 Hermes 自己重送（LazyBoy）。
-	desktop := sub("desktop")
-	auto, _ := desktop["auto_continue"].(map[string]any)
-	if auto == nil {
-		auto = map[string]any{}
-		desktop["auto_continue"] = auto
-	}
-	auto["enabled"] = false
+	child(sub("desktop"), "auto_continue")["enabled"] = false
 	tools, _ := cfg["tools"].(map[string]any)
 	toolSearch, _ := tools["tool_search"].(map[string]any)
 	if p.NoToolSearch {
@@ -290,6 +287,16 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 	mcp["computer"] = map[string]any{"command": Python, "args": []any{DesktopMCP}, "trust": "full"}
 	mcp[XBotMCPServer] = map[string]any{"command": Python, "args": []any{XBotMCP}, "trust": "full"}
 	return cfg
+}
+
+// child 回傳 m[k] 這一層設定；沒有或不是物件時換成新的空物件。
+func child(m map[string]any, k string) map[string]any {
+	if c, ok := m[k].(map[string]any); ok {
+		return c
+	}
+	c := map[string]any{}
+	m[k] = c
+	return c
 }
 
 // Env 把 .env 裡的 worker-key 換成新的，其他使用者或 Hermes 存的變數保留。

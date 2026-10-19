@@ -103,6 +103,14 @@ func TestLimitsConsistent(t *testing.T) {
 	if len(ProviderRetryDelays()) != 3 {
 		t.Error("暫時性錯誤應重試 3 次")
 	}
+	// Hermes 省 token（2026-10-19，和 LazyBoy 刻意不同，見 docs/limits.md §10）：摘要門檻要低於 Hermes 自己的比例門檻
+	// （視窗小於 512K 時是 75%），摘要才真的會發生；修剪比摘要早；子代理的迴圈比主代理少。
+	if HermesCompressTokens >= HermesContextLength*3/4 || HermesPruneTokens >= HermesCompressTokens {
+		t.Errorf("摘要門檻 %d 要介於修剪 %d 和視窗 %d 的 75%% 之間", HermesCompressTokens, HermesPruneTokens, HermesContextLength)
+	}
+	if HermesReviewInputTokens >= HermesContextLength || HermesDelegationMaxIterations >= HermesMaxIterations || HermesSkillNudgeInterval <= 10 {
+		t.Error("背景檢討的預算要小於視窗、子代理迴圈要少於主代理、技能檢討要比 Hermes 預設（10）少跑")
+	}
 }
 
 // 可以調的限制：預設比 LazyBoy 寬（使用者決定 2026-10-19），而且都在允許範圍內。
