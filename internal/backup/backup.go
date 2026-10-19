@@ -168,6 +168,9 @@ func CreateContext(ctx context.Context, o Options) (Manifest, error) {
 		if d.Type()&fs.ModeSymlink != 0 {
 			return nil // 不備份符號連結，避免還原時指到資料目錄外
 		}
+		if !d.IsDir() && !d.Type().IsRegular() {
+			return nil // socket（例：Bot 的 ipc/*.sock）、pipe、裝置檔是執行中才有的，tar 也存不了
+		}
 		src := p
 		if !d.IsDir() && strings.HasSuffix(rel, ".db") {
 			snap := filepath.Join(snapDir, strings.ReplaceAll(rel, "/", "_"))

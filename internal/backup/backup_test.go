@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"database/sql"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -152,5 +153,32 @@ func TestIsLogin(t *testing.T) {
 		if got := isLogin(p); got != want {
 			t.Fatalf("isLogin(%q)=%v，應為 %v", p, got, want)
 		}
+	}
+}
+
+// Bot 的 ipc 資料夾有執行中的 socket（2026-10-19 實際遇到：archive/tar: sockets not supported）：略過，不讓備份失敗。
+func TestSkipsSockets(t *testing.T) {
+	data := makeData(t)
+	dir, err := os.MkdirTemp("", "xb")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	ipc := filepath.Join(data, "bots", "b1", "ipc")
+	if err := os.MkdirAll(ipc, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sock := filepath.Join(ipc, "product.sock")
+	if len(sock) > 100 {
+		t.Skip("暫存路徑太長，建不了 unix socket")
+	}
+	l, err := net.Listen("unix", sock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	out := filepath.Join(dir, "b.tar.gz")
+	if _, err := Create(Options{DataDir: data, Out: out}); err != nil {
+		t.Fatalf("有 socket 時備份不該失敗：%v", err)
 	}
 }
