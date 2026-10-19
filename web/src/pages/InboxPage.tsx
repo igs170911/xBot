@@ -8,6 +8,7 @@ import { Icon } from '../ui/Icon'
 import { StatusChip, type Tone } from '../ui/Pill'
 import { useToast } from '../ui/toast-context'
 import { fetchHealth, type Health } from '../health'
+import { diagOn, toggleDiag } from '../shell/ScrollDiag'
 import { ApiError, approvalsDecide, chatAskAgain, inboxDismiss, inboxUndo, routinesRunNow, usageCaps, type UsageCapsOutput } from '../api/generated'
 import { Meter } from '../settings/charts'
 import { usd } from '../settings/format'
@@ -411,6 +412,17 @@ function botState(state?: string): { text: string; working?: boolean; waiting?: 
 
 export function InboxPage() {
   const [health, setHealth] = useState<Health | null | undefined>(undefined)
+  const toast = useToast()
+  // 連點版本 5 下開關手機捲動診斷（暫時的，查完捲不動就拿掉）
+  const [taps, setTaps] = useState<number[]>([])
+  const tapDiag = () => {
+    const now = Date.now()
+    const recent = [...taps.filter((t) => now - t < 2000), now]
+    if (recent.length < 5) return setTaps(recent)
+    setTaps([])
+    toggleDiag()
+    toast.show({ kind: 'done', text: diagOn() ? '已開啟捲動診斷：到對話裡上下滑，然後截圖' : '已關閉捲動診斷' })
+  }
   useEffect(() => {
     fetchHealth().then(setHealth)
   }, [])
@@ -490,7 +502,7 @@ export function InboxPage() {
             </section>
           )}
 
-          <p className="m-0 pt-2 text-center text-meta text-ink-3" data-testid="health">
+          <p className="m-0 pt-2 text-center text-meta text-ink-3" data-testid="health" onClick={tapDiag}>
             {health === undefined ? '連線中…' : health ? `服務正常 · ${health.version}` : '連不到服務'}
           </p>
         </div>
