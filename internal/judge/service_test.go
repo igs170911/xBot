@@ -551,3 +551,36 @@ func TestDefaultTiersUseOpenCodeGo(t *testing.T) {
 		t.Fatalf("預設應為 OpenCode Go：%+v %+v", DefaultTier1, DefaultTier2)
 	}
 }
+
+// 服務的影子模式在背景判：呼叫的人不等模型；模型比用途的時限慢也記得到（2026-10-19：模型 1.2 秒、時限 1 秒，
+// 每次都逾時什麼都沒記到，還讓每則訊息多等 0.3 秒）。
+func TestShadowInBackgroundDoesNotWait(t *testing.T) {
+	e := newEnv(t)
+	e.svc.ShadowInBackground = true
+	slow := 1500 * time.Millisecond // 比「任務完成了沒」的 1 秒時限慢
+	e.up.set(func(upstreamReq) (int, string, time.Duration) {
+		b, _ := json.Marshal(map[string]any{"label": "stuck", "p": 0.9, "why": "其實沒做完"})
+		return 200, reply(string(b)), slow
+	})
+	start := time.Now()
+	d, err := e.svc.Decide(context.Background(), Ask{Use: UseTaskDone, Text: "查好了。", Ref: "task-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if waited := time.Since(start); waited > 300*time.Millisecond {
+		t.Fatalf("影子模式不該等模型：等了 %s", waited)
+	}
+	if d.Label != "done" || d.By != ByRules || d.Outcome != OutcomeShadowPending {
+		t.Fatalf("先回規則：%+v", d)
+	}
+	e.svc.WaitShadow()
+	rs := e.runs(t)
+	if len(rs) != 1 || rs[0].Outcome != OutcomeOK || rs[0].ModelLabel != "stuck" || rs[0].Mode != "shadow" || rs[0].Used != "rules" {
+		t.Fatalf("背景判完要記下模型怎麼說（就算比時限慢）：%+v", rs)
+	}
+	// 直接試（judge.run 的 mode）照舊同步，看得到模型的判斷
+	e.up.set(jsonReply("stuck", 0.9, "其實沒做完"))
+	if d, _ := e.svc.DecideAs(context.Background(), Ask{Use: UseTaskDone, Text: "查好了。"}, ModeShadow); d.Model == nil {
+		t.Fatalf("指定模式時同步：%+v", d)
+	}
+}

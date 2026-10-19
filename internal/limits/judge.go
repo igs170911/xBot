@@ -23,6 +23,8 @@ const (
 
 // 快判模型（X05，PRD §20、FASTJUDGE.md）。等待上限照 PRD §20.2 表；11–15 是 XBot 建議值（P06）。
 const (
+	// JudgeShadowWait 是影子模式在背景等模型的上限：不擋任何人，等久一點才記得到慢一點的模型怎麼判。XBot 自訂。
+	JudgeShadowWait = 10 * time.Second
 	// JudgeWaitRoute 是用途 1 對話分流的等待上限。PRD §20.2：0.3 秒。
 	JudgeWaitRoute = 300 * time.Millisecond
 	// JudgeWaitApproval 是用途 3 要不要找你核定。PRD §20.2：0.5 秒。

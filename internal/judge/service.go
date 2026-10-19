@@ -28,6 +28,8 @@ const (
 	OutcomeRateLimited   = "rate_limited"
 	OutcomeCapped        = "capped"
 	OutcomeNotConfigured = "not_configured"
+	// OutcomeShadowPending：影子模式先回規則，模型在背景判（結果寫進 judge_run）。
+	OutcomeShadowPending = "shadow_pending"
 	OutcomeLocked        = "locked"
 	OutcomeOff           = "off"
 	// OutcomeNoFunds：供應商說帳戶餘額不足（例：OpenCode Zen 沒有儲值，Jev 要 Zen 的隨用隨付餘額）。
@@ -106,12 +108,19 @@ type Service struct {
 	// Notify 在事件寫進 event 表之後呼叫（SSE 用）；可為 nil。
 	Notify func(store.Event)
 	Logger *slog.Logger
+	// ShadowInBackground：影子模式先回規則、模型在背景判（服務用這個；不設時同步判，測試看得到模型怎麼說）。
+	ShadowInBackground bool
 
 	// mu 讓「檢查每日上限＋預留一次」不會同時發生，並記住還沒寫進 judge_run 的呼叫（inflight）。
 	mu        sync.Mutex
 	inflight  int
 	inflight2 int
+	// shadow 是還在背景判的影子呼叫（WaitShadow 等它們；關服務前、測試用）。
+	shadow sync.WaitGroup
 }
+
+// WaitShadow 等背景的影子判斷都寫完。
+func (s *Service) WaitShadow() { s.shadow.Wait() }
 
 func (s *Service) now() time.Time {
 	if s.Now != nil {
@@ -282,9 +291,27 @@ func (s *Service) decide(ctx context.Context, u *Use, a Ask, force Mode) Decisio
 		s.record(ctx, run)
 		return d
 	}
-	wait := u.Wait
-	cctx, cancel := context.WithTimeout(ctx, wait)
+	if d.Mode == ModeShadow && force == "" && s.ShadowInBackground {
+		// 影子模式不用模型的判斷，呼叫的人不必等：先回規則，模型在背景問完再記下來（等久一點，統計才拿得到結果；
+		// 原本照用途的時限等，模型 1 秒多的時候每次都逾時、什麼都沒記到，還讓你的每則訊息多等 0.3 秒）。
+		d.Outcome = OutcomeShadowPending
+		s.shadow.Add(1)
+		go func() {
+			defer s.shadow.Done()
+			base := context.WithoutCancel(ctx)
+			bg, cancel := context.WithTimeout(base, limits.JudgeShadowWait)
+			defer cancel()
+			s.consult(base, bg, u, a, options, set, tries, run, d)
+		}()
+		return d
+	}
+	cctx, cancel := context.WithTimeout(ctx, u.Wait)
 	defer cancel()
+	return s.consult(ctx, cctx, u, a, options, set, tries, run, d)
+}
+
+// consult 照層級問模型（cctx 帶著等待上限；記錄、計次用 ctx，逾時了也寫得進去），記下這次呼叫，回傳更新後的判斷。
+func (s *Service) consult(ctx, cctx context.Context, u *Use, a Ask, options []Option, set Settings, tries []tierTry, run store.JudgeRun, d Decision) Decision {
 	start := s.now()
 	var got *Answer
 	outcome := OutcomeNotConfigured
