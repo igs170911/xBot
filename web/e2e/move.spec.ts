@@ -74,6 +74,7 @@ test('在哪裡跑（E01）：切換主機＝搬家，確認後開始；搬家�
   await page.goto(`/bots/${mi.id}/threads/${th.id}`)
   await page.getByRole('button', { name: '小秘的電腦' }).click()
   const panel = page.getByTestId('computer-panel')
+  await panel.getByRole('button', { name: '電腦設定' }).click()
   const where = panel.getByRole('radiogroup', { name: '在哪裡跑' })
   await expect(where.getByRole('radio', { name: '這台主機' })).toHaveAttribute('aria-checked', 'true')
   await where.getByRole('radio', { name: 'cloud-01（雲端）' }).click()
@@ -91,6 +92,7 @@ test('在哪裡跑（E01）：切換主機＝搬家，確認後開始；搬家�
   // 另一個 Bot（阿凱）正在搬：4 步＋進度條。
   await page.goto(`/bots/${kai.id}`)
   await page.getByRole('button', { name: '阿凱的電腦' }).click()
+  await page.getByTestId('computer-panel').getByRole('button', { name: '電腦設定' }).click()
   const card = page.getByTestId('computer-panel').getByTestId('move-card')
   await expect(card).toContainText('阿凱：這台主機 → cloud-01')
   await expect(card).toContainText('傳 workspace · 1.3 / 2.8 GB')

@@ -29,7 +29,7 @@ export function ComputerPanel({ bot, className }: { bot: Bot; className?: string
   return (
     <aside aria-label={`${bot.name}的電腦`} data-testid="computer-panel" className={cx('flex h-dvh w-[540px] flex-none flex-col border-l border-edge bg-app', className)}>
       <header className="flex h-14 flex-none items-center gap-1 px-3">
-        <IconButton icon={Settings} label="電腦設定" onClick={() => navigate(`/settings/bots/${encodeURIComponent(bot.id)}`)} />
+        <IconButton icon={Settings} label="Bot 設定" onClick={() => navigate(`/settings/bots/${encodeURIComponent(bot.id)}`)} />
         <h2 className="m-0 flex-1 text-center text-title">{bot.name}的電腦</h2>
         <IconButton icon={Expand} label="全視窗" onClick={() => navigate(`/bots/${bot.id}/computer`)} />
         <IconButton icon={X} label="關閉電腦面板" onClick={() => computerPanelStore.set(false)} />

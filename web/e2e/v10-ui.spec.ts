@@ -70,6 +70,7 @@ test('電腦的動作（E01、E10）：重新開機要確認、刪除電腦資�
   await page.goto(`/bots/${mi.id}/threads/${th.id}`)
   await page.getByRole('button', { name: '小秘的電腦' }).click()
   const panel = page.getByTestId('computer-panel')
+  await panel.getByRole('button', { name: '電腦設定' }).click()
   const actions = panel.getByTestId('computer-actions')
   await expect(actions.getByRole('button', { name: '休眠' })).toBeEnabled()
   await expect(panel.getByTestId('network-allow')).toContainText('192.168.1.30:1234')
