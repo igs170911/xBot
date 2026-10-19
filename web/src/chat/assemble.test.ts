@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatReadOutput, XBotEvent } from '../api/generated'
-import { activeTask, applyEvent, applyRead, emptyChat, formatElapsed, threadItems, workSummary, type ChatState } from './assemble'
+import { activeTask, applyEvent, applyRead, applySteps, emptyChat, formatElapsed, threadItems, workSummary, type ChatState } from './assemble'
 
 const T = 'th1'
 const TASK = 'task1'
@@ -58,6 +58,24 @@ const turn: XBotEvent[] = [
 describe('事件組成對話', () => {
   // 2026-10-19 實際遇到：工作早就結束，但重新整理後畫面一直顯示「排隊中 · 30 分」。
   // 原因：補讀的步驟只讀到舊的 queued／running，沒讀到最後的 done。chat.read 的 tasks 說了算，舊狀態也不能蓋掉。
+  it('重新整理後，即時連線已經比補讀的步驟新：「工作了 N 分鐘」照事件的起訖時間算', () => {
+    const read = {
+      thread: { id: T, bot_id: 'b1', title: '', pinned: false, archived: false, unread: 0, last_message_at: 1, created_at: 1 },
+      messages: [
+        { id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '研究一下', task_id: 'k1', created_at: 1000, updated_at: 1000 },
+        { id: 'm2', seq: 2, sender: 'bot:b1', kind: 'text', content: '好了', task_id: 'k1', status: 'complete', created_at: 1000, updated_at: 1000 },
+      ],
+      has_more: false,
+      tasks: { k1: 'done' },
+    } as unknown as ChatReadOutput
+    let s = { ...applyRead(emptyChat, read), lastId: 999 }
+    s = applySteps(s, [
+      { id: 1, kind: 'task.state', bot_id: 'b1', thread_id: T, task_id: 'k1', at: 1000, payload: { state: 'running' } },
+      { id: 2, kind: 'task.state', bot_id: 'b1', thread_id: T, task_id: 'k1', at: 181_000, payload: { state: 'done' } },
+    ] as never)
+    expect(workSummary(s.tasks.k1)).toBe('工作了 3 分鐘 · 0 步')
+  })
+
   it('服務說工作做完了：補讀到的舊狀態不會把它變回排隊中', () => {
     const read = {
       thread: { id: T, bot_id: 'b1', title: '', pinned: false, archived: false, unread: 0, last_message_at: 1, created_at: 1 },

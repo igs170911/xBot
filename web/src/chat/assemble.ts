@@ -503,6 +503,13 @@ export function applySteps(s: ChatState, evs: StepEvent[]): ChatState {
         break
       case 'task.state':
         if (!a || a.state === 'unknown') s = replay()
+        else {
+          // 已經從歷史訊息知道結果了：還是用事件的時間校正起訖（重新整理後「工作了 N 分鐘」才對）
+          const st = (e.payload as { state?: string } | undefined)?.state
+          const startedAt = a.startedAt && a.startedAt < e.at ? a.startedAt : e.at
+          const endedAt = st === 'done' ? e.at : a.endedAt
+          if (startedAt !== a.startedAt || endedAt !== a.endedAt) s = putActivity(s, { ...a, startedAt, endedAt })
+        }
         break
       case 'chat.needs_approval':
         if (a && (a.state === 'waiting_input' || a.state === 'waiting_approval') && !a.request) s = replay()
