@@ -1,6 +1,4 @@
 import { Check } from 'lucide-react'
-import { navigate } from '../router'
-import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { Select } from '../ui/Menu'
 import { cx } from '../ui/cx'
@@ -97,13 +95,6 @@ export function GeneralSection() {
         <Group>
           <Row title="介面語言" sub="目前只有繁體中文。用注音、倉頡選字時按 Enter 不會送出訊息。" wrap>
             <Select label="介面語言" hideLabel value="zh-TW" options={[{ value: 'zh-TW', label: '繁體中文（台灣）' }]} onChange={() => {}} className="w-[220px] max-sm:w-full" />
-          </Row>
-        </Group>
-      </Block>
-      <Block title="帶入舊設定">
-        <Group>
-          <Row title="從 LazyBoy 或 OpenMausBot 帶進來" sub="Bot、技能、記憶、定時任務、團隊與群組；只讀舊資料，不會改動它。" wrap>
-            <Button onClick={() => navigate('/import')}>看看要帶哪些</Button>
           </Row>
         </Group>
       </Block>

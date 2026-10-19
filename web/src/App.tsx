@@ -62,7 +62,6 @@ const NewRoomPage = page(() => import('./mobile/NewPages'), 'NewRoomPage')
 const SharePage = page(() => import('./mobile/SharePage'), 'SharePage')
 const CallPage = page(() => import('./voice/CallPage'), 'CallPage')
 const VoiceSetupPage = page(() => import('./voice/VoiceSetupPage'), 'VoiceSetupPage')
-const ImportPage = page(() => import('./onboard/ImportPage'), 'ImportPage')
 const WelcomePage = page(() => import('./mobile/WelcomePage'), 'WelcomePage')
 
 /** 第一次打開之後才掛上（之後一直掛著，關閉時的焦點歸還照舊）：對話框的程式等你要用時才下載。 */
@@ -86,12 +85,11 @@ const TITLES: Record<string, string> = {
   '/new/bot': '新增 Bot',
   '/new/room': '新增群組',
   '/welcome': '第一次設定',
-  '/import': '帶入舊設定',
   '/agenda': '等你的事',
   '/teams': '團隊地圖',
   '/apps': '連接應用程式',
   '/apps/mcp': '自訂連接（MCP）',
-  '/apps/logins': '網站登入',
+  '/apps/logins': '分享登入',
   '/org': '組織架構',
   '/files': '全部檔案',
   '/settings': '設定',
@@ -183,7 +181,6 @@ function Main() {
   else if (path === '/new/bot') page = <NewBotPage />
   else if (path === '/new/room') page = <NewRoomPage />
   else if (path === '/welcome') page = <WelcomePage />
-  else if (path === '/import') page = <ImportPage />
   else if (profile) page = <BotProfilePage key={profile[1]} botId={profile[1]} />
   else if (call) page = <CallPage key={call[1]} botId={call[1]} />
   else if (voice) page = <VoiceSetupPage key={voice[1]} botId={voice[1]} />

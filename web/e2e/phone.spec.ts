@@ -425,7 +425,7 @@ const AUDIT = [
   '/', '/chats', '/office', '/notifications', '/agenda', '/files', '/apps', '/apps/mcp', '/apps/logins', '/teams', '/org', '/calendar',
   '/settings', '/settings/general', '/settings/models', '/settings/models/judge', '/settings/models/routing', '/settings/computers', '/settings/usage',
   '/settings/advanced', '/settings/advanced/backup', '/settings/advanced/people', '/settings/advanced/lab', '/settings/advanced/network', '/settings/advanced/agents',
-  '/new/bot', '/new/room', '/share', '/import', '/calendar/routines', 'LONG',
+  '/new/bot', '/new/room', '/share', '/calendar/routines', 'LONG',
   'BOT', 'BOT/computer', 'BOT/files', 'BOT/voice', 'BOT/profile', 'BOTSET', 'BOTSET/abilities', 'BOTSET/permissions', 'BOTSET/advanced', 'ROOM',
 ]
 
@@ -534,20 +534,22 @@ test('「/」技能選單：列出技能、選了送出變成使用技能', asyn
   await expect.poll(() => api.lastSend?.text).toBe('使用技能「新聞摘要」：只要科技類')
 })
 
-// iPhone 鍵盤彈出：看得到的高度（visualViewport）變小、整頁被往上推。對話頁要跟著縮，頁首和輸入框都還在畫面裡。
+// iPhone 鍵盤彈出（2026-10-19 實機截圖）：頁面不會變矮，Safari 把「看得到的範圍」往下移、變矮（visualViewport.offsetTop／height）。
+// 對話頁要貼著看得到的範圍：頁首在最上面、輸入框貼著鍵盤；不能留在頁面頂端（那時整個畫面會是黑的）。
 test('鍵盤彈出時（iPhone）：頁首和輸入框都在看得到的範圍裡', async ({ page }) => {
-  // 假的 visualViewport：可以從測試裡改高度並送出 resize（模擬鍵盤）
   await page.addInitScript(() => {
-    const t = new EventTarget() as EventTarget & { height: number; width: number; offsetTop: number; scale: number }
+    const t = new EventTarget() as EventTarget & { height: number; width: number; offsetTop: number; offsetLeft: number; scale: number }
     t.height = window.innerHeight
     t.width = window.innerWidth
     t.offsetTop = 0
+    t.offsetLeft = 0
     t.scale = 1
     Object.defineProperty(window, 'visualViewport', { value: t, configurable: true })
     ;(window as unknown as { __kb: (h: number) => void }).__kb = (h: number) => {
       t.height = h
-      window.scrollTo(0, 300) // iPhone 會把整頁往上推
+      t.offsetTop = window.innerHeight - h // 看得到的範圍移到下半部（鍵盤蓋住的是下面，Safari 把畫面往上推）
       t.dispatchEvent(new Event('resize'))
+      t.dispatchEvent(new Event('scroll'))
     }
   })
   const api = new MockServer(page)
@@ -558,14 +560,95 @@ test('鍵盤彈出時（iPhone）：頁首和輸入框都在看得到的範圍�
   await expect(main).toBeVisible()
   const box = main.getByRole('textbox')
   await box.focus()
-  const kb = Math.round(page.viewportSize()!.height * 0.55) // 鍵盤佔掉約 45%
+  const vh = page.viewportSize()!.height
+  const kb = Math.round(vh * 0.4) // 鍵盤加上候選字列約佔 60%
+  const top = vh - kb
   await page.evaluate((h) => (window as unknown as { __kb: (h: number) => void }).__kb(h), kb)
-  await expect.poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--app-h'))).toBe(`${kb}px`)
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
+  await expect.poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--app-top'))).toBe(`${top}px`)
+  await expect.poll(async () => Math.round((await main.boundingBox())?.y ?? -1)).toBe(top)
   const m = await main.boundingBox()
   const b = await box.boundingBox()
   expect(Math.abs((m?.height ?? 0) - kb)).toBeLessThan(2)
-  expect(m!.y).toBeGreaterThanOrEqual(-1) // 頁首沒被推出去
-  expect(b!.y + b!.height).toBeLessThanOrEqual(kb + 1) // 輸入框在鍵盤上面
-  await expect(page.getByRole('button', { name: /對話串/ })).toBeInViewport()
+  expect(b!.y).toBeGreaterThanOrEqual(top) // 輸入框在看得到的範圍裡
+  expect(b!.y + b!.height).toBeLessThanOrEqual(top + kb + 1)
+  const head = await page.getByRole('button', { name: /對話串/ }).boundingBox()
+  expect(head!.y).toBeGreaterThanOrEqual(top - 1) // 頁首在看得到的範圍最上面
+  expect(head!.y).toBeLessThan(top + 80)
+  // 鍵盤收起來：回到原位
+  await page.evaluate(() => (window as unknown as { __kb: (h: number) => void }).__kb(window.innerHeight))
+  await expect.poll(async () => Math.round((await main.boundingBox())?.y ?? -1)).toBe(0)
+})
+
+// ── 手勢（跟著手指走，像原生 App）────────────────────────────
+
+/** 用觸控事件拖一段（分成幾步，模擬手指移動）。 */
+async function drag(page: Page, from: [number, number], to: [number, number], steps = 8) {
+  await page.evaluate(
+    async ({ from, to, steps }) => {
+      const target = document.elementFromPoint(from[0], from[1]) ?? document.body
+      const touch = (x: number, y: number) => new Touch({ identifier: 1, target, clientX: x, clientY: y })
+      const fire = (type: string, x: number, y: number) => {
+        const t = touch(x, y)
+        target.dispatchEvent(new TouchEvent(type, { touches: type === 'touchend' ? [] : [t], changedTouches: [t], bubbles: true, cancelable: true }))
+      }
+      fire('touchstart', from[0], from[1])
+      for (let i = 1; i <= steps; i++) {
+        fire('touchmove', from[0] + ((to[0] - from[0]) * i) / steps, from[1] + ((to[1] - from[1]) * i) / steps)
+        await new Promise((r) => setTimeout(r, 16))
+      }
+      fire('touchend', to[0], to[1])
+    },
+    { from, to, steps },
+  )
+}
+
+test('手勢：從左邊緣拉出側欄、往左拖收回；拉太短會彈回去', async ({ page }) => {
+  await open(page, '/chats')
+  const vw = page.viewportSize()!.width
+  const y = 400
+  await drag(page, [4, y], [60, y])
+  await expect(page.getByRole('dialog', { name: '側欄' })).toBeHidden()
+  await drag(page, [4, y], [vw * 0.75, y])
+  const drawer = page.getByRole('dialog', { name: '側欄' })
+  await expect(drawer).toBeVisible()
+  await expect.poll(async () => Math.round((await drawer.boundingBox())?.x ?? -999)).toBe(0)
+  await drag(page, [200, y], [10, y])
+  await expect(drawer).toBeHidden()
+})
+
+test('手勢：其他頁從左邊緣往右拖＝回上一頁', async ({ page }) => {
+  await open(page, '/chats')
+  await page.getByRole('button', { name: '設定', exact: true }).click()
+  await expect(page).toHaveURL(/\/settings\/?$/)
+  const vw = page.viewportSize()!.width
+  await drag(page, [4, 400], [vw * 0.7, 400])
+  await expect(page).toHaveURL(/\/chats$/)
+})
+
+test('手勢：對話頁從右邊緣往左拉出對話串，往右拖收回', async ({ page }) => {
+  const { mi } = await open(page, '/')
+  await page.goto(`/bots/${mi.id}`)
+  await expect(page.getByRole('main', { name: /^和/ })).toBeVisible()
+  const vw = page.viewportSize()!.width
+  await drag(page, [vw - 4, 400], [vw * 0.25, 400])
+  const panel = page.getByRole('dialog', { name: '小秘的對話串' })
+  await expect(panel).toBeVisible()
+  await expect(panel.getByRole('button', { name: /比價三家競品/ })).toBeVisible()
+  await drag(page, [vw - 200, 400], [vw - 10, 400])
+  await expect(panel).toBeHidden()
+  // 按「對話串」也能打開
+  await page.getByRole('button', { name: /^對話串/ }).click()
+  await expect(panel).toBeVisible()
+})
+
+test('手勢：底部 sheet 往下拖就關', async ({ page }) => {
+  const { mi } = await open(page, '/')
+  await page.goto(`/bots/${mi.id}`)
+  await page.getByRole('button', { name: /^對話串/ }).click()
+  await page.getByRole('button', { name: '刪除這個對話串' }).click()
+  const sheet = page.getByRole('alertdialog', { name: '刪除這個對話串？' })
+  await expect(sheet).toBeVisible()
+  const box = (await sheet.boundingBox())!
+  await drag(page, [box.x + box.width / 2, box.y + 12], [box.x + box.width / 2, box.y + box.height])
+  await expect(sheet).toBeHidden()
 })

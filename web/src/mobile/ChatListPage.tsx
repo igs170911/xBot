@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { CalendarClock, Crown, FolderOpen, LayoutGrid, Network, Plus, Puzzle, Search, Settings, UsersRound, WifiOff, X } from 'lucide-react'
+import { CalendarClock, Crown, FolderOpen, LayoutGrid, Network, Plus, Puzzle, Search, Settings, UsersRound, WifiOff, X, KeyRound } from 'lucide-react'
 import { chatListThreads } from '../api/generated'
 import { botsStore, type Bot } from '../data/bots'
 import { onEvent } from '../data/events'
@@ -136,8 +136,9 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 }
 
 const MORE = [
-  { to: '/agenda', label: '等你的事（提案與討論）', icon: CalendarClock },
+  { to: '/agenda', label: '提案與討論', icon: CalendarClock },
   { to: '/files', label: '全部檔案', icon: FolderOpen },
+  { to: '/apps/logins', label: '分享登入', icon: KeyRound },
   { to: '/apps', label: '連接應用程式', icon: Puzzle },
   { to: '/teams', label: '團隊地圖', icon: LayoutGrid },
   { to: '/org', label: '組織架構', icon: Network },

@@ -199,7 +199,7 @@ test('I04 自訂連接：清單＋編輯器、Token 只顯示末四碼、缺環�
 
 test('I05＋E09 網站登入：列出網站、分享給其他 Bot、可以復原', async ({ page }, info) => {
   await open(page, '/apps/logins')
-  await expect(page.getByRole('heading', { level: 1, name: '網站登入' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: '分享登入' })).toBeVisible()
   await expect(page.getByText('shopee.tw')).toBeVisible()
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-i05-logins`), fullPage: true })

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { cx } from './cx'
 import { Button } from './Button'
 import { useFocusTrap } from './useFocusTrap'
+import { slide, useDrag } from './useDrag'
 
 export type DialogProps = {
   open: boolean
@@ -28,6 +29,26 @@ export function Dialog({ open, onClose, title, description, children, actions, r
   const descId = useId()
   const onKeyDown = useFocusTrap(ref, open, () => {
     if (!busy) onClose()
+  })
+
+  // 手機的 sheet：往下拖就關（內容捲在最上面時才接手，避免和捲動打架）
+  const sheet = open && !busy && typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches
+  useDrag(ref, {
+    axis: 'y',
+    dir: 1,
+    enabled: !!sheet,
+    size: () => ref.current?.offsetHeight ?? 400,
+    canStart: () => (ref.current?.scrollTop ?? 0) <= 0,
+    onMove: (d) => {
+      const el = ref.current
+      if (!el) return
+      el.style.transition = 'none'
+      el.style.transform = `translateY(${d}px)`
+    },
+    onEnd: (commit) => {
+      if (commit) slide(ref.current, 'translateY(100%)', onClose)
+      else slide(ref.current, 'translateY(0)')
+    },
   })
 
   if (!open) return null

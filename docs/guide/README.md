@@ -19,7 +19,7 @@
 | 讓 Bot 用 GitHub、Notion 等服務 | [連接應用程式](13-apps.md) |
 | 在手機上用、收推播 | [手機](14-phone.md) |
 | 讓 Claude Code 等代理指揮 XBot | [外部代理與 MCP](15-agents-mcp.md) |
-| 從 LazyBoy 或 OpenMausBot 搬過來 | [匯入舊資料](16-import.md) |
+| 從 LazyBoy 或 OpenMausBot 搬過來（指令列） | [匯入舊資料](16-import.md) |
 | XBot 怎麼保護你的金鑰、主機、區網 | [安全模型](17-security.md) |
 | 出問題了 | [疑難排解](18-troubleshooting.md) |
 

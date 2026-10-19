@@ -423,7 +423,7 @@ export function RoomPage({ roomId }: { roomId: string }) {
   const lead = room.members.find((m) => m.lead)?.name ?? ''
 
   return (
-    <div className="flex h-[var(--app-h,100dvh)] min-w-0 flex-1">
+    <div className="flex h-[var(--app-h,100dvh)] min-w-0 flex-1 max-md:fixed max-md:inset-x-0 max-md:top-[var(--app-top,0px)] max-md:z-10">
       <main className="flex min-w-0 flex-1 flex-col bg-app" aria-label={`群組：${room.name}`}>
         {messages.length > 0 && <h1 className="sr-only-text">群組：{room.name}</h1>}
         {phone && (

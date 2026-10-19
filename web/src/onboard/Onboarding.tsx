@@ -31,7 +31,7 @@ import { updateOnboard } from './state'
 //   1. 接上 AI：偵測這台電腦上已登入的 Claude Code、Codex 與本機模型（LM Studio、Ollama），每列一個「用這個」；
 //      都沒找到才直接顯示貼 API 金鑰（自動認出供應商，OpenCode 也可以）。
 //   2. 認識小秘：名字、權限「先問我」都預設好，外觀收在「換個樣子」，下面一行看 Bot 電腦準備好了沒（建電腦）。
-// 帶入舊設定、連手機、導覽改成首頁的「之後再做」卡片（A05）；電腦第一次收到工作時在背景開機（A06）。
+// 連手機、導覽改成首頁的「之後再做」卡片（A05）；電腦第一次收到工作時在背景開機（A06）。
 
 type Status = OnboardStatusOutput
 type Choice =

@@ -1,4 +1,4 @@
-import { ArrowRight, Compass, FolderInput, Smartphone, X } from 'lucide-react'
+import { ArrowRight, Compass, Smartphone, X } from 'lucide-react'
 import type { Bot } from '../data/bots'
 import { useStore } from '../data/store'
 import { navigate } from '../router'
@@ -6,15 +6,12 @@ import { IconButton } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { dismissCard, onboardStore, startTour } from './state'
 
-// 首次設定完成後的首頁（A05、§21）：小秘打招呼，下面是「之後再做」卡片（帶入舊設定只在這台電腦找到 LazyBoy、
-// OpenMausBot 還沒帶進來的舊資料時出現（xbot.onboard.status 的 legacy）；連手機、看導覽），輸入框上方三個建議句子
+// 首次設定完成後的首頁（A05、§21）：小秘打招呼，下面是「之後再做」卡片（連手機、看導覽），輸入框上方三個建議句子
 // （ON-3「第一個任務建議」）。
 
 export const FIRST_TASKS = ['比較蝦皮三家競品的定價', '整理今天的信', '每天早上 9 點給我新聞重點']
 
 type Card = { id: 'import' | 'phone' | 'tour'; icon: typeof Compass; title: string; body: string; action: string; go: () => void }
-
-const IMPORT_CARD: Omit<Card, 'body'> = { id: 'import', icon: FolderInput, title: '帶入舊設定', action: '看看要帶哪些', go: () => navigate('/import') }
 
 const CARDS: Card[] = [
   { id: 'phone', icon: Smartphone, title: '連手機', body: '掃一個 QR 就好。出門在外也能交代事情、按允許。', action: '連手機', go: () => navigate('/settings/computers') },
@@ -32,9 +29,7 @@ export function FirstHome({ bot }: { bot: Bot }) {
   const dismissed = s && s !== 'off' ? s.state.dismissed : []
   // 已經在手機上打開：連手機卡不出現
   const phone = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
-  const legacy = s && s !== 'off' ? s.legacy : undefined
-  const all = legacy?.found ? [{ ...IMPORT_CARD, body: legacy.summary ?? '' }, ...CARDS] : CARDS
-  const cards = all.filter((c) => !dismissed.includes(c.id) && !(phone && c.id === 'phone'))
+  const cards = CARDS.filter((c) => !dismissed.includes(c.id) && !(phone && c.id === 'phone'))
   return (
     <div className="flex flex-col gap-5" data-testid="first-home">
       <div className="max-w-[85%] self-start rounded-bubble bg-bubble-bot px-4 py-2.5 text-[15px] leading-[1.6]">
@@ -48,7 +43,7 @@ export function FirstHome({ bot }: { bot: Bot }) {
           <span className="text-meta text-ink-2">都可以跳過，隨時在設定找到</span>
         </div>
         {cards.length === 0 ? (
-          <p className="m-0 text-sub text-ink-2">都關掉了。帶入舊設定在「設定 › 一般」，連手機在「設定 › 電腦與裝置」，導覽在對話的「更多」選單。</p>
+          <p className="m-0 text-sub text-ink-2">都關掉了。連手機在「設定 › 電腦與裝置」，導覽在對話的「更多」選單。</p>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3">
             {cards.map((c) => (

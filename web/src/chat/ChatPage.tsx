@@ -1,5 +1,5 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Activity as ActivityIcon, AudioLines, ChevronDown, ChevronLeft, Compass, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, Monitor, Phone, Plus, Settings, Trash2, Volume2, VolumeX, X } from 'lucide-react'
+import { Activity as ActivityIcon, AudioLines, ChevronDown, ChevronLeft, Compass, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, MessagesSquare, Monitor, Phone, Plus, Settings, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import { isRecording, teachStartStore, useLesson } from '../teaching/teachingData'
 import { ApiError, chatListThreads, chatSend, chatStop, filesUploadForm, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
 import { botsStore, type Bot, look } from '../data/bots'
@@ -31,6 +31,7 @@ import { usesPlan } from './format'
 import { ProgressDialog } from './ProgressDialog'
 import { ThreadMenu, type Thread } from './ThreadMenu'
 import { DeleteThreadDialog } from './DeleteThread'
+import { ThreadDrawer } from './ThreadDrawer'
 import { WorkSteps } from './WorkSteps'
 import { FirstHome, FirstTasks, useFirstHome } from '../onboard/FirstHome'
 import { startTour } from '../onboard/state'
@@ -223,6 +224,7 @@ function PhoneHeader({ bot, act, busyElsewhere, threads, threadId, onProgress, o
   const st = statusOf(bot, act, busyElsewhere)
   const waiting = useStore(inboxStore).items?.length ?? 0
   const current = threads?.find((t) => t.id === threadId)
+  const [threadsOpen, setThreadsOpen] = useState(false)
   const title = threadId ? current?.title || '對話' : '新對話串'
   const waitingMe = act?.state === 'waiting_input' || act?.state === 'waiting_approval'
   const round = 'flex size-11 flex-none items-center justify-center rounded-full border border-divider bg-panel text-ink active:bg-control'
@@ -244,7 +246,26 @@ function PhoneHeader({ bot, act, busyElsewhere, threads, threadId, onProgress, o
             {st.text}
           </span>
         </span>
-        <ThreadMenu look="phone" botName={bot.name} threads={threads} threadId={threadId} onPick={(id) => navigate(`/bots/${bot.id}/threads/${id}`)} onNew={() => navigate(`/bots/${bot.id}/threads/new`)} onDelete={onDelete} />
+        <button
+          type="button"
+          aria-label={`對話串：${current?.title || '對話'}`}
+          aria-expanded={threadsOpen}
+          onClick={() => setThreadsOpen(true)}
+          className="flex h-11 flex-none items-center gap-1.5 rounded-full border border-divider bg-panel px-3.5 text-ui text-ink active:bg-control"
+        >
+          <Icon icon={MessagesSquare} size={20} />
+          對話串
+        </button>
+        <ThreadDrawer
+          botName={bot.name}
+          threads={threads}
+          threadId={threadId}
+          open={threadsOpen}
+          onOpenChange={setThreadsOpen}
+          onPick={(id) => navigate(`/bots/${bot.id}/threads/${id}`)}
+          onNew={() => navigate(`/bots/${bot.id}/threads/new`)}
+          onDelete={onDelete}
+        />
         <button type="button" aria-label={`${bot.name}的電腦`} className={round} onClick={() => navigate(`/bots/${bot.id}/computer`)}>
           <Icon icon={Monitor} size={20} />
         </button>
@@ -462,7 +483,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   return (
     <div className="flex min-w-0 flex-1">
     <main
-      className="relative flex h-[var(--app-h,100dvh)] min-w-0 flex-1 flex-col bg-app"
+      className="relative flex h-[var(--app-h,100dvh)] min-w-0 flex-1 flex-col bg-app max-md:fixed max-md:inset-x-0 max-md:top-[var(--app-top,0px)] max-md:z-10"
       aria-label={`和${name}的對話`}
       onDragEnter={(e) => {
         if (!hasFiles(e.dataTransfer)) return

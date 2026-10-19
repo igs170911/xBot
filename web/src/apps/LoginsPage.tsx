@@ -63,8 +63,8 @@ export function LoginsPage() {
         <header className="flex items-start gap-3">
           <Button variant="ghost" icon={ArrowLeft} onClick={() => navigate('/apps')} aria-label="回到連接應用程式" className="max-md:hidden" />
           <div className="min-w-0 flex-1">
-            <h1 className="max-md:sr-only-text m-0 text-page font-normal">網站登入</h1>
-            <p className="m-0 mt-0.5 text-sub text-ink-2">每個 Bot 的瀏覽器登入彼此獨立。登入資料只留在 Bot 的電腦裡，這裡只看得到網站名稱。</p>
+            <h1 className="max-md:sr-only-text m-0 text-page font-normal">分享登入</h1>
+            <p className="m-0 mt-0.5 text-sub text-ink-2">一個 Bot 登入過的網站，可以分享給其他 Bot，它們就不用再登入一次。登入資料只留在 Bot 的電腦裡。</p>
           </div>
         </header>
         <div className="flex gap-5 max-md:flex-col">
