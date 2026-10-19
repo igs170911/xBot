@@ -608,6 +608,36 @@ test('打開對話停在最新一則：訊息晚一點才排好（變高）也�
   expect(await scroller.evaluate((el) => el.scrollTop)).toBe(0)
 })
 
+test('真機健康摘要：滑了幾次、幾次有捲動、分頁列有沒有動，切到背景時回報一次（不含對話內容）', async ({ page, browserName }, info) => {
+  test.skip(browserName !== 'chromium' || info.project.name === 'desktop', '要用 Chromium 模擬觸控')
+  const api = new MockServer(page)
+  const { mi } = seed(api)
+  const long = api.addThread(mi.id, '長內容')
+  for (let i = 0; i < 30; i++) api.addMessage(long.id, { sender: i % 2 ? 'bot:' + mi.id : 'owner', status: 'complete', content: `第 ${i + 1} 則：` + '內容很長的一段話。'.repeat(6) })
+  api.override['system.client_report'] = () => ({ logged: true })
+  await api.install()
+  await page.goto(`/bots/${mi.id}/threads/${long.id}`)
+  await expect(page.getByText('第 30 則', { exact: false })).toBeVisible()
+  const cdp = await page.context().newCDPSession(page)
+  for (let n = 0; n < 6; n++) {
+    const [y0, y1] = n % 2 ? [650, 300] : [300, 650]
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 195, y: y0 }] })
+    for (let i = 1; i <= 10; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 195, y: y0 + ((y1 - y0) * i) / 10 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await page.waitForTimeout(600)
+  }
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await expect.poll(() => api.calls.filter((c) => c.op === 'system.client_report' && c.input.kind === 'phone_health').length).toBe(1)
+  const data = String(api.calls.find((c) => c.input.kind === 'phone_health')!.input.data)
+  expect(data).toMatch(/swipes ok=\d+ stuck=0 edge=\d+/)
+  expect(Number(/ok=(\d+)/.exec(data)![1])).toBeGreaterThanOrEqual(4)
+  expect(data).not.toContain('內容很長')
+  expect(api.calls.filter((c) => c.input.kind === 'scroll_stuck')).toHaveLength(0)
+})
+
 test('Bot 一邊回覆，往上看就不再被拉回，滑回最下面才又跟著（各種瀏覽器核心，含 iPhone 的 WebKit）', async ({ page }) => {
   const api = new MockServer(page)
   const { mi } = seed(api)

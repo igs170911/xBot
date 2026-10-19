@@ -55,10 +55,30 @@ function scrollableUnder(x: number, y: number, dy: number): HTMLElement | null {
 
 const REPORTS_MAX = 5
 const SWIPE_MIN = 60
+/** 健康摘要：至少滑了這麼多次才送（太少看不出什麼）；滑到這麼多次就先送。 */
+const HEALTH_MIN = 5
+const HEALTH_AT = 25
+
+/** env(safe-area-inset-*) 實際是多少（iPhone 主畫面 App：狀態列樣式對了，上面才會 > 0）。 */
+function inset(side: 'top' | 'bottom'): number {
+  const probe = document.createElement('div')
+  probe.style.cssText = `position:fixed;visibility:hidden;pointer-events:none;padding-${side}:env(safe-area-inset-${side})`
+  document.body.appendChild(probe)
+  const v = parseFloat(side === 'top' ? getComputedStyle(probe).paddingTop : getComputedStyle(probe).paddingBottom) || 0
+  probe.remove()
+  return Math.round(v)
+}
+
+const navTop = () => {
+  const n = document.querySelector('nav[aria-label="分頁"]')
+  return n ? Math.round(n.getBoundingClientRect().top) : null
+}
 
 /**
  * 一直開著的偵測（只在觸控裝置）：上下滑了超過 60px、手指下面明明有還能捲的區塊，卻什麼都沒捲動 → 回報到服務日誌。
- * 只送元素名稱、數字與狀態，不送對話內容；每次開網頁最多 5 筆。
+ * 另外每次打開送一筆健康摘要（phone_health）：滑了幾次、幾次有捲動、幾次卡住、分頁列打開後有沒有移動、
+ * 瀏海與底部橫條的安全區——真機上順不順，不用請你截圖就看得到。
+ * 只送元素名稱、數字與狀態，不送對話內容；卡住的每次開網頁最多 5 筆，摘要 1 筆。
  */
 let watching = false
 
@@ -66,6 +86,25 @@ export function startScrollWatch(version: () => string) {
   if (watching || typeof window === 'undefined' || !window.matchMedia?.('(pointer: coarse)').matches) return
   watching = true
   let sent = 0
+  const health = { ok: 0, stuck: 0, edge: 0 }
+  const nav: (number | null)[] = []
+  window.setTimeout(() => nav.push(navTop()), 150)
+  window.setTimeout(() => nav.push(navTop()), 2500)
+  let summarized = false
+  const summary = () => {
+    if (summarized || health.ok + health.stuck + health.edge < HEALTH_MIN) return
+    summarized = true
+    const data = [
+      `swipes ok=${health.ok} stuck=${health.stuck} edge=${health.edge}`,
+      `nav ${nav.join('→') || '-'}`,
+      `inset top=${inset('top')} bottom=${inset('bottom')}`,
+      `view in=${window.innerHeight}x${window.innerWidth} docW=${document.documentElement.scrollWidth}`,
+      `standalone=${(navigator as Navigator & { standalone?: boolean }).standalone ?? matchMedia('(display-mode: standalone)').matches}`,
+      `ua=${navigator.userAgent.slice(0, 140)}`,
+    ].join(' | ')
+    void systemClientReport({ kind: 'phone_health', version: version(), data }).catch(() => {})
+  }
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && summary())
   let g: { x: number; y: number; dy: number; moves: number; prevented: number; scrolled: string; cancel: boolean; target: Element | null } | null = null
   window.addEventListener(
     'touchstart',
@@ -92,12 +131,16 @@ export function startScrollWatch(version: () => string) {
     'touchend',
     () => {
       const done = g
-      if (!done || Math.abs(done.dy) < SWIPE_MIN || sent >= REPORTS_MAX) return
+      if (!done || Math.abs(done.dy) < SWIPE_MIN) return
       // 等一下慣性捲動的事件
       window.setTimeout(() => {
-        if (done.scrolled || done.cancel) return
-        const box = scrollableUnder(done.x, done.y, done.dy)
-        if (!box) return // 本來就捲到底了，或手指下面沒有能捲的
+        if (done.cancel) return
+        const box = done.scrolled ? null : scrollableUnder(done.x, done.y, done.dy)
+        if (done.scrolled) health.ok++
+        else if (box) health.stuck++
+        else health.edge++ // 本來就捲到底了，或手指下面沒有能捲的
+        if (health.ok + health.stuck + health.edge === HEALTH_AT) summary()
+        if (!box || sent >= REPORTS_MAX) return
         const top = document.elementFromPoint(done.x, done.y)
         const covered = top && !box.contains(top) ? name(top) : ''
         sent++
