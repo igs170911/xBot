@@ -267,6 +267,7 @@ export function ChatComposer({ name, mode, onSend, onStop, hint, handle, onUploa
           <span className="sr-only-text">{placeholder.replace(/…$/, '')}</span>
           <textarea
             ref={input}
+            data-testid="composer-input"
             rows={1}
             value={text}
             onChange={(e) => setText(e.target.value)}

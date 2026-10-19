@@ -603,7 +603,9 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 	if !mine {
 		return
 	}
-	if e.Type != engine.EventNeedsApproval && e.Type != engine.EventRequestClosed {
+	// 用量、狀態只是記帳，不代表 Bot 又開始動了：問題還在等你時不能把狀態改回 running
+	// （2026-10-19：Hermes 提問後緊接著送 usage，畫面上的提問卡就被收掉，只剩待我處理）。
+	if e.Type != engine.EventNeedsApproval && e.Type != engine.EventRequestClosed && e.Type != engine.EventUsage && e.Type != engine.EventStatus {
 		t.mu.Lock()
 		wasWaiting := t.waiting
 		t.waiting = false

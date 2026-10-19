@@ -271,7 +271,7 @@ function Call({ bot }: { bot: Bot }) {
   return (
     <div className="flex h-dvh min-w-0 flex-1" data-phase={state.phase}>
       <main className="flex min-w-0 flex-1 flex-col bg-app" aria-label="通話">
-        <header className="flex h-14 flex-none items-center gap-2 pl-5 pr-3">
+        <header className="flex h-14 flex-none items-center gap-2 pl-5 pr-3 max-md:h-auto max-md:min-h-14 max-md:pt-[env(safe-area-inset-top)]">
           <Avatar shape={bot.shape} color={bot.color} state="idle" dot="none" size={26} ring="#070707" />
           <span className="flex items-center gap-1 text-[16px]">
             {bot.name}
@@ -318,7 +318,7 @@ function Call({ bot }: { bot: Bot }) {
         </div>
       </main>
       <aside aria-label="這通電話" className="flex w-[380px] flex-none flex-col border-l border-divider bg-app max-xl:w-[320px]">
-        <header className="flex h-14 flex-none items-center px-5">
+        <header className="flex h-14 flex-none items-center px-5 max-md:h-auto max-md:min-h-14 max-md:pt-[env(safe-area-inset-top)]">
           <h2 className="m-0 flex-1 text-[16px] font-normal">這通電話</h2>
           <span className="text-meta text-ink-3">自動存進對話</span>
         </header>

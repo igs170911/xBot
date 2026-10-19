@@ -118,6 +118,20 @@ export function MenuButton({ label, items, trigger, align = 'start' }: MenuButto
   useEffect(() => {
     if (placed) pop.current?.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')?.focus()
   }, [placed])
+  // 畫出來之後量一下：超出畫面左右邊就往內推（例：側欄最下面靠右的「⋯」往左長出螢幕）
+  useLayoutEffect(() => {
+    const el = pop.current
+    if (!placed || !el) return
+    const r = el.getBoundingClientRect()
+    const margin = 8
+    if (r.left < margin) {
+      el.style.left = `${margin}px`
+      el.style.right = 'auto'
+    } else if (r.right > window.innerWidth - margin) {
+      el.style.right = `${margin}px`
+      el.style.left = 'auto'
+    }
+  }, [placed, pos])
   useLayoutEffect(() => {
     if (!open || !btn.current) return
     const update = () => {

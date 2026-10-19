@@ -208,8 +208,8 @@ test('L03 對話：手機頁首（不重複上方列）、工作中、輸入框�
   await expect(page.getByRole('button', { name: /對話串/ })).toBeVisible()
   await expect(page.getByRole('button', { name: '打開側欄' })).toHaveCount(0) // 沒有第二條上方列
   await working(api, { [mi.id]: 'running' })
-  await expect(page.getByRole('textbox')).toBeVisible()
-  const box = (await page.getByRole('textbox').boundingBox())!
+  await expect(page.getByTestId('composer-input')).toBeVisible()
+  const box = (await page.getByTestId('composer-input').boundingBox())!
   expect(box.y + box.height).toBeLessThan(page.viewportSize()!.height)
   await snap(page, info, 'L03')
 })
@@ -380,7 +380,7 @@ test('L20 @ 提到選單與停止鈕', async ({ page }, info) => {
   await page.goto(`/bots/${mi.id}/threads/${t1.id}`)
   await working(api, { [mi.id]: 'running' })
   await api.emit({ kind: 'task.state', bot_id: mi.id, thread_id: t1.id, task_id: 'k-run', payload: { state: 'running' }, persist: false })
-  await page.getByRole('textbox').fill('也請 @')
+  await page.getByTestId('composer-input').fill('也請 @')
   const menu = page.getByRole('listbox', { name: '提到誰' })
   await expect(menu).toContainText('@阿哲')
   await expect(menu).toContainText('@新品上架專案')
@@ -388,14 +388,14 @@ test('L20 @ 提到選單與停止鈕', async ({ page }, info) => {
   await expect(menu).toContainText('@蝦皮賣家中心')
   await snap(page, info, 'L20')
   await menu.getByRole('option', { name: /@阿哲/ }).click()
-  await expect(page.getByRole('textbox')).toHaveValue('也請 @阿哲 ')
+  await expect(page.getByTestId('composer-input')).toHaveValue('也請 @阿哲 ')
 })
 
 test('L21 先判斷列', async ({ page }, info) => {
   const { api, mi, t1 } = await open(page, '/chats')
   await page.goto(`/bots/${mi.id}/threads/${t1.id}`)
-  await page.getByRole('textbox').fill('幫新品帆布包寫 150 字介紹。')
-  await page.getByRole('textbox').press('Enter')
+  await page.getByTestId('composer-input').fill('幫新品帆布包寫 150 字介紹。')
+  await page.getByTestId('composer-input').press('Enter')
   await expect.poll(() => api.lastSend).not.toBeNull()
   const s = api.lastSend!
   const m = api.messages[s.threadId].at(-1)!
@@ -519,7 +519,7 @@ test('「/」技能選單：列出技能、選了送出變成使用技能', asyn
   })
   await api.install()
   await page.goto(`/bots/${mi.id}`)
-  const box = page.getByRole('main', { name: /^和/ }).getByRole('textbox')
+  const box = page.getByRole('main', { name: /^和/ }).getByTestId('composer-input')
   await box.fill('/')
   const menu = page.getByRole('listbox', { name: '技能' })
   await expect(menu.getByRole('option')).toHaveCount(2)
@@ -558,7 +558,7 @@ test('鍵盤彈出時（iPhone）：頁首和輸入框都在看得到的範圍�
   await page.goto(`/bots/${mi.id}`)
   const main = page.getByRole('main', { name: /^和/ })
   await expect(main).toBeVisible()
-  const box = main.getByRole('textbox')
+  const box = main.getByTestId('composer-input')
   await box.focus()
   const vh = page.viewportSize()!.height
   const kb = Math.round(vh * 0.4) // 鍵盤加上候選字列約佔 60%
@@ -586,10 +586,19 @@ async function drag(page: Page, from: [number, number], to: [number, number], st
   await page.evaluate(
     async ({ from, to, steps }) => {
       const target = document.elementFromPoint(from[0], from[1]) ?? document.body
-      const touch = (x: number, y: number) => new Touch({ identifier: 1, target, clientX: x, clientY: y })
+      // WebKit 不能 new Touch()：改送一般事件、自己帶上 touches（手勢只讀 touches[0] 的座標）
       const fire = (type: string, x: number, y: number) => {
-        const t = touch(x, y)
-        target.dispatchEvent(new TouchEvent(type, { touches: type === 'touchend' ? [] : [t], changedTouches: [t], bubbles: true, cancelable: true }))
+        const t = { identifier: 1, target, clientX: x, clientY: y }
+        let ev: Event
+        try {
+          const touch = new Touch(t)
+          ev = new TouchEvent(type, { touches: type === 'touchend' ? [] : [touch], changedTouches: [touch], bubbles: true, cancelable: true })
+        } catch {
+          ev = new Event(type, { bubbles: true, cancelable: true })
+          Object.defineProperty(ev, 'touches', { value: type === 'touchend' ? [] : [t] })
+          Object.defineProperty(ev, 'changedTouches', { value: [t] })
+        }
+        target.dispatchEvent(ev)
       }
       fire('touchstart', from[0], from[1])
       for (let i = 1; i <= steps; i++) {
@@ -604,6 +613,8 @@ async function drag(page: Page, from: [number, number], to: [number, number], st
 
 test('手勢：從左邊緣拉出側欄、往左拖收回；拉太短會彈回去', async ({ page }) => {
   await open(page, '/chats')
+  await expect(page.getByRole('heading', { level: 1, name: '對話' })).toBeVisible()
+  await settle(page)
   const vw = page.viewportSize()!.width
   const y = 400
   await drag(page, [4, y], [60, y])

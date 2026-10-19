@@ -193,3 +193,32 @@ func TestRespondWhenBotGone(t *testing.T) {
 		t.Fatalf("%+v", got)
 	}
 }
+
+// 2026-10-19 實際遇到：Hermes 提問之後緊接著送用量（session.usage），狀態被改回 running，
+// 對話裡的提問卡跟著收掉、只剩待我處理。用量只是記帳：問題沒回之前要一直是「等你回答」。
+func TestUsageAfterQuestionKeepsWaiting(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t)
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Event("message.start", nil)
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			tr.Event("session.usage", map[string]any{"usage": map[string]any{"model": "m", "input": 10, "output": 2, "calls": 1}})
+		}()
+		res := tr.Request("clarify", map[string]any{"question": "團隊要做什麼？"})
+		tr.Complete(string(res), "complete", nil)
+	}
+	res, err := f.rt.Chat(ctx, f.bot.ID, "", "幫我建團隊")
+	if err != nil {
+		t.Fatal(err)
+	}
+	card := f.waitCard(t, res.TaskID)
+	time.Sleep(400 * time.Millisecond) // 等用量送到
+	if task, _ := f.db.GetTask(ctx, res.TaskID); task.State != store.TaskWaitingInput {
+		t.Fatalf("用量送到後還要是 waiting_input：%s", task.State)
+	}
+	if _, err := f.rt.Respond(ctx, card.ID, Answer{Text: "內容團隊"}, "owner"); err != nil {
+		t.Fatal(err)
+	}
+	f.wait(t, res.TaskID)
+}

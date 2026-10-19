@@ -368,7 +368,7 @@ func Register(reg *ops.Registry, s *Service) {
 	})
 	ops.Register(reg, ops.Op[UpdateBotIn, UpdateBotOut]{
 		Name: "xbot.teams.update_bot", Summary: "調整另一個 Bot 的職稱、人設、報告對象或團隊",
-		Description: "要有團隊管理權限（使用者在 Bot 設定開啟）。不能刪除 Bot。改報告對象時不能讓報告關係繞成一圈。",
+		Description: "要有團隊管理權限（使用者在「Bot 設定 → 權限與花費」或「組織架構」開啟）。不能刪除 Bot。改報告對象時不能讓報告關係繞成一圈。",
 		Scope:       ops.ScopeManage, Risk: ops.RiskSafe, ForBot: true,
 		Handle: func(ctx context.Context, call *ops.Call, in UpdateBotIn) (UpdateBotOut, error) {
 			if err := ready(s); err != nil {

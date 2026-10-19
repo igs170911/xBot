@@ -60,6 +60,9 @@ func CheckQuota(ctx context.Context, db *store.DB, creator *store.Bot, n int) er
 		limit = limits.ManagerBotCreatesPerDay
 	}
 	if made+n > limit {
+		if n == 1 && !creator.CanManage {
+			return ops.Limit(fmt.Sprintf("你今天已經建立 %d 個 Bot；需要更多請使用者到「Bot 設定 → 權限與花費」開啟你的「團隊管理權限」（每天可建 %d 個）", made, limits.ManagerBotCreatesPerDay))
+		}
 		if n == 1 {
 			return ops.Limit(fmt.Sprintf("你今天已經建立 %d 個 Bot；需要更多請先問使用者", made))
 		}

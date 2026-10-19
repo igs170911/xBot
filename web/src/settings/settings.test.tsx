@@ -221,3 +221,17 @@ it('頭像顏色：最後一顆是調色盤，可以自己選顏色；選了之�
   expect(isCustomColor('#12abef') && colorHex('#12abef')).toBe('#12abef')
   expect(colorHex('blue')).toBe('#3f8cff')
 })
+
+it('Bot 的權限：團隊管理權限在「權限與花費」就能開', async () => {
+  api.ops['bots.get'] = () => ({ ...BOT, can_manage: false })
+  api.ops['models.presets'] = () => ({ presets: [] })
+  api.ops['engines.status'] = () => ({ bots: [], host: [] })
+  api.ops['bots.update'] = (input) => ({ ...BOT, ...input })
+  render(
+    <ToastProvider>
+      <BotSettingsPage botId="b1" tab="permissions" />
+    </ToastProvider>,
+  )
+  fireEvent.click(await screen.findByRole('switch', { name: '團隊管理權限' }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'bots.update')?.input).toEqual({ id: 'b1', can_manage: true }))
+})

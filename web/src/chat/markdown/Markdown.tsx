@@ -1,4 +1,6 @@
-import { memo, useMemo, type ReactNode } from 'react'
+import { memo, useContext, useMemo, type ReactNode } from 'react'
+import { linkClick } from '../../router'
+import { FileLinkContext } from './fileLink'
 import type { Token, Tokens } from 'marked'
 import { CircleAlert, Info, Lightbulb, MessageSquareWarning, Square, SquareCheck, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { Icon } from '../../ui/Icon'
@@ -13,6 +15,19 @@ import { Table } from './Table'
 // 回覆裡的 HTML 標籤一律當成文字顯示（Bot 的回覆是資料，SEC-8）。
 
 // ── 行內 ─────────────────────────────────────────────
+
+/** 行內程式碼；是 Bot 電腦裡的檔案路徑時變成連結（點了打開檔案）。 */
+function Codespan({ text }: { text: string }) {
+  const link = useContext(FileLinkContext)
+  const href = link?.(decodeEntities(text))
+  const cls = 'break-words rounded-[6px] bg-inset px-1.5 py-0.5 font-mono text-[13px]'
+  if (!href) return <code className={cls}>{text}</code>
+  return (
+    <a href={href} onClick={linkClick(href)} title="打開這個檔案" className="text-accent-ink underline decoration-accent-ink/40 underline-offset-2">
+      <code className={cls}>{text}</code>
+    </a>
+  )
+}
 
 function inline(tokens: Token[] | undefined, key: string): ReactNode[] {
   return (tokens ?? []).map((t, i) => inlineOne(t, `${key}.${i}`))
@@ -45,11 +60,7 @@ function inlineOne(t: Token, k: string): ReactNode {
         </del>
       )
     case 'codespan':
-      return (
-        <code key={k} className="break-words rounded-[6px] bg-inset px-1.5 py-0.5 font-mono text-[13px]">
-          {(t as Tokens.Codespan).text}
-        </code>
-      )
+      return <Codespan key={k} text={(t as Tokens.Codespan).text} />
     case 'br':
       return <br key={k} />
     case 'link': {

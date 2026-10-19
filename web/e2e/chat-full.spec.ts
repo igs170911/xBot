@@ -235,7 +235,11 @@ test('目前進度（C12）與電腦按鈕；載入更早的訊息', async ({ pa
     { ...base, kind: 'chat.tool_result', at: started, payload: { type: 'tool_result', tool: { id: 's1', ok: true } } },
     { ...base, kind: 'chat.tool_call', at: Date.now() - 12_000, payload: { type: 'tool_call', tool: { id: 's2', name: 'browser_open', context: '打開蝦皮搜尋「保溫瓶」' } } },
   )
-  if (info.project.name === 'mobile') await main.getByRole('button', { name: '目前進度' }).click()
+  if (info.project.name === 'mobile') {
+    // 手機：頭像打開 Bot 資料，目前進度在對話串清單裡
+    await main.getByRole('button', { name: /^對話串：/ }).click()
+    await page.getByRole('dialog', { name: '小秘的對話串' }).getByRole('button', { name: '目前進度' }).click()
+  }
   else {
     await main.getByRole('button', { name: '更多' }).click()
     await page.getByRole('menuitem', { name: '目前進度' }).click()

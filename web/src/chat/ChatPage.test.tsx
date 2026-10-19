@@ -296,3 +296,34 @@ it('接手中：輸入框上方說明 Bot 暫停、訊息會排隊，可以一�
   await waitFor(() => expect(api.calls.some((c) => c.path === 'computers.handback')).toBe(true))
   await waitFor(() => expect(screen_.queryByTestId('takeover-bar')).toBeNull())
 })
+
+it('回覆裡的檔案路徑可以點：打開 Bot 的檔案頁並預覽那個檔案', async () => {
+  messages = [{ id: 'm1', seq: 1, sender: 'bot:b1', kind: 'text', content: '報告在 `/workspace/reports/漲粉方案.md`，資料夾是 `/workspace/reports/`。', status: 'complete', created_at: Date.now(), updated_at: Date.now() }]
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  const link = await screen.findByRole('link', { name: '/workspace/reports/漲粉方案.md' })
+  expect(link).toHaveAttribute('href', `/bots/b1/files?path=${encodeURIComponent('/workspace/reports/漲粉方案.md')}`)
+  // 資料夾不變成連結
+  expect(screen.queryByRole('link', { name: '/workspace/reports/' })).toBeNull()
+})
+
+it('這條對話串還沒回答的提問：對話裡也有同一張卡，可以就地回答', async () => {
+  let open = true
+  api.ops['inbox.list'] = (input) => ({
+    items:
+      open && input.status === 'open'
+        ? [{ id: 'q1', kind: 'question', group: 'decide', bot_id: 'b1', task_id: 'k9', thread_id: 't1', title: '小秘有問題問你', body: '團隊要做什麼？', payload: { prompt: '團隊要做什麼？', choices: ['內容團隊', '電商小隊'] }, status: 'open', read: false, created_at: 1 }]
+        : [],
+  })
+  api.ops['chat.respond'] = () => {
+    open = false
+    return { inbox_id: 'q1', task_id: 'k9', thread_id: 't1', status: 'resolved', resolution: 'answered' }
+  }
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
+  const card = await within(main).findByTestId('pending-ask')
+  expect(card).toHaveTextContent('團隊要做什麼？')
+  fireEvent.click(within(card).getByRole('button', { name: /內容團隊/ }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'chat.respond')?.input).toEqual({ inbox_id: 'q1', text: '內容團隊' }))
+})

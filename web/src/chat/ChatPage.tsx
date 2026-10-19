@@ -1,5 +1,5 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Activity as ActivityIcon, AudioLines, ChevronDown, ChevronLeft, Compass, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, MessagesSquare, Monitor, Phone, Plus, Settings, Trash2, Volume2, VolumeX, X } from 'lucide-react'
+import { Activity as ActivityIcon, AudioLines, ChevronDown, ChevronLeft, Compass, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, Monitor, Phone, Plus, Settings, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import { isRecording, teachStartStore, useLesson } from '../teaching/teachingData'
 import { ApiError, chatListThreads, chatSend, chatStop, filesUploadForm, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
 import { botsStore, type Bot, look } from '../data/bots'
@@ -7,7 +7,9 @@ import { onEvent, onReconnect } from '../data/events'
 import { useStore } from '../data/store'
 import { stampLabel } from '../data/ui'
 import { goBack, navigate } from '../router'
-import { inboxStore } from '../data/inbox'
+import { inboxStore, loadInbox } from '../data/inbox'
+import { AskCard } from './AskCard'
+import { askFromItem } from './ask'
 import { usePhone } from '../mobile/nav'
 import { Avatar } from '../ui/Avatar'
 import { Button, IconButton } from '../ui/Button'
@@ -88,7 +90,29 @@ function Messages({ items, bot, threadId, onRetry, canRetry }: { items: ChatItem
     else out.push(<OutcomeRow key={'o' + m.id} msg={m} activity={it.activity} onRetry={isLast && canRetry && retryText ? () => onRetry(retryText) : undefined} />)
     if (m.sender !== 'owner' && !Card) out.push(<JudgeRow key={'j' + m.id} msg={m} threadId={threadId} />)
   }
+  // 工作步驟裡已經畫了的提問卡
+  const shown = new Set(items.flatMap((it) => (it.type === 'activity' ? [it.activity.request?.inboxId] : [it.activity?.request?.inboxId])).filter(Boolean) as string[])
+  out.push(<PendingAsks key="pending-asks" threadId={threadId} shown={shown} bot={bot} />)
   return <>{out}</>
+}
+
+/**
+ * 這條對話串還沒回答的提問（待我處理裡的同一張卡）：工作步驟裡沒畫出來時也要出現在對話裡，就地回答
+ * （2026-10-19：Bot 提問後狀態被改回執行中，提問只剩在待我處理）。
+ */
+function PendingAsks({ threadId, shown, bot }: { threadId: string; shown: Set<string>; bot?: Bot }) {
+  const items = useStore(inboxStore).items ?? []
+  const asks = items.filter((it) => it.thread_id === threadId && it.task_id && (it.kind === 'question' || it.kind === 'approval' || it.kind === 'secret') && !shown.has(it.id))
+  if (!asks.length) return null
+  return (
+    <>
+      {asks.map((it) => (
+        <div key={it.id} data-testid="pending-ask">
+          <AskCard ask={askFromItem(it)} bot={bot ? { name: bot.name, shape: bot.shape, color: bot.color } : undefined} onDone={() => void loadInbox()} />
+        </div>
+      ))}
+    </>
+  )
 }
 
 // ── 提示卡 ───────────────────────────────────────────
@@ -241,23 +265,13 @@ function PhoneHeader({ bot, act, busyElsewhere, threads, threadId, onProgress, o
           <Icon icon={Phone} size={20} />
         </button>
         <span className="flex flex-1 justify-center">
-          <button type="button" aria-label="目前進度" onClick={onProgress} className="flex size-11 items-center justify-center rounded-full">
+          <button type="button" aria-label={`${bot.name}的資料`} onClick={() => navigate(`/bots/${bot.id}/profile`)} className="flex size-11 items-center justify-center rounded-full">
             <Avatar shape={bot.shape} color={bot.color} state={waitingMe ? 'notifying' : act ? 'working' : 'idle'} dot={waitingMe ? 'waiting' : 'none'} ring="#070707" size={40} />
           </button>
           <span className="sr-only-text" data-testid="bot-status">
             {st.text}
           </span>
         </span>
-        <button
-          type="button"
-          aria-label={`對話串：${current?.title || '對話'}`}
-          aria-expanded={threadsOpen}
-          onClick={() => setThreadsOpen(true)}
-          className="flex h-11 flex-none items-center gap-1.5 rounded-full border border-divider bg-panel px-3.5 text-ui text-ink active:bg-control"
-        >
-          <Icon icon={MessagesSquare} size={20} />
-          對話串
-        </button>
         <ThreadDrawer
           botName={bot.name}
           threads={threads}
@@ -267,15 +281,20 @@ function PhoneHeader({ bot, act, busyElsewhere, threads, threadId, onProgress, o
           onPick={(id) => navigate(`/bots/${bot.id}/threads/${id}`)}
           onNew={() => navigate(`/bots/${bot.id}/threads/new`)}
           onDelete={onDelete}
+          onProgress={onProgress}
         />
+        <button type="button" aria-label={`${bot.name}的檔案`} className={round} onClick={() => navigate(`/bots/${bot.id}/files`)}>
+          <Icon icon={FolderOpen} size={20} />
+        </button>
         <button type="button" aria-label={`${bot.name}的電腦`} className={round} onClick={() => navigate(`/bots/${bot.id}/computer`)}>
           <Icon icon={Monitor} size={20} />
         </button>
       </div>
       <button
         type="button"
-        onClick={() => navigate(`/bots/${bot.id}/profile`)}
-        aria-label={`${bot.name}的資料`}
+        onClick={() => setThreadsOpen(true)}
+        aria-label={`對話串：${current?.title || '對話'}`}
+        aria-expanded={threadsOpen}
         className="flex h-11 max-w-full items-center gap-1.5 rounded-full border border-divider bg-panel px-4 text-ink active:bg-control"
       >
         <span className="flex-none text-ui">{bot.name}</span>

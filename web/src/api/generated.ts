@@ -12002,7 +12002,7 @@ export interface TeamsUpdateBotOutput {
 /**
  * 調整另一個 Bot 的職稱、人設、報告對象或團隊
  *
- * 要有團隊管理權限（使用者在 Bot 設定開啟）。不能刪除 Bot。改報告對象時不能讓報告關係繞成一圈。
+ * 要有團隊管理權限（使用者在「Bot 設定 → 權限與花費」或「組織架構」開啟）。不能刪除 Bot。改報告對象時不能讓報告關係繞成一圈。
  *
  * `xbot.teams.update_bot`：權限 manage、風險 safe
  */

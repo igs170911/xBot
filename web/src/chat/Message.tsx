@@ -12,6 +12,7 @@ import type { CardProps } from './cards'
 import { chatStore } from './chatStore'
 import { clockLabel, isLong, judgeBy, VERDICT_LABEL } from './format'
 import { Markdown } from './markdown/Markdown'
+import { botFileLinker, FileLinkContext } from './markdown/fileLink'
 import { isRich } from './markdown/parse'
 import { useCopy } from './useCopy'
 import { VoiceNoteBar } from '../voice/chatVoice'
@@ -121,7 +122,15 @@ export function BotMessage({ msg, last, botId, color }: { msg: ChatMsg; last: bo
       >
         {msg.voice && done && <VoiceNoteBar botId={botId} msg={msg} note={msg.voice} />}
         <Collapsible long={isLong(msg)} mine={false}>
-          {raw ? <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[13px] leading-[1.7] text-ink/85">{msg.content}</pre> : <Markdown text={msg.content} />}
+          {raw ? (
+            <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[13px] leading-[1.7] text-ink/85">{msg.content}</pre>
+          ) : botId ? (
+            <FileLinkContext.Provider value={botFileLinker(botId)}>
+              <Markdown text={msg.content} />
+            </FileLinkContext.Provider>
+          ) : (
+            <Markdown text={msg.content} />
+          )}
         </Collapsible>
       </div>
       {done && msg.content && <BotActions msg={msg} raw={raw} onRaw={() => setRaw((r) => !r)} always={last} botId={botId} />}

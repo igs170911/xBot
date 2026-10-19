@@ -476,7 +476,7 @@ func (s *Service) RequireManager(ctx context.Context, botID string) (store.Bot, 
 		return b, err
 	}
 	if !b.CanManage {
-		return b, ops.Forbidden("你沒有團隊管理權限。請使用者在你的 Bot 設定開啟「團隊管理權限」，或請使用者自己在網頁上調整。")
+		return b, ops.Forbidden("你沒有團隊管理權限。請使用者到「Bot 設定 → 權限與花費」（或「組織架構」頁）開啟你的「團隊管理權限」，或請使用者自己在網頁上調整。")
 	}
 	return b, nil
 }
