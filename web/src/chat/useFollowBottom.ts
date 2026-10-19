@@ -8,6 +8,8 @@ import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react'
 
 /** 離底部這麼近，就算「在最下面」。 */
 const NEAR = 80
+/** 手指或滾輪捲的時候，離底部超過這麼多就不跟了：往上看一點點也算，不然一放開又被下一段字拉回去。 */
+const USER_NEAR = 24
 /** 最後一次手指或慣性捲動後這麼久內，都算還在捲。 */
 const SETTLE = 150
 
@@ -38,8 +40,10 @@ export function useFollowBottom(scrollerRef: RefObject<HTMLElement | null>) {
         const el = scrollerRef.current
         if (!el) return
         const u = userRef.current
-        if (u.touching || Date.now() - u.at < SETTLE) u.at = Date.now() // 慣性還在滑
-        stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR
+        const byUser = u.touching || Date.now() - u.at < SETTLE
+        if (byUser) u.at = Date.now() // 慣性還在滑
+        // 捲回最下面就再跟；其他捲動（拖捲軸、鍵盤）照舊用寬一點的範圍
+        stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < (byUser ? USER_NEAR : NEAR)
       },
       onTouchStart() {
         userRef.current = { touching: true, at: Date.now() }

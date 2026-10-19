@@ -561,7 +561,9 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   }
   if (!bot) return <main className="flex-1" aria-busy="true" />
 
-  const loading = !!threadId && !th?.loaded && items.length === 0
+  // 打開 Bot（網址沒有對話串）時，對話串清單還沒讀到、或馬上要跳到最近的對話串：先不畫「新對話」的開場，
+  // 不然會先閃一下開場再換成訊息（2026-10-20 手機）。
+  const loading = (!!threadId && !th?.loaded && items.length === 0) || (!threadParam && (threads === null || threads.length > 0))
   const empty = !loading && items.length === 0
 
   return (
@@ -620,7 +622,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
         onAutoRead={threadId ? auto.toggle : undefined}
       />
       )}
-      <div ref={scroller} {...scrollHandlers} className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+      <div ref={scroller} {...scrollHandlers} data-testid="chat-scroller" className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
         <div
           className={cx('mx-auto box-border flex min-h-full max-w-[828px] flex-col gap-3.5 px-6 pb-2 pt-3 max-sm:px-3', empty ? (firstHome ? 'justify-start pt-8' : 'justify-center') : 'justify-end')}
           aria-busy={loading || undefined}

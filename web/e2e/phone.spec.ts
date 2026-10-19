@@ -585,7 +585,7 @@ test('打開對話停在最新一則：訊息晚一點才排好（變高）也�
   await api.install()
   await page.goto(`/bots/${mi.id}/threads/${long.id}`)
   await expect(page.getByText('第 30 則', { exact: false })).toBeVisible()
-  const scroller = page.locator('main [class*="overflow-y-auto"]').first()
+  const scroller = page.getByTestId('chat-scroller')
   const gap = () => scroller.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight)
   await expect.poll(gap).toBeLessThan(5)
   // 最後一則晚一點才變高（例：程式碼上色、圖片載入）
@@ -606,6 +606,52 @@ test('打開對話停在最新一則：訊息晚一點才排好（變高）也�
   await grow()
   await page.waitForTimeout(300)
   expect(await scroller.evaluate((el) => el.scrollTop)).toBe(0)
+})
+
+test('Bot 一邊回覆，往上看就不再被拉回，滑回最下面才又跟著（各種瀏覽器核心，含 iPhone 的 WebKit）', async ({ page }) => {
+  const api = new MockServer(page)
+  const { mi } = seed(api)
+  const long = api.addThread(mi.id, '長內容')
+  for (let i = 0; i < 30; i++) api.addMessage(long.id, { sender: i % 2 ? 'bot:' + mi.id : 'owner', status: 'complete', content: `第 ${i + 1} 則：` + '內容很長的一段話。'.repeat(6) })
+  const reply = api.addMessage(long.id, { sender: 'bot:' + mi.id, content: '', streaming: true, task_id: 'k-live' })
+  await api.install()
+  await page.goto(`/bots/${mi.id}/threads/${long.id}`)
+  await expect(page.getByText('第 30 則', { exact: false })).toBeVisible()
+  const scroller = page.getByTestId('chat-scroller')
+  const gap = () => scroller.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight)
+  await expect.poll(gap).toBeLessThan(5)
+  let text = ''
+  const more = async (n: number) => {
+    for (let i = 0; i < n; i++) {
+      text += '回覆一段。'.repeat(4)
+      await api.emit({ kind: 'message.created', bot_id: mi.id, thread_id: long.id, task_id: 'k-live', persist: false, payload: api.storeMessage(long.id, { ...reply, content: text, streaming: true }) })
+      await page.waitForTimeout(50)
+    }
+  }
+  // 手指按下、往上捲 40px（比「在最下面」的 80px 還近），按著不放，Bot 繼續吐字
+  await scroller.evaluate((el) => {
+    el.dispatchEvent(new Event('touchstart', { bubbles: true }))
+    el.scrollTop -= 40
+    el.dispatchEvent(new Event('scroll'))
+  })
+  await more(6)
+  expect(await gap(), '手指按著時被拉回最底下').toBeGreaterThan(30)
+  // 放開：只往上看了一點點也不再跟，下一段字不會把人拉回去
+  await scroller.evaluate((el) => el.dispatchEvent(new Event('touchend', { bubbles: true })))
+  await page.waitForTimeout(300)
+  const after = await scroller.evaluate((el) => el.scrollTop)
+  await more(3)
+  expect(await scroller.evaluate((el) => el.scrollTop), '放開後被拉回最底下').toBe(after)
+  // 自己滑回最下面：之後的新內容又跟著到底
+  await scroller.evaluate((el) => {
+    el.dispatchEvent(new Event('touchstart', { bubbles: true }))
+    el.scrollTop = el.scrollHeight
+    el.dispatchEvent(new Event('scroll'))
+    el.dispatchEvent(new Event('touchend', { bubbles: true }))
+  })
+  await page.waitForTimeout(300)
+  await more(3)
+  await expect.poll(gap).toBeLessThan(5)
 })
 
 test('Bot 一邊回覆，手指往上滑不會被拉回最底下（對話不像被鎖住）', async ({ page, browserName }, info) => {
