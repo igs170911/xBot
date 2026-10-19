@@ -75,12 +75,18 @@ func TestEachBotIsToldItsPlaceAndTheChairmansMatters(t *testing.T) {
 	if !strings.Contains(mgr, "xbot.teams.remove_team") || strings.Contains(mgr, "不能刪除") {
 		t.Fatal(mgr)
 	}
+	// 換模型、開權限、改任何群組、看下屬的檔案（2026-10-19 Bot 說沒有這些工具）
+	for _, want := range []string{"換模型", "xbot.collab.update_group", "xbot.files.read"} {
+		if !strings.Contains(mgr, want) {
+			t.Fatalf("主管的提示少了「%s」：%s", want, mgr)
+		}
+	}
 	must[[]string](t)(co.s.SetApprovalItems(co.ctx, []string{}))
 	if strings.Contains(must[string](t)(co.s.SoulText(co.ctx, b["Dev"])), "核定") {
 		t.Fatal("清單清空後不寫核定段落")
 	}
 	roster := must[string](t)(co.c.RosterText(co.ctx, b["CEO"]))
-	if !strings.Contains(roster, "Dev（研發）［向 CEO 報告］") {
+	if !strings.Contains(roster, "Dev（研發）［向 CEO 報告］") || !strings.Contains(roster, "xbot.collab.update_group") {
 		t.Fatal(roster)
 	}
 	// 名冊也寫出團隊名稱（C11 待辦：花名冊沒有團隊名）。

@@ -39,6 +39,9 @@ type Op[In, Out any] struct {
 	// ManagerOnly 表示 Bot 要有團隊管理權限才用得到（Handle 自己用 org.RequireManager 檢查）。沒有權限的 Bot
 	// 在 XBot MCP 的工具清單裡看不到，省得每次模型請求都送這些工具的說明。只對 Bot 有意義。
 	ManagerOnly bool
+	// TeamRead 表示有團隊管理權限的 Bot 也能把這個操作用在向它報告的 Bot（直屬或間接）上：資源範圍只為這個操作放寬到它的下屬，
+	// Handle 從 call.Identity.Reports 看得到是哪些（例：主管看下屬電腦裡的檔案）。只能用在 Scope 是 read 的操作（看，不能改）。
+	TeamRead bool
 	// RiskOf 依輸入決定風險（例：降低花費上限＝safe、提高＝confirm）。可空白。
 	RiskOf func(In) Risk
 	// AmountOf 回傳這次動作的金額（美元百萬分之一），花錢類的動作才設；代為核准用它算每日金額上限。
@@ -153,6 +156,8 @@ type entry struct {
 	refs    func(raw json.RawMessage) []resourceRef
 	check   func(ctx context.Context, call *Call, raw json.RawMessage) error
 	explain func(ctx context.Context, call *Call, raw json.RawMessage) (string, error)
+	// teamRead：Op.TeamRead（主管 Bot 可以用在下屬身上的唯讀操作）。
+	teamRead bool
 }
 
 type resourceRef struct{ kind, id string }
@@ -211,6 +216,9 @@ func register[In, Out any](r *Registry, op Op[In, Out]) error {
 	if op.Category != "" && !slices.Contains(Categories, op.Category) {
 		return fmt.Errorf("Category 不對：%q（可用：%s）", op.Category, strings.Join(Categories, "、"))
 	}
+	if op.TeamRead && op.Scope != ScopeRead {
+		return fmt.Errorf("TeamRead 只能用在 read 的操作（主管只能看下屬的東西，不能改）")
+	}
 	inT, outT := reflect.TypeFor[In](), reflect.TypeFor[Out]()
 	if inT.Kind() != reflect.Struct || outT.Kind() != reflect.Struct {
 		return fmt.Errorf("輸入與輸出都要是 struct")
@@ -228,7 +236,7 @@ func register[In, Out any](r *Registry, op Op[In, Out]) error {
 		Name: op.Name, Domain: parts[1], Action: parts[2], Summary: op.Summary, Description: op.Description,
 		Scope: op.Scope, Risk: op.Risk, DynamicRisk: op.RiskOf != nil, Category: op.Category, NoDelegate: op.NoDelegate, ForBot: op.ForBot, ManagerOnly: op.ManagerOnly,
 		Reversible: op.Revert != nil, HasAmount: op.AmountOf != nil, Mutates: op.Scope != ScopeRead, Input: in, Output: out,
-	}}
+	}, teamRead: op.TeamRead}
 	decode := func(raw json.RawMessage) (In, error) {
 		var v In
 		if len(strings.TrimSpace(string(raw))) == 0 {

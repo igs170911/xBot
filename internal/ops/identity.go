@@ -80,6 +80,9 @@ type Identity struct {
 	Scopes    []Scope   `json:"scopes,omitempty"`
 	Resources Resources `json:"resources"`
 	Via       string    `json:"via,omitempty"` // ui / http / mcp / cli / product（寫進稽核）
+	// Reports 是向這個 Bot 報告的 Bot（直屬或間接）。只有在呼叫標了 TeamRead 的操作、它有團隊管理權限、
+	// 而且碰到範圍以外的 Bot 時，登錄表才填入；其他時候是 nil。不寫進核准紀錄。
+	Reports []string `json:"-"`
 }
 
 // Owner 是使用者本人：所有權限、不限資源。
@@ -140,6 +143,11 @@ func (id Identity) CanAccess(kind, resourceID string) bool {
 	}
 	allowed := id.Resources.list(kind)
 	return allowed == nil || slices.Contains(allowed, resourceID)
+}
+
+// ReadsReport 回答這個身分能不能以主管的身分看 botID（TeamRead 的操作裡用：botID 向它報告）。
+func (id Identity) ReadsReport(botID string) bool {
+	return id.Kind == KindBot && botID != "" && slices.Contains(id.Reports, botID)
 }
 
 func (id Identity) valid() bool {

@@ -36,6 +36,9 @@ type Agent struct {
 	// BlockedPrompts 是不能送給 agent 的斜線指令開頭（例：Grok 的 /always-approve 會關掉所有核准，SEC-2）。
 	// 訊息可能來自隊友或網頁內容（SEC-8），一律擋下。
 	BlockedPrompts []string
+	// SystemPrompt 表示 agent 接受 session/new、session/load 的 _meta.systemPrompt（claude-agent-acp）：
+	// Bot 的身分與守則加在它的系統提示後面。其他 agent 放在每個新 session 第一則訊息的前面（見 Options.Instructions）。
+	SystemPrompt bool
 }
 
 // ForMode 回傳開行程用的 Agent：環境變數加上這個權限等級的設定。
@@ -82,7 +85,8 @@ var Agents = map[string]Agent{
 		// 映像裡的版本是固定的，不讓它自己更新。
 		Env: []string{"DISABLE_AUTOUPDATER=1", "DISABLE_ERROR_REPORTING=1", "DISABLE_TELEMETRY=1"},
 		// full 也只到 auto：SEC-2 規定危險動作在任何等級都不能自動放行，所以不用 bypassPermissions。
-		Modes: map[string]string{"ask": "default", "edits": "acceptEdits", "auto": "auto", "full": "auto"},
+		Modes:        map[string]string{"ask": "default", "edits": "acceptEdits", "auto": "auto", "full": "auto"},
+		SystemPrompt: true,
 	},
 	EngineCodex: {
 		Engine: EngineCodex, Label: "Codex CLI",

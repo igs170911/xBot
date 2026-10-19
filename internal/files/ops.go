@@ -49,7 +49,7 @@ type Entry struct {
 
 // ListIn 是 xbot.files.list 的輸入。
 type ListIn struct {
-	BotID  string `json:"bot_id,omitempty" resource:"bot" max:"64" desc:"Bot id；Bot 自己呼叫時不用填（就是你自己）"`
+	BotID  string `json:"bot_id,omitempty" resource:"bot" max:"64" desc:"Bot id；Bot 看自己的電腦時不用填"`
 	Path   string `json:"path,omitempty" max:"1024" desc:"要看的資料夾，例：/workspace/報告；不填是 /workspace"`
 	All    bool   `json:"all,omitempty" desc:"true：列出所有檔案（略過隱藏檔與套件資料夾，最新的在前，最多 500 個），忽略 path"`
 	Hidden bool   `json:"hidden,omitempty" desc:"資料夾裡以 . 開頭的也列出"`
@@ -72,7 +72,7 @@ type ListOut struct {
 
 // ReadIn 是 xbot.files.read 的輸入。
 type ReadIn struct {
-	BotID    string `json:"bot_id,omitempty" resource:"bot" max:"64" desc:"Bot id；Bot 自己呼叫時不用填（就是你自己）"`
+	BotID    string `json:"bot_id,omitempty" resource:"bot" max:"64" desc:"Bot id；Bot 看自己的電腦時不用填"`
 	Path     string `json:"path" required:"true" max:"1024" desc:"檔案的完整路徑，例：/workspace/報告.md"`
 	MaxBytes int64  `json:"max_bytes,omitempty" min:"1" max:"1048576" desc:"文字最多讀幾個位元組；不填 256 KB"`
 	Sheet    string `json:"sheet,omitempty" max:"200" desc:"Excel：要看哪個工作表；不填第一個"`
@@ -168,8 +168,8 @@ func Register(reg *ops.Registry, s *Service) {
 	ops.Register(reg, ops.Op[ListIn, ListOut]{
 		Name: "xbot.files.list", Summary: "列出 Bot 電腦裡的檔案",
 		Description: "看 /workspace 底下一個資料夾（資料夾在前、依名稱排序、分頁），或用 all=true 列出所有檔案（成果在前、新的在前）。" +
-			"電腦沒開機時回 state=off，帶 wake=true 會先開機。",
-		Scope: ops.ScopeRead, Risk: ops.RiskSafe, ForBot: true,
+			"電腦沒開機時回 state=off，帶 wake=true 會先開機。" + teamReadNote,
+		Scope: ops.ScopeRead, Risk: ops.RiskSafe, ForBot: true, TeamRead: true,
 		Handle: func(ctx context.Context, call *ops.Call, in ListIn) (ListOut, error) {
 			if err := need(); err != nil {
 				return ListOut{}, err
@@ -184,8 +184,8 @@ func Register(reg *ops.Registry, s *Service) {
 	ops.Register(reg, ops.Op[ReadIn, ReadOut]{
 		Name: "xbot.files.read", Summary: "預覽 Bot 電腦裡的一個檔案",
 		Description: "文字、Markdown、程式碼回傳內容（大檔只讀前面）；CSV、Excel 回傳前 1,000 列的表格；壓縮檔列出裡面有什麼；" +
-			"圖片、PDF 與其他檔案回傳資訊與下載網址。經過連結（symlink）的路徑不開啟。",
-		Scope: ops.ScopeRead, Risk: ops.RiskSafe, ForBot: true,
+			"圖片、PDF 與其他檔案回傳資訊與下載網址。經過連結（symlink）的路徑不開啟。" + teamReadNote,
+		Scope: ops.ScopeRead, Risk: ops.RiskSafe, ForBot: true, TeamRead: true,
 		Handle: func(ctx context.Context, call *ops.Call, in ReadIn) (ReadOut, error) {
 			if err := need(); err != nil {
 				return ReadOut{}, err
@@ -285,11 +285,17 @@ func Register(reg *ops.Registry, s *Service) {
 	})
 }
 
-// self：Bot 只能看自己的電腦。
+// teamReadNote：主管 Bot 可以看下屬電腦裡的檔案（使用者回報 2026-10-19：主管列下屬的檔案被拒絕）。只能看，不能改。
+const teamReadNote = "有團隊管理權限的 Bot 也能看向它報告的 Bot（直屬或間接）的電腦：bot_id 填對方的 id（xbot.teams.team_status 裡有），只能看、不能改。"
+
+// self：Bot 只能看自己的電腦；有團隊管理權限的 Bot 也能看向它報告的 Bot（登錄表已經檢查過，見 ops.Op.TeamRead）。
 func self(call *ops.Call, botID string) (string, error) {
 	if call.Identity.Kind == ops.KindBot {
 		if botID != "" && botID != call.Identity.ID {
-			return "", ops.Forbidden("只能看你自己電腦裡的檔案")
+			if call.Identity.ReadsReport(botID) {
+				return botID, nil
+			}
+			return "", ops.Forbidden("只能看你自己電腦裡的檔案；有團隊管理權限時也能看向你報告的 Bot 的檔案")
 		}
 		return call.Identity.ID, nil
 	}

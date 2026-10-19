@@ -89,6 +89,19 @@ test('群組對話（D01）：交棒分隔線、輪數上限、成員狀態，�
   await expect(page.getByTestId('room-owner').last()).toHaveText('@阿哲 先停，改查 B 公司')
 })
 
+test('Bot 改了群組（xbot.collab.update_group）：群組裡一行分隔線寫誰改了什麼，不是警告', async ({ page }, info) => {
+  const { m, chief, zhe, bian } = await team(page)
+  const room = m.addRoom([chief.id, zhe.id, bian.id], '新品上架專案', 'auto', {})
+  m.addRoomMessage(room.id, { sender: 'owner', content: '@小秘 把群組改名，再把帳房拉進來', mentions: [chief.id], picked: [chief.id] })
+  m.addRoomMessage(room.id, { sender: 'system', content: '小秘 把群組名稱改成「新品上架」、把 帳房 加進群組', notice: 'updated' })
+  m.addRoomMessage(room.id, { sender: 'bot:' + chief.id, speaker_name: '小秘', content: '改好了，帳房也進來了。', round: 0 })
+  await page.goto(`/rooms/${room.id}`)
+  await expect(page.getByRole('separator').filter({ hasText: '小秘 把群組名稱改成「新品上架」' })).toBeVisible()
+  await expect(page.getByTestId('room-notice')).toHaveCount(0)
+  await settle(page)
+  await page.screenshot({ path: shot(`${info.project.name}-D01-room-updated-by-bot`) })
+})
+
 test('兩個 Bot 的往來（C13）：對話裡的往來行，打開看整條', async ({ page }, info) => {
   const { m, chief, zhe } = await team(page)
   const th = m.addThread(chief.id, '比價')

@@ -231,7 +231,7 @@ const rosterRules = "需要隊友的專長時，用 xbot.collab.message_bot 傳�
 	"檔案在各自的電腦裡。訊息裡寫出 /workspace 底下的完整檔案路徑，系統會自動複製一份到對方電腦的 /workspace/from/你的名字/，" +
 	"並改成對方的路徑（每則最多 10 個檔案、50 MB）；其他資料直接寫在訊息中。" +
 	"需要幾位隊友一起討論、分工時，可以用 xbot.collab.start_group 開群組對話（含你自己 2 到 10 位），在開場訊息 @ 第一棒；" +
-	"要在你所在的群組補充或交棒時用 xbot.collab.post_to_group。"
+	"要在你所在的群組補充或交棒時用 xbot.collab.post_to_group；要改群組的名稱、公告、主責、成員或離開時用 xbot.collab.update_group。"
 
 // Resolve 用 id 或名字找隊友（LazyBoy resolve）：完全相同、不分大小寫、名字的一部分，依序找唯一的一位。
 func (s *Service) Resolve(ctx context.Context, ref, senderID string) (Mate, error) {
@@ -321,7 +321,7 @@ func (s *Service) publish(botID, threadID, taskID, kind string, payload any) {
 
 // PeerEvent 是對話裡「已傳訊息給…」「來自…的訊息」「開了群組…」那一行（message.kind=peer，meta.peer）。
 type PeerEvent struct {
-	Event     string `json:"event"` // message_out／message_in／group_created／group_post
+	Event     string `json:"event"` // message_out／message_in／group_created／group_post／group_updated
 	PeerID    string `json:"peer_id,omitempty"`
 	PeerName  string `json:"peer_name,omitempty"`
 	Intent    string `json:"intent,omitempty"`

@@ -3675,7 +3675,7 @@ export interface CollabRoomReadOutput {
     /** 輪數到上限，沒有再叫醒別人 */
     capped?: boolean
     failed?: boolean
-    /** 系統提示的種類（capped） */
+    /** 系統提示的種類：capped（輪數到上限）、updated（Bot 改了群組） */
     notice?: string
     /** 沒點名時誰挑的：lead、judge、everyone */
     picked_by?: string
@@ -3774,6 +3774,52 @@ export interface CollabStopRoomOutput {
  */
 export function collabStopRoom(input: CollabStopRoomInput, opts?: CallOptions): Promise<CollabStopRoomOutput> {
   return invoke('xbot.collab.stop_room', input, opts).then((r) => r.output)
+}
+
+// xbot.collab.update_group
+
+export interface CollabUpdateGroupInput {
+  /** 群組名稱或 id（你所在的群組；有團隊管理權限時任何群組都可以） */
+  group: string
+  /** 新的群組名稱；空白字串表示改回用成員名字自動命名 */
+  name?: string
+  /** 新的群組公告（每位成員都會看到的共同指示）；空白字串表示清掉 */
+  bulletin?: string
+  /** 沒點名時誰回：auto（自動挑一位）、lead（主責）、mentioned（只回應被點名的）、everyone（所有成員） */
+  rule?: 'auto' | 'lead' | 'mentioned' | 'everyone'
+  /** 新的主責（成員名字） */
+  lead?: string
+  /** 要加進群組的隊友（名字） */
+  add?: string[]
+  /** 要移出群組的成員（名字） */
+  remove?: string[]
+  /** true：你自己離開這個群組 */
+  leave?: boolean
+}
+
+export interface CollabUpdateGroupOutput {
+  group: string
+  group_id: string
+  /** 改完之後的成員 */
+  members: string[]
+  /** 主責 */
+  lead: string
+  /** 改了什麼 */
+  changed: string[]
+  /** 你已經離開這個群組 */
+  left?: boolean
+  note?: string
+}
+
+/**
+ * 改你所在的群組：名稱、公告、主責、成員，或離開
+ *
+ * 只改有給的欄位。群組要有 2 到 10 位 Bot；剩不到 2 位的話不能再移出或離開（要刪群組用 xbot.collab.remove_group）。有團隊管理權限的 Bot 可以改任何群組。每次改動都會在群組貼一行提示。你本人請用 xbot.rooms.update。
+ *
+ * `xbot.collab.update_group`：權限 operate、風險 safe
+ */
+export function collabUpdateGroup(input: CollabUpdateGroupInput, opts?: CallOptions): Promise<CollabUpdateGroupOutput> {
+  return invoke('xbot.collab.update_group', input, opts).then((r) => r.output)
 }
 
 // xbot.computers.close_tabs
@@ -5317,7 +5363,7 @@ export function filesDownload(input: FilesDownloadInput, opts?: CallOptions): Pr
 // xbot.files.list
 
 export interface FilesListInput {
-  /** Bot id；Bot 自己呼叫時不用填（就是你自己） */
+  /** Bot id；Bot 看自己的電腦時不用填 */
   bot_id?: string
   /** 要看的資料夾，例：/workspace/報告；不填是 /workspace */
   path?: string
@@ -5368,7 +5414,7 @@ export interface FilesListOutput {
 /**
  * 列出 Bot 電腦裡的檔案
  *
- * 看 /workspace 底下一個資料夾（資料夾在前、依名稱排序、分頁），或用 all=true 列出所有檔案（成果在前、新的在前）。電腦沒開機時回 state=off，帶 wake=true 會先開機。
+ * 看 /workspace 底下一個資料夾（資料夾在前、依名稱排序、分頁），或用 all=true 列出所有檔案（成果在前、新的在前）。電腦沒開機時回 state=off，帶 wake=true 會先開機。有團隊管理權限的 Bot 也能看向它報告的 Bot（直屬或間接）的電腦：bot_id 填對方的 id（xbot.teams.team_status 裡有），只能看、不能改。
  *
  * `xbot.files.list`：權限 read、風險 safe
  */
@@ -5496,7 +5542,7 @@ export function filesMoveBetweenBots(input: FilesMoveBetweenBotsInput, opts?: Ca
 // xbot.files.read
 
 export interface FilesReadInput {
-  /** Bot id；Bot 自己呼叫時不用填（就是你自己） */
+  /** Bot id；Bot 看自己的電腦時不用填 */
   bot_id?: string
   /** 檔案的完整路徑，例：/workspace/報告.md */
   path: string
@@ -5572,7 +5618,7 @@ export interface FilesReadOutput {
 /**
  * 預覽 Bot 電腦裡的一個檔案
  *
- * 文字、Markdown、程式碼回傳內容（大檔只讀前面）；CSV、Excel 回傳前 1,000 列的表格；壓縮檔列出裡面有什麼；圖片、PDF 與其他檔案回傳資訊與下載網址。經過連結（symlink）的路徑不開啟。
+ * 文字、Markdown、程式碼回傳內容（大檔只讀前面）；CSV、Excel 回傳前 1,000 列的表格；壓縮檔列出裡面有什麼；圖片、PDF 與其他檔案回傳資訊與下載網址。經過連結（symlink）的路徑不開啟。有團隊管理權限的 Bot 也能看向它報告的 Bot（直屬或間接）的電腦：bot_id 填對方的 id（xbot.teams.team_status 裡有），只能看、不能改。
  *
  * `xbot.files.read`：權限 read、風險 safe
  */
@@ -12329,6 +12375,16 @@ export interface TeamsUpdateBotInput {
   reports_to?: string
   /** 移到哪個團隊（名稱）；「未分區」表示離開團隊 */
   team?: string
+  /** 換引擎（要使用者按允許）；hermes 以外的用使用者的訂閱，使用者還要在 Bot 設定另外同意 */
+  engine?: 'hermes' | 'claude-code' | 'codex' | 'gemini' | 'opencode' | 'grok'
+  /** 換模型（要使用者按允許）：Hermes 寫「<供應商>/<模型>」或只寫模型；空白字串表示改回預設模型 */
+  model?: string
+  /** 思考強度（要使用者按允許） */
+  effort?: 'low' | 'medium' | 'high'
+  /** 打開或關掉它的團隊管理權限（要使用者本人按允許） */
+  can_manage?: boolean
+  /** 為什麼要改（寫在核准卡上給使用者看） */
+  reason?: string
 }
 
 export interface TeamsUpdateBotOutput {
@@ -12338,11 +12394,11 @@ export interface TeamsUpdateBotOutput {
 }
 
 /**
- * 調整另一個 Bot 的職稱、人設、報告對象或團隊
+ * 調整另一個 Bot 的職稱、人設、報告對象、團隊、模型、引擎或團隊管理權限
  *
- * 要有團隊管理權限（使用者在「Bot 設定 → 權限與花費」或「組織架構」開啟）。刪 Bot 用 xbot.teams.remove_bot（要使用者按允許）。改報告對象時不能讓報告關係繞成一圈。
+ * 要有團隊管理權限（使用者在「Bot 設定 → 權限與花費」或「組織架構」開啟）。職稱、人設、報告對象、團隊直接改；換模型、引擎、思考強度（會改變花費）或開關團隊管理權限，會先送一張核准卡給使用者，寫出每一項從什麼改成什麼，使用者按允許才改，不能代為核准。刪 Bot 用 xbot.teams.remove_bot（要使用者按允許）。改報告對象時不能讓報告關係繞成一圈。
  *
- * `xbot.teams.update_bot`：權限 manage、風險 safe
+ * `xbot.teams.update_bot`：權限 manage、風險 safe（依輸入可能需要核准）
  */
 export function teamsUpdateBot(input: TeamsUpdateBotInput, opts?: CallOptions): Promise<TeamsUpdateBotOutput> {
   return invoke('xbot.teams.update_bot', input, opts).then((r) => r.output)
@@ -13157,6 +13213,7 @@ export interface Ops {
   'xbot.collab.start_group': { input: CollabStartGroupInput; output: CollabStartGroupOutput }
   'xbot.collab.stop_chain': { input: CollabStopChainInput; output: CollabStopChainOutput }
   'xbot.collab.stop_room': { input: CollabStopRoomInput; output: CollabStopRoomOutput }
+  'xbot.collab.update_group': { input: CollabUpdateGroupInput; output: CollabUpdateGroupOutput }
   'xbot.computers.close_tabs': { input: ComputersCloseTabsInput; output: ComputersCloseTabsOutput }
   'xbot.computers.egress_status': { input: ComputersEgressStatusInput; output: ComputersEgressStatusOutput }
   'xbot.computers.handback': { input: ComputersHandbackInput; output: ComputersHandbackOutput }
@@ -13399,6 +13456,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.collab.start_group': { path: '/api/v1/collab.start_group', scope: 'operate', risk: 'safe', mutates: true, summary: '和隊友開一個群組對話' },
   'xbot.collab.stop_chain': { path: '/api/v1/collab.stop_chain', scope: 'operate', risk: 'safe', mutates: true, summary: '停止一條 Bot 之間的往來' },
   'xbot.collab.stop_room': { path: '/api/v1/collab.stop_room', scope: 'operate', risk: 'safe', mutates: true, summary: '停止群組裡所有成員的工作' },
+  'xbot.collab.update_group': { path: '/api/v1/collab.update_group', scope: 'operate', risk: 'safe', mutates: true, summary: '改你所在的群組：名稱、公告、主責、成員，或離開' },
   'xbot.computers.close_tabs': { path: '/api/v1/computers.close_tabs', scope: 'operate', risk: 'safe', mutates: true, summary: '關掉 Bot 電腦瀏覽器裡的分頁，只留一個空白分頁（查完網頁沒關的）' },
   'xbot.computers.egress_status': { path: '/api/v1/computers.egress_status', scope: 'read', risk: 'safe', mutates: false, summary: '看「從家裡出去」的設定與各主機上 Tailscale 小容器的狀態' },
   'xbot.computers.handback': { path: '/api/v1/computers.handback', scope: 'operate', risk: 'safe', mutates: true, summary: '把電腦交還給 Bot，可以附一句說明；Bot 會從目前的畫面接著做原本的工作' },
@@ -13555,7 +13613,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.teams.team_status': { path: '/api/v1/teams.team_status', scope: 'read', risk: 'safe', mutates: false, summary: '看團隊每個人在做什麼' },
   'xbot.teams.templates': { path: '/api/v1/teams.templates', scope: 'read', risk: 'safe', mutates: false, summary: '團隊範本（行銷、工程、公司）' },
   'xbot.teams.update': { path: '/api/v1/teams.update', scope: 'manage', risk: 'safe', mutates: true, summary: '改團隊（名稱、說明、主管、團隊記憶、成員）' },
-  'xbot.teams.update_bot': { path: '/api/v1/teams.update_bot', scope: 'manage', risk: 'safe', mutates: true, summary: '調整另一個 Bot 的職稱、人設、報告對象或團隊' },
+  'xbot.teams.update_bot': { path: '/api/v1/teams.update_bot', scope: 'manage', risk: 'safe', mutates: true, summary: '調整另一個 Bot 的職稱、人設、報告對象、團隊、模型、引擎或團隊管理權限' },
   'xbot.teams.work_review': { path: '/api/v1/teams.work_review', scope: 'read', risk: 'safe', mutates: false, summary: '看自己和團隊最近的工作與出錯的地方（每週檢討用）' },
   'xbot.usage.caps': { path: '/api/v1/usage.caps', scope: 'read', risk: 'safe', mutates: false, summary: '看花費上限與目前花費' },
   'xbot.usage.export': { path: '/api/v1/usage.export', scope: 'read', risk: 'safe', mutates: false, summary: '匯出用量明細（CSV）' },

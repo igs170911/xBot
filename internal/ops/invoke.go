@@ -82,9 +82,24 @@ func (r *Registry) invoke(ctx context.Context, id Identity, name string, raw jso
 		audit.target = refs[0].id
 	}
 	for _, ref := range refs {
-		if !id.CanAccess(ref.kind, ref.id) {
-			return Result{}, audit.fail(ctx, Forbidden(fmt.Sprintf("%s 不能碰這個%s（%s）", id.DisplayName(), resourceNames[ref.kind], ref.id)))
+		if id.CanAccess(ref.kind, ref.id) {
+			continue
 		}
+		// 主管 Bot 看下屬的東西（只有標了 TeamRead 的唯讀操作）
+		if e.teamRead && ref.kind == ResourceBot && id.Kind == KindBot {
+			if id.Reports == nil {
+				reports, err := r.reportsOf(ctx, id.ID)
+				if err != nil {
+					return Result{}, audit.fail(ctx, Internal(err))
+				}
+				id.Reports = reports
+				call.Identity = id
+			}
+			if id.ReadsReport(ref.id) {
+				continue
+			}
+		}
+		return Result{}, audit.fail(ctx, Forbidden(fmt.Sprintf("%s 不能碰這個%s（%s）", id.DisplayName(), resourceNames[ref.kind], ref.id)))
 	}
 	botID := firstBot(refs)
 	if botID == "" && id.Kind == KindBot {
