@@ -403,6 +403,17 @@ func (s *stack) startBackground() {
 		slog.Warn("收尾上次沒做完的搬家失敗", "err", err)
 	}
 	go s.computers.RunMoveCleanup(ctx)
+	// 服務重開時 product.sock 都關了，還開著的電腦要等下一件工作才會補開；在那之前電腦裡要用模型或 XBot 工具的
+	// （例：Hermes 的背景整理）一律 502。開機中的電腦現在就補開。
+	if boxes, err := s.db.ListBoxes(ctx, ""); err == nil {
+		for _, b := range boxes {
+			if b.State == "running" {
+				if err := s.sockets.Ensure(b.BotID); err != nil {
+					slog.Warn("補開 Bot 的 product.sock 失敗", "bot", b.BotID, "err", err)
+				}
+			}
+		}
+	}
 	// 以前刪 Bot 留下的空群組（少於 2 位成員，不能用也不能編輯）
 	if gone, err := s.collab.PruneRooms(ctx, ""); err != nil {
 		slog.Warn("清掉人數不夠的群組失敗", "err", err)
