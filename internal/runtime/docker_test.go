@@ -226,6 +226,9 @@ func TestDockerChatEndToEnd(t *testing.T) {
 	if !strings.Contains(string(cfgOut), "http://127.0.0.1:8642/model/openai/v1") || !strings.Contains(string(cfgOut), "XBOT_MODEL_TOKEN="+string(wk)) {
 		t.Fatalf("設定內容：%s", cfgOut)
 	}
+	if !strings.Contains(string(cfgOut), "tool_search:") {
+		t.Fatalf("XBot 的工具要直接給模型看（tool_search 關掉）：%s", cfgOut)
+	}
 
 	// 同一條對話串再說一次（沿用連線與 session），再測停止。
 	res2, err := rt.Chat(ctx, bot.ID, res.ThreadID, "再回覆一次 OK")

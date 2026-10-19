@@ -242,13 +242,10 @@ func (c *Computers) Prepare(ctx context.Context, h hosts.Host, botID, containerI
 		ProviderID: ref.Provider, Model: ref.Model, Transport: ref.Transport, Effort: b.Effort,
 		WorkerKey: string(key), UID: box.BotUID, GID: box.BotGID, ApprovalMode: b.ApprovalMode, MemoryOff: !b.MemoryEnabled,
 	}
-	if as, ok := c.Providers.(AuthSource); ok {
-		auth, err := as.ProviderAuth(ctx, ref.Provider)
-		if err != nil {
-			return err
-		}
-		p.NoToolSearch = auth == proxy.AuthOAuthCodex
-	}
+	// 一律關掉 Hermes 的工具搜尋，XBot 的工具全部直接給模型看。開著時 MCP 工具都藏在 tool_search 後面，
+	// 較弱的模型（例：deepseek-v4-flash）找不到 xbot.teams.remove_team 就說「沒有這個工具」（使用者回報 2026-10-19）。
+	// ChatGPT 方案（oauth_codex）本來就要關（E13）。
+	p.NoToolSearch = true
 	if c.Apps != nil {
 		apps, err := c.Apps(ctx, botID)
 		if err != nil {
