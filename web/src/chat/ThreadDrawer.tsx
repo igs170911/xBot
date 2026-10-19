@@ -59,7 +59,7 @@ export function ThreadDrawer({
           <span className="flex-1 text-title">對話串</span>
           <IconButton icon={X} label="關閉對話串" onClick={close} data-autofocus />
         </div>
-        <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2">
+        <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-y-contain px-2">
           {(threads ?? []).map((t) => {
             const on = t.id === threadId
             return (

@@ -87,13 +87,15 @@ export function AppShell({ path, title, children }: { path: string; title: strin
         <Sidebar path={path} rail={rail} />
       </div>
 
-      <div ref={page} data-phone-page="1" className={tab ? 'flex min-w-0 flex-1 flex-col bg-app max-md:pb-[calc(57px+env(safe-area-inset-bottom))]' : 'flex min-w-0 flex-1 flex-col bg-app'}>
+      <div ref={page} data-phone-page="1" className={tab ? 'flex min-w-0 flex-1 flex-col bg-app max-md:pb-[calc(57px+env(safe-area-inset-bottom))]' : 'flex min-w-0 flex-1 flex-col bg-app max-md:pb-[env(safe-area-inset-bottom)]'}>
         {/* 全部停下中的提示；手機的對話頁是貼著可見範圍的 fixed 版面，提示改放在輸入框上面 */}
         {!(phone && /^\/(bots\/[^/]+(\/threads\/[^/]+)?|rooms\/[^/]+)\/?$/.test(path)) && <PauseBanner />}
         {phone && !ownsPhoneHeader(path) && <PhoneBar title={title} back={backFallback(path)} heading={false} />}
         {children}
       </div>
       {phone && tab && <TabBar path={path} />}
+      {/* 狀態列（時間、電量）後面的底色：App 蓋滿整個螢幕（black-translucent），捲動的內容不會跑到時間下面 */}
+      {phone && <div aria-hidden="true" data-status-bar="1" className="fixed inset-x-0 top-0 z-[35] h-[env(safe-area-inset-top)] bg-app" />}
 
       {phone && side.mounted && (
         <div className="fixed inset-0 z-50 md:hidden" data-testid="drawer" aria-hidden={side.hidden || undefined} inert={side.hidden || undefined}>

@@ -215,7 +215,7 @@ export function FilePreview({ botId, bot, path, actions, onClose, compact, foote
         )}
         {onClose && <IconButton icon={X} label="關閉預覽" onClick={onClose} />}
       </header>
-      <div className="min-h-0 flex-1 overflow-auto px-4 py-4">
+      <div className="min-h-0 flex-1 overflow-auto overscroll-y-contain px-4 py-4">
         {!state && <p className="m-0 text-ui-sm text-ink-3">讀取中…</p>}
         {state?.error && (
           <div className="flex flex-col items-center gap-2 rounded-group bg-inset px-6 py-10 text-center" role="alert">

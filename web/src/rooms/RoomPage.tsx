@@ -506,7 +506,7 @@ export function RoomPage({ roomId }: { roomId: string }) {
             <span className="min-w-0 flex-1 truncate">群組指示：{room.bulletin}</span>
           </div>
         )}
-        <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
           <div className={cx('mx-auto box-border flex min-h-full max-w-[828px] flex-col gap-3.5 px-6 pb-2 pt-3 max-sm:px-3', messages.length ? 'justify-end' : 'justify-center')} aria-live="polite">
             {messages.length === 0 ? <Suggestions members={room.members} onPick={setText} /> : <Timeline messages={messages} members={room.members} />}
             <LiveCard members={room.members} />

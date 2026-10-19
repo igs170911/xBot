@@ -109,6 +109,13 @@ export function FilesPage() {
   const [who, setWho] = useState('all')
   const [q, setQ] = useState('')
   const [grid, setGrid] = useState(true)
+  // 各個 Bot 的檔案各自讀：一個一個冒出來、讀完沒檔案的又收掉，整頁一直跳（2026-10-20 手機）。
+  // 全部讀完（最多等 3 秒）再一次畫出來。
+  const [settled, setSettled] = useState(false)
+  useEffect(() => {
+    const t = window.setTimeout(() => setSettled(true), 3000)
+    return () => window.clearTimeout(t)
+  }, [])
   const [uploadTo, setUploadTo] = useState('')
   const input = useRef<HTMLInputElement>(null)
   const toast = useToast()
@@ -210,7 +217,8 @@ export function FilesPage() {
 
         {bots.length === 0 && <p className="m-0 py-10 text-center text-ui text-ink-2">還沒有 Bot。建立一個 Bot，它做出的檔案會出現在這裡。</p>}
 
-        {shownBots.map((b) => {
+        {!settled && shownBots.some((b) => !results[b.id]) && <p className="m-0 py-6 text-center text-sub text-ink-3">讀取中…</p>}
+        {(settled || shownBots.every((b) => results[b.id])) && shownBots.map((b) => {
           const r = results[b.id]
           const files = (r?.out?.entries ?? []).filter((e) => e.important && matches(e, q) && (filter === 'all' || (e.group ?? 'result') === filter))
           const state = r?.out?.state

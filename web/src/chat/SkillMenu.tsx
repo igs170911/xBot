@@ -80,7 +80,7 @@ export function matchSkills(skills: Skill[], query: string): Skill[] {
 export function SkillMenu({ skills, query, active, onPick }: { skills: Skill[]; query: string; active: number; onPick: (s: Skill) => void }) {
   const list = matchSkills(skills, query)
   return (
-    <div role="listbox" aria-label="技能" className="absolute inset-x-0 bottom-full z-20 mb-2 flex max-h-[min(380px,50dvh)] flex-col overflow-y-auto rounded-menu border border-divider bg-panel p-1.5 shadow-pop">
+    <div role="listbox" aria-label="技能" className="absolute inset-x-0 bottom-full z-20 mb-2 flex max-h-[min(380px,50dvh)] flex-col overflow-y-auto overscroll-y-contain rounded-menu border border-divider bg-panel p-1.5 shadow-pop">
       <span className="px-2.5 pb-1 pt-1 text-meta text-ink-3">指令與技能</span>
       {list.length === 0 && <span className="px-2.5 py-2 text-sub text-ink-3">沒有符合的指令或技能</span>}
       {list.map((s, i) => (

@@ -48,7 +48,7 @@ export function MentionMenu({ query, exclude, onPick }: { query: string; exclude
   const groups = (rooms ?? []).filter((r) => r.name.toLowerCase().includes(q))
   if (!list.length && !groups.length && !appRows.length) return null
   return (
-    <div role="listbox" aria-label="提到誰" className="absolute inset-x-0 bottom-full z-20 mb-2 flex max-h-[min(420px,55dvh)] flex-col overflow-y-auto rounded-menu border border-divider bg-panel p-1.5 shadow-pop">
+    <div role="listbox" aria-label="提到誰" className="absolute inset-x-0 bottom-full z-20 mb-2 flex max-h-[min(420px,55dvh)] flex-col overflow-y-auto overscroll-y-contain rounded-menu border border-divider bg-panel p-1.5 shadow-pop">
       {list.length > 0 && <span className="px-2.5 pb-1 pt-1 text-meta text-ink-3">Bot</span>}
       {list.map((b) => {
         const st = activity[b.id]?.state

@@ -430,6 +430,99 @@ const AUDIT = [
   'BOT', 'BOT/computer', 'BOT/files', 'BOT/voice', 'BOT/profile', 'BOTSET', 'BOTSET/abilities', 'BOTSET/permissions', 'BOTSET/advanced', 'ROOM',
 ]
 
+// 2026-10-20 實機：主畫面最下面的選單先出現在比較上面、才掉下去；對話滑動卡住、檔案預覽滑不動；狀態列改成 black-translucent
+// （App 蓋滿整個螢幕，各頁自己留瀏海與底部橫條的空間）。模擬 iPhone 的瀏海（59）與底部橫條（34），手指真的滑一次。
+test('iPhone 原生感：瀏海和底部橫條不蓋到能點的東西、分頁列不跳、手指滑得動', async ({ page, browserName }, info) => {
+  test.skip(browserName !== 'chromium' || info.project.name === 'desktop', '要用 Chromium 模擬瀏海與觸控')
+  test.setTimeout(300_000)
+  const api = new MockServer(page)
+  const { mi, room } = seed(api)
+  const long = api.addThread(mi.id, '長內容')
+  for (let i = 0; i < 30; i++) api.addMessage(long.id, { sender: i % 2 ? 'bot:' + mi.id : 'owner', status: 'complete', content: `第 ${i + 1} 則：` + '內容很長的一段話。'.repeat(6) })
+  await api.install()
+  await page.goto('/')
+  const cdp = await page.context().newCDPSession(page)
+  const TOP = 59
+  const BOTTOM = 34
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: TOP, bottom: BOTTOM, left: 0, right: 0 } })
+  const drag = async (y0: number, y1: number) => {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 195, y: y0 }] })
+    for (let i = 1; i <= 10; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 195, y: y0 + ((y1 - y0) * i) / 10 }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await page.waitForTimeout(400)
+  }
+  const positions = () =>
+    page.evaluate(() => [document.scrollingElement!.scrollTop, ...[...document.querySelectorAll<HTMLElement>('*')].filter((e) => /(auto|scroll)/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 40 && e.clientHeight > 200).map((e) => e.scrollTop)])
+  const problems: Record<string, string[]> = {}
+  for (const raw of AUDIT) {
+    const path = raw.replace('LONG', `/bots/${mi.id}/threads/${long.id}`).replace('BOTSET', `/settings/bots/${mi.id}`).replace('BOT', `/bots/${mi.id}`).replace('ROOM', `/rooms/${room.id}`)
+    const bad: string[] = []
+    await page.goto(path)
+    const navAt = () => page.evaluate(() => document.querySelector('nav[aria-label="分頁"]')?.getBoundingClientRect().top ?? null)
+    await page.waitForTimeout(150)
+    const early = await navAt()
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(500)
+    const late = await navAt()
+    if (early !== null && late !== null && Math.abs(early - late) > 1) bad.push(`分頁列跳動 ${early}→${late}`)
+    // 能點的東西：真的在最上層（沒被頁首、分頁列蓋住）才算；固定的列（fixed／sticky）不能在瀏海或底部橫條下面
+    const zones = (where: string) =>
+      page.evaluate(
+        ([top, bottom, where]) => {
+          const H = window.innerHeight
+          const out: string[] = []
+          const pinned = (el: Element) => {
+            for (let e: Element | null = el; e; e = e.parentElement) if (/(fixed|sticky)/.test(getComputedStyle(e).position)) return true
+            return false
+          }
+          for (const el of document.querySelectorAll<HTMLElement>('button, a[href], input, textarea, select, [role="button"], [role="tab"]')) {
+            const r = el.getBoundingClientRect()
+            const s = getComputedStyle(el)
+            if (r.width < 2 || r.height < 2 || s.visibility === 'hidden' || el.closest('.sr-only-text,[aria-hidden="true"],[inert]') || r.bottom <= 0 || r.top >= H) continue
+            const cx = Math.min(Math.max(r.left + r.width / 2, 1), innerWidth - 1)
+            const probe = (y: number) => {
+              const hit = document.elementFromPoint(cx, Math.min(Math.max(y, 0), H - 1))
+              return !!hit && (el === hit || el.contains(hit) || hit.contains(el))
+            }
+            const label = (el.getAttribute('aria-label') || el.textContent || el.tagName).trim().slice(0, 16)
+            if (r.top < top - 1 && probe(r.top + 2)) out.push(`瀏海蓋到「${label}」(top ${Math.round(r.top)})`)
+            const lowEdge = r.bottom > H - bottom + 1 && probe(r.bottom - 2)
+            if (lowEdge && (where === 'end' || pinned(el))) out.push(`底部橫條蓋到「${label}」(bottom ${Math.round(r.bottom)}${where === 'end' ? '，捲到底' : ''})`)
+          }
+          return [...new Set(out)].slice(0, 5)
+        },
+        [TOP, BOTTOM, where] as const,
+      )
+    const covered = await zones('start')
+    await page.evaluate(() => {
+      document.scrollingElement!.scrollTop = 1e7
+      for (const e of document.querySelectorAll<HTMLElement>('*')) if (/(auto|scroll)/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight) e.scrollTop = 1e7
+    })
+    await page.waitForTimeout(300)
+    covered.push(...(await zones('end')))
+    await page.evaluate(() => {
+      document.scrollingElement!.scrollTop = 0
+      for (const e of document.querySelectorAll<HTMLElement>('*')) if (/(auto|scroll)/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight) e.scrollTop = 0
+    })
+    await page.waitForTimeout(200)
+    bad.push(...covered)
+    // 手指往上滑（內容往下）、再往下滑：有能捲的就要動
+    const before = await positions()
+    const H = page.viewportSize()!.height
+    await drag(H * 0.7, H * 0.35)
+    const mid = await positions()
+    await drag(H * 0.35, H * 0.7)
+    const after = await positions()
+    const canScroll = await page.evaluate(() => document.scrollingElement!.scrollHeight > innerHeight + 40 || [...document.querySelectorAll<HTMLElement>('*')].some((e) => /(auto|scroll)/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 40 && e.clientHeight > 200))
+    if (canScroll && JSON.stringify(before) === JSON.stringify(mid) && JSON.stringify(mid) === JSON.stringify(after)) bad.push('手指滑不動 ' + JSON.stringify(before))
+    if (bad.length) {
+      problems[raw] = bad
+      await page.screenshot({ path: shot(info, 'native' + raw.replace(/\//g, '_')) })
+    }
+  }
+  expect(problems).toEqual({})
+})
+
 test('破版檢查：每一頁在手機寬度都不超出畫面', async ({ page }, info) => {
   test.setTimeout(240_000)
   // Pixel 7 換成較窄的 360（常見的小 Android），iPhone 維持 390。

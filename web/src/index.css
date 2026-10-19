@@ -194,6 +194,25 @@
     font-size: var(--text-ui);
     line-height: 1.5;
   }
+  /*
+   * 手機要像 App（2026-10-20 實機：檔案預覽滑不動、對話滑動卡住而且整個畫面被拉出邊界）：
+   * - 整個 App 不能被拉出上下邊界（iPhone 的橡皮筋）。
+   * - 自己會捲的區塊（對話、群組、檔案預覽、對話框、抽屜）在元件上加 overscroll-y-contain：捲到頂或底時不傳給
+   *   後面的頁面（不然 iPhone 會改捲 sheet 後面的頁面、或把整個 App 拉動，看起來就是「滑不動」）。
+   *   不能一律加在 overflow-y-auto 上：有的頁面那一層沒有限高、其實是整頁在捲，加了反而整頁滑不動。
+   * - 按鈕、分頁列、頁首長按不會選到字、不跳出系統選單（訊息內文照樣可以選）。
+   */
+  @media (width < 48rem) {
+    html,
+    body {
+      overscroll-behavior: none;
+    }
+    :is(button, nav, header, [role="tab"], [role="button"], [role="menuitem"]) {
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+  }
   h1,
   h2,
   h3,

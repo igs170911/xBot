@@ -159,7 +159,7 @@ export function SettingsPage({ path, onClose }: { path: string; /** 桌面：設
       {!narrow && <SettingsTabs current={current} />}
       <div className="flex min-h-0 flex-1">
         <SettingsNav current={current} />
-        <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-7 pb-6 pt-[22px] max-lg:px-5 max-md:px-4 max-md:pt-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-7 pb-6 pt-[22px] max-lg:px-5 max-md:px-4 max-md:pb-[calc(24px+env(safe-area-inset-bottom))] max-md:pt-4">
           <div className="mx-auto flex w-full max-w-[880px] flex-col gap-5">{body}</div>
         </div>
       </div>

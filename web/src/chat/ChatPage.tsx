@@ -621,7 +621,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
         onAutoRead={threadId ? auto.toggle : undefined}
       />
       )}
-      <div ref={scroller} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={scroller} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
         <div
           className={cx('mx-auto box-border flex min-h-full max-w-[828px] flex-col gap-3.5 px-6 pb-2 pt-3 max-sm:px-3', empty ? (firstHome ? 'justify-start pt-8' : 'justify-center') : 'justify-end')}
           aria-busy={loading || undefined}

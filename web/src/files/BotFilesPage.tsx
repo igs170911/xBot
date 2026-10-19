@@ -10,6 +10,7 @@ import { Button, IconButton } from '../ui/Button'
 import { TextInput } from '../ui/Field'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
+import { useLockBody } from '../ui/useLockBody'
 import { useToast } from '../ui/toast-context'
 import { FileDialogs } from './FileDialogs'
 import { fileMenu, type FileDialog } from './menu'
@@ -122,6 +123,7 @@ export function BotFilesPage({ botId }: { botId: string }) {
   const { state, reload, wake, waking } = useListing(botId, !folderView, folder)
   const name = bot?.name ?? 'Bot'
   const narrow = useNarrow()
+  useLockBody(!!selected && narrow) // 手機的檔案預覽 sheet 開著：後面的清單不跟著捲
 
   const go = (patch: Record<string, string | null>, replace = false) => {
     const p = new URLSearchParams(window.location.search)
