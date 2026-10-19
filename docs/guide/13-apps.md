@@ -19,6 +19,19 @@
 
 Bot 需要某個服務時，會發一張「連接應用程式」卡到「待我處理」。
 
+## Google（Gmail、日曆、雲端硬碟、試算表）
+
+目錄裡的 Google 服務是 Google 官方的遠端 MCP，目前是**預覽版**，要先自己準備：
+
+1. 加入 Google Workspace Developer Preview Program。
+2. 在 Google Cloud 專案啟用要用的 API（例：Gmail API 和 Gmail MCP API），設定 OAuth 同意畫面。
+3. 建立「網頁應用程式」的 OAuth 用戶端，勾選「Use this client for an AI-powered agent」，「已授權的重新導向 URI」填連接視窗裡顯示的網址（有「複製」）。
+4. 回 XBot 貼上 Client ID 和 Client Secret，按「下一步：登入」，在 Google 按允許。
+
+- Google 只接受 https 或 localhost 的回呼網址：用區網 IP（http://192.168…）打開 XBot 時連不上，請在架 XBot 的那台電腦用 http://localhost:8780 打開再連接，或用「設定 › 進階 › 網路與 Tailscale」的 https 網址。
+- XBot 只要最小的權限：Gmail 只讀信和寫草稿，**不能寄信**（草稿由你在 Gmail 寄出）；日曆只讀。
+- 登入一次就好，XBot 會自動延長，不用每小時重登。
+
 ## 安全
 
 - 從應用程式拿到的內容一律當成資料，不是你的命令。
@@ -36,11 +49,11 @@ Bot 需要某個服務時，會發一張「連接應用程式」卡到「待我�
 
 Bot 在自己電腦的瀏覽器登入網站後，登入狀態會保留。「連接應用程式 → 網站登入」可以：
 
-- 看每個 Bot 登入了哪些網站（只顯示網站名稱和 cookie 數，看不到登入資料本身）。
+- 看每個 Bot 登入了哪些網站（只顯示網站名稱和 cookie 數，看不到登入資料本身）。登入的網站很多時以前會讀不到（「瀏覽器回傳的登入資料無法讀取」），已經修好。
 - **移除**某些網站的登入（要你允許）。
 - **分享給其他 Bot**：把選定網站的登入狀態複製過去，對方就不用再登入（對方原本的登入會被取代，密碼不會被看到）。要你允許，10 分鐘內可以復原。
 
 ## 還沒有的
 
-- Google（Gmail、Drive、日曆）還沒放進目錄，等決定要用哪個官方 MCP。
+- Outlook、Microsoft 365 還沒放進目錄。
 - 密碼庫、一次性驗證碼（TOTP）還沒做。
