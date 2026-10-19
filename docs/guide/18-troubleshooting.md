@@ -76,6 +76,7 @@ docker logs --tail 50 xbot-netguard               # 網路防護
 | OpenCode Zen 回「Model is unavailable」 | 用了 `-free` 模型，XBot 不能用免費版。改用付費模型或 OpenCode Go |
 | 快判出現「Insufficient account funds」 | 快判設成 Zen 的 `jev-1.13`，但 Zen 沒儲值。在快判設定按一鍵改用預設模型 |
 | 快判說「opencode-zen 還沒設定」 | 選了 Jev，但沒加 OpenCode Zen 的金鑰。按「改用」換成你的預設模型，或把快判關掉 |
+| 快判說「… 只支援 Responses API」 | 那個模型不能用一般聊天介面，快判一直跳過它。在快判設定換成 `deepseek-v4.1-flash` 這類模型 |
 | 快判沒效果 | 用途預設是「影子」或「關」。看快判統計，準了再改「生效」 |
 | Bot 換了供應商沒生效 | 重開它的電腦：`xbot computers restart --bot_id <id>` |
 

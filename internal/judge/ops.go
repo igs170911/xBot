@@ -44,7 +44,7 @@ type SettingsOut struct {
 
 // Problem 是一個供應商問題。
 type Problem struct {
-	Kind     string `json:"kind" desc:"no_funds 餘額不足"`
+	Kind     string `json:"kind" desc:"no_funds 餘額不足、unsupported 模型不支援 chat/completions"`
 	Provider string `json:"provider"`
 	Message  string `json:"message"`
 }
@@ -215,6 +215,12 @@ func Register(reg *ops.Registry, s *Service) {
 				if strings.HasSuffix(tm.Model, "-free") {
 					// 2026-10-18 實測：OpenCode Zen 的免費模型只給 OpenCode 自己的程式用。
 					return SettingsOut{}, ops.InvalidInput(ops.FieldError{Field: t.field + ".model", Message: "免費模型只給 OpenCode 自己的程式用，XBot 不能用，請選付費版"})
+				}
+				// 快判只打 chat/completions：只支援 Responses API 的模型（例：muse-spark）每次都會 400。沒改的層不擋（別的設定照樣能存）。
+				if tm != *t.dst {
+					if tr := s.unsupported(ctx, tm); tr != "" {
+						return SettingsOut{}, ops.InvalidInput(ops.FieldError{Field: t.field + ".model", Message: unsupportedText(tm, tr)})
+					}
 				}
 				*t.dst = tm
 			}
@@ -391,7 +397,7 @@ func (s *Service) withDB(db *store.DB) *Service {
 	if db == nil || db == s.DB {
 		return s
 	}
-	return &Service{DB: db, Call: s.Call, Now: s.Now, Notify: s.Notify, Logger: s.Logger}
+	return &Service{DB: db, Call: s.Call, Transport: s.Transport, Now: s.Now, Notify: s.Notify, Logger: s.Logger}
 }
 
 func (s *Service) today(ctx context.Context, set Settings) (Today, error) {
@@ -421,6 +427,14 @@ func (s *Service) view(ctx context.Context) (SettingsOut, error) {
 		return out, err
 	}
 	out.Problems = []Problem{}
+	// 設定的模型不支援 chat/completions：這一層一直被略過（每個供應商列一次）。
+	seen := map[string]bool{}
+	for _, tm := range []TierModel{set.Tier1, set.Tier2, set.Local} {
+		if tr := s.unsupported(ctx, tm); tr != "" && !seen[tm.Provider] {
+			seen[tm.Provider] = true
+			out.Problems = append(out.Problems, Problem{Kind: OutcomeUnsupported, Provider: tm.Provider, Message: unsupportedText(tm, tr)})
+		}
+	}
 	day, _ := s.DayStart()
 	provs, err := s.DB.JudgeProblemProviders(ctx, OutcomeNoFunds, day)
 	for _, p := range provs {
