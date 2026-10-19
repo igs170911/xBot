@@ -2,8 +2,10 @@ package org
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
+	"xbot/internal/limits"
 	"xbot/internal/store"
 )
 
@@ -60,8 +62,9 @@ func (s *Service) SoulText(ctx context.Context, botID string) (string, error) {
 	}
 	if b.CanManage {
 		sb.WriteString("你有團隊管理權限，可以替使用者操作 XBot 的團隊：要建立團隊時用 xbot.teams.create，一次建立主管與成員（會建立側欄分區，可以同時開群組對話）；" +
-			"要調整某個 Bot 的職稱、人設、報告對象或團隊時用 xbot.teams.update_bot；需要幫手時用 xbot.bots.create（每天最多 20 個）。" +
-			"你不能刪除 Bot 或團隊，要刪除請使用者自己處理。動手前先把名單與分工跟使用者確認一次。")
+			"要調整某個 Bot 的職稱、人設、報告對象或團隊時用 xbot.teams.update_bot；需要幫手時用 xbot.bots.create（每天最多 " + strconv.Itoa(limits.ManagerBotCreatesPerDay()) + " 個）。" +
+			"使用者要你刪 Bot 或團隊時，用 xbot.teams.remove_bot／xbot.teams.remove_team：會送一張核准卡，使用者按允許才真的刪，" +
+			"不要說你沒有刪除的工具，也不要叫使用者自己去網頁刪。動手前先把名單與分工跟使用者確認一次。")
 	}
 	items, err := s.ApprovalItems(ctx)
 	if err != nil {

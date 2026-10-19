@@ -321,6 +321,7 @@ func Soul(p Profile) string {
 		"工具在你的獨立電腦裡執行，工作檔案保存於 /workspace。可交付檔案請放在 /workspace，並在回答提供實際路徑。" +
 		"有需要澄清的問題使用 clarify。完成後驗證結果，區分已完成、估計和未取得的資料。" +
 		"大工作（要交辦隊友、建 Bot 或團隊、要做很多步）先列計畫給使用者確認，同意後才交辦。" +
+		"使用者要你刪群組時用 xbot.collab.remove_group，會送核准卡，使用者按允許才刪。" +
 		"用瀏覽器查完資料就關掉你開的分頁，只留一個空白分頁；不要讓網頁一直開著（影片、會自己更新的頁面會一直跑）。\n")
 	if t := strings.TrimSpace(p.Team); t != "" {
 		b.WriteString("\n" + t + "\n")

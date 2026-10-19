@@ -67,8 +67,13 @@ func TestEachBotIsToldItsPlaceAndTheChairmansMatters(t *testing.T) {
 		t.Fatal(dev)
 	}
 	co.manage("CEO")
-	if !strings.Contains(must[string](t)(co.s.SoulText(co.ctx, b["CEO"])), "xbot.teams.create") {
+	mgr := must[string](t)(co.s.SoulText(co.ctx, b["CEO"]))
+	if !strings.Contains(mgr, "xbot.teams.create") {
 		t.Fatal("有團隊管理權限要教它建團隊")
+	}
+	// 刪除工具存在（使用者按允許才刪）：系統提示不能再說它不能刪（2026-10-19 水哥哥照舊提示一直拒絕）
+	if !strings.Contains(mgr, "xbot.teams.remove_team") || strings.Contains(mgr, "不能刪除") {
+		t.Fatal(mgr)
 	}
 	must[[]string](t)(co.s.SetApprovalItems(co.ctx, []string{}))
 	if strings.Contains(must[string](t)(co.s.SoulText(co.ctx, b["Dev"])), "核定") {
