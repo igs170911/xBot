@@ -12,11 +12,13 @@ type MemoryVersion struct {
 	Before string `json:"before"`
 	After  string `json:"after"`
 	// Actor 是誰改的：owner、agent:<id>、bot:<id>；Bot 在電腦裡自己改的也記成 bot:<id>。
-	Actor     string `json:"actor"`
+	Actor string `json:"actor"`
+	// ThreadID 是 Bot 在哪條對話串裡記的（看得出來時才有；你、代理改的是空白）。
+	ThreadID  string `json:"thread_id"`
 	CreatedAt int64  `json:"created_at"`
 }
 
-const memoryCols = `id, bot_id, target, before, after, actor, created_at`
+const memoryCols = `id, bot_id, target, before, after, actor, thread_id, created_at`
 
 // AddMemoryVersion 記一筆變更，並刪掉超過 keep 筆的舊紀錄（同一個 Bot、同一份記憶）。
 func (q *Queries) AddMemoryVersion(ctx context.Context, v MemoryVersion, keep int) (MemoryVersion, error) {
@@ -26,8 +28,8 @@ func (q *Queries) AddMemoryVersion(ctx context.Context, v MemoryVersion, keep in
 	if v.CreatedAt == 0 {
 		v.CreatedAt = nowMS()
 	}
-	if _, err := q.w.ExecContext(ctx, `INSERT INTO memory_version(`+memoryCols+`) VALUES (?,?,?,?,?,?,?)`,
-		v.ID, v.BotID, v.Target, v.Before, v.After, v.Actor, v.CreatedAt); err != nil {
+	if _, err := q.w.ExecContext(ctx, `INSERT INTO memory_version(`+memoryCols+`) VALUES (?,?,?,?,?,?,?,?)`,
+		v.ID, v.BotID, v.Target, v.Before, v.After, v.Actor, v.ThreadID, v.CreatedAt); err != nil {
 		return v, err
 	}
 	_, err := q.w.ExecContext(ctx, `DELETE FROM memory_version WHERE bot_id = ? AND target = ? AND id NOT IN (
@@ -47,7 +49,7 @@ func (q *Queries) ListMemoryVersions(ctx context.Context, botID, target string) 
 	out := []MemoryVersion{}
 	for rows.Next() {
 		var v MemoryVersion
-		if err := rows.Scan(&v.ID, &v.BotID, &v.Target, &v.Before, &v.After, &v.Actor, &v.CreatedAt); err != nil {
+		if err := rows.Scan(&v.ID, &v.BotID, &v.Target, &v.Before, &v.After, &v.Actor, &v.ThreadID, &v.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, v)
@@ -59,6 +61,6 @@ func (q *Queries) ListMemoryVersions(ctx context.Context, botID, target string) 
 func (q *Queries) GetMemoryVersion(ctx context.Context, id string) (MemoryVersion, error) {
 	var v MemoryVersion
 	err := q.r.QueryRowContext(ctx, `SELECT `+memoryCols+` FROM memory_version WHERE id = ?`, id).
-		Scan(&v.ID, &v.BotID, &v.Target, &v.Before, &v.After, &v.Actor, &v.CreatedAt)
+		Scan(&v.ID, &v.BotID, &v.Target, &v.Before, &v.After, &v.Actor, &v.ThreadID, &v.CreatedAt)
 	return v, notFound(err)
 }

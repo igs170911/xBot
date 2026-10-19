@@ -232,7 +232,7 @@ func openStack(cfg config.Config) (*stack, error) {
 	s.routines = routines.New(routines.Options{DB: db, Runtime: s.runtime, Logger: logger, Rewrite: s.judge.Routine, Now: cfg.Clock()})
 	s.comp = comp
 	s.skills = &skills.Service{Locate: comp.BotFS, Library: &skills.Library{Dir: filepath.Join(cfg.DataDir, "skills")}}
-	s.memory = &memory.Service{DB: db, Locate: comp.BotFS}
+	s.memory = &memory.Service{DB: db, Locate: comp.BotFS, Active: s.runtime.Active}
 	// Bot 之間的傳話與群組（X02）：接上 runtime 的 Hooks；帶檔經 Docker 讀寫兩邊電腦的 /workspace。
 	carry := collab.DockerFiles{
 		Locate: func(ctx context.Context, botID string) (collab.CopyAPI, string, error) {
@@ -396,6 +396,8 @@ func (s *stack) startBackground() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.stopIdle = cancel
 	go s.boxes.RunIdle(ctx, s.runtime)
+	// Bot 用記憶工具改了記憶：馬上記一筆變更（時間、對話串才對）
+	go s.memory.Watch(ctx, s.runtime.Bus(), runtime.KindToolResult)
 	if err := s.computers.RecoverMoves(ctx); err != nil {
 		slog.Warn("收尾上次沒做完的搬家失敗", "err", err)
 	}

@@ -8,8 +8,8 @@ import { askFromEvent, type Answered, type Ask } from './ask'
 //   message.created   payload＝store.Message（scope_id 是對話串、meta 帶 task_id／streaming／status）
 //   chat.text         即時、沒有 id；payload {message_id, text}，一段一段接上去
 //   chat.thinking     即時；payload {message_id, text}
-//   chat.tool_call    payload engine.Event {tool:{id,name,context,summary}}
-//   chat.tool_result  payload engine.Event {tool:{id,ok,summary,duration_s}}
+//   chat.tool_call    payload engine.Event {tool:{id,name,context,summary,args}}
+//   chat.tool_result  payload engine.Event {tool:{id,ok,summary,duration_s,args}}
 //   chat.needs_approval payload engine.Event {request:{id,kind,method,prompt,choices,params}}＋inbox_id、expires_at
 //   chat.answered     payload {inbox_id, kind, resolution, text}（C12：回覆、過期、Bot 不等了）
 //   chat.error        payload engine.Event {text, fatal}
@@ -103,6 +103,8 @@ export type Step = {
   status: 'running' | 'ok' | 'fail'
   at: number
   endAt?: number
+  /** Bot 用記憶工具改了它的記憶：步驟旁邊放「看記憶」。 */
+  memory?: boolean
 }
 
 export type Activity = {
@@ -195,7 +197,27 @@ type EngineEvent = {
   text?: string
   status?: string
   fatal?: boolean
-  tool?: { id?: string; name?: string; context?: string; summary?: string; ok?: boolean; duration_s?: number }
+  tool?: { id?: string; name?: string; context?: string; summary?: string; ok?: boolean; duration_s?: number; args?: unknown }
+}
+
+/** Hermes 內建記憶工具的名稱（internal/memory.ToolName）。 */
+export const MEMORY_TOOL = 'memory'
+
+const MEMORY_PREVIEW = 24
+
+/**
+ * 記憶工具那一步的白話：只有新增時是「記住了：<前幾個字>」，改掉或刪掉是「更新記憶」。
+ * args 是 Hermes memory 工具的參數：{action, target, content, old_text}，或一次多條 {target, operations:[{action, content}]}。
+ */
+export function memoryStepLabel(args: unknown): string {
+  const a = (args && typeof args === 'object' ? args : {}) as Record<string, unknown>
+  const ops = (Array.isArray(a.operations) && a.operations.length ? a.operations : [a]) as Array<Record<string, unknown> | null>
+  const adds = ops.filter((o) => o?.action === 'add')
+  const first = adds.map((o) => o?.content ?? o?.new_text).find((c): c is string => typeof c === 'string' && c.trim() !== '')
+  if (!first || adds.length !== ops.length) return '更新記憶'
+  const t = [...first.replace(/\s+/g, ' ').trim()]
+  const text = t.length > MEMORY_PREVIEW ? t.slice(0, MEMORY_PREVIEW).join('') + '…' : t.join('')
+  return `記住了：${text}${adds.length > 1 ? ` 等 ${adds.length} 條` : ''}`
 }
 
 function parseMeta(raw: unknown): MessageMeta {
@@ -393,7 +415,11 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
       const a = activity(s, e.task_id)
       const id = ev.tool?.id || `${e.task_id}:${a.steps.length}`
       if (a.steps.some((x) => x.id === id)) return s
-      const step: Step = { id, name: ev.tool?.name || '工具', label: ev.tool?.context || ev.tool?.summary || undefined, status: 'running', at: e.at }
+      const name = ev.tool?.name || '工具'
+      const step: Step =
+        name === MEMORY_TOOL
+          ? { id, name, label: memoryStepLabel(ev.tool?.args), status: 'running', at: e.at, memory: true }
+          : { id, name, label: ev.tool?.context || ev.tool?.summary || undefined, status: 'running', at: e.at }
       return putActivity(s, { ...a, thinking: false, steps: [...a.steps, step], threadId: a.threadId ?? e.thread_id, startedAt: a.startedAt ?? e.at })
     }
     case 'chat.tool_result': {
@@ -404,7 +430,9 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
       if (i < 0) i = a.steps.findLastIndex((x) => x.status === 'running')
       if (i < 0) return s
       const steps = a.steps.slice()
-      steps[i] = { ...steps[i], status: ev.tool?.ok === false ? 'fail' : 'ok', endAt: e.at, label: steps[i].label ?? (ev.tool?.summary || undefined) }
+      // 記憶工具：開始時可能沒帶參數，結束時一定有，用結束時的重寫一次
+      const label = steps[i].memory && ev.tool?.args ? memoryStepLabel(ev.tool.args) : (steps[i].label ?? (ev.tool?.summary || undefined))
+      steps[i] = { ...steps[i], status: ev.tool?.ok === false ? 'fail' : 'ok', endAt: e.at, label }
       return putActivity(s, { ...a, steps })
     }
     case 'chat.needs_approval': {

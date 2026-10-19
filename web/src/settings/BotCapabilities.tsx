@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { BookOpen, ChevronDown, ChevronUp, MoreHorizontal, Pencil, Plus, Sparkles, Trash2, TriangleAlert, Undo2 } from 'lucide-react'
+import { BookOpen, ChevronDown, ChevronUp, Info, MoreHorizontal, Pencil, Plus, Sparkles, Trash2, TriangleAlert, Undo2 } from 'lucide-react'
 import {
   ApiError,
   botsUpdate,
@@ -15,12 +15,11 @@ import {
   skillsList,
   skillsUpdate,
   type BotsGetOutput,
-  type MemoryHistoryOutput,
   type MemoryReadOutput,
   type SkillsListOutput,
 } from '../api/generated'
 import { upsertBot } from '../data/bots'
-import { linkClick } from '../router'
+import { linkClick, navigate } from '../router'
 import { Button, IconButton } from '../ui/Button'
 import { SegmentedControl, Switch } from '../ui/Controls'
 import { ConfirmDialog } from '../ui/Dialog'
@@ -31,7 +30,9 @@ import { StatusChip, type Tone } from '../ui/Pill'
 import { useToast } from '../ui/toast-context'
 import { cx } from '../ui/cx'
 import { Block, Group, Note } from './parts'
+import { ENGINE_LABEL } from './botModes'
 import { errText, isPending } from './format'
+import { actorName, changeKind, entryOrigin, originLink, shortDate, type ChangeKind, type MemChange } from './memoryHistory'
 
 // Bot 設定的人設（SOUL.md）、技能（design/G05）、記憶（design/G06）分頁（C31；SK-*、MM-*）。
 
@@ -468,9 +469,29 @@ const TARGETS: { value: Target; title: string; sub: (n: string) => string }[] = 
 ]
 
 export function MemoryTab({ bot, onBot }: { bot: Bot; onBot: (b: Bot) => void }) {
+  // 記憶是 Hermes 的 MEMORY.md／USER.md：其他引擎不讀也不寫，只說明
+  if (bot.engine && bot.engine !== 'hermes') {
+    const to = `/settings/bots/${bot.id}/advanced`
+    return (
+      <Note
+        icon={<Icon icon={Info} size={18} />}
+        action={
+          <a href={to} onClick={linkClick(to)} className="text-ui-sm text-accent-ink">
+            換引擎
+          </a>
+        }
+      >
+        {bot.name}用 {ENGINE_LABEL[bot.engine] ?? bot.engine} 引擎，不會讀這裡的記憶，也不會寫進來。換回 Hermes 才會用到。
+      </Note>
+    )
+  }
+  return <HermesMemory bot={bot} onBot={onBot} />
+}
+
+function HermesMemory({ bot, onBot }: { bot: Bot; onBot: (b: Bot) => void }) {
   const toast = useToast()
   const [mem, setMem] = useState<MemoryReadOutput | null>(null)
-  const [hist, setHist] = useState<MemoryHistoryOutput['changes']>([])
+  const [hist, setHist] = useState<MemChange[]>([])
   const [err, setErr] = useState<string | null>(null)
 
   const load = useCallback(() => {
@@ -486,6 +507,14 @@ export function MemoryTab({ bot, onBot }: { bot: Bot; onBot: (b: Bot) => void })
   }, [bot.id])
   useEffect(load, [load])
 
+  // 記憶在對話開始時載入：已經開著的對話串看不到這次的修改
+  const saved = (done: string) =>
+    toast.show({
+      kind: 'done',
+      text: `${done}。新的對話串才會用到`,
+      action: { label: '開新對話串', onClick: () => navigate(`/bots/${bot.id}/threads/new`) },
+    })
+
   const write = async (target: Target, entries: string[], done: string) => {
     if (!mem) return false
     try {
@@ -496,7 +525,7 @@ export function MemoryTab({ bot, onBot }: { bot: Bot; onBot: (b: Bot) => void })
         previous: mem[target].entries,
       })
       setMem(m)
-      toast.show({ kind: 'done', text: done })
+      saved(done)
       memoryHistory({ bot_id: bot.id })
         .then((h) => setHist(h.changes))
         .catch(() => {})
@@ -526,7 +555,7 @@ export function MemoryTab({ bot, onBot }: { bot: Bot; onBot: (b: Bot) => void })
     try {
       const m = await memoryRestore({ bot_id: bot.id, change_id: id })
       setMem(m)
-      toast.show({ kind: 'done', text: '已復原' })
+      saved('已復原')
       load()
     } catch (e) {
       toast.show({ kind: 'error', text: errText(e) })
@@ -560,7 +589,15 @@ export function MemoryTab({ bot, onBot }: { bot: Bot; onBot: (b: Bot) => void })
       <div className="flex gap-5 max-lg:flex-col">
         <div className={cx('flex min-w-0 flex-1 flex-col gap-4')}>
           {TARGETS.map((t) => (
-            <MemoryList key={t.value} title={t.title} sub={t.sub(bot.name)} list={mem[t.value]} onWrite={(entries, done) => write(t.value, entries, done)} />
+            <MemoryList
+              key={t.value}
+              title={t.title}
+              sub={t.sub(bot.name)}
+              list={mem[t.value]}
+              origin={(e) => entryOrigin(e, t.value, hist)}
+              bot={bot}
+              onWrite={(entries, done) => write(t.value, entries, done)}
+            />
           ))}
         </div>
         <aside className="flex w-[320px] flex-none flex-col gap-3 max-lg:w-full">
@@ -569,7 +606,7 @@ export function MemoryTab({ bot, onBot }: { bot: Bot; onBot: (b: Bot) => void })
               <span className="pb-2 text-ui">最近的變更</span>
               {hist.length === 0 && <span className="text-[13px] text-ink-3">還沒有變更。</span>}
               {hist.slice(0, 8).map((c) => (
-                <Change key={c.id} c={c} botName={bot.name} onUndo={() => void undo(c.id)} />
+                <Change key={c.id} c={c} bot={bot} onUndo={() => void undo(c.id)} />
               ))}
             </div>
           </Group>
@@ -580,17 +617,41 @@ export function MemoryTab({ bot, onBot }: { bot: Bot; onBot: (b: Bot) => void })
   )
 }
 
-function Change({ c, botName, onUndo }: { c: MemoryHistoryOutput['changes'][number]; botName: string; onUndo: () => void }) {
-  const kind = c.added.length && c.removed.length ? '修改' : c.added.length ? '新增' : '刪除'
-  const tone = kind === '新增' ? 'text-success' : kind === '刪除' ? 'text-danger' : 'text-ink-2'
-  const who = c.actor === 'owner' ? '你' : c.actor.startsWith('bot:') ? botName : '代理'
-  const text = (c.added[0] ?? c.removed[0] ?? '').slice(0, 60)
+/** 在哪條對話串記的：「在「標題」中」，標題連到那條對話串（或群組）。不知道時不顯示。 */
+function Where({ c, botId }: { c: MemChange; botId: string }) {
+  const to = originLink(c, botId)
+  if (!to) return null
+  const link = (
+    <a href={to} onClick={linkClick(to)} className="text-ink-2 underline underline-offset-2">
+      {c.thread_title || '對話'}
+    </a>
+  )
+  return c.thread_title ? <>在「{link}」中</> : <>在{link}中</>
+}
+
+/** 一條記憶的來歷，例：水哥哥 · 10/18 在「整理客戶名單」中記下。 */
+function Origin({ c, bot }: { c: MemChange; bot: Bot }) {
+  const verb = c.actor.startsWith('bot:') ? '記下' : changeKind(c) === '修改' ? '修改' : '新增'
+  return (
+    <span className="block text-[12px] text-ink-3">
+      {actorName(c.actor, bot.name)} · {shortDate(c.created_at)} <Where c={c} botId={bot.id} />
+      {verb}
+    </span>
+  )
+}
+
+const KIND_TONE: Record<ChangeKind, string> = { 新增: 'text-success', 刪除: 'text-danger', 修改: 'text-ink-2', 整理: 'text-ink-2' }
+
+function Change({ c, bot, onUndo }: { c: MemChange; bot: Bot; onUndo: () => void }) {
+  const kind = changeKind(c)
+  const more = Math.max(c.added.length, c.removed.length) - 1
+  const one = c.added[0] ?? c.removed[0] ?? ''
   return (
     <div className="flex flex-col gap-0.5 border-line py-2 not-first:border-t">
       <span className="flex items-center gap-2 text-[13px]">
-        <span className={tone}>{kind}</span>
+        <span className={KIND_TONE[kind]}>{kind}</span>
         <span className="text-ink-3">
-          {who} ·{' '}
+          {actorName(c.actor, bot.name)} ·{' '}
           {new Date(c.created_at).toLocaleString('zh-TW', {
             dateStyle: 'short',
             timeStyle: 'short',
@@ -604,12 +665,48 @@ function Change({ c, botName, onUndo }: { c: MemoryHistoryOutput['changes'][numb
           </button>
         )}
       </span>
-      {text && <span className="truncate text-ui-sm">{text}</span>}
+      {kind === '修改' ? (
+        <>
+          <span className="truncate text-ui-sm text-ink-3 line-through" title={c.removed[0]}>
+            {c.removed[0]}
+          </span>
+          <span className="truncate text-ui-sm" title={c.added[0]}>
+            → {c.added[0]}
+          </span>
+        </>
+      ) : kind === '整理' ? (
+        <span className="text-ui-sm text-ink-3">內容沒變，只調整了順序或重複的條目</span>
+      ) : (
+        <span className="truncate text-ui-sm" title={one}>
+          {one}
+        </span>
+      )}
+      {more > 0 && <span className="text-[12px] text-ink-3">還有 {more} 條</span>}
+      {originLink(c, bot.id) && (
+        <span className="truncate text-[12px] text-ink-3">
+          <Where c={c} botId={bot.id} />
+          {c.actor.startsWith('bot:') ? '記下' : '修改'}
+        </span>
+      )}
     </div>
   )
 }
 
-function MemoryList({ title, sub, list, onWrite }: { title: string; sub: string; list: MemoryReadOutput['user']; onWrite: (entries: string[], done: string) => Promise<boolean> }) {
+function MemoryList({
+  title,
+  sub,
+  list,
+  origin,
+  bot,
+  onWrite,
+}: {
+  title: string
+  sub: string
+  list: MemoryReadOutput['user']
+  origin: (entry: string) => MemChange | undefined
+  bot: Bot
+  onWrite: (entries: string[], done: string) => Promise<boolean>
+}) {
   const [editing, setEditing] = useState<number | null>(null)
   const [text, setText] = useState('')
   const [open, setOpen] = useState(true)
@@ -624,7 +721,7 @@ function MemoryList({ title, sub, list, onWrite }: { title: string; sub: string;
       next.push(v)
     } else if (v) next[editing] = v
     else next.splice(editing, 1)
-    if (await onWrite(next, editing === -1 ? '已新增一條' : '已儲存，從下一個對話開始生效')) setEditing(null)
+    if (await onWrite(next, editing === -1 ? '已新增一條' : v ? '已儲存' : '已刪除一條')) setEditing(null)
   }
   return (
     <Group label={title}>
@@ -652,12 +749,15 @@ function MemoryList({ title, sub, list, onWrite }: { title: string; sub: string;
       </div>
       {high && open && <p className="m-0 border-t border-line px-4 py-2 text-[13px] text-warning-ink">快滿了：刪掉過時的，或把幾條合成一條。</p>}
       {open &&
-        list.entries.map((e, i) =>
-          editing === i ? (
-            <EntryEditor key={i} text={text} setText={setText} onCancel={() => setEditing(null)} onSave={commit} />
-          ) : (
+        list.entries.map((e, i) => {
+          if (editing === i) return <EntryEditor key={i} text={text} setText={setText} onCancel={() => setEditing(null)} onSave={commit} />
+          const o = origin(e)
+          return (
             <div key={i} className="flex min-h-12 items-center gap-2 border-t border-line px-4 py-2">
-              <span className="min-w-0 flex-1 text-ui-sm whitespace-pre-wrap">{e}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-ui-sm whitespace-pre-wrap">{e}</span>
+                {o && <Origin c={o} bot={bot} />}
+              </span>
               <IconButton
                 icon={Pencil}
                 label="修改這一條"
@@ -677,8 +777,8 @@ function MemoryList({ title, sub, list, onWrite }: { title: string; sub: string;
                 }
               />
             </div>
-          ),
-        )}
+          )
+        })}
       {open &&
         (editing === -1 ? (
           <EntryEditor text={text} setText={setText} onCancel={() => setEditing(null)} onSave={commit} />

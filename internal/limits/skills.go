@@ -47,4 +47,8 @@ const (
 	// MemoryVersionsKept 是每個 Bot 每份記憶在資料庫保留幾個舊版本（復原用，MM-3）。XBot 新增：
 	// PRD 只說「變更日誌可復原」；20 版約是幾週的修改，一份記憶最多 2,200 字，佔用很小。
 	MemoryVersionsKept = 20
+
+	// MemoryWatchQueue 是等著記下「Bot 用記憶工具改了記憶」的事件緩衝。XBot 新增：滿了就丟，
+	// 打開記憶頁時還是會補記（只是時間和對話串不準）。
+	MemoryWatchQueue = 256
 )
