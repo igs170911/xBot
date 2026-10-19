@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -477,10 +478,68 @@ func execute(ctx context.Context, reg *ops.Registry, call *ops.Call, a store.App
 	}
 	if execErr != nil {
 		o.Failed, o.Error = true, ops.AsError(execErr)
+		markFailed(ctx, reg, call, a.ID, o.Error.Message)
 		return o, nil
 	}
 	o.Executed, o.Output = true, res.Output
+	markFailed(ctx, reg, call, a.ID, "")
 	return o, nil
+}
+
+// markFailed：允許了但動作沒做成時，把核准卡重新打開、寫上原因，你可以按「再試一次」（再允許一次會重新執行，只會成功一次）；
+// 之後成功了（msg 空白）就把重開的卡結掉。原本卡片在允許時就結掉了，失敗只閃一下，事後看不到也沒辦法重試
+// （2026-10-19：分享登入允許了兩次都失敗，修好後沒有人再做一次）。
+func markFailed(ctx context.Context, reg *ops.Registry, call *ops.Call, approvalID, msg string) {
+	var evs []store.Event
+	err := call.DB.Tx(ctx, func(q *store.Queries) error {
+		items, err := q.ListInboxByRef(ctx, approvalID)
+		if err != nil {
+			return err
+		}
+		var changed []store.InboxItem
+		for _, it := range items {
+			if it.Kind != "approval" {
+				continue
+			}
+			p := map[string]any{}
+			_ = json.Unmarshal(it.Payload, &p)
+			if msg == "" {
+				if _, was := p["failed"]; !was || it.Status != "open" {
+					continue // 一次就成功：卡片本來就結掉了
+				}
+				delete(p, "failed")
+				raw, _ := json.Marshal(p)
+				if err := q.SettleInboxItem(ctx, it.ID, "resolved", "allow", call.Identity.Actor(), raw); err != nil {
+					return err
+				}
+			} else {
+				p["failed"] = msg
+				if it.Status != "open" {
+					if err := q.ReopenInboxItem(ctx, it.ID); err != nil && !errors.Is(err, store.ErrAlreadyDecided) {
+						return err
+					}
+				}
+			}
+			if msg != "" {
+				raw, _ := json.Marshal(p)
+				if err := q.SetInboxPayload(ctx, it.ID, raw); err != nil {
+					return err
+				}
+			}
+			cur, err := q.GetInboxItem(ctx, it.ID)
+			if err != nil {
+				return err
+			}
+			changed = append(changed, cur)
+		}
+		evs, err = appendUpdated(ctx, q, changed...)
+		return err
+	})
+	if err != nil {
+		slog.Warn("更新核准卡的執行結果失敗", "approval", approvalID, "err", err)
+		return
+	}
+	reg.Notify(evs...)
 }
 
 // decideDelegated 是代理代為核准（MCP-10）：只能允許；授權（類別、每日次數與金額、期限）在同一個交易裡檢查並記下，

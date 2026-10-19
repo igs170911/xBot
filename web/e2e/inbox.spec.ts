@@ -219,3 +219,36 @@ test('對話裡回覆：核准卡、提問卡、密碼卡，送出後收成一�
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-chat-ask-answered`) })
 })
+
+// 2026-10-19：分享登入允許了兩次都失敗，卡片一閃就不見，修好後沒人再做一次。失敗的核准卡重新打開、寫原因，可以「再試一次」。
+test('允許了但沒做成：卡片寫上原因，按「再試一次」再執行，「先不做了」收掉', async ({ page }) => {
+  const api = new MockServer(page)
+  const bot = api.addBot({ name: '研究總監', shape: 'blob', color: 'purple' })
+  api.inbox = [
+    {
+      id: 'f1',
+      kind: 'approval',
+      group: 'decide',
+      bot_id: bot.id,
+      ref: 'apf',
+      title: '研究總監 想要：請使用者把另一個 Bot 已登入的網站分享給你',
+      body: '要允許嗎？按允許才會執行。',
+      payload: { op: 'xbot.logins.request_share', actor: 'bot:' + bot.id, actor_name: '研究總監', failed: '讀不到這台電腦的瀏覽器登入' },
+      status: 'open',
+      created_at: Date.now() - 60_000,
+    },
+  ]
+  api.override['approvals.decide'] = (i) => {
+    api.inbox = []
+    return { approval: { id: 'apf', op: 'xbot.logins.request_share', summary: '', params: {}, requested_by: 'bot:' + bot.id, status: 'approved', created_at: 1 }, settled: true, executed: i.decision === 'allow', failed: false }
+  }
+  await api.install()
+  await page.goto('/')
+  const card = page.getByTestId('inbox-item').filter({ hasText: '研究總監' })
+  await expect(card).toContainText('沒做成')
+  await expect(card).toContainText('讀不到這台電腦的瀏覽器登入')
+  await expect(card.getByRole('button', { name: '退回' })).toHaveCount(0)
+  await card.getByRole('button', { name: '再試一次' }).click()
+  await expect.poll(() => api.calls.find((c) => c.op === 'approvals.decide')?.input).toEqual({ approval_id: 'apf', decision: 'allow' })
+  await expect(card).toHaveCount(0)
+})

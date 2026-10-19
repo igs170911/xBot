@@ -92,8 +92,10 @@ export function ApprovalItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
   const [busy, setBusy] = useState<'allow' | 'deny' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const undoToast = useUndoToast()
-  const p = (item.payload ?? {}) as { op?: string; actor?: string; actor_name?: string; via?: string; request_id?: string; delegable?: boolean }
+  const p = (item.payload ?? {}) as { op?: string; actor?: string; actor_name?: string; via?: string; request_id?: string; delegable?: boolean; failed?: string }
   const op = p.op ?? ''
+  // 允許了但沒做成（例：當時瀏覽器讀不到登入）：卡片重新打開，按「再試一次」會再執行一次（只會成功一次）
+  const failed = p.failed
   const danger = /\.(delete|remove)(_|$)/.test(op)
   const byAgent = !!p.actor?.startsWith('agent:')
   const decide = async (decision: 'allow' | 'deny') => {
@@ -111,12 +113,23 @@ export function ApprovalItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
       setBusy(null)
     }
   }
+  const dismiss = async () => {
+    setBusy('deny')
+    try {
+      await inboxDismiss({ inbox_id: item.id })
+      await loadInbox()
+    } catch (err) {
+      setError(errText(err))
+    } finally {
+      setBusy(null)
+    }
+  }
   return (
     <Card data-testid="inbox-item" data-kind="approval">
       <Head
         bot={bot}
-        chip="等你允許"
-        tone="warning"
+        chip={failed ? '沒做成' : '等你允許'}
+        tone={failed ? 'danger' : 'warning'}
         sub={`${sinceLabel(item.created_at)} · ${byAgent ? `透過 ${p.via === 'mcp' || !p.via ? 'MCP' : p.via.toUpperCase()} · ` : ''}${p.delegable && !danger ? '可以由有授權的代理代為核准' : '只有你能決定'}`}
       />
       <p className="m-0 text-body">{item.title}</p>
@@ -133,17 +146,29 @@ export function ApprovalItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
           這個動作做了就無法復原。
         </p>
       )}
+      {failed && !error && (
+        <p role="alert" className="m-0 flex items-start gap-2 rounded-menu bg-danger/15 px-3.5 py-2.5 text-ui-sm text-danger">
+          <Icon icon={TriangleAlert} size={16} className="mt-0.5 flex-none" />
+          <span>你允許了，但沒做成：{failed}。問題排除後可以再試一次。</span>
+        </p>
+      )}
       {error && (
         <p role="alert" className="m-0 text-sub text-danger">
           {error}
         </p>
       )}
       <div className="flex flex-wrap justify-end gap-2" data-card-actions="1">
-        <Button variant="outline" onClick={() => void decide('deny')} loading={busy === 'deny'} disabled={!!busy}>
-          退回
-        </Button>
-        <Button variant={danger ? 'danger' : 'primary'} icon={danger ? undefined : Check} onClick={() => void decide('allow')} loading={busy === 'allow'} disabled={!!busy}>
-          {danger ? '允許刪除' : '允許這次'}
+        {failed ? (
+          <Button variant="outline" onClick={() => void dismiss()} loading={busy === 'deny'} disabled={!!busy}>
+            先不做了
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={() => void decide('deny')} loading={busy === 'deny'} disabled={!!busy}>
+            退回
+          </Button>
+        )}
+        <Button variant={danger ? 'danger' : 'primary'} icon={danger || failed ? undefined : Check} onClick={() => void decide('allow')} loading={busy === 'allow'} disabled={!!busy}>
+          {failed ? '再試一次' : danger ? '允許刪除' : '允許這次'}
         </Button>
       </div>
     </Card>

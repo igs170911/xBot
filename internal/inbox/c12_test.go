@@ -2,6 +2,7 @@ package inbox
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -70,8 +71,19 @@ func TestWaitReportsExecutionFailure(t *testing.T) {
 	if !d.Failed || d.Executed || d.Error == nil || d.Error.Code != ops.CodeConflict {
 		t.Fatalf("允許了但失敗：%+v", d)
 	}
-	if k := kinds(*evs); k[notify.KindUpdated] != 1 {
-		t.Fatalf("決定後要發 inbox.updated：%v", k)
+	// 決定時結掉卡片，執行失敗再把它重新打開、寫上原因：兩次 inbox.updated
+	if k := kinds(*evs); k[notify.KindUpdated] != 2 {
+		t.Fatalf("決定、失敗重開都要發 inbox.updated：%v", k)
+	}
+	card := func() store.InboxItem {
+		items, err := e.db.ListInboxByRef(bg, oe.NeedsApprovalID)
+		if err != nil || len(items) != 1 {
+			t.Fatalf("%v %+v", err, items)
+		}
+		return items[0]
+	}
+	if c := card(); c.Status != "open" || !strings.Contains(string(c.Payload), "對方的伺服器暫時沒回應") {
+		t.Fatalf("失敗要重新打開卡片並寫上原因（才看得到、能再試一次）：%+v %s", c, c.Payload)
 	}
 	w := get[Outcome](t, e, a, "xbot.approvals.wait", map[string]any{"approval_id": oe.NeedsApprovalID, "timeout_s": 5})
 	if !w.Settled || !w.Failed || w.Executed || w.Error == nil || w.Error.Message != "對方的伺服器暫時沒回應" {
@@ -88,6 +100,9 @@ func TestWaitReportsExecutionFailure(t *testing.T) {
 	}
 	if ap, _ := e.db.GetApproval(bg, oe.NeedsApprovalID); ap.Error != "" {
 		t.Fatalf("成功後要清掉錯誤：%q", ap.Error)
+	}
+	if c := card(); c.Status != "resolved" || c.Resolution != "allow" || strings.Contains(string(c.Payload), "failed") {
+		t.Fatalf("再試成功後卡片結掉、拿掉失敗原因：%+v %s", c, c.Payload)
 	}
 }
 

@@ -224,6 +224,11 @@ func (q *Queries) SwapInboxResolution(ctx context.Context, id, from, to string) 
 }
 
 // SetInboxResolution 只改處理方式（例：過期的提問按了「請它再問一次」）。
+// SetInboxPayload 換掉一張卡的顯示內容（例：允許了但執行失敗，卡片重新打開並寫上原因）。
+func (q *Queries) SetInboxPayload(ctx context.Context, id string, payload json.RawMessage) error {
+	return affected(q.w.ExecContext(ctx, `UPDATE inbox_item SET payload=?, updated_at=? WHERE id=?`, string(payload), nowMS(), id))
+}
+
 func (q *Queries) SetInboxResolution(ctx context.Context, id, resolution string) error {
 	return affected(q.w.ExecContext(ctx, `UPDATE inbox_item SET resolution=?, updated_at=? WHERE id=?`, resolution, nowMS(), id))
 }
