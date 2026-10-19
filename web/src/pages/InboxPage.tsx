@@ -1,15 +1,16 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowRight, Bell, Check, Clock, Hand, Monitor, RotateCcw, ShieldCheck, SquareTerminal, TriangleAlert, Undo2 } from 'lucide-react'
+import { Bell, Check, Clock, Hand, Monitor, RotateCcw, ShieldCheck, SquareTerminal, TriangleAlert, Undo2 } from 'lucide-react'
 import { Avatar } from '../ui/Avatar'
 import { Button, IconButton } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
-import { SimplifiedTag, StatusChip, type Tone } from '../ui/Pill'
+import { StatusChip, type Tone } from '../ui/Pill'
 import { useToast } from '../ui/toast-context'
-import { BOTS } from '../shell/sample'
 import { fetchHealth, type Health } from '../health'
-import { ApiError, approvalsDecide, chatAskAgain, inboxDismiss, inboxUndo, routinesRunNow } from '../api/generated'
+import { ApiError, approvalsDecide, chatAskAgain, inboxDismiss, inboxUndo, routinesRunNow, usageCaps, type UsageCapsOutput } from '../api/generated'
+import { Meter } from '../settings/charts'
+import { usd } from '../settings/format'
 import { botsStore, type Bot, look } from '../data/bots'
 import { inboxStore, loadInbox, type InboxItem } from '../data/inbox'
 import { useStore } from '../data/store'
@@ -26,7 +27,7 @@ import { linkClick, navigate } from '../router'
 //   - Bot 在對話裡的提問（核准指令、補充問題、密碼）：和對話裡同一張 AskCard，回覆走 xbot.chat.respond。
 //   - 操作的核准（MCP-9，例：代理要刪 Bot）：允許這次／退回走 xbot.approvals.decide，退回後 10 分鐘內可以復原。
 //   - 其他（預算暫停…）：知道了＝xbot.inbox.dismiss，也可以復原。
-// 右欄的團隊現況還是 W01 的示範內容（辦公室、Bot 之間在之後的卡接上）。
+// 右欄：每個 Bot 現在在做什麼（botsStore）；上方的本月花費來自 xbot.usage.caps（沒設上限時不顯示）。
 
 function errText(err: unknown): string {
   if (err instanceof ApiError) return err.message
@@ -398,19 +399,15 @@ function RealItem({ item, bots }: { item: InboxItem; bots: Bot[] | null }) {
   return <InfoItem item={item} bot={bot} />
 }
 
-function ScreenThumb({ label, waiting, children }: { label: string; waiting?: boolean; children?: ReactNode }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="flex h-[90px] items-center justify-center overflow-hidden rounded-field bg-[#F4F5F7] text-[11px] text-[#5F6673]"
-      style={waiting ? { boxShadow: '0 0 0 1.5px #FF9800' } : undefined}
-    >
-      {children ?? label}
-    </span>
-  )
-}
 
 const WEEK = '日一二三四五六'
+
+/** Bot 現在在做什麼（task.state 事件；重新整理後等下一個事件才知道）。 */
+function botState(state?: string): { text: string; working?: boolean; waiting?: boolean } {
+  if (state === 'waiting_input' || state === 'waiting_approval') return { text: '等你', waiting: true }
+  if (state && state !== 'done' && state !== 'idle' && state !== 'failed' && state !== 'cancelled') return { text: '工作中', working: true }
+  return { text: '待命' }
+}
 
 export function InboxPage() {
   const [health, setHealth] = useState<Health | null | undefined>(undefined)
@@ -419,7 +416,13 @@ export function InboxPage() {
   }, [])
 
   const { items, expired, delegated } = useStore(inboxStore)
-  const bots = useStore(botsStore).bots
+  const { bots, activity } = useStore(botsStore)
+  const [caps, setCaps] = useState<UsageCapsOutput['global'] | null>(null)
+  useEffect(() => {
+    usageCaps({})
+      .then((c) => setCaps(c.global))
+      .catch(() => setCaps(null))
+  }, [])
   const real = items ?? []
   const left = real.length
   const now = new Date()
@@ -440,20 +443,21 @@ export function InboxPage() {
           <header className="flex flex-wrap items-end max-md:hidden justify-between gap-x-6 gap-y-3 pb-1.5">
             <div className="flex flex-col gap-0.5">
               <div className="flex flex-wrap items-center gap-3">
-                <h1 className="m-0 text-[24px] leading-[1.35]">{items === null ? '待我處理' : left > 0 ? `早安，有 ${left} 件事等你` : '早安，事情都處理完了'}</h1>
-                <SimplifiedTag>簡化：核定 3 步 → 1 步</SimplifiedTag>
+                <h1 className="m-0 text-[24px] leading-[1.35]">{items === null ? '待我處理' : left > 0 ? `有 ${left} 件事等你` : '事情都處理完了'}</h1>
               </div>
-              <span className="text-sub text-ink-2">{today} · 要你決定的事都在這裡，其他事 Bot 會自己處理</span>
+              <span className="text-sub text-ink-2">{today}</span>
             </div>
-            <a href="/usage" className="flex w-[200px] flex-col gap-1.5 text-ink">
-              <span className="flex justify-between text-meta text-ink-2">
-                <span>本月花費</span>
-                <span>$38 / $100</span>
-              </span>
-              <span className="block h-1 rounded-full bg-line">
-                <span className="block h-1 w-[38%] rounded-full bg-accent" />
-              </span>
-            </a>
+            {caps?.monthly_usd ? (
+              <a href="/settings/usage" onClick={linkClick('/settings/usage')} className="flex w-[200px] flex-col gap-1.5 text-ink">
+                <span className="flex justify-between text-meta text-ink-2">
+                  <span>本月花費</span>
+                  <span>
+                    {usd(caps.spent_month_usd)} / {usd(caps.monthly_usd)}
+                  </span>
+                </span>
+                <Meter ratio={caps.spent_month_usd / caps.monthly_usd} label="本月花費占上限" />
+              </a>
+            ) : null}
           </header>
 
           {real.map((it) => (
@@ -492,79 +496,28 @@ export function InboxPage() {
         </div>
       </main>
 
-      <aside aria-label="團隊現況" className="flex max-w-full max-md:hidden flex-[1_1_340px] flex-col gap-6 border-l border-edge bg-panel px-5 py-[22px] max-[1179px]:border-l-0 max-[1179px]:border-t">
-        <section className="flex flex-col gap-2.5">
+      {!!bots?.length && (
+        <aside aria-label="團隊現況" className="flex max-w-full max-md:hidden flex-[1_1_300px] flex-col gap-2.5 border-l border-edge bg-panel px-5 py-[22px] max-[1179px]:border-l-0 max-[1179px]:border-t">
           <div className="flex items-baseline justify-between">
-            <h2 className="m-0 text-body">電腦</h2>
-            <a href="/office" className="text-[13px]">
+            <h2 className="m-0 text-body">Bot 現況</h2>
+            <a href="/office" onClick={linkClick('/office')} className="text-[13px]">
               打開辦公室
             </a>
           </div>
-          <div className="grid grid-cols-2 gap-x-2.5 gap-y-3">
-            {[
-              { bot: 'xiaomi', state: 'working', note: '彙整價差表', thumb: '競品定價.xlsx' },
-              { bot: 'azhe', state: 'searching', note: '比價第 3 家', thumb: '購物網站' },
-              { bot: 'xiaobian', state: 'notifying', note: '等你接手', thumb: '輸入簡訊驗證碼', waiting: true },
-              { bot: 'zhangfang', state: 'notifying', note: '等你允許', thumb: '帳單付款', waiting: true },
-            ].map((c) => {
-              const b = BOTS[c.bot]
+          {bots
+            .filter((b) => !b.archived)
+            .map((b) => {
+              const st = botState(activity[b.id]?.state)
               return (
-                <a key={c.bot} href="/office" aria-label={`${b.name}的電腦：${c.thumb}`} className="flex flex-col gap-1.5 text-ink">
-                  <ScreenThumb label={c.thumb} waiting={c.waiting} />
-                  <span className="flex min-w-0 items-center gap-1.5 text-[13px]">
-                    <Avatar {...look(b)} state={c.state} dot={c.waiting ? 'waiting' : 'none'} size={18} />
-                    {b.name}
-                    <span className={c.waiting ? 'truncate text-warning-ink' : 'truncate text-ink-2'}>{c.note}</span>
-                  </span>
+                <a key={b.id} href={`/bots/${b.id}`} onClick={linkClick(`/bots/${b.id}`)} className="flex min-h-9 items-center gap-2 rounded-menu px-2 text-sub text-ink hover:bg-control">
+                  <Avatar {...look(b)} state={st.working ? 'working' : 'idle'} dot={st.waiting ? 'waiting' : 'none'} size={22} />
+                  <span className="min-w-0 flex-1 truncate">{b.name}</span>
+                  <span className={st.waiting ? 'text-warning-ink' : st.working ? 'text-accent-ink' : 'text-ink-3'}>{st.text}</span>
                 </a>
               )
             })}
-          </div>
-        </section>
-
-        <section className="flex flex-col gap-2">
-          <h2 className="m-0 text-body">Bot 之間</h2>
-          {[
-            { from: 'xiaomi', to: 'azhe', tag: '進行中 · 第 1/6 棒', tone: 'accent' as Tone, text: '請求：抓三家競品主力商品的價格' },
-            { from: 'shujumiao', to: 'xiaomi', tag: '已回覆', tone: 'success' as Tone, text: '回覆：上週銷售摘要與 2 張圖（附檔）' },
-            { from: 'xiaomi', to: 'zhangfang', tag: '等你允許', tone: 'warning' as Tone, text: '請求：結清 10 月廣告費' },
-          ].map((h) => {
-            const f = BOTS[h.from]
-            const t = BOTS[h.to]
-            return (
-              <div key={h.text} className="flex flex-col gap-1 rounded-menu bg-inset px-3 py-2.5">
-                <div className="flex items-center gap-1.5 text-sub">
-                  <Avatar shape={f.shape} color={f.color} state="idle" dot="none" size={18} />
-                  <span>{f.name}</span>
-                  <Icon icon={ArrowRight} size={14} color="var(--color-ink-3)" />
-                  <Avatar shape={t.shape} color={t.color} state="idle" dot="none" size={18} />
-                  <span>{t.name}</span>
-                  <StatusChip size="sm" tone={h.tone} className="ml-auto">
-                    {h.tag}
-                  </StatusChip>
-                </div>
-                <span className="text-[13px] text-ink-2">{h.text}</span>
-              </div>
-            )
-          })}
-        </section>
-
-        <section className="flex flex-col gap-1.5">
-          <h2 className="m-0 mb-0.5 text-body">今天完成</h2>
-          {[
-            ['10 月對帳單整理', '帳房'],
-            ['新品貼文文案三版', '小編'],
-            ['開發信草稿 3 封', '阿凱'],
-            ['收件匣分類 24 封', '信差'],
-          ].map(([t, who]) => (
-            <div key={t} className="flex min-h-6 items-center gap-2 text-sub">
-              <Icon icon={Check} size={16} strokeWidth={2} color="var(--color-success)" />
-              <span className="flex-1">{t}</span>
-              <span className="text-ink-3">{who}</span>
-            </div>
-          ))}
-        </section>
-      </aside>
+        </aside>
+      )}
     </div>
   )
 }

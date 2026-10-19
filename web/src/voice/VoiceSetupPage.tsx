@@ -11,7 +11,6 @@ import { Button, IconButton } from '../ui/Button'
 import { Slider, Switch } from '../ui/Controls'
 import { Icon } from '../ui/Icon'
 import { Select } from '../ui/Menu'
-import { SimplifiedTag } from '../ui/Pill'
 import { cx } from '../ui/cx'
 import { useToast } from '../ui/toast-context'
 import { loadVoiceSettings, playerStore, speak, stopPlayback, voiceSettingsStore, type VoiceSettings } from './voice'
@@ -163,7 +162,6 @@ export function VoiceSetupPage({ botId }: { botId: string }) {
             <h1 className="m-0 text-title">給{name}一個聲音</h1>
             <p className="m-0 text-sub text-ink-2">選好就能講電話，也能讓它把回覆念給你聽。</p>
           </div>
-          <SimplifiedTag>簡化：5 個欄位 → 1 個</SimplifiedTag>
           <IconButton icon={X} label="關閉" onClick={close} />
         </header>
       )}

@@ -123,7 +123,7 @@ export function FastJudge({ providers, defaultModel }: { providers: Provider[]; 
   const fallback: Tier | null = defaultModel?.provider && have.has(defaultModel.provider) ? defaultModel : null
   const turnOn = () => {
     if (!fallback) {
-      toast.show({ kind: 'error', text: '先在「主要模型」設定一個預設模型' })
+      toast.show({ kind: 'error', text: '先在「方案」設定一個預設模型' })
       return
     }
     void save({ tier1: fallback, tier2: fallback }, '快判已開啟')

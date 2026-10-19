@@ -7,7 +7,6 @@ import { linkClick, navigate } from '../router'
 import { Button, IconButton } from '../ui/Button'
 import { TextInput } from '../ui/Field'
 import { Icon } from '../ui/Icon'
-import { SimplifiedTag } from '../ui/Pill'
 import { cx } from '../ui/cx'
 import { useToast } from '../ui/toast-context'
 import { errText } from '../settings/format'
@@ -89,7 +88,6 @@ export function AppsPage() {
             <h1 className="m-0 text-page font-normal">連接應用程式</h1>
             <p className="m-0 mt-0.5 text-sub text-ink-2">點一下、登入，Bot 就能讀寫裡面的資料。工具預設全開，所有 Bot 都能用。</p>
           </div>
-          <SimplifiedTag>簡化：4 步 → 2 步</SimplifiedTag>
           <IconButton icon={RefreshCw} label="重新整理" onClick={load} />
         </header>
         <ol aria-label="步驟" className="m-0 flex list-none flex-wrap items-center gap-2 p-0 text-ui-sm text-ink-2">

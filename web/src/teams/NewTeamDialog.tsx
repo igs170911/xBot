@@ -13,7 +13,6 @@ import { Switch } from '../ui/Controls'
 import { Dialog } from '../ui/Dialog'
 import { TextInput } from '../ui/Field'
 import { Icon } from '../ui/Icon'
-import { SimplifiedTag } from '../ui/Pill'
 import { cx } from '../ui/cx'
 
 // 建立團隊（design/F02、F03）：一句話或點範本 → 看成員預覽 → 建立 N 個 Bot。
@@ -261,7 +260,7 @@ export function NewTeamDialog() {
       onClose={close}
       title={
         <span className="flex flex-wrap items-center gap-3">
-          建立團隊 <SimplifiedTag>簡化：2 步 12 個欄位 → 1 步</SimplifiedTag>
+          建立團隊
         </span>
       }
       description="挑一個範本，看一下成員，按建立就好。成員都向主管報告，主管向你報告。"

@@ -1,5 +1,5 @@
 import { useRef, useState, type RefObject } from 'react'
-import { ArrowLeft, Check, CircleDot, Clipboard, Ellipsis, Expand, GraduationCap, Hand, Keyboard, KeyRound, Maximize, RotateCw, ShieldCheck, X } from 'lucide-react'
+import { ArrowLeft, Check, ChevronDown, Clipboard, Ellipsis, Expand, GraduationCap, Hand, Keyboard, Maximize, RotateCw, Settings, ShieldCheck, X } from 'lucide-react'
 import { botsStore, look } from '../data/bots'
 import { useStore } from '../data/store'
 import { navigate } from '../router'
@@ -8,7 +8,6 @@ import { Button, IconButton } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
 import { Icon } from '../ui/Icon'
 import { MenuButton } from '../ui/Menu'
-import { SimplifiedTag } from '../ui/Pill'
 import { cx } from '../ui/cx'
 import { isRecording, teachStartStore, useLesson } from '../teaching/teachingData'
 import { TeachSection } from '../teaching/TeachPanel'
@@ -33,6 +32,7 @@ export function ComputerPage({ botId }: { botId: string }) {
   const [fit, setFit] = useState(true)
   const [status, setStatus] = useState<VncStatus>({ kind: 'connecting' })
   const [paste, setPaste] = useState(false)
+  const [more, setMore] = useState(false)
   const narrow = useNarrow()
   const who = controlOf(screen)
   const you = who === 'you'
@@ -112,18 +112,6 @@ export function ComputerPage({ botId }: { botId: string }) {
         </div>
         {!narrow && (
           <>
-            <ol className="m-0 flex list-none items-center gap-2 p-0 text-sub max-lg:hidden" aria-label="接手的步驟">
-              <li className="flex items-center gap-1.5">
-                <Icon icon={you ? Check : CircleDot} size={16} className={you ? 'text-success' : 'text-accent-ink'} />1 接手
-              </li>
-              <li aria-hidden="true" className="h-px w-8 bg-line" />
-              <li className={cx('flex items-center gap-1.5', you ? 'text-accent-ink' : 'text-ink-3')}>
-                <Icon icon={CircleDot} size={16} />2 完成交還
-              </li>
-            </ol>
-            <span className="max-xl:hidden">
-              <SimplifiedTag>簡化：3 步 → 2 步</SimplifiedTag>
-            </span>
             {teach}
             {primary}
           </>
@@ -141,7 +129,6 @@ export function ComputerPage({ botId }: { botId: string }) {
             <span className="text-meta text-ink-2">{sub}</span>
           )}
           <span className="flex-1" />
-          <SimplifiedTag>簡化：3 步 → 2 步</SimplifiedTag>
         </div>
       )}
 
@@ -214,42 +201,50 @@ export function ComputerPage({ botId }: { botId: string }) {
                 <p className="m-0 text-sub text-ink-2">{screen.request.reason}</p>
               </section>
             )}
-            <section className="flex flex-col gap-2 rounded-card bg-panel px-4 py-3.5">
-              <h2 className="m-0 text-ui">
-                交還時要說什麼 <span className="text-meta text-ink-3">選填</span>
-              </h2>
-              <textarea
-                aria-label="交還時要說什麼"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                rows={4}
-                maxLength={2000}
-                disabled={!you}
-                placeholder={DEFAULT_NOTE}
-                className="resize-none rounded-field border border-line bg-inset px-3 py-2 text-ui outline-none focus:border-focus disabled:opacity-50"
-              />
-              <p className="m-0 text-meta text-ink-3">不寫就送出上面這句預設說明。</p>
-            </section>
-            <section className="flex flex-col gap-2 rounded-card bg-panel px-4 py-3.5">
-              <h2 className="m-0 flex items-center gap-2 text-ui">
-                <Icon icon={ShieldCheck} size={16} />
-                接手時
-              </h2>
-              <ul className="m-0 flex flex-col gap-1.5 pl-5 text-sub text-ink-2">
-                <li>{name}暫停，不會跟你搶滑鼠</li>
-                <li>你在畫面上輸入的驗證碼與密碼不會存進對話或記憶</li>
-                <li>直接關掉這個視窗不算交還，{name}會繼續等你；30 分鐘沒有人操作會自動交還</li>
-              </ul>
-            </section>
-            <section className="flex flex-col gap-2 rounded-card bg-panel px-4 py-3.5">
-              <h2 className="m-0 flex items-center gap-2 text-ui">
-                <Icon icon={KeyRound} size={16} />
-                登入會保留
-              </h2>
-              <p className="m-0 text-sub text-ink-2">這台電腦的 Chromium 會記住你登入的網站，下次{name}不用再問你。</p>
-            </section>
-            {!you && <ComputerActions botId={botId} botName={name} state={computer} />}
-            {!you && <NetworkAllow botId={botId} botName={name} state={computer} />}
+            {you && (
+              <section className="flex flex-col gap-2 rounded-card bg-panel px-4 py-3.5">
+                <h2 className="m-0 text-ui">
+                  交還時要說什麼 <span className="text-meta text-ink-3">選填</span>
+                </h2>
+                <textarea
+                  aria-label="交還時要說什麼"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={3}
+                  maxLength={2000}
+                  placeholder={DEFAULT_NOTE}
+                  className="resize-none rounded-field border border-line bg-inset px-3 py-2 text-ui outline-none focus:border-focus"
+                />
+              </section>
+            )}
+            <button
+              type="button"
+              aria-expanded={more}
+              onClick={() => setMore((m) => !m)}
+              className="flex h-10 items-center gap-2 rounded-card bg-panel px-4 text-left text-ui text-ink hover:bg-control"
+            >
+              <Icon icon={Settings} size={16} className="text-ink-2" />
+              <span className="flex-1">電腦設定</span>
+              <Icon icon={ChevronDown} size={16} className={cx('text-ink-2 transition-transform', more && 'rotate-180')} />
+            </button>
+            {more && (
+              <>
+                <section className="flex flex-col gap-2 rounded-card bg-panel px-4 py-3.5">
+                  <h2 className="m-0 flex items-center gap-2 text-ui">
+                    <Icon icon={ShieldCheck} size={16} />
+                    接手時
+                  </h2>
+                  <ul className="m-0 flex flex-col gap-1.5 pl-5 text-sub text-ink-2">
+                    <li>{name}暫停，不跟你搶滑鼠</li>
+                    <li>你輸入的密碼不會存進對話</li>
+                    <li>30 分鐘沒人操作會自動交還</li>
+                    <li>網站登入會保留在這台電腦</li>
+                  </ul>
+                </section>
+                {!you && <ComputerActions botId={botId} botName={name} state={computer} />}
+                {!you && <NetworkAllow botId={botId} botName={name} state={computer} />}
+              </>
+            )}
           </aside>
         )}
       </div>

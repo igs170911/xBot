@@ -43,7 +43,7 @@ test('版型截圖：側欄＋待我處理', async ({ page, request }, info) => 
   await page.goto('/')
   // 手機（L02）：標題「待我處理」，問候改成一行說明
   if (info.project.name === 'mobile') await expect(page.getByText('事情都處理完了，Bot 照常工作')).toBeVisible()
-  else await expect(page.getByRole('heading', { level: 1, name: '早安，事情都處理完了' })).toBeVisible()
+  else await expect(page.getByRole('heading', { level: 1, name: '事情都處理完了' })).toBeVisible()
   await expect(page.getByTestId('health')).toContainText('服務正常')
   await ready(page)
   await page.screenshot({ path: shot(`${info.project.name}-shell`), fullPage: info.project.name === 'mobile' })

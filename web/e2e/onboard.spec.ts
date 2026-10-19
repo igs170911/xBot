@@ -49,7 +49,6 @@ test('首次設定 A03 → A04 → 首頁之後再做（A05）→ 導覽三站�
 
   const connect = page.getByRole('region', { name: '接上 AI' })
   await expect(connect.getByRole('list', { name: '找到的 AI' }).getByRole('listitem')).toHaveCount(3)
-  await expect(page.getByText('簡化：6 步 → 2 步')).toBeVisible()
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-w32-a03`), fullPage: true })
   await connect.getByRole('button', { name: '改用 API 金鑰' }).click()
@@ -190,7 +189,6 @@ test('Bot 設定 · 基本（G02）＋外觀（G03）＋換成圖片（G04）', 
   const { api, xm } = await openSettings(page, '/settings/bots/:id')
   const m = main(page)
   await expect(m.getByRole('navigation', { name: 'Bot 設定分頁' }).getByRole('link')).toHaveText(['基本', '能力', '權限與花費', '進階'])
-  if (info.project.name === 'desktop') await expect(page.getByText('簡化：12 個分頁 → 4 個')).toBeVisible()
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-w32-g02`), fullPage: true })
 

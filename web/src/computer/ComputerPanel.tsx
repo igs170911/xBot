@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Cpu, Expand, Globe, Hand, Moon, Server, Settings, Sparkles, X } from 'lucide-react'
+import { ChevronDown, Cpu, Expand, Globe, Hand, Moon, Server, Settings, Sparkles, X } from 'lucide-react'
 import type { Bot } from '../data/bots'
 import { navigate } from '../router'
 import { Button, IconButton } from '../ui/Button'
@@ -19,6 +19,7 @@ export function ComputerPanel({ bot, className }: { bot: Bot; className?: string
   const { screen, error, setScreen } = useScreen(bot.id)
   const vnc = useRef<VncHandle>(null)
   const [note, setNote] = useState('')
+  const [more, setMore] = useState(false)
   const { take, back, busy } = useTakeover(bot.id, bot.name, setScreen)
   const who = controlOf(screen)
   const { lesson } = useLesson(bot.id)
@@ -96,16 +97,30 @@ export function ComputerPanel({ bot, className }: { bot: Bot; className?: string
                 </Button>
               </div>
             )}
-            <WhereSection botId={bot.id} botName={bot.name} hostId={screen.host_id} />
-            <ComputerActions botId={bot.id} botName={bot.name} state={computer} />
-            <NetworkAllow botId={bot.id} botName={bot.name} state={computer} />
-            <section className="flex flex-col gap-2.5 rounded-group bg-panel px-4 py-3.5">
-              <h3 className="m-0 text-ui">電腦資訊</h3>
-              <InfoRow icon={Cpu} label={`${BOX_SPEC} 記憶體`} aside={screen.box === 'running' ? '開機中' : screen.box === 'sleeping' ? '休眠中' : undefined} />
-              <InfoRow icon={Moon} label={`閒置 ${IDLE_SLEEP_MIN} 分鐘休眠`} aside="有新工作自動喚醒" />
-              <InfoRow icon={Server} label={screen.host_name ? `主機：${screen.host_name}` : '主機：第一次開機時自動擺放'} aside={screen.viewers > 0 ? `${screen.viewers} 個畫面連線` : undefined} />
-              <InfoRow icon={Globe} label="瀏覽器登入會保留在這台電腦" />
-            </section>
+            <button
+              type="button"
+              aria-expanded={more}
+              onClick={() => setMore((m) => !m)}
+              className="flex h-10 items-center gap-2 rounded-group bg-panel px-4 text-left text-ui text-ink hover:bg-control"
+            >
+              <Icon icon={Settings} size={16} className="text-ink-2" />
+              <span className="flex-1">電腦設定</span>
+              <Icon icon={ChevronDown} size={16} className={cx('text-ink-2 transition-transform', more && 'rotate-180')} />
+            </button>
+            {more && (
+              <>
+                <WhereSection botId={bot.id} botName={bot.name} hostId={screen.host_id} />
+                <ComputerActions botId={bot.id} botName={bot.name} state={computer} />
+                <NetworkAllow botId={bot.id} botName={bot.name} state={computer} />
+                <section className="flex flex-col gap-2.5 rounded-group bg-panel px-4 py-3.5">
+                  <h3 className="m-0 text-ui">電腦資訊</h3>
+                  <InfoRow icon={Cpu} label={`${BOX_SPEC} 記憶體`} aside={screen.box === 'running' ? '開機中' : screen.box === 'sleeping' ? '休眠中' : undefined} />
+                  <InfoRow icon={Moon} label={`閒置 ${computer.view?.idle_minutes || IDLE_SLEEP_MIN} 分鐘休眠`} aside="有新工作自動喚醒" />
+                  <InfoRow icon={Server} label={screen.host_name ? `主機：${screen.host_name}` : '主機：第一次開機時自動擺放'} aside={screen.viewers > 0 ? `${screen.viewers} 個畫面連線` : undefined} />
+                  <InfoRow icon={Globe} label="瀏覽器登入會保留在這台電腦" />
+                </section>
+              </>
+            )}
           </>
         )}
       </div>

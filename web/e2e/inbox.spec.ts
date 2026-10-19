@@ -111,7 +111,7 @@ test('待我處理：核准、指令、提問、密碼、預算卡都能就地�
   await api.install()
   await page.goto('/')
   if (info.project.name === 'mobile') await expect(page.getByText('5 件需要你，其他 Bot 照常工作')).toBeVisible()
-  else await expect(page.getByRole('heading', { level: 1, name: '早安，有 5 件事等你' })).toBeVisible()
+  else await expect(page.getByRole('heading', { level: 1, name: '有 5 件事等你' })).toBeVisible()
   await expect(page.getByTestId('ask-expiry')).toContainText('10 分鐘內沒回覆會過期')
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-inbox-cards`), fullPage: true })
@@ -120,14 +120,14 @@ test('待我處理：核准、指令、提問、密碼、預算卡都能就地�
   const ap = page.locator('[data-testid="inbox-item"][data-kind="approval"]').first()
   await ap.getByRole('button', { name: '退回' }).click()
   if (info.project.name === 'mobile') await expect(page.getByText('4 件需要你，其他 Bot 照常工作')).toBeVisible()
-  else await expect(page.getByRole('heading', { level: 1, name: '早安，有 4 件事等你' })).toBeVisible()
+  else await expect(page.getByRole('heading', { level: 1, name: '有 4 件事等你' })).toBeVisible()
   const undo = page.getByRole('button', { name: '復原' })
   await expect(undo).toBeVisible()
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-inbox-undo-toast`) })
   await undo.click()
   if (info.project.name === 'mobile') await expect(page.getByText('5 件需要你，其他 Bot 照常工作')).toBeVisible()
-  else await expect(page.getByRole('heading', { level: 1, name: '早安，有 5 件事等你' })).toBeVisible()
+  else await expect(page.getByRole('heading', { level: 1, name: '有 5 件事等你' })).toBeVisible()
   expect(api.calls.find((c) => c.op === 'inbox.undo')?.input).toEqual({ inbox_id: 'ap' })
 
   // Bot 的指令：允許這次（chat.respond）
@@ -151,7 +151,7 @@ test('待我處理：核准、指令、提問、密碼、預算卡都能就地�
   // 預算卡：知道了
   await page.locator('[data-kind="budget"]').getByRole('button', { name: '知道了' }).click()
   if (info.project.name === 'mobile') await expect(page.getByText('1 件需要你，其他 Bot 照常工作')).toBeVisible()
-  else await expect(page.getByRole('heading', { level: 1, name: '早安，有 1 件事等你' })).toBeVisible()
+  else await expect(page.getByRole('heading', { level: 1, name: '有 1 件事等你' })).toBeVisible()
 })
 
 test('對話裡回覆：核准卡、提問卡、密碼卡，送出後收成一行', async ({ page }, info) => {

@@ -9,7 +9,7 @@ import { Switch } from '../ui/Controls'
 import { TextInput, fieldClass } from '../ui/Field'
 import { Icon } from '../ui/Icon'
 import { Select } from '../ui/Menu'
-import { SimplifiedTag, StatusChip } from '../ui/Pill'
+import { StatusChip } from '../ui/Pill'
 import { useToast } from '../ui/toast-context'
 import { useFocusTrap } from '../ui/useFocusTrap'
 import { cx } from '../ui/cx'
@@ -312,9 +312,6 @@ export function NewRoutineDialog() {
           <h2 id="new-routine-title" className="m-0 flex-1 text-[18px] font-normal">
             新增定時任務
           </h2>
-          <span className="max-sm:hidden">
-            <SimplifiedTag>簡化：15 個欄位 → 1 句話＋確認</SimplifiedTag>
-          </span>
           <IconButton icon={X} label="關閉" onClick={close} />
         </header>
         <RoutineForm initial={text} onDone={close} />

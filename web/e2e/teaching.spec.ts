@@ -98,7 +98,6 @@ test('教它一件事（E05→E04）：開始示範、即時步驟、補充、�
   const dialog = page.getByRole('dialog', { name: /教抓蟲一件事/ })
   await expect(dialog).toBeVisible()
   await expect(dialog).toContainText('密碼欄位只會記成 ••••')
-  await expect(dialog).toContainText('簡化：3 個欄位 → 1 步')
   await settle(page)
   await dialog.screenshot({ path: shot('desktop-e05-teach-start') })
 

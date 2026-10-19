@@ -39,7 +39,7 @@ afterEach(() => {
 
 it('首頁是待我處理，並顯示服務版本', async () => {
   render(<App />)
-  expect(await screen.findByRole('heading', { level: 1, name: '早安，事情都處理完了' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { level: 1, name: '事情都處理完了' })).toBeInTheDocument()
   expect(screen.getByTestId('inbox-empty')).toHaveTextContent('都處理完了')
   expect(await screen.findByText('服務正常 · v-test')).toBeInTheDocument()
   const nav = screen.getByRole('navigation', { name: '側欄' })
@@ -59,7 +59,7 @@ it('真的待我處理：核准可以允許，送出 approvals.decide 後重讀'
   render(<App />)
   const card = await screen.findByTestId('inbox-item')
   expect(within(card).getByText('Claude Code 想要：刪除 Bot')).toBeInTheDocument()
-  expect(screen.getByRole('heading', { level: 1, name: '早安，有 1 件事等你' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { level: 1, name: '有 1 件事等你' })).toBeInTheDocument()
   const nav = screen.getByRole('navigation', { name: '側欄' })
   expect(within(nav).getByLabelText('1 件等你')).toBeInTheDocument()
   // 刪除類用危險樣式（F08）
@@ -135,7 +135,7 @@ it('側欄連結用前端路由換頁', async () => {
   expect(await screen.findByRole('heading', { level: 1, name: '辦公室' }, { timeout: 5000 })).toBeInTheDocument()
   act(() => navigate('/'))
   // 待我處理是非同步讀的：讀完才知道「事情都處理完了」。
-  expect(await screen.findByRole('heading', { level: 1, name: '早安，事情都處理完了' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { level: 1, name: '事情都處理完了' })).toBeInTheDocument()
   await screen.findByText('服務正常 · v-test')
 })
 
@@ -190,7 +190,7 @@ it('沒登入（從別的裝置打開）時顯示登入頁，輸入登入碼後�
   expect(await screen.findByText('登入碼或權杖不正確')).toBeInTheDocument()
   fireEvent.change(input, { target: { value: 'good' } })
   fireEvent.click(screen.getByRole('button', { name: '登入' }))
-  expect(await screen.findByRole('heading', { level: 1, name: /早安/ })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { level: 1, name: /件事等你|事情都處理完了/ })).toBeInTheDocument()
   await screen.findByText('服務正常 · v-test')
 })
 

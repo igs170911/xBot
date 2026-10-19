@@ -3,7 +3,6 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { linkClick, navigate } from '../router'
 import { Icon } from '../ui/Icon'
-import { SimplifiedTag } from '../ui/Pill'
 import { cx } from '../ui/cx'
 import { GeneralSection } from './GeneralSection'
 import { ModelsSection } from './ModelsSection'
@@ -101,19 +100,12 @@ function AdvancedIndex() {
 }
 
 function backTarget(path: string): string {
-  if (path.startsWith('/settings/bots/')) return '/settings/models/bots'
+  if (path.startsWith('/settings/bots/')) return '/settings/models'
   if (path.startsWith('/settings/advanced/')) return '/settings/advanced'
   if (path.startsWith('/settings/computers/')) return '/settings/computers'
   return '/settings'
 }
 
-function simplified(path: string): string | null {
-  if (path === '/settings/general' || path === '/settings') return '簡化：15 個區塊 → 5 個'
-  if (path === '/settings/models') return '簡化：5 個欄位 → 1 個'
-  if (path.startsWith('/settings/bots/')) return '簡化：12 個分頁 → 4 個'
-  if (path === '/settings/computers/add') return '簡化：手動設定 Docker／SSH／防火牆 → 貼一行指令'
-  return null
-}
 
 /** /settings 與底下的每一頁。 */
 export function SettingsPage({ path }: { path: string }) {
@@ -123,7 +115,6 @@ export function SettingsPage({ path }: { path: string }) {
     if (!narrow && (path === '/settings' || path === '/settings/')) navigate('/settings/general', { replace: true })
   }, [narrow, path])
 
-  const tag = simplified(path)
   const overview = narrow && (path === '/settings' || path === '/settings/')
   const title = path.startsWith('/settings/bots/') ? 'Bot 設定' : path === '/settings/computers/add' ? '新增主機' : path.startsWith('/settings/computers/hosts/') ? '主機' : (TITLES[path] ?? (path.startsWith('/settings/models') ? 'AI 模型' : '設定'))
 
@@ -147,11 +138,6 @@ export function SettingsPage({ path }: { path: string }) {
           </a>
         )}
         <h1 className="m-0 flex-1 text-title max-md:text-center">{narrow && !overview ? title : '設定'}</h1>
-        {tag && (
-          <span className="max-sm:hidden">
-            <SimplifiedTag>{tag}</SimplifiedTag>
-          </span>
-        )}
         {narrow && !overview && <span className="size-11" aria-hidden="true" />}
       </header>
       <div className="flex min-h-0 flex-1">

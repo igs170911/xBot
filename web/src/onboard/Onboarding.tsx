@@ -19,7 +19,7 @@ import { Checkbox } from '../ui/Controls'
 import { TextInput } from '../ui/Field'
 import { Icon } from '../ui/Icon'
 import { Select } from '../ui/Menu'
-import { SimplifiedTag, StatusChip } from '../ui/Pill'
+import { StatusChip } from '../ui/Pill'
 import { cx } from '../ui/cx'
 import { useToast } from '../ui/toast-context'
 import { errText } from '../settings/format'
@@ -48,7 +48,6 @@ function Frame({ children }: { children: ReactNode }) {
       <header className="flex min-h-10 w-full items-center gap-2 px-2">
         <Mascot size={24} />
         <span className="flex-1 text-[16px]">XBot</span>
-        <SimplifiedTag>簡化：6 步 → 2 步</SimplifiedTag>
       </header>
       <main className="flex w-full flex-1 items-center justify-center">{children}</main>
     </div>

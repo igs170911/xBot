@@ -28,7 +28,7 @@ export function EmptyState({ bot, onPick, onFree }: { bot: Bot; onPick: (text: s
           </span>
           <span className="inline-flex h-[26px] items-center gap-1.5 rounded-full border border-line px-2.5">
             <Icon icon={Monitor} size={14} />
-            這台主機 · 第一次交辦時開機
+            第一次交辦時開機
           </span>
         </span>
       </div>

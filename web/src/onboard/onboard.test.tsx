@@ -52,7 +52,6 @@ it('首次設定：偵測到已登入的 Claude Code 與本機模型，用這個
   render(<App />)
 
   const card = await screen.findByRole('region', { name: '接上 AI' })
-  expect(screen.getByText('簡化：6 步 → 2 步')).toBeInTheDocument()
   const list = await within(card).findByRole('list', { name: '找到的 AI' })
   const rows = within(list).getAllByRole('listitem')
   expect(rows).toHaveLength(2) // 沒登入的 Codex 不列

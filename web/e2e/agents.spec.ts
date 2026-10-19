@@ -148,7 +148,7 @@ test('待我處理：代理要求的核准標出 MCP，代為核准紀錄卡可�
   await api.install()
   await page.goto('/')
   if (info.project.name === 'mobile') await expect(page.getByText('1 件需要你，其他 Bot 照常工作')).toBeVisible()
-  else await expect(page.getByRole('heading', { level: 1, name: '早安，有 1 件事等你' })).toBeVisible()
+  else await expect(page.getByRole('heading', { level: 1, name: '有 1 件事等你' })).toBeVisible()
   await expect(page.getByTestId('approval-op')).toContainText('xbot.bots.delete · request_id cc-7f3a')
   await expect(page.locator('[data-kind="approval"]')).toContainText('透過 MCP · 只有你能決定')
   const card = page.getByTestId('inbox-delegated')

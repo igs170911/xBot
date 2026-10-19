@@ -9,7 +9,6 @@ import { navigate } from '../router'
 import { Button, IconButton } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
 import { Icon } from '../ui/Icon'
-import { SimplifiedTag } from '../ui/Pill'
 import { setLesson, teachStartStore, type Lesson } from './teachingData'
 
 /**
@@ -56,7 +55,6 @@ export function TeachStartDialog() {
       title={
         <span className="flex items-center gap-2">
           <span className="min-w-0 flex-1">教{name}一件事</span>
-          <SimplifiedTag>簡化：3 個欄位 → 1 步</SimplifiedTag>
           <IconButton icon={X} label="關閉" size="sm" onClick={close} disabled={busy} />
         </span>
       }

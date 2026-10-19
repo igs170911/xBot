@@ -4,6 +4,6 @@ import { ensureBot } from './real-helpers'
 test('首頁打得開，而且連得到服務', async ({ page, request }) => {
   await ensureBot(request)
   await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1, name: /早安|待我處理/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: /件事等你|事情都處理完了|待我處理/ })).toBeVisible()
   await expect(page.getByTestId('health')).toContainText('服務正常')
 })
