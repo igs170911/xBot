@@ -20,6 +20,24 @@ import (
 // 舊的 /internal/product（hermes_host.py 的 /product 轉送）也接到同一個處理器。
 const BotPath = "/internal/mcp"
 
+// NamesParam=NamesPlain（BotPath 的查詢參數）時工具名稱改成只有英數字和底線（xbot_collab_message_bot）：Grok 不收
+// 名稱裡有「.」的 MCP 工具（「must contain only letters, digits, underscores, and hyphens」，整個 xbot 伺服器的工具都被略過），
+// 一般的模型 API 也只收這些字元。ACP 引擎的橋接帶這個參數（runtime.XBotMCPServer）；Hermes 自己會把「.」換掉。
+const (
+	NamesParam = "names"
+	NamesPlain = "plain"
+)
+
+// PlainName 是工具名稱只留英數字、底線和連字號的寫法（xbot.collab.message_bot → xbot_collab_message_bot）。
+func PlainName(name string) string { return strings.ReplaceAll(name, ".", "_") }
+
+// PlainBotTool 是名稱只有英數字和底線的 BotTool。
+func PlainBotTool(info ops.Info) *mcp.Tool {
+	t := BotTool(info)
+	t.Name = PlainName(t.Name)
+	return t
+}
+
 // BotInstructions 是給 Bot 看的使用說明（initialize 的 instructions）。
 const BotInstructions = `XBot：你的工作團隊。這些工具以你自己的身分執行（你是哪個 Bot，由你的電腦決定）。
 - 只有使用者能決定的事（花錢、價格、合約、上架、對外承諾），先用 xbot.approvals.request 請使用者核准，再用 xbot.approvals.wait 等結果；核准前不要做。
@@ -27,7 +45,8 @@ const BotInstructions = `XBot：你的工作團隊。這些工具以你自己的
 - 要給使用者看結構化的東西（重點、選項、檔案）用 xbot.cards.post；一般回答直接寫在回覆裡。
 - xbot.team.roster 列出你的隊友。需要隊友的專長時用 xbot.collab.message_bot 交辦或提問，結果會自動回到你的對話，不用查詢或催促；
   幾位一起分工時用 xbot.collab.start_group 開群組、xbot.collab.post_to_group 在群組交棒（@ 下一棒）。同一條往來有次數上限（使用者設定），到了就回報使用者。
-- 大工作（要交辦隊友、建 Bot 或團隊、要做很多步）先把計畫列給使用者確認：目標、誰做什麼、順序、要使用者決定的事；使用者同意後才交辦下去。不要一收到就派一堆工作。
+- 要交辦隊友、建 Bot 或團隊之前，先把計畫列給使用者確認：目標、誰做什麼、順序、要使用者決定的事；使用者同意後才交辦下去。不要一收到就派一堆工作。
+  其他交代的事（就算要做很多步）直接做到完成，不用先問。
 - 需要別的 Bot 已經登入的網站（例：它登入了 Threads）時，用 xbot.logins.request_share 請使用者分享，不要直接說不能共用。
 - 你所在的群組要改名稱、公告、主責、加減成員，或你要離開時，用 xbot.collab.update_group。
 - 有團隊管理權限時，刪 Bot、刪團隊用 xbot.teams.remove_bot／remove_team，同一批刪兩個以上用 xbot.teams.remove_many（只要使用者允許一次）；使用者要你刪群組時用 xbot.collab.remove_group。都是使用者按允許後才會刪。
@@ -72,9 +91,18 @@ func BotHandler(reg *ops.Registry, o BotOptions) func(botID string) http.Handler
 	}
 	member := newServer(reg, TokenIdentity, BotInstructions, MemberTools, BotTool, true)
 	manager := newServer(reg, TokenIdentity, BotInstructions, BotTools, BotTool, true)
+	plainMember := newServer(reg, TokenIdentity, BotInstructions, MemberTools, PlainBotTool, true)
+	plainManager := newServer(reg, TokenIdentity, BotInstructions, BotTools, PlainBotTool, true)
 	pick := func(r *http.Request) *mcp.Server {
+		plain := r.URL.Query().Get(NamesParam) == NamesPlain
 		if ti := sdkauth.TokenInfoFromContext(r.Context()); ti != nil && ti.Extra[managerKey] == true {
+			if plain {
+				return plainManager
+			}
 			return manager
+		}
+		if plain {
+			return plainMember
 		}
 		return member
 	}

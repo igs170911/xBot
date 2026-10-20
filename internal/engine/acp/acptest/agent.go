@@ -9,6 +9,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"time"
 )
 
 // 劇本：session/prompt 的文字決定 agent 怎麼回。
@@ -31,6 +32,16 @@ const (
 	PromptNarrate = "narrate"
 	// PromptAnswerFirst：先寫完一大段答案、再用工具存檔、最後說「已存檔」（答案不能被丟掉）。
 	PromptAnswerFirst = "answer-first"
+	// PromptBackground：照 Grok 的樣子把工作丟到背景（_x.ai/session/update 的 workflow_updated），說「研究開跑了」就結束
+	// session/prompt。測試呼叫 Agent.Finish 後背景工作做完，agent 自己開一輪回報：讀一個網頁（fetch，要權限）、
+	// 改 /workspace 的報告（edit，要權限），說「報告好了」，以 turn_completed 結束。
+	PromptBackground = "background"
+	// PromptLate：回「done」結束這一輪之後，又送一段文字（不能混進下一輪）。
+	PromptLate = "late"
+	// PromptBgSubagent：開一個背景子代理（不在 workflow 裡）就結束這一輪；Finish 後子代理做完、叫醒 agent 回報「價格查好了」。
+	PromptBgSubagent = "bg-subagent"
+	// PromptDenyCancels：照 Grok 的樣子要求跑指令；被拒絕就以 cancelled 結束整輪（等人下指令），允許就回「ran」。
+	PromptDenyCancels = "deny-cancels"
 )
 
 // AnswerFirstText 是 PromptAnswerFirst 先寫的那一大段答案。
@@ -85,6 +96,18 @@ type Agent struct {
 	nextID   int
 	nextSess int
 	launches int
+	finish   chan struct{}
+	answers  []json.RawMessage
+}
+
+// Finish 讓 PromptBackground 的背景工作做完。
+func (a *Agent) Finish() { close(a.finish) }
+
+// Answers 是 XBot 對 agent 的請求（權限請求）的回覆，依序。
+func (a *Agent) Answers() []json.RawMessage {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]json.RawMessage(nil), a.answers...)
 }
 
 // New 建立假的 agent（扮演 Claude Code）。
@@ -92,7 +115,8 @@ func New() *Agent { return NewFor("claude-code") }
 
 // NewFor 建立扮演某個引擎的假 agent（Profiles）。
 func NewFor(engine string) *Agent {
-	return &Agent{Profile: Profiles[engine], sessions: map[string]bool{}, cancels: map[string]chan struct{}{}, waiting: map[string]chan json.RawMessage{}}
+	return &Agent{Profile: Profiles[engine], sessions: map[string]bool{}, cancels: map[string]chan struct{}{}, waiting: map[string]chan json.RawMessage{},
+		finish: make(chan struct{})}
 }
 
 // Calls 回傳到目前為止收到的請求與通知。
@@ -183,6 +207,31 @@ func (p *peer) update(session string, u map[string]any) {
 	p.send(map[string]any{"jsonrpc": "2.0", "method": "session/update", "params": map[string]any{"sessionId": session, "update": u}})
 }
 
+// xai 送 Grok 的擴充通知（實際的方法名稱是 _x.ai/session_notification；Grok 自己的紀錄檔寫成 _x.ai/session/update）。
+func (p *peer) xai(session string, u map[string]any) {
+	p.send(map[string]any{"jsonrpc": "2.0", "method": "_x.ai/session_notification", "params": map[string]any{"sessionId": session, "update": u}})
+}
+
+// permission 發一個權限請求，回傳選到的 optionId（取消時是 "cancelled"）。
+func (p *peer) permission(session string, tool map[string]any) string {
+	raw := p.ask("session/request_permission", map[string]any{"sessionId": session, "toolCall": tool, "options": []map[string]string{
+		{"optionId": "allow", "name": "Allow", "kind": "allow_once"},
+		{"optionId": "always", "name": "Always allow", "kind": "allow_always"},
+		{"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+	}})
+	var res struct {
+		Outcome struct {
+			Outcome  string `json:"outcome"`
+			OptionID string `json:"optionId"`
+		} `json:"outcome"`
+	}
+	_ = json.Unmarshal(raw, &res)
+	if res.Outcome.Outcome == "cancelled" {
+		return "cancelled"
+	}
+	return res.Outcome.OptionID
+}
+
 func (p *peer) chunk(session, kind, text string) {
 	p.update(session, map[string]any{"sessionUpdate": kind, "content": map[string]string{"type": "text", "text": text}})
 }
@@ -201,6 +250,7 @@ func (p *peer) serve(in *io.PipeReader) {
 			p.a.mu.Lock()
 			ch := p.a.waiting[string(f.ID)]
 			delete(p.a.waiting, string(f.ID))
+			p.a.answers = append(p.a.answers, f.Result)
 			p.a.mu.Unlock()
 			if ch != nil {
 				if f.Error != nil {
@@ -390,6 +440,63 @@ func (p *peer) prompt(f frame) {
 			p.chunk(sid, "agent_message_chunk", "allowed:"+res.Outcome.OptionID)
 			end("end_turn")
 		}
+	case PromptBackground:
+		wf := map[string]any{"sessionUpdate": "workflow_updated", "run_id": "wf1", "name": "deep-research", "status": "active", "foreground": false, "current_phase": "Plan"}
+		p.xai(sid, wf)
+		p.chunk(sid, "agent_message_chunk", "研究開跑了")
+		p.xai(sid, map[string]any{"sessionUpdate": "turn_completed", "prompt_id": "p1", "stop_reason": "end_turn"})
+		end("end_turn")
+		// workflow 裡的子代理：它自己的 session 每一輪結束也送 turn_completed（不能當成 agent 回報完了）。
+		p.xai(sid, map[string]any{"sessionUpdate": "subagent_spawned", "subagent_id": "sub1", "parent_session_id": sid, "child_session_id": "child1",
+			"workflow_run_id": "wf1"})
+		// 這一輪結束後 Grok 才送的標題（不是開始回報）。
+		p.update(sid, map[string]any{"sessionUpdate": "session_info_update", "title": "研究"})
+		go func() {
+			<-p.a.finish
+			p.xai(sid, map[string]any{"sessionUpdate": "subagent_finished", "subagent_id": "sub1", "child_session_id": "child1", "status": "completed"})
+			wf["status"], wf["current_phase"] = "complete", "Report"
+			p.xai(sid, wf)
+			p.update(sid, map[string]any{"sessionUpdate": "user_message_chunk", "content": map[string]string{"type": "text", "text": "A background workflow stopped."},
+				"_meta": map[string]any{"syntheticPrompt": true}})
+			// 回報的這一輪裡開一個子代理：它自己的 session 一輪結束也送 turn_completed，不能當成 agent 回報完了。
+			p.xai(sid, map[string]any{"sessionUpdate": "subagent_spawned", "subagent_id": "sub2", "parent_session_id": sid, "child_session_id": "child2"})
+			p.xai("child2", map[string]any{"sessionUpdate": "turn_completed", "prompt_id": "c2", "stop_reason": "end_turn"})
+			p.xai(sid, map[string]any{"sessionUpdate": "subagent_finished", "subagent_id": "sub2", "child_session_id": "child2", "status": "completed"})
+			time.Sleep(20 * time.Millisecond)
+			fetch := p.permission(sid, map[string]any{"toolCallId": "f1", "title": "Fetch: https://example.com", "kind": "fetch", "rawInput": map[string]string{"url": "https://example.com"}})
+			edit := p.permission(sid, map[string]any{"toolCallId": "e1", "title": "Write /workspace/報告.md", "kind": "edit", "rawInput": map[string]string{"file_path": "/workspace/報告.md"}})
+			p.chunk(sid, "agent_message_chunk", "報告好了："+fetch+","+edit)
+			p.xai(sid, map[string]any{"sessionUpdate": "turn_completed", "prompt_id": "workflow-completed-wf1", "stop_reason": "end_turn",
+				"usage": map[string]int{"inputTokens": 100, "outputTokens": 20}})
+		}()
+	case PromptBgSubagent:
+		p.xai(sid, map[string]any{"sessionUpdate": "subagent_spawned", "subagent_id": "s9", "parent_session_id": sid, "child_session_id": "c9", "description": "查價格"})
+		p.chunk(sid, "agent_message_chunk", "我請子代理去查。")
+		end("end_turn")
+		go func() {
+			<-p.a.finish
+			p.xai(sid, map[string]any{"sessionUpdate": "subagent_finished", "subagent_id": "s9", "child_session_id": "c9", "status": "completed", "will_wake": true})
+			p.update(sid, map[string]any{"sessionUpdate": "agent_message_chunk", "content": map[string]string{"type": "text", "text": "價格查好了"}})
+			p.xai(sid, map[string]any{"sessionUpdate": "turn_completed", "prompt_id": "sub-done", "stop_reason": "end_turn"})
+		}()
+	case PromptDenyCancels:
+		p.chunk(sid, "agent_message_chunk", "我先查一下。")
+		switch p.permission(sid, map[string]any{"toolCallId": "x1", "title": "Execute `curl https://example.com`", "kind": "execute",
+			"rawInput": map[string]string{"command": "curl https://example.com"}}) {
+		case "reject":
+			end("cancelled")
+			return
+		case "cancelled":
+			<-cancel
+			end("cancelled")
+			return
+		}
+		p.chunk(sid, "agent_message_chunk", "ran")
+		end("end_turn")
+	case PromptLate:
+		p.chunk(sid, "agent_message_chunk", "done")
+		end("end_turn")
+		p.chunk(sid, "agent_message_chunk", "late")
 	case PromptWait:
 		p.chunk(sid, "agent_message_chunk", "working")
 		<-cancel

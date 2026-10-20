@@ -63,14 +63,24 @@ func TestACPBotGetsItsSoul(t *testing.T) {
 			Text string `json:"text"`
 		} `json:"prompt"`
 	}
+	var opened struct {
+		Meta struct {
+			Rules string `json:"rules"`
+		} `json:"_meta"`
+	}
 	for _, c := range agent.Calls() {
-		if c.Method == "session/prompt" {
-			_ = json.Unmarshal(c.Params, &first)
-			break
+		switch c.Method {
+		case "session/new":
+			_ = json.Unmarshal(c.Params, &opened)
+		case "session/prompt":
+			if first.Prompt == nil {
+				_ = json.Unmarshal(c.Params, &first)
+			}
 		}
 	}
-	if len(first.Prompt) != 2 || !strings.Contains(first.Prompt[0].Text, inst) || first.Prompt[1].Text != acptest.PromptHello {
-		t.Fatalf("第一則訊息前面要帶身分與守則：%+v", first)
+	// Grok：身分與守則放在 session 的 _meta.rules（加在它的系統提示後面），訊息裡只有使用者說的話。
+	if !strings.Contains(opened.Meta.Rules, strings.TrimSpace(inst)) || len(first.Prompt) != 1 || first.Prompt[0].Text != acptest.PromptHello {
+		t.Fatalf("身分與守則要在 _meta.rules：%+v %+v", opened, first)
 	}
 	// 對話裡只看得到使用者自己說的話
 	msgs, _ := db.ListMessages(ctx, store.ScopeThread, res.ThreadID, 0, 0)

@@ -39,7 +39,18 @@ type Agent struct {
 	// SystemPrompt 表示 agent 接受 session/new、session/load 的 _meta.systemPrompt（claude-agent-acp）：
 	// Bot 的身分與守則加在它的系統提示後面。其他 agent 放在每個新 session 第一則訊息的前面（見 Options.Instructions）。
 	SystemPrompt bool
+	// Rules 表示 agent 接受 session/new 的 _meta.rules（Grok：加在它的系統提示後面）；和 SystemPrompt 一樣不放進第一則訊息。
+	Rules bool
+	// ModeMeta 是依 bot.approval_mode 加在 session/new、session/load 的 _meta（沒有 session 模式、改用 _meta 開關的 agent，例：Grok）。
+	ModeMeta map[string]map[string]any
+	// Hint 是這個 agent 專屬的提示，加在身分與守則後面。
+	Hint string
 }
+
+// grokHint：XBot 會等 Grok 的背景工作做完、回報完（driver.hold），Grok 不用自己寫迴圈輪詢（2026-10-21 實測：它丟出
+// workflow 後寫 bash 迴圈每秒讀 state.json，每一次都要核准）。
+const grokHint = "丟到背景的工作（workflow、背景子代理）不用自己輪詢或等它：丟出去就可以結束這一輪；做完時你會被叫回來回報，" +
+	"XBot 會等你回報完才算完成。只有使用者要的資料都已經拿到時，才不用等背景工作。"
 
 // ForMode 回傳開行程用的 Agent：環境變數加上這個權限等級的設定。
 func (a Agent) ForMode(mode string) Agent {
@@ -76,8 +87,9 @@ func openCodePermission(edit, webfetch string) []string {
 //     登入方式與「不准 YOLO」寫在映像的系統設定 /etc/gemini-cli/settings.json（Bot 改不了）。
 //   - OpenCode（E31）：opencode acp。沒有權限模式（session 的 mode 是 build／plan），權限用 OPENCODE_CONFIG_CONTENT 設定。
 //     用你的 OpenCode Go／Zen 訂閱（~/.local/share/opencode/auth.json）。
-//   - Grok Build（E31）：grok agent stdio（LazyBoy 已經把 grok 裝在映像裡）。ACP 沒有模式，預設每個動作都問；
-//     絕不加 --always-approve，也不讓訊息帶 /always-approve。
+//   - Grok Build（E31）：grok agent stdio（LazyBoy 已經把 grok 裝在映像裡）。ACP 沒有 session 模式，用 session/new 的 _meta：
+//     auto、full 開 autoMode（Grok 自己審查，審不過的才問人）；ask、edits 照 Grok 預設每個動作都問（XBot 代答只讀的，見 autoAllow）。
+//     絕不開 yoloMode、不加 --always-approve，也不讓訊息帶 /always-approve（SEC-2）。
 var Agents = map[string]Agent{
 	EngineClaude: {
 		Engine: EngineClaude, Label: "Claude Code",
@@ -116,7 +128,11 @@ var Agents = map[string]Agent{
 	EngineGrok: {
 		Engine: EngineGrok, Label: "Grok",
 		Command:        []string{"grok", "agent", "stdio"},
-		BlockedPrompts: []string{"/always-approve"},
+		BlockedPrompts: []string{"/always-approve", "/yolo"},
+		Rules:          true,
+		Hint:           grokHint,
+		// full 也只到 autoMode（SEC-2）：yoloMode 會自動允許所有動作。
+		ModeMeta: map[string]map[string]any{"auto": {"autoMode": true}, "full": {"autoMode": true}},
 	},
 }
 

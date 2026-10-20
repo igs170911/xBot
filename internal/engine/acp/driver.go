@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"regexp"
 	"slices"
 	"strings"
@@ -83,6 +84,7 @@ type agentConn struct {
 	mu       sync.Mutex
 	sessions map[string]*session // ACP sessionId → session
 	threads  map[string]*session // XBot thread id → session
+	children map[string]*session // agent 開的子代理 session → 開它的 session（權限請求、背景工作對回去）
 	requests map[string]pending  // 等人回覆的權限請求
 }
 
@@ -107,8 +109,27 @@ type session struct {
 	mu         sync.Mutex
 	running    bool
 	cancelling bool
-	tools      map[string]*toolState
-	q          *queue
+	// mode 是 Bot 的權限等級（XBot 代答權限請求時看，autoAllow）。
+	mode  string
+	tools map[string]*toolState
+	// 背景工作（Grok 的 _x.ai/session/update）：workflow、背景子代理在 session/prompt 回來之後還在跑，做完時 agent 會
+	// 自己再開一輪回報。這一輪先不結束：held 留著 prompt 的回覆，等背景工作做完、agent 回報的那一輪也結束才收尾
+	// （2026-10-21 島灰：研究丟到背景就結束這一輪，子代理要讀網頁的權限請求全被取消，做完的回報也沒人收）。
+	bg        map[string]string // 進行中的背景工作（workflow 的 run_id、子代理的 id）→ 工作步驟上的名稱
+	shown     map[string]bool   // 已經在工作步驟裡顯示成進行中的背景工作
+	dropped   map[string]bool   // 按了停止或等太久而放下的背景工作：之後的進度不再算
+	holding   bool              // session/prompt 回來了，在等背景工作
+	held      json.RawMessage   // 等背景工作時先留著的 session/prompt 回覆
+	agentTurn bool              // agent 自己開的一輪（回報背景工作）正在跑
+	wake      bool              // 有背景工作剛做完，agent 還沒開始回報
+	// denied：這一輪使用者拒絕了某個動作。有些 agent（Grok）拒絕就整輪取消、等人下指令；XBot 的「拒絕」只是不准那個動作
+	// （同 Hermes），所以接著請它換方法做完（resumes 是這一輪接過幾次，上限 limits.ACPDenyResumeMax）。
+	denied  bool
+	resumes int
+	bgNote  string      // 最後送出的背景工作進度
+	settle  *time.Timer // 背景工作都結束、agent 也沒在跑時，再等一下看它會不會開始回報；到了就收尾
+	giveUp  *time.Timer // 最多等多久（limits.ACPBackgroundWait）
+	q       *queue
 	// resetAt 是 agent 最近報的訂閱用量恢復時間（毫秒，Claude Code 的 _claude/rateLimit）；額度錯誤沒寫時間時用它。
 	resetAt int64
 	// intro 是還沒送出的身分與守則：加在這個新 session 第一則訊息的前面，送出後清掉（Options.Instructions）。
@@ -157,7 +178,8 @@ func (d *Driver) client(ctx context.Context, botID, mode string) (*agentConn, er
 	if err != nil {
 		return nil, err
 	}
-	ac = &agentConn{botID: botID, mode: mode, sessions: map[string]*session{}, threads: map[string]*session{}, requests: map[string]pending{}}
+	ac = &agentConn{botID: botID, mode: mode, sessions: map[string]*session{}, threads: map[string]*session{}, children: map[string]*session{},
+		requests: map[string]pending{}}
 	log := d.log.With("bot", botID)
 	ac.c = newConn(p, log, func(m string, params json.RawMessage) { d.notification(ac, m, params) },
 		func(r request) { d.request(ac, r) },
@@ -290,6 +312,9 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	ac.mu.Lock()
 	if s := ac.threads[o.ThreadID]; s != nil {
 		ac.mu.Unlock()
+		s.mu.Lock()
+		s.mode = o.Mode // XBot 代答的權限（autoAllow）照目前的等級；agent 自己的模式要新的 session 才換
+		s.mu.Unlock()
 		return s, nil
 	}
 	ac.mu.Unlock()
@@ -302,9 +327,23 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		mcp = []MCPServer{}
 	}
 	inst := d.instructions(ctx, o.BotID)
+	if inst != "" && d.o.Agent.Hint != "" {
+		inst += "\n\n" + d.o.Agent.Hint
+	}
 	withPrompt := func(params map[string]any) map[string]any {
-		if inst != "" && d.o.Agent.SystemPrompt {
-			params["_meta"] = map[string]any{"systemPrompt": map[string]any{"append": SystemPromptText(inst)}}
+		meta := map[string]any{}
+		for k, v := range d.o.Agent.ModeMeta[o.Mode] {
+			meta[k] = v
+		}
+		switch {
+		case inst == "":
+		case d.o.Agent.SystemPrompt:
+			meta["systemPrompt"] = map[string]any{"append": SystemPromptText(inst)}
+		case d.o.Agent.Rules:
+			meta["rules"] = SystemPromptText(inst)
+		}
+		if len(meta) > 0 {
+			params["_meta"] = meta
 		}
 		return params
 	}
@@ -336,8 +375,9 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		}
 		id = res.SessionID
 	}
-	s := &session{ac: ac, id: id, threadID: o.ThreadID, tools: map[string]*toolState{}, q: newQueue()}
-	if inst != "" && !d.o.Agent.SystemPrompt && !loaded {
+	s := &session{ac: ac, id: id, threadID: o.ThreadID, mode: o.Mode, tools: map[string]*toolState{}, bg: map[string]string{},
+		shown: map[string]bool{}, dropped: map[string]bool{}, q: newQueue()}
+	if inst != "" && !d.o.Agent.SystemPrompt && !d.o.Agent.Rules && !loaded {
 		s.intro = IntroText(inst)
 	}
 	ac.mu.Lock()
@@ -368,7 +408,7 @@ func (d *Driver) instructions(ctx context.Context, botID string) string {
 
 // identityNote：agent 自己的系統提示說它是 Claude Code、Grok…；在 XBot 裡它就是這個 Bot。
 const identityNote = "你在 XBot 裡就是下面這位 Bot：用它的名字、個性和語言（繁體中文）回應；被問到用的是哪個引擎或模型時可以照實說。" +
-	"XBot 的工具在 MCP 伺服器 xbot 裡（名稱是 xbot.<領域>.<動作>）。"
+	"XBot 的工具在 MCP 伺服器 xbot 裡，名稱寫成 xbot_<領域>_<動作>；守則裡寫成 xbot.<領域>.<動作> 的就是同一個工具。"
 
 // SystemPromptText 是放進 agent 系統提示的身分與守則（Agent.SystemPrompt，例：Claude Code）。
 func SystemPromptText(inst string) string { return "# XBot\n" + identityNote + "\n\n" + inst }
@@ -442,7 +482,7 @@ func (d *Driver) quota(s *session, err error) *engine.QuotaError {
 func (d *Driver) explain(what string, err error) error {
 	var re *RPCError
 	if errors.As(err, &re) && (re.Code == codeAuthRequired || strings.Contains(strings.ToLower(re.Message), "auth")) {
-		return fmt.Errorf("%s：%s 還沒登入。請到 Bot 設定連結你的訂閱（xbot.engines.link_credentials），或確認這台電腦上的登入還有效", what, d.o.Agent.Label)
+		return fmt.Errorf("%s：%s 還沒登入，請到 Bot 設定 ›「AI 帳號與模型」登入", what, d.o.Agent.Label)
 	}
 	return fmt.Errorf("%s：%w", what, err)
 }
@@ -484,7 +524,7 @@ func (d *Driver) Send(ctx context.Context, s engine.Session, m engine.Message) e
 		as.mu.Unlock()
 		return ErrBusy
 	}
-	as.running, as.cancelling = true, false
+	as.running, as.cancelling, as.denied, as.resumes = true, false, false, 0
 	intro := as.intro
 	as.intro = ""
 	as.mu.Unlock()
@@ -504,7 +544,142 @@ func (d *Driver) Send(ctx context.Context, s engine.Session, m engine.Message) e
 	return nil
 }
 
+// promptDone：session/prompt 回來了。使用者拒絕了某個動作、agent 因此整輪取消時，請它換方法接著做（resumeAfterDeny）；
+// agent 還有背景工作時先留著（hold），等它做完、回報完才收尾（endTurn）。
 func (d *Driver) promptDone(s *session, raw json.RawMessage, err error) {
+	if err == nil && (d.resumeAfterDeny(s, raw) || d.hold(s, raw)) {
+		return
+	}
+	d.endTurn(s, raw, err)
+}
+
+// DeniedNote 是使用者拒絕某個動作後，請 agent 換方法接著做的訊息（對話裡看不到）。
+const DeniedNote = "（系統：使用者拒絕了剛才那個動作，其他的事沒有要你停。不要再用同樣的方法或指令，改用別的做得到的方式把原本的事做完；" +
+	"真的沒有別的方法，就照你目前知道的回答，並說明缺了什麼。）"
+
+// resumeAfterDeny：這一輪因為使用者拒絕而被 agent 取消（stopReason=cancelled，不是使用者按停止）時，在同一輪送 DeniedNote
+// 請它接著做；回答有沒有送。
+func (d *Driver) resumeAfterDeny(s *session, raw json.RawMessage) bool {
+	var res struct {
+		StopReason string `json:"stopReason"`
+	}
+	_ = json.Unmarshal(raw, &res)
+	s.mu.Lock()
+	if res.StopReason != "cancelled" || s.cancelling || !s.denied || s.resumes >= limits.ACPDenyResumeMax {
+		s.mu.Unlock()
+		return false
+	}
+	s.denied = false
+	s.resumes++
+	s.tail.Reset()
+	s.mu.Unlock()
+	params := map[string]any{"sessionId": s.id, "prompt": []map[string]string{{"type": "text", "text": DeniedNote}}}
+	if _, err := s.ac.c.start("session/prompt", params, func(raw json.RawMessage, err error) { d.promptDone(s, raw, err) }); err != nil {
+		d.log.Warn("拒絕後請 agent 接著做失敗", "bot", s.ac.botID, "err", err)
+		return false
+	}
+	return true
+}
+
+// hold 在 agent 還有背景工作、或有背景工作剛做完還沒回報時，把這一輪留著；回答有沒有留。
+func (d *Driver) hold(s *session, raw json.RawMessage) bool {
+	var res struct {
+		StopReason string `json:"stopReason"`
+	}
+	_ = json.Unmarshal(raw, &res)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.cancelling || (res.StopReason != "" && res.StopReason != "end_turn") || (len(s.bg) == 0 && !s.agentTurn && !s.wake) {
+		return false
+	}
+	s.holding, s.held = true, raw
+	s.giveUp = time.AfterFunc(limits.ACPBackgroundWait, func() {
+		s.mu.Lock()
+		s.abandon()
+		s.mu.Unlock()
+		d.release(s)
+	})
+	// 這時還沒做完的子代理就是背景子代理：在工作步驟裡顯示成進行中（看門狗也照有工具在跑的時限）。
+	for _, id := range slices.Sorted(maps.Keys(s.bg)) {
+		s.show(id)
+	}
+	d.rearm(s)
+	return true
+}
+
+// show（呼叫端持有鎖）把一個背景工作顯示成進行中的步驟。
+func (s *session) show(id string) {
+	if s.shown[id] {
+		return
+	}
+	s.shown[id] = true
+	s.q.push(engine.Event{Type: engine.EventToolCall, Session: s.id, Tool: &engine.ToolEvent{ID: id, Name: s.bg[id]}})
+}
+
+// finishBg（呼叫端持有鎖）結束一個背景工作；顯示過的步驟照結果收掉。
+func (s *session) finishBg(id string, ok bool) {
+	name := s.bg[id]
+	delete(s.bg, id)
+	if s.shown[id] {
+		delete(s.shown, id)
+		s.q.push(engine.Event{Type: engine.EventToolResult, Session: s.id, Tool: &engine.ToolEvent{ID: id, Name: name, OK: ok}})
+	}
+}
+
+// abandon（呼叫端持有鎖）放下所有背景工作（按了停止、或等太久）：步驟以「沒做完」收掉，之後它們的進度不再讓一輪留著
+// （不然下一則不相干的訊息也會被留著等它）。
+func (s *session) abandon() {
+	for id := range s.bg {
+		s.dropped[id] = true
+		s.finishBg(id, false)
+	}
+	s.wake = false
+}
+
+// rearm（呼叫端持有鎖）照背景工作的狀態決定留著的一輪什麼時候收尾：背景工作還在跑、或 agent 正在回報就繼續等；
+// 背景工作剛做完、agent 還沒開始回報，等 limits.ACPBackgroundSettle 看它會不會開始；都做完也回報完了就收尾。
+func (d *Driver) rearm(s *session) {
+	if !s.holding {
+		return
+	}
+	if s.settle != nil {
+		s.settle.Stop()
+		s.settle = nil
+	}
+	switch {
+	case len(s.bg) > 0 || s.agentTurn:
+	case s.wake:
+		s.settle = time.AfterFunc(limits.ACPBackgroundSettle, func() { d.release(s) })
+	default:
+		go d.release(s)
+	}
+}
+
+// release 收尾留著的一輪（背景工作做完、回報完，或等太久）。
+func (d *Driver) release(s *session) {
+	s.mu.Lock()
+	if !s.holding {
+		s.mu.Unlock()
+		return
+	}
+	raw := s.held
+	s.unhold()
+	s.mu.Unlock()
+	d.endTurn(s, raw, nil)
+}
+
+// unhold 清掉等背景工作的狀態（呼叫端持有鎖）。
+func (s *session) unhold() {
+	for _, t := range []*time.Timer{s.settle, s.giveUp} {
+		if t != nil {
+			t.Stop()
+		}
+	}
+	s.holding, s.held, s.settle, s.giveUp, s.agentTurn, s.wake = false, nil, nil, nil, false, false
+}
+
+// endTurn 結束這一輪：送出用量與 done。
+func (d *Driver) endTurn(s *session, raw json.RawMessage, err error) {
 	s.mu.Lock()
 	s.running = false
 	cancelling := s.cancelling
@@ -562,14 +737,22 @@ func (d *Driver) Interrupt(_ context.Context, s engine.Session) error {
 		return err
 	}
 	as.mu.Lock()
-	running := as.running
+	running, holding := as.running, as.holding
 	if running {
 		as.cancelling = true
 	}
+	if holding {
+		as.unhold()
+	}
+	as.abandon()
 	as.mu.Unlock()
 	if !running {
 		as.q.push(engine.Event{Type: engine.EventDone, Session: as.id, Status: engine.StatusInterrupted})
 		return nil
+	}
+	if holding {
+		// prompt 已經回來了，不會再有回覆：這裡直接收尾（agent 若正在回報，下面的 session/cancel 會停下它）。
+		defer d.endTurn(as, nil, nil)
 	}
 	ac := as.ac
 	ac.mu.Lock()
@@ -614,6 +797,9 @@ func (d *Driver) Respond(_ context.Context, s engine.Session, requestID string, 
 		want = []string{"allow_always", "allow_once"}
 	default:
 		want = []string{"reject_once", "reject_always"}
+		as.mu.Lock()
+		as.denied = true
+		as.mu.Unlock()
 	}
 	for _, k := range want {
 		for _, o := range p.options {
@@ -661,15 +847,23 @@ func (d *Driver) disconnected(ac *agentConn, p Process, cause error) {
 	d.log.Info("agent 行程結束", attrs...)
 	ac.mu.Lock()
 	sessions := ac.sessions
-	ac.sessions, ac.threads, ac.requests = map[string]*session{}, map[string]*session{}, map[string]pending{}
+	ac.sessions, ac.threads, ac.children, ac.requests = map[string]*session{}, map[string]*session{}, map[string]*session{}, map[string]pending{}
 	ac.mu.Unlock()
 	for _, s := range sessions {
+		s.mu.Lock()
+		s.unhold()
+		s.mu.Unlock()
 		s.q.push(engine.Event{Type: engine.EventError, Session: s.id, Text: engine.ErrDisconnected.Error(), Fatal: true})
 		s.q.close()
 	}
 }
 
 func (d *Driver) notification(ac *agentConn, method string, params json.RawMessage) {
+	if strings.HasPrefix(method, "_x.ai/") || strings.HasPrefix(method, "x.ai/") {
+		// Grok 的擴充通知：背景工作的進度在 _x.ai/session_notification（它自己的紀錄檔寫成 _x.ai/session/update）。
+		d.background(ac, params)
+		return
+	}
 	if method != "session/update" {
 		return
 	}
@@ -686,6 +880,16 @@ func (d *Driver) notification(ac *agentConn, method string, params json.RawMessa
 	s.mu.Lock()
 	if rl := p.Update.Meta.RateLimit; rl != nil && rl.ResetsAt > 0 {
 		s.resetAt = rl.ResetsAt * 1000
+	}
+	if !s.running {
+		// 沒有進行中的一輪（例：背景工作做完後 agent 自己開的一輪，而這一輪已經收尾）：不能混進下一輪的回覆。
+		s.mu.Unlock()
+		return
+	}
+	if s.holding && turnActivity[p.Update.SessionUpdate] {
+		// prompt 回來之後 agent 又動了：它在回報背景工作，等這一輪（turn_completed）結束。
+		s.agentTurn, s.wake = true, false
+		d.rearm(s)
 	}
 	evs := normalize(p.Update, s.tools, time.Now())
 	for _, e := range evs {
@@ -704,6 +908,128 @@ func (d *Driver) notification(ac *agentConn, method string, params json.RawMessa
 	}
 }
 
+// turnActivity 是 agent 在跑一輪時才會送的 session/update（開始回報背景工作的證據）。標題、指令清單、模式、用量這類
+// 隨時會來的更新不算（Grok 一輪結束後才送 session_info_update：算進去會一直等一個不會結束的回報）。
+var turnActivity = map[string]bool{"user_message_chunk": true, "agent_message_chunk": true, "agent_thought_chunk": true,
+	"tool_call": true, "tool_call_update": true, "plan": true}
+
+// bgUpdate 是 Grok 的 _x.ai/session_notification（背景工作的進度；只列用得到的欄位）。
+type bgUpdate struct {
+	SessionID string `json:"sessionId"`
+	Update    struct {
+		SessionUpdate string `json:"sessionUpdate"`
+		// workflow_updated
+		RunID        string `json:"run_id"`
+		Name         string `json:"name"`
+		Status       string `json:"status"`
+		Foreground   bool   `json:"foreground"`
+		CurrentPhase string `json:"current_phase"`
+		// subagent_spawned／subagent_finished
+		SubagentID    string `json:"subagent_id"`
+		Parent        string `json:"parent_session_id"`
+		Child         string `json:"child_session_id"`
+		Description   string `json:"description"`
+		WorkflowRunID string `json:"workflow_run_id"`
+		WillWake      bool   `json:"will_wake"`
+		// turn_completed
+		PromptID string `json:"prompt_id"`
+		Usage    *struct {
+			InputTokens      int64 `json:"inputTokens"`
+			OutputTokens     int64 `json:"outputTokens"`
+			ReasoningTokens  int64 `json:"reasoningTokens"`
+			CachedReadTokens int64 `json:"cachedReadTokens"`
+		} `json:"usage"`
+	} `json:"update"`
+}
+
+// workflowEnded 是 workflow 結束的狀態（其他狀態都當作還在跑）。
+var workflowEnded = map[string]bool{"complete": true, "completed": true, "failed": true, "error": true, "cancelled": true, "canceled": true, "stopped": true}
+
+// background 記下 agent 的背景工作（Grok 的 workflow、子代理）：還在跑的背景工作讓這一輪留著（hold），
+// 在工作步驟裡顯示成一個進行中的步驟；子代理的權限請求對到開它的 session。
+func (d *Driver) background(ac *agentConn, params json.RawMessage) {
+	var p bgUpdate
+	if json.Unmarshal(params, &p) != nil {
+		return
+	}
+	u := p.Update
+	sid := p.SessionID
+	if u.SessionUpdate == "subagent_spawned" && u.Parent != "" {
+		sid = u.Parent
+	}
+	ac.mu.Lock()
+	s := ac.sessions[sid]
+	own := s != nil // 不是子代理自己的 session（子代理每一輪結束也會送 turn_completed）
+	if s == nil {
+		s = ac.children[sid]
+	}
+	if s != nil && u.SessionUpdate == "subagent_spawned" && u.Child != "" {
+		ac.children[u.Child] = s
+	}
+	ac.mu.Unlock()
+	if s == nil {
+		return
+	}
+	var evs []engine.Event
+	s.mu.Lock()
+	switch u.SessionUpdate {
+	case "workflow_updated":
+		id := "bg:" + u.RunID
+		_, known := s.bg[id]
+		switch {
+		case u.RunID == "" || u.Foreground || s.dropped[id]:
+		case !workflowEnded[u.Status]:
+			if !known && s.running { // 只算進行中的這一輪開的背景工作
+				s.bg[id] = "背景工作：" + firstNonEmpty(u.Name, "workflow")
+				s.show(id)
+			}
+			if note := "背景工作 " + firstNonEmpty(u.Name, "workflow") + "：" + u.CurrentPhase; u.CurrentPhase != "" && note != s.bgNote {
+				// 進度（也讓看門狗知道還在動：背景工作跑的時候這一輪沒有別的事件）
+				s.bgNote = note
+				evs = append(evs, engine.Event{Type: engine.EventStatus, Text: note})
+			}
+		case known:
+			s.finishBg(id, u.Status == "complete" || u.Status == "completed")
+			s.wake = s.running // 做完的 workflow 一定會叫 agent 回報（沒有進行中的一輪時，回報沒人收，不用等）
+		}
+	case "subagent_spawned":
+		// workflow 裡的子代理跟著 workflow 算；單獨開的子代理在 prompt 回來之後還沒做完，就是背景子代理。
+		if u.SubagentID != "" && u.WorkflowRunID == "" && s.running {
+			s.bg["sub:"+u.SubagentID] = "背景子代理：" + firstNonEmpty(u.Description, "subagent")
+		}
+	case "subagent_finished":
+		if id := "sub:" + u.SubagentID; s.bg[id] != "" {
+			s.finishBg(id, u.Status == "" || u.Status == "completed" || u.Status == "complete")
+			if u.WillWake && s.running {
+				s.wake = true
+			}
+		}
+		ac.mu.Lock()
+		delete(ac.children, u.Child)
+		ac.mu.Unlock()
+	case "turn_completed":
+		if !own {
+			break
+		}
+		if s.holding && s.agentTurn && u.Usage != nil {
+			evs = append(evs, engine.Event{Type: engine.EventUsage, Usage: &engine.Usage{
+				InputTokens: u.Usage.InputTokens, OutputTokens: u.Usage.OutputTokens, Reasoning: u.Usage.ReasoningTokens, CacheRead: u.Usage.CachedReadTokens,
+			}})
+		}
+		s.agentTurn = false
+	}
+	running := s.running
+	d.rearm(s)
+	s.mu.Unlock()
+	if !running {
+		return
+	}
+	for _, e := range evs {
+		e.Session = s.id
+		s.q.push(e)
+	}
+}
+
 // request 處理 agent 發來的請求：權限請求交給人（needs_approval）；XBot 沒宣告支援的檔案、終端機請求一律拒絕。
 func (d *Driver) request(ac *agentConn, r request) {
 	if r.Method != "session/request_permission" {
@@ -713,29 +1039,39 @@ func (d *Driver) request(ac *agentConn, r request) {
 		return
 	}
 	var params struct {
-		SessionID string `json:"sessionId"`
-		ToolCall  struct {
-			ToolCallID string          `json:"toolCallId"`
-			Title      string          `json:"title"`
-			Kind       string          `json:"kind"`
-			RawInput   json.RawMessage `json:"rawInput"`
-		} `json:"toolCall"`
-		Options []permOption `json:"options"`
+		SessionID string       `json:"sessionId"`
+		ToolCall  permAction   `json:"toolCall"`
+		Options   []permOption `json:"options"`
 	}
 	_ = json.Unmarshal(r.Params, &params)
 	ac.mu.Lock()
 	s := ac.sessions[params.SessionID]
+	if s == nil {
+		s = ac.children[params.SessionID] // 子代理的權限請求：算在開它的那一輪
+	}
 	ac.mu.Unlock()
 	if s == nil {
 		_ = ac.c.answer(r.ID, cancelledOutcome)
 		return
 	}
 	s.mu.Lock()
-	running, cancelling := s.running, s.cancelling
+	running, cancelling, mode := s.running, s.cancelling, s.mode
 	s.mu.Unlock()
 	if !running || cancelling {
 		_ = ac.c.answer(r.ID, cancelledOutcome)
 		return
+	}
+	if autoAllow(mode, params.ToolCall) {
+		for _, k := range []string{"allow_once", "allow_always"} {
+			for _, o := range params.Options {
+				if o.Kind == k {
+					if err := ac.c.answer(r.ID, map[string]any{"outcome": map[string]string{"outcome": "selected", "optionId": o.OptionID}}); err != nil {
+						d.log.Debug("代答權限請求失敗", "bot", ac.botID, "err", err)
+					}
+					return
+				}
+			}
+		}
 	}
 	id := idKey(r.ID)
 	ac.mu.Lock()
@@ -756,4 +1092,80 @@ func (d *Driver) request(ac *agentConn, r request) {
 	s.q.push(engine.Event{Type: engine.EventNeedsApproval, Session: s.id, Request: &engine.Request{
 		ID: id, Kind: "approval", Prompt: prompt, Choices: choices, Params: r.Params,
 	}})
+}
+
+// permAction 是權限請求裡的 toolCall（ACP ToolCallUpdate；只列用得到的欄位）。
+type permAction struct {
+	ToolCallID string          `json:"toolCallId"`
+	Title      string          `json:"title"`
+	Kind       string          `json:"kind"`
+	RawInput   json.RawMessage `json:"rawInput"`
+	Locations  []struct {
+		Path string `json:"path"`
+	} `json:"locations"`
+}
+
+// readOnlyKinds 是只讀的動作（ACP ToolKind）：讀檔、搜尋、讀網頁、思考。和 Hermes 的 web_search、web_extract 一樣
+// 任何權限等級都不用問人（2026-10-21：Grok 的 Bot 讀一個網頁、研究的子代理每讀一頁都開一張核准卡，事情做不完）。
+var readOnlyKinds = map[string]bool{"read": true, "search": true, "fetch": true, "think": true}
+
+// autoAllow 回答 XBot 能不能直接替使用者允許這個權限請求（agent 自己的模式之外，XBot 再代答一層）：
+// 只讀的一律允許；「一般的事自己做」以上，改的、搬的是 /workspace 裡的一般檔案也允許。
+// 指令、刪除、其他動作，以及改設定檔（隱藏的資料夾或檔案，例：.grok/config.toml 能關掉核准）照樣問人（SEC-2）。
+func autoAllow(mode string, a permAction) bool {
+	if readOnlyKinds[a.Kind] || xbotTool(a) {
+		return true
+	}
+	if (a.Kind != "edit" && a.Kind != "move") || mode == "" || mode == "ask" {
+		return false
+	}
+	paths := []string{}
+	for _, l := range a.Locations {
+		paths = append(paths, l.Path)
+	}
+	var in map[string]any
+	_ = json.Unmarshal(a.RawInput, &in)
+	for _, k := range []string{"file_path", "path", "target_file", "filePath", "source", "destination", "new_path"} {
+		if v, ok := in[k].(string); ok {
+			paths = append(paths, v)
+		}
+	}
+	if len(paths) == 0 {
+		return false
+	}
+	for _, p := range paths {
+		if !plainWorkspaceFile(p) {
+			return false
+		}
+	}
+	return true
+}
+
+// xbotTool 回答這是不是 XBot 自己的 MCP 工具（伺服器 xbot）。XBot 的操作自己決定要不要使用者核准（confirm 級的會開核准卡，
+// SEC-2），agent 再問一次是多一道關卡（2026-10-21：Grok 查隊友名冊也要核准）；Hermes 呼叫 XBot 工具本來就不問。
+func xbotTool(a permAction) bool {
+	var in struct {
+		ToolName string `json:"tool_name"`
+	}
+	_ = json.Unmarshal(a.RawInput, &in)
+	for _, name := range []string{in.ToolName, a.Title} {
+		if strings.HasPrefix(name, "xbot__") || strings.HasPrefix(name, "mcp__xbot__") {
+			return true
+		}
+	}
+	return false
+}
+
+// plainWorkspaceFile 回答這是不是 /workspace 裡的一般檔案（不是隱藏的資料夾或檔案，沒有「..」）。
+func plainWorkspaceFile(p string) bool {
+	rel, ok := strings.CutPrefix(p, Workspace+"/")
+	if !ok || rel == "" {
+		return false
+	}
+	for _, part := range strings.Split(rel, "/") {
+		if part == "" || strings.HasPrefix(part, ".") {
+			return false
+		}
+	}
+	return true
 }

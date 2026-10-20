@@ -106,10 +106,10 @@ func TestClaudeGetsInstructionsAsSystemPrompt(t *testing.T) {
 	}
 }
 
-// 沒有系統提示可以放的 agent（Codex、Gemini、OpenCode、Grok）：加在新 session 第一則訊息前面，之後不再帶；
+// 沒有系統提示可以放的 agent（Codex、Gemini、OpenCode）：加在新 session 第一則訊息前面，之後不再帶；
 // 接回的 session 歷史裡已經有了，不再重送。
 func TestOtherAgentsGetInstructionsInTheFirstMessage(t *testing.T) {
-	for _, name := range []string{acp.EngineCodex, acp.EngineGemini, acp.EngineOpenCode, acp.EngineGrok} {
+	for _, name := range []string{acp.EngineCodex, acp.EngineGemini, acp.EngineOpenCode} {
 		t.Run(name, func(t *testing.T) {
 			agent := acptest.NewFor(name)
 			d := newDriver(name, agent, func(context.Context, string) (string, error) { return soul, nil })
@@ -142,6 +142,40 @@ func TestOtherAgentsGetInstructionsInTheFirstMessage(t *testing.T) {
 				t.Fatalf("接回的 session 不再帶：%+v", ps[2])
 			}
 		})
+	}
+}
+
+// Grok 接受 session/new 的 _meta.rules（加在它的系統提示後面）：守則放那裡，不放進訊息；接回時也帶，
+// 權限等級 auto、full 帶 autoMode，ask 不帶（SEC-2：任何等級都不帶 yoloMode）。
+func TestGrokGetsInstructionsAsRules(t *testing.T) {
+	agent := acptest.NewFor(acp.EngineGrok)
+	d := newDriver(acp.EngineGrok, agent, func(context.Context, string) (string, error) { return soul, nil })
+	s, err := d.Start(context.Background(), engine.StartOptions{BotID: "b", ThreadID: "t", Mode: "auto"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p struct {
+		Meta map[string]any `json:"_meta"`
+	}
+	if err := json.Unmarshal(calls(agent, "session/new")[0], &p); err != nil {
+		t.Fatal(err)
+	}
+	rules, _ := p.Meta["rules"].(string)
+	if !strings.Contains(rules, soul) || !strings.Contains(rules, "就是下面這位 Bot") || !strings.Contains(rules, "不用自己輪詢") ||
+		p.Meta["autoMode"] != true || p.Meta["yoloMode"] != nil {
+		t.Fatalf("session/new 的 _meta：%+v", p.Meta)
+	}
+	hello(t, d, s)
+	if ps := prompts(t, agent); len(ps[0].Prompt) != 1 {
+		t.Fatalf("守則不放進訊息：%+v", ps[0])
+	}
+	d.Close("b")
+	if _, err := d.Start(context.Background(), engine.StartOptions{BotID: "b", ThreadID: "t", Resume: s.ID(), Mode: "ask"}); err != nil {
+		t.Fatal(err)
+	}
+	raw := string(calls(agent, "session/load")[0])
+	if !strings.Contains(raw, `"rules"`) || strings.Contains(raw, "autoMode") {
+		t.Fatalf("session/load（ask）：%s", raw)
 	}
 }
 

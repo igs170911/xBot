@@ -114,6 +114,11 @@ func (h headers) RoundTrip(r *http.Request) (*http.Response, error) {
 // connect 經某個 Bot 的 socket、帶某把 key（和額外的標頭）連上 XBot MCP。
 func (e *botEnv) connect(t *testing.T, socketOf, key string, extra map[string]string) (*mcp.ClientSession, error) {
 	t.Helper()
+	return e.connectAt(t, ipc.MCPPath, socketOf, key, extra)
+}
+
+func (e *botEnv) connectAt(t *testing.T, endpoint, socketOf, key string, extra map[string]string) (*mcp.ClientSession, error) {
+	t.Helper()
 	path := e.sockets.Path(socketOf)
 	h := map[string]string{"Authorization": "Bearer " + key}
 	for k, v := range extra {
@@ -123,7 +128,7 @@ func (e *botEnv) connect(t *testing.T, socketOf, key string, extra map[string]st
 		return (&net.Dialer{}).DialContext(ctx, "unix", path)
 	}}}}
 	c := mcp.NewClient(&mcp.Implementation{Name: "hermes-test", Version: "0"}, nil)
-	cs, err := c.Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: "http://product" + ipc.MCPPath, HTTPClient: hc}, nil)
+	cs, err := c.Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: "http://product" + endpoint, HTTPClient: hc}, nil)
 	if err == nil {
 		t.Cleanup(func() { _ = cs.Close() })
 	}
@@ -177,6 +182,38 @@ func TestBotToolsList(t *testing.T) {
 	}
 	if !strings.Contains(cs.InitializeResult().Instructions, "xbot.approvals.request") {
 		t.Fatalf("instructions：%q", cs.InitializeResult().Instructions)
+	}
+	// 2026-10-20 守則拿掉了「要做很多步也要先確認計畫」（Bot 一直停下來問），這裡的說明也不能留著。
+	if inst := cs.InitializeResult().Instructions; strings.Contains(inst, "建 Bot 或團隊、要做很多步") || !strings.Contains(inst, "直接做到完成") {
+		t.Fatalf("instructions：%q", inst)
+	}
+}
+
+// ACP 引擎的橋接帶 ?names=plain：工具名稱只有英數字和底線（Grok 會略過名稱有「.」的工具），用這個名稱呼叫一樣能用。
+func TestBotToolsWithPlainNames(t *testing.T) {
+	e := newBotEnv(t)
+	cs, err := e.connectAt(t, ipc.MCPPath+"?"+mcpserver.NamesParam+"="+mcpserver.NamesPlain, e.a.ID, e.ka, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for tool, err := range cs.Tools(context.Background(), nil) {
+		if err != nil {
+			t.Fatal(err)
+		}
+		names = append(names, tool.Name)
+	}
+	slices.Sort(names)
+	want := []string{}
+	for _, n := range botToolNames {
+		want = append(want, mcpserver.PlainName(n))
+	}
+	if !slices.Equal(names, want) || !slices.Contains(names, "xbot_team_roster") {
+		t.Fatalf("工具：%v", names)
+	}
+	var roster map[string]any
+	if oe := call(t, cs, "xbot_team_roster", map[string]any{}, &roster); oe != nil {
+		t.Fatalf("用底線的名稱呼叫：%+v", oe)
 	}
 }
 

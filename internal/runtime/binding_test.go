@@ -93,10 +93,12 @@ func TestMCPServersIncludeXBot(t *testing.T) {
 	for _, e := range got[1].Env {
 		env[e.Name] = e.Value
 	}
-	if env["XBOT_WORKER_KEY"] != string(key) || env["XBOT_PRODUCT_SOCK"] != "/product-ipc/product.sock" || env["HERMES_HOME"] != "/hermes" {
+	// 工具名稱不帶「.」（Grok 會略過名稱有「.」的工具）。
+	if env["XBOT_WORKER_KEY"] != string(key) || env["XBOT_PRODUCT_SOCK"] != "/product-ipc/product.sock" || env["HERMES_HOME"] != "/hermes" ||
+		env["XBOT_MCP_PATH"] != "/internal/mcp?names=plain" {
 		t.Fatalf("env：%v", env)
 	}
-	if len(c.XBotMCP.Env) != 2 {
+	if len(c.XBotMCP.Env) != 3 {
 		t.Fatalf("不能改到共用的設定：%+v", c.XBotMCP.Env)
 	}
 }

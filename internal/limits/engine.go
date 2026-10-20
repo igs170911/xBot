@@ -100,6 +100,17 @@ const (
 
 	// ACPToolPayloadBytes 是一個工具呼叫的輸入或輸出寫進事件的上限（截圖的 base64 不整包存）。
 	ACPToolPayloadBytes = 64 << 10
+
+	// ACPBackgroundWait 是 session/prompt 回來後，最多等 agent 的背景工作（Grok 的 workflow、背景子代理）做完並回報多久；
+	// 到了就先收尾這一輪。XBot 新增（2026-10-21：Grok 的深度研究 workflow 跑了 2 分鐘，四個子代理各 15 到 45 秒）。
+	// 比 WatchdogToolIdle 短：背景工作在工作步驟裡是一個進行中的步驟，看門狗用有工具在跑的時限。
+	ACPBackgroundWait = 30 * time.Minute
+
+	// ACPBackgroundSettle 是背景工作都做完、agent 也沒在跑時，再等它開始回報的時間（Grok 做完 workflow 同一毫秒就開始回報）。
+	ACPBackgroundSettle = 15 * time.Second
+
+	// ACPDenyResumeMax 是一輪裡使用者拒絕動作後，最多請 agent 換方法接著做幾次（Grok 一拒絕就整輪取消）。XBot 新增。
+	ACPDenyResumeMax = 3
 )
 
 // Bot 自己登入訂閱 CLI（2026-10-20，xbot.engines.login_start）。XBot 自己的數字。

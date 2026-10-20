@@ -17,6 +17,7 @@ import (
 	"xbot/internal/engines"
 	"xbot/internal/hosts"
 	"xbot/internal/ipc"
+	"xbot/internal/mcpserver"
 	"xbot/internal/proxy"
 	"xbot/internal/skills"
 	"xbot/internal/store"
@@ -347,7 +348,36 @@ func (c *Computers) Instructions(ctx context.Context, botID string) (string, err
 		}
 	}
 	return hermes.Soul(hermes.Profile{BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul, Team: team,
-		ReplyStyle: c.replyStyle(ctx), Lessons: c.lessons(ctx, botID)}), nil
+		ReplyStyle: c.replyStyle(ctx), Lessons: c.lessons(ctx, botID)}) + c.skillIndex(ctx, botID, b.Engine), nil
+}
+
+// skillIndex 是給 ACP 引擎的技能清單：Bot 的技能放在 Hermes 的 /hermes/skills，Claude Code、Grok 這些 CLI 自己找不到
+// （2026-10-21 島灰：從「/」選了 deep-research，Grok 找不到 XBot 的技能，改跑它自己同名的背景 workflow）。
+// 只列技能清單裡的（技能庫的需要時才找）；電腦還沒建、讀不到時不給。
+func (c *Computers) skillIndex(ctx context.Context, botID, engine string) string {
+	f, err := c.BotFS(ctx, botID, false)
+	if err != nil {
+		return ""
+	}
+	list, err := skills.Bot{FS: f, BotID: botID}.List(ctx)
+	if err != nil {
+		slog.Debug("讀不到技能清單", "bot", botID, "err", err)
+		return ""
+	}
+	var b strings.Builder
+	for _, s := range list {
+		// grok-build 是把寫程式交給電腦裡的 Grok：Grok 引擎的 Bot 自己就是。
+		if s.Place != skills.PlaceList || !s.Enabled || (engine == acp.EngineGrok && s.ID == "grok-build") {
+			continue
+		}
+		fmt.Fprintf(&b, "%s：%s（%s/%s/SKILL.md）\n", s.Name, s.Description, skills.SkillsDir, s.ID)
+	}
+	if b.Len() == 0 {
+		return ""
+	}
+	return "\n## XBot 的技能\n使用者說「使用技能「名稱」」，或工作符合下面某個技能的用途時，先讀那個技能的 SKILL.md 再照著做；" +
+		"不要找你自己同名的技能或 workflow。技能是寫給 Hermes 的，裡面的工具名稱（web_search、web_extract、todo、delegate_task、browser_exec、clarify）" +
+		"換成你自己功能相同的工具。技能庫在 " + skills.SkillsDir + "，需要時用名稱找 SKILL.md。\n" + b.String()
 }
 
 // replyStyle 是設定 › 一般 › 回話風格（所有 Bot 共用）；沒設或讀不到時用簡短。
@@ -502,7 +532,9 @@ func (c *Computers) RefreshApps(ctx context.Context, botID string) error {
 // 和 Hermes 設定裡的 mcp_servers.xbot 是同一個指令。
 func XBotMCPServer() *acp.MCPServer {
 	return &acp.MCPServer{Name: hermes.XBotMCPServer, Command: hermes.Python, Args: []string{hermes.XBotMCP},
-		Env: []acp.EnvVar{{Name: "HERMES_HOME", Value: hermes.HomeDir}, {Name: "XBOT_PRODUCT_SOCK", Value: box.IPCDir + "/" + ipc.SocketName}}}
+		Env: []acp.EnvVar{{Name: "HERMES_HOME", Value: hermes.HomeDir}, {Name: "XBOT_PRODUCT_SOCK", Value: box.IPCDir + "/" + ipc.SocketName},
+			// 工具名稱不帶「.」：Grok 會略過名稱有「.」的工具（2026-10-19 起 Grok 的 Bot 一個 XBot 工具都沒有）。
+			{Name: "XBOT_MCP_PATH", Value: ipc.MCPPath + "?" + mcpserver.NamesParam + "=" + mcpserver.NamesPlain}}}
 }
 
 // Locate 實作 engines.Service.Locate：找 Bot 的電腦（不開機；沒有電腦時 ID 空白）。
