@@ -16,12 +16,18 @@ export function clockLabel(ms: number): string {
 // 長訊息先收起（你貼的長文、Bot 的超長報告），按「顯示全部」展開。
 const OWNER_LONG_CHARS = 800
 const OWNER_LONG_LINES = 14
-const BOT_LONG_CHARS = 6000
+// Bot 回覆先收起的長度：回話風格是短訊息，超過這麼多字通常是報告，先收起、想看再展開（原本 6000）
+const BOT_LONG_CHARS = 1500
 
 export function isLong(msg: ChatMsg): boolean {
   if (msg.streaming) return false
   if (msg.sender === 'owner') return msg.content.length > OWNER_LONG_CHARS || msg.content.split('\n').length > OWNER_LONG_LINES
-  return msg.content.length > BOT_LONG_CHARS
+  return isLongReply(msg.content)
+}
+
+/** Bot 的回覆長到要先收起（對話和群組共用）。 */
+export function isLongReply(text: string): boolean {
+  return text.length > BOT_LONG_CHARS
 }
 
 /** 「剛剛」「12 分鐘前」，再早就寫日期時間。 */

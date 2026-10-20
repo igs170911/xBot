@@ -222,7 +222,7 @@ func (s *Service) RosterText(ctx context.Context, botID string) (string, error) 
 }
 
 // rosterRules 是協作規則（LazyBoy roster_text，工具名稱換成 XBot MCP 的）。
-const rosterRules = "需要隊友的專長時，用 xbot.collab.message_bot 傳訊息給他（bot 填名字即可），寫清楚背景、要什麼、交付格式與期限。" +
+const rosterRules = "需要隊友的專長時，用 xbot.collab.message_bot 傳訊息給他（bot 填名字即可），寫清楚背景、要什麼、做到哪裡為止、交付格式與期限；要給的資料用檔案路徑，不要貼全文。" +
 	"傳出後就繼續你的工作或先回覆使用者；不要用 xbot.collab.assignment_status 反覆查詢，對方完成後結果會以「來自某某的回覆」自動回到這個對話，你再整合回報使用者。" +
 	"隊友交辦你的事，如果你再交給其他隊友處理，這一輪不用回覆交辦人；等結果回來、你整合後的最後回答會自動送回原交辦人。" +
 	"收到隊友的訊息時，你這次的最後回答會自動送回給對方：直接寫結論、資料與檔案路徑，不要寫收到、謝謝、好的這類沒有內容的話；" +
@@ -687,8 +687,8 @@ func framed(sender store.Bot, target Mate, text, intent, owedTo string) string {
 	if sender.Title != "" {
 		label = "（" + sender.Title + "）"
 	}
-	// 送回隊友的回答不套回覆使用者的四段格式（hermes.ReplyFormat）：Bot 之間照協作規則寫，簡短直接。
-	const toPeer = "這是給隊友看的，不用回覆使用者的四段格式。"
+	// 送回隊友的回答不照回話風格（hermes.replyStyleText，給使用者看的聊天口吻）：Bot 之間要完整、精簡，長資料給檔案路徑。
+	const toPeer = "這是給隊友看的，不用像跟使用者聊天那樣分段：一次寫完整、精簡，長的資料給檔案路徑，不要貼全文。"
 	var rule string
 	switch intent {
 	case IntentQuestion:
@@ -698,7 +698,7 @@ func framed(sender store.Bot, target Mate, text, intent, owedTo string) string {
 			rule = "這是 " + sender.Name + " 對你先前訊息的回覆。整合後寫出最終結果（結論、資料、檔案路徑），這次的最後回答會自動送回給 " + owedTo + "；" +
 				"還需要其他隊友時可以繼續派工，等全部回來後的最後回答才會送出。不需要再回覆 " + sender.Name + "。" + toPeer
 		} else {
-			rule = "這是 " + sender.Name + " 對你先前訊息的回覆。整合後在這個對話回報使用者（照回覆使用者的四段格式），不需要再回覆 " + sender.Name + "。"
+			rule = "這是 " + sender.Name + " 對你先前訊息的回覆。整合後在這個對話回報使用者（照回話風格：像傳訊息一樣短，先講結果），不需要再回覆 " + sender.Name + "。"
 		}
 	case IntentFYI:
 		rule = "這只是通知，不需要回覆。沒有需要做的事時，最後回答只寫 [silent]。"

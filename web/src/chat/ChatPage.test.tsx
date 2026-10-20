@@ -242,6 +242,18 @@ it('卡片登錄表：kind 不是 text 的訊息用登記的元件畫；沒登�
   off()
 })
 
+it('Bot 的回覆照段落拆成幾個泡泡（像傳訊息）；複製、朗讀還是整則一份', async () => {
+  messages = [
+    { id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '比價', task_id: 'k1', created_at: Date.now(), updated_at: Date.now() },
+    { id: 'm2', seq: 2, sender: 'bot:b1', kind: 'text', content: '比價表做好了。\n\nA 店最便宜。\n\n要調價嗎？', task_id: 'k1', created_at: Date.now(), updated_at: Date.now() },
+  ]
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  const msg = await screen.findByTestId('msg-bot')
+  expect(within(msg).getAllByTestId('bot-bubble').map((b) => b.textContent)).toEqual(['比價表做好了。', 'A 店最便宜。', '要調價嗎？'])
+  expect(screen.getAllByRole('toolbar', { name: '訊息動作' })).toHaveLength(1)
+})
+
 it('Markdown 回覆與重試：工作未完成的最後一則可以再送一次同樣的話', async () => {
   messages = [
     { id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '匯出訂單', task_id: 'k1', created_at: Date.now(), updated_at: Date.now() },

@@ -16,9 +16,10 @@ import { MenuButton } from '../ui/Menu'
 import { EditRoomDialog } from './EditRoomDialog'
 import { goBack } from '../router'
 import { usePhone } from '../mobile/nav'
-import { botBubble } from '../chat/Message'
+import { botBubble, Collapsible } from '../chat/Message'
+import { splitBubbles } from '../chat/markdown/bubbles'
 import { Markdown } from '../chat/markdown/Markdown'
-import { clockLabel } from '../chat/format'
+import { clockLabel, isLongReply } from '../chat/format'
 import { ROOM_ROUNDS, RULES, type Rule } from './rules'
 import { useLockBody } from '../ui/useLockBody'
 import { useFollowBottom } from '../chat/useFollowBottom'
@@ -125,9 +126,16 @@ function Timeline({ messages, members }: { messages: RoomMsg[]; members: Member[
             {m.failed && <StatusChip size="sm" tone="danger">沒有完成</StatusChip>}
             <span className="text-ink-3">{clockLabel(m.created_at)}</span>
           </span>
-          <div className="min-w-0 max-w-full self-start rounded-bubble bg-bubble-bot px-4 py-2.5 text-[15px] leading-[1.6]" style={who ? { background: botBubble(who.color) } : undefined}>
-            <Markdown text={m.content} />
-          </div>
+          {/* 和一對一對話一樣：照段落拆成幾個泡泡，太長的先收起 */}
+          <Collapsible long={isLongReply(m.content)} mine={false}>
+            <div className="flex min-w-0 flex-col gap-1.5">
+              {splitBubbles(m.content).map((part, i) => (
+                <div key={i} data-testid="bot-bubble" className="min-w-0 max-w-full self-start rounded-bubble bg-bubble-bot px-4 py-2.5 text-[15px] leading-[1.6]" style={who ? { background: botBubble(who.color) } : undefined}>
+                  <Markdown text={part} />
+                </div>
+              ))}
+            </div>
+          </Collapsible>
         </div>
       </div>,
     )

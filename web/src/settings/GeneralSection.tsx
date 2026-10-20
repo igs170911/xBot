@@ -1,16 +1,20 @@
+import { useEffect, useState } from 'react'
 import { Check } from 'lucide-react'
+import { botsReplyStyleGet, botsReplyStyleSet, type BotsReplyStyleGetOutput } from '../api/generated'
 import { botsStore } from '../data/bots'
 import { useStore } from '../data/store'
 import { startTour } from '../onboard/state'
 import { navigate } from '../router'
 import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
+import { SegmentedControl } from '../ui/Controls'
 import { Select } from '../ui/Menu'
+import { useToast } from '../ui/toast-context'
 import { cx } from '../ui/cx'
 import { Block, Group, Row, SectionHeader } from './parts'
 import { setTheme, useTheme, type ThemeChoice } from './theme'
 
-// 一般（J01）：主題（Midnight／Daylight／跟隨系統）、字型（粉圓，不能換）、語言。
+// 一般（J01）：主題（Midnight／Daylight／跟隨系統）、字型（粉圓，不能換）、語言、Bot 的回話風格（所有 Bot 共用）。
 // 通知開關目前沒有對應的操作，先不放（PROGRESS 待確認）。
 
 type Swatch = { bg: string; side: string; line: string; you: string; bot: string; comp: string }
@@ -78,6 +82,52 @@ export function ThemePicker() {
   )
 }
 
+type ReplyStyle = BotsReplyStyleGetOutput['style']
+
+const STYLE_SUB: Record<ReplyStyle, string> = {
+  brief: '像傳訊息：一段一兩句，最多 4 段。',
+  normal: '一段兩三句，最多 6 段。',
+  detailed: '可以完整說明，還是先講結果。',
+}
+
+/** Bot 回話給你的風格（所有 Bot 共用；Bot 之間的訊息不受影響）。 */
+function ReplyStyleRow() {
+  const toast = useToast()
+  const [style, setStyle] = useState<ReplyStyle | null>(null)
+  useEffect(() => {
+    botsReplyStyleGet({})
+      .then((o) => setStyle(o.style))
+      .catch(() => setStyle('brief'))
+  }, [])
+  const change = (v: ReplyStyle) => {
+    const before = style
+    setStyle(v)
+    botsReplyStyleSet({ style: v })
+      .then(() => toast.show({ kind: 'done', text: '已更新回話風格，下一段新對話開始生效' }))
+      .catch((e: unknown) => {
+        setStyle(before)
+        toast.show({ kind: 'error', text: e instanceof Error ? e.message : String(e) })
+      })
+  }
+  return (
+    <Row title="回話風格" sub={`${style ? STYLE_SUB[style] : '　'}都先講結果，一段一個泡泡。所有 Bot 都一樣。`} wrap>
+      {style && (
+        <SegmentedControl
+          label="回話風格"
+          value={style}
+          onChange={change}
+          options={[
+            { value: 'brief', label: '簡短' },
+            { value: 'normal', label: '一般' },
+            { value: 'detailed', label: '詳細' },
+          ]}
+          className="w-[220px] max-sm:w-full"
+        />
+      )}
+    </Row>
+  )
+}
+
 /** 再看一次導覽（A10）：導覽要對著對話頁的輸入框和電腦鈕，所以先開主要 Bot 的對話。 */
 function TourRow() {
   const bots = useStore(botsStore).bots
@@ -102,7 +152,7 @@ function TourRow() {
 export function GeneralSection() {
   return (
     <>
-      <SectionHeader title="一般" sub="外觀、語言與導覽。改了馬上生效，不用按儲存。" />
+      <SectionHeader title="一般" sub="外觀、Bot 的回話風格、語言與導覽。改了馬上生效，不用按儲存。" />
       <Block title="外觀">
         <Group>
           <div className="flex flex-col gap-2.5 px-4 pb-4 pt-3">
@@ -115,6 +165,11 @@ export function GeneralSection() {
           <Row title="字型" sub="全部畫面都用粉圓">
             <span className="whitespace-nowrap text-ui-sm text-ink-2">粉圓</span>
           </Row>
+        </Group>
+      </Block>
+      <Block title="Bot 怎麼跟你說話">
+        <Group>
+          <ReplyStyleRow />
         </Group>
       </Block>
       <Block title="語言">

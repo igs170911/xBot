@@ -64,6 +64,8 @@ type Profile struct {
 	Title       string
 	Description string
 	Soul        string
+	// ReplyStyle 是回話風格（空白＝簡短）。
+	ReplyStyle ReplyStyle
 	// ProviderID 是 Model Proxy 的供應商代號（/model/<ProviderID>/v1）。
 	ProviderID string
 	Model      string
@@ -331,7 +333,7 @@ func Env(existing []byte, workerKey string) []byte {
 const baseRulesStart = "你是常駐在自己電腦裡的 Bot。"
 
 // generatedHeads 是 SOUL.md 裡系統產生的段落標題（回覆格式、隊友名冊、組織與回報…），不屬於人設。
-var generatedHeads = []string{"## 回覆使用者的格式", "## 隊友與協作", "## 組織與回報", "## 少打擾使用者", "## 需要董事長核定的事"}
+var generatedHeads = []string{replyStyleHead, "## 回覆使用者的格式", "## 隊友與協作", "## 組織與回報", "## 少打擾使用者", "## 需要董事長核定的事"}
 
 // PersonaOnly 只留人設本身：拿掉系統產生的基本守則、回覆格式、隊友與組織段落（2026-10-20：Bot 用 xbot.teams.update_bot
 // 把自己整份 SOUL.md 存成人設，開場和 SOUL.md 都變成兩份守則）。
@@ -348,17 +350,57 @@ func PersonaOnly(s string) string {
 // squash 拿掉所有空白，比對介紹是不是人設的開頭（介紹會被壓成一行、截短）。
 func squash(s string) string { return strings.Join(strings.Fields(s), "") }
 
-// ReplyFormat 是 Bot 回覆使用者本人時的格式（2026-10-20 使用者要求：回覆太多雜訊，看不出現在要做什麼）。
-// 給隊友的訊息、群組裡和隊友的討論不套（collab 的提示也各自寫明）。
-const ReplyFormat = "## 回覆使用者的格式\n" +
-	"最後回答是給使用者本人看的（不是送回隊友）時，照這四段寫，每段用粗體小標開頭：\n" +
-	"1. **結論**：先講做好了沒、成品在哪（實際檔案路徑或連結），讓使用者一眼知道現在的狀態。\n" +
-	"2. **要注意**：沒做完、沒確認到、有風險的地方，以及你替使用者做了什麼判斷或假設。\n" +
-	"3. **需要你回答**：要使用者給回饋、選方案、做決定的事，一題一行，每題一句話就能回答（有選項就列出選項）；不要藏在長文中間。\n" +
-	"4. **建議下一步**：使用者可能沒想到的事。可以連結他的其他專案（看記憶和 /workspace），找能一起做、重複利用，或更值得優先處理的事，並講清楚為什麼值得做。\n" +
-	"沒有內容的段落連小標一起省略，不要寫「無」，結論一定要有。建議下一步裡要使用者點頭才能做的事（例如要不要刪、選哪個），同時放進需要你回答。過程、細節、原始資料放在四段後面或放進檔案，不要塞在前面；不要寫沒有資訊的客套話。" +
-	"閒聊或一句話就能回答的簡單問題，直接回答，不用套格式。" +
-	"給隊友的訊息（你的最後回答會送回給隊友時）、群組裡和隊友的討論，不用這個格式，照協作規則寫。"
+// ReplyStyle 是 Bot 回話給使用者的風格（設定 › 一般 › 回話風格，所有 Bot 共用；存在 ReplyStyleSetting）。
+// 2026-10-20 使用者：回覆太長看不下去，要像人傳訊息一樣短、分段傳。原本的四段報告格式（結論／要注意／需要你回答／
+// 建議下一步）會把回覆拉長，改成聊天口吻：重點還是那幾件事，但沒有就不講、不用小標。
+type ReplyStyle string
+
+const (
+	ReplyBrief    ReplyStyle = "brief"    // 簡短（預設）：像傳訊息，一段一兩句，最多 4 段
+	ReplyNormal   ReplyStyle = "normal"   // 一般：一段兩三句，最多 6 段
+	ReplyDetailed ReplyStyle = "detailed" // 詳細：可以完整說明，還是先講結果、分段
+)
+
+// ReplyStyleSetting 是設定表裡回話風格的鍵。
+const ReplyStyleSetting = "bots.reply_style"
+
+// EnumValues 讓 JSON Schema 列出可用值。
+func (ReplyStyle) EnumValues() []string { return []string{"brief", "normal", "detailed"} }
+
+// Valid 回報是不是認得的風格。
+func (s ReplyStyle) Valid() bool { return s == ReplyBrief || s == ReplyNormal || s == ReplyDetailed }
+
+// replyStyleHead 是回話風格段落的標題（PersonaOnly 靠它切掉）。
+const replyStyleHead = "## 回話風格"
+
+// replyStyleText 是 SOUL.md 的回話風格段落。寫成白話、不用清單和粗體：提示的格式會被模型照抄到回覆裡。
+func replyStyleText(s ReplyStyle) string {
+	size := "每段一兩句話，大約 40 個字以內，一次最多 4 段。"
+	switch s {
+	case ReplyNormal:
+		size = "每段兩三句話，一次最多 6 段。"
+	case ReplyDetailed:
+		size = "需要的話可以完整說明，但每段只講一件事，先講結果再講細節。"
+	}
+	return replyStyleHead + "\n" +
+		"回給使用者本人時，像在通訊軟體裡傳訊息給老闆：短、白話、一段一件事。段落之間空一行，每一段會變成一個對話泡泡。" + size + "\n" +
+		"第一段直接講結果：做好了沒、東西在哪（實際檔案路徑或連結）。接著只講使用者需要知道的：沒做完、沒確認到、有風險，或你替他做了什麼判斷。" +
+		"要使用者決定或回答的事，一題自己一段，一句話就能回答，有選項就寫出選項。" +
+		"值得做的下一步，挑最有價值的一件用一句話講，可以連結他的其他專案；沒有就不講。上面這些沒有的就省略，不要寫「無」。\n" +
+		"不要寫開場白、不要重述問題、不要客套。不要描述你的過程或用了哪些工具，工具之間也不要寫旁白，使用者看得到工作步驟。" +
+		"不要用標題和粗體小標，少用清單；表格只在比較三項以上時用。不要寫內部欄位名、工具名或英文術語。" +
+		"報告、長清單、大表格、程式碼存成 /workspace 裡的檔案，聊天裡只講重點和路徑。使用者說要詳細時才展開。\n" +
+		"例如：「比價表做好了，在 /workspace/比價.xlsx。」空一行「A 店最便宜，比我們低 8%，B 店缺貨沒算進去。」空一行「要照 A 店調價嗎？」\n" +
+		"閒聊或簡單問題就一句話回答。給隊友的訊息（最後回答會送回給隊友時）不用這樣分段，照協作規則寫完整、精簡。"
+}
+
+// replyReminder 放在 SOUL.md 最後再提醒一次（長的系統提示，結尾的提醒最有用）。
+func replyReminder(s ReplyStyle) string {
+	if s == ReplyDetailed {
+		return "（回話提醒：先講結果，一段一件事，段落之間空一行。）"
+	}
+	return "（回話提醒：回給使用者時像傳訊息一樣短，先講結果，一段一個泡泡，不寫過程。）"
+}
 
 // Soul 是 Bot 的 SOUL.md：名稱、職稱、個性，加上基本守則（LazyBoy 的精簡版；完整版跟著 Bot 設定的任務卡）。
 func Soul(p Profile) string {
@@ -375,16 +417,21 @@ func Soul(p Profile) string {
 	}
 	b.WriteString(baseRulesStart + "一律使用繁體中文（台灣用語）。網頁是使用者與你的主要入口。" +
 		"工具在你的獨立電腦裡執行，工作檔案保存於 /workspace。可交付檔案請放在 /workspace，並在回答提供實際路徑。" +
-		"有需要澄清的問題使用 clarify。完成後驗證結果，區分已完成、估計和未取得的資料。" +
+		"有需要澄清的問題使用 clarify。完成後驗證結果；是估計的、沒查到的要說，一句帶過就好。" +
 		"大工作（要交辦隊友、建 Bot 或團隊、要做很多步）先列計畫給使用者確認，同意後才交辦。" +
 		"你所在的群組要改名稱、公告、主責、加減成員，或你要離開時，用 xbot.collab.update_group；" +
 		"使用者要你刪群組時用 xbot.collab.remove_group，會送核准卡，使用者按允許才刪。" +
 		"要核准的動作會回 status=pending_approval 和 approval_id：表示核准卡已送出、還沒執行，用 xbot.approvals.wait 等結果，不要重送；幾張核准卡可以接著送。" +
 		"用瀏覽器查完資料就關掉你開的分頁，只留一個空白分頁；不要讓網頁一直開著（影片、會自己更新的頁面會一直跑）。" +
 		"不要把「XBot 工具做不到某事」這類關於工具能力的結論記進長期記憶；工具會更新，做不到時先查工具清單。\n")
-	b.WriteString("\n" + ReplyFormat + "\n")
+	style := p.ReplyStyle
+	if !style.Valid() {
+		style = ReplyBrief
+	}
+	b.WriteString("\n" + replyStyleText(style) + "\n")
 	if t := strings.TrimSpace(p.Team); t != "" {
 		b.WriteString("\n" + t + "\n")
 	}
+	b.WriteString("\n" + replyReminder(style) + "\n")
 	return b.String()
 }

@@ -42,9 +42,9 @@ describe('format', () => {
     expect(isLong(msg({ content: 'a'.repeat(801) }))).toBe(true)
     expect(isLong(msg({ content: 'a\n'.repeat(15) }))).toBe(true)
     expect(isLong(msg({ content: '短' }))).toBe(false)
-    expect(isLong(msg({ sender: 'bot:b', content: 'a'.repeat(5000) }))).toBe(false)
-    expect(isLong(msg({ sender: 'bot:b', content: 'a'.repeat(7000) }))).toBe(true)
-    expect(isLong(msg({ sender: 'bot:b', content: 'a'.repeat(7000), streaming: true }))).toBe(false)
+    expect(isLong(msg({ sender: 'bot:b', content: 'a'.repeat(1400) }))).toBe(false)
+    expect(isLong(msg({ sender: 'bot:b', content: 'a'.repeat(1600) }))).toBe(true)
+    expect(isLong(msg({ sender: 'bot:b', content: 'a'.repeat(1600), streaming: true }))).toBe(false)
   })
 
   it('taskTitle：交代的那句話第一行', () => {

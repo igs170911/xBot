@@ -2741,6 +2741,47 @@ export function botsList(input: BotsListInput = {}, opts?: CallOptions): Promise
   return invoke('xbot.bots.list', input, opts).then((r) => r.output)
 }
 
+// xbot.bots.reply_style_get
+
+export type BotsReplyStyleGetInput = Record<string, never>
+
+export interface BotsReplyStyleGetOutput {
+  /** brief 簡短（像傳訊息，預設）、normal 一般、detailed 詳細 */
+  style: 'brief' | 'normal' | 'detailed'
+}
+
+/**
+ * 看 Bot 回話給你的風格（所有 Bot 共用）
+ *
+ * `xbot.bots.reply_style_get`：權限 read、風險 safe
+ */
+export function botsReplyStyleGet(input: BotsReplyStyleGetInput = {}, opts?: CallOptions): Promise<BotsReplyStyleGetOutput> {
+  return invoke('xbot.bots.reply_style_get', input, opts).then((r) => r.output)
+}
+
+// xbot.bots.reply_style_set
+
+export interface BotsReplyStyleSetInput {
+  /** brief 簡短（像傳訊息，預設）、normal 一般、detailed 詳細 */
+  style?: 'brief' | 'normal' | 'detailed'
+}
+
+export interface BotsReplyStyleSetOutput {
+  /** brief 簡短（像傳訊息，預設）、normal 一般、detailed 詳細 */
+  style: 'brief' | 'normal' | 'detailed'
+}
+
+/**
+ * 改 Bot 回話給你的風格（簡短、一般、詳細；所有 Bot 共用）
+ *
+ * 簡短：像傳訊息，一段一兩句、最多 4 段；一般：一段兩三句、最多 6 段；詳細：可以完整說明。都是先講結果、段落之間空一行（畫面上一段一個泡泡）。Bot 之間的訊息不受影響。下一段新對話開始生效。
+ *
+ * `xbot.bots.reply_style_set`：權限 admin、風險 safe
+ */
+export function botsReplyStyleSet(input: BotsReplyStyleSetInput = {}, opts?: CallOptions): Promise<BotsReplyStyleSetOutput> {
+  return invoke('xbot.bots.reply_style_set', input, opts).then((r) => r.output)
+}
+
 // xbot.bots.suggest
 
 export interface BotsSuggestInput {
@@ -12391,7 +12432,7 @@ export interface TeamsUpdateBotInput {
   bot: string
   /** 新的職稱 */
   title?: string
-  /** 新的人設（常駐指示）：只寫這個 Bot 自己的個性、專長、做事方式。基本守則、回覆使用者的四段格式、隊友名冊是系統內建、每個 Bot 都一樣，不要寫進來 */
+  /** 新的人設（常駐指示）：只寫這個 Bot 自己的個性、專長、做事方式。基本守則、回話風格、隊友名冊是系統內建、每個 Bot 都一樣，不要寫進來 */
   persona?: string
   /** 新的報告對象（名字）；「使用者」表示直接向使用者報告 */
   reports_to?: string
@@ -13210,6 +13251,8 @@ export interface Ops {
   'xbot.bots.get': { input: BotsGetInput; output: BotsGetOutput }
   'xbot.bots.import': { input: BotsImportInput; output: BotsImportOutput }
   'xbot.bots.list': { input: BotsListInput; output: BotsListOutput }
+  'xbot.bots.reply_style_get': { input: BotsReplyStyleGetInput; output: BotsReplyStyleGetOutput }
+  'xbot.bots.reply_style_set': { input: BotsReplyStyleSetInput; output: BotsReplyStyleSetOutput }
   'xbot.bots.suggest': { input: BotsSuggestInput; output: BotsSuggestOutput }
   'xbot.bots.update': { input: BotsUpdateInput; output: BotsUpdateOutput }
   'xbot.bots.update_my_profile': { input: BotsUpdateMyProfileInput; output: BotsUpdateMyProfileOutput }
@@ -13454,6 +13497,8 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.bots.get': { path: '/api/v1/bots.get', scope: 'read', risk: 'safe', mutates: false, summary: '讀一個 Bot 的設定' },
   'xbot.bots.import': { path: '/api/v1/bots.import', scope: 'manage', risk: 'safe', mutates: true, summary: '從 .xbot 檔匯入一個 Bot' },
   'xbot.bots.list': { path: '/api/v1/bots.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出 Bot' },
+  'xbot.bots.reply_style_get': { path: '/api/v1/bots.reply_style_get', scope: 'read', risk: 'safe', mutates: false, summary: '看 Bot 回話給你的風格（所有 Bot 共用）' },
+  'xbot.bots.reply_style_set': { path: '/api/v1/bots.reply_style_set', scope: 'admin', risk: 'safe', mutates: true, summary: '改 Bot 回話給你的風格（簡短、一般、詳細；所有 Bot 共用）' },
   'xbot.bots.suggest': { path: '/api/v1/bots.suggest', scope: 'manage', risk: 'safe', mutates: true, summary: '一句話建議一個 Bot（名字、職稱、介紹、常駐指示）' },
   'xbot.bots.update': { path: '/api/v1/bots.update', scope: 'manage', risk: 'safe', mutates: true, summary: '修改一個 Bot 的設定' },
   'xbot.bots.update_my_profile': { path: '/api/v1/bots.update_my_profile', scope: 'operate', risk: 'safe', mutates: true, summary: '改自己的職稱或頭像' },

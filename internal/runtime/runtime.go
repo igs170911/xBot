@@ -220,6 +220,7 @@ type turn struct {
 	lastErr   string
 	pending   *pending // Bot 正在等人回覆的請求（一次一個）
 	usedTools bool     // 這一輪呼叫過工具（判斷「只說要做」用）
+	toolsAt   int      // 最後一次呼叫工具時 text 寫到哪（之後那段才是最後的回答）
 	// engine、provider：這一輪用的引擎與 Model Proxy 供應商；started：開始送出的時間；quota：引擎報的額度錯誤（EN-7）。
 	engine, provider string
 	started          time.Time
@@ -595,6 +596,7 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 			switch e.Type {
 			case engine.EventToolCall:
 				t.usedTools = true
+				t.toolsAt = t.text.Len()
 				if t.openTools == nil {
 					t.openTools = map[string]bool{}
 				}
@@ -727,6 +729,7 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	p := t.pending
 	t.pending = nil
 	streamed := t.text.String()
+	tail := strings.TrimSpace(streamed[min(t.toolsAt, len(streamed)):])
 	msgID := t.messageID
 	stopping := t.stopping
 	paused := t.paused
@@ -746,6 +749,11 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	case VerdictAnswer, VerdictCancelled:
 		if final == "" {
 			final = streamed
+			// 引擎沒給最後的回答：用工具之間寫的旁白（「讓我試試…」）不算回答，只取用完工具之後寫的那段
+			// （和 ACP 驅動同一條規則；旁白比 InterimNarrationMax 長就整段保留，可能是先寫完答案再存檔）
+			if verdict == VerdictAnswer && tail != "" && utf8.RuneCountInString(strings.TrimSpace(streamed))-utf8.RuneCountInString(tail) <= limits.InterimNarrationMax {
+				final = tail
+			}
 		}
 	case VerdictFailed:
 		if final == "" {

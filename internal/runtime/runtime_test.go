@@ -314,3 +314,40 @@ func TestStartWithPromptAndMeta(t *testing.T) {
 		t.Fatalf("定時任務的失敗由排程器發卡：%+v", items)
 	}
 }
+
+// 2026-10-20：最長的回覆是工具之間的旁白（「讓我試試…」）。引擎沒給最後的回答時，只取用完工具之後寫的那段。
+func TestNarrationBetweenToolsIsNotTheAnswer(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t)
+	reply := func(final string) func(t *hermestest.Turn) {
+		return func(t *hermestest.Turn) {
+			t.Event("message.start", nil)
+			t.Event("message.delta", map[string]any{"text": "讓我先查一下價格。"})
+			t.Event("tool.start", map[string]any{"tool_id": "c1", "name": "web_search"})
+			t.Event("tool.complete", map[string]any{"tool_id": "c1", "name": "web_search", "result": "ok"})
+			t.Event("message.delta", map[string]any{"text": "A 店最便宜。"})
+			t.Complete(final, "complete", nil)
+		}
+	}
+	f.g.OnPrompt = reply("")
+	res, err := f.rt.Chat(ctx, f.bot.ID, "", "比價")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.wait(t, res.TaskID)
+	msgs, _ := f.db.ListMessages(ctx, store.ScopeThread, res.ThreadID, 0, 0)
+	if got := msgs[len(msgs)-1].Content; got != "A 店最便宜。" {
+		t.Fatalf("回答：%q", got)
+	}
+	// 引擎給了最後的回答就照它
+	f.g.OnPrompt = reply("A 店最便宜，B 店缺貨。")
+	res, err = f.rt.Chat(ctx, f.bot.ID, res.ThreadID, "再查")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.wait(t, res.TaskID)
+	msgs, _ = f.db.ListMessages(ctx, store.ScopeThread, res.ThreadID, 0, 0)
+	if got := msgs[len(msgs)-1].Content; got != "A 店最便宜，B 店缺貨。" {
+		t.Fatalf("回答：%q", got)
+	}
+}

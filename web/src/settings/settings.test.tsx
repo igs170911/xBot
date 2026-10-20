@@ -95,7 +95,11 @@ it('主題：預設深色；選了就存起來、立刻套用；跟隨系統看�
 })
 
 it('一般：點主題卡就切換', () => {
-  render(<GeneralSection />)
+  render(
+    <ToastProvider>
+      <GeneralSection />
+    </ToastProvider>,
+  )
   const group = screen.getByRole('radiogroup', { name: '主題' })
   expect(within(group).getByRole('radio', { name: /Midnight/ })).toHaveAttribute('aria-checked', 'true')
   fireEvent.click(within(group).getByRole('radio', { name: /Daylight/ }))
@@ -103,6 +107,22 @@ it('一般：點主題卡就切換', () => {
   expect(document.documentElement.getAttribute('data-theme')).toBe('light')
   expect(screen.getByText('粉圓', { selector: 'span.whitespace-nowrap' })).toBeInTheDocument()
   setTheme('dark')
+})
+
+it('一般：回話風格所有 Bot 共用，選了就存', async () => {
+  api.ops['bots.reply_style_get'] = () => ({ style: 'brief' })
+  api.ops['bots.reply_style_set'] = (input) => ({ style: input.style })
+  render(
+    <ToastProvider>
+      <GeneralSection />
+    </ToastProvider>,
+  )
+  const group = await screen.findByRole('radiogroup', { name: '回話風格' })
+  expect(within(group).getByRole('radio', { name: '簡短' })).toHaveAttribute('aria-checked', 'true')
+  expect(screen.getByText(/像傳訊息：一段一兩句/)).toBeInTheDocument()
+  fireEvent.click(within(group).getByRole('radio', { name: '詳細' }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'bots.reply_style_set')?.input).toEqual({ style: 'detailed' }))
+  expect(await screen.findByText('已更新回話風格，下一段新對話開始生效')).toBeInTheDocument()
 })
 
 const BOT = { id: 'b1', name: '小秘', title: '幕僚長', description: '', soul: '', color: 'blue', shape: 'cursor', engine: 'claude-code', model: '', fallback: '', effort: 'medium', approval_mode: 'ask', archived: false, created_at: 1, updated_at: 1 }

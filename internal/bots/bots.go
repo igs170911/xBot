@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	"xbot/internal/engine/hermes"
 	"xbot/internal/limits"
 	"xbot/internal/ops"
 	"xbot/internal/store"
@@ -366,6 +367,60 @@ func Register(reg *ops.Registry, d Deps) {
 			}
 			out.Deleted = true
 			return out, nil
+		},
+	})
+	registerReplyStyle(reg, d)
+}
+
+// ReplyStyleView 是回話風格（xbot.bots.reply_style_get／set）。
+type ReplyStyleView struct {
+	Style hermes.ReplyStyle `json:"style" desc:"brief 簡短（像傳訊息，預設）、normal 一般、detailed 詳細"`
+}
+
+// registerReplyStyle：所有 Bot 共用的回話風格（設定 › 一般）。改了就重寫每個 Bot 的 SOUL.md，下一段新對話照新的。
+func registerReplyStyle(reg *ops.Registry, d Deps) {
+	get := func(ctx context.Context, q *store.DB) (ReplyStyleView, error) {
+		v := ReplyStyleView{Style: hermes.ReplyBrief}
+		if _, err := q.GetSettingInto(ctx, hermes.ReplyStyleSetting, &v.Style); err != nil {
+			return v, err
+		}
+		if !v.Style.Valid() {
+			v.Style = hermes.ReplyBrief
+		}
+		return v, nil
+	}
+	ops.Register(reg, ops.Op[struct{}, ReplyStyleView]{
+		Name: "xbot.bots.reply_style_get", Summary: "看 Bot 回話給你的風格（所有 Bot 共用）",
+		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
+		Handle: func(ctx context.Context, call *ops.Call, _ struct{}) (ReplyStyleView, error) {
+			return get(ctx, call.DB)
+		},
+	})
+	ops.Register(reg, ops.Op[ReplyStyleView, ReplyStyleView]{
+		Name: "xbot.bots.reply_style_set", Summary: "改 Bot 回話給你的風格（簡短、一般、詳細；所有 Bot 共用）",
+		Description: "簡短：像傳訊息，一段一兩句、最多 4 段；一般：一段兩三句、最多 6 段；詳細：可以完整說明。" +
+			"都是先講結果、段落之間空一行（畫面上一段一個泡泡）。Bot 之間的訊息不受影響。下一段新對話開始生效。",
+		Scope: ops.ScopeAdmin, Risk: ops.RiskSafe,
+		Handle: func(ctx context.Context, call *ops.Call, in ReplyStyleView) (ReplyStyleView, error) {
+			if !in.Style.Valid() {
+				return ReplyStyleView{}, ops.InvalidInput(ops.FieldError{Field: "style", Message: "要是 brief、normal 或 detailed"})
+			}
+			if call.DryRun {
+				return in, nil
+			}
+			if err := call.DB.SetSetting(ctx, hermes.ReplyStyleSetting, in.Style); err != nil {
+				return ReplyStyleView{}, err
+			}
+			if d.SoulChanged != nil {
+				bs, err := call.DB.ListBots(ctx, false)
+				if err != nil {
+					return in, err
+				}
+				for _, b := range bs {
+					d.SoulChanged(ctx, b.ID)
+				}
+			}
+			return in, nil
 		},
 	})
 }

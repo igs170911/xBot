@@ -13,12 +13,14 @@ import { chatStore } from './chatStore'
 import { clockLabel, isLong, judgeBy, VERDICT_LABEL } from './format'
 import { Markdown } from './markdown/Markdown'
 import { botFileLinker, FileLinkContext } from './markdown/fileLink'
+import { splitBubbles } from './markdown/bubbles'
 import { isRich } from './markdown/parse'
 import { useCopy } from './useCopy'
 import { VoiceNoteBar } from '../voice/chatVoice'
 import { useReadAloud } from '../voice/useChatVoice'
 
-function Collapsible({ long, mine, children }: { long: boolean; mine: boolean; children: ReactNode }) {
+/** 太長的訊息先收起，按「顯示全部」展開（對話和群組共用）。 */
+export function Collapsible({ long, mine, children }: { long: boolean; mine: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false)
   if (!long) return <>{children}</>
   return (
@@ -106,30 +108,56 @@ export function OwnerMessage({ msg, below }: { msg: ChatMsg; below?: ReactNode }
   )
 }
 
-/** Bot 的回覆：Markdown 排版；有表格、程式碼、標題時泡泡放寬（C02、C07）。 */
+/** 一段回覆的泡泡；有表格、程式碼、標題時放寬（C02、C07）。 */
+export function BotBubble({ text, color, botId, children }: { text: string; color?: string; botId?: string; children?: ReactNode }) {
+  const rich = isRich(text)
+  return (
+    <div
+      data-testid="bot-bubble"
+      style={color ? { background: botBubble(color) } : undefined}
+      className={cx('min-w-0 self-start rounded-bubble bg-bubble-bot text-[15px]', rich ? 'w-full px-6 pb-[22px] pt-5 leading-[1.75] max-sm:px-4 max-sm:pb-4 max-sm:pt-3.5' : 'max-w-[85%] px-4 py-2.5 leading-[1.6]')}
+    >
+      {children}
+      {botId ? (
+        <FileLinkContext.Provider value={botFileLinker(botId)}>
+          <Markdown text={text} />
+        </FileLinkContext.Provider>
+      ) : (
+        <Markdown text={text} />
+      )}
+    </div>
+  )
+}
+
+/**
+ * Bot 的回覆：照段落拆成幾個連著的泡泡（像人傳訊息一段一則；splitBubbles），表格、程式碼不拆。
+ * 複製、朗讀、原始內容、判斷還是整則一份。
+ */
 export function BotMessage({ msg, last, botId, color }: { msg: ChatMsg; last: boolean; botId?: string; /** Bot 的頭像顏色：氣泡帶一點這個顏色 */ color?: string }) {
   const [raw, setRaw] = useState(false)
-  const rich = isRich(msg.content)
   const done = !msg.streaming
+  const parts = splitBubbles(msg.content)
+  const voice = msg.voice && done ? <VoiceNoteBar botId={botId} msg={msg} note={msg.voice} /> : null
   return (
     <div className="group flex flex-col gap-2">
-      <div
-        data-testid="msg-bot"
-        data-streaming={msg.streaming || undefined}
-        aria-busy={msg.streaming || undefined}
-        style={color ? { background: botBubble(color) } : undefined}
-        className={cx('min-w-0 self-start rounded-bubble bg-bubble-bot text-[15px]', rich ? 'w-full px-6 pb-[22px] pt-5 leading-[1.75] max-sm:px-4 max-sm:pb-4 max-sm:pt-3.5' : 'max-w-[85%] px-4 py-2.5 leading-[1.6]')}
-      >
-        {msg.voice && done && <VoiceNoteBar botId={botId} msg={msg} note={msg.voice} />}
+      <div data-testid="msg-bot" data-streaming={msg.streaming || undefined} aria-busy={msg.streaming || undefined} className="flex min-w-0 flex-col">
         <Collapsible long={isLong(msg)} mine={false}>
           {raw ? (
-            <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[13px] leading-[1.7] text-ink/85">{msg.content}</pre>
-          ) : botId ? (
-            <FileLinkContext.Provider value={botFileLinker(botId)}>
-              <Markdown text={msg.content} />
-            </FileLinkContext.Provider>
+            <div
+              style={color ? { background: botBubble(color) } : undefined}
+              className="min-w-0 self-start rounded-bubble bg-bubble-bot px-4 py-2.5 text-[15px]"
+            >
+              {voice}
+              <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[13px] leading-[1.7] text-ink/85">{msg.content}</pre>
+            </div>
           ) : (
-            <Markdown text={msg.content} />
+            <div className="flex min-w-0 flex-col gap-1.5">
+              {parts.map((part, i) => (
+                <BotBubble key={i} text={part} color={color} botId={botId}>
+                  {i === 0 && voice}
+                </BotBubble>
+              ))}
+            </div>
           )}
         </Collapsible>
       </div>

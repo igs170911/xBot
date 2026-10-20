@@ -238,7 +238,7 @@ func (c *Computers) Prepare(ctx context.Context, h hosts.Host, botID, containerI
 		}
 	}
 	p := hermes.Profile{
-		BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul, Team: team,
+		BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul, Team: team, ReplyStyle: c.replyStyle(ctx),
 		ProviderID: ref.Provider, Model: ref.Model, Transport: ref.Transport, Effort: b.Effort,
 		WorkerKey: string(key), UID: box.BotUID, GID: box.BotGID, ApprovalMode: b.ApprovalMode, MemoryOff: !b.MemoryEnabled,
 	}
@@ -315,7 +315,7 @@ func (c *Computers) RefreshSoul(ctx context.Context, botID string) error {
 		}
 	}
 	return hermes.WriteSoul(ctx, h.Docker(), loc.ID, hermes.Profile{BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description,
-		Soul: b.Soul, Team: team, UID: box.BotUID, GID: box.BotGID})
+		Soul: b.Soul, Team: team, ReplyStyle: c.replyStyle(ctx), UID: box.BotUID, GID: box.BotGID})
 }
 
 // Instructions 是 ACP 引擎（Claude Code、Codex、Gemini、OpenCode、Grok）的 Bot 的身分與守則：和 Hermes 的 SOUL.md 同一份
@@ -332,7 +332,17 @@ func (c *Computers) Instructions(ctx context.Context, botID string) (string, err
 			return "", err
 		}
 	}
-	return hermes.Soul(hermes.Profile{BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul, Team: team}), nil
+	return hermes.Soul(hermes.Profile{BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul, Team: team,
+		ReplyStyle: c.replyStyle(ctx)}), nil
+}
+
+// replyStyle 是設定 › 一般 › 回話風格（所有 Bot 共用）；沒設或讀不到時用簡短。
+func (c *Computers) replyStyle(ctx context.Context) hermes.ReplyStyle {
+	var s hermes.ReplyStyle
+	if _, err := c.DB.GetSettingInto(ctx, hermes.ReplyStyleSetting, &s); err != nil || !s.Valid() {
+		return hermes.ReplyBrief
+	}
+	return s
 }
 
 func (c *Computers) hostOf(ctx context.Context, botID string) (hosts.Host, error) {

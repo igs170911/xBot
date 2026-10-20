@@ -55,7 +55,7 @@ func (s *Service) SoulText(ctx context.Context, botID string) (string, error) {
 	if len(direct) > 0 {
 		sb.WriteString("向你報告的有：" + strings.Join(direct, "、") + "。你是他們的主管：派工用 xbot.collab.message_bot，每個階段交給一位；" +
 			"想知道進度用 xbot.teams.team_status（看得到每個人正在做什麼、排了什麼、最近完成什麼、卡在哪），不要傳訊息追問；" +
-			"整合後向 " + boss + " 回報結論、風險與需要決定的事。")
+			"整合後向 " + boss + " 簡短回報結果、風險和需要決定的事，細節放檔案。")
 	}
 	if hasManager {
 		sb.WriteString(manager.Name + " 交辦的事，最後回答直接寫給它。使用者直接交辦你的事照常完成，主管會從 xbot.teams.team_status 看到，不需要另外通知。")

@@ -113,7 +113,7 @@ type ReviewIn struct {
 type UpdateBotIn struct {
 	Bot       string       `json:"bot" required:"true" max:"100" desc:"要調整的 Bot（名字或 id）"`
 	Title     string       `json:"title,omitempty" max:"100" desc:"新的職稱"`
-	Persona   string       `json:"persona,omitempty" max:"4000" desc:"新的人設（常駐指示）：只寫這個 Bot 自己的個性、專長、做事方式。基本守則、回覆使用者的四段格式、隊友名冊是系統內建、每個 Bot 都一樣，不要寫進來"`
+	Persona   string       `json:"persona,omitempty" max:"4000" desc:"新的人設（常駐指示）：只寫這個 Bot 自己的個性、專長、做事方式。基本守則、回話風格、隊友名冊是系統內建、每個 Bot 都一樣，不要寫進來"`
 	ReportsTo string       `json:"reports_to,omitempty" max:"100" desc:"新的報告對象（名字）；「使用者」表示直接向使用者報告"`
 	Team      string       `json:"team,omitempty" max:"100" desc:"移到哪個團隊（名稱）；「未分區」表示離開團隊"`
 	Engine    *bots.Engine `json:"engine,omitempty" desc:"換引擎（要使用者按允許）；hermes 以外的用使用者的訂閱，使用者還要在 Bot 設定另外同意"`
