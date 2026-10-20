@@ -169,6 +169,7 @@ type RemoveManyOut struct {
 	Bots    []string `json:"bots"`
 	Teams   []string `json:"teams"`
 	Groups  []string `json:"groups"`
+	Gone    []string `json:"gone,omitempty" desc:"核准之後、刪之前已經不在的（略過）"`
 	Deleted bool     `json:"deleted"`
 }
 
@@ -199,7 +200,9 @@ func itemNames(xs []batchItem) []string {
 }
 
 // batchTarget 檢查發起的 Bot 有團隊管理權限、每一個要刪的都找得到；重複的只算一次。
-func batchTarget(ctx context.Context, s *Service, call *ops.Call, in RemoveManyIn) (batch, error) {
+// gone 不是 nil 時（使用者已經允許、要開始刪了）找不到的不算錯：記進 gone 略過，其他照刪
+// （審查 2026-10-21：核准前手動刪掉其中一個，按允許後整批都刪不了，重試也一樣）。
+func batchTarget(ctx context.Context, s *Service, call *ops.Call, in RemoveManyIn, gone *[]string) (batch, error) {
 	var b batch
 	n := len(in.Bots) + len(in.Teams) + len(in.Groups)
 	if n == 0 {
@@ -218,8 +221,18 @@ func batchTarget(ctx context.Context, s *Service, call *ops.Call, in RemoveManyI
 		return b, err
 	}
 	seen := map[string]bool{}
+	missing := func(ref string, err error) bool {
+		if gone != nil && err != nil && ops.AsError(err).Code == ops.CodeNotFound {
+			*gone = append(*gone, strings.TrimSpace(ref))
+			return true
+		}
+		return false
+	}
 	for _, ref := range in.Bots {
 		id, name, err := botTarget(ctx, s, call, RemoveBotIn{Bot: ref})
+		if missing(ref, err) {
+			continue
+		}
 		if err != nil {
 			return b, err
 		}
@@ -230,6 +243,9 @@ func batchTarget(ctx context.Context, s *Service, call *ops.Call, in RemoveManyI
 	}
 	for _, ref := range in.Teams {
 		id, name, err := teamTarget(ctx, s, call, RemoveTeamIn{Team: ref})
+		if missing(ref, err) {
+			continue
+		}
 		if err != nil {
 			return b, err
 		}
@@ -256,8 +272,8 @@ func batchTarget(ctx context.Context, s *Service, call *ops.Call, in RemoveManyI
 					break
 				}
 			}
-			if !found {
-				return b, ops.NotFound("找不到這個群組：" + ref)
+			if err := ops.NotFound("找不到這個群組：" + ref); !found && !missing(ref, err) {
+				return b, err
 			}
 		}
 	}
@@ -272,19 +288,20 @@ func registerRemoveMany(reg *ops.Registry, s *Service) {
 			"要刪兩個以上時用這個，不要一個一個送。你本人請用 xbot.bots.delete／xbot.teams.delete／xbot.rooms.delete。",
 		Scope: ops.ScopeManage, Risk: ops.RiskConfirm, NoDelegate: true, ForBot: true, ManagerOnly: true,
 		Precheck: func(ctx context.Context, call *ops.Call, in RemoveManyIn) error {
-			_, err := batchTarget(ctx, s, call, in)
+			_, err := batchTarget(ctx, s, call, in, nil)
 			return err
 		},
 		Explain: func(ctx context.Context, call *ops.Call, in RemoveManyIn) (string, error) {
-			b, err := batchTarget(ctx, s, call, in)
+			b, err := batchTarget(ctx, s, call, in, nil)
 			return explain(b.lines(), in.Reason), err
 		},
 		Handle: func(ctx context.Context, call *ops.Call, in RemoveManyIn) (RemoveManyOut, error) {
-			b, err := batchTarget(ctx, s, call, in)
+			var gone []string
+			b, err := batchTarget(ctx, s, call, in, &gone)
 			if err != nil {
 				return RemoveManyOut{}, err
 			}
-			out := RemoveManyOut{Bots: itemNames(b.bots), Teams: itemNames(b.teams), Groups: itemNames(b.groups)}
+			out := RemoveManyOut{Bots: itemNames(b.bots), Teams: itemNames(b.teams), Groups: itemNames(b.groups), Gone: gone}
 			if call.DryRun {
 				return out, nil
 			}

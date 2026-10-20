@@ -248,6 +248,10 @@ func TestManagerRemovesManyWithOneApproval(t *testing.T) {
 	if strings.Count(body, "Bot：Dev") != 1 {
 		t.Fatalf("重複的只列一次：%s", body)
 	}
+	// 核准前使用者自己先刪了 QA：允許後其他的照刪，QA 算已經不在（審查 2026-10-21：原本整批刪不了）。
+	if err := e.db.DeleteBot(e.ctx, e.bots["QA"]); err != nil {
+		t.Fatal(err)
+	}
 	if err := e.db.DecideApproval(e.ctx, pending[0].ID, "approved", "owner"); err != nil {
 		t.Fatal(err)
 	}

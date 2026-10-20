@@ -489,6 +489,27 @@ func execute(ctx context.Context, reg *ops.Registry, call *ops.Call, a store.App
 // markFailed：允許了但動作沒做成時，把核准卡重新打開、寫上原因，你可以按「再試一次」（再允許一次會重新執行，只會成功一次）；
 // 之後成功了（msg 空白）就把重開的卡結掉。原本卡片在允許時就結掉了，失敗只閃一下，事後看不到也沒辦法重試
 // （2026-10-19：分享登入允許了兩次都失敗，修好後沒有人再做一次）。
+// InterruptedNote 是服務在執行允許過的動作時重開，卡片重新打開時寫的原因。
+const InterruptedNote = "服務重開時這個動作做到一半，不確定做完了沒；要的話按「再試一次」，不做了就收掉"
+
+// RecoverInterrupted 在服務啟動時處理上次做到一半的核准動作（審查 2026-10-21：重開後一直「正在執行中」，
+// approvals.wait 永遠等不到、卡片也已經結掉）：退回可以再試、記下錯誤（approvals.wait 回報失敗）、卡片以失敗重新打開。
+func RecoverInterrupted(ctx context.Context, reg *ops.Registry, db *store.DB) error {
+	ids, err := db.ResetInterruptedApprovals(ctx)
+	if err != nil {
+		return err
+	}
+	raw, _ := json.Marshal(ops.Conflict(InterruptedNote))
+	call := &ops.Call{Identity: ops.Owner("system"), DB: db}
+	for _, id := range ids {
+		if err := db.SetApprovalError(ctx, id, string(raw)); err != nil && !errors.Is(err, store.ErrNotFound) {
+			return err
+		}
+		markFailed(ctx, reg, call, id, InterruptedNote)
+	}
+	return nil
+}
+
 func markFailed(ctx context.Context, reg *ops.Registry, call *ops.Call, approvalID, msg string) {
 	var evs []store.Event
 	err := call.DB.Tx(ctx, func(q *store.Queries) error {
@@ -881,9 +902,17 @@ func dismiss(ctx context.Context, reg *ops.Registry, call *ops.Call, in ItemIn) 
 	if err != nil {
 		return ItemOut{}, err
 	}
+	// 允許了、執行卻失敗的核准卡（markFailed 重新打開、payload 帶 failed）：「先不做了」就是收掉這張卡
+	// （審查 2026-10-21：原本 dismiss 擋、decide 又說已經處理過，卡片永遠關不掉）。
+	var p struct {
+		Failed string `json:"failed"`
+	}
+	_ = json.Unmarshal(it.Payload, &p)
+	failed := it.Kind == "approval" && it.Ref != "" && p.Failed != ""
 	switch {
 	case it.Status != store.InboxOpen:
 		return ItemOut{}, ops.Conflict(store.ErrAlreadyDecided.Error())
+	case failed:
 	case it.TaskID != "" && (it.Kind == "approval" || it.Kind == "question" || it.Kind == "secret"):
 		return ItemOut{}, ops.Conflict("Bot 正在等這個回覆：請用 xbot.chat.respond 回答，或選不回答（decline）")
 	case it.Kind == "approval" && it.Ref != "":

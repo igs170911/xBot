@@ -116,6 +116,33 @@ func (q *Queries) StartApprovedOpRequest(ctx context.Context, approvalID string)
 	return out, started, err
 }
 
+// ResetInterruptedApprovals 在服務啟動時處理上次做到一半的核准動作：停在 running、等某個核准的紀錄（服務在執行中重開，
+// 沒有人在處理了）退回 pending_approval，之後可以再試；回傳這些核准的 id。
+func (q *Queries) ResetInterruptedApprovals(ctx context.Context) ([]string, error) {
+	var ids []string
+	err := q.atomic(ctx, func(q *Queries) error {
+		rows, err := q.w.QueryContext(ctx, `SELECT approval_id FROM op_request WHERE status='running' AND approval_id <> ''`)
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				rows.Close()
+				return err
+			}
+			ids = append(ids, id)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		_, err = q.w.ExecContext(ctx, `UPDATE op_request SET status='pending_approval', updated_at=? WHERE status='running' AND approval_id <> ''`, nowMS())
+		return err
+	})
+	return ids, err
+}
+
 // ReadOnly 回傳同一個資料庫的唯讀版本：所有寫入（含 Tx）都會失敗。
 // 給 dry_run 的操作用，保證預演時不會寫到資料。關閉它不會關掉原本的資料庫。
 func (db *DB) ReadOnly() *DB {

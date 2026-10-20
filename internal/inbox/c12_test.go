@@ -106,6 +106,29 @@ func TestWaitReportsExecutionFailure(t *testing.T) {
 	}
 }
 
+// 允許了、執行卻失敗的卡，「先不做了」（dismiss）要能收掉（審查 2026-10-21：原本 dismiss 擋、decide 說已處理過，永遠關不掉）。
+// 還沒決定的核准卡照樣不能直接略過。
+func TestDismissAFailedApproval(t *testing.T) {
+	e, _, _ := setupC12(t)
+	b, _ := e.db.CreateBot(bg, store.Bot{Name: "小編"})
+	a := agent("a1", nil)
+	_, err := e.call(a, "xbot.test.flaky", map[string]any{"bot_id": b.ID}, ops.Options{RequestID: "r1"})
+	oe := asErr(err)
+	items, _ := e.db.ListInboxByRef(bg, oe.NeedsApprovalID)
+	if _, err := e.call(owner, "xbot.inbox.dismiss", map[string]any{"inbox_id": items[0].ID}, ops.Options{}); asErr(err) == nil || asErr(err).Code != ops.CodeConflict {
+		t.Fatalf("還沒決定的不能略過：%v", err)
+	}
+	if d := get[Outcome](t, e, owner, "xbot.approvals.decide", map[string]any{"approval_id": oe.NeedsApprovalID, "decision": "allow"}); !d.Failed {
+		t.Fatalf("%+v", d)
+	}
+	if _, err := e.call(owner, "xbot.inbox.dismiss", map[string]any{"inbox_id": items[0].ID}, ops.Options{}); err != nil {
+		t.Fatalf("失敗的卡要能收掉：%v", err)
+	}
+	if c, _ := e.db.GetInboxItem(bg, items[0].ID); c.Status != store.InboxDismissed {
+		t.Fatalf("%+v", c)
+	}
+}
+
 // F08：退回後 10 分鐘內可以復原，卡片和核准都回到等你決定；已經執行的不能復原。
 func TestUndoDeny(t *testing.T) {
 	e, _, _ := setupC12(t)
@@ -210,5 +233,39 @@ func TestDismissCountsMarkRead(t *testing.T) {
 	other, _ := e.db.CreateBot(bg, store.Bot{Name: "別人"})
 	if c := get[CountsOut](t, e, agent("lim", []string{other.ID}), "xbot.inbox.counts", map[string]any{}); c.Open != 0 {
 		t.Fatalf("受限：%+v", c)
+	}
+}
+
+// 允許後執行到一半服務重開（op_request 停在 running）：啟動時退回可以再試，卡片以失敗重新打開，approvals.wait 回報失敗
+// （審查 2026-10-21：原本永遠「正在執行中」，卡片也結掉了，什麼都不能做）。
+func TestRecoverInterruptedApproval(t *testing.T) {
+	e, _, _ := setupC12(t)
+	b, _ := e.db.CreateBot(bg, store.Bot{Name: "小編"})
+	a := agent("a1", nil)
+	_, err := e.call(a, "xbot.test.flaky", map[string]any{"bot_id": b.ID}, ops.Options{RequestID: "r1"})
+	oe := asErr(err)
+	items, _ := e.db.ListInboxByRef(bg, oe.NeedsApprovalID)
+	// 模擬：使用者允許了，開始執行時服務就停了
+	if err := e.db.DecideApproval(bg, oe.NeedsApprovalID, "approved", "owner"); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.db.SettleInboxItem(bg, items[0].ID, "resolved", "allow", "owner", nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, started, err := e.db.StartApprovedOpRequest(bg, oe.NeedsApprovalID); err != nil || !started {
+		t.Fatalf("%v %v", started, err)
+	}
+	if err := RecoverInterrupted(bg, e.reg, e.db); err != nil {
+		t.Fatal(err)
+	}
+	if c, _ := e.db.GetInboxItem(bg, items[0].ID); c.Status != "open" || !strings.Contains(string(c.Payload), "服務重開") {
+		t.Fatalf("卡片要以失敗重新打開：%+v %s", c, c.Payload)
+	}
+	w := get[Outcome](t, e, a, "xbot.approvals.wait", map[string]any{"approval_id": oe.NeedsApprovalID, "timeout_s": 1})
+	if !w.Settled || !w.Failed || w.Executed {
+		t.Fatalf("等待要回報失敗：%+v", w)
+	}
+	if _, started, err := e.db.StartApprovedOpRequest(bg, oe.NeedsApprovalID); err != nil || !started {
+		t.Fatalf("要能再試：%v %v", started, err)
 	}
 }

@@ -17,6 +17,7 @@ import (
 	"xbot/internal/auth"
 	"xbot/internal/config"
 	"xbot/internal/events"
+	"xbot/internal/inbox"
 	"xbot/internal/limits"
 	"xbot/internal/mcpserver"
 	"xbot/internal/network"
@@ -108,6 +109,10 @@ func cmdServe(args []string) error {
 	devices.BaseURL = func() string { return st.network.Status(false).Tailscale.URL }
 	pusher := push.New(st.db)
 	reg := buildRegistry(st.db, pairing, notify, st, pwaDeps{devices: devices, push: pusher})
+	// 上次執行到一半的核准動作（服務在執行中重開）：退回可以再試，卡片以失敗重新打開，不會一直「正在執行中」。
+	if err := inbox.RecoverInterrupted(context.Background(), reg, st.db); err != nil {
+		slog.Warn("處理做到一半的核准動作失敗", "err", err)
+	}
 	// Bot 經自己的 product.sock 用 XBot MCP（C11）：身分就是那個 Bot。
 	st.sockets.SetProduct(mcpserver.BotHandler(reg, mcpserver.BotOptions{Keys: st.keys, DB: st.db, Logger: slog.Default()}))
 	// 權杖驗證 HTTP 與 MCP 共用（登入碼＝你本人，代理權杖＝那個代理）。

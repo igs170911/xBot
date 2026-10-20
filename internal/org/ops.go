@@ -252,6 +252,12 @@ func Register(reg *ops.Registry, s *Service) {
 				}
 				sp.Creator = call.Identity.ID
 			}
+			// 團隊管理權限只有使用者能給（xbot.teams.update_bot 開 can_manage 會送核准卡）：Bot、代理建團隊時不能順便給主管
+			// （2026-10-21 審查：有管理權限的 Bot 用 lead_manage 或「公司」範本，就能不經核准讓另一個 Bot 也有管理權限）。
+			withheld := false
+			if call.Identity.Kind != ops.KindOwner && sp.LeadManage {
+				sp.LeadManage, withheld = false, true
+			}
 			if call.DryRun {
 				return CreateTeamOut{Team: TeamView{Name: sp.Name, MemberIDs: []string{}, Memory: []string{}}, MemberIDs: []string{}, Created: []string{},
 					Note: "會建立「" + sp.Name + "」"}, nil
@@ -261,7 +267,11 @@ func Register(reg *ops.Registry, s *Service) {
 				return CreateTeamOut{}, err
 			}
 			tv, err := s.Team(ctx, res.Team.ID)
-			return CreateTeamOut{Team: tv, LeadID: res.LeadID, MemberIDs: nonNil(res.MemberIDs), Created: nonNil(res.Created), RoomID: res.RoomID, Note: res.Note}, err
+			note := res.Note
+			if withheld {
+				note = strings.TrimSpace(note + " 主管的團隊管理權限沒有一起開：要給的話用 xbot.teams.update_bot 帶 can_manage，會送使用者核准。")
+			}
+			return CreateTeamOut{Team: tv, LeadID: res.LeadID, MemberIDs: nonNil(res.MemberIDs), Created: nonNil(res.Created), RoomID: res.RoomID, Note: note}, err
 		},
 	})
 	ops.Register(reg, ops.Op[UpdateTeamIn, TeamView]{
