@@ -308,6 +308,25 @@ func codexClaims(token string) jwtClaims {
 // temperature、top_p 照 Docker Agent 的 ChatGPT 方案文件也拿掉（待實測確認）。
 var codexDropFields = []string{"max_output_tokens", "prompt_cache_retention", "temperature", "top_p"}
 
+// codexCacheKey 是一個 Bot 送給 ChatGPT 方案的 prompt_cache_key：同一個 Bot 每段對話都一樣。
+// Hermes 每段對話給不同的 key，Codex 照 key 分配快取，新對話的第一個請求就讀不到同一個 Bot 已經快取的守則和工具清單
+// （2026-10-20 基準測試：ChatGPT 方案每段新對話第一個請求 22K token 全部沒命中；Haiku、deepseek 照前綴快取就有命中）。
+func codexCacheKey(botID string) string { return "xbot-bot-" + botID }
+
+// withCacheKey 把請求的 prompt_cache_key 換成 key；看不懂的內容原樣送出。
+func withCacheKey(body []byte, key string) []byte {
+	var req map[string]json.RawMessage
+	if json.Unmarshal(body, &req) != nil || req == nil {
+		return body
+	}
+	req["prompt_cache_key"], _ = json.Marshal(key)
+	out, err := json.Marshal(req)
+	if err != nil {
+		return body
+	}
+	return out
+}
+
 // codexBody 把 Hermes 送來的 Responses 請求改成 Codex 端點要的樣子：一律串流、不存檔，拿掉不收的欄位。
 // 也回傳 prompt_cache_key（Codex 要同時放在 x-client-request-id 標頭）。看不懂的內容原樣送出。
 func codexBody(body []byte) ([]byte, string) {

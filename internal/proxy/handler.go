@@ -288,6 +288,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	start := h.o.Now()
+	if provider.Auth == AuthOAuthCodex && r.Method == http.MethodPost {
+		body = withCacheKey(body, codexCacheKey(botID))
+	}
 	resp, cancel, err := h.forward(r, h.session(botID), provider, apiPath, body)
 	// 訂閱登入：供應商回 401 表示存取權杖被撤銷或過期，換新一次再送（還沒送出任何位元組）。
 	if err == nil && resp.StatusCode == http.StatusUnauthorized && provider.Auth != "" {

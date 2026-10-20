@@ -343,7 +343,7 @@ func TestCodexProxyInjectsTokenAndHeaders(t *testing.T) {
 		t.Fatalf("%s %s", c.Path, c.Auth)
 	}
 	want := map[string]string{"Chatgpt-Account-Id": "acct-1", "X-Openai-Internal-Codex-Residency": "us", "Originator": CodexOriginator,
-		"Session_id": "xbot-bot-1", "X-Client-Request-Id": "pck_abc"}
+		"Session_id": "xbot-bot-1", "X-Client-Request-Id": "xbot-bot-bot-1"} // 快取 key 換成這個 Bot 固定的（每段對話一樣）
 	for k, v := range want {
 		if got := c.Header.Get(k); got != v {
 			t.Errorf("%s = %q，應為 %q", k, got, v)
@@ -364,7 +364,7 @@ func TestCodexProxyInjectsTokenAndHeaders(t *testing.T) {
 			t.Fatalf("%s 應該拿掉", k)
 		}
 	}
-	if sent["prompt_cache_key"] != "pck_abc" || sent["instructions"] != "你是助理" {
+	if sent["prompt_cache_key"] != "xbot-bot-bot-1" || sent["instructions"] != "你是助理" {
 		t.Fatalf("其他欄位要原樣保留：%v", sent)
 	}
 	// 容器拿到的回應裡沒有權杖。
@@ -505,6 +505,20 @@ func TestCodexBodyKeepsUnknownAndHandlesBadJSON(t *testing.T) {
 	out, key = codexBody([]byte(`{"model":"m","tools":[{"type":"function","name":"x"}],"prompt_cache_retention":"24h"}`))
 	if strings.Contains(string(out), "prompt_cache_retention") || !strings.Contains(string(out), `"tools"`) || key != "" {
 		t.Fatal(string(out))
+	}
+}
+
+// 同一個 Bot 每段對話送一樣的 prompt_cache_key（新對話才讀得到已經快取的守則和工具清單），也放進 x-client-request-id。
+func TestCodexCacheKeyPerBot(t *testing.T) {
+	a := withCacheKey([]byte(`{"model":"m","prompt_cache_key":"session-1","input":[]}`), codexCacheKey("b1"))
+	b := withCacheKey([]byte(`{"model":"m","prompt_cache_key":"session-2","input":[]}`), codexCacheKey("b1"))
+	_, ka := codexBody(a)
+	_, kb := codexBody(b)
+	if ka != "xbot-bot-b1" || ka != kb {
+		t.Fatalf("%q %q", ka, kb)
+	}
+	if string(withCacheKey([]byte("not json"), "k")) != "not json" {
+		t.Fatal("看不懂的原樣送出")
 	}
 }
 
