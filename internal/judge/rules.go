@@ -252,10 +252,17 @@ var (
 	nextVerbs  = []string{"去", "開始", "繼續", "打開", "開", "抓", "查", "搜尋", "看", "讀", "檢查", "確認", "找", "整理", "處理", "寫", "跑", "進", "點", "下載"}
 )
 
+// offerRe：同一句前面是在等使用者（「直接講要做什麼，我就開始」「需要的話我去查」）：是提議，不是說了要做卻沒做。
+// 2026-10-20 基準測試：回「嗨」時最後一句是這樣，被當成只說要做、自動繼續，Bot 就自己編了一份銷售分析出來。
+var offerRe = regexp.MustCompile(`(講|說|告訴我|跟我說|給我|丟給我|貼給我|傳給我|交代|決定|確認|同意|選|指定|想要|需要|要的話|的話|只要|如果|若|等你|你)[^。！!？?\n]{0,20}$`)
+
 // EndsWithPromise 回答回覆的最後一句是不是「接下來去做某某」（還沒做）。
 func EndsWithPromise(text string) bool {
 	last := lastSentence(text)
 	if last == "" || utf8.RuneCountInString(last) > limits.PromiseMaxChars || strings.ContainsAny(last, "？?") || strings.HasSuffix(last, "嗎") {
+		return false
+	}
+	if offerRe.MatchString(clauseBefore(text)) {
 		return false
 	}
 	loc := nextLeadRe.FindStringIndex(last)
@@ -274,6 +281,21 @@ func EndsWithPromise(text string) bool {
 		return true
 	}
 	return false
+}
+
+// clauseBefore 是最後一個子句前面、同一句裡的那一段（「直接講要做什麼，我就開始」取「直接講要做什麼」）；沒有時是空字串。
+func clauseBefore(text string) string {
+	t := strings.TrimRight(strings.TrimSpace(text), "。.！!…~～ ")
+	i := strings.LastIndexAny(t, "，,；;")
+	if i < 0 || strings.LastIndexAny(t, "。！!\n") > i {
+		return ""
+	}
+	head := t[:i]
+	if j := strings.LastIndexAny(head, "。！!？?\n"); j >= 0 {
+		_, size := utf8.DecodeRuneInString(head[j:])
+		head = head[j+size:]
+	}
+	return head
 }
 
 // lastSentence 是最後一個子句（去掉結尾的標點；「資料夠了，接下來我去整理」取「接下來我去整理」）。
@@ -394,7 +416,8 @@ func NudgeFor(in Input) Nudge {
 	prompt := "（系統自動繼續）" + unfinished +
 		"\n請自己接著做完：失敗的步驟換做法再試（改讀頁面 HTML、改點別的按鈕或入口、重新整理、用桌面工具截圖後真的用滑鼠點、換關鍵字或來源），" +
 		"不要問使用者要不要繼續，也不要請使用者代勞整件事。真的需要人做一小步（驗證、點不動的按鈕）時，用 clarify 請使用者在電腦面板做完後按「交還給 Bot」，再接著做。" +
-		"只有需要使用者登入、驗證碼、付款或核定時，才停下來說明需要什麼。做完後給一份完整的最終回報，包含先前已完成的部分。"
+		"只有需要使用者登入、驗證碼、付款或核定時，才停下來說明需要什麼。做完後給一份完整的最終回報，包含先前已完成的部分。" +
+		"如果使用者其實還沒交代具體的事（只是打招呼、問你能做什麼、在聊天），就簡短回一句就好，不要自己找事做。"
 	var shown string
 	switch {
 	case len(in.PlanLeft) > 0:

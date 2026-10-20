@@ -305,6 +305,16 @@ func TestEndingWithNextStepIsNotDone(t *testing.T) {
 			t.Fatalf("%q：%+v", ask, r)
 		}
 	}
+	// 等你開口才做的提議（「直接講要做什麼，我就開始」）：不算只說要做（2026-10-20：回「嗨」被自動繼續，Bot 自己編了工作）
+	for _, text := range []string{
+		"我是你電腦裡的常駐 Bot，可以幫你查資料、做報表。\n\n有想先做哪一件嗎？直接講要做什麼，我就開始。",
+		"需要的話，我去查最新的價格。",
+		"你確認之後，我就開始整理。",
+	} {
+		if r, _ := (Rules{}).Judge(ctx, Input{Outcome: OutcomeAnswer, Text: text}); r.Verdict == OnlyPromised || Continues(Input{Outcome: OutcomeAnswer, Text: text}, r) {
+			t.Fatalf("提議不是只說要做：%q → %+v", text, r)
+		}
+	}
 	// 做完了、在問真的要你決定的事、提到以後的事：不算
 	for _, text := range []string{
 		"報告整理好了，在 /workspace/reports/漲粉方案.md。",
