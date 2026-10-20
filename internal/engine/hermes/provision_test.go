@@ -123,6 +123,9 @@ func TestConfigWebExtractAndInlineDelegation(t *testing.T) {
 		if got := cfg["web"].(map[string]any)["extract_backend"]; got != c.want {
 			t.Errorf("web=%v：extract_backend=%v，要 %v", c.web, got, c.want)
 		}
+		if tf := cfg["mcp_servers"].(map[string]any)["computer"].(map[string]any)["tools"].(map[string]any); tf["resources"] != false || tf["prompts"] != false {
+			t.Fatalf("桌面工具不列 resources／prompts 附屬工具：%v", tf)
+		}
 		if cfg[SearchSnippetKey] != limits.HermesSearchSnippetRunes {
 			t.Fatalf("搜尋摘要上限：%v", cfg[SearchSnippetKey])
 		}

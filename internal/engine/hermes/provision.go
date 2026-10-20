@@ -339,7 +339,10 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 	}
 	cfg[SearchSnippetKey] = limits.HermesSearchSnippetRunes
 	mcp := sub("mcp_servers")
-	mcp["computer"] = map[string]any{"command": Python, "args": []any{DesktopMCP}, "trust": "full"}
+	// 桌面工具只有 desktop_observe／desktop_act；它的 FastMCP 照樣宣告 resources、prompts，Hermes 就多列 4 個用不到的附屬工具
+	// （list/read_resource、list/get_prompt，每次請求約 1.2K 字元）。
+	mcp["computer"] = map[string]any{"command": Python, "args": []any{DesktopMCP}, "trust": "full",
+		"tools": map[string]any{"resources": false, "prompts": false}}
 	mcp[XBotMCPServer] = map[string]any{"command": Python, "args": []any{XBotMCP}, "trust": "full"}
 	return cfg
 }
