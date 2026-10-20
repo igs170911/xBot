@@ -930,7 +930,7 @@ test('手勢：對話頁從右邊緣往左拉出對話串，往右拖收回', as
   await drag(page, [vw - 4, 400], [vw * 0.25, 400])
   const panel = page.getByRole('dialog', { name: '小秘的對話串' })
   await expect(panel).toBeVisible()
-  await expect(panel.getByRole('button', { name: /比價三家競品/ })).toBeVisible()
+  await expect(panel.getByRole('button', { name: /^比價三家競品/ })).toBeVisible()
   await drag(page, [vw - 200, 400], [vw - 10, 400])
   await expect(panel).toBeHidden()
   // 按「對話串」也能打開
@@ -943,7 +943,7 @@ test('手勢：底部 sheet 往下拖就關', async ({ page }) => {
   await page.goto(`/bots/${mi.id}`)
   await page.getByRole('button', { name: /^對話串/ }).click()
   await page.getByRole('button', { name: '刪除這個對話串' }).click()
-  const sheet = page.getByRole('alertdialog', { name: '刪除這個對話串？' })
+  const sheet = page.getByRole('alertdialog', { name: /^刪除「.*」？$/ })
   await expect(sheet).toBeVisible()
   const box = (await sheet.boundingBox())!
   await drag(page, [box.x + box.width / 2, box.y + 12], [box.x + box.width / 2, box.y + box.height])

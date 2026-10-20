@@ -294,7 +294,7 @@ it('X04：判斷不是「已完成」才在回覆下面標出來；不對？選�
   await waitFor(() => expect(within(main).getAllByTestId('judge-tag')[0]).toHaveTextContent('你改成卡住了'))
 })
 
-it('刪除對話串：確認後呼叫 chat.delete_thread，回到新對話串', async () => {
+it('刪除對話串：確認後呼叫 chat.delete_thread，換到最近的另一條（沒有了才開新的）', async () => {
   api.ops['chat.delete_thread'] = () => ({ deleted: true, bot_id: 'b1' })
   messages = [{ id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '查價格', created_at: Date.now(), updated_at: Date.now() }]
   window.history.replaceState(null, '', '/bots/b1/threads/t1')
@@ -302,9 +302,43 @@ it('刪除對話串：確認後呼叫 chat.delete_thread，回到新對話串', 
   const main = await screen.findByRole('main', { name: '和小秘的對話' })
   fireEvent.click(within(main).getByRole('button', { name: '更多' }))
   fireEvent.click(await screen.findByRole('menuitem', { name: '刪除這個對話串' }))
+  expect(await screen.findByRole('alertdialog', { name: '刪除「比價」？' })).toBeInTheDocument()
   fireEvent.click(await screen.findByRole('button', { name: '刪除' }))
   await waitFor(() => expect(api.calls.find((c) => c.path === 'chat.delete_thread')?.input).toEqual({ thread_id: 't1' }))
   await waitFor(() => expect(window.location.pathname).toBe('/bots/b1/threads/new'))
+})
+
+it('對話串選單：每一條都能直接刪，不用先切過去；刪別條時留在目前這條', async () => {
+  const other = { ...THREAD, id: 't2', title: '舊的報價' }
+  let list = [THREAD, other]
+  api.ops['chat.list_threads'] = () => ({ threads: list })
+  api.ops['chat.delete_thread'] = () => {
+    list = [THREAD]
+    return { deleted: true, bot_id: 'b1' }
+  }
+  messages = [{ id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '查價格', created_at: Date.now(), updated_at: Date.now() }]
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
+  fireEvent.click(await within(main).findByRole('button', { name: /^對話串：比價/ }))
+  fireEvent.click(await screen.findByRole('menuitem', { name: '刪除「舊的報價」' }))
+  fireEvent.click(await within(await screen.findByRole('alertdialog', { name: '刪除「舊的報價」？' })).findByRole('button', { name: '刪除' }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'chat.delete_thread')?.input).toEqual({ thread_id: 't2' }))
+  expect(window.location.pathname).toBe('/bots/b1/threads/t1')
+})
+
+it('刪掉正在看的對話串：換到最近的另一條', async () => {
+  const other = { ...THREAD, id: 't2', title: '舊的報價' }
+  api.ops['chat.list_threads'] = () => ({ threads: [THREAD, other] })
+  api.ops['chat.delete_thread'] = () => ({ deleted: true, bot_id: 'b1' })
+  messages = [{ id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '查價格', created_at: Date.now(), updated_at: Date.now() }]
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
+  fireEvent.click(await within(main).findByRole('button', { name: /^對話串：比價/ }))
+  fireEvent.click(await screen.findByRole('menuitem', { name: '刪除「比價」' }))
+  fireEvent.click(await screen.findByRole('button', { name: '刪除' }))
+  await waitFor(() => expect(window.location.pathname).toBe('/bots/b1/threads/t2'))
 })
 
 it('用訂閱的 Bot：模型膠囊顯示方案，列出 CLI 回報的模型，選了只改這個 Bot', async () => {

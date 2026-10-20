@@ -240,7 +240,7 @@ function Header({
   onComputer: () => void
   autoRead: boolean
   onAutoRead?: () => void
-  onDelete: () => void
+  onDelete: (t: Pick<Thread, 'id' | 'title'>) => void
 }) {
   const pauseAll = usePauseAll()
   const st = statusOf(bot, act, busyElsewhere)
@@ -287,7 +287,7 @@ function Header({
           ...(onAutoRead ? [{ label: autoRead ? '這個對話串不要自動朗讀' : '這個對話串自動朗讀回覆', icon: autoRead ? VolumeX : Volume2, onSelect: onAutoRead }] : []),
           { label: 'Bot 設定', icon: Settings, separator: true, onSelect: () => navigate(`/settings/bots/${encodeURIComponent(bot.id)}`) },
           { label: '全部停下（所有 Bot）', icon: OctagonPause, separator: true, onSelect: () => void pauseAll() },
-          ...(threadId ? [{ label: '刪除這個對話串', icon: Trash2, danger: true, separator: true, onSelect: onDelete }] : []),
+          ...(threadId ? [{ label: '刪除這個對話串', icon: Trash2, danger: true, separator: true, onSelect: () => onDelete(threads?.find((t) => t.id === threadId) ?? { id: threadId, title: '' }) }] : []),
         ]}
         trigger={(p) => <IconButton {...p} icon={Ellipsis} label="更多" />}
       />
@@ -296,7 +296,7 @@ function Header({
 }
 
 /** 手機的頁首（L03）：返回（帶等你的件數）、通話｜大頭像｜對話串、電腦；下面置中一顆「名字 · 對話串標題」膠囊，點了看 Bot 資料（L10）。 */
-function PhoneHeader({ bot, act, busyElsewhere, threads, threadId, onProgress, onDelete }: { bot: Bot; act?: Activity; busyElsewhere: boolean; threads: Thread[] | null; threadId?: string; onProgress: () => void; onDelete: () => void }) {
+function PhoneHeader({ bot, act, busyElsewhere, threads, threadId, onProgress, onDelete }: { bot: Bot; act?: Activity; busyElsewhere: boolean; threads: Thread[] | null; threadId?: string; onProgress: () => void; onDelete: (t: Thread) => void }) {
   const st = statusOf(bot, act, busyElsewhere)
   const waiting = useStore(inboxStore).items?.length ?? 0
   const current = threads?.find((t) => t.id === threadId)
@@ -389,7 +389,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   const [models, setModels] = useState<ModelsGetOutput | null>(null)
   const [modelDialog, setModelDialog] = useState(false)
   const [progress, setProgress] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const [deleting, setDeleting] = useState<Pick<Thread, 'id' | 'title'> | null>(null)
   const [noticeState, setNoticeState] = useState<{ n: Notice; thread: string } | null>(null)
   const [stopRequested, setStopRequested] = useState<string | null>(null)
   const [olderBusy, setOlderBusy] = useState(false)
@@ -604,7 +604,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
       {/* 頁面標題給螢幕閱讀器（畫面上的名字在頁首）；空白對話的歡迎畫面自己有 h1 */}
       {!(empty && !firstHome) && <h1 className="sr-only-text">和{name}的對話</h1>}
       {phone ? (
-        <PhoneHeader bot={bot} act={act} busyElsewhere={busyElsewhere} threads={threads} threadId={threadId} onProgress={() => setProgress(true)} onDelete={() => setDeleting(true)} />
+        <PhoneHeader bot={bot} act={act} busyElsewhere={busyElsewhere} threads={threads} threadId={threadId} onProgress={() => setProgress(true)} onDelete={setDeleting} />
       ) : (
       <Header
         bot={bot}
@@ -615,7 +615,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
         models={models}
         onSetupModels={() => setModelDialog(true)}
         onProgress={() => setProgress(true)}
-        onDelete={() => setDeleting(true)}
+        onDelete={setDeleting}
         computerOpen={showPanel}
         onComputer={onComputer}
         autoRead={auto.autoRead}
@@ -651,11 +651,14 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
       <ChatAnnouncer key={threadId ?? ''} items={items} name={name} ready={!threadId || !!th?.loaded} />
       <ModelSettingsDialog open={modelDialog} onClose={() => setModelDialog(false)} onSaved={(m) => setModels(m)} />
       <DeleteThreadDialog
-        threadId={threadId}
-        open={deleting}
-        onClose={() => setDeleting(false)}
-        onDeleted={() => {
-          navigate(`/bots/${botId}/threads/new`, { replace: true })
+        thread={deleting}
+        onClose={() => setDeleting(null)}
+        onDeleted={(id) => {
+          // 刪的是正在看的這條：換到最近的另一條（沒有了才開新的）；刪別條就留在原地
+          if (id === threadId) {
+            const next = threads?.find((t) => t.id !== id)
+            navigate(next ? `/bots/${botId}/threads/${next.id}` : `/bots/${botId}/threads/new`, { replace: true })
+          }
           void reloadThreads()
         }}
       />

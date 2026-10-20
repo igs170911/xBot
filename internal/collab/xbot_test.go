@@ -170,6 +170,29 @@ func TestTeammateAndGroupTextIsFramedAsData(t *testing.T) {
 	}
 }
 
+// 2026-10-20：回覆使用者用四段格式（hermes.ReplyFormat），Bot 之間的往來不套。
+func TestPeerRepliesSkipTheOwnerFormat(t *testing.T) {
+	tm := setup(t)
+	chief, writer := tm.bots["Chief"], tm.bots["Writer"]
+	tm.running(chief, nil)
+	must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Writer", "寫第一段", "request", SendOptions{}))
+	if in := tm.queued(writer)[0].Input; !strings.Contains(in, "不用回覆使用者的四段格式") {
+		t.Fatalf("送回隊友的回答要說不用四段格式：%s", in)
+	}
+	sender := store.Bot{Name: "Writer"}
+	if s := framed(sender, Mate{}, "好了", IntentResult, ""); !strings.Contains(s, "照回覆使用者的四段格式") || strings.Contains(s, "不用回覆使用者") {
+		t.Fatalf("結果回來、要回報使用者時用四段格式：%s", s)
+	}
+	if s := framed(sender, Mate{}, "好了", IntentResult, "Boss"); !strings.Contains(s, "不用回覆使用者的四段格式") {
+		t.Fatalf("結果要再送回交辦的隊友時不用四段格式：%s", s)
+	}
+	room := must[store.Room](t)(tm.s.CreateRoom(tm.ctx, []string{chief, writer}, RoomOptions{}))
+	must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, "@Writer 開始", ""))
+	if p := tm.start(tm.queued(writer)[len(tm.queued(writer))-1]); !strings.Contains(p, "和隊友討論、交棒時不用回覆使用者的四段格式") {
+		t.Fatalf("群組：%s", p)
+	}
+}
+
 func TestAssignmentTreeTracksTheExchange(t *testing.T) {
 	tm := setup(t)
 	chief, writer := tm.bots["Chief"], tm.bots["Writer"]

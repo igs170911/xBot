@@ -27,7 +27,8 @@ export function ThreadDrawer({
   onOpenChange: (open: boolean) => void
   onPick: (id: string) => void
   onNew: () => void
-  onDelete?: () => void
+  /** 刪除某一條對話串（每一條右邊的垃圾桶；最下面的「刪除這個對話串」刪目前這條）。 */
+  onDelete?: (t: Thread) => void
   /** 目前進度（手機頁首的頭像改成打開 Bot 資料，進度放在這裡）。 */
   onProgress?: () => void
 }) {
@@ -37,6 +38,7 @@ export function ThreadDrawer({
   // 從右邊緣往左拉出來、打開時往右拖收回；位置由 useSlideOver 決定
   const slide = useSlideOver({ side: 'right', open, setOpen: onOpenChange, enabled: true, size: () => Math.min(320, window.innerWidth * 0.85) })
 
+  const current = threads?.find((t) => t.id === threadId)
   if (!slide.mounted) return null
   const pick = (fn: () => void) => () => {
     close()
@@ -63,22 +65,33 @@ export function ThreadDrawer({
           {(threads ?? []).map((t) => {
             const on = t.id === threadId
             return (
-              <button
-                key={t.id}
-                type="button"
-                aria-current={on ? 'true' : undefined}
-                onClick={pick(() => !on && onPick(t.id))}
-                className={cx('flex min-h-14 w-full items-center gap-3 rounded-menu px-3 text-left', on ? 'bg-control' : 'bg-transparent active:bg-control')}
-              >
-                <Icon icon={MessageSquare} size={18} className="text-ink-2" />
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-ui text-ink">{t.title || '新的對話'}</span>
-                  <span className="truncate text-meta text-ink-3">
-                    {relTime(t.last_message_at || t.created_at)}
-                    {t.unread > 0 && ` · ${t.unread} 則未讀`}
+              <div key={t.id} className={cx('flex items-center rounded-menu', on && 'bg-control')}>
+                <button
+                  type="button"
+                  aria-current={on ? 'true' : undefined}
+                  onClick={pick(() => !on && onPick(t.id))}
+                  className="flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-menu bg-transparent px-3 text-left active:bg-control"
+                >
+                  <Icon icon={MessageSquare} size={18} className="text-ink-2" />
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-ui text-ink">{t.title || '新的對話'}</span>
+                    <span className="truncate text-meta text-ink-3">
+                      {relTime(t.last_message_at || t.created_at)}
+                      {t.unread > 0 && ` · ${t.unread} 則未讀`}
+                    </span>
                   </span>
-                </span>
-              </button>
+                </button>
+                {onDelete && (
+                  <button
+                    type="button"
+                    aria-label={`刪除「${t.title || '新的對話'}」`}
+                    onClick={pick(() => onDelete(t))}
+                    className="flex size-11 flex-none items-center justify-center rounded-menu bg-transparent text-ink-3 active:bg-control active:text-danger"
+                  >
+                    <Icon icon={Trash2} size={18} />
+                  </button>
+                )}
+              </div>
             )
           })}
           {threads && threads.length === 0 && <p className="m-0 px-3 py-2 text-sub text-ink-3">還沒有對話串。</p>}
@@ -94,8 +107,8 @@ export function ThreadDrawer({
             <Icon icon={Plus} size={18} />
             新對話串
           </button>
-          {threadId && onDelete && (
-            <button type="button" onClick={pick(onDelete)} className="flex h-12 items-center gap-3 rounded-menu bg-transparent px-3 text-left text-ui text-danger active:bg-control">
+          {current && onDelete && (
+            <button type="button" onClick={pick(() => onDelete(current))} className="flex h-12 items-center gap-3 rounded-menu bg-transparent px-3 text-left text-ui text-danger active:bg-control">
               <Icon icon={Trash2} size={18} />
               刪除這個對話串
             </button>

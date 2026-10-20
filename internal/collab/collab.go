@@ -687,21 +687,23 @@ func framed(sender store.Bot, target Mate, text, intent, owedTo string) string {
 	if sender.Title != "" {
 		label = "（" + sender.Title + "）"
 	}
+	// 送回隊友的回答不套回覆使用者的四段格式（hermes.ReplyFormat）：Bot 之間照協作規則寫，簡短直接。
+	const toPeer = "這是給隊友看的，不用回覆使用者的四段格式。"
 	var rule string
 	switch intent {
 	case IntentQuestion:
-		rule = "你這次的最後回答會自動送回給 " + sender.Name + "。簡短直接回答問題即可。"
+		rule = "你這次的最後回答會自動送回給 " + sender.Name + "。簡短直接回答問題即可。" + toPeer
 	case IntentResult:
 		if owedTo != "" {
 			rule = "這是 " + sender.Name + " 對你先前訊息的回覆。整合後寫出最終結果（結論、資料、檔案路徑），這次的最後回答會自動送回給 " + owedTo + "；" +
-				"還需要其他隊友時可以繼續派工，等全部回來後的最後回答才會送出。不需要再回覆 " + sender.Name + "。"
+				"還需要其他隊友時可以繼續派工，等全部回來後的最後回答才會送出。不需要再回覆 " + sender.Name + "。" + toPeer
 		} else {
-			rule = "這是 " + sender.Name + " 對你先前訊息的回覆。整合後在這個對話回報使用者，不需要再回覆 " + sender.Name + "。"
+			rule = "這是 " + sender.Name + " 對你先前訊息的回覆。整合後在這個對話回報使用者（照回覆使用者的四段格式），不需要再回覆 " + sender.Name + "。"
 		}
 	case IntentFYI:
 		rule = "這只是通知，不需要回覆。沒有需要做的事時，最後回答只寫 [silent]。"
 	default:
-		rule = "你這次的最後回答會自動送回給 " + sender.Name + "，請直接寫給它看：先給結論，必要時附檔案路徑與資料；不要只寫收到或謝謝。"
+		rule = "你這次的最後回答會自動送回給 " + sender.Name + "，請直接寫給它看：先給結論，必要時附檔案路徑與資料；不要只寫收到或謝謝。" + toPeer
 	}
 	return "[來自隊友 " + sender.Name + label + " 的" + intentLabel[intent] + "]\n" +
 		"<teammate-message from=\"" + sender.Name + "\">\n" + text + "\n</teammate-message>\n\n" +

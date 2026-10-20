@@ -179,10 +179,10 @@ test('對話串選單與空狀態（C03）：切換、開新的、建議放進�
   if (info.project.name === 'mobile') {
     // 手機：對話串是從右邊滑出來的抽屜
     const drawer = page.getByRole('dialog', { name: '抓蟲的對話串' })
-    await expect(drawer.getByRole('button', { name: /主要對話/ })).toHaveAttribute('aria-current', 'true')
+    await expect(drawer.getByRole('button', { name: /^主要對話/ })).toHaveAttribute('aria-current', 'true')
     await settle(page)
     await page.screenshot({ path: shot(`${info.project.name}-thread-menu`) })
-    await drawer.getByRole('button', { name: /結帳頁沒反應/ }).click()
+    await drawer.getByRole('button', { name: /^結帳頁沒反應/ }).click()
     await expect(page).toHaveURL(new RegExp(`/threads/${a.id}$`))
     await expect(main.getByTestId('msg-owner')).toHaveText('結帳頁按了沒反應')
     await main.getByRole('button', { name: /^對話串：/ }).click()
