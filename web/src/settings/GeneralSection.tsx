@@ -85,8 +85,8 @@ export function ThemePicker() {
 type ReplyStyle = BotsReplyStyleGetOutput['style']
 
 const STYLE_SUB: Record<ReplyStyle, string> = {
-  brief: '像傳訊息：一段一兩句，最多 4 段。',
-  normal: '一段兩三句，最多 6 段。',
+  brief: '像朋友傳訊息：大部分一到三段。',
+  normal: '兩到四段，需要時最多六段。',
   detailed: '可以完整說明，還是先講結果。',
 }
 
@@ -110,7 +110,7 @@ function ReplyStyleRow() {
       })
   }
   return (
-    <Row title="回話風格" sub={`${style ? STYLE_SUB[style] : '　'}都先講結果，一段一個泡泡。所有 Bot 都一樣。`} wrap>
+    <Row title="回話風格" sub={`${style ? STYLE_SUB[style] : '　'}口氣自然、先回應重點，一段一個泡泡。所有 Bot 都一樣。`} wrap>
       {style && (
         <SegmentedControl
           label="回話風格"

@@ -260,7 +260,10 @@ test('Bot 設定 · 能力 › 應用程式與電腦、權限與花費、進階�
   await page.screenshot({ path: shot(`${info.project.name}-w32-g08`), fullPage: true })
 
   await m.getByRole('navigation', { name: 'Bot 設定分頁' }).getByRole('link', { name: '進階' }).click()
-  await expect(m.getByRole('radiogroup', { name: '引擎' })).toBeVisible()
+  // 進階 › AI 帳號與模型（fc2a593）：每個帳號一列，小秘用的內建（Hermes）標「使用中」
+  const accounts = m.getByRole('radiogroup', { name: 'AI 帳號' })
+  await expect(accounts).toBeVisible()
+  await expect(accounts.getByRole('radio', { name: /^內建（Hermes）/ })).toContainText('使用中')
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-w32-g09`), fullPage: true })
   // 聲音（G10 的聲音區塊，E32）

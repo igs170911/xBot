@@ -119,7 +119,7 @@ it('一般：回話風格所有 Bot 共用，選了就存', async () => {
   )
   const group = await screen.findByRole('radiogroup', { name: '回話風格' })
   expect(within(group).getByRole('radio', { name: '簡短' })).toHaveAttribute('aria-checked', 'true')
-  expect(screen.getByText(/像傳訊息：一段一兩句/)).toBeInTheDocument()
+  expect(screen.getByText(/像朋友傳訊息：大部分一到三段/)).toBeInTheDocument()
   fireEvent.click(within(group).getByRole('radio', { name: '詳細' }))
   await waitFor(() => expect(api.calls.find((c) => c.path === 'bots.reply_style_set')?.input).toEqual({ style: 'detailed' }))
   expect(await screen.findByText('已更新回話風格，下一段新對話開始生效')).toBeInTheDocument()

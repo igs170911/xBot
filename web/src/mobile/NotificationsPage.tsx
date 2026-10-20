@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CheckCheck, CircleAlert, Clock } from 'lucide-react'
 import { ApiError, approvalsDecide, chatAskAgain, chatRespond, inboxCounts, inboxList, inboxMarkRead, type InboxCountsOutput } from '../api/generated'
 import { botsStore, type Bot } from '../data/bots'
 import { onEvent, onReconnect } from '../data/events'
 import { loadInbox, type InboxItem } from '../data/inbox'
+import { isOpApproval } from '../chat/ask'
 import { useStore } from '../data/store'
 import { navigate } from '../router'
 import { Avatar } from '../ui/Avatar'
@@ -91,7 +92,7 @@ function Actions({ it, onChanged }: { it: InboxItem; onChanged: () => void }) {
   if (!open) return null
   if (it.kind === 'approval') {
     const decide = (d: 'allow' | 'deny') =>
-      it.task_id ? chatRespond({ inbox_id: it.id, choice: d === 'allow' ? 'once' : 'deny' }) : approvalsDecide({ approval_id: it.ref ?? '', decision: d })
+      it.task_id && !isOpApproval(it) ? chatRespond({ inbox_id: it.id, choice: d === 'allow' ? 'once' : 'deny' }) : approvalsDecide({ approval_id: it.ref ?? '', decision: d })
     return (
       <div className="flex gap-2">
         <Button variant="primary" className="min-h-11 px-5" loading={busy === 'allow'} disabled={!!busy} onClick={() => void run('allow', () => decide('allow'), '已允許這次')}>
@@ -114,7 +115,7 @@ function ApprovalSheet({ it, bot, open, onClose, onChanged }: { it: InboxItem; b
   const decide = async (d: 'allow' | 'deny') => {
     setBusy(d)
     try {
-      if (it.task_id) await chatRespond({ inbox_id: it.id, choice: d === 'allow' ? 'once' : 'deny' })
+      if (it.task_id && !isOpApproval(it)) await chatRespond({ inbox_id: it.id, choice: d === 'allow' ? 'once' : 'deny' })
       else await approvalsDecide({ approval_id: it.ref ?? '', decision: d })
       toast.show({ kind: 'done', text: d === 'allow' ? '已允許這次 · 以你的名義送回' : '已退回' })
       onClose()
@@ -212,13 +213,17 @@ export function NotificationsPage() {
   const [items, setItems] = useState<InboxItem[] | null>(null)
   const [counts, setCounts] = useState<InboxCountsOutput | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const latest = useRef(0)
   const load = useCallback(() => {
+    // 只用最後一次的回應：快速切分頁時，先送的晚回來不能蓋掉現在這個分頁的清單（2026-10-21 審查）
+    const n = ++latest.current
     inboxList({ status: 'all', group: group === 'all' ? undefined : group, limit: 50 })
       .then((o) => {
+        if (n !== latest.current) return
         setItems(o.items.filter((i) => i.kind !== 'delegated'))
         setError(null)
       })
-      .catch((e: unknown) => setError(errText(e)))
+      .catch((e: unknown) => n === latest.current && setError(errText(e)))
     inboxCounts({})
       .then(setCounts)
       .catch(() => {})

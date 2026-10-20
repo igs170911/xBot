@@ -340,8 +340,8 @@ export function applyRead(s: ChatState, out: ChatReadOutput): ChatState {
       ...(quotaFrom(m.quota) ? { quota: quotaFrom(m.quota)! } : {}),
       ...(m.voice ? { voice: m.voice } : {}),
     }
-    if (local && server.streaming && local.content.length > server.content.length && local.content.startsWith(server.content)) {
-      // 還在串流：本地已經接到比快照更多的字
+    if (local && server.streaming && local.content.length >= server.content.length && local.content.startsWith(server.content)) {
+      // 還在串流：本地已經接到比快照更多（或一樣多，例：都還在用工具、沒寫字）的字；live 留著，做完才會自動朗讀
       byId.set(m.id, { ...server, content: local.content, live: local.live })
     } else if (local && !local.streaming && local.status && server.streaming) {
       // 本地已經收到 chat.done，快照是舊的
@@ -369,10 +369,14 @@ export function applyRead(s: ChatState, out: ChatReadOutput): ChatState {
       }
     }
     // 服務說這件工作已經結束（例：排隊後被停掉、沒有回覆訊息）：以它為準
-    if (out.tasks?.[m.task_id] === 'done' && (patch.state ?? a.state) !== 'done') {
+    const served = out.tasks?.[m.task_id]
+    if (served === 'done' && (patch.state ?? a.state) !== 'done') {
       patch.state = 'done'
       patch.endedAt = a.endedAt ?? m.updated_at
       patch.thinking = false
+    } else if (served && served !== 'done' && (patch.state ?? a.state) !== 'done') {
+      // 還沒做完的也以服務的狀態為準（例：在等你核准）：不然重新整理後一律變成「工作中」（2026-10-21 審查）
+      patch.state = served
     }
     next = putActivity(next, { ...a, ...patch })
   }
@@ -548,12 +552,22 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
 
 type StepEvent = ChatStepsOutput['events'][number]
 
+/** 這筆事件比它的對話串裡已讀進來的最舊訊息還早（那件工作的訊息還沒載入）。 */
+function olderThanLoaded(s: ChatState, e: XBotEvent): boolean {
+  const th = e.thread_id ? s.threads[e.thread_id] : undefined
+  if (!th?.loaded || !th.hasMore) return false
+  const oldest = th.messages.reduce((min, m) => (m.seq !== UNKNOWN_SEQ && m.createdAt < min ? m.createdAt : min), Infinity)
+  return e.at < oldest
+}
+
 /**
  * 套用 chat.steps 讀回來的歷史事件（重新整理後補回工作步驟）。
  * 比已處理過的事件新的照一般事件套用；舊的只補「加上去」的內容（步驟、回覆結果、錯誤），
  * 狀態只補還不知道的（unknown），不會把即時事件更新過的狀態倒回去。
  */
 export function applySteps(s: ChatState, evs: StepEvent[]): ChatState {
+  // 這次補讀才知道狀態的工作：之後的 task.state 也照順序套（不然只套到第一筆，例如停在「排隊中」）
+  const fromReplay = new Set<string>()
   for (const raw of evs) {
     const e: XBotEvent = { ...raw }
     if (!e.id || e.id > s.lastId) {
@@ -562,7 +576,9 @@ export function applySteps(s: ChatState, evs: StepEvent[]): ChatState {
     }
     const tid = e.task_id
     if (!tid) continue
-    const a = s.tasks[tid]
+    // 比已經讀進來的最舊訊息還早的工作（長對話只讀最近 100 則）：不補，不然會變成一列列接在最後、看起來還在做（2026-10-21 審查）
+    if (!s.tasks[tid] && olderThanLoaded(s, e)) continue
+    const a = s.tasks[tid] ?? { taskId: tid, state: 'unknown', steps: [], thinking: false }
     const replay = (): ChatState => ({ ...applyEvent({ ...s, lastId: 0 }, e), lastId: s.lastId })
     switch (e.kind) {
       case 'chat.tool_call':
@@ -572,17 +588,21 @@ export function applySteps(s: ChatState, evs: StepEvent[]): ChatState {
         s = replay()
         break
       case 'task.state':
-        if (!a || a.state === 'unknown') s = replay()
-        else {
+        if (a.state === 'unknown' || fromReplay.has(tid)) {
+          s = replay()
+          fromReplay.add(tid)
+        } else {
           // 已經從歷史訊息知道結果了：還是用事件的時間校正起訖（重新整理後「工作了 N 分鐘」才對）
           const st = (e.payload as { state?: string } | undefined)?.state
           const startedAt = a.startedAt && a.startedAt < e.at ? a.startedAt : e.at
           const endedAt = st === 'done' ? e.at : a.endedAt
-          if (startedAt !== a.startedAt || endedAt !== a.endedAt) s = putActivity(s, { ...a, startedAt, endedAt })
+          // 做完的工作：沒收到結果的步驟照即時的樣子收掉（不然重新整理後一直轉圈）
+          const steps = st === 'done' && a.state === 'done' && a.steps.some((x) => x.status === 'running') ? a.steps.map((x) => (x.status === 'running' ? { ...x, status: 'ok' as const, endAt: e.at } : x)) : a.steps
+          if (startedAt !== a.startedAt || endedAt !== a.endedAt || steps !== a.steps) s = putActivity(s, { ...a, startedAt, endedAt, steps })
         }
         break
       case 'chat.needs_approval':
-        if (a && (a.state === 'waiting_input' || a.state === 'waiting_approval') && !a.request) s = replay()
+        if ((a.state === 'waiting_input' || a.state === 'waiting_approval') && !a.request) s = replay()
         break
     }
     if (e.thread_id && !s.taskThread[tid]) s = { ...s, taskThread: { ...s.taskThread, [tid]: e.thread_id } }

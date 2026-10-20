@@ -273,6 +273,10 @@
     /* iPhone：手指按在連結上再滑，會變成拖曳連結、整個對話滑不動（2026-10-20 診斷：每次滑不動都按在檔案連結上） */
     -webkit-user-drag: none;
   }
+  /* 側欄的 Bot 可以拖到團隊、群組（draggable="true"）：上面那條讓桌面的拖曳完全沒反應（2026-10-21 e2e 抓到） */
+  a[draggable='true'] {
+    -webkit-user-drag: element;
+  }
   ::placeholder {
     color: var(--color-ink-3);
   }

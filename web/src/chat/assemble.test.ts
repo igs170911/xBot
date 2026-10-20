@@ -55,6 +55,71 @@ const turn: XBotEvent[] = [
   text('比完了。'),
 ]
 
+describe('重新整理後補回工作（2026-10-21 審查）', () => {
+  const thread = { id: T, bot_id: 'b1', title: '', pinned: false, archived: false, unread: 0, last_message_at: 1, created_at: 1 }
+  const ev = (id: number, kind: string, task: string, at: number, payload: object) => ({ id, kind, bot_id: 'b1', thread_id: T, task_id: task, at, payload })
+
+  it('在等你核准的工作，重新整理後還是「等你」，提問也補回來', () => {
+    const read = {
+      thread,
+      messages: [
+        { id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '付款', task_id: 'k1', created_at: 1000, updated_at: 1000 },
+        { id: 'm2', seq: 2, sender: 'bot:b1', kind: 'text', content: '', task_id: 'k1', streaming: true, created_at: 1001, updated_at: 1001 },
+      ],
+      has_more: false,
+      tasks: { k1: 'waiting_approval' },
+    } as unknown as ChatReadOutput
+    let s = { ...applyRead(emptyChat, read), lastId: 999 }
+    expect(s.tasks.k1.state).toBe('waiting_approval')
+    s = applySteps(s, [
+      ev(1, 'task.state', 'k1', 1000, { state: 'running' }),
+      ev(2, 'chat.needs_approval', 'k1', 1002, { inbox_id: 'i1', request: { kind: 'approval', prompt: '付 300 元' } }),
+      ev(3, 'task.state', 'k1', 1002, { state: 'waiting_approval' }),
+    ] as never)
+    expect(s.tasks.k1.state).toBe('waiting_approval')
+    expect(s.tasks.k1.request?.inboxId).toBe('i1')
+  })
+
+  it('長對話只讀最近的訊息：更早的工作不會變成接在最後、看起來還在做的一列', () => {
+    const read = {
+      thread,
+      messages: [
+        { id: 'm9', seq: 9, sender: 'owner', kind: 'text', content: '最新的', task_id: 'k9', created_at: 9000, updated_at: 9000 },
+        { id: 'm10', seq: 10, sender: 'bot:b1', kind: 'text', content: '好', task_id: 'k9', status: 'complete', created_at: 9100, updated_at: 9100 },
+      ],
+      has_more: true,
+      tasks: { k9: 'done' },
+    } as unknown as ChatReadOutput
+    let s = { ...applyRead(emptyChat, read), lastId: 999 }
+    s = applySteps(s, [
+      ev(1, 'task.state', 'k1', 1000, { state: 'running' }),
+      ev(2, 'chat.tool_call', 'k1', 1001, { tool: { id: 'x', name: 'web_search' } }),
+      ev(3, 'task.state', 'k1', 2000, { state: 'done' }),
+    ] as never)
+    expect(s.tasks.k1).toBeUndefined()
+    expect(threadItems(s, T).filter((x) => x.type === 'activity')).toHaveLength(0)
+    expect(activeTask(s, T)).toBeUndefined()
+  })
+
+  it('做完的工作裡沒收到結果的步驟，重新整理後也收掉（不會一直轉圈）', () => {
+    const read = {
+      thread,
+      messages: [
+        { id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '研究', task_id: 'k1', created_at: 1000, updated_at: 1000 },
+        { id: 'm2', seq: 2, sender: 'bot:b1', kind: 'text', content: '好了', task_id: 'k1', status: 'complete', created_at: 5000, updated_at: 5000 },
+      ],
+      has_more: false,
+      tasks: { k1: 'done' },
+    } as unknown as ChatReadOutput
+    let s = { ...applyRead(emptyChat, read), lastId: 999 }
+    s = applySteps(s, [
+      ev(1, 'chat.tool_call', 'k1', 1001, { tool: { id: 'bg:wf1', name: '背景工作：deep-research' } }),
+      ev(2, 'task.state', 'k1', 5000, { state: 'done' }),
+    ] as never)
+    expect(s.tasks.k1.steps.map((x) => x.status)).toEqual(['ok'])
+  })
+})
+
 describe('事件組成對話', () => {
   // 2026-10-19 實際遇到：工作早就結束，但重新整理後畫面一直顯示「排隊中 · 30 分」。
   // 原因：補讀的步驟只讀到舊的 queued／running，沒讀到最後的 done。chat.read 的 tasks 說了算，舊狀態也不能蓋掉。

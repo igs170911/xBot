@@ -2746,7 +2746,7 @@ export function botsList(input: BotsListInput = {}, opts?: CallOptions): Promise
 export type BotsReplyStyleGetInput = Record<string, never>
 
 export interface BotsReplyStyleGetOutput {
-  /** brief 簡短（像傳訊息，預設）、normal 一般、detailed 詳細 */
+  /** brief 簡短（像朋友傳訊息，預設）、normal 一般、detailed 詳細 */
   style: 'brief' | 'normal' | 'detailed'
 }
 
@@ -2762,19 +2762,19 @@ export function botsReplyStyleGet(input: BotsReplyStyleGetInput = {}, opts?: Cal
 // xbot.bots.reply_style_set
 
 export interface BotsReplyStyleSetInput {
-  /** brief 簡短（像傳訊息，預設）、normal 一般、detailed 詳細 */
+  /** brief 簡短（像朋友傳訊息，預設）、normal 一般、detailed 詳細 */
   style?: 'brief' | 'normal' | 'detailed'
 }
 
 export interface BotsReplyStyleSetOutput {
-  /** brief 簡短（像傳訊息，預設）、normal 一般、detailed 詳細 */
+  /** brief 簡短（像朋友傳訊息，預設）、normal 一般、detailed 詳細 */
   style: 'brief' | 'normal' | 'detailed'
 }
 
 /**
  * 改 Bot 回話給你的風格（簡短、一般、詳細；所有 Bot 共用）
  *
- * 簡短：像傳訊息，一段一兩句、最多 4 段；一般：一段兩三句、最多 6 段；詳細：可以完整說明。都是先講結果、段落之間空一行（畫面上一段一個泡泡）。Bot 之間的訊息不受影響。下一段新對話開始生效。
+ * 簡短：像朋友傳訊息，大部分一到三段；一般：兩到四段，最多六段；詳細：可以完整說明。都是口語、先回應重點、段落之間空一行（畫面上一段一個泡泡）。Bot 之間的訊息不受影響。下一段新對話開始生效。
  *
  * `xbot.bots.reply_style_set`：權限 admin、風險 safe
  */
@@ -2978,7 +2978,7 @@ export interface ChatAskAgainOutput {
   task_id: string
   /** 你這則訊息的 id */
   message_id: string
-  /** Bot 正在做隊友交辦或群組的事，你的訊息排在第一個，做完那件就開始 */
+  /** Bot 正在忙：你的訊息排隊（排在隊友交辦、群組的事前面），手上這件做完就開始 */
   queued?: boolean
 }
 
@@ -3281,7 +3281,7 @@ export interface ChatResumeOutput {
   task_id: string
   /** 你這則訊息的 id */
   message_id: string
-  /** Bot 正在做隊友交辦或群組的事，你的訊息排在第一個，做完那件就開始 */
+  /** Bot 正在忙：你的訊息排隊（排在隊友交辦、群組的事前面），手上這件做完就開始 */
   queued?: boolean
 }
 
@@ -3315,7 +3315,7 @@ export interface ChatSendOutput {
   task_id: string
   /** 你這則訊息的 id */
   message_id: string
-  /** Bot 正在做隊友交辦或群組的事，你的訊息排在第一個，做完那件就開始 */
+  /** Bot 正在忙：你的訊息排隊（排在隊友交辦、群組的事前面），手上這件做完就開始 */
   queued?: boolean
 }
 
@@ -12826,6 +12826,8 @@ export interface TeamsRemoveManyOutput {
   bots: string[]
   teams: string[]
   groups: string[]
+  /** 核准之後、刪之前已經不在的（略過） */
+  gone?: string[]
   deleted: boolean
 }
 

@@ -16,7 +16,7 @@ import { botsStore, type Bot, look } from '../data/bots'
 import { inboxStore, loadInbox, type InboxItem } from '../data/inbox'
 import { useStore } from '../data/store'
 import { AskCard } from '../chat/AskCard'
-import { askFromItem } from '../chat/ask'
+import { askFromItem, isOpApproval } from '../chat/ask'
 import { AgendaCard } from '../agenda/AgendaCard'
 import { QuotaCard } from '../chat/QuotaCard'
 import { LessonCard } from '../lessons/LessonCard'
@@ -404,7 +404,7 @@ function AgendaItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
 function RealItem({ item, bots }: { item: InboxItem; bots: Bot[] | null }) {
   const bot = cardBot(item, bots)
   if (item.kind === 'proposal' || item.kind === 'discussion') return <AgendaItem item={item} bot={bot} />
-  if (item.task_id && (item.kind === 'approval' || item.kind === 'question' || item.kind === 'secret')) {
+  if (item.task_id && !isOpApproval(item) && (item.kind === 'approval' || item.kind === 'question' || item.kind === 'secret')) {
     const p = (item.payload ?? {}) as { thread_title?: string; unattended?: boolean }
     const sub = [bot.name, p.thread_title, sinceLabel(item.created_at)].filter(Boolean).join(' · ')
     return (

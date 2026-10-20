@@ -11,7 +11,7 @@ import { inboxStore, loadInbox } from '../data/inbox'
 import { loadLastThread } from '../data/lastThreads'
 import { AskCard } from './AskCard'
 import { ApprovalItem } from '../pages/InboxPage'
-import { askFromItem } from './ask'
+import { askFromItem, isOpApproval } from './ask'
 import { usePhone } from '../mobile/nav'
 import { Avatar } from '../ui/Avatar'
 import { Button, IconButton } from '../ui/Button'
@@ -148,7 +148,9 @@ function Messages({
  */
 function PendingAsks({ threadId, shown, bot }: { threadId: string; shown: Set<string>; bot?: Bot }) {
   const items = useStore(inboxStore).items ?? []
-  const asks = items.filter((it) => it.thread_id === threadId && it.task_id && (it.kind === 'question' || it.kind === 'approval' || it.kind === 'secret') && !shown.has(it.id))
+  const asks = items.filter(
+    (it) => it.thread_id === threadId && it.task_id && !isOpApproval(it) && (it.kind === 'question' || it.kind === 'approval' || it.kind === 'secret') && !shown.has(it.id),
+  )
   // 這個 Bot 要求執行、要你允許的操作（例：刪 Bot、分享登入）：不屬於某件工作，也在它的對話裡出現
   const approvals = bot ? items.filter((it) => it.kind === 'approval' && it.ref && !it.task_id && it.bot_id === bot.id) : []
   if (!asks.length && !approvals.length) return null

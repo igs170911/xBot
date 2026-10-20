@@ -40,6 +40,14 @@ function touchesInbox(e: XBotEvent): boolean {
   return p.status === 'pending_approval' || !!p.inbox_id || (typeof p.op === 'string' && (p.op.startsWith('xbot.approvals.') || p.op.startsWith('xbot.inbox.')))
 }
 
+/** 這筆事件說某張卡已經處理掉了（回覆了、結掉了）：回傳那張卡的 id。 */
+export function settledCard(e: XBotEvent): string | undefined {
+  const p = (e.payload ?? {}) as { id?: string; status?: string; inbox_id?: string }
+  if (e.kind === 'chat.answered') return p.inbox_id
+  if (e.kind === 'inbox.updated' && p.id && p.status && p.status !== 'open') return p.id
+  return undefined
+}
+
 let unsubs: Array<() => void> | null = null
 
 export function startInbox() {
@@ -47,7 +55,10 @@ export function startInbox() {
   void loadInbox()
   unsubs = [
     onEvent((e) => {
-      if (touchesInbox(e)) void loadInbox()
+      // 已經處理掉的卡先拿掉，不等重讀（2026-10-21 審查：對話裡按了允許，卡片又在最下面出現、還能按）
+      const gone = settledCard(e)
+      if (gone) inboxStore.set((s) => (s.items?.some((i) => i.id === gone) ? { ...s, items: s.items.filter((i) => i.id !== gone) } : s))
+      if (touchesInbox(e) || gone) void loadInbox()
     }),
     onReconnect(() => void loadInbox()),
   ]

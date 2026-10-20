@@ -28,6 +28,7 @@ import { newRoutineDialog } from './routines/data'
 import { teachStartStore } from './teaching/teachingData'
 import { importBotDialog } from './settings/bot/import-store'
 import { ScrollDiag, startScrollWatch } from './shell/ScrollDiag'
+import { startErrorReport } from './shell/errorReport'
 import { bootedVersion, startAppUpdate, UpdateBanner } from './shell/appUpdate'
 
 // v1.0 效能：待我處理與對話（最常開的兩頁）跟著主程式載入；其他頁面與對話框按需載入（React.lazy），
@@ -156,6 +157,7 @@ function Main() {
     startTeams()
     startAppUpdate()
     startScrollWatch(bootedVersion)
+    startErrorReport(bootedVersion)
     void loadOnboard()
   }, [])
   const rooms = useStore(roomsStore).rooms

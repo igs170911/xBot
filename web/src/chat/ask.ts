@@ -95,6 +95,12 @@ export function askFromEvent(payload: unknown): Ask | undefined {
   return ask
 }
 
+/** Bot 自己用 xbot.approvals.request（或要核准的操作）送來的核准卡：payload 有 approval_id，要用 approvals.decide 回覆。
+ *  它在工作中送出時也帶 task_id，但不是引擎在等的提問，送 chat.respond 會被當成已經不等而收掉（2026-10-21 修）。 */
+export function isOpApproval(item: { kind: string; payload?: unknown }): boolean {
+  return item.kind === 'approval' && typeof (item.payload as { approval_id?: unknown } | null)?.approval_id === 'string'
+}
+
 /** 待我處理卡片（xbot.inbox.list 的一項）的 payload。 */
 export function askFromItem(item: { id: string; kind: string; body: string; payload: unknown; expires_at?: number }): Ask {
   const p = (item.payload ?? {}) as {

@@ -2,7 +2,7 @@ import { expect, test } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // E31（EN-7）：引擎額度用完卡（design/C09「額度用完 · 換一個模型繼續」）在待我處理與對話裡；
-// Bot 設定的引擎選擇器列出 Gemini CLI、OpenCode、Grok 與這台電腦的登入狀態。
+// Bot 設定 › 進階 › AI 帳號與模型列出 Gemini CLI、OpenCode、Grok 與這個 Bot 的登入狀態。
 const shot = (name: string) => `e2e-results/screens/${name}.png`
 
 test.beforeEach(async ({ page }, info) => {
@@ -126,12 +126,30 @@ test('對話裡：等額度恢復', async ({ page }) => {
   expect(api.calls.some((c) => c.op === 'engines.switch')).toBe(false)
 })
 
-test('Bot 設定：引擎選擇器列出 Gemini CLI、OpenCode、Grok 與登入狀態，換 Gemini 要同意 Google 訂閱', async ({ page }, info) => {
+test('Bot 設定：AI 帳號列出 Gemini CLI、OpenCode、Grok 與登入狀態，換 Gemini 要同意用這台電腦的 Google 登入', async ({ page }, info) => {
   const api = new MockServer(page)
   const xm = api.addBot({ name: '小秘', shape: 'circle', color: 'pink' })
   let linked = ''
+  // 進階 › AI 帳號與模型（fc2a593）：每個帳號一列；ready＝這個 Bot 能用（自己登入過，或同意用這台電腦的登入）。
+  const row = () => ({
+    bot_id: xm.id,
+    name: xm.name,
+    engine: xm.engine,
+    engine_label: xm.engine,
+    needs_link: xm.engine !== 'hermes',
+    linked: !!linked,
+    linked_engine: linked || undefined,
+    marker: linked ? '這個 Bot 用你的 Google 訂閱' : undefined,
+    accounts: [
+      { engine: 'claude-code', label: 'Claude Code', plan: 'Claude', login: 'code', ready: false, host_logged_in: true },
+      { engine: 'codex', label: 'Codex CLI', plan: 'ChatGPT', login: 'web', ready: false, host_logged_in: false },
+      { engine: 'gemini', label: 'Gemini CLI', plan: 'Google', login: 'host', ready: linked === 'gemini', source: linked === 'gemini' ? 'host' : undefined, host_logged_in: true },
+      { engine: 'opencode', label: 'OpenCode', plan: 'OpenCode Go', login: 'key', ready: true, source: 'bot', host_logged_in: true },
+      { engine: 'grok', label: 'Grok', plan: 'Grok', login: 'web', ready: false, host_logged_in: false },
+    ],
+  })
   api.override['engines.status'] = () => ({
-    bots: [{ bot_id: xm.id, name: xm.name, engine: xm.engine, engine_label: xm.engine, needs_link: xm.engine !== 'hermes', linked: !!linked, linked_engine: linked || undefined }],
+    bots: [row()],
     host: [
       { engine: 'claude-code', label: 'Claude Code', plan: 'Claude', logged_in: true, login: 'claude' },
       { engine: 'codex', label: 'Codex CLI', plan: 'ChatGPT', logged_in: false, login: 'codex login' },
@@ -140,24 +158,36 @@ test('Bot 設定：引擎選擇器列出 Gemini CLI、OpenCode、Grok 與登入�
       { engine: 'grok', label: 'Grok', plan: 'Grok', logged_in: false, login: 'grok login' },
     ],
   })
-  api.override['engines.link_credentials'] = (i) => {
-    linked = i.engine as string
-    return { bot_id: xm.id, name: xm.name, engine: xm.engine, engine_label: xm.engine, needs_link: true, linked: true, linked_engine: linked, marker: '這個 Bot 用你的 Google 訂閱' }
+  api.override['engines.switch'] = (i) => {
+    xm.engine = i.engine as string
+    xm.model = (i.model as string) ?? ''
+    if (i.link) linked = xm.engine
+    return { bot: row(), model: xm.model }
   }
   await api.install()
   await page.goto(`/settings/bots/${xm.id}/advanced`)
-  const engines = page.getByRole('radiogroup', { name: '引擎' })
-  await expect(engines.getByRole('radio')).toHaveCount(6)
-  await expect(engines.locator('[data-engine="gemini"]')).toContainText('已登入')
-  await expect(engines.locator('[data-engine="grok"]')).toContainText('這台電腦沒登入')
-  await expect(engines.locator('[data-engine="opencode"]')).toContainText('OpenCode Go')
+  const accounts = page.getByRole('radiogroup', { name: 'AI 帳號' })
+  await expect(accounts.getByRole('radio')).toHaveCount(6)
+  await expect(accounts.locator('[data-engine="hermes"]')).toContainText('使用中')
+  await expect(accounts.locator('[data-engine="gemini"]')).toContainText('Gemini CLI')
+  await expect(accounts.locator('[data-engine="gemini"]')).toContainText('還沒登入')
+  await expect(accounts.locator('[data-engine="grok"]')).toContainText('還沒登入')
+  await expect(accounts.locator('[data-engine="opencode"]')).toContainText('OpenCode Go')
+  await expect(accounts.locator('[data-engine="opencode"]')).toContainText('已登入')
   await settle(page)
-  await engines.screenshot({ path: shot(`${info.project.name}-e31-engines`) })
-  await engines.locator('[data-engine="gemini"]').click()
-  await expect.poll(() => api.calls.find((c) => c.op === 'bots.update')?.input).toEqual({ id: xm.id, engine: 'gemini' })
-  await page.getByRole('button', { name: '同意使用我的訂閱' }).click()
-  const dlg = page.getByRole('dialog', { name: '讓小秘用你的 Google 訂閱？' })
-  await dlg.getByText('我同意讓小秘使用我的 Google 訂閱').click()
-  await dlg.getByRole('button', { name: '同意' }).click()
-  await expect.poll(() => api.calls.find((c) => c.op === 'engines.link_credentials')?.input).toEqual({ bot_id: xm.id, engine: 'gemini' })
+  await accounts.screenshot({ path: shot(`${info.project.name}-e31-engines`) })
+
+  // Grok：這個 Bot 沒登入、這台電腦也沒登入 → 只能自己登入，沒有「用這台電腦的登入」
+  await accounts.locator('[data-engine="grok"]').click()
+  await expect(accounts.getByRole('button', { name: '登入 Grok 帳號' })).toBeVisible()
+  await expect(accounts.getByRole('button', { name: /用這台電腦的登入/ })).toHaveCount(0)
+
+  // Gemini：點一列只是展開，不會換；要明確按「用這台電腦的登入」才換（同意用你的 Google 登入）
+  await accounts.locator('[data-engine="gemini"]').click()
+  await expect(accounts).toContainText('執行 gemini')
+  expect(api.calls.some((c) => c.op === 'bots.update' || c.op === 'engines.switch' || c.op === 'engines.link_credentials')).toBe(false)
+  await accounts.getByRole('button', { name: '用這台電腦的登入，改用 Gemini CLI' }).click()
+  await expect.poll(() => api.calls.find((c) => c.op === 'engines.switch')?.input).toEqual({ bot_id: xm.id, engine: 'gemini', model: '', link: true })
+  await expect(accounts.locator('[data-engine="gemini"]')).toContainText('使用中')
+  await expect(page.getByText('這個 Bot 用你的 Google 訂閱').first()).toBeVisible()
 })
