@@ -36,7 +36,7 @@ func TestSoulTellsHowToChangeAGroup(t *testing.T) {
 // 2026-10-20：回覆太多雜訊。回覆使用者用結論、要注意、需要你回答、建議下一步四段；給隊友的不套。
 func TestSoulAsksForTheOwnerReplyFormat(t *testing.T) {
 	soul := Soul(Profile{Name: "水哥哥"})
-	for _, want := range []string{"**結論**", "**要注意**", "**需要你回答**", "**建議下一步**", "一題一行", "其他專案", "給隊友的訊息", "不用這個格式"} {
+	for _, want := range []string{"**結論**", "**要注意**", "**需要你回答**", "**建議下一步**", "一題一行", "其他專案", "給隊友的訊息", "不用這個格式", "不要寫「無」"} {
 		if !strings.Contains(soul, want) {
 			t.Fatalf("少了 %q：%s", want, soul)
 		}
