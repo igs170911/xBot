@@ -33,6 +33,11 @@ describe('splitBubbles：一則回覆拆成幾個泡泡', () => {
     expect(splitBubbles('好了。\n\nA 店最')).toEqual(['好了。', 'A 店最'])
   })
 
+  it('分隔線只用來分段，不會變成一個空泡泡', () => {
+    expect(splitBubbles('你的三個問題：\n\n---\n\n我的建議')).toEqual(['你的三個問題：', '我的建議'])
+    expect(splitBubbles('好了\n\n---')).toEqual(['好了'])
+  })
+
   it('空字串原樣回傳', () => {
     expect(splitBubbles('')).toEqual([''])
   })
