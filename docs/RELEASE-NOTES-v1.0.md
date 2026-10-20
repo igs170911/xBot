@@ -109,7 +109,8 @@
 - 訂閱引擎（Claude Code、Codex、Gemini CLI、OpenCode、Grok）沒有用真的訂閱跑過長時間的完整任務；改用「用這台電腦的登入」時，主機與容器共用 refresh token 可能互相踢掉（讓 Bot 自己登入就不會）；Gemini CLI 還不能在網頁上登入；Codex 的沙箱模式在強化容器內可能不能用。
 - Gemini 登入失效時會卡在等登入碼，約 60 秒後才報未登入。
 - 首次設定只列出 Claude Code、Codex；「額度用完」卡換的是整個 Bot 的引擎。
-- Hermes 以外的引擎不讀 XBot 的技能與記憶。
+- Hermes 以外的引擎只拿到技能清單（用到時自己讀 SKILL.md），不讀 XBot 的記憶。
+- Grok 丟到背景的指令（例：開著的開發伺服器）不會讓那一輪留著；做完時 Grok 的回報收不到（背景 workflow、背景子代理會等）。
 - ChatGPT 方案的 Bot 開機時自動關掉 Hermes 的 tool_search（工具全部直接給模型，較耗 token）；重新登入的卡片未做。
 - 除了 Claude 外，內建價格表待核對；花費日界線的時區、80% 預警未做。
 - 快判有 6 個用途只留了掛勾（對話分流、要不要找你核定、是不是問進度、錯誤分類、重複技能、隊友訊息要不要回）。

@@ -228,6 +228,7 @@ make update
 ## 紀錄
 
 - 服務：`make logs`（`journalctl --user -u xbot.service -f`）。結構化文字紀錄，金鑰已遮蔽。
+- 網頁自己出的錯（例外、沒接住的 Promise）和手機捲動的偵測也記在服務紀錄：`journalctl --user -u xbot | grep 網頁回報`，`kind=js_error` 是網頁的錯誤（只有錯誤訊息、位置和頁面路徑，不含對話內容；每次開網頁最多 5 則）。
 - Bot 電腦：`docker logs xbot-box-<Bot id>`。
 - 網路防護：`docker logs xbot-netguard`。
 - 誰做了什麼：網頁「設定 → 進階 → 成員與紀錄」，或 `xbot audit list`（稽核紀錄存在資料庫；可加 `--actor`、`--op`、`--status`、`--since`、`--until`）。
