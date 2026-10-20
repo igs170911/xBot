@@ -1,5 +1,5 @@
 import { memo, useContext, useMemo, type ReactNode } from 'react'
-import { boxPath, fileClick, FileLinkContext } from './fileLink'
+import { boxPath, FileLinkContext, fileRefProps } from './fileLink'
 import type { Token, Tokens } from 'marked'
 import { CircleAlert, Info, Lightbulb, MessageSquareWarning, Square, SquareCheck, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { Icon } from '../../ui/Icon'
@@ -23,9 +23,9 @@ function Codespan({ text }: { text: string }) {
   const cls = 'break-words rounded-[6px] bg-inset px-1.5 py-0.5 font-mono text-[13px]'
   if (!href) return <code className={cls}>{text}</code>
   return (
-    <a href={href} onClick={fileClick(href)} draggable={false} title="打開這個檔案" className="text-accent-ink underline decoration-accent-ink/40 underline-offset-2">
+    <span {...fileRefProps(href)} className="cursor-pointer text-accent-ink underline decoration-accent-ink/40 underline-offset-2">
       <code className={cls}>{text}</code>
-    </a>
+    </span>
   )
 }
 
@@ -36,9 +36,9 @@ function MdLink({ l, children }: { l: Tokens.Link; children: ReactNode }) {
   const file = p ? link?.(p) : undefined
   if (file) {
     return (
-      <a href={file} onClick={fileClick(file)} draggable={false} title="打開這個檔案" className="text-accent-ink underline decoration-accent-ink/50 underline-offset-2 hover:decoration-accent-ink">
+      <span {...fileRefProps(file)} className="cursor-pointer text-accent-ink underline decoration-accent-ink/50 underline-offset-2 hover:decoration-accent-ink">
         {children}
-      </a>
+      </span>
     )
   }
   const href = safeHref(l.href)

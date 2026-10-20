@@ -127,12 +127,27 @@ export function startScrollWatch(version: () => string) {
     void systemClientReport({ kind: 'phone_health', version: version(), data }).catch(() => {})
   }
   document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && summary())
-  let g: { x: number; y: number; dy: number; moves: number; prevented: number; scrolled: string; cancel: boolean; target: Element | null } | null = null
+  let g: {
+    x: number
+    y: number
+    dy: number
+    moves: number
+    prevented: number
+    scrolled: string
+    cancel: boolean
+    target: Element | null
+    sel: number
+    cancelable: string
+  } | null = null
   window.addEventListener(
     'touchstart',
     (e) => {
       const t = e.touches[0]
-      g = e.touches.length === 1 && t ? { x: t.clientX, y: t.clientY, dy: 0, moves: 0, prevented: 0, scrolled: '', cancel: false, target: e.target as Element } : null
+      // sel：手指放下時已經選取了多少字（iPhone 在選取範圍上拖是在改選取，不會捲）
+      g =
+        e.touches.length === 1 && t
+          ? { x: t.clientX, y: t.clientY, dy: 0, moves: 0, prevented: 0, scrolled: '', cancel: false, target: e.target as Element, sel: window.getSelection()?.toString().length ?? 0, cancelable: '' }
+          : null
     },
     { passive: true },
   )
@@ -142,6 +157,8 @@ export function startScrollWatch(version: () => string) {
       const t = e.touches[0]
       if (!g || !t) return
       g.moves++
+      // 前幾個 touchmove 的 cancelable：一直是 true 表示瀏覽器始終沒開始捲（手勢被別的東西接走）
+      if (g.moves <= 3) g.cancelable += e.cancelable ? 'y' : 'n'
       if (e.defaultPrevented) g.prevented++
       g.dy = t.clientY - g.y
     },
@@ -172,7 +189,7 @@ export function startScrollWatch(version: () => string) {
           `top=${name(top)}`,
           covered ? `COVERED_BY=${covered}` : 'covered=no',
           `box=${name(box)} ${Math.round(box.scrollTop)}/${box.scrollHeight}-${box.clientHeight} ta=${getComputedStyle(box).touchAction}`,
-          `dy=${Math.round(done.dy)} moves=${done.moves} prevented=${done.prevented}`,
+          `dy=${Math.round(done.dy)} moves=${done.moves} prevented=${done.prevented} cancelable=${done.cancelable} sel=${done.sel}`,
           `view in=${window.innerHeight} vv=${Math.round(vv?.height ?? 0)}@${Math.round(vv?.offsetTop ?? 0)} app-h=${document.documentElement.style.getPropertyValue('--app-h') || '-'}`,
           `body-ov=${document.body.style.overflow || '-'} dialogs=${document.querySelectorAll('[role=dialog],[role=alertdialog]').length}`,
           `standalone=${(navigator as Navigator & { standalone?: boolean }).standalone ?? matchMedia('(display-mode: standalone)').matches} path=${location.pathname.replace(/[0-9a-f]{32}/g, ':id')}`,

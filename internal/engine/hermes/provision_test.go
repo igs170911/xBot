@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"slices"
 	"strings"
 	"testing"
 
@@ -99,8 +100,8 @@ func TestProvisionWritesConfigWithoutRealKey(t *testing.T) {
 }
 
 // web_extract 不能落到只能搜尋的 ddgs（每次都失敗）；使用者自己選的後端保留。
-// delegate_task 不開：Hermes 的子代理一律在背景跑，XBot 看不到、停不了。
-func TestConfigWebExtractAndNoBackgroundDelegation(t *testing.T) {
+// delegate_task 開著：hermes_host.py 讓子代理在同一輪裡做完（不在背景跑）。
+func TestConfigWebExtractAndInlineDelegation(t *testing.T) {
 	p := Profile{BotID: "b1", Name: "小幫手", ProviderID: "openai", Model: "gpt-x"}
 	for _, c := range []struct {
 		web  map[string]any
@@ -121,10 +122,8 @@ func TestConfigWebExtractAndNoBackgroundDelegation(t *testing.T) {
 			t.Errorf("web=%v：extract_backend=%v，要 %v", c.web, got, c.want)
 		}
 		tools := cfg["platform_toolsets"].(map[string]any)["cli"].([]any)
-		for _, ts := range tools {
-			if ts == "delegation" {
-				t.Fatalf("不能開 delegation：%v", tools)
-			}
+		if !slices.Contains(tools, any("delegation")) {
+			t.Fatalf("要開 delegation：%v", tools)
 		}
 		if len(tools) == 0 || tools[0] != "terminal" {
 			t.Fatalf("工具組：%v", tools)

@@ -133,6 +133,17 @@ def health():
     return {"ok": True, "engine": "hermes", "desktop": Path("/tmp/xbot/ready").exists()}
 
 
+def inline_delegation():
+    """XBot's chat is one turn per message: a result Hermes delivers after the turn (background subagents, late
+    notify_on_complete) arrives as an unprompted message nobody asked for, and XBot can neither show nor stop the
+    work in between (2026-10-19, why delegation was switched off). Declaring the session unable to take late
+    deliveries makes Hermes take its own documented fallback for stateless channels: delegate_task joins its
+    children inside the same tool call (the turn waits, /stop still halts the whole tree), background processes
+    drop notify_on_complete and the agent polls them."""
+    import gateway.session_context as session_context
+    session_context.async_delivery_supported = lambda: False
+
+
 @app.websocket("/rpc")
 async def rpc(socket: WebSocket):
     key = Path(os.environ["HERMES_HOME"], ".worker-key").read_text().strip()
@@ -140,6 +151,7 @@ async def rpc(socket: WebSocket):
         await socket.close(code=1008)
         return
     from tui_gateway.ws import handle_ws
+    inline_delegation()
     await handle_ws(socket, auth_identity={"user_id": "xbot-owner"})
 
 

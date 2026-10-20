@@ -5,7 +5,7 @@ import { Markdown } from '../chat/markdown/Markdown'
 import { Avatar } from '../ui/Avatar'
 import { Icon } from '../ui/Icon'
 import { filesHref, kindFromName } from './data'
-import { fileClick } from '../chat/markdown/fileLink'
+import { fileRefProps } from '../chat/markdown/fileLink'
 import { FileIcon } from './FilePreview'
 import { look } from '../data/bots'
 
@@ -40,7 +40,7 @@ export function ChatCardView({ msg, bot }: CardProps) {
               const to = filesHref(botId, f.path)
               return (
                 <li key={f.path} className="flex items-center gap-1 rounded-[14px] bg-control/70 pr-1">
-                  <a href={to} onClick={fileClick(to)} className="flex min-w-0 flex-1 items-center gap-3 rounded-[14px] py-2 pl-2.5 text-ink hover:bg-hover/50" aria-label={`預覽 ${name}`}>
+                  <div {...fileRefProps(to)} className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-[14px] py-2 pl-2.5 text-ink hover:bg-hover/50" aria-label={`預覽 ${name}`}>
                     <FileIcon kind={kindFromName(name)} size={34} />
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate text-ui">{name}</span>
@@ -49,7 +49,7 @@ export function ChatCardView({ msg, bot }: CardProps) {
                     <span className="text-ink-3">
                       <Icon icon={ChevronRight} size={16} />
                     </span>
-                  </a>
+                  </div>
                   <a
                     href={filesDownloadUrl(botId, f.path)}
                     download={name}

@@ -420,7 +420,7 @@ it('回覆裡的檔案路徑可以點：打開 Bot 的檔案頁並預覽那個�
   window.history.replaceState(null, '', '/bots/b1/threads/t1')
   render(<App />)
   const link = await screen.findByRole('link', { name: '/workspace/reports/漲粉方案.md' })
-  expect(link).toHaveAttribute('href', `/bots/b1/files?path=${encodeURIComponent('/workspace/reports/漲粉方案.md')}`)
+  expect(link).toHaveAttribute('data-href', `/bots/b1/files?path=${encodeURIComponent('/workspace/reports/漲粉方案.md')}`)
   // 資料夾不變成連結
   expect(screen.queryByRole('link', { name: '/workspace/reports/' })).toBeNull()
 })

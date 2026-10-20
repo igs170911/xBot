@@ -274,9 +274,10 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 	}}
 	cfg["terminal"] = map[string]any{"backend": "local", "cwd": "/workspace", "timeout": limits.HermesTerminalTimeoutSeconds}
 	cfg["browser"] = map[string]any{"backend": "browser-use", "cdp_url": "http://127.0.0.1:9222", "allow_private_urls": true}
-	// 不開 delegation（delegate_task）：Hermes 的子代理一律在背景跑，這一輪先結束，結果十分鐘後才當成新訊息回來；
-	// XBot 看不到、也停不了（2026-10-19：「為啥停止不了？背景做的事情有在做嗎」）。要分工用 XBot 的隊友交辦。
-	toolsets := []any{"terminal", "file", "web", "browser", "skills", "memory", "todo", "clarify", "mcp", "code_execution", "session_search"}
+	// delegation（delegate_task，2026-10-20 開回來）：容器裡的 hermes_host.py 告訴 Hermes「這個對話收不到之後才送來的結果」，
+	// Hermes 就照它對無狀態頻道的做法，在同一個工具呼叫裡等子代理做完才回來（這一輪等著、停止會連子代理一起停）。
+	// 2026-10-19 關掉是因為子代理一律在背景跑，這一輪先結束、結果十分鐘後才當成新訊息回來，XBot 看不到也停不了。
+	toolsets := []any{"terminal", "file", "web", "browser", "skills", "memory", "todo", "clarify", "mcp", "code_execution", "session_search", "delegation"}
 	// 看圖（LazyBoy 一樣只在看得懂時開）：主要模型看得懂就直接給它圖片；看不懂但有別的模型看得懂，先請那個模型描述。
 	imageMode := "text"
 	if p.Vision || p.VisionAux != nil {
@@ -463,6 +464,8 @@ func Soul(p Profile) string {
 		"工具在你的獨立電腦裡執行，工作檔案保存於 /workspace。可交付檔案請放在 /workspace，並在回答提供實際路徑。" +
 		"有需要澄清的問題使用 clarify。完成後驗證結果；是估計的、沒查到的要說，一句帶過就好。" +
 		"要交辦隊友、建 Bot 或團隊之前，先列計畫給使用者確認，同意後才交辦。" +
+		"很多個彼此獨立、各要查很多資料的子題，可以用 delegate_task 同時交給子代理（這一輪裡做完才回來；子代理不知道這段對話，需要的都寫進 context）；" +
+		"一兩個子題或一般工作自己做，不要開子代理檢查自己的成果。" +
 		"其他使用者交代的事就直接做到完成：不要停下來問「要開始嗎」，也不要寫「接下來我去做某某」就結束這一輪，說要做的同一輪就做完。" +
 		"範圍不清楚但能合理假設時，先照假設做，把假設寫在回覆裡；只有花錢、對外發送、刪除，或真的沒辦法開始時才停下來問。" +
 		"網站要登入、被擋（驗證碼、滑動驗證）或查不到時，先換別的路（搜尋引擎、比價網站、其他賣場或官方頁面）。" +
