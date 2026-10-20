@@ -14,6 +14,11 @@ const (
 	// JudgeNoteMax 是「不對？」改正時附註最多幾個字。XBot 新增。
 	JudgeNoteMax = 500
 
+	// JudgeReplayDays、JudgeReplayTasks：重播快判（xbot.judge.replay）預設看最近幾天、最多幾件工作；JudgeReplayCases 是最多列出幾件。XBot 新增。
+	JudgeReplayDays  = 7
+	JudgeReplayTasks = 1000
+	JudgeReplayCases = 50
+
 	// JudgeAskMax 是「需要你」卡片上引用 Bot 那段話最多幾個字。XBot 新增（同完成通知的 120 字）。
 	JudgeAskMax = 300
 

@@ -331,7 +331,8 @@ func AskOf(text string) (ask string, handed bool) {
 }
 
 // asksSomething：這段話是在要人做事或回答（不是只提到某個詞）。
-var asksRe = regexp.MustCompile(`[？?]|請你|需要你|要你|才能|之後再|後再|嗎`)
+// 「才能、之後再、後再」要是對你說的（「你登入後再…」）；「取得結果後再判斷」這種描述流程的不算（2026-10-20 重播快判找到的誤判）。
+var asksRe = regexp.MustCompile(`[？?]|請你|需要你|要你|你[^。\n]{0,20}(才能|之後再|後再)|嗎`)
 
 // Rules 是只用規則的判斷（LazyBoy 的正規表示式與 auto_continue 的條件）。
 type Rules struct{}

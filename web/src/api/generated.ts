@@ -7478,6 +7478,50 @@ export function judgePrecheck(input: JudgePrecheckInput, opts?: CallOptions): Pr
   return invoke('xbot.judge.precheck', input, opts).then((r) => r.output)
 }
 
+// xbot.judge.replay
+
+export interface JudgeReplayInput {
+  /** 只看這個 Bot 的工作；不填是全部 */
+  bot_id?: string
+  /** 看最近幾天結束的工作；預設 7 */
+  days?: number
+}
+
+export interface JudgeReplayOutput {
+  /** 重判了幾件工作 */
+  checked: number
+  /** 現在的規則判得和當時不一樣的件數 */
+  changed: number
+  corrected: number
+  agreed_before: number
+  agrees_now: number
+  /** 你改正過的、和判斷會變的工作（最多 50 件） */
+  cases: {
+    task_id: string
+    bot_id: string
+    asked: string
+    reply_end: string
+    /** 當時的判斷 */
+    was: 'done' | 'needs_person' | 'handed_back' | 'only_promised' | 'stuck'
+    /** 用現在的規則重判 */
+    now: 'done' | 'needs_person' | 'handed_back' | 'only_promised' | 'stuck'
+    now_reason: string
+    /** 你按「不對？」改正成的（有的話） */
+    yours?: 'done' | 'needs_person' | 'handed_back' | 'only_promised' | 'stuck'
+  }[]
+}
+
+/**
+ * 用現在的規則重新判斷最近的工作，看完成判定有沒有更對或冒出新的誤判
+ *
+ * 改了完成判定（已完成、需要你、交回給你、只說要做、卡住了）的規則之後用：拿最近結束的工作和你按「不對？」改正過的，用現在的規則重判一次，列出判斷會變的工作和你改正過的工作現在判得對不對。只用規則、不呼叫模型，不會改變任何工作。
+ *
+ * `xbot.judge.replay`：權限 read、風險 safe
+ */
+export function judgeReplay(input: JudgeReplayInput = {}, opts?: CallOptions): Promise<JudgeReplayOutput> {
+  return invoke('xbot.judge.replay', input, opts).then((r) => r.output)
+}
+
 // xbot.judge.run
 
 export interface JudgeRunInput {
@@ -13833,6 +13877,7 @@ export interface Ops {
   'xbot.judge.corrections': { input: JudgeCorrectionsInput; output: JudgeCorrectionsOutput }
   'xbot.judge.feedback': { input: JudgeFeedbackInput; output: JudgeFeedbackOutput }
   'xbot.judge.precheck': { input: JudgePrecheckInput; output: JudgePrecheckOutput }
+  'xbot.judge.replay': { input: JudgeReplayInput; output: JudgeReplayOutput }
   'xbot.judge.run': { input: JudgeRunInput; output: JudgeRunOutput }
   'xbot.judge.settings_get': { input: JudgeSettingsGetInput; output: JudgeSettingsGetOutput }
   'xbot.judge.settings_set': { input: JudgeSettingsSetInput; output: JudgeSettingsSetOutput }
@@ -14088,6 +14133,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.judge.corrections': { path: '/api/v1/judge.corrections', scope: 'read', risk: 'safe', mutates: false, summary: '列出你對系統判斷的改正' },
   'xbot.judge.feedback': { path: '/api/v1/judge.feedback', scope: 'operate', risk: 'safe', mutates: true, summary: '說快判的某項判斷不對（不對？）' },
   'xbot.judge.precheck': { path: '/api/v1/judge.precheck', scope: 'read', risk: 'safe', mutates: false, summary: '先判斷：夠不夠清楚、要不要開電腦、交給哪個引擎、預估花費' },
+  'xbot.judge.replay': { path: '/api/v1/judge.replay', scope: 'read', risk: 'safe', mutates: false, summary: '用現在的規則重新判斷最近的工作，看完成判定有沒有更對或冒出新的誤判' },
   'xbot.judge.run': { path: '/api/v1/judge.run', scope: 'read', risk: 'safe', mutates: false, summary: '請快判判斷一件事（只回傳判斷，不會做任何事）' },
   'xbot.judge.settings_get': { path: '/api/v1/judge.settings_get', scope: 'read', risk: 'safe', mutates: false, summary: '看快判模型的設定與今天的用量' },
   'xbot.judge.settings_set': { path: '/api/v1/judge.settings_set', scope: 'admin', risk: 'safe', mutates: true, summary: '改快判模型的設定' },

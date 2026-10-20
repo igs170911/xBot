@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"strings"
 )
 
@@ -204,4 +205,32 @@ func (q *Queries) LatestTaskInThread(ctx context.Context, threadID string) (Task
 	t, err := scanTask(q.r.QueryRowContext(ctx, `SELECT `+taskCols+` FROM task WHERE thread_id = ?
 		ORDER BY created_at DESC, id DESC LIMIT 1`, threadID))
 	return t, notFound(err)
+}
+
+// RecentJudgedTasks 列出最近結束、有完成判定的工作（新到舊）；botID 空白是全部 Bot。重播快判用（xbot.judge.replay）。
+func (q *Queries) RecentJudgedTasks(ctx context.Context, botID string, since int64, limit int) ([]Task, error) {
+	if limit <= 0 {
+		limit = -1
+	}
+	rows, err := q.r.QueryContext(ctx, `SELECT `+taskCols+` FROM task WHERE state = 'done' AND finished_at >= ? AND (? = '' OR bot_id = ?)
+		AND json_extract(meta, '$.judge.verdict') IS NOT NULL ORDER BY finished_at DESC, id DESC LIMIT ?`, since, botID, botID, limit)
+	return collect(rows, err, scanTask)
+}
+
+// TaskUsedTools 回答這件工作有沒有呼叫過工具。
+func (q *Queries) TaskUsedTools(ctx context.Context, taskID string) (bool, error) {
+	var n int
+	err := q.r.QueryRowContext(ctx, `SELECT COUNT(*) FROM (SELECT 1 FROM event WHERE task_id = ? AND kind = 'chat.tool_call' LIMIT 1)`, taskID).Scan(&n)
+	return n > 0, err
+}
+
+// TaskLastStatus 是這件工作最後一個以 prefix 開頭的狀態文字（例：「計畫：」）；沒有時是空字串。
+func (q *Queries) TaskLastStatus(ctx context.Context, taskID, prefix string) (string, error) {
+	var text sql.NullString
+	err := q.r.QueryRowContext(ctx, `SELECT json_extract(payload, '$.text') FROM event WHERE task_id = ? AND kind = 'chat.status'
+		AND json_extract(payload, '$.text') LIKE ? ORDER BY id DESC LIMIT 1`, taskID, prefix+"%").Scan(&text)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return text.String, err
 }

@@ -49,7 +49,44 @@ type CorrectionsOut struct {
 	Corrections []store.JudgeCorrection `json:"corrections" desc:"新到舊"`
 }
 
+// ReplayIn 是 xbot.judge.replay 的輸入。
+type ReplayIn struct {
+	BotID string `json:"bot_id,omitempty" resource:"bot" max:"64" desc:"只看這個 Bot 的工作；不填是全部"`
+	Days  int    `json:"days,omitempty" min:"1" max:"90" desc:"看最近幾天結束的工作；預設 7"`
+}
+
+// ReplayCase 是一件重新判過的工作。
+type ReplayCase struct {
+	TaskID string `json:"task_id"`
+	BotID  string `json:"bot_id"`
+	// Asked 是交代的事（前 80 字）；ReplyEnd 是 Bot 回覆的最後 160 字（判斷主要看這裡）。
+	Asked    string        `json:"asked"`
+	ReplyEnd string        `json:"reply_end"`
+	Was      judge.Verdict `json:"was" desc:"當時的判斷"`
+	Now      judge.Verdict `json:"now" desc:"用現在的規則重判"`
+	NowWhy   string        `json:"now_reason"`
+	Yours    judge.Verdict `json:"yours,omitempty" desc:"你按「不對？」改正成的（有的話）"`
+}
+
+// ReplayOut 是 xbot.judge.replay 的輸出。
+type ReplayOut struct {
+	Checked int `json:"checked" desc:"重判了幾件工作"`
+	Changed int `json:"changed" desc:"現在的規則判得和當時不一樣的件數"`
+	// Corrected、AgreedBefore、AgreesNow：你改正過的幾件、當時判對幾件、現在的規則判對幾件。
+	Corrected    int          `json:"corrected"`
+	AgreedBefore int          `json:"agreed_before"`
+	AgreesNow    int          `json:"agrees_now"`
+	Cases        []ReplayCase `json:"cases" desc:"你改正過的、和判斷會變的工作（最多 50 件）"`
+}
+
 func registerJudge(reg *ops.Registry, d Deps) {
+	ops.Register(reg, ops.Op[ReplayIn, ReplayOut]{
+		Name: "xbot.judge.replay", Summary: "用現在的規則重新判斷最近的工作，看完成判定有沒有更對或冒出新的誤判",
+		Description: "改了完成判定（已完成、需要你、交回給你、只說要做、卡住了）的規則之後用：拿最近結束的工作和你按「不對？」改正過的，" +
+			"用現在的規則重判一次，列出判斷會變的工作和你改正過的工作現在判得對不對。只用規則、不呼叫模型，不會改變任何工作。",
+		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
+		Handle: replay,
+	})
 	ops.Register(reg, ops.Op[ProgressIn, runtime.Progress]{
 		Name: "xbot.tasks.progress", Summary: "看 Bot 的目前進度（正在做什麼、卡在哪、等誰）",
 		Description: "系統查得的事實，不是 Bot 自己說的：正在做的工作與經過時間、做了幾步、正在執行的工具、排隊幾件、" +
@@ -161,4 +198,92 @@ func judgments(ctx context.Context, db *store.DB, msgs []Message) {
 			m.Judge.Corrected = judge.Verdict(by[m.TaskID])
 		}
 	}
+}
+
+func replay(ctx context.Context, call *ops.Call, in ReplayIn) (ReplayOut, error) {
+	days := in.Days
+	if days <= 0 {
+		days = limits.JudgeReplayDays
+	}
+	since := store.NowMS() - int64(days)*24*3600*1000
+	tasks, err := call.DB.RecentJudgedTasks(ctx, in.BotID, since, limits.JudgeReplayTasks)
+	if err != nil {
+		return ReplayOut{}, err
+	}
+	corrections, err := call.DB.ListJudgeCorrections(ctx, store.JudgeCorrectionFilter{Use: runtime.UseTaskDone, BotID: in.BotID, Limit: limits.JudgeReplayTasks})
+	if err != nil {
+		return ReplayOut{}, err
+	}
+	yours := map[string]judge.Verdict{}
+	seen := map[string]bool{}
+	for _, c := range corrections {
+		yours[c.TaskID] = judge.Verdict(c.Corrected)
+	}
+	// 改正過的工作不在最近幾天裡也要重判
+	for _, c := range corrections {
+		if t, err := call.DB.GetTask(ctx, c.TaskID); err == nil {
+			tasks = append(tasks, t)
+		}
+	}
+	out := ReplayOut{Cases: []ReplayCase{}}
+	for _, t := range tasks {
+		if seen[t.ID] || !call.Identity.CanAccess(ops.ResourceBot, t.BotID) {
+			continue
+		}
+		seen[t.ID] = true
+		was := runtime.TaskJudgment(t)
+		if was == nil {
+			continue
+		}
+		jin, ok, err := runtime.ReplayInput(ctx, call.DB, t)
+		if err != nil {
+			return ReplayOut{}, err
+		}
+		if !ok {
+			continue
+		}
+		now, err := (judge.Rules{}).Judge(ctx, jin)
+		if errors.Is(err, judge.ErrSkip) {
+			continue
+		} else if err != nil {
+			return ReplayOut{}, err
+		}
+		out.Checked++
+		c := ReplayCase{TaskID: t.ID, BotID: t.BotID, Asked: clip(t.Input, 80), ReplyEnd: tail(judge.Prose(jin.Text), 160),
+			Was: was.Verdict, Now: now.Verdict, NowWhy: now.Reason}
+		changed := now.Verdict != was.Verdict
+		if changed {
+			out.Changed++
+		}
+		if y, ok := yours[t.ID]; ok {
+			c.Yours = y
+			out.Corrected++
+			if was.Verdict == y {
+				out.AgreedBefore++
+			}
+			if now.Verdict == y {
+				out.AgreesNow++
+			}
+		}
+		if (changed || c.Yours != "") && len(out.Cases) < limits.JudgeReplayCases {
+			out.Cases = append(out.Cases, c)
+		}
+	}
+	return out, nil
+}
+
+func clip(s string, n int) string {
+	r := []rune(strings.TrimSpace(s))
+	if len(r) > n {
+		return string(r[:n]) + "…"
+	}
+	return string(r)
+}
+
+func tail(s string, n int) string {
+	r := []rune(strings.TrimSpace(s))
+	if len(r) > n {
+		return "…" + string(r[len(r)-n:])
+	}
+	return string(r)
 }

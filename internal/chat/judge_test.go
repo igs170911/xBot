@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"xbot/internal/engine/hermes/hermestest"
 	"xbot/internal/judge"
 	"xbot/internal/ops"
 	"xbot/internal/runtime"
@@ -90,4 +91,40 @@ func TestProgressOp(t *testing.T) {
 func isCode(err error, code ops.Code) bool {
 	var oe *ops.Error
 	return errors.As(err, &oe) && oe.Code == code
+}
+
+// 重播快判：當時判錯（舊規則把等你開口的提議當成只說要做）的工作，用現在的規則重判會變；你改正過的看得到判得對不對。
+func TestJudgeReplay(t *testing.T) {
+	e := setup(t)
+	e.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Complete("我可以幫你查資料、做報表。\n\n直接講要做什麼，我就開始。", "complete", nil)
+	}
+	raw, err := e.call(owner, "xbot.chat.send", map[string]any{"bot_id": e.bot.ID, "text": "嗨，你今天可以幫我做什麼？"})
+	sent := must[SendOut](t, raw, err)
+	if w := e.waitFor(t, owner, sent.TaskID); w.Judge == nil || w.Judge.Verdict != judge.Done {
+		t.Fatalf("現在的規則：%+v", w.Judge)
+	}
+	// 假裝是舊規則判的：只說要做
+	if err := e.db.PatchTaskMeta(bg, sent.TaskID, map[string]any{"judge": map[string]any{"verdict": "only_promised", "label": "只說要做", "by": "rules"}}); err != nil {
+		t.Fatal(err)
+	}
+	raw, err = e.call(owner, "xbot.judge.replay", map[string]any{})
+	out := must[ReplayOut](t, raw, err)
+	if out.Checked != 1 || out.Changed != 1 || len(out.Cases) != 1 || out.Cases[0].Was != judge.OnlyPromised || out.Cases[0].Now != judge.Done ||
+		!strings.Contains(out.Cases[0].ReplyEnd, "我就開始") || out.Cases[0].Asked != "嗨，你今天可以幫我做什麼？" {
+		t.Fatalf("%+v", out)
+	}
+	if _, err := e.call(owner, "xbot.judge.correct", map[string]any{"task_id": sent.TaskID, "verdict": "done"}); err != nil {
+		t.Fatal(err)
+	}
+	raw, err = e.call(owner, "xbot.judge.replay", map[string]any{"bot_id": e.bot.ID})
+	out = must[ReplayOut](t, raw, err)
+	if out.Corrected != 1 || out.AgreedBefore != 0 || out.AgreesNow != 1 || out.Cases[0].Yours != judge.Done {
+		t.Fatalf("改正：%+v", out)
+	}
+	// 別的 Bot 只看得到自己的
+	raw, err = e.call(agent(e.other.ID), "xbot.judge.replay", map[string]any{})
+	if o := must[ReplayOut](t, raw, err); o.Checked != 0 {
+		t.Fatalf("%+v", o)
+	}
 }

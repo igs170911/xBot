@@ -64,4 +64,5 @@ make backup / restore / update
 埠號：安裝版服務 8780（預設聽 0.0.0.0，區網可連；非本機連線要登入碼；`XBOT_BIND=127.0.0.1` 只限本機）；`make dev` 用 8782（API）與 5181（前端）；`make e2e` 預設 8799——多個 Agent 同時跑時請設 `XBOT_E2E_PORT=<88xx>` 避免撞埠。
 手機畫面用真的 Safari 核心（WebKit）驗證：`scripts/test-webkit.sh`（在 Playwright 官方容器裡跑 e2e/phone.spec.ts；要 Docker、先 make build）。
 驗證腳本：`scripts/test-clean-install.sh`（乾淨容器裡 make setup＋check）、`scripts/test-service.sh`（systemd 容器裡測安裝、更新沿用服務設定、備份還原、回滾（含資料庫）、開機自動啟動）、`scripts/test-host.sh`（部署含映像、加主機）、`scripts/test-compose.sh`（make up 真的開 Bot 電腦）。
+改了完成判定的規則（`internal/judge`）：部署後跑 `xbot judge replay --days 7`，用最近的真實工作和使用者按「不對？」的改正重判，判斷會變的每一件都要看過（不呼叫模型）。
 聊天品質基準測試：改了守則（SOUL）、技能、快判或 Hermes 設定，用 `scripts/bench/run.py` 在專門測試的 Bot 上重跑 10 題真實任務（`XBOT_BENCH_BOT=<id>`），比每一題有沒有一次做完、token、工具次數、時間；用最便宜的模型，跑完收掉測試 Bot 留在「待我處理」的卡。

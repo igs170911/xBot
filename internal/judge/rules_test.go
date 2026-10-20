@@ -315,6 +315,14 @@ func TestEndingWithNextStepIsNotDone(t *testing.T) {
 			t.Fatalf("提議不是只說要做：%q → %+v", text, r)
 		}
 	}
+	// 說明流程時提到核准、「取得結果後再判斷」：不是在要你做事（重播快判找到的誤判）
+	explain := "模型需要時就呼叫工具執行動作，取得結果後再判斷，可能要幾輪。\n\n需要我等你按核准，或等隊友回覆時，流程會停在 F 和 H 之間；這段等待不算我思考的時間。"
+	if r, _ := (Rules{}).Judge(ctx, Input{Outcome: OutcomeAnswer, Text: explain}); r.Verdict != Done {
+		t.Fatalf("說明流程：%+v", r)
+	}
+	if r, _ := (Rules{}).Judge(ctx, Input{Outcome: OutcomeAnswer, Text: "蝦皮要登入才看得到價格，你登入後再叫我繼續。"}); r.Verdict != NeedsPerson {
+		t.Fatalf("真的要你登入：%+v", r)
+	}
 	// 程式碼區塊、流程圖裡的字不算 Bot 在說話
 	diagram := "流程是這樣：\n\n```mermaid\nflowchart TD\n    F --> G{需要動手做嗎}\n    G -- 要 --> H[呼叫工具]\n```\n\n等核准時流程會停在 F 和 H 之間。"
 	if r, _ := (Rules{}).Judge(ctx, Input{Outcome: OutcomeAnswer, Text: diagram}); r.Verdict != Done {
