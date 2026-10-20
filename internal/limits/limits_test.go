@@ -43,6 +43,8 @@ func TestCollabLimitsMatchLazyBoy(t *testing.T) {
 		{"BoxCPUs", BoxCPUs, 2},
 		{"BoxMemoryBytes", BoxMemoryBytes, 3 * 1024 * 1024 * 1024},
 		{"BoxShmBytes", BoxShmBytes, 512 * 1024 * 1024},
+		{"CleanupBrowserCacheBytes", CleanupBrowserCacheBytes, 200 * 1024 * 1024},
+		{"CleanupLiveCacheChecks", CleanupLiveCacheChecks, 10},
 	}
 	for _, c := range ints {
 		if c.got != c.want {
@@ -63,6 +65,12 @@ func TestCollabLimitsMatchLazyBoy(t *testing.T) {
 		{"RoutineIntervalMin", RoutineIntervalMin, 5 * time.Minute},
 		{"RoutineHookSpacing", RoutineHookSpacing, 60 * time.Second},
 		{"BoxReadyTimeout", BoxReadyTimeout, 75 * time.Second},
+		{"CleanupScratchAge", CleanupScratchAge, 3 * 24 * time.Hour},
+		{"CleanupUploadAge", CleanupUploadAge, 30 * 24 * time.Hour},
+		{"CleanupFirstDelay", CleanupFirstDelay, 120 * time.Second},
+		{"CleanupEvery", CleanupEvery, 24 * time.Hour},
+		{"CleanupLiveCacheTimeout", CleanupLiveCacheTimeout, 30 * time.Second},
+		{"CleanupLiveCachePoll", CleanupLiveCachePoll, time.Second},
 	}
 	for _, c := range durations {
 		if c.got != c.want {

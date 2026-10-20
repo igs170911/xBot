@@ -196,6 +196,7 @@ describe('Bot 設定 › 應用程式與電腦', () => {
       'apps.list': () => ({ connections: [] }),
       'hosts.list': () => ({ hosts: HOSTS }),
       'computers.status': () => status(box),
+      'computers.storage': () => ({ bot_id: 'b1', has_computer: box !== 'none', usage: { workspace: 0, uploads: 0, caches: 0, browser: 0, tools: 0, other: 0, total: 0 } }),
       'computers.move_status': () => ({ jobs: [] }),
       'computers.move': () => ({ jobs: [] }),
       'bots.update': (i) => ({ ...BOT, ...i }),
@@ -214,6 +215,7 @@ describe('Bot 設定 › 應用程式與電腦', () => {
     fireEvent.click(within(dlg).getByRole('button', { name: '開始搬家' }))
     await waitFor(() => expect(calls('computers.move')[0]?.input).toEqual({ bot_id: 'b1', host_id: 'h2' }))
     expect(screen.getByTestId('computer-actions')).toBeInTheDocument()
+    expect(screen.getByTestId('computer-storage')).toBeInTheDocument()
     expect(screen.getByTestId('network-allow')).toBeInTheDocument()
   })
 

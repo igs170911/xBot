@@ -175,6 +175,12 @@
 | `NetAllowMax` | 32 筆 | XBot 新增（B13，SEC-4）：每個 Bot 的私有網路白名單上限 | — |
 | `BoxMoveKeep`／`BoxMoveCleanupEvery` | 24 小時／10 分鐘 | XBot 新增（B31，CL-5）：搬家後原主機上的舊資料保留多久、多久檢查一次 | — |
 | `BoxMoveHelperTimeout`／`BoxMoveTimeout`／`BoxMoveProgressEvery`／`BoxMoveHistory`／`BoxMoveManifestBytes` | 30 分鐘／6 小時／0.5 秒／20 筆／256 MiB | XBot 新增（B31）：量資料與驗證的輔助容器上限、一次搬家上限、進度事件間隔、紀錄筆數、驗證清單大小 | — |
+| `CleanupScratchAge`／`CleanupUploadAge` | 3 天／30 天 | server/cleanup.py `SCRATCH_DAYS`、`UPLOAD_DAYS` | 正確；XBot 的 `/workspace/tmp` 也用 3 天 |
+| `CleanupBrowserCacheBytes` | 200 MiB | server/cleanup.py `BROWSER_CACHE_LIMIT` | 正確 |
+| `CleanupFirstDelay`／`CleanupEvery` | 120 秒／24 小時 | server/cleanup.py `daily()` | 正確 |
+| `CleanupLiveCacheTimeout`／`CleanupLiveCacheChecks`／`CleanupLiveCachePoll` | 30 秒／10 次／1 秒 | server/cleanup.py `clear_browser_cache()` | 正確 |
+| （`PREVIEW_DAYS` 7 天） | — | server/cleanup.py `PREVIEW_DAYS` | XBot 沒有預覽快取（Office 檔不轉 PDF，只能下載），沒有這一項 |
+| `CleanupBotTimeout`／`CleanupHelperTmpBytes` | 10 分鐘／1 MiB | XBot 新增（BX-14）：一個 Bot 的清理或量用量上限（含沒開機時的輔助容器）、輔助容器的 /tmp | — |
 | `BackupKeepTimeout`／`BackupHostWait` | 6 小時／20 秒 | XBot 新增（V10）：還原前在主機上複製保留原本電腦資料的上限、備份與還原等遠端主機連上的上限 | — |
 | `EgressImage`／`EgressProxyPort`／`EgressMemoryBytes`／`EgressStatusTimeout`／`EgressPullTimeout` | tailscale/tailscale:v1.88.3／1055／256 MiB／10 秒／10 分鐘 | XBot 新增（B31，CL-7）：「從家裡出去」的 Tailscale 小容器 | — |
 | `HostImageCacheTTL` | 15 秒 | XBot 新增（B13）：主機清單比對映像是否過期時，本機映像資訊的快取 | — |

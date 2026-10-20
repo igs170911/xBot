@@ -89,3 +89,28 @@ const (
 	// EgressPullTimeout 是在主機上拉 Tailscale 映像的時限。
 	EgressPullTimeout = 10 * time.Minute
 )
+
+// 例行清理（BX-14）：讓 Bot 的電腦不會被會自己長回來的東西塞滿。出自 LazyBoy server/cleanup.py。
+const (
+	// CleanupScratchAge：引擎的暫存（/hermes/cache/scratch）多久沒動就刪。出自 server/cleanup.py SCRATCH_DAYS（3 天）。
+	// XBot 的 /workspace/tmp（Bot 放中間檔的地方）也用這個時間。
+	CleanupScratchAge = 3 * 24 * time.Hour
+	// CleanupUploadAge：你傳的附件（/workspace/uploads）放多久就刪。出自 server/cleanup.py UPLOAD_DAYS（30 天）。
+	CleanupUploadAge = 30 * 24 * time.Hour
+	// CleanupBrowserCacheBytes：瀏覽器快取超過多少才清。出自 server/cleanup.py BROWSER_CACHE_LIMIT（200 MB）。
+	CleanupBrowserCacheBytes int64 = 200 << 20
+	// CleanupFirstDelay、CleanupEvery：服務開始後多久做第一次、之後多久一次。出自 server/cleanup.py daily()（120 秒、每天）。
+	CleanupFirstDelay = 2 * time.Minute
+	CleanupEvery      = 24 * time.Hour
+	// CleanupLiveCacheTimeout：請開著的瀏覽器清快取的指令最多跑多久。出自 server/cleanup.py clear_browser_cache()（timeout=30）。
+	CleanupLiveCacheTimeout = 30 * time.Second
+	// CleanupLiveCacheChecks、CleanupLiveCachePoll：瀏覽器收到後在背景清空快取，最多再看幾次、每次隔多久。
+	// 出自 server/cleanup.py clear_browser_cache()（10 次、每秒）。
+	CleanupLiveCacheChecks = 10
+	CleanupLiveCachePoll   = time.Second
+	// CleanupBotTimeout：一個 Bot 的清理或量用量（含輔助容器）最多多久。XBot 新增：LazyBoy 直接讀寫主機上的資料夾，
+	// XBot 的資料在 volume 裡（可能在遠端主機），沒開機時要開一個輔助容器。
+	CleanupBotTimeout = 10 * time.Minute
+	// CleanupHelperTmpBytes：清理用的輔助容器的 /tmp 大小（只放一個時間標記檔）。XBot 新增。
+	CleanupHelperTmpBytes int64 = 1 << 20
+)
