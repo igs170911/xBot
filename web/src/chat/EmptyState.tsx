@@ -11,7 +11,8 @@ const APPROVAL_LABEL: Record<string, string> = { ask: '先問我', edits: '一�
 
 // 新 Bot 的空狀態（design/C03）：頭像、名字、職稱、預設值膠囊；一句打招呼與「可以這樣開始」卡片。
 // 卡片的選項只是把話放進輸入框（Bot 真正的提問卡由 C12 的卡片處理）。
-export function EmptyState({ bot, onPick, onFree }: { bot: Bot; onPick: (text: string) => void; onFree: () => void }) {
+/** starters：「可以這樣開始」卡片只在第一次和這個 Bot 聊時出現（2026-10-20：之後開新對話只打招呼）。 */
+export function EmptyState({ bot, onPick, onFree, starters = true }: { bot: Bot; onPick: (text: string) => void; onFree: () => void; starters?: boolean }) {
   const [hide, setHide] = useState(false)
   // 只打招呼：介紹和人設可能很長，留在 Bot 設定裡看、改（每個 Bot 都一樣）
   const sub = bot.title
@@ -34,7 +35,7 @@ export function EmptyState({ bot, onPick, onFree }: { bot: Bot; onPick: (text: s
         </span>
       </div>
       <div className="max-w-[85%] self-start rounded-bubble bg-bubble-bot px-4 py-2.5 text-[15px] leading-[1.6]">{greet}</div>
-      {!hide && (
+      {starters && !hide && (
         <section aria-label="可以這樣開始" className="flex flex-col gap-3 rounded-[20px] bg-card px-5 pb-5 pt-[18px] max-sm:px-4">
           <div className="flex items-start gap-3">
             <div className="flex min-w-0 flex-1 flex-col">

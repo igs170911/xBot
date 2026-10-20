@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Bot as BotIcon, CalendarClock, Ellipsis, FolderOpen, KeyRound, LayoutGrid, MessagesSquare, Network, OctagonPause, Plus, Puzzle, Search, Settings, UsersRound, WifiOff, X } from 'lucide-react'
+import { Bot as BotIcon, CalendarClock, CalendarDays, Ellipsis, FolderOpen, KeyRound, LayoutGrid, MessagesSquare, Network, OctagonPause, Plus, Puzzle, Search, Settings, UsersRound, WifiOff, X } from 'lucide-react'
 import { botsStore } from '../data/bots'
 import { useLastThreads } from '../data/lastThreads'
 import { roomsStore } from '../data/rooms'
@@ -38,6 +38,7 @@ function Group({ title, children, menu, more }: { title: string; children: React
 }
 
 const MORE = [
+  { to: '/calendar', label: '行事曆與定時任務', icon: CalendarDays },
   { to: '/agenda', label: '提案與討論', icon: CalendarClock },
   { to: '/files', label: '全部檔案', icon: FolderOpen },
   { to: '/apps/logins', label: '分享登入', icon: KeyRound },

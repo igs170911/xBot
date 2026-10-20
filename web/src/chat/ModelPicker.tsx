@@ -1,13 +1,14 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Check, ChevronDown, ChevronRight, Settings } from 'lucide-react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
+import { Check, ChevronRight, Settings } from 'lucide-react'
 import { botsUpdate, enginesStatus, type EnginesStatusOutput, type ModelsGetOutput } from '../api/generated'
 import { ENGINE_LABEL, PLAN_NAME } from '../settings/botModes'
 import { upsertBot, type Bot } from '../data/bots'
 import { navigate } from '../router'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
+import { useFocusTrap } from '../ui/useFocusTrap'
 import { modelLabel, parseModel, usesPlan } from './format'
-import { Popover } from './Popover'
 
 type Provider = ModelsGetOutput['providers'][number]
 type EngineStatus = EnginesStatusOutput['bots'][number]
@@ -287,36 +288,34 @@ function usePlanStatus(bot: Bot): EngineStatus | null {
   return plan ? st : null
 }
 
-// 模型選擇器（design/C06）：標題列的模型膠囊打開。只影響這個 Bot（xbot.bots.update 的 model、effort）。
-// 用 API 金鑰（Hermes）：左邊供應商、右邊模型與推理強度；還沒有任何供應商時，按膠囊直接打開模型設定。
+// 模型選擇器（design/C06）：對話頁「⋯」→「模型：…」打開（原本是標題列的膠囊）。只影響這個 Bot（xbot.bots.update 的 model、effort）。
+// 用 API 金鑰（Hermes）：左邊供應商、右邊模型與推理強度；還沒有任何供應商時，直接打開模型設定。
 // 用訂閱 CLI：列出這個方案能用的模型。
-export function ModelPicker({ bot, models, onSetup, className }: { bot: Bot; models: ModelsGetOutput | null; onSetup: () => void; className?: string }) {
+/** 這個 Bot 現在用的模型（給「⋯」選單那一項寫出來）；empty：還沒設定任何模型。 */
+export function useModelLabel(bot: Bot, models: ModelsGetOutput | null): { label: string; empty: boolean } {
   const plan = usesPlan(bot)
   const st = usePlanStatus(bot)
-  const label = plan ? `${ENGINE_LABEL[bot.engine] ?? bot.engine} · ${bot.model || st?.agent_default || '預設'}` : modelLabel(bot, models)
-  const empty = !plan && !models?.providers.length
-  return (
-    <Popover
-      kind="dialog"
-      align="end"
-      className="max-sm:fixed max-sm:inset-x-3 max-sm:top-[112px] max-sm:mt-0"
-      trigger={(p) => (
-        <button
-          {...p}
-          onClick={empty ? onSetup : p.onClick}
-          type="button"
-          aria-label={`模型：${label}（選擇模型）`}
-          className={cx(
-            'relative flex h-8 min-w-0 max-w-[260px] items-center gap-1.5 whitespace-nowrap rounded-full bg-card pl-3.5 pr-2.5 text-sub text-ink touch-target hover:bg-control aria-expanded:outline aria-expanded:outline-2 aria-expanded:outline-accent',
-            className,
-          )}
-        >
-          <span className="truncate">{label}</span>
-          <Icon icon={ChevronDown} size={16} className="text-ink-2" />
-        </button>
-      )}
-    >
-      {(close) => (plan ? <PlanBody bot={bot} st={st} close={close} /> : models ? <Body bot={bot} models={models} close={close} /> : null)}
-    </Popover>
+  return {
+    label: plan ? `${ENGINE_LABEL[bot.engine] ?? bot.engine} · ${bot.model || st?.agent_default || '預設'}` : modelLabel(bot, models),
+    empty: !plan && !models?.providers.length,
+  }
+}
+
+/**
+ * 選模型的視窗（從對話頁「⋯」→「模型：…」打開；2026-10-20 頁首精簡：換模型很少用，不再一直擺在頁首）。
+ * 內容和原本模型膠囊的彈出框一樣。
+ */
+export function ModelDialog({ bot, models, onClose }: { bot: Bot; models: ModelsGetOutput | null; onClose: () => void }) {
+  const plan = usesPlan(bot)
+  const st = usePlanStatus(bot)
+  const box = useRef<HTMLDivElement>(null)
+  const onKeyDown = useFocusTrap(box, true, onClose)
+  return createPortal(
+    <div className="fixed-screen z-50 flex items-start justify-center bg-black/60 px-3 pt-[12vh]" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={box} onKeyDown={onKeyDown} className="flex max-w-full justify-center">
+        {plan ? <PlanBody bot={bot} st={st} close={onClose} /> : models ? <Body bot={bot} models={models} close={onClose} /> : null}
+      </div>
+    </div>,
+    document.body,
   )
 }

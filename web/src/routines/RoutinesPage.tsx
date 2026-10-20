@@ -38,6 +38,8 @@ export function RoutinesPage({ path }: { path: string }) {
     <div className="flex min-w-0 flex-1">
       <main className="min-w-0 flex-1 px-6 pb-6 pt-4 max-md:px-4 max-md:pt-0">
         {phone && list && <PhoneBar title="定時任務" back="/calendar" className="-mx-4" right={<IconButton icon={Plus} label="新增定時任務" className="size-11" onClick={() => openNewRoutine()} />} />}
+        {/* 行事曆不再是手機的分頁（2026-10-20）：自己畫一條有返回的頁首 */}
+        {phone && !list && <PhoneBar title="行事曆" heading={false} back="/chats" className="-mx-4" right={<IconButton icon={Plus} label="新增定時任務" className="size-11" onClick={() => openNewRoutine()} />} />}
         <div className="mx-auto flex max-w-[1180px] flex-col gap-3">
           <header className="flex flex-wrap items-start justify-between gap-3 max-md:hidden">
             <div className="flex flex-col gap-0.5">

@@ -1,13 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { mentionQuery } from '../chat/mentionQuery'
 import { rowTime } from './format'
-import { backFallback, isTabPath, ownsPhoneHeader } from './nav'
+import { backFallback, isTabPath, launchPath, ownsPhoneHeader, TABS } from './nav'
 import { connectionKind, urlBase64ToBytes } from './pwa'
 
 describe('手機導覽（W31）', () => {
-  it('分頁首頁：待我處理、對話、辦公室、行事曆', () => {
-    expect(['/', '/chats', '/office', '/calendar'].every(isTabPath)).toBe(true)
+  it('分頁首頁：對話、待我處理、辦公室（行事曆收進「設定與更多」，2026-10-20）', () => {
+    expect(['/chats', '/', '/office'].every(isTabPath)).toBe(true)
+    expect(TABS.map((t) => t.label)).toEqual(['對話', '待我處理', '辦公室'])
+    expect(isTabPath('/calendar')).toBe(false)
     expect(isTabPath('/bots/b1')).toBe(false)
+  })
+  it('從主畫面打開 App 先到對話；點推播（/）照原本去待我處理；電腦不跳', () => {
+    expect(launchPath({ pathname: '/', search: '?source=pwa' }, true)).toBe('/chats')
+    expect(launchPath({ pathname: '/', search: '' }, true)).toBeNull()
+    expect(launchPath({ pathname: '/', search: '?source=pwa' }, false)).toBeNull()
+    expect(launchPath({ pathname: '/bots/b1', search: '?source=pwa' }, true)).toBeNull()
   })
   it('對話、群組、設定自己畫頁首；其他頁用共用返回列', () => {
     expect(ownsPhoneHeader('/bots/b1/threads/t1')).toBe(true)

@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { Activity, MessageSquare, Plus, Trash2, X } from 'lucide-react'
+import { Activity, MessageSquare, Phone, Plus, Trash2, X } from 'lucide-react'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/Button'
 import { cx } from '../ui/cx'
@@ -19,6 +19,7 @@ export function ThreadDrawer({
   onNew,
   onDelete,
   onProgress,
+  onCall,
 }: {
   botName: string
   threads: Thread[] | null
@@ -31,6 +32,8 @@ export function ThreadDrawer({
   onDelete?: (t: Thread) => void
   /** 目前進度（手機頁首的頭像改成打開 Bot 資料，進度放在這裡）。 */
   onProgress?: () => void
+  /** 和 Bot 通話（手機頁首精簡後放這裡）。 */
+  onCall?: () => void
 }) {
   const panel = useRef<HTMLDivElement>(null)
   const close = () => onOpenChange(false)
@@ -101,6 +104,12 @@ export function ThreadDrawer({
             <button type="button" onClick={pick(onProgress)} className="flex h-12 items-center gap-3 rounded-menu bg-transparent px-3 text-left text-ui text-ink active:bg-control">
               <Icon icon={Activity} size={18} />
               目前進度
+            </button>
+          )}
+          {onCall && (
+            <button type="button" onClick={pick(onCall)} className="flex h-12 items-center gap-3 rounded-menu bg-transparent px-3 text-left text-ui text-ink active:bg-control">
+              <Icon icon={Phone} size={18} />
+              和{botName}通話
             </button>
           )}
           <button type="button" onClick={pick(onNew)} className="flex h-12 items-center gap-3 rounded-menu bg-transparent px-3 text-left text-ui text-ink active:bg-control">

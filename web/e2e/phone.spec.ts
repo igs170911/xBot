@@ -464,8 +464,12 @@ test('L21 先判斷列', async ({ page }, info) => {
 test('L16 行事曆與 L17 一句話建立定時任務', async ({ page, request }, info) => {
   const bot = (await (await request.post('/api/v1/bots.create', { data: { name: '小秘', title: '幕僚長', shape: 'cursor', color: 'blue' } })).json()).output
   await request.post('/api/v1/routines.create', { data: { bot_id: bot.id, title: '每日重點', prompt: '整理今天的重點', schedule: { kind: 'daily', time: '09:00' } } })
-  await page.goto('/calendar')
-  await expect(page.getByRole('navigation', { name: '分頁', exact: true }).getByRole('link', { name: /行事曆/ })).toHaveAttribute('aria-current', 'page')
+  // 行事曆不是分頁了（2026-10-20）：從對話分頁的「設定與更多」進去，有返回鈕
+  await page.goto('/chats')
+  await page.getByRole('button', { name: '設定與更多' }).click()
+  await page.getByRole('menuitem', { name: '行事曆與定時任務' }).click()
+  await expect(page).toHaveURL(/\/calendar$/)
+  await expect(page.getByRole('button', { name: /返回/ }).first()).toBeVisible()
   await snap(page, info, 'L16')
   await page.getByRole('button', { name: /新增|一句話/ }).first().click()
   const box = page.getByRole('textbox').first()

@@ -174,9 +174,10 @@ test('模型選擇器（C06）：換這個 Bot 的模型與推理強度', async 
   api.addMessage(t.id, { sender: 'bot:' + bot.id, content: '收到。我請阿哲去抓三家的價格。', status: 'complete' })
   await page.goto(`/bots/${bot.id}/threads/${t.id}`)
   const main = page.getByRole('main', { name: '和小秘的對話' })
-  test.skip(info.project.name === 'mobile', '手機頁首照 L03（沒有模型膠囊）；手機在 Bot 資料 › 進階 › 引擎與模型改')
-  const pill = main.getByRole('button', { name: /^模型：gpt-4.1-mini/ })
-  await pill.click()
+  test.skip(info.project.name === 'mobile', '手機頁首照 L03（沒有模型）；手機在 Bot 資料 › 進階 › 引擎與模型改')
+  // 頁首只留常用的（2026-10-20）：模型在「⋯」裡，那一項寫出目前的模型
+  await main.getByRole('button', { name: '更多', exact: true }).click()
+  await page.getByRole('menuitem', { name: /^模型：gpt-4.1-mini/ }).click()
   const picker = page.getByRole('dialog', { name: '選擇模型' })
   await expect(picker.getByRole('menuitemradio', { name: /gpt-4.1-mini/ })).toHaveAttribute('aria-checked', 'true')
   await expect(picker.getByRole('radio', { name: '中' })).toHaveAttribute('aria-checked', 'true')
@@ -189,7 +190,9 @@ test('模型選擇器（C06）：換這個 Bot 的模型與推理強度', async 
   await picker.getByRole('button', { name: '使用' }).click()
   await expect(picker).toBeHidden()
   expect(api.calls.filter((c) => c.op === 'bots.update').at(-1)?.input).toEqual({ id: bot.id, model: 'openai/gpt-4.1' })
-  await expect(main.getByRole('button', { name: /^模型：gpt-4.1（/ })).toBeVisible()
+  await main.getByRole('button', { name: '更多', exact: true }).click()
+  await expect(page.getByRole('menuitem', { name: '模型：gpt-4.1', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
 })
 
 test('對話串選單與空狀態（C03）：切換、開新的、建議放進輸入框', async ({ page }, info) => {
@@ -228,11 +231,19 @@ test('對話串選單與空狀態（C03）：切換、開新的、建議放進�
   await expect(page).toHaveURL(/\/threads\/new$/)
   const empty = main.getByTestId('chat-empty')
   await expect(empty).toContainText('嗨，我是抓蟲。')
+  // 已經聊過的 Bot：開新對話只打招呼，不再出現「可以這樣開始」（2026-10-20）
+  await expect(empty.getByRole('region', { name: '可以這樣開始' })).toHaveCount(0)
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-chat-empty-full`) })
-  await empty.getByRole('button', { name: /看看你的電腦/ }).click()
-  await expect(main.getByRole('textbox')).toHaveValue('看看你的電腦，告訴我裡面有什麼')
-  await expect(main.getByRole('textbox')).toBeFocused()
+
+  // 第一次和這個 Bot 聊：才有建議，點了放進輸入框
+  const fresh = api.addBot({ name: '小秘', shape: 'cursor', color: 'blue' })
+  await page.goto(`/bots/${fresh.id}/threads/new`)
+  const main2 = page.getByRole('main', { name: '和小秘的對話' })
+  const first = main2.getByTestId('chat-empty')
+  await first.getByRole('button', { name: /看看你的電腦/ }).click()
+  await expect(main2.getByRole('textbox')).toHaveValue('看看你的電腦，告訴我裡面有什麼')
+  await expect(main2.getByRole('textbox')).toBeFocused()
 })
 
 test('目前進度（C12）與電腦按鈕；載入更早的訊息', async ({ page }, info) => {

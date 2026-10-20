@@ -136,7 +136,7 @@ function Section({ title, children, team, menu, more, drop }: { title: string; c
             aria-label={`${title}的選單`}
             title="改名、換成員、刪除"
             onClick={(e) => more(e.currentTarget)}
-            className="mt-1 flex size-6 items-center justify-center rounded-seg text-ink-3 opacity-0 hover:bg-control hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+            className="mt-1 flex size-6 items-center justify-center rounded-seg text-ink-3 opacity-0 hover:bg-control hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 max-sm:size-11 [@media(hover:none)]:opacity-100"
           >
             <Icon icon={Ellipsis} size={15} />
           </button>

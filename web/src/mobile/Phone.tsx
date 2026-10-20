@@ -17,7 +17,7 @@ export function TabBar({ path }: { path: string }) {
     <div className="pointer-events-none fixed-screen z-30 md:hidden">
       <nav aria-label="分頁" className="pointer-events-auto absolute inset-x-0 bottom-0 flex border-t border-edge bg-app pb-[env(safe-area-inset-bottom)]">
         {TABS.map((t) => {
-          const on = t.to === path || (t.to === '/calendar' && path.startsWith('/calendar'))
+          const on = t.to === path
           return (
             <a
               key={t.to}

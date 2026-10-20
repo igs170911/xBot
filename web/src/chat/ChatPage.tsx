@@ -30,7 +30,7 @@ import { BotMessage, JudgeRow, OutcomeRow, OwnerMessage } from './Message'
 import { QuotaCard } from './QuotaCard'
 import { PreCheckRow } from './PreCheck'
 import { runPreCheck } from './precheckData'
-import { ModelPicker } from './ModelPicker'
+import { ModelDialog, useModelLabel } from './ModelPicker'
 import { usesPlan } from './format'
 import { ProgressDialog } from './ProgressDialog'
 import { ThreadMenu, type Thread } from './ThreadMenu'
@@ -246,6 +246,8 @@ function Header({
   const pauseAll = usePauseAll()
   const st = statusOf(bot, act, busyElsewhere)
   const { lesson } = useLesson(bot.id)
+  const model = useModelLabel(bot, models)
+  const [modelOpen, setModelOpen] = useState(false)
   return (
     <header className="flex h-14 flex-none items-center gap-2 pl-5 pr-3 max-md:h-12 max-md:gap-1.5 max-md:pl-3 max-md:pr-1.5">
       <span className="flex items-center gap-2 max-md:hidden">
@@ -272,17 +274,17 @@ function Header({
         onDelete={onDelete}
       />
       <span className="flex-1" />
-      <ModelPicker bot={bot} models={models} onSetup={onSetupModels} className="max-sm:max-w-[124px]" />
       {autoRead && <Icon icon={AudioLines} size={16} className="text-accent-ink" label="自動朗讀開著" />}
-      <IconButton icon={Phone} label={`和${bot.name}通話`} onClick={() => navigate(`/bots/${bot.id}/call`)} />
       <IconButton icon={FolderOpen} label={`${bot.name}的檔案`} onClick={() => navigate(`/bots/${bot.id}/files`)} />
       <IconButton icon={Monitor} label={`${bot.name}的電腦`} pressed={computerOpen} onClick={onComputer} data-tour="computer" />
       <MenuButton
         label="更多"
         align="end"
         items={[
-          // 新對話串在對話串選單；模型在模型膠囊；聲音在 Bot 設定 › 進階；導覽在設定 › 一般
+          // 頁首只留常用的（2026-10-20 依使用紀錄精簡）：模型、通話很少用，收在這裡；新對話串在對話串選單；聲音在 Bot 設定 › 進階
           { label: '目前進度', icon: ActivityIcon, onSelect: onProgress },
+          { label: `模型：${model.label}`, icon: Cpu, onSelect: () => (model.empty ? onSetupModels() : setModelOpen(true)) },
+          { label: `和${bot.name}通話`, icon: Phone, onSelect: () => navigate(`/bots/${bot.id}/call`) },
           { label: '教它一件事', icon: GraduationCap, onSelect: () => teachStartStore.set({ botId: bot.id, threadId }) },
           { label: '記憶', icon: Brain, onSelect: () => navigate(`/settings/bots/${encodeURIComponent(bot.id)}/abilities/memory`) },
           ...(onAutoRead ? [{ label: autoRead ? '這個對話串不要自動朗讀' : '這個對話串自動朗讀回覆', icon: autoRead ? VolumeX : Volume2, onSelect: onAutoRead }] : []),
@@ -292,11 +294,12 @@ function Header({
         ]}
         trigger={(p) => <IconButton {...p} icon={Ellipsis} label="更多" />}
       />
+      {modelOpen && <ModelDialog bot={bot} models={models} onClose={() => setModelOpen(false)} />}
     </header>
   )
 }
 
-/** 手機的頁首（L03）：返回（帶等你的件數）、通話｜大頭像｜對話串、電腦；下面置中一顆「名字 · 對話串標題」膠囊，點了看 Bot 資料（L10）。 */
+/** 手機的頁首（L03）：返回（帶等你的件數）｜大頭像｜檔案、電腦（通話在對話串抽屜裡）；下面置中一顆「名字 · 對話串標題」膠囊，點了看 Bot 資料（L10）。 */
 function PhoneHeader({ bot, act, busyElsewhere, threads, threadId, onProgress, onDelete }: { bot: Bot; act?: Activity; busyElsewhere: boolean; threads: Thread[] | null; threadId?: string; onProgress: () => void; onDelete: (t: Thread) => void }) {
   const st = statusOf(bot, act, busyElsewhere)
   const waiting = useStore(inboxStore).items?.length ?? 0
@@ -312,9 +315,8 @@ function PhoneHeader({ bot, act, busyElsewhere, threads, threadId, onProgress, o
           <Icon icon={ChevronLeft} size={22} />
           {waiting > 0 && <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-control px-1.5 text-meta">{waiting}</span>}
         </button>
-        <button type="button" aria-label={`和${bot.name}通話`} className={round} onClick={() => navigate(`/bots/${bot.id}/call`)}>
-          <Icon icon={Phone} size={20} />
-        </button>
+        {/* 通話很少用（2026-10-20 依使用紀錄精簡）：收進對話串抽屜；這裡留同寬的空位，頭像才會置中 */}
+        <span aria-hidden="true" className="size-11 flex-none" />
         <span className="flex flex-1 justify-center">
           <button type="button" aria-label={`${bot.name}的資料`} onClick={() => navigate(`/bots/${bot.id}/profile`)} className="flex size-11 items-center justify-center rounded-full">
             <Avatar shape={bot.shape} color={bot.color} state={waitingMe ? 'notifying' : act ? 'working' : 'idle'} dot={waitingMe ? 'waiting' : 'none'} ring="#070707" size={40} />
@@ -333,6 +335,7 @@ function PhoneHeader({ bot, act, busyElsewhere, threads, threadId, onProgress, o
           onNew={() => navigate(`/bots/${bot.id}/threads/new`)}
           onDelete={onDelete}
           onProgress={onProgress}
+          onCall={() => navigate(`/bots/${bot.id}/call`)}
         />
         <button type="button" aria-label={`${bot.name}的檔案`} className={round} onClick={() => navigate(`/bots/${bot.id}/files`)}>
           <Icon icon={FolderOpen} size={20} />
@@ -658,7 +661,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
               載入更早的訊息
             </Button>
           )}
-          {empty && (firstHome ? <FirstHome bot={bot} /> : <EmptyState bot={bot} onPick={(t) => composer.current?.fill(t)} onFree={() => composer.current?.fill()} />)}
+          {empty && (firstHome ? <FirstHome bot={bot} /> : <EmptyState bot={bot} starters={threads?.length === 0} onPick={(t) => composer.current?.fill(t)} onFree={() => composer.current?.fill()} />)}
           {threadId && <Messages items={items} bot={bot} threadId={threadId} canRetry={!act} onRetry={(t) => void send(t)} onResume={(id) => void resume(id)} resuming={resuming} />}
         </div>
       </div>

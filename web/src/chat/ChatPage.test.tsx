@@ -318,6 +318,20 @@ it('打開聊完的對話串就標成看過了（聊天清單的藍點消失）�
   await waitFor(() => expect(api.calls.filter((c) => c.path === 'chat.mark_read')).toHaveLength(2))
 })
 
+it('「想先請它做什麼？」只在第一次和這個 Bot 聊時出現；之後開新對話只打招呼', async () => {
+  api.ops['chat.list_threads'] = () => ({ threads: [] })
+  window.history.replaceState(null, '', '/bots/b1/threads/new')
+  const first = render(<App />)
+  expect(await screen.findByText(/想先請小秘做什麼/)).toBeInTheDocument()
+  first.unmount()
+  resetChat()
+  api.ops['chat.list_threads'] = () => ({ threads: [THREAD] })
+  window.history.replaceState(null, '', '/bots/b1/threads/new')
+  render(<App />)
+  expect(await screen.findByText(/嗨，我是小秘/)).toBeInTheDocument()
+  expect(screen.queryByText(/想先請小秘做什麼/)).toBeNull()
+})
+
 it('刪除對話串：確認後呼叫 chat.delete_thread，換到最近的另一條（沒有了才開新的）', async () => {
   api.ops['chat.delete_thread'] = () => ({ deleted: true, bot_id: 'b1' })
   messages = [{ id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '查價格', created_at: Date.now(), updated_at: Date.now() }]
@@ -365,7 +379,7 @@ it('刪掉正在看的對話串：換到最近的另一條', async () => {
   await waitFor(() => expect(window.location.pathname).toBe('/bots/b1/threads/t2'))
 })
 
-it('用訂閱的 Bot：模型膠囊顯示方案，列出 CLI 回報的模型，選了只改這個 Bot', async () => {
+it('用訂閱的 Bot：「⋯」裡的模型那一項寫出方案，列出 CLI 回報的模型，選了只改這個 Bot', async () => {
   api.ops['bots.list'] = () => ({ bots: [{ ...BOT, engine: 'opencode' }] })
   api.ops['engines.status'] = () => ({
     bots: [{ bot_id: 'b1', name: '小秘', engine: 'opencode', engine_label: 'OpenCode', needs_link: true, linked: true, plan: 'OpenCode Go', agent_default: 'opencode/big-pickle', models: [{ value: 'opencode/big-pickle' }, { value: 'opencode-go/glm-5', name: 'GLM 5' }] }],
@@ -373,9 +387,11 @@ it('用訂閱的 Bot：模型膠囊顯示方案，列出 CLI 回報的模型，�
   })
   api.ops['bots.update'] = (input) => ({ ...BOT, engine: 'opencode', ...input })
   render(<App />)
-  const pill = await screen.findByRole('button', { name: /模型：OpenCode · opencode\/big-pickle/ })
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
   expect(screen.queryByText('還沒設定模型')).toBeNull()
-  fireEvent.click(pill)
+  // 頁首只留常用的：模型收在「⋯」裡，那一項寫出目前用的模型
+  fireEvent.click(within(main).getByRole('button', { name: '更多' }))
+  fireEvent.click(await screen.findByRole('menuitem', { name: /模型：OpenCode · opencode\/big-pickle/ }))
   const dialog = await screen.findByRole('dialog', { name: '選擇模型' })
   expect(within(dialog).getByText('OpenCode Go 訂閱')).toBeInTheDocument()
   fireEvent.click(within(dialog).getByRole('menuitemradio', { name: /GLM 5/ }))
