@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Bot as BotIcon, CalendarClock, CalendarDays, Ellipsis, FolderOpen, KeyRound, LayoutGrid, MessagesSquare, Network, OctagonPause, Plus, Puzzle, Search, Settings, UsersRound, WifiOff, X } from 'lucide-react'
+import { Bot as BotIcon, CalendarClock, CalendarDays, Ellipsis, FolderOpen, KeyRound, LayoutGrid, MessagesSquare, Network, Plus, Puzzle, Search, Settings, UsersRound, WifiOff, X } from 'lucide-react'
 import { botsStore } from '../data/bots'
 import { useLastThreads } from '../data/lastThreads'
 import { roomsStore } from '../data/rooms'
@@ -13,7 +13,7 @@ import { Icon } from '../ui/Icon'
 import { MenuButton } from '../ui/Menu'
 import { cx } from '../ui/cx'
 import { BotListRow, ChiefCard, RoomListRow } from '../shell/BotList'
-import { usePauseAll } from '../shell/PauseBanner'
+import { usePauseMenuItem } from '../shell/PauseBanner'
 import { useRowMenu, type MenuBind, type MoreOpener } from '../shell/useRowMenu'
 import { TabHeader } from './Phone'
 import { useOnline } from './pwa'
@@ -53,7 +53,7 @@ export function ChatListPage() {
   const rooms = useStore(roomsStore).rooms
   const teams = useStore(teamsStore).teams
   const last = useLastThreads(bots)
-  const pauseAll = usePauseAll()
+  const pauseItem = usePauseMenuItem()
   const online = useOnline()
   const [q, setQ] = useState<string | null>(null)
   const query = (q ?? '').trim()
@@ -92,7 +92,7 @@ export function ChatListPage() {
               items={[
                 { label: '設定', icon: Settings, onSelect: () => navigate('/settings') },
                 ...MORE.map((m, i) => ({ label: m.label, icon: m.icon, separator: i === 0, onSelect: () => navigate(m.to) })),
-                { label: '全部停下（所有 Bot）', icon: OctagonPause, separator: true, onSelect: () => void pauseAll() },
+                pauseItem,
               ]}
               trigger={(t) => <IconButton {...t} icon={Ellipsis} label="設定與更多" className="size-11" />}
             />

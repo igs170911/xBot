@@ -12,7 +12,6 @@ import {
   MessagesSquare,
   Monitor,
   Network,
-  OctagonPause,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
@@ -39,7 +38,7 @@ import { draggingBotStore, openNewBot, setRail } from '../data/ui'
 import { BotListRow, ChiefCard, RoomListRow } from './BotList'
 import { useRowMenu, type MenuBind, type MoreOpener } from './useRowMenu'
 import { useToast } from '../ui/toast-context'
-import { usePauseAll } from './PauseBanner'
+import { usePauseMenuItem } from './PauseBanner'
 
 type NavProps = { path: string; onNavigate?: () => void }
 
@@ -179,7 +178,7 @@ function Chip({ to, path, icon, children, aside, onNavigate, tour }: NavProps & 
 }
 
 function Full({ path, onNavigate, onClose }: SidebarProps) {
-  const pauseAll = usePauseAll()
+  const pauseItem = usePauseMenuItem()
   const { bots, error } = useStore(botsStore)
   const inbox = useStore(inboxStore).items
   const rooms = useStore(roomsStore).rooms
@@ -314,7 +313,7 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
           items={[
             { label: '設定', icon: Settings, onSelect: go(() => navigate('/settings')) },
             ...MORE.map((m, i) => ({ label: m.label, icon: m.icon, separator: i === 0, onSelect: go(() => navigate(m.to)) })),
-            { label: '全部停下（所有 Bot）', icon: OctagonPause, separator: true, onSelect: () => void pauseAll() },
+            pauseItem,
           ]}
           trigger={(t) => (
             <button
@@ -344,7 +343,7 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
 
 // 窄版：只有圖示，滑過顯示名字；不常用的頁面在「更多」選單裡。
 function Rail({ path }: SidebarProps) {
-  const pauseAll = usePauseAll()
+  const pauseItem = usePauseMenuItem()
   const rowMenu = useRowMenu()
   const { bots, activity } = useStore(botsStore)
   const inbox = useStore(inboxStore).items
@@ -394,7 +393,7 @@ function Rail({ path }: SidebarProps) {
         label="更多"
         items={[
           ...MORE.map((m) => ({ label: m.label, icon: m.icon, onSelect: () => navigate(m.to) })),
-          { label: '全部停下（所有 Bot）', icon: OctagonPause, separator: true, onSelect: () => void pauseAll() },
+          pauseItem,
         ]}
         trigger={(t) => <IconButton {...t} icon={Ellipsis} label="更多" />}
       />
