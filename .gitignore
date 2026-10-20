@@ -13,3 +13,4 @@ coverage.out
 .claude/
 __pycache__/
 *.pyc
+scripts/bench/results/
