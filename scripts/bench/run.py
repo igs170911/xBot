@@ -23,6 +23,7 @@ CONFIGS = {
     "hermes-grok47": ("hermes", "openai/grok-4.7", False),
     "hermes-gpt6sol": ("hermes", "openai-codex/gpt-6-sol", False),
     "hermes-luna": ("hermes", "openai-codex/gpt-5.6-luna", False),
+    "hermes-haiku": ("hermes", "openai/claude-haiku-5-5", False),
     "hermes-beam": ("hermes", "openai/beam-free", False),
     "grok-cli": ("grok", "", False),
     "codex-cli": ("codex", "", False),
