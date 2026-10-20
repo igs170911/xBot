@@ -89,6 +89,18 @@ test('群組對話（D01）：交棒分隔線、輪數上限、成員狀態，�
   await expect(page.getByTestId('room-owner').last()).toHaveText('@阿哲 先停，改查 B 公司')
 })
 
+test('群組訊息很多：只有訊息區自己捲，整頁不變長，輸入框留在畫面底部', async ({ page }) => {
+  const { m, chief, zhe } = await team(page)
+  const room = m.addRoom([chief.id, zhe.id], '長對話', 'auto', {})
+  for (let i = 0; i < 80; i++) m.addRoomMessage(room.id, { sender: 'bot:' + zhe.id, speaker_name: '阿哲', content: `第 ${i} 則：整理好的資料`, round: 0 })
+  await page.goto(`/rooms/${room.id}`)
+  await expect(page.getByText('第 79 則：整理好的資料')).toBeVisible()
+  const H = page.viewportSize()!.height
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(H)
+  const box = (await page.getByRole('textbox', { name: '傳訊息到群組' }).boundingBox())!
+  expect(box.y + box.height).toBeLessThanOrEqual(H)
+})
+
 test('Bot 改了群組（xbot.collab.update_group）：群組裡一行分隔線寫誰改了什麼，不是警告', async ({ page }, info) => {
   const { m, chief, zhe, bian } = await team(page)
   const room = m.addRoom([chief.id, zhe.id, bian.id], '新品上架專案', 'auto', {})

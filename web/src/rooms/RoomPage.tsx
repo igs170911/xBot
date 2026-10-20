@@ -463,7 +463,7 @@ export function RoomPage({ roomId }: { roomId: string }) {
   const lead = room.members.find((m) => m.lead)?.name ?? ''
 
   return (
-    <div className="flex h-[var(--app-h,var(--app-full))] min-w-0 flex-1 max-md:fixed max-md:inset-x-0 max-md:top-[var(--app-top,0px)] max-md:z-10">
+    <div className="flex h-[var(--app-h,var(--app-full))] min-w-0 flex-none max-md:fixed max-md:inset-x-0 max-md:top-[var(--app-top,0px)] max-md:z-10">
       {editing && <EditRoomDialog key={room.id} room={room} open onClose={() => setEditing(false)} onSaved={() => void load()} />}
       <DeleteDialog target={deleting} onClose={() => setDeleting(null)} />
       <main className="flex min-w-0 flex-1 flex-col bg-app" aria-label={`群組：${room.name}`}>
