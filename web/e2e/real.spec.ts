@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures'
+import { expect, test, sidebarAdd } from './fixtures'
 import { pastOnboarding } from './real-helpers'
 
 // 對著真的執行檔（不攔截網路）：建 Bot 走真的 bots.create，側欄靠真的 SSE 事件更新；
@@ -17,7 +17,7 @@ test('真的服務：建 Bot、側欄即時出現、沒模型時引導設定', a
   expect(res.ok()).toBe(true)
   await expect(nav.getByRole('link', { name: new RegExp(name) })).toBeVisible()
 
-  await nav.getByRole('button', { name: '新增 Bot' }).first().click()
+  await sidebarAdd(page, '新增 Bot')
   const dlg = page.getByRole('dialog', { name: '新增 Bot' })
   await dlg.getByLabel('名字').fill('網頁建的')
   await dlg.getByRole('button', { name: '建立「網頁建的」' }).click()

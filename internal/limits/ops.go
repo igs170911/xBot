@@ -38,4 +38,9 @@ const (
 	// PageDefault、PageMax 是列表類操作一頁的預設與最多筆數。XBot 新增。
 	PageDefault = 50
 	PageMax     = 200
+
+	// ThreadPreviewRunes 是側欄、對話清單每一列最後一句話最多幾個字（同群組預覽）；ThreadPreviewScan 是往回找幾則
+	// （最新一則可能是還沒寫字的串流）。XBot 新增。
+	ThreadPreviewRunes = 60
+	ThreadPreviewScan  = 3
 )

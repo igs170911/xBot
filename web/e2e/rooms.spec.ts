@@ -1,4 +1,4 @@
-import { expect, test, type Page } from './fixtures'
+import { expect, test, type Page, sidebarAdd } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // X02：群組（D01 群組對話、D03 新增群組、D04 開場建議）與兩個 Bot 的往來（C13）。
@@ -26,7 +26,7 @@ test('新增群組（D03）：勾 2 個以上才能建立，建好進到開場�
     await page.goto('/chats')
     await page.getByRole('button', { name: '打開側欄' }).click()
   }
-  await page.getByRole('navigation', { name: '側欄' }).getByRole('button', { name: '新增群組' }).click()
+  await sidebarAdd(page, '新增群組')
   const dialog = page.getByRole('dialog', { name: '新增群組對話' })
   await expect(dialog).toBeVisible()
   const create = dialog.getByRole('button', { name: /建立群組/ })

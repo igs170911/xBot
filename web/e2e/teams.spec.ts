@@ -1,4 +1,4 @@
-import { expect, test, type Page } from './fixtures'
+import { expect, test, type Page, sidebarAdd } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // X03：團隊（F02/F03 建立團隊、F04 團隊地圖、F01 組織架構）、提案與討論（H04、待我處理）。
@@ -14,7 +14,7 @@ test('真的服務：用範本建團隊 → 側欄出現團隊分區 → 團隊�
   const tag = String(Date.now() % 100000)
   await page.goto('/')
   const nav = page.getByRole('navigation', { name: '側欄' })
-  await nav.getByRole('button', { name: '建立團隊' }).click()
+  await sidebarAdd(page, '建立團隊')
   const dlg = page.getByRole('dialog', { name: /建立團隊/ })
   await dlg.getByRole('radio', { name: /工程團隊/ }).click()
   await expect(dlg.getByRole('button', { name: '建立 6 個 Bot' })).toBeEnabled()

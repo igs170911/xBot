@@ -67,7 +67,7 @@ test('離線時頁面還打得開（app 殼）', async ({ page, context }) => {
   await context.setOffline(true)
   await page.goto('/chats').catch(() => {})
   await expect(page.locator('#root')).toBeAttached()
-  await expect(page.getByText(/網路已離線|連不到|XBot|對話/).first()).toBeVisible()
+  await expect(page.getByText(/網路已離線|連不到|XBot|對話|待我處理/).first()).toBeVisible()
   await context.setOffline(false)
 })
 

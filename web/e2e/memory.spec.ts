@@ -32,7 +32,7 @@ test('SSE 斷線重連 15 次、來回換頁 30 次：只有一條連線，heap 
   }
   const round = async () => {
     await go(`/bots/${bot.id}/threads/${th.id}`)
-    await expect(page.getByText('第 39 則')).toBeVisible()
+    await expect(page.getByRole('main').getByText('第 39 則')).toBeVisible() // 側欄那一列的最後一句話也是這則
     await go('/')
     await expect(page.locator('main').first()).toBeVisible()
   }

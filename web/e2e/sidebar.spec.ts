@@ -25,3 +25,40 @@ test('縮小側欄的「⋯」選單整個看得到、點得到', async ({ page 
   await expect(page).toHaveURL(/\/org$/)
   await nav.getByRole('button', { name: '展開側欄' }).click()
 })
+
+// 2026-10-20 側欄改版（design 稿 A「總管置頂」）：大總管的大卡片在最上面，其他 Bot 一列一個（職稱、最後一句話、未讀），
+// 新增收在＋，設定和不常用的頁面收在左下角；手機的對話分頁同一種排版。
+test('側欄 A：大總管卡片、每列有最後一句話；＋和「設定與更多」選單', async ({ page }, info) => {
+  const m = new MockServer(page)
+  const chief = m.addBot({ name: '水哥哥', title: '幕僚長', color: 'teal', shape: 'star', primary: true } as never)
+  const dev = m.addBot({ name: '研究員', title: '產業研究', color: 'blue', shape: 'blob' })
+  m.addBot({ name: '帶貨分析', title: '績效追蹤', color: 'orange', shape: 'squircle' })
+  const t = m.addThread(dev.id, '佣金率')
+  m.addMessage(t.id, { sender: 'owner', content: '查三家佣金率' })
+  m.addMessage(t.id, { sender: 'bot:' + dev.id, content: '**比較表**做好了，在 /workspace/reports' })
+  t.unread = 1
+  m.addRoom([chief.id, dev.id], '帶貨研究團隊')
+  await m.install()
+  const phone = info.project.name !== 'desktop'
+  await page.goto(phone ? '/chats' : '/office')
+  const scope = phone ? page.getByRole('main', { name: '對話' }) : page.getByRole('navigation', { name: '側欄' })
+  const card = scope.getByTestId('chief-card')
+  await expect(card).toHaveAccessibleName(/水哥哥（大總管）/)
+  await expect(scope.getByRole('link', { name: /水哥哥/ })).toHaveCount(1)
+  const row = scope.getByRole('link', { name: /研究員/ })
+  await expect(row).toContainText('產業研究')
+  await expect(row).toContainText('比較表做好了，在 /workspace/reports')
+  await expect(row.getByRole('img', { name: '有新訊息' })).toBeVisible()
+  await expect(scope.getByRole('group', { name: '群組' }).or(scope.getByRole('region', { name: '群組' })).getByRole('link', { name: /帶貨研究團隊/ })).toBeVisible()
+  await page.screenshot({ path: `e2e-results/screens/${info.project.name}-sidebar-a.png` })
+  // 新增：一顆＋裡有 Bot、群組、團隊
+  const add = phone ? page.getByRole('button', { name: '新增', exact: true }) : scope.getByRole('button', { name: '新增', exact: true })
+  await add.click()
+  await expect(page.getByRole('menuitem')).toHaveText(['新增 Bot', '新增群組', '建立團隊'])
+  await page.keyboard.press('Escape')
+  // 設定和不常用的頁面
+  await page.getByRole('button', { name: '設定與更多' }).click()
+  await expect(page.getByRole('menuitem', { name: '設定' })).toBeVisible()
+  await page.getByRole('menuitem', { name: '全部檔案' }).click()
+  await expect(page).toHaveURL(/\/files$/)
+})

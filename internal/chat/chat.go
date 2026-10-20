@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"xbot/internal/events"
+	"xbot/internal/collab"
 	"xbot/internal/limits"
 	"xbot/internal/ops"
 	"xbot/internal/proxy"
@@ -177,6 +178,8 @@ type Thread struct {
 	Unread        int    `json:"unread"`
 	LastMessageAt int64  `json:"last_message_at"`
 	CreatedAt     int64  `json:"created_at"`
+	// Preview 是最後一則訊息（一行、拿掉 Markdown 記號；你說的開頭加「你：」）；ListThreadsIn.Preview 才有。
+	Preview string `json:"preview,omitempty"`
 }
 
 // ListThreadsIn 是 xbot.chat.list_threads 的輸入。
@@ -184,6 +187,7 @@ type ListThreadsIn struct {
 	BotID           string `json:"bot_id" required:"true" resource:"bot" max:"64"`
 	IncludeArchived bool   `json:"include_archived,omitempty"`
 	Limit           int    `json:"limit,omitempty" min:"1" max:"200" desc:"最多幾條；預設 50"`
+	Preview         bool   `json:"preview,omitempty" desc:"附上每條的最後一則訊息（側欄、對話清單用）"`
 }
 
 // ListThreadsOut 是 xbot.chat.list_threads 的輸出。
@@ -558,6 +562,46 @@ func read(ctx context.Context, call *ops.Call, in ReadIn) (ReadOut, error) {
 	return out, nil
 }
 
+// mdMarks 是預覽裡不要的 Markdown 記號。
+var mdMarks = strings.NewReplacer("**", "", "__", "", "`", "")
+
+// lastPreview 是對話串最後一則有字的訊息，壓成一行（串流中還沒寫字的那則跳過）。
+func lastPreview(ctx context.Context, db *store.DB, threadID string) string {
+	msgs, err := db.ListMessages(ctx, store.ScopeThread, threadID, 0, limits.ThreadPreviewScan)
+	if err != nil {
+		return ""
+	}
+	for i := len(msgs) - 1; i >= 0; i-- {
+		m := msgs[i]
+		var meta struct {
+			Silent bool `json:"silent"`
+		}
+		_ = json.Unmarshal(m.Meta, &meta)
+		if meta.Silent || collab.IsSilent(m.Content) {
+			continue // 隊友、群組裡沒有要說的（[silent]）：畫面上不顯示，預覽也跳過
+		}
+		var lines []string
+		for _, l := range strings.Split(mdMarks.Replace(m.Content), "\n") {
+			l = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(l), "#>-*"))
+			if l != "" && l != "---" {
+				lines = append(lines, l)
+			}
+		}
+		text := strings.Join(strings.Fields(strings.Join(lines, " ")), " ")
+		if text == "" {
+			continue
+		}
+		if r := []rune(text); len(r) > limits.ThreadPreviewRunes {
+			text = string(r[:limits.ThreadPreviewRunes-1]) + "…"
+		}
+		if m.Sender == "owner" {
+			text = "你：" + text
+		}
+		return text
+	}
+	return ""
+}
+
 func listThreads(ctx context.Context, call *ops.Call, in ListThreadsIn) (ListThreadsOut, error) {
 	if _, err := call.DB.GetBot(ctx, in.BotID); errors.Is(err, store.ErrNotFound) {
 		return ListThreadsOut{}, ops.NotFound("找不到這個 Bot")
@@ -577,7 +621,11 @@ func listThreads(ctx context.Context, call *ops.Call, in ListThreadsIn) (ListThr
 		if i == limit {
 			break
 		}
-		out.Threads = append(out.Threads, threadView(th))
+		v := threadView(th)
+		if in.Preview {
+			v.Preview = lastPreview(ctx, call.DB, th.ID)
+		}
+		out.Threads = append(out.Threads, v)
 	}
 	return out, nil
 }

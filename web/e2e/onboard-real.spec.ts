@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures'
+import { expect, test, sidebarAdd } from './fixtures'
 import { pastOnboarding } from './real-helpers'
 
 // W32 對著真的服務（不攔截網路）：首次設定的偵測操作回得來；分享出去的 .xbot 檔在網頁匯入，
@@ -22,7 +22,7 @@ test('真的服務：onboard.status 偵測、.xbot 匯出再從網頁匯入', as
   expect(ex.content).not.toContain('api_key')
 
   await page.goto('/')
-  await page.getByRole('navigation', { name: '側欄' }).getByRole('button', { name: '新增 Bot' }).first().click()
+  await sidebarAdd(page, '新增 Bot')
   await page.getByRole('dialog', { name: '新增 Bot' }).getByRole('button', { name: '匯入 Bot' }).click()
   const imp = page.getByRole('dialog', { name: '匯入 Bot' })
   await imp.getByLabel('選擇 .xbot 檔').setInputFiles({ name: ex.filename, mimeType: 'application/json', buffer: Buffer.from(ex.content) })

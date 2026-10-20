@@ -915,7 +915,8 @@ test('手勢：從左邊緣拉出側欄、往左拖收回；拉太短會彈回�
 
 test('手勢：其他頁從左邊緣往右拖＝回上一頁', async ({ page }) => {
   await open(page, '/chats')
-  await page.getByRole('button', { name: '設定', exact: true }).click()
+  await page.getByRole('button', { name: '設定與更多' }).click()
+  await page.getByRole('menuitem', { name: '設定' }).click()
   await expect(page).toHaveURL(/\/settings\/?$/)
   const vw = page.viewportSize()!.width
   await drag(page, [4, 400], [vw * 0.7, 400])

@@ -8,6 +8,7 @@ import { useStore } from '../data/store'
 import { stampLabel } from '../data/ui'
 import { goBack, navigate } from '../router'
 import { inboxStore, loadInbox } from '../data/inbox'
+import { loadLastThread } from '../data/lastThreads'
 import { AskCard } from './AskCard'
 import { ApprovalItem } from '../pages/InboxPage'
 import { askFromItem } from './ask'
@@ -467,7 +468,9 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
       if (document.visibilityState !== 'visible') return
       void chatMarkRead({ thread_id: threadId })
         .then((o) => {
-          if (o.marked) void reloadThreads()
+          if (!o.marked) return
+          void reloadThreads()
+          void loadLastThread(botId) // 側欄、對話清單的藍點跟著消失
         })
         .catch(() => {})
     }
@@ -480,7 +483,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
       off()
       document.removeEventListener('visibilitychange', seen)
     }
-  }, [threadId, reloadThreads])
+  }, [threadId, botId, reloadThreads])
 
   const items = threadId ? threadItems(chat, threadId) : []
   // 自動朗讀（E32，VC-1）：Bot 設定或這個對話串開著時，看著它寫完的回覆念出來並變成語音訊息。

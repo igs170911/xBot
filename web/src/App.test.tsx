@@ -150,17 +150,36 @@ it('側欄的 Bot 清單來自 bots.list，有人改了 Bot 就重讀', async ()
   bots = [BOT, { ...BOT, id: 'b2', name: '小秘', shape: 'cursor', color: 'blue' }]
   act(() => dispatchEvent({ id: 9, kind: 'op', at: 1, payload: { op: 'xbot.bots.create', actor: 'agent:a', status: 'ok' } }))
   expect(await within(nav).findByRole('link', { name: /小秘/ })).toBeInTheDocument()
-  // 工作中的 Bot：右邊標「工作中」
+  // 工作中的 Bot：最後一句話那行改成「工作中…」
   act(() => dispatchEvent({ id: 10, kind: 'task.state', bot_id: 'b2', thread_id: 't', task_id: 'k', at: 2, payload: { state: 'running' } }))
-  expect(within(within(nav).getByRole('link', { name: /小秘/ })).getByText('工作中')).toBeInTheDocument()
+  expect(within(within(nav).getByRole('link', { name: /小秘/ })).getByText('工作中…')).toBeInTheDocument()
 })
 
-it('側欄可以縮成只有圖示，記在這個瀏覽器；不常用的頁面收在「更多」', async () => {
+it('側欄最上面是大總管（主要 Bot）的大卡片，清單不再重複列它；每一列有職稱和最後一句話', async () => {
+  const chief = { ...BOT, id: 'b0', name: '水哥哥', title: '幕僚長', primary: true }
+  api.ops['bots.list'] = () => ({ bots: [chief, { ...BOT, title: '工程' }] })
+  api.ops['chat.list_threads'] = (input) => ({
+    threads: input.bot_id === 'b1' ? [{ id: 't1', bot_id: 'b1', title: '修登入', pinned: false, archived: false, unread: 1, last_message_at: 5, created_at: 1, preview: '登入問題修好了' }] : [],
+  })
+  render(<App />)
+  const nav = await screen.findByRole('navigation', { name: '側欄' })
+  const card = await within(nav).findByTestId('chief-card')
+  expect(card).toHaveAttribute('href', '/bots/b0')
+  expect(card).toHaveAccessibleName(/水哥哥（大總管）/)
+  expect(within(nav).getAllByRole('link', { name: /水哥哥/ })).toHaveLength(1)
+  const row = within(nav).getByRole('link', { name: /抓蟲/ })
+  expect(row).toHaveTextContent('工程')
+  expect(await within(row).findByText('登入問題修好了')).toBeInTheDocument()
+  expect(within(row).getByRole('img', { name: '有新訊息' })).toBeInTheDocument()
+  expect(api.calls.find((c) => c.path === 'chat.list_threads')?.input).toMatchObject({ preview: true })
+})
+
+it('側欄可以縮成只有圖示，記在這個瀏覽器；設定和不常用的頁面收在左下角「設定與更多」', async () => {
   api.ops['bots.list'] = () => ({ bots: [BOT] })
   render(<App />)
   const nav = await screen.findByRole('navigation', { name: '側欄' })
   expect(within(nav).queryByText('全部檔案')).toBeNull()
-  fireEvent.click(within(nav).getByRole('button', { name: '更多' }))
+  fireEvent.click(within(nav).getByRole('button', { name: '設定與更多' }))
   fireEvent.click(await screen.findByRole('menuitem', { name: '全部檔案' }))
   expect(window.location.pathname).toBe('/files')
   fireEvent.click(within(nav).getByRole('button', { name: '縮小側欄' }))
@@ -186,7 +205,7 @@ it('沒有 Bot 時側欄有新增按鈕；新增 Bot 表單呼叫 bots.create �
   await within(nav).findByText(/還沒有 Bot/)
   // 沒有 Bot 時首頁是「建立第一個 Bot」（A09）
   expect(await screen.findByRole('heading', { level: 1, name: '建立第一個 Bot' })).toBeInTheDocument()
-  expect(within(nav).getByRole('button', { name: '新增 Bot' })).toBeInTheDocument() // 標題列的＋
+  expect(within(nav).getByRole('button', { name: '新增' })).toBeInTheDocument() // 標題列的＋（新增 Bot、群組、團隊）
   fireEvent.click(within(nav).getByRole('button', { name: '建立 Bot' }))
   const dlg = await screen.findByRole('dialog', { name: '新增 Bot' })
   fireEvent.click(within(dlg).getByRole('button', { name: '建立' }))

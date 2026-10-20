@@ -3021,6 +3021,8 @@ export interface ChatListThreadsInput {
   include_archived?: boolean
   /** 最多幾條；預設 50 */
   limit?: number
+  /** 附上每條的最後一則訊息（側欄、對話清單用） */
+  preview?: boolean
 }
 
 export interface ChatListThreadsOutput {
@@ -3034,6 +3036,7 @@ export interface ChatListThreadsOutput {
     unread: number
     last_message_at: number
     created_at: number
+    preview?: string
   }[]
 }
 
@@ -3088,6 +3091,7 @@ export interface ChatReadOutput {
     unread: number
     last_message_at: number
     created_at: number
+    preview?: string
   }
   /** 由舊到新 */
   messages: {

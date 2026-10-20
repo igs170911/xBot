@@ -414,3 +414,37 @@ func TestMarkReadClearsUnread(t *testing.T) {
 		t.Fatalf("未讀 %d", th.Unread)
 	}
 }
+
+// 側欄、對話清單每一列顯示最後一句話（2026-10-20 側欄改版）：要 preview 才附，拿掉 Markdown 記號，你說的加「你：」。
+func TestListThreadsPreview(t *testing.T) {
+	e := setup(t)
+	raw, err := e.call(owner, "xbot.chat.send", map[string]any{"bot_id": e.bot.ID, "text": "hi"})
+	sent := must[SendOut](t, raw, err)
+	e.waitFor(t, owner, sent.TaskID)
+	raw, err = e.call(owner, "xbot.chat.list_threads", map[string]any{"bot_id": e.bot.ID})
+	if out := must[ListThreadsOut](t, raw, err); out.Threads[0].Preview != "" {
+		t.Fatalf("沒要求就不附：%+v", out.Threads[0])
+	}
+	if _, err := e.db.AddMessage(bg, store.Message{Scope: store.ScopeThread, ScopeID: sent.ThreadID, Sender: "bot:" + e.bot.ID, Kind: "text", Content: "## 結果\n**A 店**最便宜，見 `比價.xlsx`"}); err != nil {
+		t.Fatal(err)
+	}
+	raw, err = e.call(owner, "xbot.chat.list_threads", map[string]any{"bot_id": e.bot.ID, "preview": true})
+	if got := must[ListThreadsOut](t, raw, err).Threads[0].Preview; got != "結果 A 店最便宜，見 比價.xlsx" {
+		t.Fatalf("預覽：%q", got)
+	}
+	if _, err := e.db.AddMessage(bg, store.Message{Scope: store.ScopeThread, ScopeID: sent.ThreadID, Sender: "owner", Kind: "text", Content: "好，照 A 店調"}); err != nil {
+		t.Fatal(err)
+	}
+	raw, err = e.call(owner, "xbot.chat.list_threads", map[string]any{"bot_id": e.bot.ID, "preview": true})
+	if got := must[ListThreadsOut](t, raw, err).Threads[0].Preview; got != "你：好，照 A 店調" {
+		t.Fatalf("預覽：%q", got)
+	}
+	// 隊友往來裡的 [silent]（畫面上不顯示）不當預覽
+	if _, err := e.db.AddMessage(bg, store.Message{Scope: store.ScopeThread, ScopeID: sent.ThreadID, Sender: "bot:" + e.bot.ID, Kind: "text", Content: "[silent]"}); err != nil {
+		t.Fatal(err)
+	}
+	raw, err = e.call(owner, "xbot.chat.list_threads", map[string]any{"bot_id": e.bot.ID, "preview": true})
+	if got := must[ListThreadsOut](t, raw, err).Threads[0].Preview; got != "你：好，照 A 店調" {
+		t.Fatalf("[silent] 不當預覽：%q", got)
+	}
+}

@@ -1,14 +1,15 @@
 import { useState, type ReactNode } from 'react'
 import {
+  Bot as BotIcon,
   CalendarClock,
   CalendarDays,
   ChevronDown,
-  Crown,
   Ellipsis,
   FolderOpen,
   Inbox,
   KeyRound,
   LayoutGrid,
+  MessagesSquare,
   Monitor,
   Network,
   OctagonPause,
@@ -16,69 +17,40 @@ import {
   PanelLeftOpen,
   Plus,
   Puzzle,
+  Search,
   Settings,
   UsersRound,
   X,
 } from 'lucide-react'
-import { Avatar, Mascot } from '../ui/Avatar'
+import { Avatar } from '../ui/Avatar'
 import { Button, IconButton } from '../ui/Button'
 import { CountBadge } from '../ui/Pill'
 import { Icon } from '../ui/Icon'
 import { MenuButton } from '../ui/Menu'
 import { cx } from '../ui/cx'
 import { linkClick, navigate } from '../router'
-import { botsStore, type Bot, look } from '../data/bots'
+import { botsStore, look } from '../data/bots'
+import { useLastThreads } from '../data/lastThreads'
 import { inboxStore } from '../data/inbox'
 import { openNewRoom, roomsStore, type Room } from '../data/rooms'
 import { useStore } from '../data/store'
 import { openNewTeam, sectionsOf, teamsStore } from '../data/teams'
 import { openNewBot, setRail } from '../data/ui'
+import { BotListRow, ChiefCard, RoomListRow } from './BotList'
 import { useRowMenu, type MenuBind } from './useRowMenu'
 import { usePauseAll } from './PauseBanner'
 
 type NavProps = { path: string; onNavigate?: () => void }
 
-// 不常用的頁面收在「更多」裡。
+// 不常用的頁面收在「設定與更多」裡（連接應用程式在旁邊有自己的按鈕）。
 const MORE = [
   { to: '/calendar', label: '定時任務', icon: CalendarDays },
   { to: '/agenda', label: '提案與討論', icon: CalendarClock },
   { to: '/files', label: '全部檔案', icon: FolderOpen },
   { to: '/apps/logins', label: '分享登入', icon: KeyRound },
-  { to: '/apps', label: '連接應用程式', icon: Puzzle },
   { to: '/teams', label: '團隊地圖', icon: LayoutGrid },
   { to: '/org', label: '組織架構', icon: Network },
 ]
-
-function NavRow({
-  to,
-  path,
-  icon,
-  children,
-  aside,
-  onNavigate,
-  tour,
-}: NavProps & {
-  to: string
-  icon: typeof Inbox
-  children: ReactNode
-  aside?: ReactNode
-  tour?: string
-}) {
-  const active = path === to
-  return (
-    <a
-      href={to}
-      data-tour={tour}
-      onClick={linkClick(to, onNavigate)}
-      aria-current={active ? 'page' : undefined}
-      className={cx('flex min-h-9 items-center gap-3 rounded-menu px-3 text-ui text-ink max-sm:min-h-11', active ? 'bg-control' : 'hover:bg-control/60')}
-    >
-      <Icon icon={icon} size={18} />
-      <span className="flex-1 truncate">{children}</span>
-      {aside}
-    </a>
-  )
-}
 
 function botStatus(state?: string): {
   text: string
@@ -93,48 +65,6 @@ function botStatus(state?: string): {
     waiting,
     working,
   }
-}
-
-// 一行一個 Bot：頭像＋名字，有事的時候才在右邊標「工作中」「等你」。
-function BotRow({ bot, path, onNavigate, chief, menu }: NavProps & { bot: Bot; chief?: boolean; menu?: MenuBind }) {
-  const to = `/bots/${bot.id}`
-  const active = path === to || path.startsWith(to + '/')
-  const st = botStatus(useStore(botsStore).activity[bot.id]?.state)
-  return (
-    <a
-      href={to}
-      onClick={linkClick(to, onNavigate)}
-      aria-current={active ? 'page' : undefined}
-      title={bot.title || undefined}
-      {...menu}
-      className={cx('flex min-h-10 items-center gap-2.5 rounded-menu px-2.5 text-ink select-none [-webkit-touch-callout:none] max-sm:min-h-11', active ? 'bg-control' : 'hover:bg-control/60')}
-    >
-      <Avatar {...look(bot)} state={st.waiting ? 'notifying' : st.working ? 'working' : 'idle'} dot={st.waiting ? 'waiting' : 'none'} ring={active ? '#2F2F2F' : '#111111'} size={26} />
-      <span className="min-w-0 flex-1 truncate text-ui">{bot.name}</span>
-      {chief && <Icon icon={Crown} size={13} strokeWidth={2} label="主管" className="text-ink-3" />}
-      {st.text && <span className={cx('flex-none text-meta', st.waiting ? 'text-warning-ink' : 'text-accent-ink')}>{st.text}</span>}
-    </a>
-  )
-}
-
-function RoomRow({ room, path, onNavigate, menu }: NavProps & { room: Room; menu?: MenuBind }) {
-  const to = `/rooms/${room.id}`
-  const active = path === to
-  const working = room.members.some((m) => m.seat === 'working' || m.seat === 'queued')
-  const waiting = room.members.some((m) => m.seat === 'waiting')
-  return (
-    <a
-      href={to}
-      onClick={linkClick(to, onNavigate)}
-      aria-current={active ? 'page' : undefined}
-      {...menu}
-      className={cx('flex min-h-10 items-center gap-2.5 rounded-menu px-2.5 text-ink select-none [-webkit-touch-callout:none] max-sm:min-h-11', active ? 'bg-control' : 'hover:bg-control/60')}
-    >
-      <RoomFace room={room} active={active} />
-      <span className="min-w-0 flex-1 truncate text-ui">{room.name}</span>
-      {(working || waiting) && <span className={cx('flex-none text-meta', waiting ? 'text-warning-ink' : 'text-accent-ink')}>{waiting ? '等你' : '回覆中'}</span>}
-    </a>
-  )
 }
 
 function RoomFace({ room, active }: { room: Room; active: boolean }) {
@@ -152,6 +82,7 @@ function RoomFace({ room, active }: { room: Room; active: boolean }) {
 
 function Section({ title, children, action, team, menu }: { title: string; children: ReactNode; action?: ReactNode; team?: string; menu?: MenuBind }) {
   const [open, setOpen] = useState(true)
+  if (!title) return <div className="flex flex-col gap-px">{children}</div>
   return (
     <div className="flex flex-col gap-px" role="group" aria-label={title} data-team={team}>
       <div className="flex items-center justify-between pr-1">
@@ -161,7 +92,7 @@ function Section({ title, children, action, team, menu }: { title: string; child
           data-section-toggle="1"
           {...menu}
           onClick={() => setOpen((o) => !o)}
-          className="relative flex min-h-7 items-center gap-1.5 self-start rounded-seg bg-transparent pb-0 pl-3 pr-2 pt-1 text-[13px] text-ink-3 touch-target hover:text-ink-2"
+          className="relative flex min-h-7 items-center gap-1 self-start rounded-seg bg-transparent pb-0 pl-2 pr-2 pt-2 text-[12px] text-ink-3 touch-target hover:text-ink-2"
         >
           {title}
           <span className={cx('transition-transform', !open && '-rotate-90')}>
@@ -182,9 +113,28 @@ export type SidebarProps = NavProps & {
   rail?: boolean
 }
 
-// 側欄：品牌列、新增 Bot、待我處理／辦公室、Bot 與群組；最下面是設定，旁邊的「⋯」收其他頁面。桌面可以縮成只有圖示。
+// 側欄（2026-10-20 改版，design 稿 A「總管置頂」）：最上面搜尋、新增；大總管（主要 Bot）的大卡片，下面是「待我處理」「辦公室」；
+// 其他 Bot 照團隊分區，一列一個（頭像、名字、職稱、最後一句話）；群組在最後。不常用的頁面收進左下角「設定與更多」。桌面可以縮成只有圖示。
 export function Sidebar(props: SidebarProps) {
   return props.rail ? <Rail {...props} /> : <Full {...props} />
+}
+
+/** 小膠囊連結（待我處理、辦公室）。 */
+function Chip({ to, path, icon, children, aside, onNavigate, tour }: NavProps & { to: string; icon: typeof Inbox; children: ReactNode; aside?: ReactNode; tour?: string }) {
+  const active = path === to
+  return (
+    <a
+      href={to}
+      data-tour={tour}
+      onClick={linkClick(to, onNavigate)}
+      aria-current={active ? 'page' : undefined}
+      className={cx('flex h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] max-sm:h-11', active ? 'border-accent/60 bg-control text-ink' : 'border-line bg-card/60 text-ink-2 hover:text-ink')}
+    >
+      <Icon icon={icon} size={15} />
+      {children}
+      {aside}
+    </a>
+  )
 }
 
 function Full({ path, onNavigate, onClose }: SidebarProps) {
@@ -193,123 +143,130 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
   const inbox = useStore(inboxStore).items
   const rooms = useStore(roomsStore).rooms
   const teams = useStore(teamsStore).teams
-  const sections = bots ? sectionsOf(bots, teams) : []
+  const last = useLastThreads(bots)
+  const [q, setQ] = useState<string | null>(null)
+  const query = (q ?? '').trim().toLowerCase()
+  const match = (name: string) => !query || name.toLowerCase().includes(query)
+  const live = (bots ?? []).filter((b) => !b.archived)
+  const chief = live.find((b) => b.primary)
+  const sections = bots ? sectionsOf(live.filter((b) => b !== chief), teams) : []
   const count = inbox?.length ?? 0
-  const newBot = () => {
+  const go = (fn: () => void) => () => {
     onNavigate?.()
-    openNewBot()
+    fn()
   }
+  const newBot = go(openNewBot)
   const rowMenu = useRowMenu(onNavigate)
+  const shownRooms = (rooms ?? []).filter((r) => match(r.name))
   return (
     <nav aria-label="側欄" className="flex h-full flex-col gap-2 overflow-hidden bg-panel px-2.5 pb-2.5 pt-3.5 text-ui-sm leading-[1.45] text-ink">
-      <div className="flex min-h-9 items-center gap-1 pl-1.5 pr-0.5">
-        <Mascot size={24} />
-        <span className="flex-1 pl-1.5 text-title">XBot</span>
+      <div className="flex min-h-9 items-center gap-1 pl-0.5">
         {onClose ? <IconButton icon={X} label="關閉側欄" onClick={onClose} data-autofocus /> : <IconButton icon={PanelLeftClose} label="縮小側欄" onClick={() => setRail(true)} />}
-      </div>
-
-      <div className="flex flex-col gap-0.5">
-        <button
-          type="button"
-          onClick={newBot}
-          className="flex min-h-9 items-center gap-3 rounded-menu bg-transparent px-3 text-left text-ui text-ink hover:bg-control/60 max-sm:min-h-11"
-          aria-label="新增 Bot"
-        >
-          <Icon icon={Plus} size={18} />
-          <span className="flex-1">新增 Bot</span>
-        </button>
-        <NavRow to="/" path={path} icon={Inbox} onNavigate={onNavigate} tour="inbox" aside={count > 0 ? <CountBadge count={count} label={`${count} 件等你`} /> : undefined}>
-          待我處理
-        </NavRow>
-        <NavRow to="/office" path={path} icon={Monitor} onNavigate={onNavigate}>
-          辦公室
-        </NavRow>
-      </div>
-
-      <div className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto overscroll-y-contain pt-1">
-        {!bots && error && <p className="m-0 px-3 py-2 text-sub text-danger">讀不到 Bot 清單：{error}</p>}
-        {sections.map((sec, i) => (
-          <Section
-            key={sec.key}
-            title={sec.title}
-            team={sec.team?.id}
-            menu={sec.team ? rowMenu.team(sec.team) : undefined}
-            action={
-              i === 0 ? (
-                <IconButton
-                  icon={UsersRound}
-                  label="建立團隊"
-                  className="size-[30px] max-sm:size-11"
-                  onClick={() => {
-                    onNavigate?.()
-                    openNewTeam()
-                  }}
-                />
-              ) : undefined
-            }
-          >
-            {sec.bots.map((b) => (
-              <BotRow key={b.id} bot={b} chief={!!sec.team && sec.team.chief_id === b.id} path={path} onNavigate={onNavigate} menu={rowMenu.bot(b)} />
-            ))}
-            {sec.team && sec.bots.length === 0 && <p className="m-0 px-3 py-1 text-sub text-ink-3">還沒有成員。</p>}
-            {!sec.team && bots && bots.length === 0 && (
-              <div className="flex flex-col items-start gap-2 px-3 py-2">
-                <span className="text-meta text-ink-3">還沒有 Bot</span>
-                <Button icon={Plus} variant="outline" onClick={newBot}>
-                  建立 Bot
-                </Button>
-              </div>
-            )}
-          </Section>
-        ))}
-        <Section
-          title="群組對話"
-          action={
-            <IconButton
-              icon={Plus}
-              label="新增群組"
-              className="size-[30px] max-sm:size-11"
-              onClick={() => {
-                onNavigate?.()
-                openNewRoom()
-              }}
-            />
-          }
-        >
-          {rooms?.map((r) => (
-            <RoomRow key={r.id} room={r} path={path} onNavigate={onNavigate} menu={rowMenu.room(r)} />
-          ))}
-          {rooms && rooms.length === 0 && <p className="m-0 px-3 py-1 text-sub text-ink-3">還沒有群組。</p>}
-        </Section>
-      </div>
-
-      <div className="flex items-center gap-1">
-        <a
-          href="/settings"
-          onClick={linkClick('/settings', onNavigate)}
-          aria-label="設定"
-          aria-current={path.startsWith('/settings') ? 'page' : undefined}
-          className={cx('flex min-h-10 flex-1 items-center gap-3 rounded-menu px-3 text-ui text-ink max-sm:min-h-11', path.startsWith('/settings') ? 'bg-control' : 'hover:bg-control/60')}
-        >
-          <Icon icon={Settings} size={18} />
-          <span className="flex-1">設定</span>
-        </a>
+        <span className="flex-1" />
+        <IconButton icon={Search} label="搜尋 Bot 和群組" pressed={q !== null} onClick={() => setQ((v) => (v === null ? '' : null))} />
         <MenuButton
-          label="更多"
+          label="新增"
           align="end"
           items={[
-            ...MORE.map((m) => ({
-              label: m.label,
-              icon: m.icon,
-              onSelect: () => {
-                onNavigate?.()
-                navigate(m.to)
-              },
-            })),
+            { label: '新增 Bot', icon: BotIcon, onSelect: newBot },
+            { label: '新增群組', icon: MessagesSquare, onSelect: go(openNewRoom) },
+            { label: '建立團隊', icon: UsersRound, onSelect: go(openNewTeam) },
+          ]}
+          trigger={(t) => <IconButton {...t} icon={Plus} label="新增" />}
+        />
+      </div>
+      {q !== null && (
+        <label className="relative flex items-center">
+          <span className="sr-only-text">搜尋 Bot 和群組</span>
+          <span className="pointer-events-none absolute left-2.5 text-ink-3">
+            <Icon icon={Search} size={16} />
+          </span>
+          <input
+            autoFocus
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === 'Escape' && setQ(null)}
+            placeholder="搜尋 Bot 和群組"
+            className="h-9 w-full rounded-field bg-control pl-8 pr-3 text-ui text-ink outline-none focus-visible:outline-2 focus-visible:outline-focus max-sm:h-11"
+          />
+        </label>
+      )}
+
+      <div className="flex flex-col items-center gap-2.5 pb-1">
+        {chief && <ChiefCard bot={chief} last={last[chief.id]} active={path === `/bots/${chief.id}` || path.startsWith(`/bots/${chief.id}/`)} onNavigate={onNavigate} menu={rowMenu.bot(chief)} ring="#262626" />}
+        <div className="flex flex-wrap justify-center gap-1.5">
+          <Chip to="/" path={path} icon={Inbox} onNavigate={onNavigate} tour="inbox" aside={count > 0 ? <CountBadge count={count} label={`${count} 件等你`} /> : undefined}>
+            待我處理
+          </Chip>
+          <Chip to="/office" path={path} icon={Monitor} onNavigate={onNavigate}>
+            辦公室
+          </Chip>
+        </div>
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-y-contain">
+        {!bots && error && <p className="m-0 px-3 py-2 text-sub text-danger">讀不到 Bot 清單：{error}</p>}
+        {bots && live.length === 0 && (
+          <div className="flex flex-col items-start gap-2 px-3 py-2">
+            <span className="text-meta text-ink-3">還沒有 Bot</span>
+            <Button icon={Plus} variant="outline" onClick={newBot}>
+              建立 Bot
+            </Button>
+          </div>
+        )}
+        {sections.map((sec) => {
+          const list = sec.bots.filter((b) => match(b.name))
+          if (query && !list.length) return null
+          // 只有一個分區（沒有團隊）時不用標題
+          const title = sections.length === 1 && !sec.team ? '' : sec.title
+          return (
+            <Section key={sec.key} title={title} team={sec.team?.id} menu={sec.team ? rowMenu.team(sec.team) : undefined}>
+              {list.map((b) => (
+                <BotListRow key={b.id} bot={b} last={last[b.id]} crown={!!sec.team && sec.team.chief_id === b.id} path={path} onNavigate={onNavigate} menu={rowMenu.bot(b)} look="side" ring="#111111" />
+              ))}
+              {sec.team && sec.bots.length === 0 && <p className="m-0 px-3 py-1 text-sub text-ink-3">還沒有成員。</p>}
+            </Section>
+          )
+        })}
+        {shownRooms.length > 0 && (
+          <Section title="群組">
+            {shownRooms.map((r) => (
+              <RoomListRow key={r.id} room={r} path={path} onNavigate={onNavigate} menu={rowMenu.room(r)} look="side" ring="#111111" />
+            ))}
+          </Section>
+        )}
+        {query && bots && !live.some((b) => match(b.name)) && !shownRooms.length && <p className="m-0 px-3 py-4 text-center text-sub text-ink-2">找不到「{q?.trim()}」</p>}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <MenuButton
+          label="設定與更多"
+          items={[
+            { label: '設定', icon: Settings, onSelect: go(() => navigate('/settings')) },
+            ...MORE.map((m, i) => ({ label: m.label, icon: m.icon, separator: i === 0, onSelect: go(() => navigate(m.to)) })),
             { label: '全部停下（所有 Bot）', icon: OctagonPause, separator: true, onSelect: () => void pauseAll() },
           ]}
-          trigger={(t) => <IconButton {...t} icon={Ellipsis} label="更多" />}
+          trigger={(t) => (
+            <button
+              {...t}
+              type="button"
+              aria-label="設定與更多"
+              className={cx('relative flex size-10 flex-none items-center justify-center rounded-full border border-line bg-card/60 text-ink-2 touch-target hover:text-ink aria-expanded:bg-control max-sm:size-11', path.startsWith('/settings') && 'border-accent/60 text-ink')}
+            >
+              <Icon icon={Settings} size={18} />
+            </button>
+          )}
         />
+        <a
+          href="/apps"
+          onClick={linkClick('/apps', onNavigate)}
+          aria-current={path === '/apps' ? 'page' : undefined}
+          className={cx('flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-full border border-line px-3 text-[13px] text-ink-2 hover:text-ink max-sm:h-11', path === '/apps' ? 'bg-control text-ink' : 'bg-card/60')}
+        >
+          <Icon icon={Puzzle} size={16} />
+          連接應用程式
+        </a>
       </div>
       {rowMenu.ui}
     </nav>

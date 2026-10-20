@@ -110,7 +110,14 @@ export class MockServer {
       this.modelsReady = true
       return { provider: { id: i.id, base_url: i.base_url, api_key_set: true }, default: { provider: i.id, model: i.default_model } }
     },
-    'chat.list_threads': (i) => ({ threads: this.threads.filter((t) => t.bot_id === i.bot_id) }),
+    'chat.list_threads': (i) => ({
+      threads: this.threads
+        .filter((t) => t.bot_id === i.bot_id)
+        .map((t) => {
+          const last = [...(this.messages[t.id] ?? [])].reverse().find((m) => m.content && m.content.trim() !== '[silent]')
+          return i.preview && last ? { ...t, preview: (last.sender === 'owner' ? '你：' : '') + last.content.replace(/\*\*|`/g, '').replace(/\s+/g, ' ').slice(0, 60) } : t
+        }),
+    }),
     'chat.read': (i) => {
       const t = this.threads.find((x) => x.id === i.thread_id)
       const all = (this.messages[i.thread_id as string] ?? []).filter((m) => i.before === undefined || m.seq < (i.before as number))

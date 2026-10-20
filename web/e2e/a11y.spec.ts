@@ -1,4 +1,5 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
+import { sidebarAdd } from './fixtures'
 import { scanA11y } from './axe'
 import { MockServer } from './mock'
 import { ensureBot, pastOnboarding } from './real-helpers'
@@ -68,12 +69,12 @@ for (const theme of ['dark', 'light'] as const) {
       await pastOnboarding(request)
       await ensureBot(request)
       await page.goto('/')
-      await page.getByRole('button', { name: /新增 Bot|新 Bot/ }).first().click()
+      await sidebarAdd(page, '新增 Bot')
       await expect(page.getByRole('dialog')).toBeVisible()
       await scan(page, info, `${theme}-dialog-new-bot`)
       await page.keyboard.press('Escape')
       await page.goto('/calendar/routines')
-      await page.getByRole('button', { name: /新增定時任務|新增/ }).first().click()
+      await page.getByRole('main').getByRole('button', { name: /新增定時任務|新增/ }).first().click()
       await expect(page.getByRole('dialog')).toBeVisible()
       await scan(page, info, `${theme}-dialog-new-routine`)
     })

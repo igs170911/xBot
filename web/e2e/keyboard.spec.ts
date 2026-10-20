@@ -74,16 +74,18 @@ test('跳到主要內容：第一個 Tab 就是它，按下焦點進到頁面內
   expect(await page.evaluate(() => !!document.activeElement?.closest('main'))).toBe(true)
 })
 
-test('建 Bot：Tab 到「新增 Bot」→ Enter → 打名字 → Enter 建立；Esc 關掉對話框時焦點回到按鈕', async ({ page }) => {
+test('建 Bot：Tab 到側欄的＋ → Enter 打開選單 → Enter 選「新增 Bot」→ 打名字 → Enter 建立；Esc 關掉對話框時焦點回到＋', async ({ page }) => {
   const api = new MockServer(page)
   seed(api)
   await api.install()
   await page.goto('/')
   const nav = page.getByRole('navigation', { name: '側欄' })
-  const open = nav.getByRole('button', { name: '新增 Bot' }).first()
+  const open = nav.getByRole('button', { name: '新增', exact: true })
   await tabTo(page, open)
   await expectFocusRing(page)
   // 先試 Esc：對話框關掉，焦點回到原本的按鈕
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('menuitem', { name: '新增 Bot' })).toBeFocused()
   await page.keyboard.press('Enter')
   const dlg = page.getByRole('dialog', { name: '新增 Bot' })
   await expect(dlg).toBeVisible()
@@ -91,6 +93,7 @@ test('建 Bot：Tab 到「新增 Bot」→ Enter → 打名字 → Enter 建立�
   await expect(dlg).toBeHidden()
   await expect(open).toBeFocused()
   // 再開一次，真的建
+  await page.keyboard.press('Enter')
   await page.keyboard.press('Enter')
   await expect(dlg).toBeVisible()
   const name = dlg.getByLabel('名字')
@@ -163,14 +166,16 @@ test('接手：對話頁打開電腦面板、Tab 到「接手操作」，Enter �
   await expect(panel.getByRole('button', { name: '完成，交還給小秘' })).toBeVisible()
 })
 
-test('設定：Tab 到「設定」→ Enter；分類用 Tab 走、主題用方向鍵換成淺色', async ({ page }) => {
+test('設定：Tab 到左下角「設定與更多」→ Enter → Enter 選「設定」；分類用 Tab 走、主題用方向鍵換成淺色', async ({ page }) => {
   const api = new MockServer(page)
   seed(api)
   api.override['settings.get'] = () => ({ name: '', value: null })
   await api.install()
   await page.goto('/')
-  const settings = page.getByRole('navigation', { name: '側欄' }).getByRole('link', { name: '設定' })
+  const settings = page.getByRole('navigation', { name: '側欄' }).getByRole('button', { name: '設定與更多' })
   await tabTo(page, settings)
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('menuitem', { name: '設定' })).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(page).toHaveURL(/\/settings/)
   const general = page.getByRole('navigation', { name: '設定分類' }).getByRole('link', { name: '一般' })

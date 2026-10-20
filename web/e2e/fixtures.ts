@@ -22,3 +22,9 @@ export const test = base.extend({
     await run(page)
   },
 })
+
+/** 側欄的「＋」選單（2026-10-20 改版：新增 Bot／新增群組／建立團隊收在同一顆＋）。 */
+export async function sidebarAdd(page: import('@playwright/test').Page, item: '新增 Bot' | '新增群組' | '建立團隊') {
+  await page.getByRole('navigation', { name: '側欄' }).getByRole('button', { name: '新增', exact: true }).first().click()
+  await page.getByRole('menuitem', { name: item }).click()
+}

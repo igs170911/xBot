@@ -1,4 +1,4 @@
-import { expect, test, type Page } from './fixtures'
+import { expect, test, type Page, sidebarAdd } from './fixtures'
 import { MockServer, opError, settle } from './mock'
 
 // W02 對話畫面：用瀏覽器層的假服務（mock.ts）確定地測流程，並截圖和 C01／C02／C03 畫板並排比對。
@@ -25,7 +25,7 @@ test('建 Bot → 送訊息 → 看到串流回覆與工作步驟', async ({ pag
   await page.goto('/')
   await openSidebarIfMobile(page, mobile)
   const nav = page.getByRole('navigation', { name: '側欄' })
-  await nav.getByRole('button', { name: '新增 Bot' }).first().click()
+  await sidebarAdd(page, '新增 Bot')
 
   const dlg = page.getByRole('dialog', { name: '新增 Bot' })
   await dlg.getByLabel('名字').fill('抓蟲')

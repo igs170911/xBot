@@ -1,4 +1,4 @@
-import { expect, test, type Page } from './fixtures'
+import { expect, test, type Page, sidebarAdd } from './fixtures'
 import { MockServer, settle } from './mock'
 
 // W32：首次設定（A03～A06、A09、A10）與 Bot 設定（G02～G14）用假服務跑，截圖和 A、G 畫板並排比對。
@@ -306,7 +306,7 @@ test('分享 Bot（G13）與匯入 Bot（G14）', async ({ page }, info) => {
   if (info.project.name === 'mobile') return
   // 桌面的設定是跳出來的視窗：先關掉再按側欄
   await page.getByRole('button', { name: '關閉設定' }).click()
-  await page.getByRole('button', { name: '新增 Bot' }).first().click()
+  await sidebarAdd(page, '新增 Bot')
   await page.getByRole('dialog', { name: '新增 Bot' }).getByRole('button', { name: '匯入 Bot' }).click()
   const imp = page.getByRole('dialog', { name: '匯入 Bot' })
   await expect(imp.getByRole('button', { name: '下一步' })).toBeDisabled()
