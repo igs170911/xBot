@@ -129,3 +129,18 @@ describe('Markdown', () => {
     expect(plainText(p.tokens)).toBe('粗 碼 & 連')
   })
 })
+
+describe('檔案連結', () => {
+  it('Bot 寫的三種檔案連結都在旁邊打開那個檔案；其他不明網址還是不能點', async () => {
+    const { FileLinkContext, botFileLinker } = await import('./fileLink')
+    render(
+      <FileLinkContext.Provider value={botFileLinker('b1')}>
+        <Markdown text={'[報告](file:///workspace/reports/a.md)、[研究](sandbox:/workspace/reports/%E8%B2%93.md)、[表格](/workspace/bench/t.md)、[壞的](javascript:alert(1))'} />
+      </FileLinkContext.Provider>,
+    )
+    expect(screen.getByRole('link', { name: '報告' })).toHaveAttribute('href', '/bots/b1/files?path=%2Fworkspace%2Freports%2Fa.md')
+    expect(screen.getByRole('link', { name: '研究' })).toHaveAttribute('href', '/bots/b1/files?path=%2Fworkspace%2Freports%2F%E8%B2%93.md')
+    expect(screen.getByRole('link', { name: '表格' })).not.toHaveAttribute('target')
+    expect(screen.queryByRole('link', { name: '壞的' })).toBeNull()
+  })
+})

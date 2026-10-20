@@ -1,5 +1,5 @@
 import { memo, useContext, useMemo, type ReactNode } from 'react'
-import { fileClick, FileLinkContext } from './fileLink'
+import { boxPath, fileClick, FileLinkContext } from './fileLink'
 import type { Token, Tokens } from 'marked'
 import { CircleAlert, Info, Lightbulb, MessageSquareWarning, Square, SquareCheck, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { Icon } from '../../ui/Icon'
@@ -25,6 +25,28 @@ function Codespan({ text }: { text: string }) {
   return (
     <a href={href} onClick={fileClick(href)} title="打開這個檔案" className="text-accent-ink underline decoration-accent-ink/40 underline-offset-2">
       <code className={cls}>{text}</code>
+    </a>
+  )
+}
+
+/** 連結；指到 Bot 電腦裡的檔案時（`[報告](file:///workspace/…)` 等）在旁邊打開那個檔案，不另開分頁。 */
+function MdLink({ l, children }: { l: Tokens.Link; children: ReactNode }) {
+  const link = useContext(FileLinkContext)
+  const p = boxPath(l.href)
+  const file = p ? link?.(p) : undefined
+  if (file) {
+    return (
+      <a href={file} onClick={fileClick(file)} title="打開這個檔案" className="text-accent-ink underline decoration-accent-ink/50 underline-offset-2 hover:decoration-accent-ink">
+        {children}
+      </a>
+    )
+  }
+  const href = safeHref(l.href)
+  if (!href) return <span>{children}</span>
+  const external = !href.startsWith('#')
+  return (
+    <a href={href} title={l.title ?? undefined} {...(external ? { target: '_blank', rel: 'noopener noreferrer nofollow' } : {})} className="text-accent-ink underline decoration-accent-ink/50 underline-offset-2 hover:decoration-accent-ink">
+      {children}
     </a>
   )
 }
@@ -65,14 +87,10 @@ function inlineOne(t: Token, k: string): ReactNode {
       return <br key={k} />
     case 'link': {
       const l = t as Tokens.Link
-      const href = safeHref(l.href)
-      const children = inline(l.tokens, k)
-      if (!href) return <span key={k}>{children}</span>
-      const external = !href.startsWith('#')
       return (
-        <a key={k} href={href} title={l.title ?? undefined} {...(external ? { target: '_blank', rel: 'noopener noreferrer nofollow' } : {})} className="text-accent-ink underline decoration-accent-ink/50 underline-offset-2 hover:decoration-accent-ink">
-          {children}
-        </a>
+        <MdLink key={k} l={l}>
+          {inline(l.tokens, k)}
+        </MdLink>
       )
     }
     case 'image':

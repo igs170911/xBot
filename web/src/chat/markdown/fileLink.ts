@@ -15,6 +15,20 @@ export function isBoxFile(text: string): boolean {
   return /^\/workspace\/\S*[^/\s]$/.test(text.trim())
 }
 
+/**
+ * 連結網址指到 Bot 電腦裡的檔案時回傳那個路徑：Bot 寫的連結有 `/workspace/…`、`file:///workspace/…`、
+ * `sandbox:/workspace/…` 幾種（2026-10-20 基準測試看到三種都有）；不是的話回 undefined。
+ */
+export function boxPath(href: string): string | undefined {
+  let p = href.trim().replace(/^sandbox:/i, '').replace(/^file:\/\//i, '')
+  try {
+    p = decodeURI(p)
+  } catch {
+    return undefined
+  }
+  return isBoxFile(p) ? p : undefined
+}
+
 export function botFileLinker(botId: string): FileLinker {
   return (path) => (isBoxFile(path) ? `/bots/${encodeURIComponent(botId)}/files?path=${encodeURIComponent(path.trim())}` : undefined)
 }
