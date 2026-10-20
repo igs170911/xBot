@@ -1,10 +1,15 @@
 package runtime
 
 import (
+	"context"
 	"encoding/json"
+	"strings"
 	"testing"
+	"time"
 
 	"xbot/internal/engine"
+	"xbot/internal/engine/hermes/hermestest"
+	"xbot/internal/store"
 )
 
 func TestReadOnlyScript(t *testing.T) {
@@ -64,5 +69,45 @@ func TestReadOnlyExecuteCodeRequest(t *testing.T) {
 	}
 	if readOnlyExecuteCode(&engine.Request{ID: "r2", Kind: "clarify"}) {
 		t.Fatal("提問不是核准")
+	}
+}
+
+// Hermes 要整段核准一段只讀的 execute_code：XBot 自己允許這一次，不開卡；會寫檔的照舊開卡等你。
+func TestReadOnlyScriptAutoAllowed(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t)
+	var answer json.RawMessage
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Event("message.start", nil)
+		code := "import csv\nprint(sum(1 for _ in csv.reader(open('/workspace/a.csv'))))"
+		answer = tr.Request("approval", map[string]any{"command": "execute_code <<'PY'\n" + code + "\nPY", "pattern_key": "execute_code",
+			"pattern_keys": []string{"execute_code"}, "choices": []string{"once", "session", "always", "deny"}})
+		tr.Complete("一共 12 行", "complete", nil)
+	}
+	res, err := f.rt.Chat(ctx, f.bot.ID, "", "a.csv 有幾行？")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.wait(t, res.TaskID)
+	if !strings.Contains(string(answer), "once") {
+		t.Fatalf("只讀的程式要自動允許這一次：%s", answer)
+	}
+	if items, _ := f.db.ListInboxFiltered(ctx, store.InboxFilter{TaskID: res.TaskID, Kinds: []string{"approval"}}); len(items) != 0 {
+		t.Fatalf("不該開核准卡：%+v", items)
+	}
+
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Event("message.start", nil)
+		go tr.Request("approval", map[string]any{"command": "execute_code <<'PY'\nopen('/workspace/a.csv','w').write('')\nPY", "pattern_key": "execute_code",
+			"pattern_keys": []string{"execute_code"}, "choices": []string{"once", "deny"}})
+		time.Sleep(300 * time.Millisecond)
+		tr.Complete("好", "complete", nil)
+	}
+	res, err = f.rt.Chat(ctx, f.bot.ID, res.ThreadID, "把 a.csv 清空")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if card := f.waitCard(t, res.TaskID); card.Kind != "approval" {
+		t.Fatalf("會寫檔的要開核准卡：%+v", card)
 	}
 }
