@@ -37,7 +37,7 @@ func TestSoulTellsHowToChangeAGroup(t *testing.T) {
 func TestSoulAsksForChatStyleReplies(t *testing.T) {
 	soul := Soul(Profile{Name: "水哥哥"})
 	for _, want := range []string{"## 回話風格", "段落之間空一行", "一次最多 4 段", "第一段直接講結果", "一題自己一段", "其他專案",
-		"不要寫「無」", "工具之間也不要寫旁白", "** 粗體、1. 2. 編號", "要照 A 店調價嗎？\n\n", "存成 /workspace 裡的檔案", "```mermaid", "給隊友的訊息", "（回話提醒："} {
+		"不要寫「無」", "工具之間也不要寫旁白", "** 粗體、1. 2. 編號", "要照 A 店調價嗎？\n\n", "存成 /workspace 裡的檔案", "看使用者之後會不會再用", "/workspace/tmp/", "```mermaid", "給隊友的訊息", "（回話提醒："} {
 		if !strings.Contains(soul, want) {
 			t.Fatalf("少了 %q：%s", want, soul)
 		}
