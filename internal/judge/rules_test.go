@@ -315,6 +315,14 @@ func TestEndingWithNextStepIsNotDone(t *testing.T) {
 			t.Fatalf("提議不是只說要做：%q → %+v", text, r)
 		}
 	}
+	// 程式碼區塊、流程圖裡的字不算 Bot 在說話
+	diagram := "流程是這樣：\n\n```mermaid\nflowchart TD\n    F --> G{需要動手做嗎}\n    G -- 要 --> H[呼叫工具]\n```\n\n等核准時流程會停在 F 和 H 之間。"
+	if r, _ := (Rules{}).Judge(ctx, Input{Outcome: OutcomeAnswer, Text: diagram}); r.Verdict != Done {
+		t.Fatalf("流程圖：%+v", r)
+	}
+	if got := Prose("a\n```py\nprint('要開始嗎？')\n```\nb"); strings.Contains(got, "要開始嗎") || !strings.Contains(got, "a") || !strings.Contains(got, "b") {
+		t.Fatalf("Prose：%q", got)
+	}
 	// 做完了、在問真的要你決定的事、提到以後的事：不算
 	for _, text := range []string{
 		"報告整理好了，在 /workspace/reports/漲粉方案.md。",

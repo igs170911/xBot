@@ -283,6 +283,13 @@ func EndsWithPromise(text string) bool {
 	return false
 }
 
+// fenceRe 是 ``` 包起來的程式碼區塊（含 mermaid 流程圖）。
+var fenceRe = regexp.MustCompile("(?s)(^|\n)[ \t]*(```|~~~).*?(\n[ \t]*(```|~~~)[^\n]*|$)")
+
+// Prose 去掉回覆裡的程式碼區塊，只留下說給使用者聽的話：流程圖的方塊「{需要動手做嗎}」、程式裡的字串不是 Bot 在問你
+// （2026-10-20 基準測試：畫流程圖那題被當成交回、自動繼續）。
+func Prose(text string) string { return fenceRe.ReplaceAllString(text, "\n") }
+
 // clauseBefore 是最後一個子句前面、同一句裡的那一段（「直接講要做什麼，我就開始」取「直接講要做什麼」）；沒有時是空字串。
 func clauseBefore(text string) string {
 	t := strings.TrimRight(strings.TrimSpace(text), "。.！!…~～ ")
@@ -331,6 +338,7 @@ type Rules struct{}
 
 // Judge 實作 Judge。
 func (Rules) Judge(_ context.Context, in Input) (Result, error) {
+	in.Text = Prose(in.Text)
 	switch in.Outcome {
 	case OutcomeCancelled, OutcomeInterrupted:
 		return Result{}, ErrSkip
@@ -397,6 +405,7 @@ func Continues(in Input, r Result) bool {
 
 // NudgeFor 組出自動續做的提示，文字照 LazyBoy auto_continue。
 func NudgeFor(in Input) Nudge {
+	in.Text = Prose(in.Text)
 	promised := Promised(in)
 	_, handed := AskOf(in.Text)
 	var unfinished string
