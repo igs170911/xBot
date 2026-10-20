@@ -250,6 +250,29 @@ func TestBotCanOnlyUseItsProvider(t *testing.T) {
 	}
 }
 
+// visionBinder：主要模型的供應商是 other，看圖模型是 openai 的 gpt-vision。
+type visionBinder struct{ staticBinder }
+
+func (visionBinder) VisionRoute(context.Context, string) (*Route, error) {
+	return &Route{Provider: "openai", Model: "gpt-vision"}, nil
+}
+
+// 主要模型看不懂圖片時，只有 XBot 挑的那一個看圖模型可以用；同一個供應商的其他模型還是不行。
+func TestVisionRouteOnlyThatModel(t *testing.T) {
+	f := newFixture(t, jsonUpstream(200, `{}`), func(o *Options) { o.Bindings = visionBinder{staticBinder{Provider: "other"}} })
+	resp := f.do("POST", "/model/openai/v1/chat/completions", "Bearer "+f.botKey, `{"model":"gpt-vision","messages":[]}`)
+	if body := readAll(t, resp); resp.StatusCode != 200 {
+		t.Fatalf("看圖模型：%d %s", resp.StatusCode, body)
+	}
+	resp = f.do("POST", "/model/openai/v1/chat/completions", "Bearer "+f.botKey, `{"model":"gpt-big","messages":[]}`)
+	if body := readAll(t, resp); resp.StatusCode != 403 || !strings.Contains(body, "provider_not_allowed") {
+		t.Fatalf("同一個供應商的其他模型：%d %s", resp.StatusCode, body)
+	}
+	if len(f.upstreamCalls()) != 1 {
+		t.Fatalf("只能送出看圖那一次：%d", len(f.upstreamCalls()))
+	}
+}
+
 func TestFallbackBeforeStreamStarts(t *testing.T) {
 	var n atomic.Int32
 	f := newFixture(t, func(w http.ResponseWriter, r *http.Request) {

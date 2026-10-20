@@ -242,6 +242,10 @@ func (c *Computers) Prepare(ctx context.Context, h hosts.Host, botID, containerI
 		ProviderID: ref.Provider, Model: ref.Model, Transport: ref.Transport, Effort: b.Effort,
 		WorkerKey: string(key), UID: box.BotUID, GID: box.BotGID, ApprovalMode: b.ApprovalMode, MemoryOff: !b.MemoryEnabled,
 	}
+	// 看圖：主要模型看得懂就直接給它；看不懂就挑一個看得懂的模型先描述圖片。
+	if p.Vision = proxy.SeesImages(ref.Model); !p.Vision {
+		p.VisionAux = c.visionAux(ctx)
+	}
 	// 一律關掉 Hermes 的工具搜尋，XBot 的工具全部直接給模型看。開著時 MCP 工具都藏在 tool_search 後面，
 	// 較弱的模型（例：deepseek-v4-flash）找不到 xbot.teams.remove_team 就說「沒有這個工具」（使用者回報 2026-10-19）。
 	// ChatGPT 方案（oauth_codex）本來就要關（E13）。

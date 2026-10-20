@@ -107,6 +107,12 @@ type Binder interface {
 	Binding(ctx context.Context, botID string) (Binding, error)
 }
 
+// VisionBinder 由 Binder 選擇性實作：Bot 的主要模型看不懂圖片時，XBot 替它挑的看圖模型（Hermes 的 auxiliary.vision）。
+// 只有那一個供應商的那一個模型可以用，不是整個供應商都開放。runtime.Computers 實作。
+type VisionBinder interface {
+	VisionRoute(ctx context.Context, botID string) (*Route, error)
+}
+
 // BudgetGuard 檢查花費上限（*Budgets 實作）。
 type BudgetGuard interface {
 	Check(ctx context.Context, botID string) error // 超過時回 *BudgetError
@@ -194,8 +200,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 每個 Bot 只能用它設定的模型所屬的供應商（金鑰不能被別的 Bot 借用）。
+	// 每個 Bot 只能用它設定的模型所屬的供應商（金鑰不能被別的 Bot 借用）；
+	// 例外只有 XBot 替它挑的看圖模型（vision，同一個供應商、同一個模型）。
 	var binding Binding
+	var vision *Route
 	if h.o.Bindings != nil {
 		binding, err = h.o.Bindings.Binding(r.Context(), botID)
 		if err != nil {
@@ -204,8 +212,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if binding.Provider != providerID {
-			fail(w, http.StatusForbidden, "provider_not_allowed", "這個 Bot 只能用它設定的模型供應商（"+binding.Provider+"）")
-			return
+			if vb, ok := h.o.Bindings.(VisionBinder); ok {
+				if vision, err = vb.VisionRoute(r.Context(), botID); err != nil || vision == nil || vision.Provider != providerID {
+					vision = nil
+				}
+			}
+			if vision == nil {
+				fail(w, http.StatusForbidden, "provider_not_allowed", "這個 Bot 只能用它設定的模型供應商（"+binding.Provider+"）")
+				return
+			}
+			binding.Fallback = nil // 看圖的請求不改用主要模型的備援
 		}
 	}
 
@@ -266,6 +282,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	model, wantStream := requestInfo(body)
 	if model == "" && audioPaths[apiPath] {
 		model = formModel(r.Header.Get("Content-Type"), body)
+	}
+	if vision != nil && model != vision.Model {
+		fail(w, http.StatusForbidden, "provider_not_allowed", "這個 Bot 只能用它設定的模型供應商（"+binding.Provider+"）")
+		return
 	}
 	start := h.o.Now()
 	resp, cancel, err := h.forward(r, h.session(botID), provider, apiPath, body)

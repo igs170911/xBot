@@ -53,6 +53,17 @@ const (
 	ExtractBackend = "firecrawl"
 )
 
+// AuxModel 是 Hermes 輔助工作（例：看圖）用的另一個模型，經 Model Proxy 呼叫。
+type AuxModel struct {
+	ProviderID, Model string
+	// Transport：chat_completions（預設）、codex_responses、anthropic_messages。
+	Transport string
+}
+
+// blindHint 加在 webHint 後面：沒有看得懂圖片的模型時，照實說，不要猜。
+const blindHint = "你看不到圖片內容。使用者附了圖片時直接說你看不到，請他用文字描述，或到 Bot 設定換一個看得懂圖片的模型；" +
+	"不要去看自己的桌面或用工具猜圖片裡有什麼。"
+
 // webHint 取代 Hermes 對 cli 平台「終端機不顯示 Markdown」的提示（LazyBoy WEB_HINT）。
 const webHint = "你在 XBot 的網頁聊天介面裡回覆。Markdown 會正常顯示（粗體、清單、表格、連結），" +
 	"不要用 ═══、--- 之類的符號自己畫分隔線。檔案寫出 /workspace 底下的完整路徑，網頁會變成可以點開的檔案。"
@@ -74,6 +85,11 @@ type Profile struct {
 	// NoToolSearch 關掉 Hermes 的工具搜尋（tools.tool_search.enabled: off）。ChatGPT 方案（oauth_codex）的端點保留了
 	// tool_search 這個名稱，Hermes 經 Model Proxy 呼叫時不會改名，請求會被拒絕（E13，docs/spike-hermes-oauth.md）。
 	NoToolSearch bool
+	// Vision：主要模型看得懂圖片（proxy.SeesImages）：使用者附的圖片直接給它（image_input_mode native），也開 vision 工具。
+	Vision bool
+	// VisionAux 是主要模型看不懂圖片時，先描述圖片用的模型（auxiliary.vision，經 Model Proxy）；nil 表示沒有看得懂圖片的模型，
+	// Bot 會直接說看不到圖片（2026-10-20：原本一律當看不懂又沒有工具，Bot 收到截圖會去看自己的桌面、回答別的東西）。
+	VisionAux *AuxModel
 	// Effort 是 reasoning_effort，空白時 medium（LazyBoy config.reasoning）。
 	Effort string
 	// WorkerKey 是這個 Bot 的 worker-key（不是供應商金鑰）。
@@ -251,7 +267,7 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 		}
 	}
 	// context_length：Hermes 經 Model Proxy 量不到視窗，會用內建表猜（常猜成 1M），摘要就幾乎不會發生。
-	cfg["model"] = map[string]any{"default": p.Model, "provider": Provider, "base_url": base, "supports_vision": false,
+	cfg["model"] = map[string]any{"default": p.Model, "provider": Provider, "base_url": base, "supports_vision": p.Vision,
 		"context_length": limits.HermesContextLength}
 	cfg["providers"] = map[string]any{"product": map[string]any{
 		"api": base, "key_env": TokenEnv, "default_model": p.Model, "transport": transport,
@@ -260,14 +276,26 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 	cfg["browser"] = map[string]any{"backend": "browser-use", "cdp_url": "http://127.0.0.1:9222", "allow_private_urls": true}
 	// 不開 delegation（delegate_task）：Hermes 的子代理一律在背景跑，這一輪先結束，結果十分鐘後才當成新訊息回來；
 	// XBot 看不到、也停不了（2026-10-19：「為啥停止不了？背景做的事情有在做嗎」）。要分工用 XBot 的隊友交辦。
-	cfg["platform_toolsets"] = map[string]any{"cli": []any{"terminal", "file", "web", "browser", "skills", "memory", "todo",
-		"clarify", "mcp", "code_execution", "session_search"}}
-	cfg["agent"] = map[string]any{"max_iterations": limits.HermesMaxIterations, "reasoning_effort": effort, "image_input_mode": "text",
+	toolsets := []any{"terminal", "file", "web", "browser", "skills", "memory", "todo", "clarify", "mcp", "code_execution", "session_search"}
+	// 看圖（LazyBoy 一樣只在看得懂時開）：主要模型看得懂就直接給它圖片；看不懂但有別的模型看得懂，先請那個模型描述。
+	imageMode := "text"
+	if p.Vision || p.VisionAux != nil {
+		toolsets = append(toolsets, "vision")
+	}
+	if p.Vision {
+		imageMode = "native"
+	}
+	cfg["platform_toolsets"] = map[string]any{"cli": toolsets}
+	cfg["agent"] = map[string]any{"max_iterations": limits.HermesMaxIterations, "reasoning_effort": effort, "image_input_mode": imageMode,
 		"tool_use_enforcement": false, "execution_guidance": false}
 	cfg["display"] = map[string]any{"busy_input_mode": "steer", "interim_assistant_messages": true}
 	sub("onboarding")["profile_build"] = "off"
 	hints := sub("platform_hints")
-	hints["cli"] = map[string]any{"replace": webHint}
+	hint := webHint
+	if !p.Vision && p.VisionAux == nil {
+		hint += blindHint
+	}
+	hints["cli"] = map[string]any{"replace": hint}
 	compression := sub("compression")
 	if _, ok := compression["proactive_prune_tokens"]; !ok {
 		compression["proactive_prune_tokens"] = limits.HermesPruneTokens
@@ -282,6 +310,15 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 	// 對話串標題由 XBot 自己取（開 session 時帶 title、快判用途 10），Hermes 取的標題沒人用（session.title 略過），
 	// 還會因為帶 reasoning_effort 被供應商拒絕（400）。
 	child(aux, "title_generation")["enabled"] = false
+	if a := p.VisionAux; a != nil && !p.Vision {
+		v := map[string]any{"base_url": ModelBaseURL(a.ProviderID), "model": a.Model, "key_env": TokenEnv}
+		if a.Transport != "" {
+			v["api_mode"] = a.Transport
+		}
+		aux["vision"] = v
+	} else {
+		delete(aux, "vision") // 主要模型自己看，或沒有看得懂的模型
+	}
 	sub("delegation")["max_iterations"] = limits.HermesDelegationMaxIterations
 	// 中斷後要不要續跑由 XBot 決定，不讓 Hermes 自己重送（LazyBoy）。
 	child(sub("desktop"), "auto_continue")["enabled"] = false
@@ -428,6 +465,7 @@ func Soul(p Profile) string {
 		"要交辦隊友、建 Bot 或團隊之前，先列計畫給使用者確認，同意後才交辦。" +
 		"其他使用者交代的事就直接做到完成：不要停下來問「要開始嗎」，也不要寫「接下來我去做某某」就結束這一輪，說要做的同一輪就做完。" +
 		"範圍不清楚但能合理假設時，先照假設做，把假設寫在回覆裡；只有花錢、對外發送、刪除，或真的沒辦法開始時才停下來問。" +
+		"網站要登入、被擋或查不到時，先換別的路（搜尋引擎、比價網站、其他賣場或官方頁面）；換了幾個來源還是不行，才請使用者接手登入，而且先把不用登入就能做的部分做完。" +
 		"你所在的群組要改名稱、公告、主責、加減成員，或你要離開時，用 xbot.collab.update_group；" +
 		"使用者要你刪群組時用 xbot.collab.remove_group，會送核准卡，使用者按允許才刪。" +
 		"要核准的動作會回 status=pending_approval 和 approval_id：表示核准卡已送出、還沒執行，用 xbot.approvals.wait 等結果，不要重送；幾張核准卡可以接著送。" +
