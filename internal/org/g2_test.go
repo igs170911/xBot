@@ -101,6 +101,12 @@ func TestG2ChiefDispatchesToItsTeamAndSummarizes(t *testing.T) {
 			tr.Complete("A 公司營收三年成長 40%。", "complete", nil)
 		case who == "Writer":
 			tr.Complete("開頭段落已寫好：市場正在擴大。", "complete", nil)
+		case strings.Contains(tr.Text, "隊友的回覆一起到了"):
+			// 兩份結果在主管還在忙時一起到：XBot 併成一則交給主管（機器忙的時候常這樣），一次彙整。
+			mu.Lock()
+			results += 2
+			mu.Unlock()
+			tr.Complete("彙整：A 公司營收三年成長 40%；報告開頭已完成。", "complete", nil)
 		case who == "主管":
 			mu.Lock()
 			results++
