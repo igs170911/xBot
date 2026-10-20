@@ -221,7 +221,12 @@ export function useContextMenu() {
       e.stopPropagation()
     },
   })
-  return { bind, menu: <ContextMenu at={at} onClose={() => setAt(null)} /> }
+  /** 從按鈕打開同一個選單（列上的「⋯」：不會右鍵、長按的人也找得到）。 */
+  const open = (el: HTMLElement, label: string, items: MenuItem[]) => {
+    const r = el.getBoundingClientRect()
+    setAt({ x: r.left, y: r.bottom + 4, label, items })
+  }
+  return { bind, open, menu: <ContextMenu at={at} onClose={() => setAt(null)} /> }
 }
 
 function ContextMenu({ at, onClose }: { at: MenuAt | null; onClose: () => void }) {

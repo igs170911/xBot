@@ -50,3 +50,6 @@ export function stampLabel(ms: number, now = Date.now()): string {
   const h12 = h % 12 === 0 ? 12 : h % 12
   return `${day} ${part} ${h12}:${String(d.getMinutes()).padStart(2, '0')}`
 }
+
+/** 側欄正在拖的 Bot（拖到團隊分區＝換團隊，拖到群組＝加進群組；2026-10-20）。 */
+export const draggingBotStore = createStore<{ id: string; teamId: string } | null>(null)

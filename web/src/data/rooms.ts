@@ -1,4 +1,4 @@
-import { roomsList, type RoomsListOutput, type XBotEvent } from '../api/generated'
+import { roomsList, roomsUpdate, type RoomsListOutput, type XBotEvent } from '../api/generated'
 import { onEvent, onReconnect } from './events'
 import { createStore } from './store'
 
@@ -75,4 +75,12 @@ export function resetRooms() {
   unsubs?.forEach((u) => u())
   unsubs = null
   roomsStore.set({ rooms: null })
+}
+
+/** 把 Bot 加進群組（已經在裡面就不動）；回傳有沒有加。 */
+export async function addToRoom(room: Room, botId: string): Promise<boolean> {
+  if (room.members.some((m) => m.bot_id === botId)) return false
+  await roomsUpdate({ room_id: room.id, member_ids: [...room.members.map((m) => m.bot_id), botId] })
+  await loadRooms()
+  return true
 }

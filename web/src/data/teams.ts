@@ -1,4 +1,4 @@
-import { teamsList, type TeamsListOutput, type XBotEvent } from '../api/generated'
+import { teamsList, teamsUpdate, type TeamsListOutput, type XBotEvent } from '../api/generated'
 import type { Bot } from './bots'
 import { loadBots } from './bots'
 import { onEvent, onReconnect } from './events'
@@ -89,4 +89,18 @@ export function resetTeams() {
   unsubs?.forEach((u) => u())
   unsubs = null
   teamsStore.set({ teams: null })
+}
+
+/**
+ * 把 Bot 換到另一個團隊（to 空白＝移出團隊、回到未分區）。先從原本的團隊移出、再加進新的：
+ * 它原本是那個團隊的主管時，原團隊的主管和報告線由後端一起調整（teams.update remove_ids）。
+ */
+export async function moveBot(bot: Pick<Bot, 'id' | 'team_id'>, to: string): Promise<void> {
+  if (bot.team_id === to) return
+  try {
+    if (bot.team_id) await teamsUpdate({ id: bot.team_id, remove_ids: [bot.id] })
+    if (to) await teamsUpdate({ id: to, add_ids: [bot.id] })
+  } finally {
+    await Promise.all([loadTeams(), loadBots()])
+  }
 }

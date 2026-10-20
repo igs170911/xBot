@@ -14,19 +14,24 @@ import { MenuButton } from '../ui/Menu'
 import { cx } from '../ui/cx'
 import { BotListRow, ChiefCard, RoomListRow } from '../shell/BotList'
 import { usePauseAll } from '../shell/PauseBanner'
-import { useRowMenu, type MenuBind } from '../shell/useRowMenu'
+import { useRowMenu, type MenuBind, type MoreOpener } from '../shell/useRowMenu'
 import { TabHeader } from './Phone'
 import { useOnline } from './pwa'
 
 // L01 手機的對話分頁：和側欄同一種排版（2026-10-20 改版 A）：大總管的大卡片在最上面，其他 Bot 照團隊分區，群組在後面；
 // 列上有時間、最後一句話、未讀藍點。不常用的頁面收進右上「設定與更多」。
 
-function Group({ title, children, menu }: { title: string; children: ReactNode; menu?: MenuBind }) {
+function Group({ title, children, menu, more }: { title: string; children: ReactNode; menu?: MenuBind; more?: MoreOpener }) {
   return (
     <section aria-label={title || undefined} className="flex flex-col">
-      {title && <h2 {...menu} className={cx('m-0 px-5 pb-1 pt-3 text-meta text-ink-2', menu && 'select-none [-webkit-touch-callout:none]')}>
-        {title}
-      </h2>}
+      {title && (
+        <div className="flex items-center pr-3">
+          <h2 {...menu} className={cx('m-0 flex-1 px-5 pb-1 pt-3 text-meta text-ink-2', menu && 'select-none [-webkit-touch-callout:none]')}>
+            {title}
+          </h2>
+          {more && <IconButton icon={Ellipsis} label={`${title}的選單`} className="mt-1 size-11 text-ink-3" onClick={(e) => more(e.currentTarget)} />}
+        </div>
+      )}
       {children}
     </section>
   )
@@ -133,7 +138,7 @@ export function ChatListPage() {
           // 沒有成員的團隊也列出來（長按標題才刪得掉）；搜尋時只看名稱有符合的
           if (!list.length && !(sec.team && sec.bots.length === 0 && match(sec.title))) return null
           return (
-            <Group key={sec.key} title={sections.length === 1 && !sec.team ? '' : sec.title} menu={sec.team ? rowMenu.team(sec.team) : undefined}>
+            <Group key={sec.key} title={sections.length === 1 && !sec.team ? '' : sec.title} menu={sec.team ? rowMenu.team(sec.team) : undefined} more={sec.team ? rowMenu.more.team(sec.team) : undefined}>
               {list.map((b) => (
                 <BotListRow key={b.id} bot={b} last={last[b.id]} crown={!!sec.team && sec.team.chief_id === b.id} menu={rowMenu.bot(b)} look="phone" ring="#070707" />
               ))}

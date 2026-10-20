@@ -80,7 +80,7 @@ test('群組對話（D01）：交棒分隔線、輪數上限、成員狀態，�
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   }
   // 點名膠囊把 @名字 填進輸入框；送出。
-  await page.getByRole('button', { name: '阿哲' }).first().click()
+  await page.getByRole('button', { name: /^@?\s*阿哲$/ }).first().click()
   const box = page.getByRole('textbox', { name: '傳訊息到群組' })
   await expect(box).toHaveValue('@阿哲 ')
   await box.fill('@阿哲 先停，改查 B 公司')

@@ -62,3 +62,58 @@ test('側欄 A：大總管卡片、每列有最後一句話；＋和「設定與
   await page.getByRole('menuitem', { name: '全部檔案' }).click()
   await expect(page).toHaveURL(/\/files$/)
 })
+
+// 2026-10-20：刪群組、搬人員要直覺。電腦上：把 Bot 拖到別的團隊分區＝換團隊，拖到群組上＝加進群組；
+// 每一列滑過出現「⋯」（不用知道右鍵）；團隊的「⋯」能改名換成員、刪除團隊，刪團隊時可以一起刪它的群組。
+test('搬人員與刪除：拖到團隊換團隊、拖到群組加入、「⋯」選單、刪團隊連群組', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', '拖曳和滑過的「⋯」是桌面的')
+  await page.setViewportSize({ width: 1280, height: 860 })
+  const m = new MockServer(page)
+  const a = m.addBot({ name: '阿海', title: '主管', color: 'blue', shape: 'blob' })
+  const b = m.addBot({ name: '阿筆', title: '寫手', color: 'orange', shape: 'squircle' })
+  const c = m.addBot({ name: '小巡', title: '海巡', color: 'pink', shape: 'drop' })
+  const room = m.addRoom([a.id, c.id], '內容隊群組')
+  const content = m.addTeam('內容隊', [a.id, b.id], room.id)
+  const research = m.addTeam('研究隊', [c.id])
+  await m.install()
+  await page.goto('/office')
+  const nav = page.getByRole('navigation', { name: '側欄' })
+  const team = (name: string) => nav.getByRole('group', { name })
+
+  // 拖到別的團隊
+  await nav.getByRole('link', { name: /阿筆/ }).dragTo(team('研究隊'))
+  await expect.poll(() => m.calls.filter((x) => x.op === 'teams.update').map((x) => x.input)).toEqual([
+    { id: content.id, remove_ids: [b.id] },
+    { id: research.id, add_ids: [b.id] },
+  ])
+  await expect(team('研究隊').getByRole('link', { name: /阿筆/ })).toBeVisible()
+  await expect(page.getByText('已把 阿筆 移到「研究隊」')).toBeVisible()
+
+  // 拖到群組上＝加進群組
+  await team('研究隊').getByRole('link', { name: /阿筆/ }).dragTo(nav.getByRole('link', { name: /內容隊群組/ }))
+  await expect.poll(() => m.calls.find((x) => x.op === 'rooms.update')?.input).toEqual({ room_id: room.id, member_ids: [a.id, c.id, b.id] })
+
+  // 列上的「⋯」：不用右鍵也找得到（換團隊、刪除）
+  const row = team('研究隊').getByRole('link', { name: /小巡/ })
+  await row.hover()
+  await nav.getByRole('button', { name: '小巡的選單' }).click()
+  await expect(page.getByRole('menuitem', { name: '移到「內容隊」' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: '移出團隊' })).toBeVisible()
+  await page.getByRole('menuitem', { name: '移出團隊' }).click()
+  await expect.poll(() => m.calls.filter((x) => x.op === 'teams.update').at(-1)?.input).toEqual({ id: research.id, remove_ids: [c.id] })
+  await page.screenshot({ path: `e2e-results/screens/${info.project.name}-sidebar-move.png` })
+
+  // 團隊的「⋯」→ 改名、換成員 → 刪除團隊（連它的群組）
+  await team('內容隊').hover()
+  await nav.getByRole('button', { name: '內容隊的選單' }).click()
+  await page.getByRole('menuitem', { name: '改名、換成員' }).click()
+  const dlg = page.getByRole('dialog', { name: '編輯團隊' })
+  await expect(dlg.getByRole('checkbox', { name: /阿海/ })).toBeChecked()
+  await dlg.getByRole('button', { name: '刪除團隊' }).click()
+  const confirm = page.getByRole('alertdialog', { name: '刪除團隊「內容隊」？' })
+  await expect(confirm.getByRole('checkbox', { name: /一起刪除團隊的群組「內容隊群組」/ })).toBeChecked()
+  await page.screenshot({ path: `e2e-results/screens/${info.project.name}-team-delete.png` })
+  await confirm.getByRole('button', { name: '刪除' }).click()
+  await expect.poll(() => m.calls.filter((x) => x.op === 'teams.delete' || x.op === 'rooms.delete').map((x) => x.op)).toEqual(['teams.delete', 'rooms.delete'])
+  await expect(page.getByText('已刪除團隊「內容隊」和群組「內容隊群組」')).toBeVisible()
+})

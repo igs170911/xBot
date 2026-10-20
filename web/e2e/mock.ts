@@ -19,6 +19,9 @@ export type Bot = {
   archived: boolean
   created_at: number
   updated_at: number
+  /** 所屬團隊（空白＝未分區） */
+  team_id?: string
+  primary?: boolean
 }
 
 export type Msg = {
@@ -142,7 +145,10 @@ export class MockServer {
     'rooms.create': (i) => this.addRoom(i.member_ids as string[], (i.name as string) || '', (i.responder_rule as string) || 'auto'),
     'rooms.update': (i) => {
       const r = this.rooms.find((x) => x.id === i.room_id)!
-      Object.assign(r, Object.fromEntries(Object.entries(i).filter(([k]) => k !== 'room_id')))
+      Object.assign(r, Object.fromEntries(Object.entries(i).filter(([k]) => k !== 'room_id' && k !== 'member_ids')))
+      if (Array.isArray(i.member_ids)) {
+        r.members = (i.member_ids as string[]).map((id) => r.members.find((m) => m.bot_id === id) ?? this.member(id, false))
+      }
       return r
     },
     'rooms.pause_member': (i) => {
@@ -175,16 +181,44 @@ export class MockServer {
     },
     'collab.peer_history': () => this.peerHistory,
     'collab.stop_chain': () => ({ stopped: 1 }),
-    'teams.list': () => ({ teams: [] }),
+    'teams.list': () => ({ teams: this.teams.map((t) => ({ ...t, member_ids: this.bots.filter((b) => b.team_id === t.id).map((b) => b.id) })) }),
+    'teams.update': (i) => {
+      const t = this.teams.find((x) => x.id === i.id)!
+      if (typeof i.name === 'string') t.name = i.name
+      for (const id of (i.add_ids as string[] | undefined) ?? []) this.bots.find((b) => b.id === id)!.team_id = t.id
+      for (const id of (i.remove_ids as string[] | undefined) ?? []) {
+        this.bots.find((b) => b.id === id)!.team_id = ''
+        if (t.chief_id === id) t.chief_id = ''
+      }
+      if (typeof i.chief_id === 'string') t.chief_id = i.chief_id
+      return { ...t, member_ids: this.bots.filter((b) => b.team_id === t.id).map((b) => b.id) }
+    },
+    'teams.delete': (i) => {
+      this.teams = this.teams.filter((x) => x.id !== i.id)
+      for (const b of this.bots) if (b.team_id === i.id) b.team_id = ''
+      return { deleted: true }
+    },
     'teaching.get': () => ({ lesson: null }),
     'agenda.list': () => ({ from: 0, to: 0, pending: [], decided: [], calendar: [], approvals: [], open_max: 3 }),
   }
 
+  private member(id: string, lead: boolean, seat = 'idle') {
+    const b = this.bots.find((x) => x.id === id)!
+    return { bot_id: id, name: b.name, title: b.title, color: b.color, shape: b.shape, lead, paused: false, seat, seat_thread_id: 'seat-' + id }
+  }
+
+  /** 團隊（側欄分區）：成員記在 Bot 的 team_id。 */
+  teams: Array<{ id: string; name: string; about: string; chief_id: string; memory: string[]; room_id: string; template: string; position: number; created_by: string; created_at: number }> = []
+
+  addTeam(name: string, memberIds: string[], roomId = '') {
+    const t = { id: this.id('team'), name, about: '', chief_id: memberIds[0] ?? '', memory: [], room_id: roomId, template: '', position: this.teams.length, created_by: 'owner', created_at: Date.now() }
+    this.teams.push(t)
+    for (const id of memberIds) this.bots.find((b) => b.id === id)!.team_id = t.id
+    return t
+  }
+
   addRoom(memberIds: string[], name: string, rule = 'auto', seats: Record<string, string> = {}) {
-    const members = memberIds.map((id, i) => {
-      const b = this.bots.find((x) => x.id === id)!
-      return { bot_id: id, name: b.name, title: b.title, color: b.color, shape: b.shape, lead: i === 0, paused: false, seat: seats[id] ?? 'idle', seat_thread_id: 'seat-' + id }
-    })
+    const members = memberIds.map((id, i) => this.member(id, i === 0, seats[id] ?? 'idle'))
     const now = Date.now()
     const room = { id: this.id('room'), name: name || members.map((m) => m.name).join('、'), auto_name: !name, responder_rule: rule, lead_id: memberIds[0], bulletin: '', created_by: 'owner', members, preview: '', last_message_at: now, created_at: now }
     this.rooms.unshift(room)

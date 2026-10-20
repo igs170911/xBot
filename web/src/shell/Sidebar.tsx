@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState, type DragEvent, type ReactNode } from 'react'
 import {
   Bot as BotIcon,
   CalendarClock,
@@ -34,10 +34,11 @@ import { useLastThreads } from '../data/lastThreads'
 import { inboxStore } from '../data/inbox'
 import { openNewRoom, roomsStore, type Room } from '../data/rooms'
 import { useStore } from '../data/store'
-import { openNewTeam, sectionsOf, teamsStore } from '../data/teams'
-import { openNewBot, setRail } from '../data/ui'
+import { moveBot, openNewTeam, sectionsOf, teamsStore } from '../data/teams'
+import { draggingBotStore, openNewBot, setRail } from '../data/ui'
 import { BotListRow, ChiefCard, RoomListRow } from './BotList'
-import { useRowMenu, type MenuBind } from './useRowMenu'
+import { useRowMenu, type MenuBind, type MoreOpener } from './useRowMenu'
+import { useToast } from '../ui/toast-context'
 import { usePauseAll } from './PauseBanner'
 
 type NavProps = { path: string; onNavigate?: () => void }
@@ -80,12 +81,42 @@ function RoomFace({ room, active }: { room: Room; active: boolean }) {
   )
 }
 
-function Section({ title, children, action, team, menu }: { title: string; children: ReactNode; action?: ReactNode; team?: string; menu?: MenuBind }) {
+/**
+ * 一個分區（團隊、未分區、群組）：標題可以收合；團隊的標題有右鍵選單和滑過出現的「⋯」。
+ * drop：把 Bot 拖進來（換到這個團隊／移出團隊），拖著的時候框起來。
+ */
+function Section({ title, children, team, menu, more, drop }: { title: string; children: ReactNode; team?: string; menu?: MenuBind; more?: MoreOpener; drop?: (bot: { id: string; teamId: string }) => void }) {
   const [open, setOpen] = useState(true)
-  if (!title) return <div className="flex flex-col gap-px">{children}</div>
+  const dragging = useStore(draggingBotStore)
+  const [over, setOver] = useState(false)
+  const accepts = !!drop && !!dragging && dragging.teamId !== (team ?? '')
+  const dnd = {
+    onDragOver: (e: DragEvent) => {
+      if (!accepts) return
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+      setOver(true)
+    },
+    onDragLeave: (e: DragEvent) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false)
+    },
+    onDrop: (e: DragEvent) => {
+      setOver(false)
+      if (!accepts || !dragging) return
+      e.preventDefault()
+      drop?.(dragging)
+    },
+  }
+  const ring = cx('rounded-menu', accepts && 'outline-1 -outline-offset-1 outline-dashed outline-line', over && accepts && 'bg-control/40 outline-2 outline-solid outline-accent')
+  if (!title)
+    return (
+      <div className={cx('flex flex-col gap-px', ring)} {...dnd}>
+        {children}
+      </div>
+    )
   return (
-    <div className="flex flex-col gap-px" role="group" aria-label={title} data-team={team}>
-      <div className="flex items-center justify-between pr-1">
+    <div className={cx('flex flex-col gap-px', ring)} role="group" aria-label={title} data-team={team} {...dnd}>
+      <div className="group relative flex items-center justify-between pr-1">
         <button
           type="button"
           aria-expanded={open}
@@ -99,7 +130,17 @@ function Section({ title, children, action, team, menu }: { title: string; child
             <Icon icon={ChevronDown} size={14} strokeWidth={2} />
           </span>
         </button>
-        {action}
+        {more && (
+          <button
+            type="button"
+            aria-label={`${title}的選單`}
+            title="改名、換成員、刪除"
+            onClick={(e) => more(e.currentTarget)}
+            className="mt-1 flex size-6 items-center justify-center rounded-seg text-ink-3 opacity-0 hover:bg-control hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+          >
+            <Icon icon={Ellipsis} size={15} />
+          </button>
+        )}
       </div>
       {open && children}
     </div>
@@ -158,6 +199,18 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
   const newBot = go(openNewBot)
   const rowMenu = useRowMenu(onNavigate)
   const shownRooms = (rooms ?? []).filter((r) => match(r.name))
+  const toast = useToast()
+  const dragging = useStore(draggingBotStore)
+  // 拖 Bot 到分區＝換團隊（空白＝移出團隊）
+  const moveTo = (to: string) => (b: { id: string; teamId: string }) => {
+    draggingBotStore.set(null)
+    const who = live.find((x) => x.id === b.id)
+    const where = teams?.find((t) => t.id === to)?.name
+    moveBot({ id: b.id, team_id: b.teamId }, to)
+      .then(() => toast.show({ kind: 'done', text: where ? `已把 ${who?.name ?? 'Bot'} 移到「${where}」` : `已把 ${who?.name ?? 'Bot'} 移出團隊` }))
+      .catch((e: unknown) => toast.show({ kind: 'error', text: e instanceof Error ? e.message : String(e) }))
+  }
+  const hasLoose = sections.some((sec) => !sec.team)
   return (
     <nav aria-label="側欄" className="flex h-full flex-col gap-2 overflow-hidden bg-panel px-2.5 pb-2.5 pt-3.5 text-ui-sm leading-[1.45] text-ink">
       <div className="flex min-h-9 items-center gap-1 pl-0.5">
@@ -221,19 +274,33 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
           // 只有一個分區（沒有團隊）時不用標題
           const title = sections.length === 1 && !sec.team ? '' : sec.title
           return (
-            <Section key={sec.key} title={title} team={sec.team?.id} menu={sec.team ? rowMenu.team(sec.team) : undefined}>
+            <Section
+              key={sec.key}
+              title={title}
+              team={sec.team?.id}
+              menu={sec.team ? rowMenu.team(sec.team) : undefined}
+              more={sec.team ? rowMenu.more.team(sec.team) : undefined}
+              drop={teams?.length ? moveTo(sec.team?.id ?? '') : undefined}
+            >
               {list.map((b) => (
-                <BotListRow key={b.id} bot={b} last={last[b.id]} crown={!!sec.team && sec.team.chief_id === b.id} path={path} onNavigate={onNavigate} menu={rowMenu.bot(b)} look="side" ring="#111111" />
+                <BotListRow key={b.id} bot={b} last={last[b.id]} crown={!!sec.team && sec.team.chief_id === b.id} path={path} onNavigate={onNavigate} menu={rowMenu.bot(b)} more={rowMenu.more.bot(b)} look="side" ring="#111111" />
               ))}
               {sec.team && sec.bots.length === 0 && <p className="m-0 px-3 py-1 text-sub text-ink-3">還沒有成員。</p>}
             </Section>
           )
         })}
         {shownRooms.length > 0 && (
-          <Section title="群組">
+          // 拖著 Bot 時標題改成提示（不另外插一行，免得放下的位置被推走）
+          <Section title={dragging ? '群組（放上去＝加進群組）' : '群組'}>
             {shownRooms.map((r) => (
-              <RoomListRow key={r.id} room={r} path={path} onNavigate={onNavigate} menu={rowMenu.room(r)} look="side" ring="#111111" />
+              <RoomListRow key={r.id} room={r} path={path} onNavigate={onNavigate} menu={rowMenu.room(r)} more={rowMenu.more.room(r)} look="side" ring="#111111" />
             ))}
+          </Section>
+        )}
+        {/* 沒有「未分區」時，拖著團隊裡的 Bot 才在最下面出現（放在最後，上面的列不會被推動） */}
+        {dragging?.teamId && !hasLoose && (
+          <Section title="" drop={moveTo('')}>
+            <p className="m-0 px-3 py-3 text-center text-meta text-ink-2">拖到這裡＝移出團隊</p>
           </Section>
         )}
         {query && bots && !live.some((b) => match(b.name)) && !shownRooms.length && <p className="m-0 px-3 py-4 text-center text-sub text-ink-2">找不到「{q?.trim()}」</p>}

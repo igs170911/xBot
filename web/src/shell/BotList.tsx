@@ -1,15 +1,17 @@
-import type { ReactNode } from 'react'
-import { Crown, Star } from 'lucide-react'
+import { useState, type DragEvent, type ReactNode } from 'react'
+import { Crown, Ellipsis, Star } from 'lucide-react'
 import { botsStore, type Bot, look } from '../data/bots'
 import { botLine, type LastThread } from '../data/lastThreads'
-import type { Room } from '../data/rooms'
+import { addToRoom, type Room } from '../data/rooms'
 import { useStore } from '../data/store'
+import { draggingBotStore } from '../data/ui'
 import { rowTime } from '../mobile/format'
 import { linkClick } from '../router'
 import { Avatar } from '../ui/Avatar'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
-import type { MenuBind } from './useRowMenu'
+import { useToast } from '../ui/toast-context'
+import type { MenuBind, MoreOpener } from './useRowMenu'
 
 // 側欄與手機對話分頁共用的清單（2026-10-20 側欄改版，design 稿 A「總管置頂」）：
 // 最上面是大總管的大卡片；其他一個 Bot 一列：頭像、名字、職稱、最後一句話（有事時改成「等你」「工作中」）、未讀點。
@@ -61,6 +63,9 @@ function Row({
   unread,
   time,
   look: kind,
+  more,
+  drag,
+  drop,
 }: {
   to: string
   active?: boolean
@@ -75,13 +80,49 @@ function Row({
   unread?: boolean
   time?: string
   look: Look
+  /** 滑過出現的「⋯」（桌面）：打開和右鍵同一個選單。 */
+  more?: MoreOpener
+  /** 這一列可以拖（Bot）。 */
+  drag?: { id: string; teamId: string }
+  /** 這一列可以放 Bot（群組＝加進群組）。 */
+  drop?: (botId: string) => void
 }) {
+  const dragging = useStore(draggingBotStore)
+  const [over, setOver] = useState(false)
+  const accepts = !!drop && !!dragging
   return (
+    <div
+      className={cx('group relative', over && accepts && 'rounded-menu outline-2 -outline-offset-2 outline-accent')}
+      onDragOver={(e: DragEvent) => {
+        if (!accepts) return
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'copy'
+        setOver(true)
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e: DragEvent) => {
+        setOver(false)
+        if (!accepts || !dragging) return
+        e.preventDefault()
+        drop?.(dragging.id)
+      }}
+    >
     <a
       href={to}
       onClick={linkClick(to, onNavigate)}
       aria-current={active ? 'page' : undefined}
       {...menu}
+      draggable={drag ? true : undefined}
+      onDragStart={
+        drag
+          ? (e: DragEvent) => {
+              e.dataTransfer.effectAllowed = 'copyMove'
+              e.dataTransfer.setData('text/plain', name)
+              draggingBotStore.set(drag)
+            }
+          : undefined
+      }
+      onDragEnd={drag ? () => draggingBotStore.set(null) : undefined}
       className={cx(
         'flex select-none items-center gap-2.5 text-ink [-webkit-touch-callout:none]',
         kind === 'side' ? 'min-h-[52px] rounded-menu px-2 py-1.5' : 'min-h-[60px] gap-3 px-4 py-1.5 active:bg-control/60',
@@ -104,10 +145,22 @@ function Row({
         )}
       </span>
     </a>
+      {more && (
+        <button
+          type="button"
+          aria-label={`${name}的選單`}
+          title="更多動作"
+          onClick={(e) => more(e.currentTarget)}
+          className="absolute right-1.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-seg bg-control text-ink-2 opacity-0 hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:hidden"
+        >
+          <Icon icon={Ellipsis} size={16} />
+        </button>
+      )}
+    </div>
   )
 }
 
-export function BotListRow({ bot, last, path, onNavigate, menu, crown, look: kind, ring }: { bot: Bot; last?: LastThread; path?: string; onNavigate?: () => void; menu?: MenuBind; crown?: boolean; look: Look; ring: string }) {
+export function BotListRow({ bot, last, path, onNavigate, menu, more, crown, look: kind, ring }: { bot: Bot; last?: LastThread; path?: string; onNavigate?: () => void; menu?: MenuBind; more?: MoreOpener; crown?: boolean; look: Look; ring: string }) {
   const to = `/bots/${bot.id}`
   const active = !!path && (path === to || path.startsWith(to + '/'))
   const line = botLine(useStore(botsStore).activity[bot.id]?.state, last)
@@ -126,6 +179,8 @@ export function BotListRow({ bot, last, path, onNavigate, menu, crown, look: kin
       unread={(last?.unread ?? 0) > 0}
       time={kind === 'phone' ? rowTime(last?.at ?? 0) : undefined}
       look={kind}
+      more={more}
+      drag={kind === 'side' ? { id: bot.id, teamId: bot.team_id } : undefined}
     />
   )
 }
@@ -149,8 +204,17 @@ function RoomFace({ room, size, ring }: { room: Room; size: number; ring: string
   )
 }
 
-export function RoomListRow({ room, path, onNavigate, menu, look: kind, ring }: { room: Room; path?: string; onNavigate?: () => void; menu?: MenuBind; look: Look; ring: string }) {
+export function RoomListRow({ room, path, onNavigate, menu, more, look: kind, ring }: { room: Room; path?: string; onNavigate?: () => void; menu?: MenuBind; more?: MoreOpener; look: Look; ring: string }) {
   const to = `/rooms/${room.id}`
+  const toast = useToast()
+  const bots = useStore(botsStore).bots
+  // 把 Bot 拖到群組上＝加進這個群組
+  const drop = (botId: string) => {
+    const who = bots?.find((b) => b.id === botId)?.name ?? 'Bot'
+    addToRoom(room, botId)
+      .then((added) => toast.show({ kind: 'done', text: added ? `已把 ${who} 加進群組「${room.name}」` : `${who} 已經在群組「${room.name}」裡` }))
+      .catch((e: unknown) => toast.show({ kind: 'error', text: e instanceof Error ? e.message : String(e) }))
+  }
   const working = room.members.find((m) => m.seat === 'working' || m.seat === 'queued')
   const waiting = room.members.some((m) => m.seat === 'waiting')
   const line = working ? `${working.name} 正在回覆…` : waiting ? '有成員在等你' : room.preview.replace(/\*\*|`/g, '') || `${room.members.length} 位成員`
@@ -166,6 +230,8 @@ export function RoomListRow({ room, path, onNavigate, menu, look: kind, ring }: 
       warn={waiting}
       time={kind === 'phone' ? rowTime(room.last_message_at) : undefined}
       look={kind}
+      more={more}
+      drop={kind === 'side' ? drop : undefined}
     />
   )
 }
