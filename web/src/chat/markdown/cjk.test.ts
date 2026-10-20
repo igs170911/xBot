@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Token } from 'marked'
-import { lex } from './parse'
+import { flowSteps, lex } from './parse'
 
 // 一段的行內結構，寫成好比對的字串：strong(…)、em(…)，其他照原文。
 const shape = (ts: Token[] | undefined): string =>
@@ -46,5 +46,18 @@ describe('中文的粗體、斜體（CommonMark 遇到中文標點會認不出�
   it('程式碼區塊裡的 ** 和 ## 不動', () => {
     const [code] = lex('```\n**結論：**x\n##y\n```')
     expect(code).toMatchObject({ type: 'code', text: '**結論：**x\n##y' })
+  })
+})
+
+describe('流程：一行只有 A → B → C 的步驟畫成方塊和箭頭', () => {
+  it('三步以上、每步不長才算', () => {
+    expect(flowSteps('看完 → 點主頁 → 按追蹤')).toEqual(['看完', '點主頁', '按追蹤'])
+    expect(flowSteps('抓價格->算價差->送核准')).toEqual(['抓價格', '算價差', '送核准'])
+    expect(flowSteps('A → B')).toBeNull()
+    expect(flowSteps('瓶頸在「看完→點主頁→按追蹤」這一段，要先處理這裡才有用而且要很久很久很久')).toBeNull()
+    expect(flowSteps('a → b\n→ c')).toBeNull()
+    expect(flowSteps('瓶頸在「看完→點主頁→按追蹤」這段')).toBeNull()
+    expect(flowSteps('先抓價格→再算價差→最後送核准。')).toBeNull()
+    expect(flowSteps('「選題」→ 寫稿 → 發文（週三）')).toEqual(['「選題」', '寫稿', '發文（週三）'])
   })
 })

@@ -112,6 +112,33 @@ test('回覆排版（C07）：標題、提示框、表格工具列、程式碼�
   expect(alerted).toBe(false)
 })
 
+test('流程圖（C07）：mermaid 畫成方塊和箭頭、可切換原始碼；一行 A → B → C 畫成步驟', async ({ page }, info) => {
+  const api = new MockServer(page)
+  await api.install()
+  const bot = api.addBot({ name: '小秘', title: '幕僚長', shape: 'cursor', color: 'blue' })
+  const t = api.addThread(bot.id, '流程')
+  api.addMessage(t.id, { sender: 'owner', content: '發文流程是什麼', task_id: 'f1' })
+  api.addMessage(t.id, {
+    sender: 'bot:' + bot.id,
+    content: '流程整理好了。\n\n選題 → 寫稿 → 核准 → 發文\n\n```mermaid\nflowchart LR\n  A[選題] --> B{要核准嗎}\n  B -- 要 --> C[送核准卡]\n  B -- 不用 --> D[直接發文]\n```',
+    task_id: 'f1',
+    status: 'complete',
+  })
+  await page.goto(`/bots/${bot.id}/threads/${t.id}`)
+  const msg = page.getByRole('main', { name: '和小秘的對話' }).getByTestId('msg-bot')
+  await expect(msg.getByTestId('md-flow').getByRole('listitem')).toHaveText(['選題', '寫稿', '核准', '發文'])
+  const diagram = msg.getByTestId('md-diagram')
+  const drawing = diagram.getByRole('img', { name: '流程圖' })
+  await expect(drawing.locator('svg').first()).toBeVisible({ timeout: 15_000 })
+  await expect(drawing).toContainText('送核准卡')
+  await diagram.getByRole('button', { name: '原始碼' }).click()
+  await expect(diagram.locator('pre')).toContainText('flowchart LR')
+  await diagram.getByRole('button', { name: '看圖' }).click()
+  await expect(drawing).toBeVisible()
+  await settle(page)
+  await msg.screenshot({ path: shot(`${info.project.name}-diagram`) })
+})
+
 test('訊息動作與重試（C02、C11）：工作未完成 → 再試一次會再送一次同樣的話；長訊息收起', async ({ page }, info) => {
   const api = new MockServer(page)
   await api.install()

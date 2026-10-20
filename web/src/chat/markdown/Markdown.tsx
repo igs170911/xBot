@@ -6,8 +6,9 @@ import { CircleAlert, Info, Lightbulb, MessageSquareWarning, Square, SquareCheck
 import { Icon } from '../../ui/Icon'
 import { cx } from '../../ui/cx'
 import { CodeBlock } from './CodeBlock'
+import { Diagram, FlowSteps } from './Diagram'
 import { decodeEntities, safeHref, safeImageSrc } from './safe'
-import { lex, plainText, type TableCell } from './parse'
+import { flowSteps, lex, plainText, type TableCell } from './parse'
 import { Table } from './Table'
 
 // 回覆排版（CH-6，design/C07）：GFM（標題、清單、待辦、表格、程式碼、引言、刪除線）＋提示框（> [!NOTE]）。
@@ -237,6 +238,11 @@ function blocks(tokens: Token[], key: string, tight = false): ReactNode[] {
           out.push(<ImageGrid key={k} imgs={imgs} />)
           return
         }
+        const steps = flowSteps(plainText(p.tokens))
+        if (steps) {
+          out.push(<FlowSteps key={k} steps={steps} />)
+          return
+        }
         out.push(
           <p key={k} className="m-0">
             {inline(p.tokens, k)}
@@ -254,6 +260,7 @@ function blocks(tokens: Token[], key: string, tight = false): ReactNode[] {
         const c = t as Tokens.Code
         const lang = (c.lang ?? '').trim().toLowerCase()
         if (lang === 'math' || lang === 'latex' || lang === 'tex' || lang === 'katex') out.push(<MathBlock key={k} tex={c.text} />)
+        else if (lang === 'mermaid') out.push(<Diagram key={k} code={c.text} />)
         else out.push(<CodeBlock key={k} code={c.text} lang={c.lang} />)
         return
       }

@@ -58,6 +58,24 @@ export function isRich(src: string): boolean {
   return /(^|\n)\s*(#{1,6}\s|```|~~~|\|.*\|\s*\n\s*\|?\s*:?-{2,}|\$\$|!\[)/.test(src)
 }
 
+/** 一行只有「A → B → C」的步驟：畫成方塊加箭頭（Bot 常這樣寫流程）。 */
+const ARROW = /\s*(?:→|->|⇒|=>|➜|➔)\s*/
+const STEP_MAX = 24
+
+/** 括號、引號成對（「看完→點主頁」這種一步裡只有半個引號的，是句子裡提到的流程）。 */
+function balanced(s: string): boolean {
+  return [['「', '」'], ['（', '）'], ['(', ')'], ['『', '』']].every(([a, b]) => s.split(a).length === s.split(b).length)
+}
+
+/** 整段是三步以上的箭頭流程（每步不長、沒有換行）就回傳步驟，否則 null。 */
+export function flowSteps(text: string): string[] | null {
+  if (text.includes('\n')) return null
+  const steps = text.split(ARROW).map((s) => s.trim())
+  if (steps.length < 3 || steps.some((s) => !s || [...s].length > STEP_MAX || !balanced(s))) return null
+  if (/[，。；！？!?]/.test(text)) return null // 是句子，不是流程
+  return steps
+}
+
 export type TableCell = { node: ReactNode; text: string }
 export type TableData = {
   header: TableCell[]
