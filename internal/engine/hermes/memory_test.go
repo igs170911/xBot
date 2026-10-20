@@ -104,3 +104,11 @@ func TestSoulAsksForParallelLookups(t *testing.T) {
 		t.Fatalf("SOUL：%q", soul)
 	}
 }
+
+// 2026-10-20：deepseek 比價時蝦皮被擋後又換了 5 種方法硬闖（瀏覽器、改 User-Agent 的 curl、閱讀器服務），寫完檔再修補 3 次，
+// 每一步都重送整段上下文。
+func TestSoulStopsRetryingABlockedSite(t *testing.T) {
+	if soul := Soul(Profile{Name: "水哥哥"}); !strings.Contains(soul, "擋過一次就不要換方法再闖") || !strings.Contains(soul, "一次寫完") {
+		t.Fatalf("SOUL：%q", soul)
+	}
+}
