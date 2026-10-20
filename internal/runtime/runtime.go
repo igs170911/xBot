@@ -97,6 +97,9 @@ type Options struct {
 	QuotaLog *engine.QuotaLog
 	// QuotaCard 回傳額度卡上引擎（或供應商）的名稱，與可以換用的引擎、模型（engines.Service.QuotaCard）。可為 nil（只顯示引擎代號、沒有選項）。
 	QuotaCard func(ctx context.Context, botID string, q *engine.QuotaError) (label string, options []engine.SwitchOption)
+	// Unfinished 在一件工作確定沒做完（判成只說要做、交回、卡住，而且不再自動繼續）時，在背景呼叫：
+	// 請老師模型看哪裡做錯、提議一條學到的事（lessons.Service.Consider）。額度用完、要你處理的不算。可為 nil。
+	Unfinished func(ctx context.Context, taskID, why string)
 }
 
 // Watchdog 是對話看門狗的時間（LazyBoy runtime.watch()）。
@@ -852,6 +855,8 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	if res != nil {
 		if req := r.continuation(t, task, in, *res); req != nil {
 			judged.ContinuedBy = r.continueTurn(t, in, req)
+		} else if r.o.Unfinished != nil && quotaView == nil && unfinishedVerdict(res.Verdict) && (t.source == SourceOwner || t.source == SourceRoutine) {
+			go r.o.Unfinished(context.Background(), t.taskID, res.Reason)
 		}
 		if err := r.o.DB.PatchTaskMeta(ctx, t.taskID, map[string]any{"judge": judged}); err != nil {
 			r.log.Warn("寫入完成判定失敗", "task", t.taskID, "err", err)

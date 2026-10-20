@@ -90,6 +90,8 @@ type Profile struct {
 	// VisionAux 是主要模型看不懂圖片時，先描述圖片用的模型（auxiliary.vision，經 Model Proxy）；nil 表示沒有看得懂圖片的模型，
 	// Bot 會直接說看不到圖片（2026-10-20：原本一律當看不懂又沒有工具，Bot 收到截圖會去看自己的桌面、回答別的東西）。
 	VisionAux *AuxModel
+	// Lessons 是學到的事（internal/lessons，你同意過的守則），寫在基本守則後面。
+	Lessons []string
 	// Effort 是 reasoning_effort，空白時 medium（LazyBoy config.reasoning）。
 	Effort string
 	// WorkerKey 是這個 Bot 的 worker-key（不是供應商金鑰）。
@@ -469,6 +471,7 @@ func Soul(p Profile) string {
 		"（這一輪裡做完才回來；子代理不知道這段對話，需要的都寫進 context）。不要開子代理檢查自己的成果。" +
 		"其他使用者交代的事就直接做到完成：不要停下來問「要開始嗎」，也不要寫「接下來我去做某某」就結束這一輪，說要做的同一輪就做完。" +
 		"範圍不清楚但能合理假設時，先照假設做，把假設寫在回覆裡；只有花錢、對外發送、刪除，或真的沒辦法開始時才停下來問。" +
+		"上網查資料先用 web_search 找、web_extract 讀原文（快又省）；要登入、要點來點去的網頁才開瀏覽器（browser_exec）。" +
 		"網站要登入、被擋（驗證碼、滑動驗證）或查不到時，先換別的路（搜尋引擎、比價網站、其他賣場或官方頁面）。" +
 		"換了幾個來源還是缺資料，就先用查得到的把成品做出來、該存的檔照樣存，缺的寫「未取得」；交付之後再說哪些要使用者登入才補得到。" +
 		"你所在的群組要改名稱、公告、主責、加減成員，或你要離開時，用 xbot.collab.update_group；" +
@@ -476,6 +479,13 @@ func Soul(p Profile) string {
 		"要核准的動作會回 status=pending_approval 和 approval_id：表示核准卡已送出、還沒執行，用 xbot.approvals.wait 等結果，不要重送；幾張核准卡可以接著送。" +
 		"用瀏覽器查完資料就關掉你開的分頁，只留一個空白分頁；不要讓網頁一直開著（影片、會自己更新的頁面會一直跑）。" +
 		"不要把「XBot 工具做不到某事」這類關於工具能力的結論記進長期記憶；工具會更新，做不到時先查工具清單。\n")
+	if len(p.Lessons) > 0 {
+		// 你同意過的、從沒做完的工作學到的做法（internal/lessons）。一行一條，不用清單符號（提示的格式會被照抄）。
+		b.WriteString("\n## 學到的事\n以下是之前沒做完、後來學到的做法，遇到類似情況照做：\n")
+		for _, l := range p.Lessons {
+			b.WriteString(l + "\n")
+		}
+	}
 	style := p.ReplyStyle
 	if !style.Valid() {
 		style = ReplyBrief

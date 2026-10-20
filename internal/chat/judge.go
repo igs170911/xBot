@@ -111,7 +111,19 @@ func registerJudge(reg *ops.Registry, d Deps) {
 		Description: "系統判斷（已完成、需要你、交回給你、只說要做、卡住了）不對時，告訴它應該是哪一種。" +
 			"只記下來用來校正規則與快判門檻，不會改變工作本身。同一件工作再改一次會換成新的。只有你本人能改正。",
 		Scope: ops.ScopeOperate, Risk: ops.RiskSafe,
-		Handle: correct,
+		Handle: func(ctx context.Context, call *ops.Call, in CorrectIn) (CorrectOut, error) {
+			out, err := correct(ctx, call, in)
+			// 系統說做完了、你說沒有：請老師看哪裡做錯（學到一件事）。
+			if err == nil && !call.DryRun && d.Corrected != nil && out.Correction.Judged == string(judge.Done) &&
+				(in.Verdict == judge.OnlyPromised || in.Verdict == judge.HandedBack || in.Verdict == judge.Stuck) {
+				why := "使用者說沒做完"
+				if out.Correction.Note != "" {
+					why += "：" + out.Correction.Note
+				}
+				go d.Corrected(context.WithoutCancel(ctx), out.Correction.TaskID, why)
+			}
+			return out, err
+		},
 	})
 	ops.Register(reg, ops.Op[CorrectionsIn, CorrectionsOut]{
 		Name: "xbot.judge.corrections", Summary: "列出你對系統判斷的改正",

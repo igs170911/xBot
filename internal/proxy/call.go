@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 // CallRequest 是 XBot 服務自己（不是 Bot 的電腦）呼叫模型的請求，例：快判（X05）。
@@ -77,7 +78,8 @@ func (h *Handler) Call(ctx context.Context, req CallRequest) (CallResponse, erro
 		limit = 1 << 20
 	}
 	body, rerr := io.ReadAll(io.LimitReader(resp.Body, limit))
-	m := newMeter(false)
+	// ChatGPT 方案一律串流（codexBody），回應是 SSE：照 SSE 讀用量，不然記成 0（同 handler 的修正）。
+	m := newMeter(provider.Auth == AuthOAuthCodex || strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream"))
 	_, _ = m.Write(body)
 	if h.o.Usage != nil {
 		c, _ := m.result()

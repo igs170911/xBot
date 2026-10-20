@@ -79,6 +79,11 @@ func cmdServe(args []string) error {
 	}
 	st.routines.SetNotify(notify)
 	st.judge.Notify = notify // 快判到每日上限的通知
+	st.lessons.Notify = func(evs ...store.Event) {
+		for _, e := range evs {
+			notify(e)
+		}
+	}
 	if err := st.judge.Prune(context.Background()); err != nil {
 		slog.Warn("清掉太舊的快判紀錄失敗", "err", err)
 	}

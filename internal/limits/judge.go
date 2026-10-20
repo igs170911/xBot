@@ -97,3 +97,21 @@ const (
 	// JudgeRunsKeepDays 是快判紀錄（judge_run）保留幾天。XBot 新增。
 	JudgeRunsKeepDays = 30
 )
+
+// 從失敗學到的事（internal/lessons，harness2 的做法：老師模型看沒做完的那次，寫一條守則，你同意才加）。XBot 新增。
+const (
+	// LessonsMax 是一個 Bot（或「所有 Bot」）最多留幾條學到的事；多了要先刪舊的（守則太長，每次對話都要多花 token）。
+	LessonsMax = 12
+	// LessonTextMax 是一條學到的事最多幾個字。
+	LessonTextMax = 80
+	// LessonsPerDay 是一個 Bot 一天最多提議幾次（避免一直跳卡）。
+	LessonsPerDay = 3
+	// LessonSteps 是交給老師看的步驟最多幾個。
+	LessonSteps = 40
+	// LessonTeacherTimeout 是請老師看一次最多等多久。
+	LessonTeacherTimeout = 120 * time.Second
+	// SkillFailMin 是一個技能最近沒做完幾次以上、而且一半以上沒做完，老師就改提議修技能。
+	SkillFailMin = 2
+	// SkillStatsDays 是技能成效統計看最近幾天。
+	SkillStatsDays = 30
+)

@@ -39,3 +39,15 @@ func TestConfigVision(t *testing.T) {
 		t.Fatalf("沒有看得懂圖片的模型：%v %v", aux(cfg), hint(cfg))
 	}
 }
+
+// 學到的事寫在基本守則後面、回話風格前面；沒有就不寫這一段。
+func TestSoulLessons(t *testing.T) {
+	soul := Soul(Profile{Name: "小幫手", Lessons: []string{"網站被擋時先換比價網站找"}})
+	i, j := strings.Index(soul, "## 學到的事"), strings.Index(soul, replyStyleHead)
+	if i < 0 || j < i || !strings.Contains(soul, "網站被擋時先換比價網站找") {
+		t.Fatalf("%s", soul)
+	}
+	if strings.Contains(Soul(Profile{Name: "小幫手"}), "學到的事") {
+		t.Fatal("沒有學到的事就不寫")
+	}
+}

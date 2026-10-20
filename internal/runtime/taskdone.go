@@ -238,3 +238,8 @@ func (r *Runtime) closeJudgeCards(ctx context.Context, botID, threadID string) {
 		}
 	}
 }
+
+// unfinishedVerdict：沒做完的判斷（不含要你處理的需要你）。
+func unfinishedVerdict(v judge.Verdict) bool {
+	return v == judge.OnlyPromised || v == judge.HandedBack || v == judge.Stuck
+}

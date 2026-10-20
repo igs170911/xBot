@@ -9,6 +9,7 @@ import (
 	"xbot/internal/engine"
 	"xbot/internal/engine/hermes"
 	"xbot/internal/engines"
+	"xbot/internal/lessons"
 	"xbot/internal/proxy"
 	"xbot/internal/runtime"
 	"xbot/internal/store"
@@ -76,5 +77,38 @@ func modelChoices(db *store.DB, ps *proxy.DBStore, providers *proxy.Providers) f
 			add(id, suggested[id])
 		}
 		return out, nil
+	}
+}
+
+// teacherModel 挑「學到的事」的老師模型：有 ChatGPT 方案時用它最好的模型（月費方案，不另外花錢；
+// 清單照帳號列的優先順序），沒有時用預設模型。
+func teacherModel(db *store.DB, ps *proxy.DBStore) func(ctx context.Context) (lessons.Model, bool) {
+	return func(ctx context.Context) (lessons.Model, bool) {
+		ids, err := ps.ProviderIDs(ctx)
+		if err != nil {
+			return lessons.Model{}, false
+		}
+		slices.Sort(ids)
+		for _, id := range ids {
+			rec, err := ps.GetProvider(ctx, id)
+			if err != nil || rec.Auth != proxy.AuthOAuthCodex {
+				continue
+			}
+			models := proxy.CodexModels
+			if pr, ok, err := ps.Probe(ctx, id); err == nil && ok && len(pr.Models) > 0 {
+				models = pr.Models
+			}
+			if len(models) > 0 {
+				return lessons.Model{Provider: id, Model: models[0], Transport: proxy.TransportResponses}, true
+			}
+		}
+		var def runtime.ModelRef
+		if ok, err := db.GetSettingInto(ctx, runtime.DefaultModelSetting, &def); err != nil || !ok || def.Provider == "" || def.Model == "" {
+			return lessons.Model{}, false
+		}
+		if def.Transport == "" {
+			def.Transport, _ = ps.TransportFor(ctx, def.Provider, def.Model)
+		}
+		return lessons.Model{Provider: def.Provider, Model: def.Model, Transport: def.Transport}, true
 	}
 }

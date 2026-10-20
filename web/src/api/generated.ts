@@ -7136,7 +7136,7 @@ export interface InboxDismissInput {
 export interface InboxDismissOutput {
   item: {
     id: string
-    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、engine_quota（引擎額度用完，可換引擎：xbot.engines.switch）、done、error、mention、delegated（已由代理代為核准的紀錄） */
+    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、engine_quota（引擎額度用完，可換引擎：xbot.engines.switch）、lesson（從沒做完的工作學到一件事，xbot.lessons.decide）、done、error、mention、delegated（已由代理代為核准的紀錄） */
     kind: string
     /** decide（要你決定）、done（完成）、mention（提到你）、error（出錯） */
     group: string
@@ -7199,7 +7199,7 @@ export interface InboxListOutput {
   /** 新到舊 */
   items: {
     id: string
-    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、engine_quota（引擎額度用完，可換引擎：xbot.engines.switch）、done、error、mention、delegated（已由代理代為核准的紀錄） */
+    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、engine_quota（引擎額度用完，可換引擎：xbot.engines.switch）、lesson（從沒做完的工作學到一件事，xbot.lessons.decide）、done、error、mention、delegated（已由代理代為核准的紀錄） */
     kind: string
     /** decide（要你決定）、done（完成）、mention（提到你）、error（出錯） */
     group: string
@@ -7276,7 +7276,7 @@ export interface InboxUndoInput {
 export interface InboxUndoOutput {
   item: {
     id: string
-    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、engine_quota（引擎額度用完，可換引擎：xbot.engines.switch）、done、error、mention、delegated（已由代理代為核准的紀錄） */
+    /** approval、question、secret、signin、takeover、proposal、discussion、routine_failed、budget、engine_quota（引擎額度用完，可換引擎：xbot.engines.switch）、lesson（從沒做完的工作學到一件事，xbot.lessons.decide）、done、error、mention、delegated（已由代理代為核准的紀錄） */
     kind: string
     /** decide（要你決定）、done（完成）、mention（提到你）、error（出錯） */
     group: string
@@ -7892,6 +7892,126 @@ export interface JudgeStatsOutput {
  */
 export function judgeStats(input: JudgeStatsInput = {}, opts?: CallOptions): Promise<JudgeStatsOutput> {
   return invoke('xbot.judge.stats', input, opts).then((r) => r.output)
+}
+
+// xbot.lessons.add
+
+export interface LessonsAddInput {
+  /** 加給這個 Bot；不填是加給所有 Bot */
+  bot_id?: string
+  /** 一句守則（80 字內） */
+  text: string
+}
+
+export interface LessonsAddOutput {
+  id: string
+  text: string
+  bot_id?: string
+  from_task?: string
+  at: number
+}
+
+/**
+ * 幫 Bot 加一條守則（學到的事）
+ *
+ * 加進 Bot 的守則（SOUL.md 的「學到的事」），下一段新對話開始生效。不填 bot_id 是加給所有 Bot。只有你本人能加。
+ *
+ * `xbot.lessons.add`：權限 manage、風險 safe
+ */
+export function lessonsAdd(input: LessonsAddInput, opts?: CallOptions): Promise<LessonsAddOutput> {
+  return invoke('xbot.lessons.add', input, opts).then((r) => r.output)
+}
+
+// xbot.lessons.decide
+
+export interface LessonsDecideInput {
+  /** 學到一件事的卡（kind=lesson） */
+  inbox_id: string
+  /** bot：加給這個 Bot；all：加給所有 Bot；skill：加進那個技能（卡片有技能時）；no：不要 */
+  apply: 'bot' | 'all' | 'skill' | 'no'
+  /** 改過的字；不填照卡片上的 */
+  text?: string
+}
+
+export interface LessonsDecideOutput {
+  lesson?: {
+    id: string
+    text: string
+    bot_id?: string
+    from_task?: string
+    at: number
+  }
+  /** 加進了哪個技能 */
+  skill?: string
+}
+
+/**
+ * 處理一張「學到一件事」的卡：加給這個 Bot、所有 Bot、加進技能，或不要
+ *
+ * 老師模型看了沒做完的工作，提議的一條守則或技能注意事項。可以先改字。只有你本人能決定。
+ *
+ * `xbot.lessons.decide`：權限 manage、風險 safe
+ */
+export function lessonsDecide(input: LessonsDecideInput, opts?: CallOptions): Promise<LessonsDecideOutput> {
+  return invoke('xbot.lessons.decide', input, opts).then((r) => r.output)
+}
+
+// xbot.lessons.delete
+
+export interface LessonsDeleteInput {
+  /** 這個 Bot 的；不填是給所有 Bot 的 */
+  bot_id?: string
+  id: string
+}
+
+export interface LessonsDeleteOutput {
+  deleted: boolean
+}
+
+/**
+ * 刪掉一條學到的事
+ *
+ * `xbot.lessons.delete`：權限 manage、風險 safe
+ */
+export function lessonsDelete(input: LessonsDeleteInput, opts?: CallOptions): Promise<LessonsDeleteOutput> {
+  return invoke('xbot.lessons.delete', input, opts).then((r) => r.output)
+}
+
+// xbot.lessons.list
+
+export interface LessonsListInput {
+  /** 也列出這個 Bot 自己的；不填只列給所有 Bot 的 */
+  bot_id?: string
+}
+
+export interface LessonsListOutput {
+  /** 給所有 Bot 的 */
+  all: {
+    id: string
+    text: string
+    bot_id?: string
+    from_task?: string
+    at: number
+  }[]
+  /** 只給這個 Bot 的 */
+  bot: {
+    id: string
+    text: string
+    bot_id?: string
+    from_task?: string
+    at: number
+  }[]
+  /** 每一組最多幾條 */
+  max: number
+}
+
+/**
+ * 列出 Bot 從失敗學到的事（寫在守則裡的）
+ *
+ * `xbot.lessons.list`：權限 read、風險 safe
+ */
+export function lessonsList(input: LessonsListInput = {}, opts?: CallOptions): Promise<LessonsListOutput> {
+  return invoke('xbot.lessons.list', input, opts).then((r) => r.output)
 }
 
 // xbot.limits.get
@@ -11303,6 +11423,37 @@ export function skillsPropose(input: SkillsProposeInput, opts?: CallOptions): Pr
   return invoke('xbot.skills.propose', input, opts).then((r) => r.output)
 }
 
+// xbot.skills.stats
+
+export interface SkillsStatsInput {
+  bot_id: string
+}
+
+export interface SkillsStatsOutput {
+  /** 最近 30 天用過的技能，最近用的在前 */
+  skills: {
+    name: string
+    /** 最近用了幾次（幾件工作） */
+    uses: number
+    /** 其中做完或該停下來等你的 */
+    done: number
+    /** 其中沒做完的（只說要做、交回給你、卡住、出錯） */
+    unfinished: number
+    last_used: number
+  }[]
+}
+
+/**
+ * 看一個 Bot 的技能最近用了幾次、幾次沒做完
+ *
+ * 最近 30 天，每件用了技能的工作看那一串最後的完成判定：做完（含該停下來等你的）或沒做完（只說要做、交回給你、卡住、出錯）。
+ *
+ * `xbot.skills.stats`：權限 read、風險 safe
+ */
+export function skillsStats(input: SkillsStatsInput, opts?: CallOptions): Promise<SkillsStatsOutput> {
+  return invoke('xbot.skills.stats', input, opts).then((r) => r.output)
+}
+
 // xbot.skills.update
 
 export interface SkillsUpdateInput {
@@ -13882,6 +14033,10 @@ export interface Ops {
   'xbot.judge.settings_get': { input: JudgeSettingsGetInput; output: JudgeSettingsGetOutput }
   'xbot.judge.settings_set': { input: JudgeSettingsSetInput; output: JudgeSettingsSetOutput }
   'xbot.judge.stats': { input: JudgeStatsInput; output: JudgeStatsOutput }
+  'xbot.lessons.add': { input: LessonsAddInput; output: LessonsAddOutput }
+  'xbot.lessons.decide': { input: LessonsDecideInput; output: LessonsDecideOutput }
+  'xbot.lessons.delete': { input: LessonsDeleteInput; output: LessonsDeleteOutput }
+  'xbot.lessons.list': { input: LessonsListInput; output: LessonsListOutput }
   'xbot.limits.get': { input: LimitsGetInput; output: LimitsGetOutput }
   'xbot.limits.set': { input: LimitsSetInput; output: LimitsSetOutput }
   'xbot.logins.forget': { input: LoginsForgetInput; output: LoginsForgetOutput }
@@ -13947,6 +14102,7 @@ export interface Ops {
   'xbot.skills.install_to_bot': { input: SkillsInstallToBotInput; output: SkillsInstallToBotOutput }
   'xbot.skills.list': { input: SkillsListInput; output: SkillsListOutput }
   'xbot.skills.propose': { input: SkillsProposeInput; output: SkillsProposeOutput }
+  'xbot.skills.stats': { input: SkillsStatsInput; output: SkillsStatsOutput }
   'xbot.skills.update': { input: SkillsUpdateInput; output: SkillsUpdateOutput }
   'xbot.system.client_report': { input: SystemClientReportInput; output: SystemClientReportOutput }
   'xbot.system.ping': { input: SystemPingInput; output: SystemPingOutput }
@@ -14138,6 +14294,10 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.judge.settings_get': { path: '/api/v1/judge.settings_get', scope: 'read', risk: 'safe', mutates: false, summary: '看快判模型的設定與今天的用量' },
   'xbot.judge.settings_set': { path: '/api/v1/judge.settings_set', scope: 'admin', risk: 'safe', mutates: true, summary: '改快判模型的設定' },
   'xbot.judge.stats': { path: '/api/v1/judge.stats', scope: 'read', risk: 'safe', mutates: false, summary: '看快判的影子模式統計（和規則、和你的改正一致多少）' },
+  'xbot.lessons.add': { path: '/api/v1/lessons.add', scope: 'manage', risk: 'safe', mutates: true, summary: '幫 Bot 加一條守則（學到的事）' },
+  'xbot.lessons.decide': { path: '/api/v1/lessons.decide', scope: 'manage', risk: 'safe', mutates: true, summary: '處理一張「學到一件事」的卡：加給這個 Bot、所有 Bot、加進技能，或不要' },
+  'xbot.lessons.delete': { path: '/api/v1/lessons.delete', scope: 'manage', risk: 'safe', mutates: true, summary: '刪掉一條學到的事' },
+  'xbot.lessons.list': { path: '/api/v1/lessons.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出 Bot 從失敗學到的事（寫在守則裡的）' },
   'xbot.limits.get': { path: '/api/v1/limits.get', scope: 'read', risk: 'safe', mutates: false, summary: '看可以調的限制（Bot 往來次數、群組接力、建 Bot 上限、自動續做、提案件數）' },
   'xbot.limits.set': { path: '/api/v1/limits.set', scope: 'admin', risk: 'safe', mutates: true, summary: '改可以調的限制；只改有給的，reset 全部回到預設' },
   'xbot.logins.forget': { path: '/api/v1/logins.forget', scope: 'manage', risk: 'confirm', mutates: true, summary: '移除 Bot 瀏覽器裡某些網站的登入' },
@@ -14203,6 +14363,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.skills.install_to_bot': { path: '/api/v1/skills.install_to_bot', scope: 'manage', risk: 'safe', mutates: true, summary: '把技能庫的技能裝到一個 Bot 身上' },
   'xbot.skills.list': { path: '/api/v1/skills.list', scope: 'read', risk: 'safe', mutates: false, summary: '列出技能' },
   'xbot.skills.propose': { path: '/api/v1/skills.propose', scope: 'operate', risk: 'safe', mutates: true, summary: '提議把一個做法存成你的技能' },
+  'xbot.skills.stats': { path: '/api/v1/skills.stats', scope: 'read', risk: 'safe', mutates: false, summary: '看一個 Bot 的技能最近用了幾次、幾次沒做完' },
   'xbot.skills.update': { path: '/api/v1/skills.update', scope: 'manage', risk: 'safe', mutates: true, summary: '修改一個技能' },
   'xbot.system.client_report': { path: '/api/v1/system.client_report', scope: 'read', risk: 'safe', mutates: false, summary: '網頁回報自己遇到的問題（記在服務日誌）' },
   'xbot.system.ping': { path: '/api/v1/system.ping', scope: 'read', risk: 'safe', mutates: false, summary: '確認 XBot 有在運作' },

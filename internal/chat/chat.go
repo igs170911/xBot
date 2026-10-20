@@ -36,6 +36,8 @@ type Runtime interface {
 // Deps 是對話操作需要的服務元件。Runtime 是 nil 時（指令列只產生說明）呼叫會回 internal。
 type Deps struct {
 	Runtime Runtime
+	// Corrected 在你把一件工作的「已完成」改正成沒做完時，在背景呼叫（請老師模型看哪裡做錯，lessons.Service.Consider）。可為 nil。
+	Corrected func(ctx context.Context, taskID, why string)
 }
 
 // ── 輸入輸出 ──────────────────────────────────────────

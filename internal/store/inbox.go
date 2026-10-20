@@ -20,7 +20,7 @@ const (
 // InboxItem 是「待我處理」或通知中心的一張卡。
 type InboxItem struct {
 	ID       string `json:"id"`
-	Kind     string `json:"kind"` // approval / question / secret / signin / takeover / proposal / discussion / routine_failed / budget / engine_quota / done / error / mention / delegated
+	Kind     string `json:"kind"` // approval / question / secret / signin / takeover / proposal / discussion / routine_failed / budget / engine_quota / lesson / done / error / mention / delegated
 	BotID    string `json:"bot_id"`
 	TaskID   string `json:"task_id"`
 	ThreadID string `json:"thread_id"`

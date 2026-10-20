@@ -59,6 +59,7 @@ func coreDeps(st *stack) catalog.Deps {
 	return catalog.Deps{
 		Runtime:   st.runtime,
 		Engines:   st.creds,
+		Lessons:   st.lessons,
 		Providers: st.providers,
 		Lister:    st.pstore,
 		Budgets:   st.budgets,

@@ -25,6 +25,7 @@ import (
 	"xbot/internal/importer"
 	"xbot/internal/ipc"
 	"xbot/internal/judge"
+	"xbot/internal/lessons"
 	"xbot/internal/limits"
 	"xbot/internal/limitsops"
 	"xbot/internal/memory"
@@ -67,7 +68,8 @@ type stack struct {
 	collab    *collab.Service
 	files     *files.Service
 	org       *org.Service
-	judge     *judge.Service // 快判（X05）：經 Model Proxy 呼叫 Jev／OpenCode Go，規則兜底
+	judge     *judge.Service   // 快判（X05）：經 Model Proxy 呼叫 Jev／OpenCode Go，規則兜底
+	lessons   *lessons.Service // 從沒做完的工作學到的事：老師模型提議、你同意才加進守則
 	computers *computers.Service
 	// apps 是連接應用程式與登入（C34）。
 	apps    *apps.Service
@@ -207,7 +209,27 @@ func openStack(cfg config.Config) (*stack, error) {
 		return resp.Status, resp.Body, err
 	}}
 	s.creds.Close = s.driver.Close
+	// 學到的事（harness2 的做法）：工作沒做完、或你說「不對？」時，老師模型看步驟、提議一條守則；你同意才寫進 SOUL.md。
+	s.lessons = &lessons.Service{DB: db, Logger: logger, Call: s.model.Call, Teacher: teacherModel(db, s.pstore),
+		SoulChanged: func(ctx context.Context, botID string) {
+			ids := []string{botID}
+			if botID == "" {
+				ids = nil
+				if all, err := db.ListBots(ctx, false); err == nil {
+					for _, b := range all {
+						ids = append(ids, b.ID)
+					}
+				}
+			}
+			for _, id := range ids {
+				if err := comp.RefreshSoul(ctx, id); err != nil {
+					logger.Warn("更新 Bot 電腦裡的 SOUL.md 失敗，下次開機前會再寫", "bot", id, "err", err)
+				}
+			}
+		}}
+	comp.Lessons = s.lessons.For
 	s.runtime = runtime.New(runtime.Options{DB: db, Driver: s.driver, Bus: bus, Models: comp, Logger: logger, OwnerNote: runtime.OwnerNote,
+		Unfinished: s.lessons.Consider,
 		Admit: func(ctx context.Context, botID string, wait func(any)) (func(), error) {
 			return s.hosts.Admit(ctx, botID, func(w hosts.Wait) { wait(w) })
 		},

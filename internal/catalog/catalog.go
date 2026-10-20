@@ -21,6 +21,7 @@ import (
 	"xbot/internal/importer"
 	"xbot/internal/inbox"
 	"xbot/internal/judge"
+	"xbot/internal/lessons"
 	"xbot/internal/limitsops"
 	"xbot/internal/memory"
 	"xbot/internal/models"
@@ -46,6 +47,7 @@ type Deps struct {
 	Prober    models.Prober    // 模型探測；nil 時用 &proxy.Prober{}
 	Budgets   *proxy.Budgets   // 花費上限（usage 操作）
 	Engines   *engines.Service // 訂閱 CLI 的憑證（EN-2b）
+	Lessons   *lessons.Service // 從沒做完的工作學到的事
 	Hosts     *hosts.Service   // 主機管理（B12）
 	// Teardown 收掉 Bot 的電腦（含資料區）與引擎連線；刪除 Bot 時呼叫。可為 nil。
 	Teardown func(ctx context.Context, botID string) error
@@ -136,7 +138,12 @@ func Register(reg *ops.Registry, d Deps) {
 		bd.Active = rt.Active
 	}
 	bots.Register(reg, bd)
-	chat.Register(reg, chat.Deps{Runtime: d.Runtime})
+	cd := chat.Deps{Runtime: d.Runtime}
+	if d.Lessons != nil {
+		cd.Corrected = d.Lessons.Consider
+	}
+	chat.Register(reg, cd)
+	lessons.Register(reg, d.Lessons)
 	inbox.Register(reg)
 	delegation.Register(reg)
 	var active func(string) (string, string)

@@ -234,3 +234,33 @@ func (q *Queries) TaskLastStatus(ctx context.Context, taskID, prefix string) (st
 	}
 	return text.String, err
 }
+
+// SkillView 是 Bot 在一件工作裡打開過的一個技能（Hermes 的 skill_view）。
+type SkillView struct {
+	TaskID, Name string
+	At           int64
+}
+
+// SkillViews 列出 Bot 從 since 起打開過的技能（技能成效統計用）。
+func (q *Queries) SkillViews(ctx context.Context, botID string, since int64) ([]SkillView, error) {
+	rows, err := q.r.QueryContext(ctx, `SELECT task_id, json_extract(payload, '$.tool.args.name'), created_at FROM event
+		WHERE bot_id = ? AND kind = 'chat.tool_call' AND created_at >= ? AND task_id IS NOT NULL
+		AND json_extract(payload, '$.tool.name') = 'skill_view' ORDER BY id`, botID, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SkillView
+	for rows.Next() {
+		var v SkillView
+		var name sql.NullString
+		if err := rows.Scan(&v.TaskID, &name, &v.At); err != nil {
+			return nil, err
+		}
+		if name.String != "" {
+			v.Name = name.String
+			out = append(out, v)
+		}
+	}
+	return out, rows.Err()
+}

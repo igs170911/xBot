@@ -13,10 +13,12 @@ import {
   skillsEnable,
   skillsInstallToBot,
   skillsList,
+  skillsStats,
   skillsUpdate,
   type BotsGetOutput,
   type MemoryReadOutput,
   type SkillsListOutput,
+  type SkillsStatsOutput,
 } from '../api/generated'
 import { upsertBot } from '../data/bots'
 import { linkClick, navigate } from '../router'
@@ -31,6 +33,7 @@ import { useToast } from '../ui/toast-context'
 import { cx } from '../ui/cx'
 import { Block, Group, Note } from './parts'
 import { ENGINE_LABEL } from './botModes'
+import { LessonsBlock } from '../lessons/LessonsBlock'
 import { errText, isPending } from './format'
 import { actorName, changeKind, entryOrigin, originLink, shortDate, type ChangeKind, type MemChange } from './memoryHistory'
 
@@ -140,8 +143,12 @@ export function SkillsTab({ bot }: { bot: Bot }) {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [busy, setBusy] = useState(false)
   const [removing, setRemoving] = useState<Skill | null>(null)
+  const [stats, setStats] = useState<Map<string, SkillStat>>(new Map())
 
   const load = useCallback(() => {
+    skillsStats({ bot_id: bot.id })
+      .then((d) => setStats(new Map(d.skills.map((s) => [s.name, s]))))
+      .catch(() => setStats(new Map()))
     skillsList({ bot_id: bot.id })
       .then((d) => {
         setData(d)
@@ -253,6 +260,7 @@ export function SkillsTab({ bot }: { bot: Bot }) {
               <SkillRow
                 key={s.id}
                 skill={s}
+                stat={stats.get(s.name)}
                 onEdit={() =>
                   setDraft({
                     id: s.id,
@@ -363,7 +371,9 @@ export function SkillsTab({ bot }: { bot: Bot }) {
   )
 }
 
-function SkillRow({ skill, onEdit, menu }: { skill: Skill; onEdit: () => void; menu: MenuItem[] }) {
+type SkillStat = SkillsStatsOutput['skills'][number]
+
+function SkillRow({ skill, stat, onEdit, menu }: { skill: Skill; stat?: SkillStat; onEdit: () => void; menu: MenuItem[] }) {
   const src = SOURCE_LABEL[skill.source] ?? SOURCE_LABEL.custom
   return (
     <div className={cx('flex min-h-14 items-center gap-3 border-line px-4 py-2.5 not-first:border-t')}>
@@ -383,6 +393,12 @@ function SkillRow({ skill, onEdit, menu }: { skill: Skill; onEdit: () => void; m
           )}
         </span>
         <span className="block truncate text-[13px] text-ink-2">{skill.description || '（沒有寫什麼時候使用）'}</span>
+        {stat && stat.uses > 0 && (
+          <span className="block text-[12px] text-ink-3">
+            最近 30 天用了 {stat.uses} 次
+            {stat.unfinished > 0 && <span className="text-warning-ink"> · {stat.unfinished} 次沒做完</span>}
+          </span>
+        )}
       </span>
       <IconButton icon={Pencil} label={`修改「${skill.name}」`} onClick={onEdit} />
       <MenuButton
@@ -469,6 +485,15 @@ const TARGETS: { value: Target; title: string; sub: (n: string) => string }[] = 
 ]
 
 export function MemoryTab({ bot, onBot }: { bot: Bot; onBot: (b: Bot) => void }) {
+  return (
+    <>
+      <LessonsBlock botId={bot.id} botName={bot.name} />
+      <EngineMemory bot={bot} onBot={onBot} />
+    </>
+  )
+}
+
+function EngineMemory({ bot, onBot }: { bot: Bot; onBot: (b: Bot) => void }) {
   // 記憶是 Hermes 的 MEMORY.md／USER.md：其他引擎不讀也不寫，只說明
   if (bot.engine && bot.engine !== 'hermes') {
     const to = `/settings/bots/${bot.id}/advanced`

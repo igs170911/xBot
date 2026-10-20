@@ -76,6 +76,15 @@ type Computers struct {
 	Roster func(ctx context.Context, botID string) (string, error)
 	// Apps 回傳 Bot 能用的連接在電腦裡怎麼啟動（C34，apps.Service.Servers）；nil 時不管 mcp_servers 裡的連接。
 	Apps func(ctx context.Context, botID string) ([]hermes.AppServer, error)
+	// Lessons 回傳寫進 Bot 守則的學到的事（lessons.Service.For）；nil 時不寫。
+	Lessons func(ctx context.Context, botID string) []string
+}
+
+func (c *Computers) lessons(ctx context.Context, botID string) []string {
+	if c.Lessons == nil {
+		return nil
+	}
+	return c.Lessons(ctx, botID)
 }
 
 // ResolveModel 決定 Bot 要用的模型：bot.model 寫成「<供應商>/<模型>」且供應商已設定時用它；
@@ -239,6 +248,7 @@ func (c *Computers) Prepare(ctx context.Context, h hosts.Host, botID, containerI
 	}
 	p := hermes.Profile{
 		BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul, Team: team, ReplyStyle: c.replyStyle(ctx),
+		Lessons:    c.lessons(ctx, botID),
 		ProviderID: ref.Provider, Model: ref.Model, Transport: ref.Transport, Effort: b.Effort,
 		WorkerKey: string(key), UID: box.BotUID, GID: box.BotGID, ApprovalMode: b.ApprovalMode, MemoryOff: !b.MemoryEnabled,
 	}
@@ -319,7 +329,7 @@ func (c *Computers) RefreshSoul(ctx context.Context, botID string) error {
 		}
 	}
 	return hermes.WriteSoul(ctx, h.Docker(), loc.ID, hermes.Profile{BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description,
-		Soul: b.Soul, Team: team, ReplyStyle: c.replyStyle(ctx), UID: box.BotUID, GID: box.BotGID})
+		Soul: b.Soul, Team: team, ReplyStyle: c.replyStyle(ctx), Lessons: c.lessons(ctx, botID), UID: box.BotUID, GID: box.BotGID})
 }
 
 // Instructions 是 ACP 引擎（Claude Code、Codex、Gemini、OpenCode、Grok）的 Bot 的身分與守則：和 Hermes 的 SOUL.md 同一份
@@ -337,7 +347,7 @@ func (c *Computers) Instructions(ctx context.Context, botID string) (string, err
 		}
 	}
 	return hermes.Soul(hermes.Profile{BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul, Team: team,
-		ReplyStyle: c.replyStyle(ctx)}), nil
+		ReplyStyle: c.replyStyle(ctx), Lessons: c.lessons(ctx, botID)}), nil
 }
 
 // replyStyle 是設定 › 一般 › 回話風格（所有 Bot 共用）；沒設或讀不到時用簡短。
