@@ -55,7 +55,7 @@ type SendOut struct {
 	ThreadID  string `json:"thread_id" desc:"預演且沒給 thread_id 時是空白（會開新的對話串）"`
 	TaskID    string `json:"task_id" desc:"這件工作的 id，交給 wait_until_settled"`
 	MessageID string `json:"message_id" desc:"你這則訊息的 id"`
-	Queued    bool   `json:"queued,omitempty" desc:"Bot 正在做隊友交辦或群組的事，你的訊息排在第一個，做完那件就開始"`
+	Queued    bool   `json:"queued,omitempty" desc:"Bot 正在忙：你的訊息排隊（排在隊友交辦、群組的事前面），手上這件做完就開始"`
 }
 
 // StopIn 是 xbot.chat.stop 的輸入。
@@ -419,15 +419,18 @@ func (d Deps) send(ctx context.Context, call *ops.Call, in SendIn) (SendOut, err
 			return SendOut{}, ops.NotFound("這條對話串不屬於這個 Bot")
 		}
 	}
+	id := call.Identity
+	// 你本人的訊息在 Bot 忙的時候排隊，這一輪做完就接著做（像傳訊息一樣隨時可以送；輸入框也寫「這輪做完才會送出」）。
+	// 2026-10-21 審查：原本回「正在忙另一件事」，打的字送不出去。代理照舊回忙碌（retryable）。
+	queue := id.Kind == ops.KindOwner
 	if call.DryRun {
-		if isBusy, low := rt.Busy(b.ID); isBusy && !low {
+		if isBusy, low := rt.Busy(b.ID); isBusy && !low && !queue {
 			return SendOut{}, busy()
 		}
 		return SendOut{BotID: b.ID, ThreadID: in.ThreadID}, nil
 	}
-	id := call.Identity
 	res, err := rt.Start(ctx, runtime.ChatRequest{BotID: b.ID, ThreadID: in.ThreadID, Text: text,
-		Actor: id.Actor(), ActorName: id.DisplayName(), Via: id.Via})
+		Actor: id.Actor(), ActorName: id.DisplayName(), Via: id.Via, Queue: queue})
 	var over *proxy.BudgetError
 	switch {
 	case errors.Is(err, runtime.ErrBusy):
@@ -797,7 +800,7 @@ func (d Deps) respond(ctx context.Context, call *ops.Call, in RespondIn) (Respon
 	switch {
 	case errors.As(err, &bad):
 		return out, ops.InvalidInput(ops.FieldError{Field: bad.Field, Message: bad.Message})
-	case errors.Is(err, runtime.ErrAnswered), errors.Is(err, runtime.ErrNotQuestion):
+	case errors.Is(err, runtime.ErrAnswered), errors.Is(err, runtime.ErrNotQuestion), errors.Is(err, runtime.ErrOpApproval):
 		return out, ops.Conflict(err.Error())
 	case errors.Is(err, runtime.ErrRequestGone):
 		return out, ops.Conflict(err.Error() + "；需要的話請重新交代")

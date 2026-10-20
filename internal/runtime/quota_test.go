@@ -145,3 +145,15 @@ func TestQuotaTitle(t *testing.T) {
 		}
 	}
 }
+
+// 登入過期（2026-10-21 使用者截圖）：說去哪裡重新登入，不寫「等額度恢復」，也不把同一件事的「原本的訊息」再貼一次。
+func TestQuotaBodyForExpiredLogin(t *testing.T) {
+	q := engine.QuotaError{Kind: engine.QuotaAuth, Engine: "grok", Message: "無法開始對話：Grok 還沒登入"}
+	b := quotaBody(q, 2)
+	if !strings.Contains(b, "「AI 帳號與模型」重新登入") || strings.Contains(b, "額度恢復") || !strings.Contains(b, "其他引擎") {
+		t.Fatalf("%q", b)
+	}
+	if b := quotaBody(q, 0); strings.Contains(b, "額度恢復") {
+		t.Fatalf("%q", b)
+	}
+}

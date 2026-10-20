@@ -34,15 +34,17 @@ func TestSoulTellsHowToChangeAGroup(t *testing.T) {
 }
 
 // 2026-10-20：回覆太長看不下去，要像傳訊息一樣短、分段傳。回話風格取代原本的四段報告格式；給隊友的不套。
+// 2026-10-21：講話不夠自然。口語、句子接得順、長度跟著問題走；拿掉「每段 40 字以內」和一句一段的電報範例。
 func TestSoulAsksForChatStyleReplies(t *testing.T) {
 	soul := Soul(Profile{Name: "水哥哥"})
-	for _, want := range []string{"## 回話風格", "段落之間空一行", "一次最多 4 段", "第一段直接講結果", "一題自己一段", "其他專案",
-		"不要寫「無」", "工具之間也不要寫旁白", "** 粗體、1. 2. 編號", "要照 A 店調價嗎？\n\n", "存成 /workspace 裡的檔案", "看使用者之後會不會再用", "/workspace/tmp/", "```mermaid", "給隊友的訊息", "（回話提醒："} {
+	for _, want := range []string{"## 回話風格", "講話自然的朋友", "句子之間接得順", "不要寫成電報", "長度跟著需要走", "段落之間空一行", "直接給答案和理由",
+		"一題自己一段", "其他專案", "不要寫「無」", "工具之間也不要寫旁白", "不要用 # 標題和 ** 粗體", "兩件事的比較寫成兩句話", "存成 /workspace 裡的檔案", "看使用者之後會不會再用", "/workspace/tmp/",
+		"```mermaid", "所以沒算進去。要照 A 店的價格調嗎？\n\n", "給隊友的訊息", "（回話提醒："} {
 		if !strings.Contains(soul, want) {
 			t.Fatalf("少了 %q：%s", want, soul)
 		}
 	}
-	for _, gone := range []string{"**結論**", "四段", "區分已完成、估計和未取得的資料"} {
+	for _, gone := range []string{"**結論**", "四段", "區分已完成、估計和未取得的資料", "40 個字", "傳訊息給老闆", "一次最多 4 段"} {
 		if strings.Contains(soul, gone) {
 			t.Fatalf("不該再有 %q：%s", gone, soul)
 		}
@@ -53,8 +55,18 @@ func TestSoulAsksForChatStyleReplies(t *testing.T) {
 	}
 }
 
+// 2026-10-21：要會判斷什麼時候上網查：會變的、要精確的、沒把握的先查並附來源；常識、閒聊直接答。
+func TestSoulSaysWhenToUseTools(t *testing.T) {
+	soul := Soul(Profile{Name: "水哥哥"})
+	for _, want := range []string{"什麼時候用工具", "先上網查再回答，附上來源連結", "一般常識、意見、閒聊、改寫、翻譯直接回答"} {
+		if !strings.Contains(soul, want) {
+			t.Fatalf("少了 %q：%s", want, soul)
+		}
+	}
+}
+
 func TestSoulFollowsTheReplyStyleSetting(t *testing.T) {
-	cases := map[ReplyStyle]string{"": "一次最多 4 段", ReplyBrief: "一次最多 4 段", ReplyNormal: "一次最多 6 段", ReplyDetailed: "可以完整說明", "loud": "一次最多 4 段"}
+	cases := map[ReplyStyle]string{"": "簡單的問題三到五句", ReplyBrief: "簡單的問題三到五句", ReplyNormal: "需要時最多六段", ReplyDetailed: "可以完整說明", "loud": "簡單的問題三到五句"}
 	for style, want := range cases {
 		if soul := Soul(Profile{Name: "A", ReplyStyle: style}); !strings.Contains(soul, want) {
 			t.Fatalf("%q 要有 %q：%s", style, want, soul)

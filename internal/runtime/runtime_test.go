@@ -210,6 +210,13 @@ func TestStartFailureRecorded(t *testing.T) {
 	}
 }
 
+func TestNowNote(t *testing.T) {
+	at := time.Date(2026, 10, 21, 3, 12, 0, 0, time.FixedZone("CST", 8*3600))
+	if got := NowNote(at); got != "\n[現在時間：2026-10-21（週三）03:12（UTC+08:00）]" {
+		t.Fatalf("%q", got)
+	}
+}
+
 func TestModelFailureMidTurn(t *testing.T) {
 	ctx := context.Background()
 	f := setup(t)
@@ -223,7 +230,8 @@ func TestModelFailureMidTurn(t *testing.T) {
 		t.Fatalf("任務：%+v", task)
 	}
 	msgs, _ := f.db.ListMessages(ctx, store.ScopeThread, res.ThreadID, 0, 0)
-	if !strings.HasPrefix(msgs[1].Content, "部分") || !strings.Contains(msgs[1].Content, "Error: 401") {
+	// 引擎報的錯優先（Hermes 的 text 是給終端機的說明）；寫到一半的回覆只出現一次。
+	if msgs[1].Content != "部分\n\n金鑰無效" {
 		t.Fatalf("回覆：%q", msgs[1].Content)
 	}
 }
@@ -377,7 +385,7 @@ func TestOwnerTypedMessageGetsTheNote(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.wait(t, res3.TaskID)
-	if len(got) != 3 || !strings.HasSuffix(got[0], OwnerNote) || !strings.HasPrefix(got[0], "幫我比價") || strings.Contains(got[1], "回覆前提醒") || strings.Contains(got[2], "回覆前提醒") {
+	if len(got) != 3 || !strings.Contains(got[0], OwnerNote+"\n[現在時間：") || !strings.HasPrefix(got[0], "幫我比價") || strings.Contains(got[1], "回覆前提醒") || strings.Contains(got[2], "回覆前提醒") {
 		t.Fatalf("送給引擎的：%q", got)
 	}
 	msgs, _ := f.db.ListMessages(ctx, store.ScopeThread, res.ThreadID, 0, 0)

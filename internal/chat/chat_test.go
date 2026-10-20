@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -240,13 +241,14 @@ func TestBusyStopAndTimeout(t *testing.T) {
 	if w.Settled || w.State == store.TaskDone || w.WaitedSeconds < 0.9 {
 		t.Fatalf("應該逾時：%+v", w)
 	}
-	// 忙碌：conflict 而且可以重試；預演也看得出來。
-	_, err = e.call(owner, "xbot.chat.send", map[string]any{"bot_id": e.bot.ID, "text": "插隊"})
+	// 代理遇到忙碌：conflict 而且可以重試；預演也看得出來。（你本人的訊息會排隊，見 TestOwnerMessageQueuesWhileBusy）
+	ag := agent(e.bot.ID)
+	_, err = e.call(ag, "xbot.chat.send", map[string]any{"bot_id": e.bot.ID, "text": "插隊"})
 	var oe *ops.Error
 	if !errors.As(err, &oe) || oe.Code != ops.CodeConflict || !oe.Retryable {
 		t.Fatalf("忙碌：%v", err)
 	}
-	if _, err := e.call(owner, "xbot.chat.send", map[string]any{"bot_id": e.bot.ID, "text": "插隊"}, ops.Options{DryRun: true}); code(err) != ops.CodeConflict {
+	if _, err := e.call(ag, "xbot.chat.send", map[string]any{"bot_id": e.bot.ID, "text": "插隊"}, ops.Options{DryRun: true}); code(err) != ops.CodeConflict {
 		t.Fatalf("預演忙碌：%v", err)
 	}
 	// stop 預演不會真的停。
@@ -269,6 +271,32 @@ func TestBusyStopAndTimeout(t *testing.T) {
 	raw, err = e.call(owner, "xbot.chat.stop", map[string]any{"bot_id": e.bot.ID})
 	if s := must[StopOut](t, raw, err); s.Stopped {
 		t.Fatal("沒在做事時 stopped=false")
+	}
+}
+
+// Bot 在忙時你又打了一則：排隊，這一輪做完就接著做（像傳訊息一樣隨時可以送；2026-10-21 審查）。
+func TestOwnerMessageQueuesWhileBusy(t *testing.T) {
+	e := setup(t)
+	release := make(chan struct{})
+	e.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Event("message.start", nil)
+		if strings.Contains(tr.Text, "做很久的事") {
+			<-release
+		}
+		tr.Complete("好", "complete", nil)
+	}
+	raw, err := e.call(owner, "xbot.chat.send", map[string]any{"bot_id": e.bot.ID, "text": "做很久的事"})
+	first := must[SendOut](t, raw, err)
+	raw, err = e.call(owner, "xbot.chat.send", map[string]any{"bot_id": e.bot.ID, "thread_id": first.ThreadID, "text": "順便補一句"})
+	second := must[SendOut](t, raw, err)
+	if !second.Queued || second.TaskID == "" {
+		t.Fatalf("要排隊：%+v", second)
+	}
+	close(release)
+	for _, id := range []string{first.TaskID, second.TaskID} {
+		if w := e.waitFor(t, owner, id); !w.Settled || w.Verdict != runtime.VerdictAnswer {
+			t.Fatalf("%s：%+v", id, w)
+		}
 	}
 }
 

@@ -45,6 +45,8 @@ var (
 	ErrRequestGone = errors.New("這個問題已結束，Bot 沒有在等了")
 	// ErrNotQuestion 表示這張卡不是 Bot 在對話裡的提問（例：操作的核准要用 xbot.approvals.decide）。
 	ErrNotQuestion = errors.New("這一項不是 Bot 在對話裡的提問")
+	// ErrOpApproval：Bot 自己用 xbot.approvals.request（或要核准的操作）送來的核准卡，要用 xbot.approvals.decide 回覆。
+	ErrOpApproval = errors.New("這是 Bot 要你核定的事，請用 xbot.approvals.decide 回覆（帶卡片上的 approval_id）")
 	// ErrNotExpired 表示只有過期的提問才能請它再問一次。
 	ErrNotExpired = errors.New("只有過期的提問才能請它再問一次")
 )
@@ -276,6 +278,9 @@ func (r *Runtime) Respond(ctx context.Context, itemID string, a Answer, by strin
 	if it.TaskID == "" || (it.Kind != "approval" && it.Kind != "question" && it.Kind != "secret") {
 		return it, ErrNotQuestion
 	}
+	if OpApproval(it) {
+		return it, ErrOpApproval // 不能當成 Bot 不等了而收掉：核准還在等你（2026-10-21：從待我處理按允許，卡片消失、什麼都沒做）
+	}
 	if it.Status != store.InboxOpen {
 		return it, ErrAnswered
 	}
@@ -442,9 +447,16 @@ func (r *Runtime) closeRequest(t *turn, reqID string) {
 		return
 	}
 	t.pending = nil
+	// 引擎不等了：這一輪回到工作中，看門狗照常計時（不然引擎之後沒動靜時，這一輪一直停在「等你」）。
+	wasWaiting := t.waiting && !t.finished && !t.stopping
+	t.waiting = false
+	t.seen = time.Now()
 	t.mu.Unlock()
 	p.stop()
 	r.settle(t, p, store.InboxDismissed, ResolutionCanceled, "system", nil, "Bot 不再等這個回覆")
+	if wasWaiting {
+		r.setState(t, store.TaskRunning)
+	}
 }
 
 // settle 結掉一張提問卡，發布 inbox.updated 與 chat.answered（text 空白時不發 chat.answered 以外的說明）。
@@ -573,6 +585,9 @@ func (r *Runtime) notifyDone(t *turn, verdict, final string, res *judge.Result, 
 		if t.source == SourceRoutine || t.source == SourceWebhook {
 			return // 定時任務的失敗由排程器發 routine_failed 卡（internal/routines），不重複發
 		}
+		if judged != nil && judged.ContinuedBy != "" {
+			return // 暫時的錯誤，已經自動再試（retryAfterError）：結果看那一輪
+		}
 		it = store.InboxItem{Kind: "error", Title: t.botName + "的工作沒有完成"}
 	default:
 		return
@@ -644,11 +659,23 @@ func (r *Runtime) Recover(ctx context.Context) error {
 		return err
 	}
 	for _, it := range items {
-		if it.TaskID != "" {
+		if it.TaskID != "" && !OpApproval(it) { // 核准卡（xbot.approvals）不靠引擎連線，重開後照樣等你決定
 			r.settleStale(ctx, it)
 		}
 	}
 	return nil
+}
+
+// OpApproval 回答這張卡是不是 Bot 自己送來的核准（xbot.approvals.request 或要核准的操作，payload 帶 approval_id）：
+// 它在工作中送出時也帶 task_id，但不是引擎在等的提問。
+func OpApproval(it store.InboxItem) bool {
+	if it.Kind != "approval" {
+		return false
+	}
+	var p struct {
+		ApprovalID string `json:"approval_id"`
+	}
+	return json.Unmarshal(it.Payload, &p) == nil && p.ApprovalID != ""
 }
 
 // emitStored 寫一筆已組好的事件（例：inbox.*）並發布。

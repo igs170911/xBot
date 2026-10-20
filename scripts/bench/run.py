@@ -9,6 +9,8 @@
   - 設定：見 CONFIGS（Hermes＋各供應商、訂閱 CLI）。用訂閱 CLI 的設定要那個 Bot 已經登入或同意用這台電腦的登入。
   - 結果一行一個 JSON 附加到 results.jsonl（XBOT_BENCH_OUT 可換資料夾），回覆全文存在 out/<設定>/<任務>.md。
   - 跑完記得收掉測試 Bot 留在「待我處理」的卡（接手、核准）。
+  - XBOT_BENCH_APPROVE=once：測試 Bot 停下來等核准時替它按「允許這次」接著跑（只對測試 Bot），結果記下按了幾次
+    （approvals：用這個權限等級，使用者要被問幾次）。沒設時遇到核准就停（needs_person）。
 """
 import json, os, sqlite3, subprocess, sys, time
 
@@ -81,26 +83,36 @@ def thread_tasks(thread):
         return c.execute("select id, state, verdict, source, created_at, finished_at from task where thread_id=? order by created_at", (thread,)).fetchall()
 
 
+APPROVE = os.environ.get("XBOT_BENCH_APPROVE", "")
+
+
 def settle(thread, first_task, limit_s=1500):
-    """等這條對話串做完：自動繼續會開新的工作，要等到沒有新的工作為止。"""
+    """等這條對話串做完：自動繼續會開新的工作，要等到沒有新的工作為止。回傳（狀態, 替它核准了幾次）。"""
     start = time.time()
+    approvals = 0
     x("chat", "wait_until_settled", "--task_id", first_task, "--timeout_s", "300")
     quiet = 0
     while time.time() - start < limit_s:
         ts = thread_tasks(thread)
         open_ = [t for t in ts if t[1] != "done"]
         if open_:
+            if open_[-1][1] == "waiting_approval" and APPROVE == "once":
+                w = x("chat", "wait_until_settled", "--task_id", open_[-1][0], "--timeout_s", "1")
+                card = (w.get("request") or {}).get("inbox_id")
+                if card and "error" not in x("chat", "respond", "--inbox_id", card, "--choice", "once"):
+                    approvals += 1
+                    continue
             if open_[-1][1] in ("waiting_input", "waiting_approval"):
-                return "needs_person"
+                return "needs_person", approvals
             x("chat", "wait_until_settled", "--task_id", open_[-1][0], "--timeout_s", "300")
             quiet = 0
             continue
         quiet += 1
         if quiet >= 4:  # 連續 8 秒沒有新工作
-            return "done"
+            return "done", approvals
         time.sleep(2)
     x("chat", "stop", "--bot_id", BOT)
-    return "timeout"
+    return "timeout", approvals
 
 
 def measure(thread):
@@ -158,16 +170,16 @@ def main():
         if "error" in s:
             print(tid, "送不出去", s, flush=True)
             continue
-        state = settle(s["thread_id"], s["task_id"])
+        state, approvals = settle(s["thread_id"], s["task_id"])
         ts = thread_tasks(s["thread_id"])
         m = measure(s["thread_id"])
-        rec = {"config": cfg, "task": tid, "state": state, "secs": round(time.time() - t0), "turns": len(ts),
+        rec = {"config": cfg, "task": tid, "state": state, "approvals": approvals, "secs": round(time.time() - t0), "turns": len(ts),
                "verdicts": [t[2] for t in ts], "file_bytes": file_ok(tid), "thread": s["thread_id"], **{k: v for k, v in m.items() if k != "reply"}}
         with open(os.path.join(OUT, "results.jsonl"), "a") as f:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
         with open(os.path.join(OUT, "out", cfg, tid + ".md"), "w") as f:
             f.write(f"# {tid}\n\n> {text}\n\n" + m["reply"])
-        print(f"{cfg} {tid}: {state} turns={len(ts)} {rec['secs']}s in={m['in']} out={m['out']} tools={m['tools']} file={rec['file_bytes']} verdicts={rec['verdicts']}", flush=True)
+        print(f"{cfg} {tid}: {state} approvals={approvals} turns={len(ts)} {rec['secs']}s in={m['in']} out={m['out']} tools={m['tools']} file={rec['file_bytes']} verdicts={rec['verdicts']}", flush=True)
 
 
 if __name__ == "__main__":

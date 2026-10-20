@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"regexp"
 	"strings"
 
 	"xbot/internal/judge"
@@ -181,6 +182,65 @@ func (r *Runtime) continuation(t *turn, task store.Task, in judge.Input, res jud
 	return &ChatRequest{BotID: t.botID, ThreadID: t.threadID, Text: n.Shown, Prompt: n.Prompt, Sender: "system", Kind: KindActivity,
 		MessageMeta: map[string]any{"activity": ActivityContinue},
 		Source:      task.Source, LowPriority: true, Queue: true, TaskMeta: raw}
+}
+
+// transientRe 認出模型或連線的暫時錯誤：再做一次多半就好（2026-10-19 水哥哥「刪掉團隊跟群組」停在一句英文的
+// 「Model generated invalid tool call」，一般聊天工具遇到這種錯會自己重試）。
+var transientRe = regexp.MustCompile(`(?i)invalid tool call|malformed (tool|function|json)|timed? ?out|connection (reset|refused|error|closed|aborted)|` +
+	`unexpected eof|server error|bad gateway|service unavailable|gateway time|overloaded|temporarily unavailable|stream (ended|closed|error)|\b50[0234]\b`)
+
+// retryAfterError 決定失敗的這一輪要不要自動再做一次：只有模型或連線的暫時錯誤（transientRe），你本人、定時任務、
+// Webhook 交代的，同一個請求只再試一次（auto_retry；自動續做也算在 limits.AutoContinueMax 裡）。額度、登入過期（quota）、
+// 看門狗停下的、有待核准的動作、你又傳了新訊息時不試。不試時回 nil。
+func (r *Runtime) retryAfterError(t *turn, task store.Task, errText string) *ChatRequest {
+	if !transientRe.MatchString(errText) || errText == StalledText {
+		return nil
+	}
+	switch task.Source {
+	case SourceOwner, SourceRoutine, SourceWebhook:
+	default:
+		return nil
+	}
+	var am struct {
+		autoMeta
+		Retried bool `json:"auto_retry,omitempty"`
+	}
+	_ = json.Unmarshal(task.Meta, &am)
+	if am.Retried || am.Depth >= limits.AutoContinueMax() {
+		return nil
+	}
+	ctx := context.Background()
+	if open, err := r.o.DB.ListInboxFiltered(ctx, store.InboxFilter{Status: store.InboxOpen, Kinds: []string{"approval"}, TaskID: task.ID}); err != nil || len(open) > 0 {
+		return nil
+	}
+	tasks, err := r.o.DB.ListTasks(ctx, t.botID, true)
+	if err != nil {
+		return nil
+	}
+	for _, q := range tasks {
+		if q.State == store.TaskQueued && !q.LowPriority {
+			return nil
+		}
+	}
+	root := firstNonEmpty(am.Root, task.ID)
+	raw, _ := json.Marshal(map[string]any{"auto_continue": am.Depth + 1, "continue_root": root, "auto_retry": true})
+	prompt := "（系統自動繼續）剛才這一輪被模型或連線的暫時錯誤打斷了（" + clipText(errText, 200) + "）。" +
+		"請接著把原本的事做完：已經做完的不要重做，出錯的那一步重新做一次；做完給一份完整的最終回報，包含先前已完成的部分。"
+	return &ChatRequest{BotID: t.botID, ThreadID: t.threadID, Text: "自動再試一次：剛才被暫時的錯誤打斷", Prompt: prompt, Sender: "system",
+		Kind: KindActivity, MessageMeta: map[string]any{"activity": ActivityContinue},
+		Source: task.Source, LowPriority: true, Queue: true, TaskMeta: raw}
+}
+
+// RetryNote 是自動再試時寫在失敗那則回覆裡的說明（原本的錯誤附在後面）。
+func RetryNote(errText string) string {
+	return "剛才被模型或連線的暫時錯誤打斷了，我自動再試一次。（" + clipText(errText, 200) + "）"
+}
+
+func clipText(s string, n int) string {
+	if r := []rune(strings.TrimSpace(s)); len(r) > n {
+		return string(r[:n]) + "…"
+	}
+	return strings.TrimSpace(s)
 }
 
 // continueTurn 送出自動續做；成功時回新工作的 id，並把提醒過的背景子任務記一次。

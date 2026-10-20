@@ -105,3 +105,39 @@ func TestWatchdogToolLimit(t *testing.T) {
 		t.Fatalf("任務：%+v", task)
 	}
 }
+
+// 等你回答核准時按停止，引擎又不結束這一輪：照停止的時限收尾，Bot 不能一直忙（2026-10-21 審查抓到）。
+func TestStopWhileWaitingForAnApprovalStillFinishes(t *testing.T) {
+	ctx := context.Background()
+	f := setupWith(t, fastWatchdog)
+	block := make(chan struct{})
+	t.Cleanup(func() { close(block) })
+	asked := make(chan struct{})
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Event("message.start", nil)
+		go tr.Request("approval", map[string]any{"command": "rm -rf /workspace/tmp", "choices": []string{"once", "deny"}})
+		close(asked)
+		<-block // 停止、取消都不理
+	}
+	res, _ := f.rt.Chat(ctx, f.bot.ID, "", "清掉暫存")
+	<-asked
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		if task, _ := f.db.GetTask(ctx, res.TaskID); task.State == store.TaskWaitingApproval {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("等不到核准卡")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if ok, err := f.rt.Stop(ctx, f.bot.ID, res.ThreadID); !ok || err != nil {
+		t.Fatalf("停止：%v %v", ok, err)
+	}
+	if task := f.wait(t, res.TaskID); task.Verdict != VerdictCancelled {
+		t.Fatalf("任務：%+v", task)
+	}
+	if busy, _ := f.rt.Busy(f.bot.ID); busy {
+		t.Fatal("應該釋放 Bot")
+	}
+}

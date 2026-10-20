@@ -293,9 +293,18 @@ type ChatRequest struct {
 }
 
 // OwnerNote 附在你親手打的訊息後面（對話裡看不到），引擎才會照著回答或把工作做完。
-const OwnerNote = "\n\n[回覆前提醒：這是使用者本人剛打的訊息。是問題就第一句直接回答，像說話不像報告，不用為了回答去載技能或上網，除非要最新資料。" +
+// 2026-10-21：原本寫「不用為了回答去上網，除非要最新資料」，Bot 連要查證的事也憑記憶回；改成和守則同一個判斷：
+// 會變的、要精確的、沒把握的先查，其他直接答。口氣要自然（使用者：講話不夠自然）。
+const OwnerNote = "\n\n[回覆前提醒：這是使用者本人剛打的訊息。是問題就直接回答，口氣自然，像真人在聊天；講重點：簡單的問題三到五句、兩段以內，細節他問了再補。" +
+	"答案會隨時間改變、要精確的數字或出處，或你沒把握的，先上網查再回答；一般常識、意見、閒聊直接回答，不用為了回答去載技能。" +
 	"是交代工作就在這一輪做到完成：說要做的事立刻呼叫工具去做，不要問要不要開始，也不要寫「接下來去做某某」就停下來。" +
 	"照回話風格分段，一律繁體中文。]"
+
+// NowNote 是附在你親手打的訊息後面的現在時間（服務所在的時區，和使用者同一台電腦）。
+func NowNote(now time.Time) string {
+	week := []string{"日", "一", "二", "三", "四", "五", "六"}[now.Weekday()]
+	return "\n[現在時間：" + now.Format("2006-01-02") + "（週" + week + "）" + now.Format("15:04") + "（UTC" + now.Format("-07:00") + "）]"
+}
 
 // typedByOwner：你打的字，不是系統代你送的（自動繼續、服務重開接著做、教學）——那些開頭是「（系統…」「（服務…」「【」「[」。
 func typedByOwner(input string) bool {
@@ -526,7 +535,8 @@ func (r *Runtime) run(ctx context.Context, t *turn) {
 	// LazyBoy 那份實驗沒驗證關掉強制用工具之後長工作會不會提早停，2026-10-20 真的會（「每次交代完都不會繼續執行」）。
 	t.mu.Lock()
 	if r.o.OwnerNote != "" && t.source == SourceOwner && typedByOwner(t.input) {
-		t.input += r.o.OwnerNote
+		// 附上現在的時間：Bot 不知道今天幾號、台灣現在幾點（2026-10-21：Grok 每一則都先跑一次 date，「先問我」的 Bot 每次都開一張核准卡）
+		t.input += r.o.OwnerNote + NowNote(time.Now())
 	}
 	t.mu.Unlock()
 	r.setState(t, store.TaskWaitingBox)
@@ -778,6 +788,7 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	}
 	final := text
 	var quotaView *QuotaView
+	errText := "" // 失敗的原因本身（不含已經寫出來的回覆）
 	switch verdict {
 	case VerdictAnswer, VerdictCancelled:
 		if final == "" {
@@ -789,22 +800,37 @@ func (r *Runtime) finish(t *turn, status, text string) {
 			}
 		}
 	case VerdictFailed:
-		if final == "" {
-			final = lastErr
+		if final == "" || lastErr != "" {
+			// 引擎報的錯優先：Hermes 失敗時的 text 是寫到一半的回覆加上給終端機用的英文說明（Send /retry…），錯誤本身在 error
+			final = firstNonEmpty(lastErr, final)
 		}
+		errText = final
 		// 額度用完、限流、餘額不足、登入過期（EN-7）：說清楚，開一張換引擎的卡。
 		if q := r.quotaOf(t, final); q != nil && text != StalledText {
 			quota, said := r.quotaCard(t, q)
 			quotaView = &quota
 			final = said
 		}
-		if streamed != "" && final != streamed {
+		if streamed != "" && final != streamed && !strings.HasPrefix(final, streamed) {
 			final = strings.TrimSpace(streamed + "\n\n" + final)
 		}
 	}
 	ctx := context.Background()
-	// 判斷做完了沒（X04）：停掉的、中斷的不判斷。
 	task, terr := r.o.DB.GetTask(ctx, t.taskID)
+	// 模型或連線的暫時錯誤：自動再做一次（retryAfterError），回覆裡說清楚。
+	// 先排好再說：排不進去（例：花費到上限）就照原本的失敗說明，不能寫「會再試」。
+	retryID := ""
+	if verdict == VerdictFailed && quotaView == nil && terr == nil && text != StalledText {
+		if req := r.retryAfterError(t, task, errText); req != nil {
+			if retryID = r.continueTurn(t, judge.Input{}, req); retryID != "" {
+				final = RetryNote(errText)
+				if streamed != "" {
+					final = strings.TrimSpace(streamed + "\n\n" + final)
+				}
+			}
+		}
+	}
+	// 判斷做完了沒（X04）：停掉的、中斷的不判斷。
 	var in judge.Input
 	var res *judge.Result
 	if terr == nil {
@@ -857,6 +883,8 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	if res != nil {
 		if req := r.continuation(t, task, in, *res); req != nil {
 			judged.ContinuedBy = r.continueTurn(t, in, req)
+		} else if retryID != "" {
+			judged.ContinuedBy = retryID
 		} else if r.o.Unfinished != nil && quotaView == nil && unfinishedVerdict(res.Verdict) && (t.source == SourceOwner || t.source == SourceRoutine) {
 			go r.o.Unfinished(context.Background(), t.taskID, res.Reason)
 		}
@@ -1032,7 +1060,7 @@ func (r *Runtime) stopTurn(ctx context.Context, t *turn) (bool, error) {
 		return false, nil
 	}
 	already := t.stopping
-	t.stopping = true
+	t.stopping, t.waiting = true, false
 	if !already {
 		t.stopAt = time.Now()
 	}
@@ -1123,7 +1151,8 @@ func (r *Runtime) watch(t *turn, s engine.Session) {
 			t.mu.Unlock()
 			return
 		}
-		if t.waiting {
+		// 等你回答時不算沒動靜；但按了停止就照停止的時限收尾（2026-10-21：停止時卡片還開著，這一輪永遠收不掉、Bot 一直忙）。
+		if t.waiting && !t.stopping {
 			t.seen = now
 			t.mu.Unlock()
 			continue
@@ -1247,6 +1276,11 @@ func title(text string) string {
 // askApproval 開待我處理卡、讓這一輪等你回覆（引擎要核准、補充問題、密碼等）。
 func (r *Runtime) askApproval(t *turn, e engine.Event) {
 	t.mu.Lock()
+	if t.finished || t.stopping {
+		// 這一輪已經結束或正在停（例：自動允許失敗後才補開卡）：不能再把工作改回「等你」
+		t.mu.Unlock()
+		return
+	}
 	t.waiting = true
 	t.mu.Unlock()
 	state := store.TaskWaitingInput

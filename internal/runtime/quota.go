@@ -94,11 +94,16 @@ func quotaBody(q engine.QuotaError, options int) string {
 	var b string
 	switch q.Kind {
 	case engine.QuotaAuth:
+		// 登入過期不會自己恢復：說去哪裡重新登入，不寫「等額度恢復」（2026-10-21 使用者截圖）
 		if q.Engine == hermes.Name {
 			b = "金鑰或登入失效了，要到「AI 模型」重新設定。"
 		} else {
-			b = "要在這台電腦上重新登入。"
+			b = "到 Bot 設定 ›「AI 帳號與模型」重新登入。"
 		}
+		if options > 0 {
+			return b + "也可以換成你有的其他引擎或模型繼續。"
+		}
+		return b
 	case engine.QuotaFunds:
 		b = "要先儲值。"
 	}
@@ -132,7 +137,8 @@ func (r *Runtime) quotaCard(t *turn, q *engine.QuotaError) (QuotaView, string) {
 	title := quotaTitle(label, *q, time.Now())
 	body := quotaBody(*q, len(options))
 	text := title + "。" + body
-	if q.Message != "" {
+	// 供應商原本的訊息（例：限流的說明）附在後面；登入過期的那段是 XBot 自己寫的同一件事，不重複（細節留在卡片裡）
+	if q.Message != "" && q.Kind != engine.QuotaAuth {
 		text += "\n\n原本的訊息：" + q.Message
 	}
 	if old, err := r.o.DB.ListInboxFiltered(ctx, store.InboxFilter{Status: store.InboxOpen, Kinds: []string{engine.QuotaCardKind}, BotID: t.botID}); err == nil {

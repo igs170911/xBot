@@ -194,6 +194,25 @@ func TestRespondWhenBotGone(t *testing.T) {
 	}
 }
 
+// Bot 自己送的核准（xbot.approvals.request，工作中送出也帶 task_id）不是引擎在等的提問：chat.respond 不能把它當成
+// 不等了而收掉，服務重開也不收（審查 2026-10-21：從待我處理按允許，卡片消失、什麼都沒做）。
+func TestBotApprovalCardIsNotAnEngineQuestion(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t)
+	b, _ := f.db.CreateThread(ctx, store.Thread{BotID: f.bot.ID})
+	card, _ := f.db.CreateInboxItem(ctx, store.InboxItem{Kind: "approval", BotID: f.bot.ID, TaskID: "t1", ThreadID: b.ID, Ref: "ap1",
+		Payload: json.RawMessage(`{"approval_id":"ap1","op":"xbot.approvals.request"}`)})
+	if _, err := f.rt.Respond(ctx, card.ID, Answer{Choice: "once"}, "owner"); !errors.Is(err, ErrOpApproval) {
+		t.Fatalf("%v", err)
+	}
+	if err := f.rt.Recover(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := f.db.GetInboxItem(ctx, card.ID); got.Status != store.InboxOpen {
+		t.Fatalf("核准卡要留著等你決定：%+v", got)
+	}
+}
+
 // 2026-10-19 實際遇到：Hermes 提問之後緊接著送用量（session.usage），狀態被改回 running，
 // 對話裡的提問卡跟著收掉、只剩待我處理。用量只是記帳：問題沒回之前要一直是「等你回答」。
 func TestUsageAfterQuestionKeepsWaiting(t *testing.T) {

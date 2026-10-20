@@ -105,15 +105,17 @@ func TestProvisionWritesConfigWithoutRealKey(t *testing.T) {
 // delegate_task 開著：hermes_host.py 讓子代理在同一輪裡做完（不在背景跑）。
 func TestConfigWebExtractAndInlineDelegation(t *testing.T) {
 	p := Profile{BotID: "b1", Name: "小幫手", ProviderID: "openai", Model: "gpt-x"}
+	// 搜尋沒有選後端時用 Exa 的免金鑰版（使用者要求，DuckDuckGo 只有標題摘要又常被限流）；使用者選的保留。
 	for _, c := range []struct {
-		web  map[string]any
-		want any
+		web          map[string]any
+		want, search any
 	}{
-		{nil, ExtractBackend},
-		{map[string]any{"backend": "ddgs"}, ExtractBackend},
-		{map[string]any{"backend": "tavily"}, nil},        // 共用的後端會讀網頁
-		{map[string]any{"extract_backend": "exa"}, "exa"}, // 使用者選的
-		{map[string]any{"backend": "", "extract_backend": ""}, ExtractBackend},
+		{nil, ExtractBackend, SearchBackend},
+		{map[string]any{"backend": "ddgs"}, ExtractBackend, nil},                       // 使用者選的 ddgs 搜尋保留
+		{map[string]any{"backend": "tavily"}, nil, nil},                                // 共用的後端會讀網頁、會搜尋
+		{map[string]any{"extract_backend": "exa"}, "exa", SearchBackend},               // 使用者選的
+		{map[string]any{"search_backend": "brave-free"}, ExtractBackend, "brave-free"}, // 使用者選的
+		{map[string]any{"backend": "", "extract_backend": ""}, ExtractBackend, SearchBackend},
 	} {
 		cfg := map[string]any{}
 		if c.web != nil {
@@ -122,6 +124,9 @@ func TestConfigWebExtractAndInlineDelegation(t *testing.T) {
 		cfg = Config(cfg, p)
 		if got := cfg["web"].(map[string]any)["extract_backend"]; got != c.want {
 			t.Errorf("web=%v：extract_backend=%v，要 %v", c.web, got, c.want)
+		}
+		if got := cfg["web"].(map[string]any)["search_backend"]; got != c.search {
+			t.Errorf("web=%v：search_backend=%v，要 %v", c.web, got, c.search)
 		}
 		if tf := cfg["mcp_servers"].(map[string]any)["computer"].(map[string]any)["tools"].(map[string]any); tf["resources"] != false || tf["prompts"] != false {
 			t.Fatalf("桌面工具不列 resources／prompts 附屬工具：%v", tf)

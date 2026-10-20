@@ -501,3 +501,83 @@ func TestHermesLoopHaltContinuesInChinese(t *testing.T) {
 		t.Fatalf("續做的提示：%q", seen)
 	}
 }
+
+// 模型或連線的暫時錯誤（2026-10-19 水哥哥：「Model generated invalid tool call」）：自動再做一次，回覆裡用白話說；
+// 只試一次，再失敗就停。額度、登入這類不試（quota 測試另外驗）。
+func TestTransientErrorIsRetriedOnce(t *testing.T) {
+	ctx := context.Background()
+	for _, again := range []bool{false, true} {
+		f := setup(t)
+		var mu sync.Mutex
+		var prompts []string
+		f.g.OnPrompt = func(tr *hermestest.Turn) {
+			mu.Lock()
+			prompts = append(prompts, tr.Text)
+			n := len(prompts)
+			mu.Unlock()
+			tr.Event("message.start", nil)
+			if n == 1 || again {
+				// Hermes 失敗時的 text 是寫到一半的回覆加上英文說明，錯誤本身在 error。
+				tr.Event("message.delta", map[string]any{"text": "我先查一下資料，"})
+				tr.Complete("我先查一下資料，\n\nThe model provider failed. Send /retry, or switch models with /model.", "error",
+					map[string]any{"error": "Model generated invalid tool call: tool_call"})
+				return
+			}
+			tr.Complete("刪好了：兩個團隊、三個群組。", "complete", nil)
+		}
+		res, err := f.rt.Chat(ctx, f.bot.ID, "", "幫我把團隊跟群組都刪掉")
+		if err != nil {
+			t.Fatal(err)
+		}
+		js := chain(t, f, res.TaskID)
+		first, _ := f.db.GetTask(ctx, res.TaskID)
+		if first.Verdict != VerdictFailed || len(js) != 2 || js[0].ContinuedBy == "" {
+			t.Fatalf("again=%v：第一輪 %+v，判斷 %+v", again, first, js)
+		}
+		msgs, _ := f.db.ListMessages(ctx, store.ScopeThread, res.ThreadID, 0, 0)
+		var said []string
+		for _, m := range msgs {
+			said = append(said, m.Content)
+		}
+		all := strings.Join(said, "\n")
+		if !strings.Contains(all, "我先查一下資料，\n\n剛才被模型或連線的暫時錯誤打斷了，我自動再試一次。（Model generated invalid tool call") ||
+			strings.Contains(all, "Send /retry") {
+			t.Fatalf("要用白話說會再試，引用的是錯誤本身：%q", said)
+		}
+		// 自動再試時不發「工作沒有完成」的卡。
+		if items, _ := f.db.ListInboxFiltered(ctx, store.InboxFilter{Kinds: []string{"error"}, TaskID: res.TaskID}); len(items) != 0 {
+			t.Fatalf("不該有沒完成的卡：%+v", items)
+		}
+		mu.Lock()
+		got := append([]string(nil), prompts...)
+		mu.Unlock()
+		if len(got) != 2 || !strings.HasPrefix(got[1], "（系統自動繼續）剛才這一輪被模型或連線的暫時錯誤打斷了") {
+			t.Fatalf("again=%v：送出的 %q", again, got)
+		}
+		second, _ := f.db.GetTask(ctx, js[0].ContinuedBy)
+		want := VerdictAnswer
+		if again {
+			want = VerdictFailed // 再失敗就停，不再試第三次
+		}
+		if second.Verdict != want || (js[1] != nil && js[1].ContinuedBy != "") {
+			t.Fatalf("again=%v：第二輪 %+v %+v", again, second, js[1])
+		}
+	}
+}
+
+// 不是暫時的錯誤（例：工具真的失敗、模型拒絕）不自動再試。
+func TestOtherErrorsAreNotRetried(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t)
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Event("message.start", nil)
+		tr.Complete("", "error", map[string]any{"error": "找不到這個檔案"})
+	}
+	res, err := f.rt.Chat(ctx, f.bot.ID, "", "打開報告")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if js := chain(t, f, res.TaskID); len(js) != 1 || (js[0] != nil && js[0].ContinuedBy != "") {
+		t.Fatalf("%+v", js)
+	}
+}
