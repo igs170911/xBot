@@ -330,6 +330,24 @@ func TestResponsesStreamUsage(t *testing.T) {
 	}
 }
 
+// ChatGPT 方案的 Codex 端點串流時沒有標 text/event-stream：照請求的 stream 讀用量，也幫容器補上 Content-Type。
+func TestResponsesStreamWithoutEventStreamType(t *testing.T) {
+	f := newFixture(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header()["Content-Type"] = nil // 不讓 Go 猜成 text/plain 以外的東西：和上游一樣什麼都不標
+		_, _ = io.WriteString(w, "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"usage\":null}}\n\n")
+		_, _ = io.WriteString(w, "event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":21000,\"output_tokens\":66,\"input_tokens_details\":{\"cached_tokens\":20480}}}}\n\n")
+	})
+	resp := f.do("POST", "/model/openai/v1/responses", "Bearer "+f.botKey, `{"model":"gpt-5.6-luna","stream":true}`)
+	_ = readAll(t, resp)
+	if ct := resp.Header.Get("Content-Type"); ct != "text/event-stream" {
+		t.Fatalf("Content-Type %q", ct)
+	}
+	waitFor(t, func() bool { return len(f.mem.Usage()) == 1 })
+	if e := f.mem.Usage()[0]; e.InputTokens != 21000 || e.OutputTokens != 66 || e.CachedTokens != 20480 {
+		t.Fatalf("用量 %+v", e)
+	}
+}
+
 func TestUpstreamErrorRecordedAndKeyRedacted(t *testing.T) {
 	// 有些供應商會在錯誤訊息裡回顯金鑰；不能原樣還給容器。
 	f := newFixture(t, func(w http.ResponseWriter, r *http.Request) {

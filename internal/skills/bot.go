@@ -101,8 +101,12 @@ type state struct {
 //
 // deep-research 舊版要子代理（delegate_task）平行查，但 2026-10-19 起 Bot 沒有子代理了：用了這個技能的 Bot 只讀了說明就
 // 回答、一次都沒有上網查（2026-10-20 使用者：「我看不到有任何真的去搜索的樣子」）。
+//
+// grok-build 舊版叫 Bot 把「做網站／寫程式」一律交給 grok，沒登入就停下來請使用者在終端機登入、接手電腦：
+// 做一個單頁網頁也卡住（2026-10-20 基準測試）。新版只有大的程式工作、而且 grok 已經登入才交辦，否則自己做。
 var retired = map[string][]string{
 	"deep-research": {"b48cb4bba4d7587660c808379fb2ba2fef08c76a3cee6cf65ebaa986484c3877"},
+	"grok-build":    {"24f91691f1490b4fe5b8a7e79457a8211108c5210324fa015872c654da017aeb"},
 }
 
 // Seed 把 XBot 內建技能放進 Bot 的電腦，每個只放一次；使用者之後改了或刪了都保留（LazyBoy computers.py seed_skills）。

@@ -161,12 +161,19 @@ func (m *meter) result() (counts, bool) {
 
 // requestModel 讀出請求內容裡的 model 欄位；不是 JSON 就回空字串。
 func requestModel(body []byte) string {
+	m, _ := requestInfo(body)
+	return m
+}
+
+// requestInfo 讀出請求內容裡的 model 與 stream 欄位；不是 JSON 就回空的。
+func requestInfo(body []byte) (model string, stream bool) {
 	var req struct {
-		Model any `json:"model"`
+		Model  any  `json:"model"`
+		Stream bool `json:"stream"`
 	}
 	if json.Unmarshal(body, &req) != nil {
-		return ""
+		return "", false
 	}
 	s, _ := req.Model.(string)
-	return s
+	return s, req.Stream
 }

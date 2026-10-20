@@ -263,7 +263,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	model := requestModel(body)
+	model, wantStream := requestInfo(body)
 	if model == "" && audioPaths[apiPath] {
 		model = formModel(r.Header.Get("Content-Type"), body)
 	}
@@ -326,9 +326,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if fellBack {
 		w.Header().Set("X-Xbot-Fallback", provider.ID+"/"+model)
 	}
+	// ChatGPT 方案的 Codex 端點串流時沒有標成 text/event-stream（2026-10-20 實測，容器收到 text/plain）：
+	// 請求是 stream、回應又不是 JSON 時當成 SSE，不然用量會被當成一整份 JSON 讀，記成 0 個 token；容器那邊也補上正確的 Content-Type。
+	ct := resp.Header.Get("Content-Type")
+	streaming := strings.Contains(ct, "text/event-stream")
+	if !streaming && wantStream && resp.StatusCode < 400 && !strings.Contains(ct, "json") {
+		streaming = true
+		w.Header().Set("Content-Type", "text/event-stream")
+	}
 	w.WriteHeader(resp.StatusCode)
 
-	streaming := strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream")
 	var m *meter
 	if metered && apiPath != "audio/speech" { // 合成語音回的是音訊，照請求的字數記
 		m = newMeter(streaming)
