@@ -91,9 +91,18 @@ export function startScrollWatch(version: () => string) {
   // （2026-10-20 真機：2.5 秒時分頁列在 702，應該在 761）。記下高度何時、怎麼變回來，才修得準。
   const t0 = performance.now()
   const timeline: string[] = []
+  // lvh／dvh 實際是幾 px：網路上的回報說主畫面 App 剛打開時 dvh 少算狀態列、lvh 是對的，用真機確認
+  const unit = (css: string) => {
+    const probe = document.createElement('div')
+    probe.style.cssText = `position:absolute;visibility:hidden;pointer-events:none;top:0;height:${css}`
+    document.body.appendChild(probe)
+    const h = probe.offsetHeight
+    probe.remove()
+    return h
+  }
   const sample = (label: string) => {
     const vv = window.visualViewport
-    timeline.push(`${label}:in${window.innerHeight}/vv${Math.round(vv?.height ?? 0)}/ch${document.documentElement.clientHeight}/nav${navTop() ?? '-'}`)
+    timeline.push(`${label}:in${window.innerHeight}/vv${Math.round(vv?.height ?? 0)}/ch${document.documentElement.clientHeight}/lvh${unit('100lvh')}/dvh${unit('100dvh')}/nav${navTop() ?? '-'}`)
   }
   for (const ms of [150, 500, 1000, 2500, 5000, 10000]) window.setTimeout(() => sample(String(ms)), ms)
   let resized = 0
