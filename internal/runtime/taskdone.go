@@ -91,6 +91,9 @@ func (r *Runtime) judgeTurn(t *turn, task store.Task, verdict, final string, sta
 	t.mu.Lock()
 	in := judge.Input{Outcome: verdict, Text: final, UsedTools: t.usedTools, Stalled: stalled, PlanLeft: append([]string(nil), t.plan...),
 		TaskID: task.ID, BotID: t.botID}
+	if t.loop != nil {
+		in.Looped, in.LoopCount = t.loop.Tool, t.loop.Count
+	}
 	t.mu.Unlock()
 	if r.o.Stranded != nil && verdict == VerdictAnswer {
 		goals, background := r.o.Stranded(context.Background(), task)

@@ -50,6 +50,13 @@ export function goBack(fallback: string) {
   else navigate(fallback, { replace: true })
 }
 
+/** 回到某一頁（手機對話、群組的返回鈕回對話列表）：上一頁剛好就是那一頁時用瀏覽器的上一頁（列表的捲動位置還在），
+ *  否則（換過對話串、從檔案或通知進來）直接換成那一頁，不是一頁一頁往回走。 */
+export function backTo(path: string) {
+  if (historyDepth() > 0 && previousPath() === path) window.history.back()
+  else navigate(path, { replace: true })
+}
+
 export function usePath(): string {
   return useSyncExternalStore(subscribe, () => window.location.pathname, () => '/')
 }

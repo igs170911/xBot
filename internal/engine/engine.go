@@ -60,6 +60,14 @@ type Event struct {
 	Fatal bool `json:"fatal,omitempty"`
 	// Quota：error、done 是額度用完、限流、餘額不足或登入過期時（EN-7）。
 	Quota *QuotaError `json:"quota,omitempty"`
+	// Loop：done 是引擎因為一直重複同一個工具沒有進展而停下這一輪時（Hermes 的 tool guardrail）。
+	Loop *Loop `json:"loop,omitempty"`
+}
+
+// Loop 是引擎停下的重複：哪個工具、重複了幾次。
+type Loop struct {
+	Tool  string `json:"tool"`
+	Count int    `json:"count"`
 }
 
 // ToolEvent 是一次工具呼叫。

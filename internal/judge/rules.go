@@ -94,6 +94,9 @@ type Input struct {
 	Stranded []string
 	// Background：這一輪是背景子任務回報結果後自己開始的那一輪（LazyBoy kind=background）。
 	Background bool
+	// Looped、LoopCount：引擎因為一直重複同一個工具（Looped）LoopCount 次沒有進展而停下這一輪（Hermes 的 tool guardrail）。
+	Looped    string
+	LoopCount int
 	// TaskID、BotID 是這一輪的工作與 Bot（快判記錄用，對得到你的改正）。
 	TaskID, BotID string
 }
@@ -146,7 +149,7 @@ func (f Fallback) Judge(ctx context.Context, in Input) (Result, error) {
 	pctx, cancel := context.WithTimeout(ctx, wait)
 	defer cancel()
 	got, perr := f.Primary.Judge(pctx, in)
-	if perr != nil || !got.Verdict.Valid() || base.Verdict == NeedsPerson {
+	if perr != nil || !got.Verdict.Valid() || base.Verdict == NeedsPerson || in.Looped != "" {
 		return base, nil
 	}
 	if got.Ask == "" {
@@ -350,6 +353,11 @@ func (Rules) Judge(_ context.Context, in Input) (Result, error) {
 		}
 		return r, nil
 	}
+	if in.Looped != "" {
+		// XBot 新增（LazyBoy 沒有）：引擎停下的重複不是做完，也不是要你處理；換個做法自己接著做。
+		return Result{Verdict: Stuck, By: ByRules,
+			Reason: clipRunes(fmt.Sprintf("一直重複用 %s（%d 次）沒有進展，被停下來", in.Looped, in.LoopCount), limits.JudgeReasonMax)}, nil
+	}
 	text := in.Text
 	ask, handed := AskOf(text)
 	promised := Promised(in)
@@ -399,7 +407,7 @@ func Continues(in Input, r Result) bool {
 	case OnlyPromised, HandedBack:
 		return true
 	case Stuck:
-		return len(in.PlanLeft) > 0 || len(in.Stranded) > 0
+		return len(in.PlanLeft) > 0 || len(in.Stranded) > 0 || in.Looped != ""
 	}
 	return false
 }
@@ -411,6 +419,9 @@ func NudgeFor(in Input) Nudge {
 	_, handed := AskOf(in.Text)
 	var unfinished string
 	switch {
+	case in.Looped != "":
+		unfinished = fmt.Sprintf("你剛才一直重複呼叫 %s（%d 次），結果都一樣、沒有新進展，系統先把這一輪停下來。", in.Looped, in.LoopCount) +
+			"不要再送同樣的呼叫或同樣的查詢。先用已經拿到的資料把成品做出來（該存的檔照樣存），缺的寫「未取得」；真的還缺，才換一個完全不同的來源或做法。"
 	case len(in.PlanLeft) > 0:
 		unfinished = "你的計畫還有這些沒完成：\n" + bullets(in.PlanLeft)
 	case len(in.Stranded) > 0:
@@ -430,6 +441,8 @@ func NudgeFor(in Input) Nudge {
 		"如果使用者其實還沒交代具體的事（只是打招呼、問你能做什麼、在聊天），就簡短回一句就好，不要自己找事做。"
 	var shown string
 	switch {
+	case in.Looped != "":
+		shown = "自動繼續：一直重複同一個動作，換個做法"
 	case len(in.PlanLeft) > 0:
 		shown = fmt.Sprintf("自動繼續：計畫還有 %d 項沒完成", len(in.PlanLeft))
 	case promised && len(in.Stranded) == 0:

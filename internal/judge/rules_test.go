@@ -343,3 +343,20 @@ func TestEndingWithNextStepIsNotDone(t *testing.T) {
 		}
 	}
 }
+
+// 2026-10-20：beam-free 把同一個 web_search 送了 50 次，Hermes 停下這一輪；原本判成「已完成」，不會接著做。
+// 引擎停下的重複是卡住：自己換做法接著做，快判模型不能改判。
+func TestLoopHaltIsStuckAndContinues(t *testing.T) {
+	in := Input{Outcome: OutcomeAnswer, Text: "我一直重複用 web_search（50 次）都沒有新進展，先停下來。", UsedTools: true, Looped: "web_search", LoopCount: 50}
+	got := judge(t, in)
+	if got.Verdict != Stuck || !Continues(in, got) || !strings.Contains(got.Reason, "web_search（50 次）") {
+		t.Fatalf("%+v", got)
+	}
+	n := NudgeFor(in)
+	if !strings.Contains(n.Prompt, "不要再送同樣的呼叫") || !strings.Contains(n.Prompt, "先用已經拿到的資料把成品做出來") || n.Shown != "自動繼續：一直重複同一個動作，換個做法" {
+		t.Fatalf("%+v", n)
+	}
+	if got, _ := (Fallback{Primary: fakeJudge{r: Result{Verdict: Done, By: ByModel}}}).Judge(context.Background(), in); got.Verdict != Stuck || got.By != ByRules {
+		t.Fatalf("快判模型不能改判：%+v", got)
+	}
+}

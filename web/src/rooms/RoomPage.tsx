@@ -14,7 +14,7 @@ import { cx } from '../ui/cx'
 import { Dialog } from '../ui/Dialog'
 import { MenuButton } from '../ui/Menu'
 import { EditRoomDialog } from './EditRoomDialog'
-import { goBack } from '../router'
+import { backTo } from '../router'
 import { usePhone } from '../mobile/nav'
 import { botBubble, Collapsible } from '../chat/Message'
 import { splitBubbles } from '../chat/markdown/bubbles'
@@ -326,7 +326,7 @@ function PhoneRoomHeader({ room, status, anyBusy, lead, onRule, onStop, onMember
   return (
     <header className="flex flex-none flex-col items-center gap-2 px-3 pb-2 pt-[max(8px,env(safe-area-inset-top))]">
       <div className="flex w-full items-center gap-2">
-        <button type="button" aria-label="返回" className={round} onClick={() => goBack('/chats')}>
+        <button type="button" aria-label="返回" className={round} onClick={() => backTo('/chats')}>
           <Icon icon={ChevronLeft} size={22} />
         </button>
         <button type="button" aria-label="群組通話（還在做）" className={round} disabled>

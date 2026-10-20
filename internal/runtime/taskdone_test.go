@@ -473,3 +473,31 @@ func TestUnfinishedAfterAutoContinueGivesUp(t *testing.T) {
 		t.Fatalf("要是最後一輪：%v %+v", got, js)
 	}
 }
+
+// Hermes 一直重複同一個工具、自己停下這一輪時回的英文固定訊息：對話裡換成中文，判成卡住，自己換做法接著做。
+func TestHermesLoopHaltContinuesInChinese(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t)
+	s := &script{reply: func(_ string, n int) (string, bool, string) {
+		if n == 1 {
+			return "I stopped retrying because I kept running web_search 50 times without making progress. The last result above shows what blocked it. Tell me how you'd like to proceed, or send `continue` and I'll try a different approach.", true, ""
+		}
+		return "做好了，表格存在 /workspace/bench/trash-bins.md。", true, ""
+	}}
+	f.g.OnPrompt = s.on
+	res, err := f.rt.Chat(ctx, f.bot.ID, "", "幫我比價存成表格")
+	if err != nil {
+		t.Fatal(err)
+	}
+	js := chain(t, f, res.TaskID)
+	if len(js) != 2 || js[0].Verdict != judge.Stuck || js[0].ContinuedBy == "" || js[1].Verdict != judge.Done {
+		t.Fatalf("%+v", js)
+	}
+	msgs, _ := f.db.ListMessages(ctx, store.ScopeThread, res.ThreadID, 0, 0)
+	if got := msgs[1].Content; got != "我一直重複用 web_search（50 次）都沒有新進展，先停下來。" {
+		t.Fatalf("回覆：%q", got)
+	}
+	if seen := s.seen(); len(seen) < 2 || !strings.Contains(seen[1], "不要再送同樣的呼叫") {
+		t.Fatalf("續做的提示：%q", seen)
+	}
+}

@@ -42,6 +42,11 @@ export function ownsPhoneHeader(path: string): boolean {
   )
 }
 
+/** 對話（L03）、群組（L05）：返回一律回對話列表，不是一頁一頁往回走（換過對話串、開過檔案也一樣，2026-10-20 使用者回報）。 */
+export function isChatPath(path: string): boolean {
+  return /^\/bots\/[^/]+(\/threads\/[^/]+)?\/?$/.test(path) || /^\/rooms\/[^/]+\/?$/.test(path)
+}
+
 /** 手機上按返回（或從左邊緣滑）要去哪裡：直接打開這一頁時用。 */
 export function backFallback(path: string): string {
   const bot = path.match(/^\/bots\/([^/]+)\/(files|computer|profile|call|voice)/)

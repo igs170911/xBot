@@ -230,7 +230,8 @@ type turn struct {
 	engine, provider string
 	started          time.Time
 	quota            *engine.QuotaError
-	plan             []string // Bot 的計畫裡還沒做完的項目（最新的一份）
+	plan             []string     // Bot 的計畫裡還沒做完的項目（最新的一份）
+	loop             *engine.Loop // 引擎因為一直重複同一個工具沒有進展而停下這一輪
 
 	// 看門狗：最後一次收到事件的時間、正在執行的工具、看門狗送出中斷的時間、按停止的時間。
 	seen      time.Time
@@ -723,11 +724,12 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 			r.finish(t, engine.StatusError, StalledText)
 			return
 		}
+		t.mu.Lock()
 		if e.Quota != nil {
-			t.mu.Lock()
 			t.quota = e.Quota
-			t.mu.Unlock()
 		}
+		t.loop = e.Loop
+		t.mu.Unlock()
 		r.finish(t, e.Status, e.Text)
 	}
 }

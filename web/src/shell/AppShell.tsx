@@ -5,9 +5,9 @@ import { useFocusTrap } from '../ui/useFocusTrap'
 import { useLockBody } from '../ui/useLockBody'
 import { slide, useDrag } from '../ui/useDrag'
 import { useSlideOver } from '../ui/useSlideOver'
-import { goBack } from '../router'
+import { backTo, goBack } from '../router'
 import { PhoneBar, TabBar } from '../mobile/Phone'
-import { backFallback, isTabPath, ownsPhoneHeader, usePhone } from '../mobile/nav'
+import { backFallback, isChatPath, isTabPath, ownsPhoneHeader, usePhone } from '../mobile/nav'
 import { Sidebar } from './Sidebar'
 import { ResizeHandle } from './ResizeHandle'
 import { SIDEBAR, sidebarWidthStore } from './panes'
@@ -64,7 +64,8 @@ export function AppShell({ path, title, children }: { path: string; title: strin
       }
       if (commit)
         slide(p, `translateX(${window.innerWidth}px)`, () => {
-          goBack(backFallback(path))
+          if (isChatPath(path)) backTo('/chats')
+          else goBack(backFallback(path))
           requestAnimationFrame(reset)
         })
       else slide(p, 'translateX(0)', reset)

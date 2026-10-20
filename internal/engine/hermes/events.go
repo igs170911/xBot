@@ -2,6 +2,9 @@ package hermes
 
 import (
 	"encoding/json"
+	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -95,7 +98,26 @@ func complete(raw json.RawMessage) []engine.Event {
 		msg := firstNonEmpty(c.Error, c.FailureReason, strings.TrimPrefix(text, "Error: "), "工作失敗")
 		out = append(out, engine.Event{Type: engine.EventError, Text: msg})
 	}
-	return append(out, engine.Event{Type: engine.EventDone, Status: status, Text: text})
+	done := engine.Event{Type: engine.EventDone, Status: status, Text: text}
+	if loop := loopHalt(text); loop != nil {
+		done.Loop = loop
+		done.Text = fmt.Sprintf("我一直重複用 %s（%d 次）都沒有新進展，先停下來。", loop.Tool, loop.Count)
+	}
+	return append(out, done)
+}
+
+// loopHaltRe 是 Hermes 一直重複同一個工具、被 tool guardrail 停下時固定回的那段英文（run_agent.py
+// _toolguard_controlled_halt_response）。message.complete 不帶 guardrail 欄位，只能認這段字。
+// 2026-10-20：beam-free 把同一個 web_search 送了 50 次，這段英文直接顯示給使用者，還被判成「已完成」。
+var loopHaltRe = regexp.MustCompile(`^I stopped retrying because I kept running (\S+) (\d+) times without making progress\.`)
+
+func loopHalt(text string) *engine.Loop {
+	m := loopHaltRe.FindStringSubmatch(strings.TrimSpace(text))
+	if m == nil {
+		return nil
+	}
+	n, _ := strconv.Atoi(m[2])
+	return &engine.Loop{Tool: m[1], Count: n}
 }
 
 // hermesUsage 是 Hermes 的 Usage（tui_gateway/contracts/common.py）。

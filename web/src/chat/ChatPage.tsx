@@ -6,7 +6,7 @@ import { botsStore, type Bot, look } from '../data/bots'
 import { onEvent, onReconnect } from '../data/events'
 import { useStore } from '../data/store'
 import { stampLabel } from '../data/ui'
-import { goBack, navigate } from '../router'
+import { backTo, navigate } from '../router'
 import { inboxStore, loadInbox } from '../data/inbox'
 import { loadLastThread } from '../data/lastThreads'
 import { AskCard } from './AskCard'
@@ -317,7 +317,7 @@ function PhoneHeader({ bot, act, busyElsewhere, threads, threadId, onProgress, o
   return (
     <header className="flex flex-none flex-col items-center gap-2 bg-app px-3 pb-2 pt-[max(8px,env(safe-area-inset-top))]">
       <div className="flex w-full items-center gap-2">
-        <button type="button" aria-label={waiting ? `返回（${waiting} 件等你）` : '返回'} onClick={() => goBack('/chats')} className="flex h-11 flex-none items-center gap-1 rounded-full border border-divider bg-panel pl-2 pr-3 text-ink active:bg-control">
+        <button type="button" aria-label={waiting ? `返回（${waiting} 件等你）` : '返回'} onClick={() => backTo('/chats')} className="flex h-11 flex-none items-center gap-1 rounded-full border border-divider bg-panel pl-2 pr-3 text-ink active:bg-control">
           <Icon icon={ChevronLeft} size={22} />
           {waiting > 0 && <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-control px-1.5 text-meta">{waiting}</span>}
         </button>

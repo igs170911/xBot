@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mentionQuery } from '../chat/mentionQuery'
 import { rowTime } from './format'
-import { backFallback, isTabPath, launchPath, ownsPhoneHeader, TABS } from './nav'
+import { backFallback, isChatPath, isTabPath, launchPath, ownsPhoneHeader, TABS } from './nav'
 import { connectionKind, urlBase64ToBytes } from './pwa'
 
 describe('手機導覽（W31）', () => {
@@ -27,6 +27,10 @@ describe('手機導覽（W31）', () => {
     expect(backFallback('/bots/b1/files')).toBe('/bots/b1')
     expect(backFallback('/settings/usage')).toBe('/settings')
     expect(backFallback('/teams')).toBe('/chats')
+  })
+  it('對話、群組的返回一律回對話列表；檔案、電腦、Bot 資料不算', () => {
+    expect(['/bots/b1', '/bots/b1/threads/t1', '/rooms/r1'].every(isChatPath)).toBe(true)
+    expect(['/bots/b1/files', '/bots/b1/computer', '/bots/b1/profile', '/chats', '/'].some(isChatPath)).toBe(false)
   })
 })
 
