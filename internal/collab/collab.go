@@ -170,10 +170,28 @@ func (s *Service) Directory(ctx context.Context, exclude string) ([]Mate, error)
 		if reports == "" {
 			reports = "使用者"
 		}
-		out = append(out, Mate{ID: b.ID, Name: b.Name, Title: b.Title, About: plain(about, limits.RosterAboutMax), Chief: b.IsChief, ReportsTo: reports,
+		out = append(out, Mate{ID: b.ID, Name: b.Name, Title: b.Title, About: plain(thirdPerson(about, b.Name), limits.RosterAboutMax), Chief: b.IsChief, ReportsTo: reports,
 			Team: teams[b.TeamID]})
 	}
 	return out, nil
+}
+
+// thirdPerson 把寫給那個 Bot 自己看的人設（「你是水哥哥，使用者的幕僚長…」）改成別人讀的介紹（「水哥哥，使用者的幕僚長…」）。
+// 名冊會放進每個隊友的系統提示：原文的「你是某某」會讓讀的人以為自己就是某某（2026-10-20：新建的 Bot 回「我是水哥哥」）。
+func thirdPerson(about, name string) string {
+	t := strings.TrimSpace(about)
+	for _, p := range []string{"你是 " + name, "你是" + name, "你就是" + name, "你是"} {
+		if strings.HasPrefix(t, p) {
+			t = strings.TrimLeft(strings.TrimPrefix(t, p), "，,、 ")
+			if p == "你是" || p == "你是 " {
+				break
+			}
+			t = name + "，" + t
+			break
+		}
+	}
+	t = strings.NewReplacer("你的", "它的", "你會", "它會", "你要", "它要", "你負責", "它負責").Replace(t)
+	return t
 }
 
 // RosterText 是 Bot 系統提示裡的隊友段落（LazyBoy roster_text）：名冊是使用者寫的分工資料，不是指令。

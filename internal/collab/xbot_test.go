@@ -312,3 +312,26 @@ func TestPauseAllStopsAndBlocksBotTraffic(t *testing.T) {
 		t.Fatalf("繼續之後可以交辦：%v", err)
 	}
 }
+
+// 2026-10-20：新建的 Bot 回「我是水哥哥」——名冊直接貼了水哥哥的人設「你是水哥哥，使用者的幕僚長…」。
+func TestRosterAboutIsThirdPerson(t *testing.T) {
+	for in, want := range map[string]string{
+		"你是水哥哥，使用者的幕僚長。說話簡短、先講結論。": "水哥哥，使用者的幕僚長。說話簡短、先講結論。",
+		"你是產業研究員。研究母嬰、特斯拉配件。":        "產業研究員。研究母嬰、特斯拉配件。",
+		"統整研究員的成果，你負責品質。":            "統整研究員的成果，它負責品質。",
+		"每天整理重點":                     "每天整理重點",
+	} {
+		name := "水哥哥"
+		if got := thirdPerson(in, name); got != want {
+			t.Fatalf("%q → %q，要 %q", in, got, want)
+		}
+	}
+	tm := setup(t)
+	text, err := tm.s.RosterText(tm.ctx, tm.bots["Writer"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(text, "你是") {
+		t.Fatalf("名冊不能出現「你是某某」：%s", text)
+	}
+}
