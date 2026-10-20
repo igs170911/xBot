@@ -87,7 +87,7 @@ func TestPersonaOnlyDropsGeneratedRules(t *testing.T) {
 // 只有交辦隊友、建 Bot 或團隊先確認計畫。
 func TestSoulSaysFinishWhatYouStart(t *testing.T) {
 	soul := Soul(Profile{Name: "水哥哥"})
-	for _, want := range []string{"直接做到完成", "不要停下來問「要開始嗎」", "說要做的同一輪就做完", "先照假設做", "要交辦隊友、建 Bot 或團隊之前，先列計畫"} {
+	for _, want := range []string{"直接做到完成", "不要停下來問「要開始嗎」", "說要做的同一輪就做完", "先照假設做", "交給隊友 Bot（xbot.collab.message_bot）、建 Bot 或團隊之前，先列計畫", "子代理（delegate_task）不是隊友"} {
 		if !strings.Contains(soul, want) {
 			t.Fatalf("少了 %q：%s", want, soul)
 		}

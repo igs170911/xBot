@@ -239,8 +239,7 @@ func TestSeedOnce(t *testing.T) {
 	}
 }
 
-// 2026-10-20：舊版 deep-research 要子代理平行查，Bot 已經沒有子代理，用了只讀說明不上網查。
-// 沒改過的舊版開機前換成新版；使用者或 Bot 改過的照舊保留。
+// 沒改過的舊版內建技能開機前換成新版；使用者或 Bot 改過的照舊保留。
 func TestSeedUpgradesUntouchedOldBuiltin(t *testing.T) {
 	m := boxfs.NewMem()
 	if err := Seed(ctx, m); err != nil {
@@ -259,7 +258,7 @@ func TestSeedUpgradesUntouchedOldBuiltin(t *testing.T) {
 	if err := Seed(ctx, m); err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := m.ReadFile(ctx, file); !bytes.Equal(got, Builtin()["deep-research"]) || bytes.Contains(got, []byte("delegate_task")) {
+	if got, _ := m.ReadFile(ctx, file); !bytes.Equal(got, Builtin()["deep-research"]) {
 		t.Fatalf("沒改過的舊版要換成新版：%s", got)
 	}
 	mine := []byte("---\nname: deep-research\ndescription: 我改的\n---\n\n我的流程\n")
@@ -281,8 +280,9 @@ func TestBuiltinDeepResearchSearchesItself(t *testing.T) {
 			t.Fatalf("少了 %q", want)
 		}
 	}
-	if strings.Contains(doc, "delegate_task") {
-		t.Fatal("Bot 沒有子代理了，技能不能叫它用 delegate_task")
+	// 2026-10-20 子代理在同一輪裡做完（hermes_host.py）：可以用，但不能先停下來問使用者；問的是交給隊友
+	if !strings.Contains(doc, "delegate_task") || !strings.Contains(doc, "不用先問使用者") {
+		t.Fatal("子代理要寫明可以用、不用先問")
 	}
 }
 

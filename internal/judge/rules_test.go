@@ -294,6 +294,17 @@ func TestEndingWithNextStepIsNotDone(t *testing.T) {
 	if r, _ := (Rules{}).Judge(ctx, Input{Outcome: OutcomeAnswer, Text: ask}); r.Verdict != HandedBack {
 		t.Fatalf("問「要我現在開始嗎」：%+v", r)
 	}
+	for _, ask := range []string{
+		"我會開三個子代理，分別查台北天氣、美元兌台幣匯率、台積電最新股價，等全部回來後整理成三行。\n\n請確認要開始嗎？",
+		"計畫如上，可以開始嗎？",
+		"我會同時開三個子代理，各自查多個來源並寫約 500 字摘要，最後彙整回報。\n\n請確認要照這個計畫執行。",
+		"我會同時開三個子代理，最後彙整回報。\n\n確認要照這個計畫執行嗎？",
+		"各查多個來源並交付約 500 字摘要。\n\n要照這個計畫開始嗎？",
+	} {
+		if r, _ := (Rules{}).Judge(ctx, Input{Outcome: OutcomeAnswer, Text: ask}); r.Verdict != HandedBack {
+			t.Fatalf("%q：%+v", ask, r)
+		}
+	}
 	// 做完了、在問真的要你決定的事、提到以後的事：不算
 	for _, text := range []string{
 		"報告整理好了，在 /workspace/reports/漲粉方案.md。",

@@ -105,8 +105,12 @@ type state struct {
 // grok-build 舊版叫 Bot 把「做網站／寫程式」一律交給 grok，沒登入就停下來請使用者在終端機登入、接手電腦：
 // 做一個單頁網頁也卡住（2026-10-20 基準測試）。新版只有大的程式工作、而且 grok 已經登入才交辦，否則自己做。
 var retired = map[string][]string{
-	"deep-research": {"b48cb4bba4d7587660c808379fb2ba2fef08c76a3cee6cf65ebaa986484c3877"},
-	"grok-build":    {"24f91691f1490b4fe5b8a7e79457a8211108c5210324fa015872c654da017aeb"},
+	"deep-research": {"b48cb4bba4d7587660c808379fb2ba2fef08c76a3cee6cf65ebaa986484c3877",
+		// 2026-10-20 早上那版：沒有子代理可用，交給隊友前要確認的那句被 Bot 套到子代理上，開子代理前也停下來問
+		"1e685d1419e9fbf1b0e8102555677d604284beb8a83e595119c27f74184537bb",
+		// 同一天下午那版：「交辦隊友前先確認」的字眼還是讓 Bot 開子代理前先問
+		"7460877f1052127af2917536873b9ba675336316d31ea69173a280da3986965f"},
+	"grok-build": {"24f91691f1490b4fe5b8a7e79457a8211108c5210324fa015872c654da017aeb"},
 }
 
 // Seed 把 XBot 內建技能放進 Bot 的電腦，每個只放一次；使用者之後改了或刪了都保留（LazyBoy computers.py seed_skills）。
