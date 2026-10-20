@@ -119,7 +119,7 @@ export function Tour() {
   const box = narrow || !hole ? null : side ? { left: hole.x + hole.w + 12, top: Math.max(12, hole.y) } : above ? { left, bottom: vh - hole.y + 12 } : { left, top: hole.y + hole.h + 12 }
 
   return createPortal(
-    <div className="pointer-events-none fixed inset-0 z-[70]" data-testid="tour">
+    <div className="pointer-events-none fixed-screen z-[70]" data-testid="tour">
       {/* 只有暗的地方擋點擊；洞裡的點擊交給底下的目標（直接點目標＝下一步） */}
       <svg className="pointer-events-none absolute inset-0 size-full" aria-hidden="true">
         <path

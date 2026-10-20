@@ -300,7 +300,7 @@ export function NewRoutineDialog() {
   useLockBody(open) // 手機上它蓋滿整個畫面：後面的頁面不跟著捲
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && close()}>
+    <div className="fixed-screen z-50 flex items-center justify-center bg-black/60 sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div
         ref={ref}
         role="dialog"
@@ -308,7 +308,7 @@ export function NewRoutineDialog() {
         aria-labelledby="new-routine-title"
         tabIndex={-1}
         onKeyDown={onKeyDown}
-        className="flex h-full max-h-[100dvh] w-full max-w-[760px] flex-col overflow-hidden border-divider bg-panel shadow-dialog outline-none sm:h-auto sm:max-h-[calc(100dvh-32px)] sm:rounded-card sm:border"
+        className="flex h-full max-h-[var(--app-full)] w-full max-w-[760px] flex-col overflow-hidden border-divider bg-panel shadow-dialog outline-none sm:h-auto sm:max-h-[calc(100dvh-32px)] sm:rounded-card sm:border"
       >
         <header className="flex h-16 flex-none items-center gap-3 border-b border-divider pl-6 pr-4 max-sm:pl-4">
           <h2 id="new-routine-title" className="m-0 flex-1 text-[18px] font-normal">

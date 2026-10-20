@@ -184,11 +184,32 @@
   clip: auto;
 }
 
+/*
+ * 滿版高度（--app-full）：平常是 100dvh。從 iPhone 主畫面打開的 App（<html class="standalone">）改用 100lvh：
+ * 那裡剛打開的前 3 秒、以及鍵盤收起後，dvh 和 innerHeight 會少算狀態列（真機 iOS 18：793／852），
+ * 貼著底部的東西（分頁列、對話輸入框、底部視窗）先浮在上面、之後才掉下去；lvh 一直是對的（852）。
+ * 主畫面 App 沒有網址列，lvh 就是整個螢幕。
+ */
+/* 蓋滿整個畫面的固定圖層（對話框、側欄、底部視窗的背景）：用 top＋高度，不用 bottom: 0（會跟著少算的高度） */
+@utility fixed-screen {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  height: var(--app-full);
+}
+@utility h-app {
+  height: var(--app-full);
+}
+
 @layer base {
   :root {
     color-scheme: dark;
     font-synthesis: none;
     -webkit-tap-highlight-color: transparent;
+    --app-full: 100dvh;
+  }
+  :root.standalone {
+    --app-full: 100lvh;
   }
   html,
   body {

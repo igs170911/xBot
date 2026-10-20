@@ -339,9 +339,9 @@ export function BotFilesPage({ botId }: { botId: string }) {
 
       {/* 手機：從底部拉出的預覽（L19） */}
       {selected && narrow && (
-        <div className="fixed inset-0 z-40 flex flex-col justify-end">
+        <div className="fixed-screen z-40 flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/60" onClick={() => go({ path: null })} aria-hidden="true" />
-          <div ref={sheet} role="dialog" aria-modal="true" aria-label={`預覽：${selectedEntry?.name ?? ''}`} className="relative flex h-[85dvh] animate-sheet-in flex-col rounded-t-[22px] border-t border-divider bg-panel pb-[env(safe-area-inset-bottom)] shadow-dialog motion-reduce:animate-none">
+          <div ref={sheet} role="dialog" aria-modal="true" aria-label={`預覽：${selectedEntry?.name ?? ''}`} className="relative flex h-[calc(var(--app-full)*0.85)] animate-sheet-in flex-col rounded-t-[22px] border-t border-divider bg-panel pb-[env(safe-area-inset-bottom)] shadow-dialog motion-reduce:animate-none">
             <span aria-hidden="true" className="mx-auto mt-2 h-1 w-10 flex-none rounded-full bg-control" />
             <FilePreview
               key={selected}

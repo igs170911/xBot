@@ -100,7 +100,7 @@ export function AppShell({ path, title, children }: { path: string; title: strin
       {phone && <div aria-hidden="true" data-status-bar="1" className="fixed inset-x-0 top-0 z-[35] h-[env(safe-area-inset-top)] bg-app" />}
 
       {phone && side.mounted && (
-        <div className="fixed inset-0 z-50 md:hidden" data-testid="drawer" aria-hidden={side.hidden || undefined} inert={side.hidden || undefined}>
+        <div className="fixed-screen z-50 md:hidden" data-testid="drawer" aria-hidden={side.hidden || undefined} inert={side.hidden || undefined}>
           <div className="absolute inset-0 bg-black/60" style={side.shadeStyle} onClick={close} aria-hidden="true" />
           <div
             ref={panel}

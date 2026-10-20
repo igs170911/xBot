@@ -58,7 +58,7 @@ export function Dialog({ open, onClose, title, description, children, actions, r
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 max-md:items-end max-md:p-0"
+      className="fixed-screen z-50 flex items-center justify-center bg-black/60 p-4 max-md:items-end max-md:p-0"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && !busy) onClose()
       }}
@@ -72,7 +72,7 @@ export function Dialog({ open, onClose, title, description, children, actions, r
         tabIndex={-1}
         onKeyDown={onKeyDown}
         data-sheet="1"
-        className="flex max-h-[calc(100dvh-32px)] w-full max-w-[var(--dialog-w)] flex-col gap-2 overflow-auto overscroll-y-contain rounded-card border border-divider bg-panel pb-[18px] pl-[22px] pr-5 pt-5 shadow-dialog outline-none max-md:max-h-[92dvh] max-md:max-w-none max-md:rounded-b-none max-md:border-x-0 max-md:border-b-0 max-md:px-4 max-md:animate-sheet-in max-md:pb-[max(18px,env(safe-area-inset-bottom))] max-md:pt-2.5 motion-reduce:animate-none"
+        className="flex max-h-[calc(100dvh-32px)] w-full max-w-[var(--dialog-w)] flex-col gap-2 overflow-auto overscroll-y-contain rounded-card border border-divider bg-panel pb-[18px] pl-[22px] pr-5 pt-5 shadow-dialog outline-none max-md:max-h-[calc(var(--app-full)*0.92)] max-md:max-w-none max-md:rounded-b-none max-md:border-x-0 max-md:border-b-0 max-md:px-4 max-md:animate-sheet-in max-md:pb-[max(18px,env(safe-area-inset-bottom))] max-md:pt-2.5 motion-reduce:animate-none"
         style={{ '--dialog-w': `${width}px` } as CSSProperties}
       >
         {/* 手機：從底部拉出的 sheet（L07、L11），上面一條把手 */}

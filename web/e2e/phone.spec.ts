@@ -608,6 +608,24 @@ test('打開對話停在最新一則：訊息晚一點才排好（變高）也�
   expect(await scroller.evaluate((el) => el.scrollTop)).toBe(0)
 })
 
+test('主畫面 App 模式（standalone）：分頁列、對話輸入框、底部視窗都貼著螢幕底部', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'standalone', { get: () => true, configurable: true }))
+  const { mi, t1 } = await open(page, '/')
+  expect(await page.evaluate(() => document.documentElement.classList.contains('standalone'))).toBe(true)
+  const H = page.viewportSize()!.height
+  const nav = page.getByRole('navigation', { name: '分頁', exact: true })
+  await expect.poll(async () => Math.round((await nav.boundingBox())!.y + (await nav.boundingBox())!.height)).toBe(H)
+  await page.goto(`/bots/${mi.id}/threads/${t1.id}`)
+  const box = (await page.getByTestId('composer-input').boundingBox())!
+  expect(box.y + box.height).toBeLessThan(H)
+  expect(box.y + box.height).toBeGreaterThan(H - 140)
+  await page.goto(`/bots/${mi.id}/files?path=${encodeURIComponent('/workspace/三家競品定價.csv')}`)
+  const sheet = page.getByRole('dialog', { name: /預覽/ })
+  await expect(sheet).toBeVisible()
+  await page.waitForTimeout(400)
+  expect(Math.round((await sheet.boundingBox())!.y + (await sheet.boundingBox())!.height)).toBe(H)
+})
+
 test('真機健康摘要：滑了幾次、幾次有捲動、分頁列有沒有動，切到背景時回報一次（不含對話內容）', async ({ page, browserName }, info) => {
   test.skip(browserName !== 'chromium' || info.project.name === 'desktop', '要用 Chromium 模擬觸控')
   const api = new MockServer(page)

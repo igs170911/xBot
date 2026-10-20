@@ -175,7 +175,7 @@ function AppearanceSheet({
   const v = { shape: bot.shape, color: bot.color, eyes: bot.eyes || 'dot', img: bot.image || undefined }
   const source = bot.image ? 'image' : 'mascot'
   return createPortal(
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 p-2 max-sm:p-0" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="fixed-screen z-50 flex justify-end bg-black/60 p-2 max-sm:p-0" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div
         ref={ref}
         role="dialog"

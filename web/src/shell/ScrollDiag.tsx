@@ -102,19 +102,20 @@ export function startScrollWatch(version: () => string) {
   }
   const sample = (label: string) => {
     const vv = window.visualViewport
-    timeline.push(`${label}:in${window.innerHeight}/vv${Math.round(vv?.height ?? 0)}/ch${document.documentElement.clientHeight}/lvh${unit('100lvh')}/dvh${unit('100dvh')}/nav${navTop() ?? '-'}`)
+    timeline.push(`${label}:in${window.innerHeight}/vv${Math.round(vv?.height ?? 0)}/ch${document.documentElement.clientHeight}/lvh${unit('100lvh')}/dvh${unit('100dvh')}/nav${navTop() ?? '-'}${document.documentElement.style.getPropertyValue('--app-h') ? '/kb' : ''}`)
   }
   for (const ms of [150, 500, 1000, 2500, 5000, 10000]) window.setTimeout(() => sample(String(ms)), ms)
   let resized = 0
-  const onResize = () => resized++ < 3 && sample(`resize@${Math.round(performance.now() - t0)}`)
+  const onResize = () => resized++ < 8 && sample(`resize@${Math.round(performance.now() - t0)}`) // 含鍵盤彈出、收起
   window.addEventListener('resize', onResize)
   window.visualViewport?.addEventListener('resize', onResize)
-  window.addEventListener('touchstart', () => timeline.length < 14 && !timeline.some((x) => x.startsWith('touch')) && sample(`touch@${Math.round(performance.now() - t0)}`), { passive: true, once: true })
+  window.addEventListener('touchstart', () => timeline.length < 20 && !timeline.some((x) => x.startsWith('touch')) && sample(`touch@${Math.round(performance.now() - t0)}`), { passive: true, once: true })
   let summarized = false
   const summary = () => {
     // 滑得太少看不出順不順，但打開後 10 秒的時間線齊了就照樣送（要看分頁列有沒有先高後低）
     if (summarized || (health.ok + health.stuck + health.edge < HEALTH_MIN && !timeline.some((x) => x.startsWith('10000:')))) return
     summarized = true
+    sample('end')
     const data = [
       `swipes ok=${health.ok} stuck=${health.stuck} edge=${health.edge}`,
       `screen ${window.screen.height} | ${timeline.join(' ')}`, // 打開後各時間點的高度與分頁列位置（沒有分頁列的頁面是 -）

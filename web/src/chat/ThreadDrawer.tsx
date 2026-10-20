@@ -43,7 +43,7 @@ export function ThreadDrawer({
     fn()
   }
   return (
-    <div className="fixed inset-0 z-50" data-testid="thread-drawer" aria-hidden={slide.hidden || undefined} inert={slide.hidden || undefined}>
+    <div className="fixed-screen z-50" data-testid="thread-drawer" aria-hidden={slide.hidden || undefined} inert={slide.hidden || undefined}>
       <div className="absolute inset-0 bg-black/60" style={slide.shadeStyle} onClick={close} aria-hidden="true" />
       <div
         ref={panel}

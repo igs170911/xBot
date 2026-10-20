@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { watchViewport } from './viewport'
+import { measure, watchViewport } from './viewport'
 
 // 假的 visualViewport：可以改高度、觸發 resize。
 function fakeViewport() {
@@ -20,6 +20,8 @@ const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)))
 describe('watchViewport', () => {
   afterEach(() => {
     document.documentElement.removeAttribute('style')
+    document.documentElement.classList.remove('standalone')
+    delete (navigator as Navigator & { standalone?: boolean }).standalone
     vi.restoreAllMocks()
   })
 
@@ -53,5 +55,35 @@ describe('watchViewport', () => {
     vv.set(window.innerHeight)
     await frame()
     expect(to).toHaveBeenCalledWith(0, 0)
+  })
+
+  it('主畫面 App：鍵盤彈出時整頁也變矮，改拿整個螢幕（lvh）比，看得出鍵盤；剛打開少算狀態列不算鍵盤', async () => {
+    Object.defineProperty(navigator, 'standalone', { value: true, configurable: true })
+    vi.spyOn(measure, 'lvh').mockReturnValue(852)
+    const inner = vi.spyOn(window, 'innerHeight', 'get')
+    const vv = fakeViewport()
+    inner.mockReturnValue(793) // 剛打開：innerHeight、可見範圍都少算狀態列
+    watchViewport()
+    expect(document.documentElement.classList.contains('standalone')).toBe(true)
+    vv.set(793)
+    await frame()
+    expect(document.documentElement.style.getPropertyValue('--app-h')).toBe('')
+    inner.mockReturnValue(450) // 鍵盤彈出：innerHeight 跟著變矮
+    vv.set(450)
+    await frame()
+    expect(document.documentElement.style.getPropertyValue('--app-h')).toBe('450px')
+    inner.mockReturnValue(852)
+    vv.set(852)
+    await frame()
+    expect(document.documentElement.style.getPropertyValue('--app-h')).toBe('')
+  })
+
+  it('一般瀏覽器：不加 standalone，照舊拿 innerHeight 比', async () => {
+    const vv = fakeViewport()
+    watchViewport()
+    expect(document.documentElement.classList.contains('standalone')).toBe(false)
+    vv.set(window.innerHeight - 100) // 網址列之類的差距：不算鍵盤
+    await frame()
+    expect(document.documentElement.style.getPropertyValue('--app-h')).toBe('')
   })
 })

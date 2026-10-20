@@ -13,30 +13,33 @@ import { TABS } from './nav'
 export function TabBar({ path }: { path: string }) {
   const count = useStore(inboxStore).items?.length ?? 0
   return (
-    <nav aria-label="分頁" className="fixed inset-x-0 bottom-0 z-30 flex border-t border-edge bg-app pb-[env(safe-area-inset-bottom)] md:hidden">
-      {TABS.map((t) => {
-        const on = t.to === path || (t.to === '/calendar' && path.startsWith('/calendar'))
-        return (
-          <a
-            key={t.to}
-            href={t.to}
-            onClick={linkClick(t.to)}
-            aria-current={on ? 'page' : undefined}
-            className={cx('relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-1 pb-1 pt-2 text-tab', on ? 'text-ink' : 'text-ink-2')}
-          >
-            <span className="relative">
-              <Icon icon={t.icon} size={22} strokeWidth={on ? 2 : 1.75} />
-              {t.to === '/' && count > 0 && (
-                <span aria-label={`${count} 件等你`} className="absolute -right-3 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-warning px-1 text-[11px] leading-none text-warning-on">
-                  {count > 99 ? '99+' : count}
-                </span>
-              )}
-            </span>
-            {t.label}
-          </a>
-        )
-      })}
-    </nav>
+    // 放在滿版高度的固定圖層底部，不用 bottom: 0：iPhone 主畫面 App 剛打開時高度少算狀態列，分頁列會先浮在上面（index.css 的 --app-full）
+    <div className="pointer-events-none fixed-screen z-30 md:hidden">
+      <nav aria-label="分頁" className="pointer-events-auto absolute inset-x-0 bottom-0 flex border-t border-edge bg-app pb-[env(safe-area-inset-bottom)]">
+        {TABS.map((t) => {
+          const on = t.to === path || (t.to === '/calendar' && path.startsWith('/calendar'))
+          return (
+            <a
+              key={t.to}
+              href={t.to}
+              onClick={linkClick(t.to)}
+              aria-current={on ? 'page' : undefined}
+              className={cx('relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-1 pb-1 pt-2 text-tab', on ? 'text-ink' : 'text-ink-2')}
+            >
+              <span className="relative">
+                <Icon icon={t.icon} size={22} strokeWidth={on ? 2 : 1.75} />
+                {t.to === '/' && count > 0 && (
+                  <span aria-label={`${count} 件等你`} className="absolute -right-3 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-warning px-1 text-[11px] leading-none text-warning-on">
+                    {count > 99 ? '99+' : count}
+                  </span>
+                )}
+              </span>
+              {t.label}
+            </a>
+          )
+        })}
+      </nav>
+    </div>
   )
 }
 
