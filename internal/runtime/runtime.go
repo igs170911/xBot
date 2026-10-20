@@ -680,20 +680,22 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 		}
 		r.emit(t, KindStatus, e, true)
 	case engine.EventNeedsApproval:
-		t.mu.Lock()
-		t.waiting = true
-		t.mu.Unlock()
-		state := store.TaskWaitingInput
-		if e.Request != nil && e.Request.Kind == "approval" {
-			state = store.TaskWaitingApproval
+		// 只讀的程式（讀檔、算資料、上網查）不用你核准：直接允許這一次，不開卡、不改狀態（2026-10-20 使用者決定）。
+		if readOnlyExecuteCode(e.Request) {
+			req := e.Request
+			go func() {
+				if err := r.o.Driver.Respond(context.Background(), s, req.ID, engine.Answer{Choice: "once"}); err != nil {
+					r.log.Warn("自動允許只讀的程式失敗，改請你核准", "bot", botID, "err", err)
+					r.askApproval(t, e)
+					return
+				}
+				r.log.Info("自動允許只讀的程式", "bot", botID, "task", t.taskID)
+			}()
+			return
 		}
-		// 先開卡、記下 Bot 在問什麼，再改狀態：看到「等你」的人一定查得到問題內容，也能就地回覆。
-		t.askMu.Lock()
-		item := r.openCard(t, e.Request)
-		r.emit(t, KindNeedsApproval, NeedsPayload{Event: e, InboxID: item.ID, ExpiresAt: item.ExpiresAt}, true)
-		r.setState(t, state)
-		t.askMu.Unlock()
+		r.askApproval(t, e)
 	case engine.EventRequestClosed:
+
 		if e.Request != nil {
 			r.closeRequest(t, e.Request.ID)
 		}
@@ -1233,4 +1235,21 @@ func title(text string) string {
 		return text
 	}
 	return string([]rune(text)[:limit]) + "…"
+}
+
+// askApproval 開待我處理卡、讓這一輪等你回覆（引擎要核准、補充問題、密碼等）。
+func (r *Runtime) askApproval(t *turn, e engine.Event) {
+	t.mu.Lock()
+	t.waiting = true
+	t.mu.Unlock()
+	state := store.TaskWaitingInput
+	if e.Request != nil && e.Request.Kind == "approval" {
+		state = store.TaskWaitingApproval
+	}
+	// 先開卡、記下 Bot 在問什麼，再改狀態：看到「等你」的人一定查得到問題內容，也能就地回覆。
+	t.askMu.Lock()
+	item := r.openCard(t, e.Request)
+	r.emit(t, KindNeedsApproval, NeedsPayload{Event: e, InboxID: item.ID, ExpiresAt: item.ExpiresAt}, true)
+	r.setState(t, state)
+	t.askMu.Unlock()
 }

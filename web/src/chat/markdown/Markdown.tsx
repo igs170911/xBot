@@ -23,7 +23,7 @@ function Codespan({ text }: { text: string }) {
   const cls = 'break-words rounded-[6px] bg-inset px-1.5 py-0.5 font-mono text-[13px]'
   if (!href) return <code className={cls}>{text}</code>
   return (
-    <a href={href} onClick={fileClick(href)} title="打開這個檔案" className="text-accent-ink underline decoration-accent-ink/40 underline-offset-2">
+    <a href={href} onClick={fileClick(href)} draggable={false} title="打開這個檔案" className="text-accent-ink underline decoration-accent-ink/40 underline-offset-2">
       <code className={cls}>{text}</code>
     </a>
   )
@@ -36,7 +36,7 @@ function MdLink({ l, children }: { l: Tokens.Link; children: ReactNode }) {
   const file = p ? link?.(p) : undefined
   if (file) {
     return (
-      <a href={file} onClick={fileClick(file)} title="打開這個檔案" className="text-accent-ink underline decoration-accent-ink/50 underline-offset-2 hover:decoration-accent-ink">
+      <a href={file} onClick={fileClick(file)} draggable={false} title="打開這個檔案" className="text-accent-ink underline decoration-accent-ink/50 underline-offset-2 hover:decoration-accent-ink">
         {children}
       </a>
     )
@@ -45,7 +45,7 @@ function MdLink({ l, children }: { l: Tokens.Link; children: ReactNode }) {
   if (!href) return <span>{children}</span>
   const external = !href.startsWith('#')
   return (
-    <a href={href} title={l.title ?? undefined} {...(external ? { target: '_blank', rel: 'noopener noreferrer nofollow' } : {})} className="text-accent-ink underline decoration-accent-ink/50 underline-offset-2 hover:decoration-accent-ink">
+    <a href={href} draggable={false} title={l.title ?? undefined} {...(external ? { target: '_blank', rel: 'noopener noreferrer nofollow' } : {})} className="text-accent-ink underline decoration-accent-ink/50 underline-offset-2 hover:decoration-accent-ink">
       {children}
     </a>
   )

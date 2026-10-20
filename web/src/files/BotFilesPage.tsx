@@ -3,7 +3,7 @@ import { ArrowLeft, AtSign, ChevronRight, Download, Expand, FolderPlus, Power, R
 import { filesList, filesUploadForm, type FilesListOutput } from '../api/generated'
 import { botsStore, look } from '../data/bots'
 import { useStore } from '../data/store'
-import { navigate, useSearch } from '../router'
+import { historyDepth, navigate, useSearch } from '../router'
 import { errText } from '../settings/format'
 import { Avatar } from '../ui/Avatar'
 import { Button, IconButton } from '../ui/Button'
@@ -136,6 +136,17 @@ export function BotFilesPage({ botId, panel }: { botId: string; panel?: FilesPan
   const { state, reload, wake, waking } = useListing(botId, !folderView, folder)
   const name = bot?.name ?? 'Bot'
   const narrow = useNarrow() && !panel
+  // 手機從對話點檔案進來（網址一開始就帶著 path）：關掉預覽就回到對話（上一頁），不要多一頁檔案清單；
+  // 原本關掉預覽會「新增」一頁清單，按返回又回到預覽，回不到對話（2026-10-20 使用者回報）。
+  const openedWith = useRef(panel ? '' : (selected ?? ''))
+  const closePreview = () => {
+    if (narrow && selected && selected === openedWith.current && historyDepth() > 0) {
+      openedWith.current = ''
+      window.history.back()
+      return
+    }
+    go({ path: null })
+  }
   useLockBody(!!selected && narrow) // 手機的檔案預覽 sheet 開著：後面的清單不跟著捲
   // 手機的預覽 sheet 往下拖就關；手指下的內容捲在最上面才接手，不然是在捲內容
   const sheet = useRef<HTMLDivElement>(null)
@@ -155,7 +166,7 @@ export function BotFilesPage({ botId, panel }: { botId: string; panel?: FilesPan
       el.style.transform = `translateY(${d}px)`
     },
     onEnd: (commit) => {
-      if (commit) slide(sheet.current, 'translateY(100%)', () => go({ path: null }))
+      if (commit) slide(sheet.current, 'translateY(100%)', closePreview)
       else slide(sheet.current, 'translateY(0)')
     },
   })
@@ -422,7 +433,7 @@ export function BotFilesPage({ botId, panel }: { botId: string; panel?: FilesPan
       {/* 手機：從底部拉出的預覽（L19） */}
       {selected && narrow && (
         <div className="fixed-screen z-40 flex flex-col justify-end">
-          <div className="absolute inset-0 bg-black/60" onClick={() => go({ path: null })} aria-hidden="true" />
+          <div className="absolute inset-0 bg-black/60" onClick={closePreview} aria-hidden="true" />
           <div ref={sheet} role="dialog" aria-modal="true" aria-label={`預覽：${selectedEntry?.name ?? ''}`} className="relative flex h-[calc(var(--app-full)*0.85)] animate-sheet-in flex-col rounded-t-[22px] border-t border-divider bg-panel pb-[env(safe-area-inset-bottom)] shadow-dialog motion-reduce:animate-none">
             <span aria-hidden="true" className="mx-auto mt-2 h-1 w-10 flex-none rounded-full bg-control" />
             <FilePreview
@@ -432,7 +443,7 @@ export function BotFilesPage({ botId, panel }: { botId: string; panel?: FilesPan
               path={selected}
               compact
               actions={items.filter((i) => i.label !== '傳給其他 Bot' && i.label !== '在對話中提到')}
-              onClose={() => go({ path: null })}
+              onClose={closePreview}
               footer={
                 selectedEntry && (
                   <div className="flex flex-none items-center gap-2 px-4 pb-3 pt-1">

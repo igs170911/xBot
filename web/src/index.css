@@ -228,6 +228,18 @@
    * - 按鈕、分頁列、頁首長按不會選到字、不跳出系統選單（訊息內文照樣可以選）。
    * - 連點兩下不會把整頁放大（App 不會這樣）；兩指縮放照樣可以。
    */
+  /*
+   * iPhone 主畫面打開的 App（iOS 26 WebKit 的退化，WebKit 301108）：viewport-fit=cover＋black-translucent 時，
+   * 頁面比螢幕矮，iOS 就給少一個狀態列高度的 viewport（真機 793／852），底部 59pt 畫不出來、整個 App 像被切掉。
+   * 頁面至少跟螢幕一樣高時 iOS 才給完整的 viewport；只把 App 本身改高沒用（固定圖層照樣畫到短的那條邊為止，
+   * 2026-10-20 試過 100lvh 就是這樣被切掉）。做法照 frappe-ui #1289：html 最少螢幕高，用 min() 封頂，
+   * 狀態列不透明的時候才不會多出一條可以捲。
+   */
+  @media (display-mode: standalone) {
+    html {
+      min-height: min(100lvh, calc(100% + env(safe-area-inset-top)));
+    }
+  }
   @media (width < 48rem) {
     html,
     body {
@@ -258,6 +270,8 @@
   a {
     color: var(--color-accent-ink);
     text-decoration: none;
+    /* iPhone：手指按在連結上再滑，會變成拖曳連結、整個對話滑不動（2026-10-20 診斷：每次滑不動都按在檔案連結上） */
+    -webkit-user-drag: none;
   }
   ::placeholder {
     color: var(--color-ink-3);
