@@ -185,10 +185,10 @@
 }
 
 /*
- * 滿版高度（--app-full）：平常是 100dvh。從 iPhone 主畫面打開的 App（<html class="standalone">）改用 100lvh：
- * 那裡剛打開的前 3 秒、以及鍵盤收起後，dvh 和 innerHeight 會少算狀態列（真機 iOS 18：793／852），
- * 貼著底部的東西（分頁列、對話輸入框、底部視窗）先浮在上面、之後才掉下去；lvh 一直是對的（852）。
- * 主畫面 App 沒有網址列，lvh 就是整個螢幕。
+ * 滿版高度（--app-full）：100dvh，跟著真的看得到的範圍走。
+ * 從 iPhone 主畫面打開的 App（iOS 18）可見高度不一定：有時剛打開 793、3 秒後才變 852（螢幕），有時一直是 793
+ * （2026-10-20 真機：底部 59pt 根本畫不出來）。曾改用 100lvh（一直是 852），結果停在 793 時輸入框、分頁列被切掉一截；
+ * 寧可剛打開時底下空一條、等它長高再補上，也不要被切掉。
  */
 /* 蓋滿整個畫面的固定圖層（對話框、側欄、底部視窗的背景）：用 top＋高度，不用 bottom: 0（會跟著少算的高度） */
 @utility fixed-screen {
@@ -207,9 +207,6 @@
     font-synthesis: none;
     -webkit-tap-highlight-color: transparent;
     --app-full: 100dvh;
-  }
-  :root.standalone {
-    --app-full: 100lvh;
   }
   html,
   body {

@@ -3,8 +3,8 @@
 // 鍵盤沒開時把兩個變數拿掉，用滿版高度（--app-full，見 index.css）。Android Chrome 靠 interactive-widget=resizes-content，不會進到鍵盤分支。
 //
 // 從主畫面打開的 App（standalone）不一樣（2026-10-20 iOS 18 真機時間線）：鍵盤彈出時整頁（innerHeight）也跟著變矮
-// （852 → 450），拿 innerHeight 比永遠看不出鍵盤，輸入框會被蓋住；剛打開的 3 秒內 innerHeight、dvh 又少算狀態列
-// （793）。這裡改拿 100lvh（一直是整個螢幕 852）比，並在 <html> 加上 standalone，讓 CSS 改用 lvh。
+// （852 → 450），拿 innerHeight 比永遠看不出鍵盤，輸入框會被蓋住。這裡改拿 100lvh（一直是整個螢幕 852）比，
+// 並在 <html> 加上 standalone（診斷用）。滿版高度仍然用 dvh：可見範圍有時一直是 793，用 lvh 底部會被切掉（index.css）。
 
 /** 看得到的高度比頁面矮這麼多，才算鍵盤開著（狀態列、網址列的差距比這小）。 */
 const KEYBOARD_MIN = 150
