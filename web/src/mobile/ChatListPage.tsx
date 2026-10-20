@@ -142,7 +142,9 @@ export function ChatListPage() {
               {list.map((b) => (
                 <BotListRow key={b.id} bot={b} last={last[b.id]} crown={!!sec.team && sec.team.chief_id === b.id} menu={rowMenu.bot(b)} look="phone" ring="#070707" />
               ))}
-              {list.length === 0 && <p className="m-0 px-5 py-1 text-sub text-ink-3">還沒有成員。長按團隊名稱可以刪除。</p>}
+              {list.length === 0 && (
+                <p className="m-0 px-5 py-1 text-sub text-ink-3">{chief && sec.team && chief.team_id === sec.team.id ? `成員只有大總管 ${chief.name}（在最上面）。` : '還沒有成員。'}按右邊的「⋯」可以換成員或刪除。</p>
+              )}
             </Group>
           )
         })}

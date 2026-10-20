@@ -285,7 +285,9 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
               {list.map((b) => (
                 <BotListRow key={b.id} bot={b} last={last[b.id]} crown={!!sec.team && sec.team.chief_id === b.id} path={path} onNavigate={onNavigate} menu={rowMenu.bot(b)} more={rowMenu.more.bot(b)} look="side" ring="#111111" />
               ))}
-              {sec.team && sec.bots.length === 0 && <p className="m-0 px-3 py-1 text-sub text-ink-3">還沒有成員。</p>}
+              {sec.team && sec.bots.length === 0 && (
+                <p className="m-0 px-3 py-1 text-sub text-ink-3">{chief?.team_id === sec.team.id ? `成員只有大總管 ${chief.name}（在最上面）。` : '還沒有成員。'}</p>
+              )}
             </Section>
           )
         })}
