@@ -97,6 +97,24 @@ const (
 	ACPToolPayloadBytes = 64 << 10
 )
 
+// Bot 自己登入訂閱 CLI（2026-10-20，xbot.engines.login_start）。XBot 自己的數字。
+const (
+	// EngineLoginTTL 是一次登入最久等多久（Codex、Grok 的裝置碼 15 分鐘到期；同 OAuthLoginTTL）。
+	EngineLoginTTL = 15 * time.Minute
+
+	// EngineLoginURLWait 是開始登入後，等 CLI 印出登入網址最久多久（開機、CLI 冷啟動）。
+	EngineLoginURLWait = 90 * time.Second
+
+	// EngineLoginOutputBytes 是登入指令的輸出最多留多少（找網址與代碼、失敗時給人看最後幾行）。
+	EngineLoginOutputBytes = 16 << 10
+
+	// EngineLoginKeyMax 是貼上的金鑰最長幾個字元（OpenCode）。
+	EngineLoginKeyMax = 512
+
+	// EngineLoginCodeMax 是貼回來的授權碼最長幾個字元（Claude 的授權碼約 100 字）。
+	EngineLoginCodeMax = 2048
+)
+
 // 引擎額度用完（E31，PRD EN-7）。XBot 自己的數字。
 const (
 	// QuotaMessageMax 是額度卡上保留的原始錯誤長度（字）。

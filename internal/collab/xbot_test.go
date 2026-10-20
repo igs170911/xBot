@@ -317,9 +317,9 @@ func TestPauseAllStopsAndBlocksBotTraffic(t *testing.T) {
 func TestRosterAboutIsThirdPerson(t *testing.T) {
 	for in, want := range map[string]string{
 		"你是水哥哥，使用者的幕僚長。說話簡短、先講結論。": "水哥哥，使用者的幕僚長。說話簡短、先講結論。",
-		"你是產業研究員。研究母嬰、特斯拉配件。":        "產業研究員。研究母嬰、特斯拉配件。",
-		"統整研究員的成果，你負責品質。":            "統整研究員的成果，它負責品質。",
-		"每天整理重點":                     "每天整理重點",
+		"你是產業研究員。研究母嬰、特斯拉配件。":      "產業研究員。研究母嬰、特斯拉配件。",
+		"統整研究員的成果，你負責品質。":          "統整研究員的成果，它負責品質。",
+		"每天整理重點": "每天整理重點",
 	} {
 		name := "水哥哥"
 		if got := thirdPerson(in, name); got != want {

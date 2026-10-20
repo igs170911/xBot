@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 
 	"xbot/internal/ops"
@@ -136,7 +137,29 @@ func (d Deps) oauthComplete(ctx context.Context, call *ops.Call, in OAuthComplet
 	}
 	view := viewOf(p)
 	out := OAuthCompleteOut{Status: "done", Provider: &view}
-	if m := strings.TrimSpace(in.DefaultModel); m != "" {
+	models, listErr, err := d.listOAuthModels(ctx, p)
+	if err != nil {
+		return OAuthCompleteOut{}, err
+	}
+	if listErr != "" {
+		slog.Warn("讀不到 ChatGPT 方案能用的模型，先用內建清單", "provider", p.ID, "err", listErr)
+	}
+	m := strings.TrimSpace(in.DefaultModel)
+	if m == "" {
+		// 還沒有預設模型時，用這個帳號列出的第一個（不然登入完還是「沒有模型可以用」）。
+		var cur runtime.ModelRef
+		if ok, err := call.DB.GetSettingInto(ctx, runtime.DefaultModelSetting, &cur); err != nil {
+			return OAuthCompleteOut{}, err
+		} else if !ok || cur.Model == "" {
+			if len(models) == 0 {
+				models = proxy.CodexModels
+			}
+			if len(models) > 0 {
+				m = models[0]
+			}
+		}
+	}
+	if m != "" {
 		ref := runtime.ModelRef{Provider: p.ID, Model: m, Transport: p.Transport}
 		if err := call.DB.SetSetting(ctx, runtime.DefaultModelSetting, ref); err != nil {
 			return OAuthCompleteOut{}, err

@@ -38,6 +38,9 @@ function seed(api: MockServer) {
     def: { provider: 'openai-api', model: 'gpt-5.5-mini' } as { provider: string; model: string } | undefined,
     fallback: { provider: 'opencode-go', model: 'deepseek-v4-flash' } as { provider: string; model: string } | undefined,
     linked: {} as Record<string, string>,
+    /** 每個 Bot 自己登入了哪些 CLI（engines.login_*）。 */
+    own: {} as Record<string, string[]>,
+    loginDone: false,
     oauthPolls: 0,
     caps: {
       global: cap('all', '全部 Bot', 0, 100, 2.86, 42.1),
@@ -61,6 +64,17 @@ function seed(api: MockServer) {
     linked: !!state.linked[b.id],
     linked_engine: state.linked[b.id],
     marker: state.linked[b.id] ? '這個 Bot 用你的 Claude 訂閱' : undefined,
+    accounts: ['claude-code', 'codex', 'grok', 'opencode', 'gemini'].map((e) => ({
+      engine: e,
+      label: e,
+      plan: e,
+      login: e === 'claude-code' ? 'code' : e === 'opencode' ? 'key' : e === 'gemini' ? 'host' : 'web',
+      ready: !!state.own[b.id]?.includes(e),
+      source: 'bot',
+      host_logged_in: false,
+      models: e === 'claude-code' && state.own[b.id]?.includes(e) ? [{ value: 'claude-sonnet-5-5', name: 'Sonnet 5.5' }, { value: 'claude-opus-5-5', name: 'Opus 5.5' }] : [],
+      default: e === 'claude-code' ? 'claude-sonnet-5-5' : undefined,
+    })),
   })
   const days = Array.from({ length: 30 }, (_, i) => row(day(29 - i), i % 6 === 0 ? 0 : 0.4 + ((i * 37) % 23) / 10, 10 + ((i * 13) % 40)))
 
@@ -143,6 +157,35 @@ function seed(api: MockServer) {
     }),
     'engines.link_credentials': (i: Record<string, unknown>) => {
       state.linked[i.bot_id as string] = i.engine as string
+      return engineRow(api.bots.find((b) => b.id === i.bot_id)!)
+    },
+    'engines.login_start': (i: Record<string, unknown>) => ({
+      bot_id: i.bot_id,
+      engine: i.engine,
+      label: 'Claude Code',
+      state: 'waiting',
+      url: 'https://claude.com/cai/oauth/authorize?code=true&client_id=test',
+      needs_code: true,
+    }),
+    'engines.login_code': (i: Record<string, unknown>) => {
+      state.loginDone = true
+      return { bot_id: i.bot_id, engine: 'claude-code', label: 'Claude Code', state: 'checking' }
+    },
+    'engines.login_status': (i: Record<string, unknown>) => {
+      if (!state.loginDone) return { bot_id: i.bot_id, engine: 'claude-code', label: 'Claude Code', state: 'waiting', url: 'https://claude.com/cai/oauth/authorize', needs_code: true }
+      state.own[i.bot_id as string] = ['claude-code']
+      return { bot_id: i.bot_id, engine: 'claude-code', label: 'Claude Code', state: 'done', message: '已登入' }
+    },
+    'engines.switch': (i: Record<string, unknown>) => {
+      const b = api.bots.find((x) => x.id === i.bot_id)!
+      b.engine = i.engine as string
+      b.model = (i.model as string) ?? ''
+      if (b.engine !== 'hermes') state.linked[b.id] = b.engine
+      return { bot: engineRow(b), model: b.model }
+    },
+    'engines.logout': (i: Record<string, unknown>) => {
+      state.own[i.bot_id as string] = []
+      delete state.linked[i.bot_id as string]
       return engineRow(api.bots.find((b) => b.id === i.bot_id)!)
     },
     'engines.unlink_credentials': (i: Record<string, unknown>) => {
@@ -291,9 +334,9 @@ test('用量與花費：圖表、沒價格的模型、上限（提高要確認�
   expect((await download).suggestedFilename()).toBe('xbot-usage.csv')
 })
 
-test('Bot 的引擎：換 Claude Code、同意使用訂閱並標示、權限等級白話', async ({ page }, info) => {
+test('Bot 的 AI 帳號：自己登入 Claude、選模型、按改用才換並標示；權限等級白話', async ({ page }, info) => {
   const { api, xm } = await open(page, '/settings/models')
-  // 這裡要換的是引擎與模型：直接開「進階」（12 個分頁 → 4 個，G02：引擎與模型在「進階」，權限在「權限與花費」）
+  // 這裡要換的是帳號與模型：直接開「進階」（12 個分頁 → 4 個，G02：帳號與模型在「進階」，權限在「權限與花費」）
   await main(page).getByRole('region', { name: '各個 Bot 用哪個' }).getByRole('link', { name: /小秘/ }).click()
   await expect(page).toHaveURL(new RegExp(`/settings/bots/${xm.id}/advanced$`))
   const m = main(page)
@@ -303,19 +346,27 @@ test('Bot 的引擎：換 Claude Code、同意使用訂閱並標示、權限等�
     await expect(m.getByTestId('bot-settings-back')).toHaveText('AI 模型')
     await expect(page.getByRole('navigation', { name: '設定分類' }).getByRole('link', { name: 'AI 模型' })).toHaveAttribute('aria-current', 'page')
   }
-  await m.getByRole('radiogroup', { name: '引擎' }).getByRole('radio', { name: 'Claude Code' }).click()
-  await expect.poll(() => api.calls.find((c) => c.op === 'bots.update')?.input).toEqual({ id: xm.id, engine: 'claude-code' })
-  await m.getByRole('button', { name: '同意使用我的訂閱' }).click()
-  const dlg = page.getByRole('dialog', { name: '讓小秘用你的 Claude 訂閱？' })
-  await expect(dlg).toContainText('唯讀')
-  await expect(dlg).toContainText('隨時可以收回')
-  await expect(dlg.getByRole('button', { name: '同意' })).toBeDisabled()
-  await dlg.getByText('我同意讓小秘使用我的 Claude 訂閱').click()
+  const accounts = m.getByRole('radiogroup', { name: 'AI 帳號' })
+  await expect(accounts.getByRole('radio', { name: /^內建（Hermes）/ })).toContainText('使用中')
+  // 點一列只是展開，不會換
+  await accounts.getByRole('radio', { name: /^Claude Code/ }).click()
+  await m.getByRole('button', { name: '登入 Claude 帳號' }).click()
+  const dlg = page.getByRole('dialog', { name: '小秘登入 Claude 帳號' })
+  await expect(dlg.getByTestId('login-url')).toHaveAttribute('href', /^https:\/\/claude\.com\/cai\/oauth\/authorize/)
+  await dlg.getByRole('textbox', { name: '授權碼' }).fill('AUTH-CODE#state')
   await settle(page)
-  await page.screenshot({ path: shot(`${info.project.name}-w12-consent`) })
-  await dlg.getByRole('button', { name: '同意' }).click()
+  await page.screenshot({ path: shot(`${info.project.name}-w12-login`) })
+  await dlg.getByRole('button', { name: '送出' }).click()
+  expect(api.calls.find((c) => c.op === 'engines.login_code')?.input).toEqual({ bot_id: xm.id, code: 'AUTH-CODE#state' })
+  await expect(dlg.getByText(/小秘已登入 Claude 帳號/)).toBeVisible({ timeout: 8000 })
+  await dlg.getByRole('button', { name: '關閉' }).click()
+  expect(api.calls.some((c) => c.op === 'bots.update' || c.op === 'engines.switch')).toBe(false)
+  await m.getByRole('button', { name: /^模型/ }).click()
+  await page.getByRole('listbox').getByRole('option', { name: /Opus 5.5/ }).click()
+  await m.getByRole('button', { name: '改用 Claude Code' }).click()
+  await expect.poll(() => api.calls.find((c) => c.op === 'engines.switch')?.input).toEqual({ bot_id: xm.id, engine: 'claude-code', model: 'claude-opus-5-5', link: false })
   await expect(m.getByText('這個 Bot 用你的 Claude 訂閱').first()).toBeVisible()
-  expect(api.calls.find((c) => c.op === 'engines.link_credentials')?.input).toEqual({ bot_id: xm.id, engine: 'claude-code' })
+  await expect(accounts.getByRole('radio', { name: /^Claude Code/ })).toContainText('使用中')
 
   await m.getByRole('navigation', { name: 'Bot 設定分頁' }).getByRole('link', { name: '權限與花費' }).click()
   const modes = m.getByRole('radiogroup', { name: '權限等級' })
@@ -327,11 +378,11 @@ test('Bot 的引擎：換 Claude Code、同意使用訂閱並標示、權限等�
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-w12-bot`), fullPage: true })
 
-  // 收回
+  // 登出
   await m.getByRole('navigation', { name: 'Bot 設定分頁' }).getByRole('link', { name: '進階' }).click()
-  await m.getByRole('button', { name: '收回' }).click()
-  await page.getByRole('alertdialog').getByRole('button', { name: '收回' }).click()
-  await expect.poll(() => api.calls.some((c) => c.op === 'engines.unlink_credentials')).toBe(true)
+  await m.getByRole('button', { name: '登出' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '登出' }).click()
+  await expect.poll(() => api.calls.find((c) => c.op === 'engines.logout')?.input).toEqual({ bot_id: xm.id, engine: 'claude-code' })
 })
 
 test('手機：設定總覽（L06）→ 點進一區 → 返回', async ({ page }, info) => {

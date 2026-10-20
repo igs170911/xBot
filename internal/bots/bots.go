@@ -102,6 +102,8 @@ type Deps struct {
 	SoulChanged func(ctx context.Context, botID string)
 	// ManageChanged 在團隊管理權限開關以後呼叫：Bot 看得到的 XBot MCP 工具跟著變，要請引擎重新載入。可為 nil。
 	ManageChanged func(ctx context.Context, botID string)
+	// EngineChanged 在引擎改了以後呼叫：Bot 自己登入的訂閱 CLI 憑證跟著搬（engines.Service.Sync，EN-2a）。可為 nil。
+	EngineChanged func(ctx context.Context, botID string)
 }
 
 // View 是對外的 Bot 資料。
@@ -287,7 +289,7 @@ func Register(reg *ops.Registry, d Deps) {
 			if err != nil {
 				return View{}, err
 			}
-			before, manage := soulOf(b), b.CanManage
+			before, manage, engineBefore := soulOf(b), b.CanManage, b.Engine
 			if err := apply(&b, in); err != nil {
 				return View{}, err
 			}
@@ -324,6 +326,9 @@ func Register(reg *ops.Registry, d Deps) {
 			}
 			if err == nil && d.ManageChanged != nil && b.CanManage != manage {
 				d.ManageChanged(ctx, b.ID)
+			}
+			if err == nil && d.EngineChanged != nil && b.Engine != engineBefore {
+				d.EngineChanged(ctx, b.ID)
 			}
 			return ViewOf(b), err
 		},

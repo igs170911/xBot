@@ -5255,6 +5255,50 @@ export function devicesPairStatus(input: DevicesPairStatusInput, opts?: CallOpti
   return invoke('xbot.devices.pair_status', input, opts).then((r) => r.output)
 }
 
+// xbot.engines.check
+
+export interface EnginesCheckInput {
+  /** Bot id */
+  bot_id: string
+  /** 哪個 CLI */
+  engine: 'claude-code' | 'codex' | 'gemini' | 'opencode' | 'grok'
+}
+
+export interface EnginesCheckOutput {
+  /** 登入有效，CLI 開得起來 */
+  ok: boolean
+  message?: string
+  account: {
+    engine: string
+    label: string
+    plan: string
+    /** web：到網頁輸入代碼；code：網頁登入後貼回授權碼；key：貼金鑰；host：只能用這台電腦的登入 */
+    login: string
+    /** 這個 Bot 可以用這個帳號 */
+    ready: boolean
+    /** bot：這個 Bot 自己登入的；host：用這台電腦的登入 */
+    source?: string
+    at?: number
+    host_logged_in: boolean
+    models?: {
+      value: string
+      name?: string
+    }[]
+    default?: string
+  }
+}
+
+/**
+ * 確認一個 Bot 的 CLI 登入有效，並更新它能用的模型
+ *
+ * 開一次 CLI（不送訊息）：開得起來表示登入有效，順便記下這個帳號能用的模型。會開機。
+ *
+ * `xbot.engines.check`：權限 manage、風險 safe
+ */
+export function enginesCheck(input: EnginesCheckInput, opts?: CallOptions): Promise<EnginesCheckOutput> {
+  return invoke('xbot.engines.check', input, opts).then((r) => r.output)
+}
+
 // xbot.engines.link_credentials
 
 export interface EnginesLinkCredentialsInput {
@@ -5286,6 +5330,26 @@ export interface EnginesLinkCredentialsOutput {
   }[]
   /** CLI 自己的預設模型（Bot 沒指定模型時用） */
   agent_default?: string
+  /** bot：這個 Bot 自己登入的；host：用這台電腦的登入 */
+  source?: string
+  accounts?: {
+    engine: string
+    label: string
+    plan: string
+    /** web：到網頁輸入代碼；code：網頁登入後貼回授權碼；key：貼金鑰；host：只能用這台電腦的登入 */
+    login: string
+    /** 這個 Bot 可以用這個帳號 */
+    ready: boolean
+    /** bot：這個 Bot 自己登入的；host：用這台電腦的登入 */
+    source?: string
+    at?: number
+    host_logged_in: boolean
+    models?: {
+      value: string
+      name?: string
+    }[]
+    default?: string
+  }[]
 }
 
 /**
@@ -5297,6 +5361,272 @@ export interface EnginesLinkCredentialsOutput {
  */
 export function enginesLinkCredentials(input: EnginesLinkCredentialsInput, opts?: CallOptions): Promise<EnginesLinkCredentialsOutput> {
   return invoke('xbot.engines.link_credentials', input, opts).then((r) => r.output)
+}
+
+// xbot.engines.login_cancel
+
+export interface EnginesLoginCancelInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface EnginesLoginCancelOutput {
+  bot_id: string
+  engine: string
+  label: string
+  /** waiting：等你到網頁登入；checking：登入好了，正在確認；done、failed、cancelled */
+  state: string
+  /** 到這個網址登入 */
+  url?: string
+  /** 在網頁上輸入這組代碼 */
+  code?: string
+  /** 網頁登入完會給一段授權碼，要用 xbot.engines.login_code 貼回來 */
+  needs_code?: boolean
+  message?: string
+  expires_at?: number
+}
+
+/**
+ * 取消 Bot 進行中的 CLI 登入
+ *
+ * `xbot.engines.login_cancel`：權限 admin、風險 safe
+ */
+export function enginesLoginCancel(input: EnginesLoginCancelInput, opts?: CallOptions): Promise<EnginesLoginCancelOutput> {
+  return invoke('xbot.engines.login_cancel', input, opts).then((r) => r.output)
+}
+
+// xbot.engines.login_code
+
+export interface EnginesLoginCodeInput {
+  /** Bot id */
+  bot_id: string
+  /** 網頁登入完顯示的授權碼 */
+  code: string
+}
+
+export interface EnginesLoginCodeOutput {
+  bot_id: string
+  engine: string
+  label: string
+  /** waiting：等你到網頁登入；checking：登入好了，正在確認；done、failed、cancelled */
+  state: string
+  /** 到這個網址登入 */
+  url?: string
+  /** 在網頁上輸入這組代碼 */
+  code?: string
+  /** 網頁登入完會給一段授權碼，要用 xbot.engines.login_code 貼回來 */
+  needs_code?: boolean
+  message?: string
+  expires_at?: number
+}
+
+/**
+ * 把網頁登入完的授權碼交給 Bot 電腦裡的登入（Claude Code）
+ *
+ * `xbot.engines.login_code`：權限 admin、風險 safe
+ */
+export function enginesLoginCode(input: EnginesLoginCodeInput, opts?: CallOptions): Promise<EnginesLoginCodeOutput> {
+  return invoke('xbot.engines.login_code', input, opts).then((r) => r.output)
+}
+
+// xbot.engines.login_key
+
+export interface EnginesLoginKeyInput {
+  /** Bot id */
+  bot_id: string
+  /** OpenCode Go 訂閱的金鑰 */
+  go_key?: string
+  /** OpenCode Zen 的金鑰 */
+  zen_key?: string
+}
+
+export interface EnginesLoginKeyOutput {
+  bot_id: string
+  name: string
+  engine: string
+  engine_label: string
+  /** 這個引擎要連結你的訂閱才能用 */
+  needs_link: boolean
+  /** 已同意，Bot 正在用你的訂閱 */
+  linked: boolean
+  linked_engine?: string
+  linked_at?: number
+  /** 已收回，憑證等 Bot 的電腦連得上時清掉 */
+  pending_clear?: boolean
+  marker?: string
+  plan?: string
+  /** 這個訂閱能用的模型（CLI 上次開對話時列出的）；空的表示還沒用過 */
+  models?: {
+    value: string
+    name?: string
+  }[]
+  /** CLI 自己的預設模型（Bot 沒指定模型時用） */
+  agent_default?: string
+  /** bot：這個 Bot 自己登入的；host：用這台電腦的登入 */
+  source?: string
+  accounts?: {
+    engine: string
+    label: string
+    plan: string
+    /** web：到網頁輸入代碼；code：網頁登入後貼回授權碼；key：貼金鑰；host：只能用這台電腦的登入 */
+    login: string
+    /** 這個 Bot 可以用這個帳號 */
+    ready: boolean
+    /** bot：這個 Bot 自己登入的；host：用這台電腦的登入 */
+    source?: string
+    at?: number
+    host_logged_in: boolean
+    models?: {
+      value: string
+      name?: string
+    }[]
+    default?: string
+  }[]
+}
+
+/**
+ * 用金鑰讓一個 Bot 登入 OpenCode（OpenCode Go／Zen）
+ *
+ * 把金鑰寫成這個 Bot 電腦裡 OpenCode 的登入（只給這個 Bot 用；Bot 換成別的引擎時收起來）。至少給一把金鑰。只有你本人能做。
+ *
+ * `xbot.engines.login_key`：權限 admin、風險 safe
+ */
+export function enginesLoginKey(input: EnginesLoginKeyInput, opts?: CallOptions): Promise<EnginesLoginKeyOutput> {
+  return invoke('xbot.engines.login_key', input, opts).then((r) => r.output)
+}
+
+// xbot.engines.login_start
+
+export interface EnginesLoginStartInput {
+  /** Bot id */
+  bot_id: string
+  /** 要登入哪個 CLI */
+  engine: 'claude-code' | 'codex' | 'grok'
+}
+
+export interface EnginesLoginStartOutput {
+  bot_id: string
+  engine: string
+  label: string
+  /** waiting：等你到網頁登入；checking：登入好了，正在確認；done、failed、cancelled */
+  state: string
+  /** 到這個網址登入 */
+  url?: string
+  /** 在網頁上輸入這組代碼 */
+  code?: string
+  /** 網頁登入完會給一段授權碼，要用 xbot.engines.login_code 貼回來 */
+  needs_code?: boolean
+  message?: string
+  expires_at?: number
+}
+
+/**
+ * 讓一個 Bot 在自己的電腦裡登入 Claude Code、Codex 或 Grok（網頁授權）
+ *
+ * 在這個 Bot 的電腦裡開 CLI 的登入，回傳網址與代碼：到網址登入、輸入代碼（Claude 要把網頁給的授權碼用 xbot.engines.login_code 貼回來）。之後用 xbot.engines.login_status 看進度。登入的帳號只給這個 Bot 用，Bot 換成別的引擎時收起來，不會給 Hermes。只有你本人能做。
+ *
+ * `xbot.engines.login_start`：權限 admin、風險 safe
+ */
+export function enginesLoginStart(input: EnginesLoginStartInput, opts?: CallOptions): Promise<EnginesLoginStartOutput> {
+  return invoke('xbot.engines.login_start', input, opts).then((r) => r.output)
+}
+
+// xbot.engines.login_status
+
+export interface EnginesLoginStatusInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface EnginesLoginStatusOutput {
+  bot_id: string
+  engine: string
+  label: string
+  /** waiting：等你到網頁登入；checking：登入好了，正在確認；done、failed、cancelled */
+  state: string
+  /** 到這個網址登入 */
+  url?: string
+  /** 在網頁上輸入這組代碼 */
+  code?: string
+  /** 網頁登入完會給一段授權碼，要用 xbot.engines.login_code 貼回來 */
+  needs_code?: boolean
+  message?: string
+  expires_at?: number
+}
+
+/**
+ * 看 Bot 登入 CLI 的進度
+ *
+ * 回傳最近一次 xbot.engines.login_start 的狀態：waiting（等你到網頁登入）、checking（確認中）、done、failed、cancelled；沒有登入時 state 是 none。
+ *
+ * `xbot.engines.login_status`：權限 read、風險 safe
+ */
+export function enginesLoginStatus(input: EnginesLoginStatusInput, opts?: CallOptions): Promise<EnginesLoginStatusOutput> {
+  return invoke('xbot.engines.login_status', input, opts).then((r) => r.output)
+}
+
+// xbot.engines.logout
+
+export interface EnginesLogoutInput {
+  /** Bot id */
+  bot_id: string
+  /** 哪個 CLI */
+  engine: 'claude-code' | 'codex' | 'gemini' | 'opencode' | 'grok'
+}
+
+export interface EnginesLogoutOutput {
+  bot_id: string
+  name: string
+  engine: string
+  engine_label: string
+  /** 這個引擎要連結你的訂閱才能用 */
+  needs_link: boolean
+  /** 已同意，Bot 正在用你的訂閱 */
+  linked: boolean
+  linked_engine?: string
+  linked_at?: number
+  /** 已收回，憑證等 Bot 的電腦連得上時清掉 */
+  pending_clear?: boolean
+  marker?: string
+  plan?: string
+  /** 這個訂閱能用的模型（CLI 上次開對話時列出的）；空的表示還沒用過 */
+  models?: {
+    value: string
+    name?: string
+  }[]
+  /** CLI 自己的預設模型（Bot 沒指定模型時用） */
+  agent_default?: string
+  /** bot：這個 Bot 自己登入的；host：用這台電腦的登入 */
+  source?: string
+  accounts?: {
+    engine: string
+    label: string
+    plan: string
+    /** web：到網頁輸入代碼；code：網頁登入後貼回授權碼；key：貼金鑰；host：只能用這台電腦的登入 */
+    login: string
+    /** 這個 Bot 可以用這個帳號 */
+    ready: boolean
+    /** bot：這個 Bot 自己登入的；host：用這台電腦的登入 */
+    source?: string
+    at?: number
+    host_logged_in: boolean
+    models?: {
+      value: string
+      name?: string
+    }[]
+    default?: string
+  }[]
+}
+
+/**
+ * 讓一個 Bot 登出它自己登入的 CLI
+ *
+ * 結束正在跑的 CLI，清掉這個 Bot 電腦裡那個 CLI 的登入（不影響這台電腦和其他 Bot）。只有你本人能做。
+ *
+ * `xbot.engines.logout`：權限 admin、風險 safe
+ */
+export function enginesLogout(input: EnginesLogoutInput, opts?: CallOptions): Promise<EnginesLogoutOutput> {
+  return invoke('xbot.engines.logout', input, opts).then((r) => r.output)
 }
 
 // xbot.engines.status
@@ -5329,6 +5659,26 @@ export interface EnginesStatusOutput {
     }[]
     /** CLI 自己的預設模型（Bot 沒指定模型時用） */
     agent_default?: string
+    /** bot：這個 Bot 自己登入的；host：用這台電腦的登入 */
+    source?: string
+    accounts?: {
+      engine: string
+      label: string
+      plan: string
+      /** web：到網頁輸入代碼；code：網頁登入後貼回授權碼；key：貼金鑰；host：只能用這台電腦的登入 */
+      login: string
+      /** 這個 Bot 可以用這個帳號 */
+      ready: boolean
+      /** bot：這個 Bot 自己登入的；host：用這台電腦的登入 */
+      source?: string
+      at?: number
+      host_logged_in: boolean
+      models?: {
+        value: string
+        name?: string
+      }[]
+      default?: string
+    }[]
   }[]
   /** 這台電腦上各訂閱 CLI 的登入狀態 */
   host: {
@@ -5393,6 +5743,26 @@ export interface EnginesSwitchOutput {
     }[]
     /** CLI 自己的預設模型（Bot 沒指定模型時用） */
     agent_default?: string
+    /** bot：這個 Bot 自己登入的；host：用這台電腦的登入 */
+    source?: string
+    accounts?: {
+      engine: string
+      label: string
+      plan: string
+      /** web：到網頁輸入代碼；code：網頁登入後貼回授權碼；key：貼金鑰；host：只能用這台電腦的登入 */
+      login: string
+      /** 這個 Bot 可以用這個帳號 */
+      ready: boolean
+      /** bot：這個 Bot 自己登入的；host：用這台電腦的登入 */
+      source?: string
+      at?: number
+      host_logged_in: boolean
+      models?: {
+        value: string
+        name?: string
+      }[]
+      default?: string
+    }[]
   }
   /** Bot 現在的模型設定；空白是預設 */
   model: string
@@ -5440,6 +5810,26 @@ export interface EnginesUnlinkCredentialsOutput {
   }[]
   /** CLI 自己的預設模型（Bot 沒指定模型時用） */
   agent_default?: string
+  /** bot：這個 Bot 自己登入的；host：用這台電腦的登入 */
+  source?: string
+  accounts?: {
+    engine: string
+    label: string
+    plan: string
+    /** web：到網頁輸入代碼；code：網頁登入後貼回授權碼；key：貼金鑰；host：只能用這台電腦的登入 */
+    login: string
+    /** 這個 Bot 可以用這個帳號 */
+    ready: boolean
+    /** bot：這個 Bot 自己登入的；host：用這台電腦的登入 */
+    source?: string
+    at?: number
+    host_logged_in: boolean
+    models?: {
+      value: string
+      name?: string
+    }[]
+    default?: string
+  }[]
 }
 
 /**
@@ -13402,7 +13792,14 @@ export interface Ops {
   'xbot.computers.wake': { input: ComputersWakeInput; output: ComputersWakeOutput }
   'xbot.devices.pair_start': { input: DevicesPairStartInput; output: DevicesPairStartOutput }
   'xbot.devices.pair_status': { input: DevicesPairStatusInput; output: DevicesPairStatusOutput }
+  'xbot.engines.check': { input: EnginesCheckInput; output: EnginesCheckOutput }
   'xbot.engines.link_credentials': { input: EnginesLinkCredentialsInput; output: EnginesLinkCredentialsOutput }
+  'xbot.engines.login_cancel': { input: EnginesLoginCancelInput; output: EnginesLoginCancelOutput }
+  'xbot.engines.login_code': { input: EnginesLoginCodeInput; output: EnginesLoginCodeOutput }
+  'xbot.engines.login_key': { input: EnginesLoginKeyInput; output: EnginesLoginKeyOutput }
+  'xbot.engines.login_start': { input: EnginesLoginStartInput; output: EnginesLoginStartOutput }
+  'xbot.engines.login_status': { input: EnginesLoginStatusInput; output: EnginesLoginStatusOutput }
+  'xbot.engines.logout': { input: EnginesLogoutInput; output: EnginesLogoutOutput }
   'xbot.engines.status': { input: EnginesStatusInput; output: EnginesStatusOutput }
   'xbot.engines.switch': { input: EnginesSwitchInput; output: EnginesSwitchOutput }
   'xbot.engines.unlink_credentials': { input: EnginesUnlinkCredentialsInput; output: EnginesUnlinkCredentialsOutput }
@@ -13650,7 +14047,14 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.computers.wake': { path: '/api/v1/computers.wake', scope: 'operate', risk: 'safe', mutates: true, summary: '叫醒（開機）一個 Bot 的電腦；還沒有電腦時先建立' },
   'xbot.devices.pair_start': { path: '/api/v1/devices.pair_start', scope: 'admin', risk: 'safe', mutates: true, summary: '產生連手機用的 QR（一次性配對碼）' },
   'xbot.devices.pair_status': { path: '/api/v1/devices.pair_status', scope: 'admin', risk: 'safe', mutates: true, summary: '看連手機的配對碼用掉了沒' },
+  'xbot.engines.check': { path: '/api/v1/engines.check', scope: 'manage', risk: 'safe', mutates: true, summary: '確認一個 Bot 的 CLI 登入有效，並更新它能用的模型' },
   'xbot.engines.link_credentials': { path: '/api/v1/engines.link_credentials', scope: 'admin', risk: 'safe', mutates: true, summary: '讓一個 Bot 使用你在這台電腦上的訂閱登入（Claude Code／Codex CLI／Gemini CLI／OpenCode／Grok）' },
+  'xbot.engines.login_cancel': { path: '/api/v1/engines.login_cancel', scope: 'admin', risk: 'safe', mutates: true, summary: '取消 Bot 進行中的 CLI 登入' },
+  'xbot.engines.login_code': { path: '/api/v1/engines.login_code', scope: 'admin', risk: 'safe', mutates: true, summary: '把網頁登入完的授權碼交給 Bot 電腦裡的登入（Claude Code）' },
+  'xbot.engines.login_key': { path: '/api/v1/engines.login_key', scope: 'admin', risk: 'safe', mutates: true, summary: '用金鑰讓一個 Bot 登入 OpenCode（OpenCode Go／Zen）' },
+  'xbot.engines.login_start': { path: '/api/v1/engines.login_start', scope: 'admin', risk: 'safe', mutates: true, summary: '讓一個 Bot 在自己的電腦裡登入 Claude Code、Codex 或 Grok（網頁授權）' },
+  'xbot.engines.login_status': { path: '/api/v1/engines.login_status', scope: 'read', risk: 'safe', mutates: false, summary: '看 Bot 登入 CLI 的進度' },
+  'xbot.engines.logout': { path: '/api/v1/engines.logout', scope: 'admin', risk: 'safe', mutates: true, summary: '讓一個 Bot 登出它自己登入的 CLI' },
   'xbot.engines.status': { path: '/api/v1/engines.status', scope: 'read', risk: 'safe', mutates: false, summary: '看每個 Bot 用哪個引擎、有沒有用你的訂閱' },
   'xbot.engines.switch': { path: '/api/v1/engines.switch', scope: 'manage', risk: 'safe', mutates: true, summary: '把一個 Bot 換到另一個引擎或模型（額度用完時）' },
   'xbot.engines.unlink_credentials': { path: '/api/v1/engines.unlink_credentials', scope: 'admin', risk: 'safe', mutates: true, summary: '收回一個 Bot 使用你訂閱登入的同意' },

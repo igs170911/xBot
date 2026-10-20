@@ -57,8 +57,13 @@ func (d Deps) probe(ctx context.Context, call *ops.Call, in ProbeIn) (ProbeOut, 
 		return ProbeOut{}, err
 	}
 	if p.Auth != "" {
-		// 訂閱登入只有 Codex 的 responses 端點，呼叫方式固定；探測送的請求格式它不收。
-		return ProbeOut{}, ops.Conflict("訂閱登入的供應商不用探測，呼叫方式固定是 codex_responses")
+		// 訂閱登入只有 Codex 的 responses 端點，呼叫方式固定，不用試；只更新這個帳號能用的模型。
+		out := ProbeOut{Provider: p.ID, Models: []string{}, At: time.Now().UnixMilli()}
+		if call.DryRun {
+			return out, nil
+		}
+		out.Models, out.ListError, err = d.listOAuthModels(ctx, p)
+		return out, err
 	}
 	var def runtime.ModelRef
 	if _, err := call.DB.GetSettingInto(ctx, runtime.DefaultModelSetting, &def); err != nil {
@@ -111,4 +116,34 @@ func (d Deps) probe(ctx context.Context, call *ops.Call, in ProbeIn) (ProbeOut, 
 		return ProbeOut{}, err
 	}
 	return out, nil
+}
+
+// Freshener 換新訂閱登入的權杖；*proxy.Providers 符合。
+type Freshener interface {
+	Fresh(ctx context.Context, pr proxy.Provider, force bool) (proxy.Provider, error)
+}
+
+// listOAuthModels 讀訂閱登入（ChatGPT 方案）這個帳號真的能用的模型並記下來（權杖快到期時先換新）。
+// 2026-10-20：原本只用寫死的清單（proxy.CodexModels），裡面的 gpt-5.4-mini 這個帳號一用就 400。
+func (d Deps) listOAuthModels(ctx context.Context, p proxy.Provider) ([]string, string, error) {
+	if f, ok := d.Providers.(Freshener); ok {
+		fresh, err := f.Fresh(ctx, p, false)
+		if err != nil {
+			return []string{}, "登入要換新但失敗了：" + err.Error(), nil
+		}
+		p = fresh
+	}
+	models, listErr := d.prober().ListModels(ctx, p)
+	prev, _, err := d.Lister.Probe(ctx, p.ID)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(models) == 0 && len(prev.Models) > 0 {
+		models = prev.Models // 這次讀不到：留著上次的清單
+	}
+	res := proxy.ProbeResult{Provider: p.ID, At: time.Now().UnixMilli(), Models: nonNil(models), ListError: listErr, Checks: prev.Checks}
+	if res.Checks == nil {
+		res.Checks = map[string]proxy.ModelCheck{}
+	}
+	return res.Models, listErr, d.Lister.PutProbe(ctx, res)
 }

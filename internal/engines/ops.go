@@ -55,6 +55,10 @@ type BotStatus struct {
 	// Models、AgentDefault：訂閱 CLI 上次開 session 時列出的模型與它自己的預設；還沒用過時是空的。
 	Models       []acp.ModelChoice `json:"models,omitempty" desc:"這個訂閱能用的模型（CLI 上次開對話時列出的）；空的表示還沒用過"`
 	AgentDefault string            `json:"agent_default,omitempty" desc:"CLI 自己的預設模型（Bot 沒指定模型時用）"`
+	// Source：Bot 現在的引擎用的是 bot（它自己登入的）還是 host（這台電腦的登入）。
+	Source string `json:"source,omitempty" desc:"bot：這個 Bot 自己登入的；host：用這台電腦的登入"`
+	// Accounts 是每個訂閱 CLI 這個 Bot 能不能用、怎麼登入、有哪些模型（只在查單一 Bot 時列）。
+	Accounts []Account `json:"accounts,omitempty"`
 }
 
 // HostLogin 是這台電腦上某個 CLI 有沒有登入。
@@ -109,6 +113,7 @@ func Register(reg *ops.Registry, svc *Service) {
 		},
 	})
 	registerSwitch(reg, svc)
+	registerLogin(reg, svc)
 }
 
 func ownerOnly(call *ops.Call) error {
@@ -150,8 +155,13 @@ func (s *Service) view(ctx context.Context, b store.Bot) (BotStatus, error) {
 		}
 		v.Models, v.AgentDefault = m.Models, m.Default
 	}
+	if own, err := s.HasOwn(ctx, b.ID, engine); err != nil {
+		return v, err
+	} else if own && needs {
+		v.Linked, v.LinkedEngine, v.Source, v.Marker = true, engine, "bot", sp.Marker()
+	}
 	l, ok, err := s.Get(ctx, b.ID)
-	if err != nil || !ok {
+	if err != nil || !ok || v.Linked {
 		return v, err
 	}
 	if l.Revoked {
@@ -160,7 +170,7 @@ func (s *Service) view(ctx context.Context, b store.Bot) (BotStatus, error) {
 	}
 	v.LinkedEngine, v.LinkedAt = l.Engine, l.LinkedAt
 	if l.Engine == engine {
-		v.Linked = true
+		v.Linked, v.Source = true, "host"
 		v.Marker = Specs[engine].Marker()
 	}
 	return v, nil
@@ -190,6 +200,11 @@ func (s *Service) status(ctx context.Context, call *ops.Call, in StatusIn) (Stat
 		v, err := s.view(ctx, b)
 		if err != nil {
 			return StatusOut{}, err
+		}
+		if in.BotID != "" {
+			if v.Accounts, err = s.accounts(ctx, b.ID); err != nil {
+				return StatusOut{}, err
+			}
 		}
 		out.Bots = append(out.Bots, v)
 	}

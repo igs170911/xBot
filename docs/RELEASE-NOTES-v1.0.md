@@ -106,7 +106,7 @@
 
 ### 模型、引擎、快判
 
-- 訂閱引擎（Claude Code、Codex、Gemini CLI、OpenCode、Grok）沒有用真的訂閱跑過完整任務；主機與容器共用 refresh token 可能互相踢掉，CLI 自己換權杖時會碰到唯讀憑證；Codex 的沙箱模式在強化容器內可能不能用。
+- 訂閱引擎（Claude Code、Codex、Gemini CLI、OpenCode、Grok）沒有用真的訂閱跑過長時間的完整任務；改用「用這台電腦的登入」時，主機與容器共用 refresh token 可能互相踢掉（讓 Bot 自己登入就不會）；Gemini CLI 還不能在網頁上登入；Codex 的沙箱模式在強化容器內可能不能用。
 - Gemini 登入失效時會卡在等登入碼，約 60 秒後才報未登入。
 - 首次設定只列出 Claude Code、Codex；「額度用完」卡換的是整個 Bot 的引擎。
 - Hermes 以外的引擎不讀 XBot 的技能與記憶。

@@ -5,6 +5,7 @@ package catalog
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"xbot/internal/apps"
 	"xbot/internal/botops"
@@ -84,6 +85,14 @@ type Deps struct {
 // Register 登錄 bots、chat、approvals、inbox、audit、代為核准（agents.*_delegation）、cards、team、collab、rooms、teams、agenda、models、usage、engines、skills、memory、hosts、routines、files、computers（生命週期、看畫面與接手）、judge（快判）、network（內建 Tailscale、外部入口）、teaching（示範教學）各領域的操作。
 func Register(reg *ops.Registry, d Deps) {
 	bd := bots.Deps{Teardown: d.Teardown, SoulChanged: d.SoulChanged, ManageChanged: d.ManageChanged}
+	if d.Engines != nil {
+		svc := d.Engines
+		bd.EngineChanged = func(ctx context.Context, botID string) {
+			if err := svc.Sync(context.WithoutCancel(ctx), botID); err != nil {
+				slog.Warn("換引擎後搬登入資料失敗，開機前再搬", "bot", botID, "err", err)
+			}
+		}
+	}
 	if d.Collab != nil {
 		// 刪除 Bot 時，還在等它回覆的隊友會收到「已經被刪除」（AA-6）。
 		teardown, c := d.Teardown, d.Collab

@@ -134,7 +134,7 @@ func TestQuotaCardAndSwitch(t *testing.T) {
 	if label != "Claude Code" {
 		t.Fatal(label)
 	}
-	if len(opts) != 3 || opts[0].Engine != acp.EngineCodex || !opts[0].NeedsLink || opts[0].Label != "Codex CLI（ChatGPT 方案）" ||
+	if len(opts) != 3 || opts[0].Engine != acp.EngineCodex || !opts[0].NeedsLink || opts[0].Label != "Codex CLI（ChatGPT 帳號）" ||
 		opts[1].Model != "opencode-go/deepseek-v4.1-flash" || opts[2].Model != "openai/gpt-6-luna" {
 		t.Fatalf("選項（不含 Claude 自己、只列登入過的）：%+v", opts)
 	}

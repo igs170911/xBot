@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"io"
@@ -193,6 +194,9 @@ func setAuth(h http.Header, key Secret, messages bool) {
 
 // ListModels 讀供應商的 /models。失敗時回空清單與原因。
 func (p *Prober) ListModels(ctx context.Context, pr Provider) ([]string, string) {
+	if pr.Auth == AuthOAuthCodex {
+		return p.codexModels(ctx, pr)
+	}
 	ctx, cancel := context.WithTimeout(ctx, p.timeout())
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pr.BaseURL+"/models", nil)
@@ -235,6 +239,76 @@ func (p *Prober) ListModels(ctx context.Context, pr Provider) ([]string, string)
 		out = out[:limits.ModelProbeMaxModels]
 	}
 	return out, ""
+}
+
+// codexModels 是 ChatGPT 方案這個帳號真的能用的模型（Hermes model_metadata.fetch_codex_catalog_entries）：
+// 要帶 ChatGPT-Account-ID，不然回 200 但清單是空的；client_version 先用新版號、空的再用 0.0.0。藏起來的不列，照 priority 排。
+// 2026-10-20：原本用寫死的清單（CodexModels），列出 gpt-5.4-mini 但這個帳號一用就 400「not supported with a ChatGPT account」。
+func (p *Prober) codexModels(ctx context.Context, pr Provider) ([]string, string) {
+	ctx, cancel := context.WithTimeout(ctx, p.timeout())
+	defer cancel()
+	why := ""
+	for _, v := range []string{"99.0.0", "0.0.0"} {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, pr.BaseURL+"/models?client_version="+v, nil)
+		if err != nil {
+			return nil, err.Error()
+		}
+		setCodexHeaders(req.Header, pr.OAuth, "", "")
+		req.Header.Set("Authorization", "Bearer "+string(pr.APIKey))
+		resp, err := p.client().Do(req)
+		if err != nil {
+			return nil, clip(redactString(err.Error(), string(pr.APIKey)))
+		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, limits.ModelProbeBodyBytes))
+		resp.Body.Close()
+		if resp.StatusCode >= 300 {
+			why = clip(redactString(errorText(resp.StatusCode, body), string(pr.APIKey)))
+			continue
+		}
+		var list struct {
+			Models []struct {
+				Slug       string   `json:"slug"`
+				Visibility string   `json:"visibility"`
+				Priority   *float64 `json:"priority"`
+			} `json:"models"`
+		}
+		if err := json.Unmarshal(body, &list); err != nil {
+			return nil, "模型清單不是 JSON"
+		}
+		type ranked struct {
+			rank float64
+			slug string
+		}
+		var rs []ranked
+		for _, m := range list.Models {
+			if m.Slug == "" || strings.EqualFold(m.Visibility, "hide") || strings.EqualFold(m.Visibility, "hidden") {
+				continue
+			}
+			r := 10_000.0
+			if m.Priority != nil {
+				r = *m.Priority
+			}
+			rs = append(rs, ranked{r, m.Slug})
+		}
+		if len(rs) == 0 {
+			why = "這個 ChatGPT 帳號沒有列出任何模型"
+			continue
+		}
+		slices.SortStableFunc(rs, func(a, b ranked) int {
+			if a.rank != b.rank {
+				return cmp.Compare(a.rank, b.rank)
+			}
+			return strings.Compare(a.slug, b.slug)
+		})
+		var out []string
+		for _, r := range rs {
+			if !slices.Contains(out, r.slug) {
+				out = append(out, r.slug)
+			}
+		}
+		return out, ""
+	}
+	return nil, why
 }
 
 func cmpOr(a, b string) string {

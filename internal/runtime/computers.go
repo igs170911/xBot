@@ -411,6 +411,26 @@ func (c *Computers) LaunchACP(ctx context.Context, botID string, a acp.Agent) (a
 	}, a)
 }
 
+// ExecRoot 實作 engines.Service.Exec：開機、等就緒，在 Bot 的電腦裡以 root 開行程，HOME 是 home。
+// Bot 自己登入訂閱 CLI 時用：登入資料放在只有 root 讀得到的 /opt/xbot/cred/own/（EN-2a）。
+func (c *Computers) ExecRoot(ctx context.Context, botID, home string, a acp.Agent) (acp.Process, error) {
+	if _, err := c.Boxes.Start(ctx, botID); err != nil {
+		return nil, err
+	}
+	s, err := c.Boxes.WaitReady(ctx, botID)
+	if err != nil {
+		return nil, err
+	}
+	if s.ContainerID == "" {
+		return nil, errors.New("找不到 Bot 的電腦")
+	}
+	h, err := c.Hosts.Get(s.HostID)
+	if err != nil {
+		return nil, err
+	}
+	return acp.Exec(ctx, h.Docker(), acp.ExecSpec{ContainerID: s.ContainerID, User: "0:0", Home: home}, a)
+}
+
 // MCPServers 回傳交給 ACP 引擎的 MCP 伺服器：Bot 電腦裡的 desktop_mcp（和 Hermes 同一個指令，EN-2c），
 // 有 XBot MCP 時一併給。
 func (c *Computers) MCPServers(botID string) []acp.MCPServer {

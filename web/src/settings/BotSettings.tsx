@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Check, ChevronLeft, ChevronRight, Crown, KeyRound, Share2, ShieldAlert, ShieldCheck, TriangleAlert } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Crown, KeyRound, Share2, ShieldCheck } from 'lucide-react'
 import {
   botsGet,
   botsUpdate,
-  enginesLinkCredentials,
   enginesStatus,
-  enginesUnlinkCredentials,
   skillsList,
   type BotsGetOutput,
   type BotsUpdateInput,
@@ -16,15 +14,11 @@ import { useStore } from '../data/store'
 import { linkClick } from '../router'
 import { Avatar } from '../ui/Avatar'
 import { Button } from '../ui/Button'
-import { Checkbox, Switch } from '../ui/Controls'
-import { ConfirmDialog, Dialog } from '../ui/Dialog'
+import { Switch } from '../ui/Controls'
 import { Icon } from '../ui/Icon'
-import { TextInput } from '../ui/Field'
-import { Select } from '../ui/Menu'
 import { StatusChip } from '../ui/Pill'
 import { useToast } from '../ui/toast-context'
 import { cx } from '../ui/cx'
-import { ModelChooser } from './ModelChooser'
 import { MemoryTab, SkillsTab } from './BotCapabilities'
 import { Block, Group, Row } from './parts'
 import { BotCaps } from './UsageSection'
@@ -32,16 +26,15 @@ import { BasicTab } from './bot/BasicTab'
 import { AccessTab } from './bot/AccessTab'
 import { HistoryTab, VoiceTab } from './bot/HistoryTab'
 import { ShareBotDialog } from './bot/share'
-import { ENGINES, ENGINE_LABEL, MODES, MODE_LABEL, PLAN_NAME, subscriptionMarker } from './botModes'
+import { BotAI } from './bot/BotAI'
+import { ENGINE_LABEL, MODES, MODE_LABEL, subscriptionMarker } from './botModes'
 import { errText, isPending } from './format'
-import { splitRef, useModelData } from './modelData'
 
 // 每個 Bot 的設定（G02～G13）：基本 · 能力 · 權限與花費 · 進階；引擎、訂閱、模型、權限等級（EN-2b、BT-5、SEC-2）。
 
 type Bot = BotsGetOutput
 type Engine = NonNullable<BotsUpdateInput['engine']>
 type EngineState = EnginesStatusOutput['bots'][number]
-type HostCli = EnginesStatusOutput['host'][number]
 
 /** 各個 Bot 的引擎一覽（AI 模型 › 各個 Bot）。 */
 export function BotsEngineList() {
@@ -148,17 +141,13 @@ export function BotSettingsPage({ botId, tab, sub, back = { to: '/settings/model
   const [bot, setBot] = useState<Bot | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [eng, setEng] = useState<EngineState | null>(null)
-  const [host, setHost] = useState<HostCli[]>([])
   const [share, setShare] = useState(false)
   const [skillCount, setSkillCount] = useState<number | null>(null)
   const view = normalize(tab, sub)
 
   const loadEngine = useCallback(() => {
     enginesStatus({ bot_id: botId })
-      .then((s) => {
-        setEng(s.bots.find((b) => b.bot_id === botId) ?? null)
-        setHost(s.host)
-      })
+      .then((s) => setEng(s.bots.find((b) => b.bot_id === botId) ?? null))
       .catch(() => setEng(null))
   }, [botId])
 
@@ -221,7 +210,12 @@ export function BotSettingsPage({ botId, tab, sub, back = { to: '/settings/model
           </h2>
           <p className="m-0 truncate text-sub text-ink-2">{[bot.title, bot.description].filter(Boolean).join(' · ') || 'Bot 設定'}</p>
         </div>
-        {eng?.linked && <SubscriptionMarker engine={eng.linked_engine || engine} marker={eng.marker} />}
+        {eng?.linked && (
+          // 手機上標示自己一行，不要把名字擠成直的
+          <span className="max-sm:order-last max-sm:basis-full">
+            <SubscriptionMarker engine={eng.linked_engine || engine} marker={eng.marker} />
+          </span>
+        )}
         <Button icon={Share2} onClick={() => setShare(true)}>
           分享
         </Button>
@@ -272,7 +266,7 @@ export function BotSettingsPage({ botId, tab, sub, back = { to: '/settings/model
           </Block>
         </>
       )}
-      {view.main === 'advanced' && view.sub === '' && <EngineAndModel bot={bot} engine={engine} eng={eng} host={host} update={update} reload={loadEngine} />}
+      {view.main === 'advanced' && view.sub === '' && <BotAI bot={bot} eng={eng} reload={loadEngine} onBot={onSaved} />}
       {view.main === 'advanced' && view.sub === 'voice' && <VoiceTab bot={bot} />}
       {view.main === 'advanced' && view.sub === 'history' && <HistoryTab bot={bot} />}
 
@@ -329,304 +323,10 @@ function Permissions({ bot, onPick }: { bot: Bot; onPick: (m: (typeof MODES)[num
   )
 }
 
-/** 進階 › 模型（G09）：引擎、訂閱、模型與備援。 */
-function EngineAndModel({
-  bot,
-  engine,
-  eng,
-  host,
-  update,
-  reload,
-}: {
-  bot: Bot
-  engine: Engine
-  eng: EngineState | null
-  host: HostCli[]
-  update: (patch: Omit<BotsUpdateInput, 'id'>, done: string) => Promise<void>
-  reload: () => void
-}) {
-  const { models, presets } = useModelData()
-  const providers = models?.providers ?? []
-  const modelRef = bot.model ? (bot.model.includes('/') ? splitRef(bot.model) : { provider: models?.default?.provider ?? '', model: bot.model }) : null
-  const fallbackRef = bot.fallback ? splitRef(bot.fallback) : null
-  return (
-    <>
-      <Block title="引擎" sub="Hermes 是內建引擎，用「AI 模型」設定的模型；其他引擎用你在這台電腦上登入的訂閱，要逐個 Bot 同意。">
-        <Group>
-          <EnginePicker
-            value={engine}
-            host={host}
-            linkedEngine={eng?.linked ? eng.linked_engine || engine : undefined}
-            onChange={(v) => void update({ engine: v }, `${bot.name}改用 ${ENGINE_LABEL[v]}`)}
-          />
-          {engine !== 'hermes' && (
-            <div className="border-t border-line px-4 py-3">
-              <Subscription bot={bot} engine={engine} state={eng} host={host.find((h) => h.engine === engine)} onChanged={reload} />
-            </div>
-          )}
-        </Group>
-      </Block>
-
-      {engine !== 'hermes' && <PlanModel bot={bot} engine={engine} eng={eng} onPick={(m) => void update({ model: m }, m ? `${bot.name}改用 ${m}` : `${bot.name}改用 ${ENGINE_LABEL[engine]} 的預設模型`)} />}
-
-      {engine === 'hermes' && (
-        <Block title="模型" sub="沒有指定時用預設模型。主要模型出錯或限流時改用備援。">
-          <Group>
-            <div className="flex flex-col gap-3 px-4 py-3">
-              <ModelChooser
-                label="這個 Bot 的模型"
-                value={modelRef}
-                providers={providers}
-                presets={presets}
-                noneLabel={`用預設模型${models?.default ? `（${models.default.model}）` : ''}`}
-                onCommit={(v) => void update({ model: v ? `${v.provider}/${v.model}` : '' }, v ? `${bot.name}改用 ${v.model}` : `${bot.name}改用預設模型`)}
-              />
-              <ModelChooser
-                label="備援模型"
-                value={fallbackRef}
-                providers={providers}
-                presets={presets}
-                noneLabel={`用全域備援${models?.fallback ? `（${models.fallback.model}）` : ''}`}
-                onCommit={(v) => void update({ fallback: v ? `${v.provider}/${v.model}` : '' }, v ? `備援改成 ${v.model}` : '改用全域備援')}
-              />
-            </div>
-          </Group>
-        </Block>
-      )}
-    </>
-  )
-}
-
-/** 用訂閱的 Bot 選模型：列出 CLI 開對話時回報的模型；還沒回報（沒聊過、或 CLI 不列）時可以直接打名稱。 */
-function PlanModel({ bot, engine, eng, onPick }: { bot: Bot; engine: Engine; eng: EngineState | null; onPick: (model: string) => void }) {
-  const models = eng?.engine === engine ? (eng.models ?? []) : []
-  const [typed, setTyped] = useState(bot.model)
-  const [seen, setSeen] = useState(bot.model)
-  if (seen !== bot.model) {
-    setSeen(bot.model)
-    setTyped(bot.model)
-  }
-  const options = [
-    { value: '', label: eng?.agent_default ? `${ENGINE_LABEL[engine]} 預設（${eng.agent_default}）` : `${ENGINE_LABEL[engine]} 預設` },
-    ...(bot.model && !models.some((m) => m.value === bot.model) ? [{ value: bot.model, label: bot.model }] : []),
-    ...models.map((m) => ({ value: m.value, label: m.name && m.name !== m.value ? `${m.name}（${m.value}）` : m.value })),
-  ]
-  return (
-    <Block title="模型" sub={models.length ? `${PLAN_NAME[engine] ?? ENGINE_LABEL[engine]} 能用的模型。` : '聊過一次之後會列出能用的模型；也可以直接輸入名稱。'}>
-      <Group>
-        <div className="flex flex-col gap-3 px-4 py-3">
-          {models.length > 0 ? (
-            <Select label="這個 Bot 的模型" value={bot.model} options={options} onChange={onPick} />
-          ) : (
-            <TextInput
-              label="這個 Bot 的模型"
-              value={typed}
-              placeholder={`留空用 ${ENGINE_LABEL[engine]} 的預設`}
-              onChange={(e) => setTyped(e.target.value)}
-              onBlur={() => typed.trim() !== bot.model && onPick(typed.trim())}
-              onKeyDown={(e) => {
-                if (e.key !== 'Enter' || e.nativeEvent.isComposing) return
-                e.preventDefault()
-                ;(e.target as HTMLInputElement).blur()
-              }}
-            />
-          )}
-        </div>
-      </Group>
-    </Block>
-  )
-}
-
-/** 引擎選擇器（G08；E31）：每個引擎一列，標出這台電腦上有沒有登入、這個 Bot 有沒有同意使用訂閱。 */
-function EnginePicker({ value, host, linkedEngine, onChange }: { value: Engine; host: HostCli[]; linkedEngine?: string; onChange: (v: Engine) => void }) {
-  return (
-    <div role="radiogroup" aria-label="引擎" className="flex flex-col">
-      {ENGINES.map((e) => {
-        const on = value === e.value
-        const h = host.find((x) => x.engine === e.value)
-        return (
-          <button
-            key={e.value}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            data-engine={e.value}
-            onClick={() => !on && onChange(e.value as Engine)}
-            className={cx(
-              'flex min-h-14 items-center gap-3 border-line bg-transparent px-4 py-2.5 text-left text-ink not-first:border-t',
-              on ? 'bg-control/60' : 'hover:bg-control/40',
-            )}
-          >
-            <span aria-hidden="true" className={cx('flex size-[18px] flex-none items-center justify-center rounded-full border-[1.5px]', on ? 'border-accent' : 'border-check-off')}>
-              {on && <span className="size-2.5 rounded-full bg-accent" />}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-ui">
-                {ENGINE_LABEL[e.value]}
-                {e.value === 'hermes' ? '（內建）' : ''}
-              </span>
-              <span className="block text-[13px] text-ink-2">{e.desc}</span>
-            </span>
-            {e.value !== 'hermes' &&
-              (linkedEngine === e.value ? (
-                <StatusChip tone="accent" size="sm" icon={KeyRound}>
-                  用你的訂閱
-                </StatusChip>
-              ) : h?.logged_in ? (
-                <StatusChip tone="success" size="sm">
-                  已登入
-                </StatusChip>
-              ) : h ? (
-                <StatusChip tone="warning" size="sm">
-                  這台電腦沒登入
-                </StatusChip>
-              ) : null)}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 export function SubscriptionMarker({ engine, marker }: { engine: string; marker?: string }) {
   return (
     <StatusChip tone="accent" icon={KeyRound}>
       {subscriptionMarker(engine, marker)}
     </StatusChip>
-  )
-}
-
-function Subscription({ bot, engine, state, host, onChanged }: { bot: Bot; engine: Engine; state: EngineState | null; host?: HostCli; onChanged: () => void }) {
-  const toast = useToast()
-  const [consent, setConsent] = useState(false)
-  const [revoke, setRevoke] = useState(false)
-  const [agree, setAgree] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const label = ENGINE_LABEL[engine]
-  const plan = PLAN_NAME[engine]
-  const linked = !!state?.linked
-
-  const link = async () => {
-    setBusy(true)
-    try {
-      await enginesLinkCredentials({ bot_id: bot.id, engine: engine as Exclude<Engine, 'hermes'> })
-      setConsent(false)
-      setAgree(false)
-      toast.show({ kind: 'done', text: subscriptionMarker(engine) })
-      onChanged()
-    } catch (e) {
-      toast.show({ kind: 'error', text: errText(e) })
-    } finally {
-      setBusy(false)
-    }
-  }
-  const unlink = async () => {
-    setBusy(true)
-    try {
-      await enginesUnlinkCredentials({ bot_id: bot.id })
-      setRevoke(false)
-      toast.show({ kind: 'done', text: `已收回，${bot.name}不再用你的 ${plan} 訂閱` })
-      onChanged()
-    } catch (e) {
-      toast.show({ kind: 'error', text: errText(e) })
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-2.5 rounded-field bg-inset px-3.5 py-3">
-      {linked ? (
-        <div className="flex items-center gap-3 max-sm:flex-col max-sm:items-stretch">
-          <span className="min-w-0 flex-1">
-            <SubscriptionMarker engine={engine} marker={state?.marker} />
-            <span className="mt-1.5 block text-[13px] text-ink-2">
-              {label} 的登入憑證唯讀放在{bot.name}的電腦裡，只有它能用。
-            </span>
-          </span>
-          <Button variant="danger" onClick={() => setRevoke(true)}>
-            收回
-          </Button>
-        </div>
-      ) : (
-        <div className="flex items-center gap-3 max-sm:flex-col max-sm:items-stretch">
-          <span className="min-w-0 flex-1">
-            <span className="block text-ui">{state?.pending_clear ? '已收回，等 Bot 的電腦連上時清掉憑證' : `還沒同意讓${bot.name}用你的 ${plan} 訂閱`}</span>
-            <span className="block text-[13px] text-ink-2">
-              {host && !host.logged_in ? (
-                <>
-                  這台電腦還沒登入 {label}。先在這台電腦執行 <code className="font-mono text-meta">{host.login}</code>。
-                </>
-              ) : (
-                `同意之前，${bot.name}用 ${label} 不能工作。`
-              )}
-            </span>
-          </span>
-          <Button variant="primary" disabled={!!host && !host.logged_in} onClick={() => setConsent(true)}>
-            同意使用我的訂閱
-          </Button>
-        </div>
-      )}
-
-      <Dialog
-        open={consent}
-        onClose={() => setConsent(false)}
-        busy={busy}
-        width={520}
-        title={`讓${bot.name}用你的 ${plan} 訂閱？`}
-        actions={
-          <>
-            <Button onClick={() => setConsent(false)} disabled={busy}>
-              取消
-            </Button>
-            <Button variant="primary" disabled={!agree} loading={busy} onClick={link}>
-              同意
-            </Button>
-          </>
-        }
-      >
-        <ul className="m-0 flex list-none flex-col gap-2 p-0 text-ui-sm">
-          <li className="flex gap-2.5">
-            <span className="pt-0.5 text-ink-2">
-              <Icon icon={KeyRound} size={16} />
-            </span>
-            <span>
-              會把這台電腦上 {label} 的登入憑證<strong className="font-normal text-ink">唯讀</strong>放進<strong className="font-normal text-ink">{bot.name}的電腦</strong>
-              ，只有這個 Bot，別的 Bot 拿不到。
-            </span>
-          </li>
-          <li className="flex gap-2.5">
-            <span className="pt-0.5 text-warning-ink">
-              <Icon icon={TriangleAlert} size={16} />
-            </span>
-            <span>
-              {bot.name}的工作會用掉你的 {plan} 方案額度；它電腦裡的程式也讀得到這份憑證。這是 API 金鑰不進 Bot 電腦這條規則唯一的例外。
-            </span>
-          </li>
-          <li className="flex gap-2.5">
-            <span className="pt-0.5 text-ink-2">
-              <Icon icon={ShieldAlert} size={16} />
-            </span>
-            <span>
-              隨時可以收回：收回會立刻結束它正在跑的 {label}，並清掉它電腦裡的憑證。介面會一直標示「{subscriptionMarker(engine)}」。
-            </span>
-          </li>
-        </ul>
-        <Checkbox checked={agree} onChange={setAgree} className="mt-2">
-          我同意讓{bot.name}使用我的 {plan} 訂閱
-        </Checkbox>
-      </Dialog>
-
-      <ConfirmDialog
-        open={revoke}
-        danger
-        busy={busy}
-        title={`收回${bot.name}的訂閱使用權？`}
-        description={`會立刻結束它正在跑的 ${label}，並清掉它電腦裡的憑證。之後要再用，得重新同意。`}
-        confirmText="收回"
-        onConfirm={unlink}
-        onCancel={() => setRevoke(false)}
-      />
-    </div>
   )
 }

@@ -13,7 +13,7 @@ XBot 讓 AI 用真的電腦、真的帳號做事，所以預設很保守。這�
 
 | 例外 | 為什麼 | 怎麼控制 |
 |---|---|---|
-| Claude Code、Codex、Gemini CLI、OpenCode、Grok 的訂閱登入 | 這些 CLI 要自己拿著登入才能用 | 逐個 Bot 勾選同意，預設不勾；唯讀；隨時收回。見 [引擎](12-engines.md) |
+| Claude Code、Codex、Gemini CLI、OpenCode、Grok 的訂閱登入 | 這些 CLI 要自己拿著登入才能用 | 逐個 Bot 由你本人登入（或同意用這台電腦的登入）；Bot 換成別的引擎時收到它讀不到的地方；隨時登出。見 [引擎](12-engines.md) |
 | 自訂「本機程式」MCP 的環境變數 | 那個程式在 Bot 電腦裡執行 | 只寫進有授權的 Bot，檔案權限 0400 |
 | 你在「要密碼」卡片填的密碼 | Bot 要拿它登入 | 不存進對話或記憶 |
 

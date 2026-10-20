@@ -219,7 +219,7 @@ function PlanBody({ bot, st, close }: { bot: Bot; st: EngineStatus | null; close
         <span className="text-title">{plan} 訂閱</span>
         {st?.needs_link && !st.linked && (
           <button type="button" onClick={() => navigate(settings)} className="mt-1 self-start rounded-full bg-warning-soft px-2.5 py-1 text-[12.5px] text-warning-ink">
-            還沒同意用你的訂閱，去設定
+            還沒登入這個帳號，去設定
           </button>
         )}
         {models.length > 8 && (
@@ -264,7 +264,7 @@ function PlanBody({ bot, st, close }: { bot: Bot; st: EngineStatus | null; close
       </div>
       <button type="button" onClick={() => navigate(settings)} className="flex h-12 items-center gap-2.5 border-t border-line bg-transparent px-4 text-left text-ui text-ink hover:bg-control">
         <Icon icon={Settings} size={18} className="text-ink-2" />
-        <span className="flex-1">換方案</span>
+        <span className="flex-1">換帳號或模型</span>
         <Icon icon={ChevronRight} size={16} className="text-ink-2" />
       </button>
     </div>

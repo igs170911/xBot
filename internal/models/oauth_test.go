@@ -36,9 +36,19 @@ func (f *fakeOAuth) Defaults() proxy.Provider {
 	return proxy.Provider{BaseURL: "https://codex.example/backend-api/codex", Label: "ChatGPT 方案", Transport: proxy.TransportResponses}
 }
 
+// codexProber 是 ChatGPT 方案這個帳號列出的模型（不連網路）。
+type codexProber struct{ fakeProber }
+
+func (*codexProber) ListModels(context.Context, proxy.Provider) ([]string, string) {
+	return []string{"gpt-7-test", "gpt-5.5"}, ""
+}
+
 func TestOAuthStartComplete(t *testing.T) {
 	e := setup(t)
 	e.pv.SetOAuth(proxy.AuthOAuthCodex, &fakeOAuth{})
+	e.reg = ops.New(ops.Config{DB: e.db})
+	ops.RegisterBuiltin(e.reg)
+	Register(e.reg, Deps{Providers: e.pv, Lister: proxy.NewDBStore(e.db), Prober: &codexProber{}})
 
 	if _, err := e.call(ops.Bot("b1", "小幫手"), "xbot.models.oauth_start", map[string]any{"kind": "openai-codex"}); err == nil {
 		t.Fatal("Bot 不能登入訂閱")
@@ -59,7 +69,8 @@ func TestOAuthStartComplete(t *testing.T) {
 		t.Fatalf("%s %v", raw, err)
 	}
 	time.Sleep(3100 * time.Millisecond) // 最短查詢間隔（limits.OAuthMinPollInterval）
-	raw, err = e.call(owner, "xbot.models.oauth_complete", map[string]any{"login_id": s.LoginID, "default_model": "gpt-5.5"})
+	// 沒指定預設模型、也還沒有預設：用這個帳號列出的第一個（不然登入完還是沒有模型可以用）。
+	raw, err = e.call(owner, "xbot.models.oauth_complete", map[string]any{"login_id": s.LoginID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,24 +83,26 @@ func TestOAuthStartComplete(t *testing.T) {
 		t.Fatalf("輸出不能有權杖：%s", raw)
 	}
 	var def runtime.ModelRef
-	if _, err := e.db.GetSettingInto(bg, runtime.DefaultModelSetting, &def); err != nil || def.Provider != "openai-codex" || def.Transport != "codex_responses" {
+	if _, err := e.db.GetSettingInto(bg, runtime.DefaultModelSetting, &def); err != nil || def.Provider != "openai-codex" || def.Model != "gpt-7-test" || def.Transport != "codex_responses" {
 		t.Fatalf("%+v %v", def, err)
 	}
 
-	// models.get 列出訂閱登入的供應商與 ChatGPT 方案的模型。
+	// models.get 列出訂閱登入的供應商與這個帳號真的能用的模型（登入時讀的，不是內建清單）。
 	raw, _ = e.call(owner, "xbot.models.get", map[string]any{})
-	if !strings.Contains(string(raw), `"auth":"oauth_codex"`) || !strings.Contains(string(raw), "gpt-5.5") || strings.Contains(string(raw), "SECRET") {
+	if !strings.Contains(string(raw), `"auth":"oauth_codex"`) || !strings.Contains(string(raw), "gpt-7-test") || strings.Contains(string(raw), "gpt-5.4-mini") ||
+		strings.Contains(string(raw), "SECRET") {
 		t.Fatalf("%s", raw)
 	}
-	// 不能用金鑰蓋掉訂閱登入；也不探測。
+	// 不能用金鑰蓋掉訂閱登入；探測只更新模型清單。
 	if _, err := e.call(owner, "xbot.models.update_provider", map[string]any{"id": "openai-codex", "api_key": "sk-x"}); code(err) != ops.CodeInvalidInput {
 		t.Fatal(err)
 	}
 	if _, err := e.call(owner, "xbot.models.set_provider", map[string]any{"id": "openai-codex", "base_url": "https://x.example/v1", "api_key": "sk-x"}); code(err) != ops.CodeConflict {
 		t.Fatal(err)
 	}
-	if _, err := e.call(owner, "xbot.models.probe", map[string]any{"provider": "openai-codex"}); code(err) != ops.CodeConflict {
-		t.Fatal(err)
+	if raw, err := e.call(owner, "xbot.models.probe", map[string]any{"provider": "openai-codex"}); err != nil || !strings.Contains(string(raw), "gpt-7-test") ||
+		strings.Contains(string(raw), `"check"`) {
+		t.Fatalf("%s %v", raw, err)
 	}
 	// 改名稱時權杖要保留。
 	if _, err := e.call(owner, "xbot.models.update_provider", map[string]any{"id": "openai-codex", "label": "我的 ChatGPT"}); err != nil {

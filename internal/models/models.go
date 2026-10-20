@@ -159,6 +159,13 @@ func (d Deps) provider(ctx context.Context, id string) (Provider, bool, error) {
 	if ok {
 		out.ProbedAt = probe.At
 		out.Models = probe.Models
+	} else if p.Auth == proxy.AuthOAuthCodex {
+		// 還沒讀過這個帳號能用的模型（2026-10-20 以前登入的）：讀一次記下來，之後用記下的。
+		models, _, err := d.listOAuthModels(ctx, p)
+		if err != nil {
+			return Provider{}, false, err
+		}
+		out.Models = models
 	}
 	if len(out.Models) == 0 {
 		if pre, ok := proxy.PresetByID(p.Preset); ok {

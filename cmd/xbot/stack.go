@@ -181,7 +181,8 @@ func openStack(cfg config.Config) (*stack, error) {
 	comp.Boxes = s.boxes
 	// 訂閱 CLI 的憑證從執行 XBot 服務的使用者家目錄讀（EN-2b）。
 	home, _ := os.UserHomeDir()
-	s.creds = &engines.Service{DB: db, HostHome: home, Locate: comp.Locate, UID: box.BotUID, GID: box.BotGID, Logger: logger}
+	s.creds = &engines.Service{DB: db, HostHome: home, Locate: comp.Locate, UID: box.BotUID, GID: box.BotGID, Logger: logger,
+		Exec: comp.ExecRoot, Launch: comp.LaunchACP}
 	comp.Creds = s.creds
 	hermesDriver := hermes.New(comp.Connect, logger)
 	s.hermesDriver = hermesDriver

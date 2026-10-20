@@ -2,6 +2,7 @@ package engines
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"sync"
 	"testing"
 
+	cerrdefs "github.com/containerd/errdefs"
 	"github.com/moby/moby/client"
 
 	"xbot/internal/engine/acp"
@@ -64,6 +66,31 @@ func (f *fakeFiles) CopyToContainer(_ context.Context, _ string, o client.CopyTo
 		data, _ := io.ReadAll(tr)
 		f.files[path.Join(o.DestinationPath, h.Name)] = entry{mode: h.Mode, uid: h.Uid, gid: h.Gid, data: string(data), link: h.Linkname, typ: h.Typeflag}
 	}
+}
+
+// CopyFromContainer 回傳一個項目的 tar（一般檔案或連結；連結不跟過去）；不存在時是 NotFound。
+func (f *fakeFiles) CopyFromContainer(_ context.Context, _ string, o client.CopyFromContainerOptions) (client.CopyFromContainerResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.fail != nil {
+		return client.CopyFromContainerResult{}, f.fail
+	}
+	en, ok := f.files[o.SourcePath]
+	if !ok {
+		return client.CopyFromContainerResult{}, cerrdefs.ErrNotFound
+	}
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	h := &tar.Header{Name: path.Base(o.SourcePath), Mode: en.mode, Uid: en.uid, Gid: en.gid, Typeflag: en.typ, Linkname: en.link}
+	if en.typ == tar.TypeReg {
+		h.Size = int64(len(en.data))
+	}
+	if err := tw.WriteHeader(h); err != nil {
+		return client.CopyFromContainerResult{}, err
+	}
+	_, _ = tw.Write([]byte(en.data))
+	_ = tw.Close()
+	return client.CopyFromContainerResult{Content: io.NopCloser(&buf)}, nil
 }
 
 func (f *fakeFiles) get(p string) entry {

@@ -56,16 +56,18 @@ func (s *Service) QuotaCard(ctx context.Context, botID string, q *engine.QuotaEr
 			continue
 		}
 		sp := Specs[e]
-		if _, err := s.ReadHost(sp); err != nil {
-			continue
-		}
-		linked, err := s.Linked(ctx, botID, e)
+		ready, err := s.Ready(ctx, botID, e)
 		if err != nil {
 			continue
 		}
-		o := engine.SwitchOption{Engine: e, Label: sp.Label + "（" + sp.Plan + " 方案）", Note: "已登入", NeedsLink: !linked}
-		if !linked {
-			o.Note = "要你同意使用訂閱"
+		if !ready {
+			if _, err := s.ReadHost(sp); err != nil {
+				continue // 這個 Bot 沒登入、這台電腦也沒登入：換過去也不能用
+			}
+		}
+		o := engine.SwitchOption{Engine: e, Label: sp.Label + "（" + sp.Plan + " 帳號）", Note: "已登入", NeedsLink: !ready}
+		if !ready {
+			o.Note = "要你同意用這台電腦的登入"
 		}
 		out = append(out, o)
 	}
@@ -173,11 +175,11 @@ func (s *Service) switchEngine(ctx context.Context, reg *ops.Registry, call *ops
 	sp, needsSub := Specs[target]
 	needLink := false
 	if needsSub {
-		linked, err := s.Linked(ctx, b.ID, target)
+		ready, err := s.Ready(ctx, b.ID, target)
 		if err != nil {
 			return SwitchOut{}, err
 		}
-		if !linked {
+		if !ready {
 			if !in.Link {
 				return SwitchOut{}, ops.Conflict(fmt.Sprintf("%s 要用你的 %s 訂閱。確定讓%s用的話，帶 link=true 表示同意", sp.Label, sp.Plan, b.Name))
 			}
@@ -210,6 +212,10 @@ func (s *Service) switchEngine(ctx context.Context, reg *ops.Registry, call *ops
 	// 舊引擎的行程不再用：關掉（下次對話照新的引擎開）；之前記下的額度錯誤也不算了。
 	if s.Close != nil {
 		s.Close(b.ID)
+	}
+	// Bot 自己登入的憑證跟著換：新的放進家目錄，舊的收回（EN-2a）。
+	if err := s.Sync(ctx, b.ID); err != nil {
+		s.log().Warn("換引擎後搬登入資料失敗，開機前再搬", "bot", b.ID, "err", err)
 	}
 	if s.Forget != nil {
 		s.Forget(b.ID)

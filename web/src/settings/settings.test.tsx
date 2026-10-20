@@ -127,29 +127,50 @@ it('一般：回話風格所有 Bot 共用，選了就存', async () => {
 
 const BOT = { id: 'b1', name: '小秘', title: '幕僚長', description: '', soul: '', color: 'blue', shape: 'cursor', engine: 'claude-code', model: '', fallback: '', effort: 'medium', approval_mode: 'ask', archived: false, created_at: 1, updated_at: 1 }
 
-it('Bot 的訂閱：同意前要勾選，同意後標示用你的訂閱', async () => {
-  let linked = false
-  const row = () => ({ bot_id: 'b1', name: '小秘', engine: 'claude-code', engine_label: 'Claude Code', needs_link: true, linked, marker: linked ? '這個 Bot 用你的 Claude 訂閱' : undefined })
-  api.ops['bots.get'] = () => BOT
+const account = (engine: string, over: Record<string, unknown> = {}) => ({
+  engine,
+  label: engine,
+  plan: engine,
+  login: engine === 'opencode' ? 'key' : engine === 'claude-code' ? 'code' : engine === 'gemini' ? 'host' : 'web',
+  ready: false,
+  host_logged_in: false,
+  ...over,
+})
+
+it('Bot 自己登入：網頁登入給網址和代碼，登入好了列出這個帳號的模型，按「改用」才換', async () => {
+  let ready = false
+  const status = () => ({
+    bots: [{ bot_id: 'b1', name: '小秘', engine: 'hermes', engine_label: 'Hermes', needs_link: false, linked: false, accounts: [account('codex', ready ? { ready: true, source: 'bot', models: [{ value: 'gpt-6-sol' }, { value: 'gpt-5.5' }], default: 'gpt-6-sol' } : {})] }],
+    host: [],
+  })
+  api.ops['bots.get'] = () => ({ ...BOT, engine: 'hermes' })
+  api.ops['models.get'] = () => ({ providers: [], default: null, fallback: null })
   api.ops['models.presets'] = () => ({ presets: [] })
-  api.ops['engines.status'] = () => ({ bots: [row()], host: [{ engine: 'claude-code', label: 'Claude Code', plan: 'Max', logged_in: true, login: 'claude login' }] })
-  api.ops['engines.link_credentials'] = () => {
-    linked = true
-    return row()
+  api.ops['engines.status'] = status
+  api.ops['engines.login_start'] = () => ({ bot_id: 'b1', engine: 'codex', label: 'Codex CLI', state: 'waiting', url: 'https://auth.openai.com/codex/device', code: '78EM-T8MY9' })
+  api.ops['engines.login_status'] = () => {
+    ready = true
+    return { bot_id: 'b1', engine: 'codex', label: 'Codex CLI', state: 'done', message: '已登入' }
   }
+  api.ops['engines.switch'] = () => ({ bot: status().bots[0], model: 'gpt-5.5' })
   render(
     <ToastProvider>
       <BotSettingsPage botId="b1" tab="advanced" />
     </ToastProvider>,
   )
-  fireEvent.click(await screen.findByRole('button', { name: '同意使用我的訂閱' }))
-  const dlg = screen.getByRole('dialog', { name: '讓小秘用你的 Claude 訂閱？' })
-  const ok = within(dlg).getByRole('button', { name: '同意' })
-  expect(ok).toBeDisabled()
-  fireEvent.click(within(dlg).getByRole('checkbox'))
-  fireEvent.click(ok)
-  await waitFor(() => expect(screen.getAllByText('這個 Bot 用你的 Claude 訂閱').length).toBeGreaterThan(0))
-  expect(api.calls.find((c) => c.path === 'engines.link_credentials')?.input).toEqual({ bot_id: 'b1', engine: 'claude-code' })
+  fireEvent.click(await screen.findByRole('radio', { name: /^Codex/ }))
+  fireEvent.click(screen.getByRole('button', { name: '登入 ChatGPT 帳號' }))
+  const dlg = await screen.findByRole('dialog', { name: '小秘登入 ChatGPT 帳號' })
+  expect(await within(dlg).findByTestId('login-code')).toHaveTextContent('78EM-T8MY9')
+  expect(within(dlg).getByTestId('login-url')).toHaveAttribute('href', 'https://auth.openai.com/codex/device')
+  expect(await within(dlg).findByText(/小秘已登入 ChatGPT 帳號/, undefined, { timeout: 4000 })).toBeInTheDocument()
+  fireEvent.click(within(dlg).getByRole('button', { name: '關閉' }))
+  fireEvent.click(await screen.findByRole('button', { name: /^模型/ }))
+  fireEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name: 'gpt-5.5' }))
+  expect(api.calls.some((c) => c.path === 'bots.update')).toBe(false)
+  fireEvent.click(screen.getByRole('button', { name: '改用 Codex' }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'engines.switch')?.input).toEqual({ bot_id: 'b1', engine: 'codex', model: 'gpt-5.5', link: false }))
+  expect(api.calls.some((c) => c.path === 'engines.login_cancel')).toBe(false)
 })
 
 it('Bot 的權限：要核准時說明已送到待我處理', async () => {
@@ -183,13 +204,13 @@ it('用量：讀不到時顯示原因', async () => {
   expect(await screen.findByText(/讀不到用量：資料庫忙碌/)).toBeInTheDocument()
 })
 
-it('用訂閱的 Bot：模型列出 CLI 回報的清單，選項多時可以打字篩選', async () => {
+it('用訂閱的 Bot：模型列出這個帳號能用的，選項多時可以打字篩選', async () => {
   const models = Array.from({ length: 14 }, (_, i) => ({ value: `opencode/m${i}`, name: `Model ${i}` }))
   api.ops['bots.get'] = () => ({ ...BOT, engine: 'opencode', model: '' })
   api.ops['models.presets'] = () => ({ presets: [] })
   api.ops['engines.status'] = () => ({
-    bots: [{ bot_id: 'b1', name: '小秘', engine: 'opencode', engine_label: 'OpenCode', needs_link: true, linked: true, agent_default: 'opencode/big-pickle', models }],
-    host: [{ engine: 'opencode', label: 'OpenCode', plan: 'OpenCode Go', logged_in: true, login: 'opencode auth login' }],
+    bots: [{ bot_id: 'b1', name: '小秘', engine: 'opencode', engine_label: 'OpenCode', needs_link: true, linked: true, accounts: [account('opencode', { ready: true, source: 'bot', default: 'opencode/big-pickle', models })] }],
+    host: [],
   })
   api.ops['bots.update'] = (input) => ({ ...BOT, engine: 'opencode', ...input })
   render(
@@ -197,8 +218,8 @@ it('用訂閱的 Bot：模型列出 CLI 回報的清單，選項多時可以打�
       <BotSettingsPage botId="b1" tab="advanced" />
     </ToastProvider>,
   )
-  fireEvent.click(await screen.findByRole('button', { name: /這個 Bot 的模型/ }))
-  const find = await screen.findByRole('textbox', { name: '找這個 Bot 的模型' })
+  fireEvent.click(await screen.findByRole('button', { name: /^模型/ }))
+  const find = await screen.findByRole('textbox', { name: '找模型' })
   fireEvent.change(find, { target: { value: 'model 13' } })
   const list = screen.getByRole('listbox')
   expect(within(list).getAllByRole('option')).toHaveLength(1)
@@ -206,17 +227,17 @@ it('用訂閱的 Bot：模型列出 CLI 回報的清單，選項多時可以打�
   await waitFor(() => expect(api.calls.find((c) => c.path === 'bots.update')?.input).toEqual({ id: 'b1', model: 'opencode/m13' }))
 })
 
-it('用訂閱、CLI 還沒回報模型：可以直接輸入名稱', async () => {
+it('用訂閱、還沒讀到模型：可以直接輸入名稱', async () => {
   api.ops['bots.get'] = () => ({ ...BOT, engine: 'grok', model: '' })
   api.ops['models.presets'] = () => ({ presets: [] })
-  api.ops['engines.status'] = () => ({ bots: [{ bot_id: 'b1', name: '小秘', engine: 'grok', engine_label: 'Grok', needs_link: true, linked: true }], host: [] })
+  api.ops['engines.status'] = () => ({ bots: [{ bot_id: 'b1', name: '小秘', engine: 'grok', engine_label: 'Grok', needs_link: true, linked: true, accounts: [account('grok', { ready: true, source: 'bot' })] }], host: [] })
   api.ops['bots.update'] = (input) => ({ ...BOT, engine: 'grok', ...input })
   render(
     <ToastProvider>
       <BotSettingsPage botId="b1" tab="advanced" />
     </ToastProvider>,
   )
-  const box = await screen.findByRole('textbox', { name: '這個 Bot 的模型' })
+  const box = await screen.findByRole('textbox', { name: '模型' })
   fireEvent.change(box, { target: { value: 'grok-5' } })
   fireEvent.blur(box)
   await waitFor(() => expect(api.calls.find((c) => c.path === 'bots.update')?.input).toEqual({ id: 'b1', model: 'grok-5' }))

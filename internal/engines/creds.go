@@ -23,10 +23,13 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/moby/moby/client"
@@ -128,9 +131,10 @@ type Container struct {
 	Running bool
 }
 
-// Files 是寫憑證用到的 Docker API；hosts.DockerAPI 符合。
+// Files 是讀寫憑證用到的 Docker API；hosts.DockerAPI 符合。
 type Files interface {
 	CopyToContainer(ctx context.Context, id string, o client.CopyToContainerOptions) (client.CopyToContainerResult, error)
+	CopyFromContainer(ctx context.Context, id string, o client.CopyFromContainerOptions) (client.CopyFromContainerResult, error)
 }
 
 // Service 處理連結、收回與開機前的同步。
@@ -154,6 +158,15 @@ type Service struct {
 	Busy   func(botID string) bool
 	Forget func(botID string)
 	Resend func(ctx context.Context, botID, threadID, text string) (string, error)
+
+	// Bot 自己登入（own.go）用到的；都可為 nil（不能在網頁上登入）。
+	// Exec 在 Bot 的電腦裡（必要時先開機）以 root 開行程，HOME 是 home：跑 CLI 的登入指令、用 own 資料夾裡的憑證確認登入。
+	// Launch 照平常的方式（Bot 使用者）開 agent：Bot 正在用那個 CLI 時確認登入。
+	Exec   func(ctx context.Context, botID, home string, a acp.Agent) (acp.Process, error)
+	Launch acp.Launcher
+
+	loginMu sync.Mutex
+	logins  map[string]*login
 }
 
 func (s *Service) log() *slog.Logger {
@@ -227,18 +240,29 @@ func (s *Service) Linked(ctx context.Context, botID, engine string) (bool, error
 // ErrNotLinked 表示 Bot 沒有（或已收回）連結訂閱。
 var ErrNotLinked = errors.New("沒有連結訂閱")
 
-// Authorize 實作 acp.Authorizer：沒有同意就不讓驅動開 agent。
+// Ready 回答 Bot 現在能不能用這個 CLI：自己登入過（沒登出），或同意用這台電腦的登入（引擎相同）。
+func (s *Service) Ready(ctx context.Context, botID, engine string) (bool, error) {
+	if own, err := s.HasOwn(ctx, botID, engine); err != nil || own {
+		return own, err
+	}
+	return s.Linked(ctx, botID, engine)
+}
+
+// Authorize 實作 acp.Authorizer：Bot 沒有自己登入、也沒同意用這台電腦的登入，就不讓驅動開 agent。
 func (s *Service) Authorize(ctx context.Context, botID, engine string) error {
 	sp, ok := Specs[engine]
 	if !ok {
 		return nil
+	}
+	if own, err := s.HasOwn(ctx, botID, engine); err != nil || own {
+		return err
 	}
 	linked, err := s.Linked(ctx, botID, engine)
 	if err != nil {
 		return err
 	}
 	if !linked {
-		return fmt.Errorf("%w：這個 Bot 還沒有使用你的 %s 訂閱。請到 Bot 設定同意連結（xbot.engines.link_credentials）", ErrNotLinked, sp.Plan)
+		return fmt.Errorf("%w：這個 Bot 還沒登入 %s。請到 Bot 設定的「AI 帳號與模型」登入（xbot.engines.login_start）", ErrNotLinked, sp.Label)
 	}
 	if sp.HostLoginRequired {
 		if _, err := os.Stat(s.HostPath(sp)); err != nil {
@@ -257,6 +281,14 @@ func (s *Service) Link(ctx context.Context, botID, engine string) (Link, error) 
 	data, err := s.ReadHost(sp)
 	if err != nil {
 		return Link{}, err
+	}
+	// 改用這台電腦的登入：Bot 自己登入的那份不留（同一個 CLI 只用一份登入）。
+	if own, err := s.HasOwn(ctx, botID, engine); err != nil {
+		return Link{}, err
+	} else if own {
+		if _, err := s.Logout(ctx, botID, engine); err != nil {
+			return Link{}, err
+		}
 	}
 	l := Link{Engine: engine, LinkedAt: time.Now().UnixMilli()}
 	if err := s.DB.SetSetting(ctx, settingKey(botID), l); err != nil {
@@ -279,9 +311,27 @@ func (s *Service) Link(ctx context.Context, botID, engine string) (Link, error) 
 	return l, nil
 }
 
-// Unlink 收回：刪掉同意（驅動立刻拒絕）、結束 agent 行程、清掉容器裡的憑證。
+// Unlink 收回：刪掉同意（驅動立刻拒絕）、結束 agent 行程、清掉容器裡的憑證；Bot 自己登入的也全部登出。
 // 清不掉時（主機離線）記成待清除，下次開機前清；回傳的 cleared 表示容器裡已確定沒有憑證。
 func (s *Service) Unlink(ctx context.Context, botID string) (cleared bool, err error) {
+	own, err := s.owns(ctx, botID)
+	if err != nil {
+		return false, err
+	}
+	cleared = true
+	for _, e := range slices.Sorted(maps.Keys(own)) {
+		ok, err := s.Logout(ctx, botID, e)
+		if err != nil {
+			return false, err
+		}
+		cleared = cleared && ok
+	}
+	hostCleared, err := s.unlinkHost(ctx, botID)
+	return cleared && hostCleared, err
+}
+
+// unlinkHost 收回用這台電腦的登入。
+func (s *Service) unlinkHost(ctx context.Context, botID string) (cleared bool, err error) {
 	l, ok, err := s.Get(ctx, botID)
 	if err != nil || !ok {
 		return true, err
@@ -310,8 +360,12 @@ func (s *Service) Unlink(ctx context.Context, botID string) (cleared bool, err e
 	return true, s.DB.DeleteSetting(ctx, settingKey(botID))
 }
 
-// Prepare 在每次開機前（box Prepare）呼叫：已同意且引擎相同就放最新的憑證；已收回或引擎換了就清掉。
+// Prepare 在每次開機前（box Prepare）呼叫：Bot 自己登入的照現在的引擎搬好（Sync）；
+// 用這台電腦的登入：已同意且引擎相同就放最新的憑證，已收回或引擎換了就清掉。
 func (s *Service) Prepare(ctx context.Context, c Container, b store.Bot) error {
+	if err := s.syncOwn(ctx, c, b); err != nil {
+		return err
+	}
 	l, ok, err := s.Get(ctx, b.ID)
 	if err != nil || !ok {
 		return err
@@ -319,6 +373,10 @@ func (s *Service) Prepare(ctx context.Context, c Container, b store.Bot) error {
 	sp, known := Specs[l.Engine]
 	if !known {
 		return nil
+	}
+	if own, err := s.HasOwn(ctx, b.ID, l.Engine); err != nil || own {
+		// 同一個 CLI 已經自己登入（adopt 會刪掉這筆同意；這裡只是保險）：不要拿這台電腦的那份蓋掉。
+		return err
 	}
 	engine := b.Engine
 	if engine == "" {

@@ -25,6 +25,16 @@ export const ENGINES: Array<{ value: string; desc: string }> = [
   { value: 'grok', desc: '用你的 Grok 帳號（Grok Build）' },
 ]
 
+/** AI 帳號與模型（2026-10-20）：列出的順序、名稱與一行說明。訂閱帳號由每個 Bot 自己登入。 */
+export const ACCOUNTS: Array<{ value: string; title: string; desc: string }> = [
+  { value: 'hermes', title: '內建（Hermes）', desc: '用「AI 模型」設定的金鑰或 ChatGPT 方案' },
+  { value: 'claude-code', title: 'Claude Code', desc: '用你的 Claude 帳號（Pro／Max）' },
+  { value: 'codex', title: 'Codex', desc: '用你的 ChatGPT 帳號（Plus／Pro）' },
+  { value: 'grok', title: 'Grok', desc: '用你的 Grok 帳號（SuperGrok）' },
+  { value: 'opencode', title: 'OpenCode', desc: '用你的 OpenCode Go 或 Zen 金鑰' },
+  { value: 'gemini', title: 'Gemini CLI', desc: '用你的 Google 帳號（要在這台電腦登入）' },
+]
+
 export const MODES: Array<{ value: Mode; label: string; desc: string }> = [
   { value: 'ask', label: '先問我', desc: '花錢、對外發送、改檔案、刪除前都先問你（預設）' },
   { value: 'edits', label: '一般的事自己做', desc: '讀檔、改檔自己做；其他會改東西的事先問你' },

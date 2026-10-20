@@ -15,43 +15,45 @@
 
 不管哪個引擎，Bot 都知道自己是誰：名字、職稱、人設、基本守則（繁體中文、計畫先給你確認…）、隊友和向誰報告。Claude Code 放在它的系統提示裡；其他引擎（Codex、Gemini CLI、OpenCode、Grok）放在每段新對話的第一則訊息前面（你在畫面上看不到）。改了人設或隊友，下一段新對話就會照新的。被問到用的是哪個引擎或模型時，它會照實說。
 
-換引擎：「Bot 設定 → 進階」。用訂閱的 Bot 也在這裡選模型：列出那個 CLI 回報的模型（聊過一次之後才有），還沒有清單時可以直接輸入名稱，留空用 CLI 自己的預設。全部 Bot 用哪個方案，在「設定 → AI 模型 → 方案」最下面的「各個 Bot 用哪個」。
+換帳號和模型：「Bot 設定 → 進階 → AI 帳號與模型」。每個帳號一列，標著「使用中／已登入／還沒登入」。點一列只是展開看；登入、選好模型後按「改用 ○○」才會換。每個帳號都有自己的模型下拉選單：登入後 XBot 會開一次那個 CLI，讀出這個帳號能用的模型（按「重新讀取」可以再讀一次）；讀不到時可以直接輸入名稱，留空用 CLI 自己的預設。全部 Bot 用哪個，在「設定 → AI 模型 → 方案」最下面的「各個 Bot 用哪個」。
 
-## 用你的訂閱（Hermes 以外的引擎）
+## 用你的訂閱帳號（Hermes 以外的引擎）
 
-Hermes 以外的引擎用的是**你在跑 XBot 的這台電腦上登入的帳號**。
+**每個 Bot 自己登入**，在網頁上就能做（手機也可以），不用先在這台電腦的終端機登入：
 
-1. 先在這台電腦登入。`make doctor` 會顯示每個的登入狀態：
+| 帳號 | 怎麼登入 |
+|---|---|
+| Claude Code（Claude 帳號） | 按「登入 Claude 帳號」→ 打開登入頁登入 → 把網頁給的授權碼貼回來 |
+| Codex（ChatGPT 帳號） | 按「登入 ChatGPT 帳號」→ 打開登入頁 → 輸入畫面上的代碼 |
+| Grok（Grok 帳號） | 按「登入 Grok 帳號」→ 打開登入頁 → 確認畫面上的代碼 |
+| OpenCode | 貼上 OpenCode Go（或 Zen）的金鑰 |
+| Gemini CLI | 還要在這台電腦的終端機執行 `gemini` 登入，再按「用這台電腦的登入」 |
 
-   | 引擎 | 登入指令 |
-   |---|---|
-   | Claude Code | `claude`，再輸入 `/login` |
-   | Codex | `codex login` |
-   | Gemini CLI | `gemini`，選 Login with Google |
-   | OpenCode | `opencode auth login`（OpenCode Go 或 Zen） |
-   | Grok | `grok login` |
+登入後會發生什麼：
 
-2. 把 Bot 的引擎設成那一個。
-3. **逐個 Bot 同意**：勾「同意使用我的訂閱」。這個勾選**預設不勾**。沒同意之前，這個 Bot 用那個引擎不能工作。
+- 登入是在**那個 Bot 自己的電腦裡**跑 CLI 的登入，拿到的是只屬於這個 Bot 的一組權杖，不和這台電腦或其他 Bot 共用。CLI 自己會換新權杖，不會再「登入過期」。
+- Bot 用這個帳號時，登入資料在它的家目錄；換成別的引擎（例如 Hermes）時，XBot 會把它收到 Bot 讀不到的地方，換回來不用再登入。
+- 介面上會標「這個 Bot 用你的 ○○ 訂閱」。它的工作會用掉那個帳號的額度。
+- 它電腦裡的程式讀得到這份登入。這是「金鑰不進 Bot 電腦」規則的例外，所以要你逐個 Bot 登入。
 
-同意後會發生什麼：
+登出：展開那個帳號，按「登出」。XBot 會立刻停掉它正在跑的引擎，並清掉電腦裡的登入（電腦暫時連不上時，下次開機前清掉）。
 
-- 這台電腦上那個 CLI 的登入憑證，會**唯讀**複製進這個 Bot 的電腦，只有這個 Bot 拿得到。每次開機前重新複製一次，換到最新的權杖。
-- 介面上會標「這個 Bot 用你的 ○○ 訂閱」。
-- 它的工作會用掉你的方案額度。
-- 它電腦裡的程式讀得到這份憑證。這是「金鑰不進 Bot 電腦」規則的例外，所以要你逐個同意。
-
-收回：在 Bot 設定或引擎一覽按「收回」。XBot 會立刻停掉它正在跑的引擎，並清掉電腦裡的憑證（電腦暫時連不上時，下次開機前清掉）。
+也可以照舊用這台電腦上的登入（這台電腦登入過時，會多一個「用這台電腦的登入」按鈕）：會唯讀複製進 Bot 的電腦，每次開機前重新複製。這種方式和這台電腦共用同一組權杖，比較容易「登入過期」，建議讓 Bot 自己登入。
 
 指令列：
 
 ```bash
-xbot engines status
-xbot engines link_credentials   --bot_id <id> --engine claude-code
-xbot engines unlink_credentials --bot_id <id>
+xbot engines status --bot_id <id>                        # 每個帳號的登入狀態與模型
+xbot engines login_start  --bot_id <id> --engine codex   # 回網址與代碼
+xbot engines login_status --bot_id <id>
+xbot engines login_code   --bot_id <id> --code <授權碼>   # Claude
+xbot engines login_key    --bot_id <id> --go_key <金鑰>   # OpenCode
+xbot engines check        --bot_id <id> --engine codex   # 確認登入、更新模型清單
+xbot engines logout       --bot_id <id> --engine codex
+xbot engines switch       --bot_id <id> --engine codex --model gpt-6-sol
 ```
 
-只有你本人能同意或收回，代理不行。
+只有你本人能登入、登出，代理不行。
 
 首次設定（「接上 AI」那一步）目前只列出 Claude Code 和 Codex；其他引擎請建好 Bot 後在 Bot 設定換。
 
@@ -63,7 +65,7 @@ XBot 不讓其他引擎借用 Claude 的登入（Anthropic 的使用條款不允
 
 訂閱或 API 的額度用完、被限速、餘額不足、登入過期時，XBot 會用白話結束那一輪，並在對話和「待我處理」出一張「額度用完」卡，寫著什麼時候會恢復（知道的話）。
 
-卡片上可以一鍵**換到別的引擎或模型**，並選擇把剛剛那則訊息在同一個對話串再送一次。要用訂閱、還沒同意過的引擎，換的時候會一起請你同意。換的是整個 Bot 的引擎，不是只有這段對話。Bot 正在做事時不能換。
+卡片上可以一鍵**換到別的引擎或模型**，並選擇把剛剛那則訊息在同一個對話串再送一次。Bot 自己登入過的帳號直接換；只有這台電腦登入過的，換的時候會一起請你同意用這台電腦的登入。換的是整個 Bot 的引擎，不是只有這段對話。Bot 正在做事時不能換。
 
 指令列：`xbot engines switch --bot_id <id> --engine hermes --inbox_id <卡片 id> --resend`。
 
@@ -76,7 +78,8 @@ XBot 不讓其他引擎借用 Claude 的登入（Anthropic 的使用條款不允
 - **技能與記憶**：Hermes 以外的引擎不會讀 XBot 的技能和記憶（那是給 Hermes 的）。
 - **Hermes 的子代理關掉了**：Hermes 的子代理只能在背景跑，這一輪結束後結果才回來，XBot 看不到也停不了。要分工請 Bot 交辦隊友（對話裡看得到、停得了）。
 - **Hermes 讀網頁內容**：用 Firecrawl 的免金鑰雲端版（被限流時換 Exa、Parallel、Keenable 的免費版），只送網址。要登入才看得到的頁面，Bot 會改用自己的瀏覽器。
-- **共用登入**：這台電腦和 Bot 的電腦用同一份登入。CLI 自己換新權杖時，可能碰到唯讀的憑證，或兩邊互相踢掉，要在這台電腦重新登入。這一版還沒用真的帳號長時間測過。
+- **用這台電腦的登入**（舊方式）：這台電腦和 Bot 的電腦共用一組權杖，CLI 換新權杖時可能碰到唯讀的憑證，或兩邊互相踢掉。讓 Bot 自己登入就不會。
+- **Gemini CLI** 還不能在網頁上登入（它的登入要終端機）。
 - **Gemini**：這台電腦登出後，Bot 的 Gemini 不會啟動；登入失效時會卡在等登入碼，約 60 秒後才報「沒有登入」。
 - **Codex 的寫檔模式**：Bot 的電腦是唯讀根目錄、沒有任何特權，Codex 的沙箱模式可能不能用。
 - **macOS 的 Claude 登入**存在鑰匙圈，讀不到。XBot 本來就只支援 Linux。
