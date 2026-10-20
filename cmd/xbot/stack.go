@@ -392,7 +392,7 @@ func (s *stack) reloadBotTools(botID string) {
 }
 
 // startBackground 開始服務才需要的背景工作：閒置休眠（BX-12、CL-9）；收尾上次沒做完的搬家，並定期刪掉搬家後保留期已過的舊資料（CL-5）；
-// 清掉人數不夠的群組。
+// 每天的例行清理（BX-14）；清掉人數不夠的群組。
 func (s *stack) startBackground() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.stopIdle = cancel
@@ -403,6 +403,7 @@ func (s *stack) startBackground() {
 		slog.Warn("收尾上次沒做完的搬家失敗", "err", err)
 	}
 	go s.computers.RunMoveCleanup(ctx)
+	go s.computers.RunCleanup(ctx)
 	// 服務重開時 product.sock 都關了，還開著的電腦要等下一件工作才會補開；在那之前電腦裡要用模型或 XBot 工具的
 	// （例：Hermes 的背景整理）一律 502。開機中的電腦現在就補開。
 	if boxes, err := s.db.ListBoxes(ctx, ""); err == nil {

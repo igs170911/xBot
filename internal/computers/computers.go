@@ -45,6 +45,7 @@ type Service struct {
 	job *Progress
 	wg  sync.WaitGroup
 	mv  mover
+	cl  cleaner
 }
 
 func (s *Service) log() *slog.Logger {

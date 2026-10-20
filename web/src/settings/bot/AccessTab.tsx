@@ -12,13 +12,14 @@ import { useToast } from '../../ui/toast-context'
 import { errText, isPending } from '../format'
 import { Block, Group, Row } from '../parts'
 import { ComputerActions, NetworkAllow, useComputer } from '../../computer/ComputerActions'
+import { ComputerStorage } from '../../computer/ComputerStorage'
 import { MoveCard, MoveDialog } from '../../computer/MoveParts'
 import { loadMoves } from '../../computer/moveData'
 
 // Bot 設定 · 能力 › 應用程式與電腦（G07 畫板；任務卡的 G08「能用哪些應用程式、主機、檔案」）：
 // 哪些已連接的應用程式給它用（連接一次，所有 Bot 都能用；這裡決定這個 Bot 能不能用），它的電腦放在哪台主機、檔案在哪。
 // 已經有電腦的 Bot 換主機＝搬家（B31，開搬家確認）；還沒有電腦時只改第一次開機放的位置。
-// 電腦的動作（休眠、重開、重建、刪除電腦資料）與私有網路例外和電腦面板（E01）共用。
+// 電腦的動作（休眠、重開、重建、刪除電腦資料）與私有網路例外和電腦面板（E01）共用；儲存空間與「清理快取」（BX-14）只在這裡。
 
 type Bot = BotsGetOutput
 type Host = HostsListOutput['hosts'][number]
@@ -160,6 +161,7 @@ export function AccessTab({ bot, onSaved }: { bot: Bot; onSaved: (b: Bot) => voi
         </Group>
         {cv?.move && (cv.moving || cv.move.state === 'failed') && <MoveCard job={cv.move} compact={!cv.moving} />}
         <ComputerActions botId={bot.id} botName={bot.name} state={computer} className="bg-card" />
+        <ComputerStorage botId={bot.id} botName={bot.name} working={!!cv?.busy} className="bg-card" />
         <NetworkAllow botId={bot.id} botName={bot.name} state={computer} className="bg-card" />
       </Block>
       <MoveDialog

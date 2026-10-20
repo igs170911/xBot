@@ -176,6 +176,7 @@ func Register(reg *ops.Registry, svc *Service) {
 		},
 	})
 	registerMove(reg, svc, need)
+	registerCleanup(reg, svc, need)
 	ops.Register(reg, ops.Op[UpdateIn, Progress]{
 		Name: "xbot.computers.update", Summary: "更新電腦：把新的電腦映像傳到主機，並重建上面要更新的電腦（資料保留）",
 		Description: "make box 換了映像、或 XBot 更新了電腦的安全設定之後用。一台主機做完再做下一台；正在工作的 Bot 會跳過。" +
@@ -348,7 +349,7 @@ func opErr(err error) error {
 		return nil
 	case errors.Is(err, store.ErrNotFound):
 		return ops.NotFound("找不到這個 Bot 或它的主機")
-	case errors.Is(err, box.ErrBusy), errors.Is(err, ErrUpdateRunning), errors.Is(err, box.ErrMoving), errors.Is(err, box.ErrSameHost),
+	case errors.Is(err, box.ErrBusy), errors.Is(err, ErrCleanBusy), errors.Is(err, ErrUpdateRunning), errors.Is(err, box.ErrMoving), errors.Is(err, box.ErrSameHost),
 		errors.Is(err, ErrMoveQueued), errors.Is(err, ErrHostOffline), errors.Is(err, ErrNoMove):
 		return ops.Conflict(err.Error())
 	case errors.Is(err, box.ErrEgressNotSet):
@@ -359,4 +360,41 @@ func opErr(err error) error {
 		return ops.Internal(err)
 	}
 	return err
+}
+
+func registerCleanup(reg *ops.Registry, svc *Service, need func() error) {
+	ops.Register(reg, ops.Op[BotIn, StorageView]{
+		Name: "xbot.computers.storage", Summary: "看一個 Bot 的電腦空間花在哪裡：工作成果、你傳的附件、快取與暫存、瀏覽器登入、Bot 裝的工具",
+		Description: "電腦沒開機也可以看：會開一個不連網的小容器來量，不會叫醒電腦。資料多時要幾秒。",
+		Scope:       ops.ScopeRead, Risk: ops.RiskSafe,
+		Handle: func(ctx context.Context, call *ops.Call, in BotIn) (StorageView, error) {
+			if err := need(); err != nil {
+				return StorageView{}, err
+			}
+			if call.DryRun {
+				return StorageView{BotID: in.BotID}, nil
+			}
+			v, err := svc.Storage(ctx, in.BotID)
+			return v, opErr(err)
+		},
+	})
+	ops.Register(reg, ops.Op[BotIn, CleanView]{
+		Name: "xbot.computers.clean", Summary: "立即清理一個 Bot 電腦裡的快取與暫存（會自己長回來的東西），回傳清出多少",
+		Description: "清：引擎暫存與 /workspace/tmp 裡超過 3 天沒動的檔案、超過 200 MB 的瀏覽器快取。工作成果、你傳的附件、瀏覽器登入都不會刪。" +
+			"每天也會自動清一次，那時也會刪放超過 30 天的附件。Bot 正在工作時不能清（等它做完）。電腦沒開機也可以清，不會叫醒它。",
+		Scope: ops.ScopeOperate, Risk: ops.RiskSafe,
+		Handle: func(ctx context.Context, call *ops.Call, in BotIn) (CleanView, error) {
+			if err := need(); err != nil {
+				return CleanView{}, err
+			}
+			if call.DryRun {
+				if svc.busy(in.BotID) {
+					return CleanView{}, ops.Conflict(ErrCleanBusy.Error())
+				}
+				return CleanView{BotID: in.BotID}, nil
+			}
+			v, err := svc.Clean(ctx, in.BotID)
+			return v, opErr(err)
+		},
+	})
 }

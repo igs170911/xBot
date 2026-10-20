@@ -3885,6 +3885,56 @@ export function collabUpdateGroup(input: CollabUpdateGroupInput, opts?: CallOpti
   return invoke('xbot.collab.update_group', input, opts).then((r) => r.output)
 }
 
+// xbot.computers.clean
+
+export interface ComputersCleanInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface ComputersCleanOutput {
+  bot_id: string
+  /** 有電腦資料；沒有時什麼都不用清 */
+  has_computer: boolean
+  result: {
+    /** 引擎暫存與 /workspace/tmp */
+    scratch: number
+    /** 過期的附件 */
+    uploads: number
+    /** 瀏覽器快取 */
+    browser: number
+    /** 合計 */
+    freed: number
+  }
+  usage: {
+    /** 工作成果（/workspace，不含附件與 tmp），不會自動刪除 */
+    workspace: number
+    /** 你傳的附件（/workspace/uploads），30 天後自動刪除 */
+    uploads: number
+    /** 快取與暫存（引擎暫存、/workspace/tmp、瀏覽器快取），每天自動清理 */
+    caches: number
+    /** 瀏覽器登入資料與設定（不含快取） */
+    browser: number
+    /** Bot 安裝的工具 */
+    tools: number
+    /** 其他（引擎紀錄、家目錄的其他檔案） */
+    other: number
+    /** 全部 */
+    total: number
+  }
+}
+
+/**
+ * 立即清理一個 Bot 電腦裡的快取與暫存（會自己長回來的東西），回傳清出多少
+ *
+ * 清：引擎暫存與 /workspace/tmp 裡超過 3 天沒動的檔案、超過 200 MB 的瀏覽器快取。工作成果、你傳的附件、瀏覽器登入都不會刪。每天也會自動清一次，那時也會刪放超過 30 天的附件。Bot 正在工作時不能清（等它做完）。電腦沒開機也可以清，不會叫醒它。
+ *
+ * `xbot.computers.clean`：權限 operate、風險 safe
+ */
+export function computersClean(input: ComputersCleanInput, opts?: CallOptions): Promise<ComputersCleanOutput> {
+  return invoke('xbot.computers.clean', input, opts).then((r) => r.output)
+}
+
 // xbot.computers.close_tabs
 
 export interface ComputersCloseTabsInput {
@@ -4881,6 +4931,46 @@ export interface ComputersStatusOutput {
  */
 export function computersStatus(input: ComputersStatusInput, opts?: CallOptions): Promise<ComputersStatusOutput> {
   return invoke('xbot.computers.status', input, opts).then((r) => r.output)
+}
+
+// xbot.computers.storage
+
+export interface ComputersStorageInput {
+  /** Bot id */
+  bot_id: string
+}
+
+export interface ComputersStorageOutput {
+  bot_id: string
+  /** 有電腦資料；還沒開過機時用量全部是 0 */
+  has_computer: boolean
+  usage: {
+    /** 工作成果（/workspace，不含附件與 tmp），不會自動刪除 */
+    workspace: number
+    /** 你傳的附件（/workspace/uploads），30 天後自動刪除 */
+    uploads: number
+    /** 快取與暫存（引擎暫存、/workspace/tmp、瀏覽器快取），每天自動清理 */
+    caches: number
+    /** 瀏覽器登入資料與設定（不含快取） */
+    browser: number
+    /** Bot 安裝的工具 */
+    tools: number
+    /** 其他（引擎紀錄、家目錄的其他檔案） */
+    other: number
+    /** 全部 */
+    total: number
+  }
+}
+
+/**
+ * 看一個 Bot 的電腦空間花在哪裡：工作成果、你傳的附件、快取與暫存、瀏覽器登入、Bot 裝的工具
+ *
+ * 電腦沒開機也可以看：會開一個不連網的小容器來量，不會叫醒電腦。資料多時要幾秒。
+ *
+ * `xbot.computers.storage`：權限 read、風險 safe
+ */
+export function computersStorage(input: ComputersStorageInput, opts?: CallOptions): Promise<ComputersStorageOutput> {
+  return invoke('xbot.computers.storage', input, opts).then((r) => r.output)
 }
 
 // xbot.computers.takeover
@@ -13280,6 +13370,7 @@ export interface Ops {
   'xbot.collab.stop_chain': { input: CollabStopChainInput; output: CollabStopChainOutput }
   'xbot.collab.stop_room': { input: CollabStopRoomInput; output: CollabStopRoomOutput }
   'xbot.collab.update_group': { input: CollabUpdateGroupInput; output: CollabUpdateGroupOutput }
+  'xbot.computers.clean': { input: ComputersCleanInput; output: ComputersCleanOutput }
   'xbot.computers.close_tabs': { input: ComputersCloseTabsInput; output: ComputersCloseTabsOutput }
   'xbot.computers.egress_status': { input: ComputersEgressStatusInput; output: ComputersEgressStatusOutput }
   'xbot.computers.handback': { input: ComputersHandbackInput; output: ComputersHandbackOutput }
@@ -13298,6 +13389,7 @@ export interface Ops {
   'xbot.computers.sleep': { input: ComputersSleepInput; output: ComputersSleepOutput }
   'xbot.computers.snapshot': { input: ComputersSnapshotInput; output: ComputersSnapshotOutput }
   'xbot.computers.status': { input: ComputersStatusInput; output: ComputersStatusOutput }
+  'xbot.computers.storage': { input: ComputersStorageInput; output: ComputersStorageOutput }
   'xbot.computers.takeover': { input: ComputersTakeoverInput; output: ComputersTakeoverOutput }
   'xbot.computers.update': { input: ComputersUpdateInput; output: ComputersUpdateOutput }
   'xbot.computers.update_status': { input: ComputersUpdateStatusInput; output: ComputersUpdateStatusOutput }
@@ -13526,6 +13618,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.collab.stop_chain': { path: '/api/v1/collab.stop_chain', scope: 'operate', risk: 'safe', mutates: true, summary: '停止一條 Bot 之間的往來' },
   'xbot.collab.stop_room': { path: '/api/v1/collab.stop_room', scope: 'operate', risk: 'safe', mutates: true, summary: '停止群組裡所有成員的工作' },
   'xbot.collab.update_group': { path: '/api/v1/collab.update_group', scope: 'operate', risk: 'safe', mutates: true, summary: '改你所在的群組：名稱、公告、主責、成員，或離開' },
+  'xbot.computers.clean': { path: '/api/v1/computers.clean', scope: 'operate', risk: 'safe', mutates: true, summary: '立即清理一個 Bot 電腦裡的快取與暫存（會自己長回來的東西），回傳清出多少' },
   'xbot.computers.close_tabs': { path: '/api/v1/computers.close_tabs', scope: 'operate', risk: 'safe', mutates: true, summary: '關掉 Bot 電腦瀏覽器裡的分頁，只留一個空白分頁（查完網頁沒關的）' },
   'xbot.computers.egress_status': { path: '/api/v1/computers.egress_status', scope: 'read', risk: 'safe', mutates: false, summary: '看「從家裡出去」的設定與各主機上 Tailscale 小容器的狀態' },
   'xbot.computers.handback': { path: '/api/v1/computers.handback', scope: 'operate', risk: 'safe', mutates: true, summary: '把電腦交還給 Bot，可以附一句說明；Bot 會從目前的畫面接著做原本的工作' },
@@ -13544,6 +13637,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.computers.sleep': { path: '/api/v1/computers.sleep', scope: 'operate', risk: 'safe', mutates: true, summary: '讓一個 Bot 的電腦休眠（關機，資料與瀏覽器登入都保留）' },
   'xbot.computers.snapshot': { path: '/api/v1/computers.snapshot', scope: 'operate', risk: 'safe', mutates: true, summary: '擷取一台電腦目前畫面的小縮圖（JPEG）；電腦沒開機時 available=false，不會叫醒它' },
   'xbot.computers.status': { path: '/api/v1/computers.status', scope: 'read', risk: 'safe', mutates: false, summary: '看一個 Bot 的電腦：開機或休眠、在哪台主機、什麼時候會閒置休眠、要不要更新' },
+  'xbot.computers.storage': { path: '/api/v1/computers.storage', scope: 'read', risk: 'safe', mutates: false, summary: '看一個 Bot 的電腦空間花在哪裡：工作成果、你傳的附件、快取與暫存、瀏覽器登入、Bot 裝的工具' },
   'xbot.computers.takeover': { path: '/api/v1/computers.takeover', scope: 'operate', risk: 'safe', mutates: true, summary: '接手一台電腦：Bot 先暫停（正在做的那一輪中斷、排隊的先等），你可以直接操作畫面' },
   'xbot.computers.update': { path: '/api/v1/computers.update', scope: 'admin', risk: 'safe', mutates: true, summary: '更新電腦：把新的電腦映像傳到主機，並重建上面要更新的電腦（資料保留）' },
   'xbot.computers.update_status': { path: '/api/v1/computers.update_status', scope: 'read', risk: 'safe', mutates: false, summary: '看「更新電腦」的進度：正在進行或最近一次的結果（還沒更新過時 hosts 是空的）' },

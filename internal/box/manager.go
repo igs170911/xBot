@@ -78,8 +78,9 @@ type Manager struct {
 
 	mu     sync.Mutex
 	locks  map[string]*sync.Mutex
-	holds  map[string]int  // 有人正在看畫面的電腦（B14）：不休眠
-	moving map[string]bool // 正在搬家的電腦（B31）：不能開機、重建或刪除
+	holds  map[string]int         // 有人正在看畫面的電腦（B14）：不休眠
+	moving map[string]bool        // 正在搬家的電腦（B31）：不能開機、重建或刪除
+	shells map[string]*sync.Mutex // 例行清理與量用量（BX-14，WithShell）：同一個 Bot 一次一個
 
 	egress EgressSource
 }
@@ -94,7 +95,7 @@ func New(db *store.DB, hs Hosts, opts Options) *Manager {
 	}
 	return &Manager{db: db, hosts: hs, image: opts.Image, prepare: opts.Prepare, noGuard: opts.NoNetGuard, notify: opts.Notify,
 		release: opts.Release, log: opts.Logger, http: &http.Client{Timeout: limits.BoxProbeTimeout},
-		locks: map[string]*sync.Mutex{}, holds: map[string]int{}, moving: map[string]bool{}, egress: opts.Egress}
+		locks: map[string]*sync.Mutex{}, holds: map[string]int{}, moving: map[string]bool{}, shells: map[string]*sync.Mutex{}, egress: opts.Egress}
 }
 
 // Image 回傳 Bot 電腦映像的名稱。
@@ -118,12 +119,15 @@ type Status struct {
 // ErrNameTaken 表示 xbot-box-<id> 這個名稱被不是這個 Bot 的容器佔用了。
 var ErrNameTaken = errors.New("電腦名稱已被其他容器使用")
 
-func (m *Manager) lock(botID string) func() {
+func (m *Manager) lock(botID string) func() { return m.keyLock(m.locks, botID) }
+
+// keyLock 鎖住 locks 裡 key 的那把鎖（沒有就建一把），回傳解鎖的函式。
+func (m *Manager) keyLock(locks map[string]*sync.Mutex, key string) func() {
 	m.mu.Lock()
-	l, ok := m.locks[botID]
+	l, ok := locks[key]
 	if !ok {
 		l = &sync.Mutex{}
-		m.locks[botID] = l
+		locks[key] = l
 	}
 	m.mu.Unlock()
 	l.Lock()

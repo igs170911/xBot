@@ -32,6 +32,8 @@ func TestOpsDefinitions(t *testing.T) {
 		"xbot.computers.move_cancel":   {ops.ScopeManage, ops.RiskSafe, false},
 		"xbot.computers.set_egress":    {ops.ScopeAdmin, ops.RiskConfirm, true},
 		"xbot.computers.egress_status": {ops.ScopeRead, ops.RiskSafe, false},
+		"xbot.computers.storage":       {ops.ScopeRead, ops.RiskSafe, false},
+		"xbot.computers.clean":         {ops.ScopeOperate, ops.RiskSafe, false}, // 只清會自己長回來的快取與暫存
 	}
 	for name, w := range want {
 		info, ok := reg.Get(name)
@@ -55,6 +57,7 @@ func TestOpErr(t *testing.T) {
 	cases := map[error]ops.Code{
 		store.ErrNotFound:                   ops.CodeNotFound,
 		box.ErrBusy:                         ops.CodeConflict,
+		ErrCleanBusy:                        ops.CodeConflict,
 		ErrUpdateRunning:                    ops.CodeConflict,
 		hosts.ErrHostOffline:                ops.CodeConflict,
 		hosts.ErrUnknownHost:                ops.CodeConflict,

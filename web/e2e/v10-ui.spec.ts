@@ -287,6 +287,8 @@ test('對話附檔（C05「8 · 附件」）：＋選檔、拖進對話、貼上
 test('Bot 設定 › 應用程式與電腦（G08）：在哪裡跑換主機＝搬家；電腦的動作也在這裡', async ({ page }, info) => {
   const api = new MockServer(page)
   const mi = api.addBot({ name: '小秘', shape: 'cursor', color: 'blue', title: '幕僚長' })
+  const MB = 1024 * 1024
+  let storage = { workspace: 820 * MB, uploads: 64 * MB, caches: 310 * MB, browser: 95 * MB, tools: 140 * MB, other: 48 * MB, total: 1477 * MB }
   Object.assign(api.override, {
     'hosts.list': () => ({ hosts: hostsOf([mi]) }),
     'apps.list': () => ({ connections: [] }),
@@ -295,14 +297,28 @@ test('Bot 設定 › 應用程式與電腦（G08）：在哪裡跑換主機＝�
     'computers.move': () => ({ running: true, jobs: [] }),
     'skills.list': () => ({ skills: [] }),
     'engines.status': () => ({ bots: [], host: [] }),
+    // BX-14：儲存空間與「清理快取」
+    'computers.storage': () => ({ bot_id: mi.id, has_computer: true, usage: storage }),
+    'computers.clean': () => {
+      const freed = storage.caches
+      storage = { ...storage, caches: 0, total: storage.total - freed }
+      return { bot_id: mi.id, has_computer: true, result: { scratch: 35 * MB, uploads: 0, browser: freed - 35 * MB, freed }, usage: storage }
+    },
   })
   await api.install()
   await page.goto(`/settings/bots/${mi.id}/abilities/access`)
   await expect(page.getByText('換主機就是搬家：家目錄、工作資料夾、瀏覽器登入都跟著走')).toBeVisible()
   await expect(page.getByText(/之後的版本/)).toHaveCount(0)
   await expect(page.getByTestId('computer-actions')).toBeVisible()
+  const disk = page.getByTestId('computer-storage')
+  await expect(disk.getByText('共 1.4 GB')).toBeVisible()
   await settle(page)
   await page.screenshot({ path: shot(`${info.project.name}-v10-bot-access`), fullPage: true })
+  await disk.screenshot({ path: shot(`${info.project.name}-bx14-storage`) })
+  await disk.getByRole('button', { name: '清理快取' }).click()
+  await expect(page.getByText('清出 310 MB')).toBeVisible()
+  await expect(disk.getByText('共 1.1 GB')).toBeVisible()
+  expect(api.calls.find((c) => c.op === 'computers.clean')?.input).toEqual({ bot_id: mi.id })
   await page.getByRole('button', { name: /這台主機（這台）/ }).click()
   await page.getByRole('option', { name: 'cloud-01' }).click()
   const dlg = page.getByRole('dialog', { name: '把小秘的電腦搬到 cloud-01？' })

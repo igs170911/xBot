@@ -245,10 +245,30 @@ make update
 | Bot 總數 | 50 |
 | 模型請求大小 | 64 MB；供應商 5 分鐘沒送資料算逾時 |
 | 上傳 | 單檔 50 MB（圖片 20 MB）、一次 10 個、合計 200 MB |
+| 例行清理 | 每天：暫存與 `/workspace/tmp` 3 天、附件 30 天、瀏覽器快取超過 200 MB（見下一節） |
 
 所有固定數字都在 `internal/limits`，對照表見 [limits.md](limits.md)。
 
 粗估容量：同時開著 N 台電腦，需要 N × 3 GB 記憶體加上系統本身。每個 Bot 的 volume 大小看它做什麼，瀏覽器資料常常是大宗。
+
+## 例行清理
+
+服務開始 2 分鐘後清一次，之後每 24 小時一次（BX-14，照 LazyBoy `server/cleanup.py`）。每個有電腦的 Bot 都清；正在工作或搬家中的跳過，等下一輪。
+
+| 清什麼 | 電腦裡的位置 | 什麼時候刪 |
+|---|---|---|
+| 引擎暫存 | `/hermes/cache/scratch` | 檔案超過 3 天沒動 |
+| Bot 的中間檔 | `/workspace/tmp` | 檔案超過 3 天沒動 |
+| 你傳的附件 | `/workspace/uploads` 底下每一項 | 放超過 30 天（資料夾看裡面最新的檔案） |
+| 瀏覽器快取 | `/home/box/chrome-profile` 裡的 `Cache`、`Code Cache`、`GPUCache`、`Service Worker/CacheStorage` 等 | 合計超過 200 MB 時整個清掉 |
+
+- 不碰：`/workspace` 的其他地方（工作成果）、瀏覽器登入（cookies、local storage、IndexedDB）、Bot 裝的工具、引擎紀錄與記憶。刪空的資料夾一起刪，剛建好的空資料夾留著。
+- 電腦開著：在它的容器裡、以 Bot 使用者執行；瀏覽器開著時請它自己清快取，不刪它正在用的檔案（瀏覽器沒回應就等下一次）。
+- 電腦休眠：開一個不連網、沒有 capability 的小容器 `xbot-clean-<Bot id>`（同一個映像，以 Bot 使用者執行）來清，不會叫醒電腦；清的那幾秒這台電腦要開機會稍等。遠端主機一樣經 Docker API，主機連不上時那個 Bot 跳過。
+- 路徑上有連結（例如 Bot 把 `/workspace/tmp` 換成連到別處的連結）時不跟著走。
+- 結果寫在服務紀錄（`例行清理`，含 `freed_mb`）；有 Bot 沒清完時記一筆警告，隔天再試。
+- 手動：網頁「Bot 設定 → 能力 → 應用程式與電腦 → 儲存空間」，或 `xbot computers storage --bot_id <id>`、`xbot computers clean --bot_id <id>`。手動清理只清快取與暫存，不刪附件。
+- 數字在 `internal/limits`（`CleanupScratchAge`、`CleanupUploadAge`、`CleanupBrowserCacheBytes`、`CleanupEvery`）。
 
 ## 對外開放前的安全檢查
 
