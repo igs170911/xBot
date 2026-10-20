@@ -1,4 +1,5 @@
 import { expect, test, type Page, sidebarAdd } from './fixtures'
+import { pastOnboarding } from './real-helpers'
 import { MockServer, settle } from './mock'
 
 // X03：團隊（F02/F03 建立團隊、F04 團隊地圖、F01 組織架構）、提案與討論（H04、待我處理）。
@@ -9,9 +10,10 @@ test.beforeEach(async ({ page }, info) => {
   if (info.project.name === 'desktop') await page.setViewportSize({ width: 1440, height: 960 })
 })
 
-test('真的服務：用範本建團隊 → 側欄出現團隊分區 → 團隊地圖有節點', async ({ page }, info) => {
+test('真的服務：用範本建團隊 → 側欄出現團隊分區 → 團隊地圖有節點', async ({ page, request }, info) => {
   test.skip(info.project.name !== 'desktop', '同一個服務只跑一次')
   const tag = String(Date.now() % 100000)
+  await pastOnboarding(request) // 不靠前面的測試先走完導覽（單獨跑也要過）
   await page.goto('/')
   const nav = page.getByRole('navigation', { name: '側欄' })
   await sidebarAdd(page, '建立團隊')
