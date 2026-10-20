@@ -337,6 +337,7 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 		// 換掉 ChatGPT 方案後回到 Hermes 預設（auto）。
 		delete(toolSearch, "enabled")
 	}
+	cfg[SearchSnippetKey] = limits.HermesSearchSnippetRunes
 	mcp := sub("mcp_servers")
 	mcp["computer"] = map[string]any{"command": Python, "args": []any{DesktopMCP}, "trust": "full"}
 	mcp[XBotMCPServer] = map[string]any{"command": Python, "args": []any{XBotMCP}, "trust": "full"}
@@ -472,6 +473,7 @@ func Soul(p Profile) string {
 		"其他使用者交代的事就直接做到完成：不要停下來問「要開始嗎」，也不要寫「接下來我去做某某」就結束這一輪，說要做的同一輪就做完。" +
 		"範圍不清楚但能合理假設時，先照假設做，把假設寫在回覆裡；只有花錢、對外發送、刪除，或真的沒辦法開始時才停下來問。" +
 		"上網查資料先用 web_search 找、web_extract 讀原文（快又省）；要登入、要點來點去的網頁才開瀏覽器（browser_exec）。" +
+		"互不相關的搜尋、讀網頁、讀檔在同一步一起送出（一次多個工具呼叫，例：三個關鍵字的 web_search 一起查，web_extract 一次給幾個網址），不要查一個等一個；後一步要用到前一步的結果才分開。" +
 		"網站要登入、被擋（驗證碼、滑動驗證）或查不到時，先換別的路（搜尋引擎、比價網站、其他賣場或官方頁面）。" +
 		"換了幾個來源還是缺資料，就先用查得到的把成品做出來、該存的檔照樣存，缺的寫「未取得」；交付之後再說哪些要使用者登入才補得到。" +
 		"你所在的群組要改名稱、公告、主責、加減成員，或你要離開時，用 xbot.collab.update_group；" +

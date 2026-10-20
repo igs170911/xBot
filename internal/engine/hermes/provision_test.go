@@ -12,6 +12,8 @@ import (
 	cerrdefs "github.com/containerd/errdefs"
 	"github.com/moby/moby/client"
 	"gopkg.in/yaml.v3"
+
+	"xbot/internal/limits"
 )
 
 // fakeFiles 是記憶體裡的容器檔案系統。
@@ -120,6 +122,9 @@ func TestConfigWebExtractAndInlineDelegation(t *testing.T) {
 		cfg = Config(cfg, p)
 		if got := cfg["web"].(map[string]any)["extract_backend"]; got != c.want {
 			t.Errorf("web=%v：extract_backend=%v，要 %v", c.web, got, c.want)
+		}
+		if cfg[SearchSnippetKey] != limits.HermesSearchSnippetRunes {
+			t.Fatalf("搜尋摘要上限：%v", cfg[SearchSnippetKey])
 		}
 		tools := cfg["platform_toolsets"].(map[string]any)["cli"].([]any)
 		if !slices.Contains(tools, any("delegation")) {

@@ -35,6 +35,9 @@ type AppServer struct {
 // 使用者或 Hermes 自己加的不動。
 const AppsKey = "xbot_apps"
 
+// SearchSnippetKey 是 config.yaml 裡 web_search 每筆摘要的字數上限（box/hermes_host.py 讀，limits.HermesSearchSnippetRunes）。
+const SearchSnippetKey = "xbot_search_snippet_max"
+
 // AppNameRE 是連接名字的格式（也是 Hermes 工具名稱的一部分）。
 var AppNameRE = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,47}$`)
 

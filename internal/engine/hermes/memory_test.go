@@ -96,3 +96,11 @@ func TestSoulSaysFinishWhatYouStart(t *testing.T) {
 		t.Fatal("「要做很多步」也要先確認計畫，Bot 就一直停下來問")
 	}
 }
+
+// 2026-10-20：deepseek 一步只叫一個工具（每步 1.07 個，GPT luna 1.82 個），每多一步就重送整段上下文。
+// 守則叫它互不相關的搜尋、讀網頁一起送出。
+func TestSoulAsksForParallelLookups(t *testing.T) {
+	if soul := Soul(Profile{Name: "水哥哥"}); !strings.Contains(soul, "同一步一起送出") || !strings.Contains(soul, "web_extract 一次給幾個網址") {
+		t.Fatalf("SOUL：%q", soul)
+	}
+}

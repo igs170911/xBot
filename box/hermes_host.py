@@ -144,6 +144,35 @@ def inline_delegation():
     session_context.async_delivery_supported = lambda: False
 
 
+def short_search_snippets():
+    """Some ddgs hits carry the whole page text as their description (2026-10-20: 1,102 hits, median 259 chars,
+    p90 1,666, max 28K), and every result rides along in every later request of the turn. Hermes's web_search is
+    meant to return titles, URLs and snippets (page content is web_extract's job), so cut each description to
+    XBot's limit (config.yaml xbot_search_snippet_max, from internal/limits); the page is one web_extract away."""
+    import hermes_yaml
+    import tools.web_tools as web_tools
+    if getattr(web_tools._memoized_search, "xbot_capped", False):
+        return
+    try:
+        cap = int((hermes_yaml.safe_load(Path(os.environ["HERMES_HOME"], "config.yaml").read_text()) or {}).get("xbot_search_snippet_max") or 0)
+    except (OSError, ValueError, TypeError, hermes_yaml.YAMLError):
+        cap = 0
+    if cap <= 0:
+        return
+    search = web_tools._memoized_search
+
+    def capped(provider, query, limit):
+        data = search(provider, query, limit)
+        for hit in ((data or {}).get("data") or {}).get("web") or []:
+            text = hit.get("description")
+            if isinstance(text, str) and len(text) > cap:
+                hit["description"] = text[:cap] + "…"
+        return data
+
+    capped.xbot_capped = True
+    web_tools._memoized_search = capped
+
+
 @app.websocket("/rpc")
 async def rpc(socket: WebSocket):
     key = Path(os.environ["HERMES_HOME"], ".worker-key").read_text().strip()
@@ -152,6 +181,7 @@ async def rpc(socket: WebSocket):
         return
     from tui_gateway.ws import handle_ws
     inline_delegation()
+    short_search_snippets()
     await handle_ws(socket, auth_identity={"user_id": "xbot-owner"})
 
 

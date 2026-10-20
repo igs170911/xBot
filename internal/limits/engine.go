@@ -40,6 +40,11 @@ const (
 	// 使用者自己改過的其他值保留。
 	HermesCompressTokensOld = 100000
 
+	// HermesSearchSnippetRunes 是 web_search 每一筆摘要最多幾個字（容器裡的 hermes_host.py 讀 config.yaml 的 xbot_search_snippet_max）。
+	// XBot 新增（LazyBoy 沒有）：ddgs 有些結果把整頁內文當摘要（2026-10-20 實測 1,102 筆：中位數 259 字、p90 1,666、最長 28K），
+	// 之後每一步都跟著重送；Hermes 的 web_search 本來就只該回標題、網址、摘要，內文用 web_extract 讀。截到 500 字，搜尋結果少 33%。
+	HermesSearchSnippetRunes = 500
+
 	// HermesContextLength 是告訴 Hermes 的模型視窗大小（model.context_length）。Hermes 經 Model Proxy 量不到視窗，
 	// 會用自己內建的表（deepseek-v4-flash 當成 1M），lean 模式摘要後留下的尾巴是視窗的 2.5%（上限 25K）。
 	// 定成 200K：尾巴變 10K（下限），背景檢討的預算也跟著變小。XBot 新增（LazyBoy 沒有設定）。
