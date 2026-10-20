@@ -9,12 +9,13 @@ import { look } from '../data/bots'
 
 const APPROVAL_LABEL: Record<string, string> = { ask: '先問我', edits: '一般的事自己做', auto: '放手做', full: '完全放手' }
 
-// 新 Bot 的空狀態（design/C03）：頭像、名字、職稱、預設值膠囊；打招呼與「可以這樣開始」卡片。
+// 新 Bot 的空狀態（design/C03）：頭像、名字、職稱、預設值膠囊；一句打招呼與「可以這樣開始」卡片。
 // 卡片的選項只是把話放進輸入框（Bot 真正的提問卡由 C12 的卡片處理）。
 export function EmptyState({ bot, onPick, onFree }: { bot: Bot; onPick: (text: string) => void; onFree: () => void }) {
   const [hide, setHide] = useState(false)
-  const sub = [bot.title, bot.description].filter(Boolean).join(' · ')
-  const greet = `嗨，我是${bot.name}。${bot.description ? `我負責${bot.description.replace(/[。.]$/, '')}。` : ''}有什麼要我做的，直接交代就好。`
+  // 只打招呼：介紹和人設可能很長，留在 Bot 設定裡看、改（每個 Bot 都一樣）
+  const sub = bot.title
+  const greet = `嗨，我是${bot.name}。有什麼要我做的，直接交代就好。`
   return (
     <div className="flex flex-col gap-3.5" data-testid="chat-empty">
       <div className="flex flex-col items-center gap-1.5 pb-3 text-center">

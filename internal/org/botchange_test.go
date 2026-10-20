@@ -80,3 +80,19 @@ func TestManagerChangesTeammateModelOnlyAfterOwnerApproves(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 }
+
+// 2026-10-20：水哥哥把自己整份 SOUL.md（基本守則、隊友名冊）存成人設，介紹也跟著變成整段。
+// 人設只收人設本身，「它做什麼」不跟著改。
+func TestUpdatePersonaKeepsDescriptionAndDropsGeneratedRules(t *testing.T) {
+	e := setupOps(t)
+	ceo := ops.Bot(e.bots["CEO"], "CEO")
+	e.manage("CEO")
+	before := e.bot("Dev").Description
+	persona := "你是 Dev，寫前端。\n\n你是常駐在自己電腦裡的 Bot。一律使用繁體中文。\n\n## 隊友與協作\nCEO"
+	if err := e.call(ceo, "xbot.teams.update_bot", map[string]any{"bot": "Dev", "persona": persona}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if b := e.bot("Dev"); b.Soul != "你是 Dev，寫前端。" || b.Description != before {
+		t.Fatalf("人設 %q、介紹 %q（原本 %q）", b.Soul, b.Description, before)
+	}
+}

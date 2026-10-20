@@ -327,6 +327,27 @@ func Env(existing []byte, workerKey string) []byte {
 	return []byte(strings.Join(lines, "\n") + "\n")
 }
 
+// baseRulesStart 是基本守則的第一句：Bot 把自己整份 SOUL.md 當人設存回去時，從這裡切掉（PersonaOnly）。
+const baseRulesStart = "你是常駐在自己電腦裡的 Bot。"
+
+// generatedHeads 是 SOUL.md 裡系統產生的段落標題（回覆格式、隊友名冊、組織與回報…），不屬於人設。
+var generatedHeads = []string{"## 回覆使用者的格式", "## 隊友與協作", "## 組織與回報", "## 少打擾使用者", "## 需要董事長核定的事"}
+
+// PersonaOnly 只留人設本身：拿掉系統產生的基本守則、回覆格式、隊友與組織段落（2026-10-20：Bot 用 xbot.teams.update_bot
+// 把自己整份 SOUL.md 存成人設，開場和 SOUL.md 都變成兩份守則）。
+func PersonaOnly(s string) string {
+	cut := len(s)
+	for _, m := range append([]string{baseRulesStart}, generatedHeads...) {
+		if i := strings.Index(s, m); i >= 0 && i < cut {
+			cut = i
+		}
+	}
+	return strings.TrimSpace(s[:cut])
+}
+
+// squash 拿掉所有空白，比對介紹是不是人設的開頭（介紹會被壓成一行、截短）。
+func squash(s string) string { return strings.Join(strings.Fields(s), "") }
+
 // ReplyFormat 是 Bot 回覆使用者本人時的格式（2026-10-20 使用者要求：回覆太多雜訊，看不出現在要做什麼）。
 // 給隊友的訊息、群組裡和隊友的討論不套（collab 的提示也各自寫明）。
 const ReplyFormat = "## 回覆使用者的格式\n" +
@@ -343,12 +364,16 @@ const ReplyFormat = "## 回覆使用者的格式\n" +
 func Soul(p Profile) string {
 	var b strings.Builder
 	b.WriteString("# " + p.Name + "\n\n")
-	for _, s := range []string{p.Title, p.Description, p.Soul} {
+	desc := p.Description
+	if squash(p.Soul) != "" && strings.HasPrefix(squash(p.Soul), strings.TrimSuffix(squash(desc), "…")) {
+		desc = "" // 介紹是從人設截出來的（Bot 建的 Bot），不要寫兩次
+	}
+	for _, s := range []string{p.Title, desc, p.Soul} {
 		if s = strings.TrimSpace(s); s != "" {
 			b.WriteString(s + "\n\n")
 		}
 	}
-	b.WriteString("你是常駐在自己電腦裡的 Bot。一律使用繁體中文（台灣用語）。網頁是使用者與你的主要入口。" +
+	b.WriteString(baseRulesStart + "一律使用繁體中文（台灣用語）。網頁是使用者與你的主要入口。" +
 		"工具在你的獨立電腦裡執行，工作檔案保存於 /workspace。可交付檔案請放在 /workspace，並在回答提供實際路徑。" +
 		"有需要澄清的問題使用 clarify。完成後驗證結果，區分已完成、估計和未取得的資料。" +
 		"大工作（要交辦隊友、建 Bot 或團隊、要做很多步）先列計畫給使用者確認，同意後才交辦。" +

@@ -42,3 +42,21 @@ func TestSoulAsksForTheOwnerReplyFormat(t *testing.T) {
 		}
 	}
 }
+
+// 2026-10-20：Bot 把自己整份 SOUL.md 存成人設。PersonaOnly 只留人設；介紹是人設截出來的就不寫兩次。
+func TestPersonaOnlyDropsGeneratedRules(t *testing.T) {
+	full := Soul(Profile{Name: "水哥哥", Soul: "你是水哥哥，使用者的幕僚長。說話簡短。", Team: "## 隊友與協作\n研究員"})
+	if got := PersonaOnly("你是水哥哥，使用者的幕僚長。說話簡短。\n\n" + full[strings.Index(full, baseRulesStart):]); got != "你是水哥哥，使用者的幕僚長。說話簡短。" {
+		t.Fatalf("人設：%q", got)
+	}
+	if got := PersonaOnly("只寫專長。\n## 我的習慣\n早上先看信"); got != "只寫專長。\n## 我的習慣\n早上先看信" {
+		t.Fatalf("使用者自己的段落要留著：%q", got)
+	}
+	soul := Soul(Profile{Name: "研究員", Description: "你是產業研究員。只信數據，附…", Soul: "你是產業研究員。\n只信數據，附來源。"})
+	if strings.Count(soul, "你是產業研究員") != 1 {
+		t.Fatalf("人設寫了兩次：%s", soul)
+	}
+	if soul := Soul(Profile{Name: "A", Description: "幫你比價", Soul: "說話簡短。"}); !strings.Contains(soul, "幫你比價") {
+		t.Fatalf("不同的介紹要留著：%s", soul)
+	}
+}

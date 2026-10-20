@@ -8,6 +8,7 @@ import (
 
 	"xbot/internal/bots"
 	"xbot/internal/collab"
+	"xbot/internal/engine/hermes"
 	"xbot/internal/limits"
 	"xbot/internal/ops"
 	"xbot/internal/store"
@@ -503,11 +504,12 @@ func (s *Service) UpdateBot(ctx context.Context, actorID, ref string, u BotUpdat
 		target.Title = t
 		fields, labels = append(fields, "title"), append(labels, "職稱")
 	}
-	if p := strings.TrimSpace(u.Persona); p != "" {
+	// 人設只改人設（「它做什麼」是使用者寫的短介紹，不跟著變）；系統產生的守則、名冊段落不收
+	if p := hermes.PersonaOnly(u.Persona); p != "" {
 		if rs := []rune(p); len(rs) > limits.BotSoulMax {
 			p = string(rs[:limits.BotSoulMax])
 		}
-		target.Soul, target.Description = p, collab.Plain(p, limits.BotDescriptionMax)
+		target.Soul = p
 		fields, labels = append(fields, "persona"), append(labels, "人設")
 	}
 	if strings.TrimSpace(u.ReportsTo) != "" {

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"xbot/internal/engine/hermes"
 	"xbot/internal/limits"
 	"xbot/internal/ops"
 	"xbot/internal/store"
@@ -89,7 +90,7 @@ func Build(sp Spec, existing int, actor string) store.Bot {
 		shape = Shapes[existing%len(Shapes)]
 	}
 	av, _ := json.Marshal(avatar{Shape: shape})
-	persona := strings.TrimSpace(sp.Persona)
+	persona := hermes.PersonaOnly(sp.Persona)
 	if r := []rune(persona); len(r) > limits.BotSoulMax {
 		persona = string(r[:limits.BotSoulMax])
 	}

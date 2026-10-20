@@ -12369,7 +12369,7 @@ export interface TeamsUpdateBotInput {
   bot: string
   /** 新的職稱 */
   title?: string
-  /** 新的人設（常駐指示） */
+  /** 新的人設（常駐指示）：只寫這個 Bot 自己的個性、專長、做事方式。基本守則、回覆使用者的四段格式、隊友名冊是系統內建、每個 Bot 都一樣，不要寫進來 */
   persona?: string
   /** 新的報告對象（名字）；「使用者」表示直接向使用者報告 */
   reports_to?: string
