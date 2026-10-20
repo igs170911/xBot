@@ -217,6 +217,19 @@ test('L03 對話：手機頁首（不重複上方列）、工作中、輸入框�
   await snap(page, info, 'L03')
 })
 
+// 2026-10-21 真機回報：回覆裡有網址的地方滑不動、按哪裡都跳到同一個網頁（scroll_stuck 都按在 <a> 上）。
+// 手機上網址和檔案路徑一樣是可以點的文字（role=link），不是 <a>。
+test('L03 回覆裡的網址：手機上是可以點的文字，不是 <a>', async ({ page }) => {
+  const { api, mi } = await open(page, '/chats')
+  const th = api.threads.find((t) => t.bot_id === mi.id)!
+  api.addMessage(th.id, { sender: 'bot', content: '昨天收在 2,405 元，跌 0.62%。來源：[經濟日報](https://money.udn.com/x)、[鉅亨網](https://www.cnyes.com/twstock/2330)' })
+  await page.getByRole('link', { name: /小秘/ }).click()
+  const link = page.getByRole('link', { name: '經濟日報' })
+  await expect(link).toBeVisible()
+  expect(await link.evaluate((el) => el.tagName)).toBe('SPAN')
+  expect(await page.getByTestId('composer-input').evaluate((el) => el.closest('main')?.querySelectorAll('a[href^="http"]').length ?? 0)).toBe(0)
+})
+
 test('L04 電腦（B14 的接手頁）：手機全螢幕、交還鈕', async ({ page }, info) => {
   const { bian } = await open(page, '/chats')
   await page.goto(`/bots/${bian.id}/computer`)

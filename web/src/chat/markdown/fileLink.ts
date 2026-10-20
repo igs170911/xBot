@@ -63,3 +63,35 @@ export function fileRefProps(href: string) {
     },
   }
 }
+
+/** 觸控螢幕（手機、平板）。每次重新看（測試、外接滑鼠時會變）。 */
+export function touchScreen(): boolean {
+  return typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches
+}
+
+/**
+ * 網頁連結（回覆裡的網址、來源、圖片）在觸控螢幕上的樣子：和檔案參照一樣用可以點的文字，不用 <a>。
+ * 2026-10-21 真機回報：回覆裡有網址的地方又滑不動、按哪裡都跳到同一個網頁（scroll_stuck 都按在網址上）；
+ * Bot 現在查完會附來源連結，網址變多了。點一下另開分頁（PWA 裡是 Safari 的網頁視窗）；# 開頭的頁內連結照樣跳過去。
+ */
+export function webRefProps(href: string, title?: string) {
+  const open = () => {
+    if (href.startsWith('#')) {
+      location.hash = href
+      return
+    }
+    window.open(href, '_blank', 'noopener,noreferrer')
+  }
+  return {
+    role: 'link' as const,
+    tabIndex: 0,
+    'data-href': href,
+    title: title || href,
+    onClick: open,
+    onKeyDown: (e: KeyboardEvent<HTMLElement>) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return
+      e.preventDefault()
+      open()
+    },
+  }
+}

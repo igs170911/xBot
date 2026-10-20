@@ -1,5 +1,5 @@
 import { memo, useContext, useMemo, type ReactNode } from 'react'
-import { boxPath, FileLinkContext, fileRefProps } from './fileLink'
+import { boxPath, FileLinkContext, fileRefProps, touchScreen, webRefProps } from './fileLink'
 import type { Token, Tokens } from 'marked'
 import { CircleAlert, Info, Lightbulb, MessageSquareWarning, Square, SquareCheck, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { Icon } from '../../ui/Icon'
@@ -44,8 +44,33 @@ function MdLink({ l, children }: { l: Tokens.Link; children: ReactNode }) {
   const href = safeHref(l.href)
   if (!href) return <span>{children}</span>
   const external = !href.startsWith('#')
+  const cls = 'text-accent-ink underline decoration-accent-ink/50 underline-offset-2 hover:decoration-accent-ink'
+  if (touchScreen()) {
+    // 手機：可以點的文字（iPhone 從 <a> 上開始滑會滑不動、放開還被當成點了連結，見 webRefProps）
+    return (
+      <span {...webRefProps(href, l.title ?? undefined)} className={'cursor-pointer ' + cls}>
+        {children}
+      </span>
+    )
+  }
   return (
-    <a href={href} draggable={false} title={l.title ?? undefined} {...(external ? { target: '_blank', rel: 'noopener noreferrer nofollow' } : {})} className="text-accent-ink underline decoration-accent-ink/50 underline-offset-2 hover:decoration-accent-ink">
+    <a href={href} draggable={false} title={l.title ?? undefined} {...(external ? { target: '_blank', rel: 'noopener noreferrer nofollow' } : {})} className={cls}>
+      {children}
+    </a>
+  )
+}
+
+/** 圖片的連結（點了看大圖）：手機上和網址一樣用可以點的區塊，不用 <a>。 */
+function ImageLink({ src, className, children }: { src: string; className: string; children: ReactNode }) {
+  if (touchScreen()) {
+    return (
+      <span {...webRefProps(src)} className={'cursor-pointer ' + className}>
+        {children}
+      </span>
+    )
+  }
+  return (
+    <a href={src} target="_blank" rel="noopener noreferrer nofollow" className={className}>
       {children}
     </a>
   )
@@ -156,9 +181,9 @@ function ImageGrid({ imgs }: { imgs: Tokens.Image[] }) {
     const src = safeImageSrc(imgs[0].href)
     if (!src) return <InlineImage t={imgs[0]} />
     return (
-      <a href={src} target="_blank" rel="noopener noreferrer nofollow" className="block self-start">
+      <ImageLink src={src} className="block self-start">
         <img src={src} alt={imgs[0].text} loading="lazy" referrerPolicy="no-referrer" className="block max-h-96 max-w-full rounded-menu" />
-      </a>
+      </ImageLink>
     )
   }
   return (
@@ -167,9 +192,9 @@ function ImageGrid({ imgs }: { imgs: Tokens.Image[] }) {
         {imgs.map((im, i) => {
           const src = safeImageSrc(im.href)
           return src ? (
-            <a key={i} href={src} target="_blank" rel="noopener noreferrer nofollow" className="block overflow-hidden rounded-field bg-control">
+            <ImageLink key={i} src={src} className="block overflow-hidden rounded-field bg-control">
               <img src={src} alt={im.text} loading="lazy" referrerPolicy="no-referrer" className="block h-[120px] w-full object-cover" />
-            </a>
+            </ImageLink>
           ) : (
             <span key={i} className="flex h-[120px] items-center justify-center rounded-field bg-control p-2 text-center text-meta text-ink-3">
               {im.text || '無法顯示的圖片'}

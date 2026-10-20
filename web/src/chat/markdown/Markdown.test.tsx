@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import type { Tokens } from 'marked'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Markdown } from './Markdown'
 import { isRich, lex, plainText, toCSV } from './parse'
 import { decodeEntities, safeHref, safeImageSrc } from './safe'
@@ -46,6 +46,24 @@ describe('Markdown', () => {
     expect(a).toHaveAttribute('href', 'https://example.com')
     expect(a).toHaveAttribute('target', '_blank')
     expect(a.getAttribute('rel')).toContain('noopener')
+  })
+
+  describe('手機（觸控螢幕）', () => {
+    afterEach(() => vi.unstubAllGlobals())
+    // 2026-10-21 真機回報：回覆裡有網址的地方滑不動、按哪裡都跳到同一個網頁（scroll_stuck 都按在 <a> 上）。
+    it('網址和圖片連結是可以點的文字，不是 <a>；點了另開分頁', () => {
+      vi.stubGlobal('matchMedia', (q: string) => ({ matches: q === '(pointer: coarse)', media: q, addEventListener() {}, removeEventListener() {} }))
+      const open = vi.fn()
+      vi.stubGlobal('open', open)
+      render(<Markdown text={'來源：[經濟日報](https://money.udn.com/x) 和 [壞](javascript:alert(1))\n\n![圖](https://a.tw/p.png)'} />)
+      const link = screen.getByRole('link', { name: '經濟日報' })
+      expect(link.tagName).toBe('SPAN')
+      expect(link).toHaveAttribute('data-href', 'https://money.udn.com/x')
+      fireEvent.click(link)
+      expect(open).toHaveBeenCalledWith('https://money.udn.com/x', '_blank', 'noopener,noreferrer')
+      expect(screen.queryByRole('link', { name: '壞' })).toBeNull()
+      expect(document.querySelector('a')).toBeNull()
+    })
   })
 
   it('標題、清單、待辦、引言、行內程式碼、刪除線', () => {
