@@ -436,3 +436,40 @@ func TestProgress(t *testing.T) {
 		t.Fatalf("%+v", p)
 	}
 }
+
+// 自動繼續用完還是沒做完：請老師看一次（Unfinished，學到一件事）；隊友、群組交辦的不請。
+func TestUnfinishedAfterAutoContinueGivesUp(t *testing.T) {
+	ctx := context.Background()
+	var mu sync.Mutex
+	var got []string
+	f := setupWith(t, func(o *Options) {
+		o.Unfinished = func(_ context.Context, taskID, why string) {
+			mu.Lock()
+			defer mu.Unlock()
+			got = append(got, taskID+"|"+why)
+		}
+	})
+	f.g.OnPrompt = func(tr *hermestest.Turn) { tr.Complete("我來查一下", "complete", nil) }
+	res, _ := f.rt.Start(ctx, ChatRequest{BotID: f.bot.ID, Text: "查價格", Source: SourceBot, LowPriority: true, Queue: true})
+	f.wait(t, res.TaskID)
+	res, err := f.rt.Chat(ctx, f.bot.ID, "", "查價格")
+	if err != nil {
+		t.Fatal(err)
+	}
+	js := chain(t, f, res.TaskID)
+	lastID := res.TaskID
+	for _, j := range js[:len(js)-1] {
+		lastID = j.ContinuedBy
+	}
+	last := js[len(js)-1]
+	waitFor(t, "請老師看", func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(got) == 1
+	})
+	mu.Lock()
+	defer mu.Unlock()
+	if len(js) < 2 || !strings.HasPrefix(got[0], lastID+"|") || last.Verdict != judge.OnlyPromised || last.ContinuedBy != "" {
+		t.Fatalf("要是最後一輪：%v %+v", got, js)
+	}
+}

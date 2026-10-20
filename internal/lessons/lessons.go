@@ -224,7 +224,9 @@ func (s *Service) Consider(ctx context.Context, taskID, why string) {
 	}
 	lesson, reason := parseLesson(text)
 	if lesson == "" {
-		return // 不是 Bot 能改的（要登入、額度用完…），或老師覺得沒什麼可學
+		// 不是 Bot 能改的（付款、額度用完…），或老師覺得沒什麼可學；記下原話方便查
+		s.log().Info("老師沒有提議守則", "bot", t.BotID, "task", t.ID, "teacher", m.String(), "reply", clip(text, 300))
+		return
 	}
 	s.card(ctx, t, root, cardPayload{Lesson: lesson, Why: reason, Skill: skill, Teacher: m.String(), BotName: in.botName, Asked: clip(in.asked, 80)})
 }
@@ -372,13 +374,22 @@ func teacherSystem(skill string) string {
 		return "你是 AI 助理團隊的教練。一個 Bot 用了技能「" + skill + "」，卻沒把交代的事做完；這個技能最近常這樣。" +
 			"看它的步驟和最後的回覆，寫一條要加進這個技能最後「注意」段落的提醒，讓之後用這個技能的 Bot 做得完。" +
 			`只回 JSON：{"lesson": "一句繁體中文提醒，` + fmt.Sprint(limits.LessonTextMax) + ` 字內，具體可執行，不提這次的細節", "why": "一句原因，30 字內"}。` +
-			"如果沒做完的原因不是技能或 Bot 能改的（要使用者登入、驗證碼、付款、額度用完、網站壞掉），lesson 回空字串。"
+			plainRule + skipRule
 	}
 	return "你是 AI 助理團隊的教練。一個 Bot 這次沒把交代的事做完。看它的步驟和最後的回覆，找出它自己做錯、下次能避免的地方，" +
 		"寫成一條給它的守則。好的守則是做法（例：「網站被擋時先換比價網站或搜尋引擎找，查不到才請使用者登入」），不是口號（例：「要更努力」）。" +
 		`只回 JSON：{"lesson": "一句繁體中文守則，` + fmt.Sprint(limits.LessonTextMax) + ` 字內，具體可執行，不提這次的細節", "why": "一句原因，30 字內"}。` +
-		"如果沒做完的原因不是 Bot 能改的（要使用者登入、驗證碼、付款、額度用完、網站壞掉），lesson 回空字串。"
+		plainRule + skipRule
 }
+
+// plainRule：守則會給使用者看、每次對話都帶上，要白話、短（2026-10-20 實測老師寫出「僅選…缺項須明示」這種公文）。
+const plainRule = "用白話短句，像跟同事交代事情，不用「須」「僅」「之」這類公文字，能短就短。"
+
+// skipRule：被擋住不等於沒得學——查得到的有沒有放進成品、還有沒有別的來源沒試（2026-10-20 實測：
+// 蝦皮跳驗證、比價網站有部分價格卻沒填進表格，老師原本照「驗證碼不是 Bot 能改的」什麼都不提）。
+const skipRule = "被擋住（要登入、驗證碼、網站壞掉）不等於沒得學：查得到的有沒有放進成品、還有沒有別的來源沒試、缺的有沒有講清楚。" +
+	"只有 Bot 已經換過合理的來源、把拿到的都放進成品、缺什麼也講清楚了，或原因是付款、額度用完這類 Bot 完全碰不到的，lesson 才回空字串。" +
+	"使用者自己說沒做完時，照使用者說的缺點找出下次的做法。"
 
 func (in trace) prompt(skill string) string {
 	var b strings.Builder
