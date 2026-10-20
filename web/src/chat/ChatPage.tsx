@@ -21,7 +21,7 @@ import { cx } from '../ui/cx'
 import { ModelSettingsDialog } from '../pages/ModelSettings'
 import { activeTask, isActive, threadItems, type Activity, type ChatItem, type ChatMsg } from './assemble'
 import { cardFor } from './cards'
-import { takeMention } from '../files/mention'
+import { mentionStore, takeMention } from '../files/mention'
 import { ChatComposer, type ComposerHandle, type ComposerMode } from './ChatComposer'
 import { ATTACH_DIR, filesFrom, hasFiles } from './attachments'
 import { chatStore, loadOlder, loadThread } from './chatStore'
@@ -45,7 +45,9 @@ import { ChatAnnouncer } from './Announcer'
 import { ComputerPanel } from '../computer/ComputerPanel'
 import { useNarrow } from '../computer/hooks'
 import { useAutoRead, useAutoReadReplies } from '../voice/useChatVoice'
-import { computerPanelStore } from '../computer/screenData'
+import { closeRightPanel, openRightPanel, registerFileOpener, RIGHT, rightPanelStore, rightWidthStore, toggleRightPanel } from '../shell/panes'
+import { ResizeHandle } from '../shell/ResizeHandle'
+import { BotFilesPage } from '../files/BotFilesPage'
 import { useLockBody } from '../ui/useLockBody'
 import { useFollowBottom } from './useFollowBottom'
 
@@ -225,6 +227,8 @@ function Header({
   onProgress,
   computerOpen,
   onComputer,
+  filesOpen,
+  onFiles,
   autoRead,
   onAutoRead,
   onDelete,
@@ -239,6 +243,8 @@ function Header({
   onProgress: () => void
   computerOpen?: boolean
   onComputer: () => void
+  filesOpen?: boolean
+  onFiles: () => void
   autoRead: boolean
   onAutoRead?: () => void
   onDelete: (t: Pick<Thread, 'id' | 'title'>) => void
@@ -275,7 +281,7 @@ function Header({
       />
       <span className="flex-1" />
       {autoRead && <Icon icon={AudioLines} size={16} className="text-accent-ink" label="自動朗讀開著" />}
-      <IconButton icon={FolderOpen} label={`${bot.name}的檔案`} onClick={() => navigate(`/bots/${bot.id}/files`)} />
+      <IconButton icon={FolderOpen} label={`${bot.name}的檔案`} pressed={filesOpen} onClick={onFiles} />
       <IconButton icon={Monitor} label={`${bot.name}的電腦`} pressed={computerOpen} onClick={onComputer} data-tour="computer" />
       <MenuButton
         label="更多"
@@ -405,11 +411,12 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
   const composer = useRef<ComposerHandle>(null)
   // 從檔案頁按「在對話中提到」：把檔案路徑放進輸入框（C33、L19）。
   const hasBot = !!bot
+  const mention = useStore(mentionStore)
   useEffect(() => {
     if (!hasBot) return
     const t = takeMention(botId)
     if (t) composer.current?.fill(t)
-  }, [hasBot, botId])
+  }, [hasBot, botId, mention])
   const { stickRef, follow, handlers: scrollHandlers } = useFollowBottom(scroller)
   const keepFromBottom = useRef<number | null>(null)
   // 把檔案拖進對話（C05「8 · 附件」）：放開就上傳到它電腦的 /workspace/uploads/，送出時附上路徑。
@@ -421,11 +428,23 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
     return up
   }, [botId])
 
-  // 電腦面板（E01）：寬螢幕放在對話右邊；窄的螢幕直接開全視窗的電腦頁。
-  const panelOpen = useStore(computerPanelStore)
+  // 右邊面板（E01）：寬螢幕在對話右邊放電腦或檔案（一次一個，可以拖左邊緣改寬度）；窄的螢幕直接開整頁。
+  const panel = useStore(rightPanelStore)
+  const panelWidth = useStore(rightWidthStore)
   const wide = !useNarrow('(max-width: 1179px)')
-  const showPanel = panelOpen && wide
-  const onComputer = () => (wide ? computerPanelStore.set(!panelOpen) : navigate(`/bots/${botId}/computer`))
+  const showPanel = wide && panel.kind === 'computer'
+  const showFiles = wide && panel.kind === 'files'
+  const onComputer = () => (wide ? toggleRightPanel('computer') : navigate(`/bots/${botId}/computer`))
+  const onFiles = () => (wide ? toggleRightPanel('files') : navigate(`/bots/${botId}/files`))
+  // 回覆裡的檔案連結：寬螢幕在旁邊的檔案面板預覽，不整頁跳走
+  useEffect(() => {
+    if (!wide) return
+    return registerFileOpener((id, path) => {
+      if (id !== botId) return false
+      openRightPanel('files', path)
+      return true
+    })
+  }, [wide, botId])
 
   const isNew = threadParam === 'new'
   const threadId = isNew ? undefined : (threadParam ?? threads?.[0]?.id)
@@ -647,6 +666,8 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
         onDelete={setDeleting}
         computerOpen={showPanel}
         onComputer={onComputer}
+        filesOpen={showFiles}
+        onFiles={onFiles}
         autoRead={auto.autoRead}
         onAutoRead={threadId ? auto.toggle : undefined}
       />
@@ -693,7 +714,12 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
       />
       <ProgressDialog open={progress} onClose={() => setProgress(false)} bot={bot} chat={chat} threadId={threadId} act={act} botAct={botAct} />
     </main>
-    {showPanel && <ComputerPanel key={bot.id} bot={bot} />}
+    {(showPanel || showFiles) && (
+      <div className="relative flex h-dvh flex-none" style={{ width: panelWidth }}>
+        <ResizeHandle size={RIGHT} store={rightWidthStore} edge="left" label="右邊面板寬度" />
+        {showPanel ? <ComputerPanel key={bot.id} bot={bot} className="w-full" /> : <BotFilesPage key={bot.id} botId={bot.id} panel={{ path: panel.path, seq: panel.seq, onClose: closeRightPanel }} />}
+      </div>
+    )}
     </div>
   )
 }

@@ -165,7 +165,7 @@ var needsPersonRe = regexp.MustCompile(`(?i)登入|驗證碼|密碼|付款|刷�
 	`(確認|看過|看一下|看看|檢查|過目|審)[^。\n]{0,12}(再|才|就)` + outward + `|要不要` + outward + `|可以` + outward + `[^。\n]{0,6}嗎|` + outward + `出去嗎`)
 
 // handsBackRe：把工作丟回來，而不是做完（問要不要繼續、請你去做某一步）。LazyBoy Runtime.HANDS_BACK
-var handsBackRe = regexp.MustCompile(`要我(先|再)?(繼續|接著|去)|還是你(要)?(直接|自己|手動|幫)|需要你(幫|做|處理|接手)|你方便的話|(建議|請)你(先)?接手|` +
+var handsBackRe = regexp.MustCompile(`要我(先|再)?(繼續|接著|去)|要我(現在)?(就)?(開始|動手|執行|來做|幫你做)[^。\n？?]{0,20}(嗎|？|\?)|還是你(要)?(直接|自己|手動|幫)|需要你(幫|做|處理|接手)|你方便的話|(建議|請)你(先)?接手|` +
 	`手動[^。\n]{0,40}(貼|傳|給)(給)?我|` +
 	`請你(在|到|先|幫|手動|自己|直接)(後台|網頁|手機)?[^。\n]{0,12}(點|貼|複製|提供|找|挑|傳)[^。\n]{0,20}(給我|過來|一下)?|` +
 	`你(手動|自己)(點|貼|複製|找|挑)`)
@@ -217,7 +217,12 @@ func IsPromise(text string) bool {
 }
 
 // NeedsPersonIn 回答這段話是不是在要你本人做事（LazyBoy NEEDS_PERSON.search）。
-func NeedsPersonIn(text string) bool { return needsPersonRe.MatchString(text) }
+func NeedsPersonIn(text string) bool {
+	return needsPersonRe.MatchString(alreadyDoneRe.ReplaceAllString(text, ""))
+}
+
+// alreadyDoneRe：已經完成的登入、核准（「已登入，帳號確認是…」）不是在等你。XBot 新增（2026-10-20：水哥哥說「已登入」就被當成要你登入，停下來不做）。
+var alreadyDoneRe = regexp.MustCompile(`(已經?|有|都)(登入|核准|核定|同意|授權|付款)|(登入|核准|核定|授權|付款)(成功|好了|完成|過了|了)`)
 
 // HandsBackIn 回答這段話有沒有把工作丟回來（LazyBoy HANDS_BACK.search）。
 func HandsBackIn(text string) bool { return handsBackRe.MatchString(text) }
@@ -230,7 +235,52 @@ func IsProgressQuestion(text string) bool {
 // Promised 回答這一輪是不是只說要做卻沒做：不是背景回報、70 字以內、像承諾、整輪沒用工具（LazyBoy auto_continue）。
 func Promised(in Input) bool {
 	text := strings.TrimSpace(in.Text)
-	return !in.Background && utf8.RuneCountInString(text) <= limits.PromiseMaxChars && IsPromise(text) && !in.UsedTools
+	if in.Background {
+		return false
+	}
+	return (utf8.RuneCountInString(text) <= limits.PromiseMaxChars && IsPromise(text) && !in.UsedTools) || EndsWithPromise(text)
+}
+
+// 最後一句「現在去做某某」：XBot 新增（2026-10-20，使用者：「要我持續確認，他才會開始動作」）。
+// 用過工具之後，最後一句還是「現在去個人頁抓基本盤」「讓我開瀏覽器看帳號」就結束這一輪（較弱的模型常這樣），也算只說要做。
+// 要有「現在、接下來、讓我、我先…」這類開頭，緊接著一個動作；是問句、或動作後面接了「了、完、好」（做完了）都不算。
+var (
+	nextLeadRe = regexp.MustCompile(`^(?:好[的]?[，,、 ]*)?(?:現在|接下來|接著|馬上|下一步|然後|讓我|我先|我來|我去|我現在|我馬上|我就|先)[，,、：: ]*(?:我)?(?:就|先|再|來|會|要|馬上|現在)*`)
+	nextVerbs  = []string{"去", "開始", "繼續", "打開", "開", "抓", "查", "搜尋", "看", "讀", "檢查", "確認", "找", "整理", "處理", "寫", "跑", "進", "點", "下載"}
+)
+
+// EndsWithPromise 回答回覆的最後一句是不是「接下來去做某某」（還沒做）。
+func EndsWithPromise(text string) bool {
+	last := lastSentence(text)
+	if last == "" || utf8.RuneCountInString(last) > limits.PromiseMaxChars || strings.ContainsAny(last, "？?") || strings.HasSuffix(last, "嗎") {
+		return false
+	}
+	loc := nextLeadRe.FindStringIndex(last)
+	if loc == nil {
+		return false
+	}
+	rest := last[loc[1]:]
+	for _, v := range nextVerbs {
+		if !strings.HasPrefix(rest, v) {
+			continue
+		}
+		tail := rest[len(v):]
+		if r, _ := utf8.DecodeRuneInString(tail); tail != "" && strings.ContainsRune(promiseNotNext, r) {
+			return false
+		}
+		return true
+	}
+	return false
+}
+
+// lastSentence 是最後一個子句（去掉結尾的標點；「資料夠了，接下來我去整理」取「接下來我去整理」）。
+func lastSentence(text string) string {
+	t := strings.TrimRight(strings.TrimSpace(text), "。.！!…~～ ")
+	if i := strings.LastIndexAny(t, "。！!\n，,；;"); i >= 0 {
+		_, size := utf8.DecodeRuneInString(t[i:])
+		t = t[i+size:]
+	}
+	return strings.TrimSpace(t)
 }
 
 // AskOf 找出 Bot 要人處理的那一段：丟回工作的那個段落；沒有時是回覆最後 300 字。
@@ -276,6 +326,8 @@ func (Rules) Judge(_ context.Context, in Input) (Result, error) {
 	// LazyBoy 只在「有沒做完的事」時才看 NEEDS_PERSON（擋自動續做）；XBot 另外把「在要你回答」的結尾也算進來。
 	case NeedsPersonIn(ask) && (unfinished || asksRe.MatchString(ask)):
 		r.Verdict, r.Reason = NeedsPerson, "要你本人處理："+firstMatch(needsPersonRe, ask)
+	case promised && !handed && in.UsedTools:
+		r.Verdict, r.Reason = OnlyPromised, "最後說要去做下一步，卻沒有做就結束了"
 	case promised && !handed:
 		r.Verdict, r.Reason = OnlyPromised, "只回了一句要去做的話，整輪沒有用任何工具"
 	case handed:
@@ -329,6 +381,8 @@ func NudgeFor(in Input) Nudge {
 	case len(in.Stranded) > 0:
 		unfinished = "這些背景子任務失敗了，也沒有重新派送，工作因此卡在這裡：\n" + bullets(in.Stranded) +
 			"\n請重新派送（題目切小一點，或換個查法），或自己直接做完；整合好之後，如果這件事是隊友交辦的，用 message_bot 把完整結果傳給它，不要只留在這個對話裡。"
+	case promised && !handed && in.UsedTools:
+		unfinished = "你剛才最後說要去做下一步（「" + lastSentence(in.Text) + "」），卻沒有做就結束了。現在就接著做，做完直接給結果；不要再寫「接下來我去做某某」就停下來。"
 	case promised && !handed:
 		unfinished = "你剛才只回了一句要去做的話，卻沒有真的做。現在就去做（需要查就呼叫工具），做完直接給結果；不要再只說「我來查一下」。"
 	default:

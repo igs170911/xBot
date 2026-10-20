@@ -82,3 +82,17 @@ func TestPersonaOnlyDropsGeneratedRules(t *testing.T) {
 		t.Fatalf("不同的介紹要留著：%s", soul)
 	}
 }
+
+// 2026-10-20：「要我持續確認，他才會開始動作」。交代的事直接做到完成，不問「要開始嗎」、不說「接下來去做」就停；
+// 只有交辦隊友、建 Bot 或團隊先確認計畫。
+func TestSoulSaysFinishWhatYouStart(t *testing.T) {
+	soul := Soul(Profile{Name: "水哥哥"})
+	for _, want := range []string{"直接做到完成", "不要停下來問「要開始嗎」", "說要做的同一輪就做完", "先照假設做", "要交辦隊友、建 Bot 或團隊之前，先列計畫"} {
+		if !strings.Contains(soul, want) {
+			t.Fatalf("少了 %q：%s", want, soul)
+		}
+	}
+	if strings.Contains(soul, "要做很多步") {
+		t.Fatal("「要做很多步」也要先確認計畫，Bot 就一直停下來問")
+	}
+}

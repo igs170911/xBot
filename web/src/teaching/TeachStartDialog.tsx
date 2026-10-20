@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Laptop, Lock, Pencil, Play, Sparkles, X } from 'lucide-react'
 import { teachingStart } from '../api/generated'
-import { computerPanelStore } from '../computer/screenData'
+import { openRightPanel } from '../shell/panes'
 import { useNarrow } from '../computer/hooks'
 import { botsStore } from '../data/bots'
 import { useStore } from '../data/store'
@@ -38,7 +38,7 @@ export function TeachStartDialog() {
       setLesson(target.botId, l as Lesson)
       teachStartStore.set(null)
       // 寬螢幕：對話旁的電腦面板；窄的螢幕：全視窗的電腦頁。
-      if (wide) computerPanelStore.set(true)
+      if (wide) openRightPanel('computer')
       else navigate(`/bots/${target.botId}/computer`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

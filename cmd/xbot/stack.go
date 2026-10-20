@@ -206,7 +206,7 @@ func openStack(cfg config.Config) (*stack, error) {
 		return resp.Status, resp.Body, err
 	}}
 	s.creds.Close = s.driver.Close
-	s.runtime = runtime.New(runtime.Options{DB: db, Driver: s.driver, Bus: bus, Models: comp, Logger: logger,
+	s.runtime = runtime.New(runtime.Options{DB: db, Driver: s.driver, Bus: bus, Models: comp, Logger: logger, OwnerNote: runtime.OwnerNote,
 		Admit: func(ctx context.Context, botID string, wait func(any)) (func(), error) {
 			return s.hosts.Admit(ctx, botID, func(w hosts.Wait) { wait(w) })
 		},

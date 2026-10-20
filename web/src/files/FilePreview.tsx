@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Download, Ellipsis, FileQuestion, X } from 'lucide-react'
+import { ArrowLeft, Download, Ellipsis, FileQuestion, X } from 'lucide-react'
 import type { FilesReadOutput } from '../api/generated'
 import { CodeBlock } from '../chat/markdown/CodeBlock'
 import { Markdown } from '../chat/markdown/Markdown'
@@ -155,6 +155,8 @@ export type FilePreviewProps = {
   /** 動作選單（傳給其他 Bot、改名、刪除…）。 */
   actions?: MenuItem[]
   onClose?: () => void
+  /** 對話旁的檔案面板：關閉鈕改成左邊的「回到檔案清單」（面板右上已經有關閉整個面板的 ✕）。 */
+  back?: boolean
   /** 手機 sheet：表格只顯示前 5 列。 */
   compact?: boolean
   /** 底部多放的東西（手機 sheet 的按鈕列）。 */
@@ -162,7 +164,7 @@ export type FilePreviewProps = {
 }
 
 // 檔案預覽（E07 右側）：標題列（名稱、大小・Bot・時間）、表格／原始內容切換、下載、更多；內容依種類畫。
-export function FilePreview({ botId, bot, path, actions, onClose, compact, footer }: FilePreviewProps) {
+export function FilePreview({ botId, bot, path, actions, onClose, back, compact, footer }: FilePreviewProps) {
   const [state, setSheet] = usePreview(botId, path)
   const [raw, setRaw] = useState(false)
   const d = state?.data
@@ -173,6 +175,7 @@ export function FilePreview({ botId, bot, path, actions, onClose, compact, foote
   return (
     <section aria-label={`預覽：${name}`} className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="file-preview">
       <header className="flex min-h-14 flex-none items-center gap-2.5 border-b border-divider px-4 py-2">
+        {onClose && back && <IconButton icon={ArrowLeft} label="回到檔案清單" onClick={onClose} className="-ml-2" />}
         {compact && d && <FileIcon kind={d.kind} size={40} />}
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-name" title={name}>
@@ -214,7 +217,7 @@ export function FilePreview({ botId, bot, path, actions, onClose, compact, foote
         {actions && actions.length > 0 && (
           <MenuButton label="檔案動作" align="end" items={actions} trigger={(p) => <IconButton {...p} icon={Ellipsis} label="更多動作" />} />
         )}
-        {onClose && <IconButton icon={X} label="關閉預覽" onClick={onClose} />}
+        {onClose && !back && <IconButton icon={X} label="關閉預覽" onClick={onClose} />}
       </header>
       <div className="min-h-0 flex-1 overflow-auto overscroll-y-contain px-4 py-4">
         {!state && <p className="m-0 text-ui-sm text-ink-3">讀取中…</p>}

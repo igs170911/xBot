@@ -2,9 +2,11 @@
 package skills
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"crypto/rand"
+	"crypto/sha256"
 	"embed"
 	"encoding/hex"
 	"encoding/json"
@@ -94,8 +96,17 @@ type state struct {
 	Sources map[string]string `json:"sources,omitempty"` // 資料夾 → imported／proposed
 }
 
+// retired 是內建技能以前的版本（SKILL.md 的 sha256）：Bot 電腦裡的那份還是舊版、沒被改過，開機前換成新版；
+// 使用者或 Bot 改過的（雜湊對不上）照舊保留。XBot 新增（LazyBoy 只放一次）。
+//
+// deep-research 舊版要子代理（delegate_task）平行查，但 2026-10-19 起 Bot 沒有子代理了：用了這個技能的 Bot 只讀了說明就
+// 回答、一次都沒有上網查（2026-10-20 使用者：「我看不到有任何真的去搜索的樣子」）。
+var retired = map[string][]string{
+	"deep-research": {"b48cb4bba4d7587660c808379fb2ba2fef08c76a3cee6cf65ebaa986484c3877"},
+}
+
 // Seed 把 XBot 內建技能放進 Bot 的電腦，每個只放一次；使用者之後改了或刪了都保留（LazyBoy computers.py seed_skills）。
-// 開機前（box Prepare）呼叫。
+// 還是舊版沒改過的（retired）換成新版。開機前（box Prepare）呼叫。
 func Seed(ctx context.Context, f boxfs.FS) error {
 	st, err := readState(ctx, f)
 	if err != nil {
@@ -106,6 +117,20 @@ func Seed(ctx context.Context, f boxfs.FS) error {
 	changed := false
 	for _, name := range mapsKeys(names) {
 		if slices.Contains(st.Seeded, name) {
+			if len(retired[name]) == 0 {
+				continue
+			}
+			cur, err := f.ReadFile(ctx, path.Join(SkillsDir, name, "SKILL.md"))
+			if errors.Is(err, boxfs.ErrNotExist) {
+				continue // 刪掉了：尊重
+			} else if err != nil {
+				return err
+			}
+			sum := sha256.Sum256(cur)
+			if slices.Contains(retired[name], hex.EncodeToString(sum[:])) && !bytes.Equal(cur, names[name]) {
+				files = append(files, boxfs.File{Name: name + "/SKILL.md", Data: names[name], Mode: 0o644})
+				changed = true
+			}
 			continue
 		}
 		if _, err := f.ReadFile(ctx, path.Join(SkillsDir, name, "SKILL.md")); errors.Is(err, boxfs.ErrNotExist) {

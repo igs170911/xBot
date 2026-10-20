@@ -10,7 +10,8 @@ import { TeachSection } from '../teaching/TeachPanel'
 import { controlOf, useTakeover } from './hooks'
 import { ComputerActions, NetworkAllow, useComputer } from './ComputerActions'
 import { WhereSection } from './MoveParts'
-import { BOX_SPEC, computerPanelStore, IDLE_SLEEP_MIN, useScreen } from './screenData'
+import { BOX_SPEC, IDLE_SLEEP_MIN, useScreen } from './screenData'
+import { closeRightPanel } from '../shell/panes'
 import { Stage } from './Stage'
 import { CloseTabsButton } from './CloseTabsButton'
 import type { VncHandle } from './vnc'
@@ -28,12 +29,12 @@ export function ComputerPanel({ bot, className }: { bot: Bot; className?: string
   const computer = useComputer(bot.id)
 
   return (
-    <aside aria-label={`${bot.name}的電腦`} data-testid="computer-panel" className={cx('flex h-dvh w-[540px] flex-none flex-col border-l border-edge bg-app', className)}>
+    <aside aria-label={`${bot.name}的電腦`} data-testid="computer-panel" className={cx('flex h-dvh flex-none flex-col border-l border-edge bg-app', className ?? 'w-[540px]')}>
       <header className="flex h-14 flex-none items-center gap-1 px-3">
         <IconButton icon={Settings} label="Bot 設定" onClick={() => navigate(`/settings/bots/${encodeURIComponent(bot.id)}`)} />
         <h2 className="m-0 flex-1 text-center text-title">{bot.name}的電腦</h2>
         <IconButton icon={Expand} label="全視窗" onClick={() => navigate(`/bots/${bot.id}/computer`)} />
-        <IconButton icon={X} label="關閉電腦面板" onClick={() => computerPanelStore.set(false)} />
+        <IconButton icon={X} label="關閉電腦面板" onClick={closeRightPanel} />
       </header>
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-5 pb-5">
         {error && !screen && <p className="m-0 text-sub text-danger">{error}</p>}

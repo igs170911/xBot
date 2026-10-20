@@ -351,3 +351,37 @@ func TestNarrationBetweenToolsIsNotTheAnswer(t *testing.T) {
 		t.Fatalf("回答：%q", got)
 	}
 }
+
+// 2026-10-20：「每次交代完都不會繼續執行」。你親手打的訊息送給引擎時附一句提醒（對話裡看不到）；
+// 系統代你送的（自動繼續、服務重開接著做）、隊友、群組、定時任務不附（LazyBoy REPLY_NOTE）。
+func TestOwnerTypedMessageGetsTheNote(t *testing.T) {
+	ctx := context.Background()
+	f := setupWith(t, func(o *Options) { o.OwnerNote = OwnerNote })
+	var got []string
+	f.g.OnPrompt = func(turn *hermestest.Turn) {
+		got = append(got, turn.Text)
+		hermestest.ReplyOK(turn)
+	}
+	res, err := f.rt.Chat(ctx, f.bot.ID, "", "幫我比價")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.wait(t, res.TaskID)
+	res2, err := f.rt.Start(ctx, ChatRequest{BotID: f.bot.ID, ThreadID: res.ThreadID, Text: "隊友的話", Source: "bot", Prompt: "[來自隊友 A]\n做這個"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.wait(t, res2.TaskID)
+	res3, err := f.rt.Chat(ctx, f.bot.ID, res.ThreadID, "（系統自動繼續）把剩下的做完")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.wait(t, res3.TaskID)
+	if len(got) != 3 || !strings.HasSuffix(got[0], OwnerNote) || !strings.HasPrefix(got[0], "幫我比價") || strings.Contains(got[1], "回覆前提醒") || strings.Contains(got[2], "回覆前提醒") {
+		t.Fatalf("送給引擎的：%q", got)
+	}
+	msgs, _ := f.db.ListMessages(ctx, store.ScopeThread, res.ThreadID, 0, 0)
+	if strings.Contains(msgs[0].Content, "回覆前提醒") {
+		t.Fatal("提醒不顯示在對話裡")
+	}
+}

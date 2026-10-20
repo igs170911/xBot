@@ -9,13 +9,15 @@ import { goBack } from '../router'
 import { PhoneBar, TabBar } from '../mobile/Phone'
 import { backFallback, isTabPath, ownsPhoneHeader, usePhone } from '../mobile/nav'
 import { Sidebar } from './Sidebar'
+import { ResizeHandle } from './ResizeHandle'
+import { SIDEBAR, sidebarWidthStore } from './panes'
 import { PauseBanner } from './PauseBanner'
 import { cx } from '../ui/cx'
 
 /** 從左邊緣幾 px 內開始拖才算（避開頁面本身的左右滑動）。 */
 const EDGE = 24
 
-// 版型：桌面側欄 260 固定在左（可以縮成 56 的圖示列）；手機寬度（< 768）照 L 畫板：分頁首頁下面是分頁列，
+// 版型：桌面側欄在左（預設 260，可以拖右邊緣改寬度）（可以縮成 56 的圖示列）；手機寬度（< 768）照 L 畫板：分頁首頁下面是分頁列，
 // 其他頁有自己的頁首（或共用的返回列）。手機的手勢都跟著手指走（像原生 App）：
 //   - 分頁首頁從左邊緣往右拖：拉出側欄；側欄打開時往左拖：收回去。
 //   - 其他頁從左邊緣往右拖：整頁跟著滑，拉夠了放開就回上一頁。
@@ -23,6 +25,7 @@ export function AppShell({ path, title, children }: { path: string; title: strin
   const phone = usePhone()
   const drawer = useStore(drawerStore)
   const rail = useStore(railStore)
+  const sideWidth = useStore(sidebarWidthStore)
   const panel = useRef<HTMLDivElement>(null)
   const page = useRef<HTMLDivElement>(null)
   const close = () => drawerStore.set(false)
@@ -85,8 +88,10 @@ export function AppShell({ path, title, children }: { path: string; title: strin
       >
         跳到主要內容
       </a>
-      <div className={cx('sticky top-0 hidden h-dvh flex-none border-r border-edge bg-panel md:block', rail ? 'w-[57px]' : 'w-[261px]')}>
+      {/* 側欄（可以拖右邊緣改寬度，雙擊回到 260；縮成圖示列時固定 56）＋ 1 的邊線 */}
+      <div className={cx('sticky top-0 hidden h-dvh flex-none border-r border-edge bg-panel md:block', rail && 'w-[57px]')} style={rail ? undefined : { width: sideWidth + 1 }}>
         <Sidebar path={path} rail={rail} />
+        {!rail && <ResizeHandle size={SIDEBAR} store={sidebarWidthStore} edge="right" label="側欄寬度" />}
       </div>
 
       <div ref={page} data-phone-page="1" className={tab ? 'flex min-w-0 flex-1 flex-col bg-app max-md:pb-[calc(57px+env(safe-area-inset-bottom))]' : 'flex min-w-0 flex-1 flex-col bg-app'}>

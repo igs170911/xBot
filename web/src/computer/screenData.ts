@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { computersScreen, computersScreens, computersSnapshot, computersWake, hostsList, type ComputersScreenOutput, type HostsListOutput, type XBotEvent } from '../api/generated'
 import { onEvent, onReconnect } from '../data/events'
-import { createStore } from '../data/store'
-
-/** 對話旁的電腦面板開著沒（換 Bot 仍保持）。 */
-export const computerPanelStore = createStore(false)
 
 export type Screen = ComputersScreenOutput
 export type Host = HostsListOutput['hosts'][number]

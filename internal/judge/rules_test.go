@@ -268,3 +268,41 @@ func answer(in Input) Input {
 	in.Outcome = OutcomeAnswer
 	return in
 }
+
+// 2026-10-20：「要我持續確認，他才會開始動作」。水哥哥用過工具之後最後一句說「現在去做某某」就結束、
+// 或問「要我現在開始抓嗎？」：都要自己接著做（XBot 新增，LazyBoy 只看整輪沒用工具的短句）。
+func TestEndingWithNextStepIsNotDone(t *testing.T) {
+	ctx := context.Background()
+	for _, text := range []string{
+		"已登入，帳號確認是 @kupi.cat.31。現在去個人頁抓基本盤，然後去洞察頁。",
+		"好，帳號是 @kupi.cat.31「Ruby 王酷比｜台灣生活實測」。按技能流程：先抓數據、再給方案。\n\n讓我開瀏覽器看帳號。先檢查有沒有已登入的 Threads 分頁。",
+		"資料夠了，接下來我去整理成報告",
+		"抱歉，上一輪 browser_exec 結束後我沒有自動繼續。現在繼續。\n\n已登入、帳號確認 @kupi.cat.31。接下來：去個人頁抓基本盤 → 洞察頁 → 逐篇貼文。",
+	} {
+		r, err := Rules{}.Judge(ctx, Input{Outcome: OutcomeAnswer, Text: text, UsedTools: true})
+		if err != nil || r.Verdict != OnlyPromised || !Continues(Input{Outcome: OutcomeAnswer, Text: text, UsedTools: true}, r) {
+			t.Fatalf("%q → %+v %v", text, r, err)
+		}
+		if n := NudgeFor(Input{Outcome: OutcomeAnswer, Text: text, UsedTools: true}); !strings.Contains(n.Prompt, "卻沒有做就結束了") {
+			t.Fatalf("提示：%s", n.Prompt)
+		}
+	}
+	if NeedsPersonIn("已登入，帳號確認是 @kupi.cat.31。") || !NeedsPersonIn("請你先登入 Threads") {
+		t.Fatal("「已登入」不是在等你登入；「請你先登入」才是")
+	}
+	ask := "沒有在做了。我剛才只載入了技能。\n\n要我現在開始抓嗎？流程是：開瀏覽器、抓個人頁、抓洞察頁。"
+	if r, _ := (Rules{}).Judge(ctx, Input{Outcome: OutcomeAnswer, Text: ask}); r.Verdict != HandedBack {
+		t.Fatalf("問「要我現在開始嗎」：%+v", r)
+	}
+	// 做完了、在問真的要你決定的事、提到以後的事：不算
+	for _, text := range []string{
+		"報告整理好了，在 /workspace/reports/漲粉方案.md。",
+		"接下來我整理好了，放在桌面。",
+		"要照 A 店調價嗎？",
+		"比價表做好了。\n\n先看定稿方案，再看卡點報告決定是否核准採購。",
+	} {
+		if r, _ := (Rules{}).Judge(ctx, Input{Outcome: OutcomeAnswer, Text: text, UsedTools: true}); r.Verdict == OnlyPromised {
+			t.Fatalf("%q 不該算只說要做：%+v", text, r)
+		}
+	}
+}

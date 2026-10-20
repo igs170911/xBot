@@ -4,8 +4,11 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"path"
 	"slices"
 	"strings"
 	"testing"
@@ -233,6 +236,53 @@ func TestSeedOnce(t *testing.T) {
 	}
 	if _, err := b.Get(ctx, "deep-research"); !errors.Is(err, ErrNotFound) {
 		t.Fatal("刪掉的內建技能不再放回來")
+	}
+}
+
+// 2026-10-20：舊版 deep-research 要子代理平行查，Bot 已經沒有子代理，用了只讀說明不上網查。
+// 沒改過的舊版開機前換成新版；使用者或 Bot 改過的照舊保留。
+func TestSeedUpgradesUntouchedOldBuiltin(t *testing.T) {
+	m := boxfs.NewMem()
+	if err := Seed(ctx, m); err != nil {
+		t.Fatal(err)
+	}
+	file := path.Join(SkillsDir, "deep-research", "SKILL.md")
+	old := []byte("---\nname: deep-research\ndescription: 舊版\n---\n\n用 delegate_task 平行查\n")
+	sum := sha256.Sum256(old)
+	saved := retired["deep-research"]
+	retired["deep-research"] = append(append([]string{}, saved...), hex.EncodeToString(sum[:]))
+	t.Cleanup(func() { retired["deep-research"] = saved })
+
+	if err := m.WriteFiles(ctx, SkillsDir, []boxfs.File{{Name: "deep-research/SKILL.md", Data: old, Mode: 0o644}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Seed(ctx, m); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := m.ReadFile(ctx, file); !bytes.Equal(got, Builtin()["deep-research"]) || bytes.Contains(got, []byte("delegate_task")) {
+		t.Fatalf("沒改過的舊版要換成新版：%s", got)
+	}
+	mine := []byte("---\nname: deep-research\ndescription: 我改的\n---\n\n我的流程\n")
+	if err := m.WriteFiles(ctx, SkillsDir, []boxfs.File{{Name: "deep-research/SKILL.md", Data: mine, Mode: 0o644}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Seed(ctx, m); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := m.ReadFile(ctx, file); !bytes.Equal(got, mine) {
+		t.Fatalf("改過的要保留：%s", got)
+	}
+}
+
+func TestBuiltinDeepResearchSearchesItself(t *testing.T) {
+	doc := string(Builtin()["deep-research"])
+	for _, want := range []string{"web_search", "web_extract", "同一輪做完", "先照最合理的假設開始查"} {
+		if !strings.Contains(doc, want) {
+			t.Fatalf("少了 %q", want)
+		}
+	}
+	if strings.Contains(doc, "delegate_task") {
+		t.Fatal("Bot 沒有子代理了，技能不能叫它用 delegate_task")
 	}
 }
 

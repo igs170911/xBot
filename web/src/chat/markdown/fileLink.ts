@@ -1,4 +1,6 @@
-import { createContext } from 'react'
+import { createContext, type MouseEvent } from 'react'
+import { linkClick } from '../../router'
+import { openFileHere } from '../../shell/panes'
 
 // 回覆裡的檔案路徑（`/workspace/…`）變成可以點的連結：點了打開那個 Bot 的檔案頁、直接預覽那個檔案。
 // 由對話頁提供（知道是哪個 Bot）；沒有提供時照舊只是程式碼文字。
@@ -15,4 +17,16 @@ export function isBoxFile(text: string): boolean {
 
 export function botFileLinker(botId: string): FileLinker {
   return (path) => (isBoxFile(path) ? `/bots/${encodeURIComponent(botId)}/files?path=${encodeURIComponent(path.trim())}` : undefined)
+}
+
+/** 點檔案連結：對話頁旁邊能開檔案面板就在那裡預覽（和電腦面板一樣，2026-10-20），不然照常換到檔案頁。 */
+export function fileClick(href: string) {
+  const go = linkClick(href)
+  return (e: MouseEvent<HTMLAnchorElement>) => {
+    if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0 && openFileHere(href)) {
+      e.preventDefault()
+      return
+    }
+    go(e)
+  }
 }

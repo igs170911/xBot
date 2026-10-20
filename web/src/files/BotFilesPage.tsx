@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
-import { ArrowLeft, AtSign, ChevronRight, Download, FolderPlus, Power, RefreshCw, Search, Send, Upload } from 'lucide-react'
+import { ArrowLeft, AtSign, ChevronRight, Download, Expand, FolderPlus, Power, RefreshCw, Search, Send, Upload, X } from 'lucide-react'
 import { filesList, filesUploadForm, type FilesListOutput } from '../api/generated'
 import { botsStore, look } from '../data/bots'
 import { useStore } from '../data/store'
@@ -107,13 +107,25 @@ function ListState({ out, error, waking, onWake, botName }: { out?: FilesListOut
   return <p className="m-0 px-2 py-6 text-ui-sm text-ink-3">讀取中…</p>
 }
 
-export function BotFilesPage({ botId }: { botId: string }) {
+/** 對話頁右邊的檔案面板（2026-10-20：和電腦面板一樣在旁邊打開，不整頁跳走）。 */
+export type FilesPanel = { /** 一打開就預覽的檔案 */ path?: string; /** 每次從外面打開加一 */ seq: number; onClose: () => void }
+
+export function BotFilesPage({ botId, panel }: { botId: string; panel?: FilesPanel }) {
   const bots = useStore(botsStore).bots
   const bot = bots?.find((b) => b.id === botId)
   const search = useSearch()
-  const selected = search.get('path')
-  const folderView = search.get('view') === 'folder'
-  const folder = search.get('folder') || '/workspace'
+  // 整頁時狀態在網址上（可以分享、上一頁）；面板時放在面板自己（對話頁的網址不動）
+  const [local, setLocal] = useState<Record<string, string>>(() => (panel?.path ? { path: panel.path } : ({} as Record<string, string>)))
+  // 從對話裡點另一個檔案（seq 變了）：換成那個檔案
+  const [seenSeq, setSeenSeq] = useState(panel?.seq)
+  if (panel && panel.seq !== seenSeq) {
+    setSeenSeq(panel.seq)
+    setLocal(panel.path ? { path: panel.path } : ({} as Record<string, string>))
+  }
+  const param = (k: string) => (panel ? (local[k] ?? null) : search.get(k))
+  const selected = param('path')
+  const folderView = param('view') === 'folder'
+  const folder = param('folder') || '/workspace'
   const [q, setQ] = useState('')
   const [showAll, setShowAll] = useState(false)
   const [newFolder, setNewFolder] = useState(false)
@@ -123,7 +135,7 @@ export function BotFilesPage({ botId }: { botId: string }) {
   const toast = useToast()
   const { state, reload, wake, waking } = useListing(botId, !folderView, folder)
   const name = bot?.name ?? 'Bot'
-  const narrow = useNarrow()
+  const narrow = useNarrow() && !panel
   useLockBody(!!selected && narrow) // 手機的檔案預覽 sheet 開著：後面的清單不跟著捲
   // 手機的預覽 sheet 往下拖就關；手指下的內容捲在最上面才接手，不然是在捲內容
   const sheet = useRef<HTMLDivElement>(null)
@@ -149,6 +161,17 @@ export function BotFilesPage({ botId }: { botId: string }) {
   })
 
   const go = (patch: Record<string, string | null>, replace = false) => {
+    if (panel) {
+      setLocal((cur) => {
+        const next = { ...cur }
+        for (const [k, v] of Object.entries(patch)) {
+          if (v === null) delete next[k]
+          else next[k] = v
+        }
+        return next
+      })
+      return
+    }
     const p = new URLSearchParams(window.location.search)
     for (const [k, v] of Object.entries(patch)) {
       if (v === null) p.delete(k)
@@ -248,7 +271,99 @@ export function BotFilesPage({ botId }: { botId: string }) {
     )
   }
 
+  const listBody = (
+    <>
+      <div className="flex flex-none flex-col gap-2.5 px-3 pb-2">
+          <TextInput label="搜尋檔案" hideLabel icon={Search} placeholder="搜尋檔案" value={q} onChange={(e) => setQ(e.target.value)} />
+          <div role="radiogroup" aria-label="瀏覽方式" className="grid grid-cols-2 gap-0.5 rounded-field bg-inset p-[3px]">
+            {[
+              [false, '依種類'],
+              [true, '資料夾'],
+            ].map(([v, label]) => (
+              <button
+                key={String(v)}
+                type="button"
+                role="radio"
+                aria-checked={folderView === v}
+                onClick={() => go({ view: v ? 'folder' : null, folder: null })}
+                className={cx('h-8 rounded-seg text-ui-sm max-sm:h-10', folderView === v ? 'bg-control text-ink' : 'text-ink-2 hover:text-ink')}
+              >
+                {label as string}
+              </button>
+            ))}
+          </div>
+      </div>
+        <div className="min-h-0 flex-1 overflow-auto overscroll-y-contain px-2 pb-3" data-testid="file-list">
+          {list}
+        </div>
+        <footer className="flex flex-none items-center gap-2 border-t border-divider px-3 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))]">
+          <input ref={input} type="file" multiple hidden onChange={(e) => void upload([...(e.target.files ?? [])]).finally(() => (e.target.value = ''))} aria-label="選擇要上傳的檔案" />
+          <Button variant="outline" icon={Upload} className="flex-1" onClick={() => input.current?.click()} disabled={uploading}>
+            {uploading ? '上傳中…' : `上傳檔案給${name}`}
+          </Button>
+          {folderView && <IconButton icon={FolderPlus} label="新資料夾" onClick={() => setNewFolder(true)} />}
+        </footer>
+        {drag && (
+          <div className="pointer-events-none absolute inset-2 flex flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-accent bg-app/85 text-ui">
+            <Icon icon={Upload} size={28} className="text-accent-ink" />
+            放開就上傳到{folderView ? folder : ' /workspace/uploads'}
+          </div>
+        )}
+    </>
+  )
+  const dialogs = (
+    <>
+      <FileDialogs
+        botId={botId}
+        entry={selectedEntry}
+        dlg={dlg}
+        onClose={() => setDlg(null)}
+        onChanged={(p) => {
+          reload()
+          go({ path: p })
+        }}
+      />
+      {newFolder && (
+        <NewFolderDialog
+          botId={botId}
+          parent={folder}
+          onClose={() => setNewFolder(false)}
+          onCreated={(p) => {
+            setNewFolder(false)
+            go({ folder: p, path: null })
+          }}
+        />
+      )}
+    </>
+  )
   const count = state?.out?.state === 'ready' ? state.out.total : null
+  const fullPage = `/bots/${encodeURIComponent(botId)}/files${selected ? '?' + new URLSearchParams({ path: selected }) : ''}`
+  if (panel) {
+    return (
+      <aside aria-label={`${name}的檔案`} data-testid="files-panel" className="flex h-dvh w-full min-w-0 flex-col border-l border-edge bg-app">
+        <header className="flex h-14 flex-none items-center gap-1 px-3">
+          <div className="flex min-w-0 flex-1 flex-col pl-1">
+            <h2 className="m-0 truncate text-title font-normal">{name}的檔案</h2>
+            <span className="text-meta text-ink-3">{count === null ? ' ' : `${count} ${folderView ? '項' : '個檔案'}`}</span>
+          </div>
+          <IconButton icon={RefreshCw} label="重新整理" onClick={reload} />
+          <IconButton icon={Expand} label="全視窗" onClick={() => navigate(fullPage)} />
+          <IconButton icon={X} label="關閉檔案面板" onClick={panel.onClose} />
+        </header>
+        {selected ? (
+          // 面板放不下左右兩欄：預覽蓋過清單，關掉預覽回到清單
+          <div className="flex min-h-0 flex-1 border-t border-divider">
+            <FilePreview key={selected} botId={botId} bot={bot} path={selected} actions={items} back onClose={() => go({ path: null })} />
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col" onDragOver={(e) => (e.preventDefault(), setDrag(true))} onDragLeave={(e) => e.currentTarget === e.target && setDrag(false)} onDrop={onDrop}>
+            {listBody}
+          </div>
+        )}
+        {dialogs}
+      </aside>
+    )
+  }
   return (
     <main className="flex h-dvh min-h-0 min-w-0 flex-none max-md:flex-col" aria-label={`${name}的檔案`}>
       <section
@@ -286,41 +401,8 @@ export function BotFilesPage({ botId }: { botId: string }) {
             </div>
             <IconButton icon={RefreshCw} label="重新整理" onClick={reload} />
           </div>
-          <TextInput label="搜尋檔案" hideLabel icon={Search} placeholder="搜尋檔案" value={q} onChange={(e) => setQ(e.target.value)} />
-          <div role="radiogroup" aria-label="瀏覽方式" className="grid grid-cols-2 gap-0.5 rounded-field bg-inset p-[3px]">
-            {[
-              [false, '依種類'],
-              [true, '資料夾'],
-            ].map(([v, label]) => (
-              <button
-                key={String(v)}
-                type="button"
-                role="radio"
-                aria-checked={folderView === v}
-                onClick={() => go({ view: v ? 'folder' : null, folder: null })}
-                className={cx('h-8 rounded-seg text-ui-sm max-sm:h-10', folderView === v ? 'bg-control text-ink' : 'text-ink-2 hover:text-ink')}
-              >
-                {label as string}
-              </button>
-            ))}
-          </div>
         </header>
-        <div className="min-h-0 flex-1 overflow-auto overscroll-y-contain px-2 pb-3" data-testid="file-list">
-          {list}
-        </div>
-        <footer className="flex flex-none items-center gap-2 border-t border-divider px-3 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))]">
-          <input ref={input} type="file" multiple hidden onChange={(e) => void upload([...(e.target.files ?? [])]).finally(() => (e.target.value = ''))} aria-label="選擇要上傳的檔案" />
-          <Button variant="outline" icon={Upload} className="flex-1" onClick={() => input.current?.click()} disabled={uploading}>
-            {uploading ? '上傳中…' : `上傳檔案給${name}`}
-          </Button>
-          {folderView && <IconButton icon={FolderPlus} label="新資料夾" onClick={() => setNewFolder(true)} />}
-        </footer>
-        {drag && (
-          <div className="pointer-events-none absolute inset-2 flex flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-accent bg-app/85 text-ui">
-            <Icon icon={Upload} size={28} className="text-accent-ink" />
-            放開就上傳到{folderView ? folder : ' /workspace/uploads'}
-          </div>
-        )}
+        {listBody}
       </section>
 
       {/* 桌面：右邊預覽 */}
@@ -373,27 +455,8 @@ export function BotFilesPage({ botId }: { botId: string }) {
           </div>
         </div>
       )}
-      <FileDialogs
-        botId={botId}
-        entry={selectedEntry}
-        dlg={dlg}
-        onClose={() => setDlg(null)}
-        onChanged={(p) => {
-          reload()
-          go({ path: p })
-        }}
-      />
-      {newFolder && (
-        <NewFolderDialog
-          botId={botId}
-          parent={folder}
-          onClose={() => setNewFolder(false)}
-          onCreated={(p) => {
-            setNewFolder(false)
-            go({ folder: p, path: null })
-          }}
-        />
-      )}
+
+      {dialogs}
     </main>
   )
 }

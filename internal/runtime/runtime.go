@@ -67,6 +67,8 @@ type Options struct {
 	DB     *store.DB
 	Driver engine.Driver
 	Bus    *events.Bus
+	// OwnerNote 附在你親手打的訊息後面送給引擎（對話裡看不到）；服務用 runtime.OwnerNote，空白時不附（測試的假引擎照原文回）。
+	OwnerNote string
 	// Models 決定 Bot 用哪個模型（*Computers 符合）。
 	Models interface {
 		ResolveModel(ctx context.Context, b store.Bot) (ModelRef, error)
@@ -286,6 +288,22 @@ type ChatRequest struct {
 	Actor, ActorName, Via string
 }
 
+// OwnerNote 附在你親手打的訊息後面（對話裡看不到），引擎才會照著回答或把工作做完。
+const OwnerNote = "\n\n[回覆前提醒：這是使用者本人剛打的訊息。是問題就第一句直接回答，像說話不像報告，不用為了回答去載技能或上網，除非要最新資料。" +
+	"是交代工作就在這一輪做到完成：說要做的事立刻呼叫工具去做，不要問要不要開始，也不要寫「接下來去做某某」就停下來。" +
+	"照回話風格分段，一律繁體中文。]"
+
+// typedByOwner：你打的字，不是系統代你送的（自動繼續、服務重開接著做、教學）——那些開頭是「（系統…」「（服務…」「【」「[」。
+func typedByOwner(input string) bool {
+	in := strings.TrimSpace(input)
+	for _, p := range []string{"（系統", "（服務", "【", "["} {
+		if strings.HasPrefix(in, p) {
+			return false
+		}
+	}
+	return in != ""
+}
+
 // Start 和 Chat 一樣，但可以指定交辦來源、優先順序與排隊。
 func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error) {
 	botID, threadID, text := req.BotID, req.ThreadID, strings.TrimSpace(req.Text)
@@ -499,6 +517,14 @@ func (r *Runtime) run(ctx context.Context, t *turn) {
 			t.mu.Unlock()
 		}
 	}
+	// 你親手打的訊息後面附一句提醒（對話裡看不到）：系統提示很長，規則離問題太遠；放在問題旁邊才照做
+	// （LazyBoy runtime.py REPLY_NOTE，實測見其 docs/REPLY-QUALITY-2026-10-16.md）。XBot 另外補上「交代工作就做到完成」：
+	// LazyBoy 那份實驗沒驗證關掉強制用工具之後長工作會不會提早停，2026-10-20 真的會（「每次交代完都不會繼續執行」）。
+	t.mu.Lock()
+	if r.o.OwnerNote != "" && t.source == SourceOwner && typedByOwner(t.input) {
+		t.input += r.o.OwnerNote
+	}
+	t.mu.Unlock()
 	r.setState(t, store.TaskWaitingBox)
 	if r.o.Admit != nil {
 		release, err := r.o.Admit(ctx, t.botID, func(w any) {

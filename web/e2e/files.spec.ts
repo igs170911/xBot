@@ -265,15 +265,89 @@ test('對話裡的檔案卡：點了預覽、可以直接下載', async ({ page 
   await settle(page)
   await card.screenshot({ path: shot(`${info.project.name}-files-chat-card`) })
   await card.getByRole('link', { name: '預覽 定價比較.csv' }).click()
-  await expect(page).toHaveURL(new RegExp(`/bots/${mi.id}/files\\?path=`))
-  if (mobile) await expect(page.getByRole('dialog', { name: '預覽：定價比較.csv' }).getByRole('table')).toContainText('防水托特包')
-  else await expect(page.getByTestId('file-preview').getByRole('table')).toContainText('防水托特包')
-
-  // 在對話中提到：回到對話，路徑放進輸入框。
-  if (mobile) await page.getByRole('dialog').getByRole('button', { name: '在對話中提到' }).click()
-  else {
-    await page.getByRole('button', { name: '更多動作' }).click()
+  if (mobile) {
+    await expect(page).toHaveURL(new RegExp(`/bots/${mi.id}/files\\?path=`))
+    await expect(page.getByRole('dialog', { name: '預覽：定價比較.csv' }).getByRole('table')).toContainText('防水托特包')
+    // 在對話中提到：回到對話，路徑放進輸入框。
+    await page.getByRole('dialog').getByRole('button', { name: '在對話中提到' }).click()
+  } else {
+    // 寬螢幕：和電腦一樣在對話右邊的面板預覽，不整頁跳走（2026-10-20）
+    await expect(page).toHaveURL(new RegExp(`/threads/${th.id}$`))
+    const panel = page.getByTestId('files-panel')
+    await expect(panel.getByTestId('file-preview').getByRole('table')).toContainText('防水托特包')
+    await expect(page.getByRole('main', { name: '和小秘的對話' })).toBeVisible()
+    await settle(page)
+    await page.screenshot({ path: shot(`${info.project.name}-files-panel`) })
+    // 在對話中提到：留在同一條對話串，路徑放進輸入框
+    await panel.getByRole('button', { name: '更多動作' }).click()
     await page.getByRole('menuitem', { name: '在對話中提到' }).click()
+    await expect(page).toHaveURL(new RegExp(`/threads/${th.id}$`))
   }
   await expect(page.getByRole('main', { name: '和小秘的對話' }).getByRole('textbox')).toHaveValue('/workspace/定價比較.csv ')
+})
+
+// 2026-10-20：檔案和電腦一樣在對話右邊打開；兩欄都能拖邊緣改寬度，記在瀏覽器，雙擊回到預設。
+test('右邊面板：頁首的檔案鈕開檔案面板（和電腦二選一）；拖側欄和面板的邊改寬度', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', '寬螢幕才有右邊面板和拖寬度')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  const api = new MockServer(page)
+  const mi = api.addBot({ name: '小秘', color: 'blue', shape: 'cursor' })
+  mockFiles(api, { [mi.id]: [entry('/workspace/定價比較.csv', 18 * 1024, 10), entry('/workspace/週報.md', 2048, 30)] })
+  const th = api.addThread(mi.id, '比價')
+  api.addMessage(th.id, { sender: 'bot:' + mi.id, content: '週報在 `/workspace/週報.md`' })
+  await api.install()
+  await routeBlobs(page, [], () => [])
+  await page.goto(`/bots/${mi.id}/threads/${th.id}`)
+  const main = page.getByRole('main', { name: '和小秘的對話' })
+
+  // 頁首的檔案鈕：右邊打開清單，再按一次關掉
+  const filesBtn = main.getByRole('button', { name: '小秘的檔案' })
+  await filesBtn.click()
+  const panel = page.getByTestId('files-panel')
+  await expect(panel.getByRole('button', { name: /週報\.md/ })).toBeVisible()
+  await expect(filesBtn).toHaveAttribute('aria-pressed', 'true')
+  // 點檔案：在面板裡預覽，關掉預覽回到清單
+  await panel.getByRole('button', { name: /週報\.md/ }).click()
+  await expect(panel.getByTestId('file-preview')).toContainText('退貨率下降')
+  await panel.getByRole('button', { name: '回到檔案清單' }).click()
+  await expect(panel.getByRole('button', { name: /定價比較\.csv/ })).toBeVisible()
+  // 電腦和檔案二選一
+  await main.getByRole('button', { name: '小秘的電腦' }).click()
+  await expect(page.getByTestId('computer-panel')).toBeVisible()
+  await expect(panel).toHaveCount(0)
+  await main.getByRole('button', { name: '小秘的電腦' }).click()
+  await expect(page.getByTestId('computer-panel')).toHaveCount(0)
+
+  // 回覆裡的檔案路徑：在旁邊的面板打開
+  await main.getByRole('link', { name: '/workspace/週報.md' }).click()
+  await expect(page.getByTestId('files-panel').getByTestId('file-preview')).toContainText('退貨率下降')
+  await expect(page).toHaveURL(new RegExp(`/threads/${th.id}$`))
+
+  // 拖右邊面板的左邊緣：變寬；拖側欄的右邊緣：變寬；重新整理後還記得；雙擊回到預設
+  const width = (sel: string) => page.locator(sel).evaluate((el) => Math.round(el.getBoundingClientRect().width))
+  const handle = page.getByRole('separator', { name: '右邊面板寬度' })
+  const hb = (await handle.boundingBox())!
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + 300)
+  await page.mouse.down()
+  await page.mouse.move(hb.x + hb.width / 2 - 100, hb.y + 300, { steps: 5 })
+  await page.mouse.up()
+  await expect.poll(() => width('[data-testid="files-panel"]')).toBe(640)
+  const side = page.getByRole('separator', { name: '側欄寬度' })
+  const sb = (await side.boundingBox())!
+  await page.mouse.move(sb.x + sb.width / 2, sb.y + 300)
+  await page.mouse.down()
+  await page.mouse.move(sb.x + sb.width / 2 + 56, sb.y + 300, { steps: 5 })
+  await page.mouse.up()
+  const nav = page.getByRole('navigation', { name: '側欄' })
+  await expect.poll(async () => Math.round((await nav.boundingBox())!.width)).toBe(316)
+  await settle(page)
+  await page.screenshot({ path: shot(`${info.project.name}-panes-resized`) })
+  await page.reload()
+  await expect.poll(async () => Math.round((await page.getByRole('navigation', { name: '側欄' }).boundingBox())!.width)).toBe(316)
+  // 鍵盤：方向鍵也能調
+  await page.getByRole('separator', { name: '側欄寬度' }).focus()
+  await page.keyboard.press('ArrowLeft')
+  await expect.poll(async () => Math.round((await page.getByRole('navigation', { name: '側欄' }).boundingBox())!.width)).toBe(292)
+  await page.getByRole('separator', { name: '側欄寬度' }).dblclick()
+  await expect.poll(async () => Math.round((await page.getByRole('navigation', { name: '側欄' }).boundingBox())!.width)).toBe(260)
 })
