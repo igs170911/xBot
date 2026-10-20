@@ -294,6 +294,18 @@ it('X04：判斷不是「已完成」才在回覆下面標出來；不對？選�
   await waitFor(() => expect(within(main).getAllByTestId('judge-tag')[0]).toHaveTextContent('你改成卡住了'))
 })
 
+it('打開聊完的對話串就標成看過了（聊天清單的藍點消失）；看著時 Bot 回的也算', async () => {
+  api.ops['chat.list_threads'] = () => ({ threads: [{ ...THREAD, unread: 2 }] })
+  api.ops['chat.mark_read'] = () => ({ marked: true })
+  messages = [{ id: 'm1', seq: 1, sender: 'bot:b1', kind: 'text', content: '好了', created_at: Date.now(), updated_at: Date.now() }]
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  await screen.findByRole('main', { name: '和小秘的對話' })
+  await waitFor(() => expect(api.calls.filter((c) => c.path === 'chat.mark_read').map((c) => c.input)).toEqual([{ thread_id: 't1' }]))
+  emit(ev({ id: 9, kind: 'message.created', payload: storeMsg('m2', 2, 'bot:b1', {}, '還有一件') }))
+  await waitFor(() => expect(api.calls.filter((c) => c.path === 'chat.mark_read')).toHaveLength(2))
+})
+
 it('刪除對話串：確認後呼叫 chat.delete_thread，換到最近的另一條（沒有了才開新的）', async () => {
   api.ops['chat.delete_thread'] = () => ({ deleted: true, bot_id: 'b1' })
   messages = [{ id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '查價格', created_at: Date.now(), updated_at: Date.now() }]

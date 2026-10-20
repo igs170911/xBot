@@ -3005,6 +3005,28 @@ export function chatListThreads(input: ChatListThreadsInput, opts?: CallOptions)
   return invoke('xbot.chat.list_threads', input, opts).then((r) => r.output)
 }
 
+// xbot.chat.mark_read
+
+export interface ChatMarkReadInput {
+  /** 看過的對話串 */
+  thread_id: string
+}
+
+export interface ChatMarkReadOutput {
+  marked: boolean
+}
+
+/**
+ * 把一條對話串標成看過了（未讀歸零）
+ *
+ * 對話頁打開、或開著時有新訊息就呼叫；清單的未讀藍點跟著消失。只有你本人能用（已讀是你的狀態）。
+ *
+ * `xbot.chat.mark_read`：權限 operate、風險 safe
+ */
+export function chatMarkRead(input: ChatMarkReadInput, opts?: CallOptions): Promise<ChatMarkReadOutput> {
+  return invoke('xbot.chat.mark_read', input, opts).then((r) => r.output)
+}
+
 // xbot.chat.read
 
 export interface ChatReadInput {
@@ -13195,6 +13217,7 @@ export interface Ops {
   'xbot.chat.ask_again': { input: ChatAskAgainInput; output: ChatAskAgainOutput }
   'xbot.chat.delete_thread': { input: ChatDeleteThreadInput; output: ChatDeleteThreadOutput }
   'xbot.chat.list_threads': { input: ChatListThreadsInput; output: ChatListThreadsOutput }
+  'xbot.chat.mark_read': { input: ChatMarkReadInput; output: ChatMarkReadOutput }
   'xbot.chat.read': { input: ChatReadInput; output: ChatReadOutput }
   'xbot.chat.respond': { input: ChatRespondInput; output: ChatRespondOutput }
   'xbot.chat.resume': { input: ChatResumeInput; output: ChatResumeOutput }
@@ -13438,6 +13461,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.chat.ask_again': { path: '/api/v1/chat.ask_again', scope: 'operate', risk: 'safe', mutates: true, summary: '請 Bot 把過期的問題再問一次' },
   'xbot.chat.delete_thread': { path: '/api/v1/chat.delete_thread', scope: 'operate', risk: 'confirm', mutates: true, summary: '刪除一條對話串和裡面的訊息' },
   'xbot.chat.list_threads': { path: '/api/v1/chat.list_threads', scope: 'read', risk: 'safe', mutates: false, summary: '列出和一個 Bot 的對話串' },
+  'xbot.chat.mark_read': { path: '/api/v1/chat.mark_read', scope: 'operate', risk: 'safe', mutates: true, summary: '把一條對話串標成看過了（未讀歸零）' },
   'xbot.chat.read': { path: '/api/v1/chat.read', scope: 'read', risk: 'safe', mutates: false, summary: '讀一條對話串的訊息' },
   'xbot.chat.respond': { path: '/api/v1/chat.respond', scope: 'operate', risk: 'safe', mutates: true, summary: '回覆 Bot 的提問（允許指令、回答問題、提供密碼）' },
   'xbot.chat.resume': { path: '/api/v1/chat.resume', scope: 'operate', risk: 'safe', mutates: true, summary: '請 Bot 接著做被中斷的工作' },

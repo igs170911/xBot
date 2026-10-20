@@ -78,6 +78,16 @@ type DeleteThreadOut struct {
 	BotID   string `json:"bot_id"`
 }
 
+// MarkReadIn 是 xbot.chat.mark_read 的輸入。
+type MarkReadIn struct {
+	ThreadID string `json:"thread_id" required:"true" max:"64" desc:"看過的對話串"`
+}
+
+// MarkReadOut 是 xbot.chat.mark_read 的輸出。
+type MarkReadOut struct {
+	Marked bool `json:"marked"`
+}
+
 // ReadIn 是 xbot.chat.read 的輸入。
 type ReadIn struct {
 	ThreadID string `json:"thread_id" required:"true" max:"64"`
@@ -303,6 +313,12 @@ func Register(reg *ops.Registry, d Deps) {
 		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
 		Handle: listThreads,
 	})
+	ops.Register(reg, ops.Op[MarkReadIn, MarkReadOut]{
+		Name: "xbot.chat.mark_read", Summary: "把一條對話串標成看過了（未讀歸零）",
+		Description: "對話頁打開、或開著時有新訊息就呼叫；清單的未讀藍點跟著消失。只有你本人能用（已讀是你的狀態）。",
+		Scope:       ops.ScopeOperate, Risk: ops.RiskSafe,
+		Handle: markRead,
+	})
 	ops.Register(reg, ops.Op[DeleteThreadIn, DeleteThreadOut]{
 		Name: "xbot.chat.delete_thread", Summary: "刪除一條對話串和裡面的訊息",
 		Description: "訊息刪了無法復原；Bot 的電腦、檔案、記憶不受影響。Bot 正在這條對話串做事時回 conflict，先 xbot.chat.stop。" +
@@ -477,6 +493,23 @@ func (d Deps) deleteThread(ctx context.Context, call *ops.Call, in DeleteThreadI
 		return DeleteThreadOut{}, err
 	}
 	return out, nil
+}
+
+func markRead(ctx context.Context, call *ops.Call, in MarkReadIn) (MarkReadOut, error) {
+	if call.Identity.Kind != ops.KindOwner {
+		return MarkReadOut{}, ops.Forbidden("只有你本人能標已讀")
+	}
+	th, err := thread(ctx, call, in.ThreadID)
+	if err != nil {
+		return MarkReadOut{}, err
+	}
+	if th.Unread == 0 || call.DryRun {
+		return MarkReadOut{Marked: th.Unread > 0}, nil
+	}
+	if err := call.DB.MarkThreadRead(ctx, th.ID); err != nil {
+		return MarkReadOut{}, err
+	}
+	return MarkReadOut{Marked: true}, nil
 }
 
 func read(ctx context.Context, call *ops.Call, in ReadIn) (ReadOut, error) {

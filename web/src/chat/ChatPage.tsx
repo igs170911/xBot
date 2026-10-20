@@ -1,7 +1,7 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Activity as ActivityIcon, AudioLines, Brain, ChevronDown, ChevronLeft, Cpu, Crown, Ellipsis, FolderOpen, GraduationCap, Monitor, OctagonPause, Phone, Settings, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import { isRecording, teachStartStore, useLesson } from '../teaching/teachingData'
-import { ApiError, chatListThreads, chatResume, chatSend, chatStop, filesUploadForm, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
+import { ApiError, chatListThreads, chatMarkRead, chatResume, chatSend, chatStop, filesUploadForm, inboxMarkRead, modelsGet, type ModelsGetOutput } from '../api/generated'
 import { botsStore, type Bot, look } from '../data/bots'
 import { onEvent, onReconnect } from '../data/events'
 import { useStore } from '../data/store'
@@ -458,6 +458,29 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
       if (e.kind === 'inbox.created' && e.thread_id === threadId) read()
     })
   }, [threadId])
+
+  // 對話串的未讀（聊天清單的藍點、對話串選單的「N 則未讀」）：打開就歸零；看著對話時 Bot 回的也算看過，
+  // 切到背景時來的等回到畫面才算。
+  useEffect(() => {
+    if (!threadId) return
+    const seen = () => {
+      if (document.visibilityState !== 'visible') return
+      void chatMarkRead({ thread_id: threadId })
+        .then((o) => {
+          if (o.marked) void reloadThreads()
+        })
+        .catch(() => {})
+    }
+    seen()
+    const off = onEvent((e) => {
+      if (e.kind === 'message.created' && e.thread_id === threadId) seen()
+    })
+    document.addEventListener('visibilitychange', seen)
+    return () => {
+      off()
+      document.removeEventListener('visibilitychange', seen)
+    }
+  }, [threadId, reloadThreads])
 
   const items = threadId ? threadItems(chat, threadId) : []
   // 自動朗讀（E32，VC-1）：Bot 設定或這個對話串開著時，看著它寫完的回覆念出來並變成語音訊息。

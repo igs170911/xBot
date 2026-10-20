@@ -72,6 +72,7 @@ const KIND_CHANGES = 'changes'
 /** 會寫進紀錄、但其實沒改東西的例行操作（大多是畫面自己在背景呼叫的）。 */
 const ROUTINE = new Set([
   'xbot.inbox.mark_read',
+  'xbot.chat.mark_read',
   'xbot.computers.snapshot',
   'xbot.agents.list',
   'xbot.backup.list',

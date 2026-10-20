@@ -393,3 +393,24 @@ func TestReadCarriesTaskStates(t *testing.T) {
 		t.Fatalf("工作狀態：%v", out.Tasks)
 	}
 }
+
+// 2026-10-20：點進聊完的對話再出來，清單的藍點還在——未讀從來沒有歸零。xbot.chat.mark_read 讓畫面看過就歸零。
+func TestMarkReadClearsUnread(t *testing.T) {
+	e := setup(t)
+	raw, err := e.call(owner, "xbot.chat.send", map[string]any{"bot_id": e.bot.ID, "text": "hi"})
+	sent := must[SendOut](t, raw, err)
+	e.waitFor(t, owner, sent.TaskID)
+	if th, _ := e.db.GetThread(bg, sent.ThreadID); th.Unread == 0 {
+		t.Fatal("Bot 回了以後應該有未讀")
+	}
+	if _, err := e.call(agent(e.bot.ID), "xbot.chat.mark_read", map[string]any{"thread_id": sent.ThreadID}); code(err) != ops.CodeForbidden {
+		t.Fatalf("已讀是你的狀態，代理不能標：%v", err)
+	}
+	raw, err = e.call(owner, "xbot.chat.mark_read", map[string]any{"thread_id": sent.ThreadID})
+	if out := must[MarkReadOut](t, raw, err); !out.Marked {
+		t.Fatalf("%+v", out)
+	}
+	if th, _ := e.db.GetThread(bg, sent.ThreadID); th.Unread != 0 {
+		t.Fatalf("未讀 %d", th.Unread)
+	}
+}

@@ -100,6 +100,7 @@ export class MockServer {
     'bots.create': (i) => this.addBot(i as Partial<Bot> & { name: string }),
     'inbox.list': (i) => ({ items: this.inbox.filter((x) => ((i.status ?? 'open') === 'all' || x.status === (i.status ?? 'open')) && (!i.kind || x.kind === i.kind)) }),
     'inbox.mark_read': () => ({ marked: 0 }),
+    'chat.mark_read': () => ({ marked: false }),
     'chat.steps': () => ({ events: [], has_more: false }),
     'models.get': () =>
       this.modelsReady
