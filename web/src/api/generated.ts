@@ -2843,6 +2843,8 @@ export interface BotsUpdateInput {
   host_id?: string
   /** 團隊管理權限；打開要你核准 */
   can_manage?: boolean
+  /** 設成你的主要 Bot（大總管：側欄最上面的大卡片，隊友有事不知道找誰時找它）；同時只有一個，設了別的就取消 */
+  primary?: boolean
 }
 
 export interface BotsUpdateOutput {

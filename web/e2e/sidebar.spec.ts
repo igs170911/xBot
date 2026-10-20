@@ -99,6 +99,7 @@ test('搬人員與刪除：拖到團隊換團隊、拖到群組加入、「⋯�
   await nav.getByRole('button', { name: '小巡的選單' }).click()
   await expect(page.getByRole('menuitem', { name: '移到「內容隊」' })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: '移出團隊' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: '設成大總管' })).toBeVisible()
   await page.getByRole('menuitem', { name: '移出團隊' }).click()
   await expect.poll(() => m.calls.filter((x) => x.op === 'teams.update').at(-1)?.input).toEqual({ id: research.id, remove_ids: [c.id] })
   await page.screenshot({ path: `e2e-results/screens/${info.project.name}-sidebar-move.png` })

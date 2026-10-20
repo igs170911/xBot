@@ -201,6 +201,7 @@ type UpdateIn struct {
 	MemoryEnabled *bool         `json:"memory_enabled,omitempty" desc:"打開或關掉記憶（下次開機生效）"`
 	HostID        *string       `json:"host_id,omitempty" resource:"host" max:"64" desc:"放在哪台主機（CL-1）；空白字串＝自動擺放。已經有電腦的 Bot 換主機要等搬家（CL-5）"`
 	CanManage     *bool         `json:"can_manage,omitempty" desc:"團隊管理權限；打開要你核准"`
+	Primary       *bool         `json:"primary,omitempty" desc:"設成你的主要 Bot（大總管：側欄最上面的大卡片，隊友有事不知道找誰時找它）；同時只有一個，設了別的就取消"`
 }
 
 // ArchiveIn 是 xbot.bots.archive 的輸入。
@@ -303,8 +304,22 @@ func Register(reg *ops.Registry, d Deps) {
 					return View{}, err
 				}
 			}
+			chief := b.IsChief
+			if in.Primary != nil {
+				b.IsChief = *in.Primary
+			}
 			b, err = call.DB.UpdateBot(ctx, b)
-			if err == nil && d.SoulChanged != nil && soulOf(b) != before {
+			if err == nil && b.IsChief != chief {
+				// 大總管同時只有一個；每個 Bot 的名冊都寫著誰是大總管，全部重寫 SOUL.md
+				err = onlyChief(ctx, call.DB, b)
+				if err == nil && d.SoulChanged != nil {
+					if all, lerr := call.DB.ListBots(ctx, false); lerr == nil {
+						for _, x := range all {
+							d.SoulChanged(ctx, x.ID)
+						}
+					}
+				}
+			} else if err == nil && d.SoulChanged != nil && soulOf(b) != before {
 				d.SoulChanged(ctx, b.ID)
 			}
 			if err == nil && d.ManageChanged != nil && b.CanManage != manage {
@@ -514,6 +529,26 @@ func placeHost(ctx context.Context, db *store.DB, b *store.Bot, hostID *string) 
 	}
 	box.HostID = id
 	return &box, nil
+}
+
+// onlyChief 在 b 設成大總管之後，把其他 Bot 的大總管取消。
+func onlyChief(ctx context.Context, db *store.DB, b store.Bot) error {
+	if !b.IsChief {
+		return nil
+	}
+	all, err := db.ListBots(ctx, true)
+	if err != nil {
+		return err
+	}
+	for _, x := range all {
+		if x.ID != b.ID && x.IsChief {
+			x.IsChief = false
+			if _, err := db.UpdateBot(ctx, x); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func apply(b *store.Bot, in UpdateIn) error {

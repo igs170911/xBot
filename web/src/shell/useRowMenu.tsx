@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { ArrowRightLeft, LayoutGrid, LogOut, MessageSquare, Pencil, Settings, Trash2 } from 'lucide-react'
-import type { Bot } from '../data/bots'
+import { ArrowRightLeft, LayoutGrid, LogOut, MessageSquare, Pencil, Settings, Star, Trash2 } from 'lucide-react'
+import { botsUpdate } from '../api/generated'
+import { loadBots, type Bot } from '../data/bots'
 import type { Room } from '../data/rooms'
 import { useStore } from '../data/store'
 import { moveBot, teamsStore, type Team } from '../data/teams'
@@ -39,6 +40,13 @@ export function useRowMenu(onNavigate?: () => void) {
       .then(() => toast.show({ kind: 'done', text: where ? `已把 ${b.name} 移到「${where}」` : `已把 ${b.name} 移出團隊` }))
       .catch((e: unknown) => toast.show({ kind: 'error', text: e instanceof Error ? e.message : String(e) }))
   }
+  // 大總管（主要 Bot）：側欄最上面的大卡片；同時只有一個
+  const makeChief = (b: Bot) => {
+    botsUpdate({ id: b.id, primary: true })
+      .then(() => loadBots())
+      .then(() => toast.show({ kind: 'done', text: `${b.name} 現在是大總管` }))
+      .catch((e: unknown) => toast.show({ kind: 'error', text: e instanceof Error ? e.message : String(e) }))
+  }
   const teamTarget = (t: Team): DeleteTarget => ({ kind: 'team', id: t.id, name: t.name, roomId: t.room_id })
 
   const botItems = (b: Bot): MenuItem[] => {
@@ -46,6 +54,7 @@ export function useRowMenu(onNavigate?: () => void) {
     return [
       { label: '開啟對話', icon: MessageSquare, onSelect: () => go(`/bots/${b.id}`) },
       { label: 'Bot 設定', icon: Settings, onSelect: () => go(`/settings/bots/${encodeURIComponent(b.id)}`) },
+      ...(b.primary ? [] : [{ label: '設成大總管', icon: Star, onSelect: () => makeChief(b) }]),
       ...others.map((t, i) => ({ label: `移到「${t.name}」`, icon: ArrowRightLeft, separator: i === 0, onSelect: () => move(b, t.id) })),
       ...(b.team_id ? [{ label: '移出團隊', icon: LogOut, separator: others.length === 0, onSelect: () => move(b, '') }] : []),
       { label: '刪除 Bot', icon: Trash2, danger: true, separator: true, onSelect: () => setDeleting({ kind: 'bot', id: b.id, name: b.name }) },
