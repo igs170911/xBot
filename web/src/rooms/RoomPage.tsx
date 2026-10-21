@@ -25,6 +25,10 @@ import { clockLabel, isLongReply } from '../chat/format'
 import { ROOM_ROUNDS, RULES, type Rule } from './rules'
 import { useLockBody } from '../ui/useLockBody'
 import { useFollowBottom } from '../chat/useFollowBottom'
+import { useNarrow } from '../computer/hooks'
+import { BotFilesPage } from '../files/BotFilesPage'
+import { registerFileOpener, RIGHT, rightWidthStore } from '../shell/panes'
+import { ResizeHandle } from '../shell/ResizeHandle'
 
 // 每次你發言後 Bot 之間最多接幾輪：使用者可以在「設定 › 進階 › 限制」調（原本畫面寫死 4，和後端不一致）
 const roundsStore = createStore(ROOM_ROUNDS)
@@ -399,6 +403,19 @@ export function RoomPage({ roomId }: { roomId: string }) {
   useEffect(() => {
     memberIds.current = data?.room.members.map((m) => m.bot_id) ?? []
   }, [data])
+  // 回覆裡的檔案（和一對一一樣）：寬螢幕在右邊打開那位成員的檔案，取代成員欄，關掉回到成員欄；窄的螢幕整頁打開
+  const wide = !useNarrow('(max-width: 1179px)')
+  const panelWidth = useStore(rightWidthStore)
+  const [opened, setFile] = useState<{ room: string; botId: string; path: string; seq: number } | null>(null)
+  const file = opened?.room === roomId ? opened : null // 換到別的群組就不顯示
+  useEffect(() => {
+    if (!wide) return
+    return registerFileOpener((id, path) => {
+      if (!memberIds.current.includes(id)) return false
+      setFile((f) => ({ room: roomId, botId: id, path, seq: (f?.seq ?? 0) + 1 }))
+      return true
+    })
+  }, [wide, roomId])
 
   const load = useCallback(
     () =>
@@ -543,7 +560,14 @@ export function RoomPage({ roomId }: { roomId: string }) {
           </div>
         </div>
       </main>
-      <MemberPanel room={room} onChanged={() => void load()} onEdit={() => setEditing(true)} onDelete={() => setDeleting({ kind: 'room', id: room.id, name: room.name })} />
+      {wide && file ? (
+        <div className="relative flex h-dvh flex-none" style={{ width: panelWidth }}>
+          <ResizeHandle size={RIGHT} store={rightWidthStore} edge="left" label="右邊面板寬度" />
+          <BotFilesPage key={file.botId} botId={file.botId} panel={{ path: file.path, seq: file.seq, onClose: () => setFile(null) }} />
+        </div>
+      ) : (
+        <MemberPanel room={room} onChanged={() => void load()} onEdit={() => setEditing(true)} onDelete={() => setDeleting({ kind: 'room', id: room.id, name: room.name })} />
+      )}
       <Dialog open={members} onClose={() => setMembers(false)} title={`成員 · ${room.members.length}`}>
         <MemberPanel
           inSheet

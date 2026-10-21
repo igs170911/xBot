@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { fakeApi } from '../test-api'
 import App from '../App'
@@ -30,4 +30,17 @@ it('群組裡 Bot 回覆的檔案：只顯示檔名、點了打開那個 Bot 的
   expect(screen.queryByText(/\/workspace\/reports/)).toBeNull()
   expect(screen.getByRole('link', { name: '預覽 新聞稿.docx' })).toBeInTheDocument()
   expect(screen.getByRole('link', { name: '下載 新聞稿.docx' })).toBeInTheDocument()
+})
+
+it('寬螢幕點群組裡的檔案：在右邊打開那位成員的檔案，不離開群組', async () => {
+  messages = [{ id: 'm1', seq: 1, sender: 'bot:b2', speaker_name: '小寫', content: '寫好了，在 `/workspace/reports/新聞稿.docx`。', mentions: [], created_at: Date.now() }]
+  render(<App />)
+  fireEvent.click(await screen.findByRole('link', { name: '預覽 新聞稿.docx' }))
+  expect(window.location.pathname).toBe('/rooms/r1')
+  expect(await screen.findByTestId('files-panel')).toBeInTheDocument()
+  expect(screen.queryByRole('complementary', { name: /成員/ })).toBeNull()
+  // 關掉回到成員欄
+  fireEvent.click(screen.getByRole('button', { name: '關閉檔案面板' }))
+  expect(screen.queryByTestId('files-panel')).toBeNull()
+  expect(screen.getByRole('complementary', { name: '成員' })).toBeInTheDocument()
 })
