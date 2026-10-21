@@ -192,3 +192,28 @@ func TestInstructionsErrorDoesNotBlockTheSession(t *testing.T) {
 		t.Fatalf("%+v", ps)
 	}
 }
+
+// 思考強度照 Bot 的設定（2026-10-21：島灰設「低」，Grok 一直用 high，簡單的問題先想 10～19 秒）；一樣的就不設。
+func TestEffortFollowsTheBot(t *testing.T) {
+	for _, c := range []struct{ effort, want string }{{"low", "low"}, {"medium", "medium"}, {"high", ""}, {"", ""}} {
+		agent := acptest.NewFor(acp.EngineGrok)
+		d := newDriver(acp.EngineGrok, agent, nil)
+		if _, err := d.Start(context.Background(), engine.StartOptions{BotID: "b", ThreadID: "t", Effort: c.effort}); err != nil {
+			t.Fatal(err)
+		}
+		got := ""
+		for _, raw := range calls(agent, "session/set_config_option") {
+			var p struct {
+				ConfigID string `json:"configId"`
+				Value    string `json:"value"`
+			}
+			_ = json.Unmarshal(raw, &p)
+			if p.ConfigID == "reasoning_effort" {
+				got = p.Value
+			}
+		}
+		if got != c.want {
+			t.Fatalf("effort=%q：設了 %q，要 %q", c.effort, got, c.want)
+		}
+	}
+}

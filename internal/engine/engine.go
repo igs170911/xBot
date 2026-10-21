@@ -122,6 +122,8 @@ type StartOptions struct {
 	// Mode 是 Bot 的權限等級（bot.approval_mode：ask／edits／auto／full）。ACP 引擎用它挑 session 模式；
 	// Hermes 不用（容器內的指令審核已關閉）。
 	Mode string
+	// Effort 是 Bot 的思考強度（bot.effort：low／medium／high）。ACP 引擎有思考強度的選項時照它設（Hermes 寫在設定檔）。
+	Effort string
 }
 
 // Session 是引擎裡的一段對話，對應 XBot 的一條對話串。

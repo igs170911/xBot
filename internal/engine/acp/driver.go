@@ -429,6 +429,7 @@ func (d *Driver) configure(ctx context.Context, s *session, res sessionResult, o
 			d.log.Warn("設定 session 模式失敗", "bot", o.BotID, "mode", mode, "err", err)
 		}
 	}
+	d.setEffort(cctx, s, res, o)
 	current, models := res.models()
 	if d.o.OnModels != nil && len(models) > 0 {
 		d.o.OnModels(o.BotID, current, models)
@@ -450,6 +451,44 @@ func (d *Driver) configure(ctx context.Context, s *session, res sessionResult, o
 		}
 		d.log.Info("agent 沒有這個模型，用它的預設", "bot", o.BotID, "model", o.Model)
 	}
+}
+
+// effortLevels 是思考強度由低到高（各 agent 的選項名稱照這個順序比）。
+var effortLevels = []string{"minimal", "low", "medium", "high", "xhigh"}
+
+// setEffort 照 Bot 的思考強度（bot.effort）設 agent 的思考強度選項（ACP configOptions 的 thought_level，例：Grok 的
+// reasoning_effort）。2026-10-21 實測：島灰設「低」，Grok 卻一直用它預設的 high，簡單的問題先想 10～19 秒才查。
+// agent 沒有這個選項、或沒有一樣的值時，挑最接近的。
+func (d *Driver) setEffort(ctx context.Context, s *session, res sessionResult, o engine.StartOptions) {
+	want := slices.Index(effortLevels, o.Effort)
+	if want < 0 {
+		return
+	}
+	for _, opt := range res.ConfigOptions {
+		if opt.ID != "reasoning_effort" && opt.Category != "thought_level" {
+			continue
+		}
+		best, gap := "", len(effortLevels)
+		for _, v := range opt.Options {
+			if i := slices.Index(effortLevels, v.Value); i >= 0 && abs(i-want) < gap {
+				best, gap = v.Value, abs(i-want)
+			}
+		}
+		if best == "" || opt.CurrentValue == best {
+			return
+		}
+		if _, err := s.ac.c.call(ctx, "session/set_config_option", map[string]any{"sessionId": s.id, "configId": opt.ID, "value": best}); err != nil {
+			d.log.Warn("設定思考強度失敗", "bot", o.BotID, "effort", best, "err", err)
+		}
+		return
+	}
+}
+
+func abs(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
 }
 
 // quota 看這一輪的錯誤是不是額度用完、限流、餘額不足或登入過期（EN-7）：agent 的訊息加上結構化的 data

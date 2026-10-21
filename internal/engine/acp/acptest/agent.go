@@ -58,6 +58,8 @@ type Profile struct {
 	QuotaData    any
 	// RateLimitResetsAt 不是 0 時，額度錯誤之前先送一個帶 _claude/rateLimit 的 usage_update（Claude Code）。
 	RateLimitResetsAt int64
+	// Efforts 是 session/new 回的思考強度選項（reasoning_effort，目前是 high）；空的時沒有這個選項。
+	Efforts []string
 }
 
 // Profiles 是各引擎的假 agent（key 是 bot.engine）。
@@ -70,7 +72,7 @@ var Profiles = map[string]Profile{
 	"gemini": {Modes: []string{"default", "autoEdit", "yolo", "plan"}, CurrentMode: "default",
 		QuotaCode: -32603, QuotaMessage: `[API Error: You have exhausted your daily quota on this model.] {"status":"RESOURCE_EXHAUSTED","retryDelay":"3600s"}`},
 	"opencode": {QuotaCode: -32603, QuotaMessage: "Insufficient account funds"},
-	"grok":     {QuotaCode: -32603, QuotaMessage: "Rate limit exceeded. Please retry after 30m"},
+	"grok":     {QuotaCode: -32603, QuotaMessage: "Rate limit exceeded. Please retry after 30m", Efforts: []string{"xhigh", "high", "medium", "low"}},
 }
 
 // Call 是 agent 收到的一個請求或通知。
@@ -316,11 +318,16 @@ func (p *peer) handle(f frame) {
 		id := fmt.Sprintf("sess-%d", a.nextSess)
 		a.sessions[id] = true
 		a.mu.Unlock()
-		res := map[string]any{
-			"sessionId": id,
-			"configOptions": []map[string]any{{"id": "model", "type": "select", "currentValue": "default",
-				"options": []map[string]string{{"value": "default"}, {"value": "sonnet"}}}},
+		opts := []map[string]any{{"id": "model", "type": "select", "currentValue": "default",
+			"options": []map[string]string{{"value": "default"}, {"value": "sonnet"}}}}
+		if len(a.Profile.Efforts) > 0 {
+			ev := []map[string]string{}
+			for _, e := range a.Profile.Efforts {
+				ev = append(ev, map[string]string{"value": e})
+			}
+			opts = append(opts, map[string]any{"id": "reasoning_effort", "category": "thought_level", "type": "select", "currentValue": "high", "options": ev})
 		}
+		res := map[string]any{"sessionId": id, "configOptions": opts}
 		if len(a.Profile.Modes) > 0 {
 			modes := []map[string]string{}
 			for _, m := range a.Profile.Modes {

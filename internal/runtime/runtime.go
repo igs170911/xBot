@@ -555,7 +555,7 @@ func (r *Runtime) run(ctx context.Context, t *turn) {
 	if th.Title != "" {
 		title = b.Name + " · " + th.Title
 	}
-	s, err := r.o.Driver.Start(ctx, engine.StartOptions{BotID: t.botID, ThreadID: t.threadID, Resume: th.EngineSession, Title: title, Model: ref.Model, Mode: b.ApprovalMode})
+	s, err := r.o.Driver.Start(ctx, engine.StartOptions{BotID: t.botID, ThreadID: t.threadID, Resume: th.EngineSession, Title: title, Model: ref.Model, Mode: b.ApprovalMode, Effort: b.Effort})
 	if err != nil {
 		r.finishErr(t, err)
 		return
