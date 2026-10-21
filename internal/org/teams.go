@@ -142,6 +142,9 @@ func (s *Service) CreateTeam(ctx context.Context, sp TeamSpec) (TeamResult, erro
 		if id == "" {
 			continue
 		}
+		if b := r.byID[id]; b.IsChief {
+			return TeamResult{}, errChiefNoTeam(b.Name)
+		}
 		if seen[id] {
 			return TeamResult{}, bad("同一個 Bot 不能在團隊裡出現兩次，主管也不能同時是成員")
 		}
@@ -336,8 +339,12 @@ func (s *Service) UpdateTeam(ctx context.Context, id string, u TeamUpdate) (stor
 		}
 	}
 	for _, a := range u.Add {
-		if _, ok := r.byID[a]; !ok {
+		b, ok := r.byID[a]
+		if !ok {
 			return t, ops.NotFound("找不到 Bot " + a)
+		}
+		if b.IsChief && b.TeamID != t.ID {
+			return t, errChiefNoTeam(b.Name)
 		}
 		members[a] = true
 	}
@@ -525,6 +532,9 @@ func (s *Service) UpdateBot(ctx context.Context, actorID, ref string, u BotUpdat
 		case "未分區", "none":
 			target.TeamID = ""
 		default:
+			if target.IsChief {
+				return "", nil, errChiefNoTeam(target.Name)
+			}
 			t, err := s.db.FindTeamByName(ctx, tn)
 			if isNotFound(err) {
 				t, err = s.db.CreateTeam(ctx, store.Team{Name: tn, CreatedBy: "bot:" + actorID})

@@ -20,7 +20,8 @@ const MAX = 10
 
 export function EditTeamDialog({ team, onClose, onDelete }: { team: Team; onClose: () => void; onDelete: () => void }) {
   const toast = useToast()
-  const bots = (useStore(botsStore).bots ?? []).filter((b) => !b.archived)
+  // 大總管不加入團隊（後端也擋）；舊資料裡已經在這個團隊的照樣列出，才能把它移出
+  const bots = (useStore(botsStore).bots ?? []).filter((b) => !b.archived && (!b.primary || b.team_id === team.id))
   const teams = useStore(teamsStore).teams ?? []
   const before = bots.filter((b) => b.team_id === team.id).map((b) => b.id)
   const [name, setName] = useState(team.name)
