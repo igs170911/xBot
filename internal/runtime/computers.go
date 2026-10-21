@@ -18,6 +18,7 @@ import (
 	"xbot/internal/hosts"
 	"xbot/internal/ipc"
 	"xbot/internal/mcpserver"
+	"xbot/internal/memory"
 	"xbot/internal/proxy"
 	"xbot/internal/skills"
 	"xbot/internal/store"
@@ -348,7 +349,48 @@ func (c *Computers) Instructions(ctx context.Context, botID string) (string, err
 		}
 	}
 	return hermes.Soul(hermes.Profile{BotID: botID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul, Team: team,
-		ReplyStyle: c.replyStyle(ctx), Lessons: c.lessons(ctx, botID)}) + c.skillIndex(ctx, botID, b.Engine), nil
+		ReplyStyle: c.replyStyle(ctx), Lessons: c.lessons(ctx, botID)}) + c.memoryNote(ctx, b) + c.skillIndex(ctx, botID, b.Engine), nil
+}
+
+// memoryNote 是給 ACP 引擎的長期記憶：Hermes 自己把 MEMORY.md／USER.md 放進系統提示，Claude Code、OpenCode 這些 CLI 看不到
+// （2026-10-21 水哥哥從 Hermes 換到 OpenCode 之後，記得的事全不見了，使用者：「記憶怪怪的」）。關掉記憶、讀不到、沒有記憶時不給。
+func (c *Computers) memoryNote(ctx context.Context, b store.Bot) string {
+	if !b.MemoryEnabled {
+		return ""
+	}
+	f, err := c.BotFS(ctx, b.ID, false)
+	if err != nil {
+		return ""
+	}
+	st, err := memory.Read(ctx, f)
+	if err != nil {
+		slog.Debug("讀不到記憶", "bot", b.ID, "err", err)
+		return ""
+	}
+	return MemoryText(st)
+}
+
+// MemoryText 把兩份記憶寫成守則後面的一段；都沒有時是空字串。
+func MemoryText(st memory.State) string {
+	if len(st.User.Entries) == 0 && len(st.Memory.Entries) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("\n## 你的長期記憶\n以下是之前記下的事，參考就好；和使用者現在說的不一樣時照現在說的做。" +
+		"要記新的事用 xbot.memory.add（user：關於使用者；memory：你的工作與環境）。\n")
+	for _, part := range []struct {
+		head    string
+		entries []string
+	}{{"關於使用者：", st.User.Entries}, {"你記下的事：", st.Memory.Entries}} {
+		if len(part.entries) == 0 {
+			continue
+		}
+		b.WriteString(part.head + "\n")
+		for _, e := range part.entries {
+			b.WriteString(strings.ReplaceAll(strings.TrimSpace(e), "\n", " ") + "\n")
+		}
+	}
+	return b.String()
 }
 
 // skillIndex 是給 ACP 引擎的技能清單：Bot 的技能放在 Hermes 的 /hermes/skills，Claude Code、Grok 這些 CLI 自己找不到

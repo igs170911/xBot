@@ -14,6 +14,7 @@ import (
 	"xbot/internal/engine/acp/acptest"
 	"xbot/internal/engine/hermes"
 	"xbot/internal/events"
+	"xbot/internal/memory"
 	"xbot/internal/store"
 )
 
@@ -86,5 +87,19 @@ func TestACPBotGetsItsSoul(t *testing.T) {
 	msgs, _ := db.ListMessages(ctx, store.ScopeThread, res.ThreadID, 0, 0)
 	if len(msgs) == 0 || msgs[0].Content != acptest.PromptHello {
 		t.Fatalf("%+v", msgs)
+	}
+}
+
+// 2026-10-21：水哥哥換到 OpenCode 之後記憶全不見了。ACP 引擎的守則後面附上兩份記憶，並說和使用者現在說的不一樣時照現在的做。
+func TestMemoryTextForACP(t *testing.T) {
+	if got := MemoryText(memory.State{}); got != "" {
+		t.Fatalf("沒有記憶時不給：%q", got)
+	}
+	got := MemoryText(memory.State{User: memory.List{Entries: []string{"使用者的 Threads 帳號是 @kupi"}},
+		Memory: memory.List{Entries: []string{"刪 Bot 用 remove_bot\n要核准"}}})
+	for _, want := range []string{"## 你的長期記憶", "照現在說的做", "xbot.memory.add", "關於使用者：\n使用者的 Threads 帳號是 @kupi\n", "你記下的事：\n刪 Bot 用 remove_bot 要核准\n"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("少了 %q：%s", want, got)
+		}
 	}
 }

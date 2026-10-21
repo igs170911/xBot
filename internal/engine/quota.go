@@ -75,6 +75,15 @@ var (
 	}
 )
 
+// outageRe 認出供應商那邊暫時壞掉（上游斷線、服務不可用）：有的供應商用 429 回這種錯，但不是你用太多
+// （2026-10-21 OpenCode Go 回「Upstream request failed: Endpoint is unavailable.」，被說成「用量太多，被限流了」）。
+var outageRe = regexp.MustCompile(`(?i)upstream|unavailable|server[_ ]error|overloaded|bad gateway|internal error`)
+
+// Outage 回答這個「限流」其實是供應商暫時壞掉：不開額度卡，當成暫時的錯誤自動再試。
+func (e *QuotaError) Outage() bool {
+	return e.Kind == QuotaRateLimit && outageRe.MatchString(e.Message)
+}
+
 // ClassifyQuota 看一段錯誤文字是不是額度類的錯誤；不是時回 nil。now 用來算恢復時間。
 func ClassifyQuota(engineName, text string, now time.Time) *QuotaError {
 	t := strings.TrimSpace(text)

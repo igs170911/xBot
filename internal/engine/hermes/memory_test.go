@@ -96,13 +96,19 @@ func TestPersonaOnlyDropsGeneratedRules(t *testing.T) {
 }
 
 // 2026-10-20：「要我持續確認，他才會開始動作」。交代的事直接做到完成，不問「要開始嗎」、不說「接下來去做」就停；
-// 只有交辦隊友、建 Bot 或團隊先確認計畫。
+// 2026-10-21：「現在好破碎」：使用者要建團隊就一次建完整，只有 Bot 自己想找隊友時先確認計畫。
 func TestSoulSaysFinishWhatYouStart(t *testing.T) {
 	soul := Soul(Profile{Name: "水哥哥"})
-	for _, want := range []string{"直接做到完成", "不要停下來問「要開始嗎」", "說要做的同一輪就做完", "先照假設做", "交給隊友 Bot（xbot.collab.message_bot）、建 Bot 或團隊之前，先列計畫", "子代理（delegate_task）不是隊友"} {
+	for _, want := range []string{"直接做到完成", "不要停下來問「要開始嗎」", "說要做的同一輪就做完", "先照假設做", "一次做完整", "報告線、群組一起建好", "你自己想找隊友分工或建新 Bot 時", "沒真的查過不要說研究過", "子代理（delegate_task）不是隊友"} {
 		if !strings.Contains(soul, want) {
 			t.Fatalf("少了 %q：%s", want, soul)
 		}
+	}
+	if strings.Contains(soul, "建 Bot 或團隊之前，先列計畫") {
+		t.Fatal("使用者要建的團隊也先確認計畫，就做一部分停一次")
+	}
+	if !strings.Contains(soul, "使用者現在說的和記憶不一樣時，照現在說的做") {
+		t.Fatal("少了記憶的守則")
 	}
 	if strings.Contains(soul, "要做很多步") {
 		t.Fatal("「要做很多步」也要先確認計畫，Bot 就一直停下來問")

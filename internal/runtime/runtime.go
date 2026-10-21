@@ -806,7 +806,10 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		}
 		errText = final
 		// 額度用完、限流、餘額不足、登入過期（EN-7）：說清楚，開一張換引擎的卡。
-		if q := r.quotaOf(t, final); q != nil && text != StalledText {
+		if q := r.quotaOf(t, final); q != nil && q.Outage() {
+			// 供應商暫時壞掉（不是用太多）：照暫時的錯誤自動再試一次，原本的訊息帶進去讓 retryAfterError 認得
+			errText = strings.TrimSpace(errText + "\n" + q.Message)
+		} else if q != nil && text != StalledText {
 			quota, said := r.quotaCard(t, q)
 			quotaView = &quota
 			final = said

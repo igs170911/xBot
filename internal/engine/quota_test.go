@@ -150,3 +150,19 @@ func TestQuotaLog(t *testing.T) {
 		t.Fatal("nil 的 QuotaLog 什麼都沒有")
 	}
 }
+
+// 2026-10-21：OpenCode Go 用 429 回「Upstream request failed: Endpoint is unavailable.」，卡片寫「用量太多，被限流了」。
+// 這是供應商暫時壞掉，不是用太多：Outage 讓 runtime 自動再試，不開額度卡。
+func TestOutageIsNotRateLimit(t *testing.T) {
+	down := ClassifyHTTP(429, nil, []byte(`{"error":{"type":"server_error","message":"Upstream request failed: Endpoint is unavailable."}}`), time.Now())
+	if down == nil || !down.Outage() {
+		t.Fatalf("上游壞掉要認成暫時故障：%+v", down)
+	}
+	busy := ClassifyHTTP(429, nil, []byte(`{"error":{"message":"Rate limit reached for requests"}}`), time.Now())
+	if busy == nil || busy.Outage() {
+		t.Fatalf("真的限流照舊開卡：%+v", busy)
+	}
+	if q := (&QuotaError{Kind: QuotaExhausted, Message: "service unavailable"}); q.Outage() {
+		t.Fatal("額度用完不是暫時故障")
+	}
+}

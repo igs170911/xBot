@@ -187,7 +187,8 @@ func (r *Runtime) continuation(t *turn, task store.Task, in judge.Input, res jud
 // transientRe 認出模型或連線的暫時錯誤：再做一次多半就好（2026-10-19 水哥哥「刪掉團隊跟群組」停在一句英文的
 // 「Model generated invalid tool call」，一般聊天工具遇到這種錯會自己重試）。
 var transientRe = regexp.MustCompile(`(?i)invalid tool call|malformed (tool|function|json)|timed? ?out|connection (reset|refused|error|closed|aborted)|` +
-	`unexpected eof|server error|bad gateway|service unavailable|gateway time|overloaded|temporarily unavailable|stream (ended|closed|error)|\b50[0234]\b`)
+	`unexpected eof|server[ _]error|bad gateway|service unavailable|gateway time|overloaded|temporarily unavailable|stream (ended|closed|error)|\b50[0234]\b|` +
+	`upstream request failed|endpoint is unavailable`)
 
 // retryAfterError 決定失敗的這一輪要不要自動再做一次：只有模型或連線的暫時錯誤（transientRe），你本人、定時任務、
 // Webhook 交代的，同一個請求只再試一次（auto_retry；自動續做也算在 limits.AutoContinueMax 裡）。額度、登入過期（quota）、

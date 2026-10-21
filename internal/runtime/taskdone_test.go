@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"xbot/internal/engine"
 	"xbot/internal/engine/hermes/hermestest"
 	"xbot/internal/events"
 	"xbot/internal/judge"
@@ -579,5 +580,37 @@ func TestOtherErrorsAreNotRetried(t *testing.T) {
 	}
 	if js := chain(t, f, res.TaskID); len(js) != 1 || (js[0] != nil && js[0].ContinuedBy != "") {
 		t.Fatalf("%+v", js)
+	}
+}
+
+// 2026-10-21：供應商用 429 回「Upstream request failed: Endpoint is unavailable.」，卡片寫「用量太多，被限流了」、要你換引擎，
+// 其實是供應商暫時壞掉：照暫時的錯誤自動再試一次，不開額度卡。
+func TestProviderOutageIsRetriedNotCarded(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t)
+	var mu sync.Mutex
+	n := 0
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		mu.Lock()
+		n++
+		first := n == 1
+		mu.Unlock()
+		tr.Event("message.start", nil)
+		if first {
+			tr.Complete("", "error", map[string]any{"error": `Error code: 429 - {"error":{"type":"server_error","message":"Upstream request failed: Endpoint is unavailable."}}`})
+			return
+		}
+		tr.Complete("好了。", "complete", nil)
+	}
+	res, err := f.rt.Chat(ctx, f.bot.ID, "", "幫我查一下")
+	if err != nil {
+		t.Fatal(err)
+	}
+	js := chain(t, f, res.TaskID)
+	if len(js) != 2 || js[0].ContinuedBy == "" {
+		t.Fatalf("要自動再試一次：%+v", js)
+	}
+	if cards, _ := f.db.ListInboxFiltered(ctx, store.InboxFilter{Kinds: []string{engine.QuotaCardKind}}); len(cards) != 0 {
+		t.Fatalf("不該開額度卡：%+v", cards)
 	}
 }
