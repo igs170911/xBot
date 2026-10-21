@@ -125,3 +125,11 @@ export function since(ms: number, now = Date.now()): string {
   if (h < 24) return `${h} 小時`
   return `${Math.round(h / 24)} 天`
 }
+
+/** 「閒置 30 分鐘休眠」「閒置 2 小時休眠」「永不休眠」（bot.idle_minutes；-1 是永不休眠）。 */
+export function idleLabel(n: number): string {
+  if (n < 0) return '永不休眠'
+  if (n % 1440 === 0) return `閒置 ${n / 1440} 天休眠`
+  if (n % 60 === 0) return `閒置 ${n / 60} 小時休眠`
+  return `閒置 ${n} 分鐘休眠`
+}

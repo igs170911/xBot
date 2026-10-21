@@ -173,6 +173,16 @@ func TestUpdatePartial(t *testing.T) {
 	if _, err := e.call(t, owner, "xbot.bots.update", map[string]any{"id": v.ID, "name": ""}); code(err) != ops.CodeInvalidInput {
 		t.Fatalf("名稱不能改成空的：%v", err)
 	}
+	// 閒置休眠：5–10080 分鐘或 -1（永不休眠）。
+	e.must(t, owner, "xbot.bots.update", map[string]any{"id": v.ID, "idle_minutes": -1}, &v)
+	if b, _ := e.db.GetBot(ctx, v.ID); b.IdleMinutes != -1 {
+		t.Fatalf("%+v", b.IdleMinutes)
+	}
+	for _, n := range []int{0, 4, 10081, -2} {
+		if _, err := e.call(t, owner, "xbot.bots.update", map[string]any{"id": v.ID, "idle_minutes": n}); code(err) != ops.CodeInvalidInput {
+			t.Fatalf("%d 分鐘：%v", n, err)
+		}
+	}
 	if _, err := e.call(t, owner, "xbot.bots.update", map[string]any{"id": "nope", "title": "x"}); code(err) != ops.CodeNotFound {
 		t.Fatalf("不存在：%v", err)
 	}

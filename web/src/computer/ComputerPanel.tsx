@@ -10,7 +10,7 @@ import { TeachSection } from '../teaching/TeachPanel'
 import { controlOf, useTakeover } from './hooks'
 import { ComputerActions, NetworkAllow, useComputer } from './ComputerActions'
 import { WhereSection } from './MoveParts'
-import { BOX_SPEC, IDLE_SLEEP_MIN, useScreen } from './screenData'
+import { BOX_SPEC, IDLE_SLEEP_MIN, idleLabel, useScreen } from './screenData'
 import { closeRightPanel } from '../shell/panes'
 import { Stage } from './Stage'
 import { CloseTabsButton } from './CloseTabsButton'
@@ -118,7 +118,7 @@ export function ComputerPanel({ bot, className }: { bot: Bot; className?: string
                 <section className="flex flex-col gap-2.5 rounded-group bg-panel px-4 py-3.5">
                   <h3 className="m-0 text-ui">電腦資訊</h3>
                   <InfoRow icon={Cpu} label={`${BOX_SPEC} 記憶體`} aside={screen.box === 'running' ? '開機中' : screen.box === 'sleeping' ? '休眠中' : undefined} />
-                  <InfoRow icon={Moon} label={`閒置 ${computer.view?.idle_minutes || IDLE_SLEEP_MIN} 分鐘休眠`} aside="有新工作自動喚醒" />
+                  <InfoRow icon={Moon} label={idleLabel(computer.view?.idle_minutes || IDLE_SLEEP_MIN)} aside={(computer.view?.idle_minutes ?? 0) < 0 ? '一直開著' : '有新工作自動喚醒'} />
                   <InfoRow icon={Server} label={screen.host_name ? `主機：${screen.host_name}` : '主機：第一次開機時自動擺放'} aside={screen.viewers > 0 ? `${screen.viewers} 個畫面連線` : undefined} />
                   <InfoRow icon={Globe} label="瀏覽器登入會保留在這台電腦" />
                 </section>

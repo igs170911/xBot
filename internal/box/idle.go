@@ -49,8 +49,14 @@ func (m *Manager) held(botID string) bool {
 	return m.holds[botID] > 0
 }
 
-// IdleFor 回傳 Bot 的閒置休眠時間（bot.idle_minutes；沒設時用預設值）。
+// NeverSleeps 回答這個 Bot 的電腦是不是設成永不休眠（bot.idle_minutes＝limits.BoxNeverSleep）。
+func NeverSleeps(b store.Bot) bool { return b.IdleMinutes == limits.BoxNeverSleep }
+
+// IdleFor 回傳 Bot 的閒置休眠時間（bot.idle_minutes；沒設時用預設值）。永不休眠時是 0。
 func IdleFor(b store.Bot) time.Duration {
+	if NeverSleeps(b) {
+		return 0
+	}
 	n := b.IdleMinutes
 	if n <= 0 {
 		n = limits.BoxIdleMinutes
@@ -101,7 +107,7 @@ func (m *Manager) sleepIfIdle(ctx context.Context, botID string, act Activity, n
 	if last == 0 {
 		last = b.UpdatedAt
 	}
-	if b.State != StateRunning || now.Sub(time.UnixMilli(last)) < IdleFor(bot) || m.held(botID) {
+	if b.State != StateRunning || NeverSleeps(bot) || now.Sub(time.UnixMilli(last)) < IdleFor(bot) || m.held(botID) {
 		return false, nil
 	}
 	// 關掉引擎連線要和「收下新工作」互斥（runtime 的 dispatch 鎖）：之後才來的工作會重新接上，並因為要開機而等這把鎖。

@@ -329,7 +329,7 @@ func dry(ctx context.Context, svc *Service, botID string, idle bool) (View, erro
 	if err != nil {
 		return View{}, opErr(err)
 	}
-	v := View{BotName: bot.Name, IdleMinutes: int(box.IdleFor(bot).Minutes()), Busy: svc.busy(botID), AllowPrivate: []string{}}
+	v := View{BotName: bot.Name, IdleMinutes: idleMinutes(bot), Busy: svc.busy(botID), AllowPrivate: []string{}}
 	if b, err := svc.DB.GetBox(ctx, botID); err == nil {
 		v.Computer = box.Status{BotID: botID, HostID: b.HostID, ContainerID: b.ContainerID, State: b.State, Error: b.Error, Running: b.State == box.StateRunning}
 		v.LastActiveAt, v.NetIP = b.LastActiveAt, b.NetIP

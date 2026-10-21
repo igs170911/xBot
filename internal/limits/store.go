@@ -13,6 +13,13 @@ const DBReadConns = 4
 // BoxIdleMinutes 是 Bot 電腦閒置多久後休眠的預設值（分鐘）。出自 PRD BX-12（與 LazyBoy 規劃 X-REL-7 一致）。
 const BoxIdleMinutes = 30
 
+// BoxIdleMinutesMin、BoxIdleMinutesMax 是可以設的閒置休眠時間（分鐘；一週）。bot.idle_minutes＝BoxNeverSleep 是永不休眠。
+const (
+	BoxIdleMinutesMin = 5
+	BoxIdleMinutesMax = 7 * 24 * 60
+	BoxNeverSleep     = -1
+)
+
 // EventsKeepPerBot 是每個 Bot 保留的事件筆數，較舊的會被清掉。出自 LazyBoy server/store.py:221 prune_events(keep=5000)。
 const EventsKeepPerBot = 5000
 

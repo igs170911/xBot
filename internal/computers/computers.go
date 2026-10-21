@@ -14,6 +14,7 @@ import (
 	"xbot/internal/box"
 	"xbot/internal/events"
 	"xbot/internal/hosts"
+	"xbot/internal/limits"
 	"xbot/internal/store"
 )
 
@@ -77,7 +78,7 @@ type View struct {
 	Computer box.Status `json:"computer"`
 	BotName  string     `json:"bot_name"`
 	HostName string     `json:"host_name"`
-	// IdleMinutes 是閒置多久休眠；LastActiveAt 是最後一次使用（毫秒）；SleepsAt 是照現在這樣會在什麼時候休眠（沒開機或有工作時 0）。
+	// IdleMinutes 是閒置多久休眠（-1：永不休眠）；LastActiveAt 是最後一次使用（毫秒）；SleepsAt 是照現在這樣會在什麼時候休眠（沒開機或有工作時 0）。
 	IdleMinutes  int   `json:"idle_minutes"`
 	LastActiveAt int64 `json:"last_active_at"`
 	SleepsAt     int64 `json:"sleeps_at" desc:"預計閒置休眠的時間（毫秒）；沒開機、有工作或有人在看時是 0"`
@@ -108,13 +109,13 @@ func (s *Service) Status(ctx context.Context, botID string) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	v := View{Computer: st, BotName: bot.Name, IdleMinutes: int(box.IdleFor(bot) / time.Minute), Busy: s.busy(botID), AllowPrivate: []string{}}
+	v := View{Computer: st, BotName: bot.Name, IdleMinutes: idleMinutes(bot), Busy: s.busy(botID), AllowPrivate: []string{}}
 	if row, err := s.DB.GetHost(ctx, st.HostID); err == nil {
 		v.HostName = row.Name
 	}
 	if b, err := s.DB.GetBox(ctx, botID); err == nil {
 		v.LastActiveAt, v.NetIP = b.LastActiveAt, b.NetIP
-		if st.Running && !v.Busy && b.LastActiveAt > 0 {
+		if st.Running && !v.Busy && b.LastActiveAt > 0 && !box.NeverSleeps(bot) {
 			v.SleepsAt = b.LastActiveAt + box.IdleFor(bot).Milliseconds()
 		}
 	}
@@ -204,4 +205,12 @@ func botName(ctx context.Context, db *store.DB, id string) string {
 		return b.Name
 	}
 	return id
+}
+
+// idleMinutes 是畫面上的閒置休眠時間（分鐘）；永不休眠是 -1。
+func idleMinutes(b store.Bot) int {
+	if box.NeverSleeps(b) {
+		return limits.BoxNeverSleep
+	}
+	return int(box.IdleFor(b) / time.Minute)
 }

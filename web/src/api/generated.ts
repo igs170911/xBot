@@ -2361,6 +2361,8 @@ export interface BotsArchiveOutput {
   /** 備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback） */
   fallback: string
   effort: string
+  /** 電腦閒置多久休眠（分鐘）；-1 是永不休眠 */
+  idle_minutes: number
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
   /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
   memory_enabled: boolean
@@ -2439,6 +2441,8 @@ export interface BotsCreateOutput {
   /** 備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback） */
   fallback: string
   effort: string
+  /** 電腦閒置多久休眠（分鐘）；-1 是永不休眠 */
+  idle_minutes: number
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
   /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
   memory_enabled: boolean
@@ -2560,6 +2564,8 @@ export interface BotsGetOutput {
   /** 備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback） */
   fallback: string
   effort: string
+  /** 電腦閒置多久休眠（分鐘）；-1 是永不休眠 */
+  idle_minutes: number
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
   /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
   memory_enabled: boolean
@@ -2625,6 +2631,8 @@ export interface BotsImportOutput {
     /** 備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback） */
     fallback: string
     effort: string
+    /** 電腦閒置多久休眠（分鐘）；-1 是永不休眠 */
+    idle_minutes: number
     approval_mode: 'ask' | 'edits' | 'auto' | 'full'
     /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
     memory_enabled: boolean
@@ -2709,6 +2717,8 @@ export interface BotsListOutput {
     /** 備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback） */
     fallback: string
     effort: string
+    /** 電腦閒置多久休眠（分鐘）；-1 是永不休眠 */
+    idle_minutes: number
     approval_mode: 'ask' | 'edits' | 'auto' | 'full'
     /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
     memory_enabled: boolean
@@ -2843,6 +2853,8 @@ export interface BotsUpdateInput {
   host_id?: string
   /** 團隊管理權限；打開要你核准 */
   can_manage?: boolean
+  /** 電腦閒置多久休眠（分鐘，5–10080）；-1 是永不休眠（一直開著，會一直佔主機的記憶體） */
+  idle_minutes?: number
   /** 設成你的主要 Bot（大總管：側欄最上面的大卡片，隊友有事不知道找誰時找它）；同時只有一個，設了別的就取消 */
   primary?: boolean
 }
@@ -2865,6 +2877,8 @@ export interface BotsUpdateOutput {
   /** 備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback） */
   fallback: string
   effort: string
+  /** 電腦閒置多久休眠（分鐘）；-1 是永不休眠 */
+  idle_minutes: number
   approval_mode: 'ask' | 'edits' | 'auto' | 'full'
   /** 記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶 */
   memory_enabled: boolean

@@ -15,6 +15,7 @@ import { ComputerActions, NetworkAllow, useComputer } from '../../computer/Compu
 import { ComputerStorage } from '../../computer/ComputerStorage'
 import { MoveCard, MoveDialog } from '../../computer/MoveParts'
 import { loadMoves } from '../../computer/moveData'
+import { IDLE_SLEEP_MIN, idleLabel } from '../../computer/screenData'
 
 // Bot 設定 · 能力 › 應用程式與電腦（G07 畫板；任務卡的 G08「能用哪些應用程式、主機、檔案」）：
 // 哪些已連接的應用程式給它用（連接一次，所有 Bot 都能用；這裡決定這個 Bot 能不能用），它的電腦放在哪台主機、檔案在哪。
@@ -25,6 +26,14 @@ type Bot = BotsGetOutput
 type Host = HostsListOutput['hosts'][number]
 
 const LINK_BTN = 'inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-full bg-control px-4 text-ui text-ink hover:bg-hover hover:text-ink max-sm:h-11'
+
+/** 閒置休眠的選項（分鐘）；-1 是永不休眠。 */
+const IDLE_CHOICES = [5, 15, 30, 60, 120, 240, 480, 1440, -1]
+
+function idleOptions(cur: number) {
+  const all = IDLE_CHOICES.includes(cur) ? IDLE_CHOICES : [...IDLE_CHOICES.slice(0, -1), cur, -1].sort((a, b) => (a < 0 ? 1 : b < 0 ? -1 : a - b))
+  return all.map((n) => ({ value: String(n), label: n < 0 ? '永不休眠' : idleLabel(n).replace('閒置 ', '').replace('休眠', '後') }))
+}
 
 export function AccessTab({ bot, onSaved }: { bot: Bot; onSaved: (b: Bot) => void }) {
   const toast = useToast()
@@ -83,6 +92,20 @@ export function AccessTab({ bot, onSaved }: { bot: Bot; onSaved: (b: Bot) => voi
     }
   }
 
+  const saveIdle = async (n: number) => {
+    setBusy('idle')
+    try {
+      const b = await botsUpdate({ id: bot.id, idle_minutes: n })
+      onSaved(b)
+      toast.show({ kind: 'done', text: `${bot.name}的電腦${idleLabel(n)}` })
+      computer.reload()
+    } catch (e) {
+      toast.show({ kind: 'error', text: errText(e) })
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return (
     <div className="grid grid-cols-2 items-start gap-5 max-lg:grid-cols-1">
       <Block
@@ -120,8 +143,18 @@ export function AccessTab({ bot, onSaved }: { bot: Bot; onSaved: (b: Bot) => voi
         <p className="m-0 text-meta text-ink-3">會寄出或刪除的動作，照「權限與花費」的設定先問你。</p>
       </Block>
 
-      <Block title="電腦" sub={`${bot.name}有一台自己的電腦，第一次收到工作才開機，閒置 30 分鐘休眠；登入與檔案都會保留。`}>
+      <Block title="電腦" sub={`${bot.name}有一台自己的電腦，第一次收到工作才開機，${idleLabel(bot.idle_minutes ?? IDLE_SLEEP_MIN)}；登入與檔案都會保留。`}>
         <Group>
+          <Row title="閒置休眠" sub="休眠後有新工作會自動開機，第一則訊息多等幾秒；永不休眠會一直佔著主機的記憶體" wrap>
+            <Select
+              label="閒置休眠"
+              hideLabel
+              value={String(bot.idle_minutes ?? IDLE_SLEEP_MIN)}
+              disabled={busy === 'idle'}
+              options={idleOptions(bot.idle_minutes ?? IDLE_SLEEP_MIN)}
+              onChange={(v) => void saveIdle(Number(v))}
+            />
+          </Row>
           <Row
             title="在哪裡跑"
             sub={
@@ -157,7 +190,7 @@ export function AccessTab({ bot, onSaved }: { bot: Bot; onSaved: (b: Bot) => voi
               打開檔案
             </a>
           </Row>
-          <Row title="電腦資源" sub="2 CPU · 3 GB 記憶體 · 閒置 30 分鐘休眠 · 只能上網（連不到這台主機與區網，除非下面加了例外）" />
+          <Row title="電腦資源" sub="2 CPU · 3 GB 記憶體 · 只能上網（連不到這台主機與區網，除非下面加了例外）" />
         </Group>
         {cv?.move && (cv.moving || cv.move.state === 'failed') && <MoveCard job={cv.move} compact={!cv.moving} />}
         <ComputerActions botId={bot.id} botName={bot.name} state={computer} className="bg-card" />

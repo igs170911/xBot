@@ -257,3 +257,26 @@ func TestOutdatedImage(t *testing.T) {
 		t.Fatal("重建後就是新的")
 	}
 }
+
+// 設成永不休眠（idle_minutes＝-1）：閒置多久都不停（2026-10-21 使用者要可以調、也可以永不休眠）。
+func TestNeverSleep(t *testing.T) {
+	e := setup(t)
+	act := &fakeActivity{busy: map[string]bool{}, connected: map[string]bool{}}
+	ok[Status](t)(e.m.Start(ctx, e.bot))
+	b := ok[store.Bot](t)(e.db.GetBot(ctx, e.bot))
+	b.IdleMinutes = -1
+	if _, err := e.db.UpdateBot(ctx, b); err != nil {
+		t.Fatal(err)
+	}
+	if slept := ok[[]string](t)(e.m.SleepIdle(ctx, act, time.Now().Add(30*24*time.Hour))); len(slept) != 0 {
+		t.Fatalf("永不休眠：%v", slept)
+	}
+	// 改成 5 分鐘：閒置超過就休眠。
+	b.IdleMinutes = 5
+	if _, err := e.db.UpdateBot(ctx, b); err != nil {
+		t.Fatal(err)
+	}
+	if slept := ok[[]string](t)(e.m.SleepIdle(ctx, act, time.Now().Add(6*time.Minute))); len(slept) != 1 {
+		t.Fatalf("5 分鐘：%v", slept)
+	}
+}

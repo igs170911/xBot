@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 	"slices"
 	"strings"
@@ -121,6 +122,7 @@ type View struct {
 	Model         string       `json:"model" desc:"空白表示用預設模型；「<供應商>/<模型>」或只寫模型"`
 	Fallback      string       `json:"fallback" desc:"備援模型「<供應商>/<模型>」；空白表示用全域備援（xbot.models.set_fallback）"`
 	Effort        string       `json:"effort"`
+	IdleMinutes   int          `json:"idle_minutes" desc:"電腦閒置多久休眠（分鐘）；-1 是永不休眠"`
 	ApprovalMode  ApprovalMode `json:"approval_mode"`
 	MemoryEnabled bool         `json:"memory_enabled" desc:"記憶有沒有打開；關掉時 Bot 不載入、也不寫記憶"`
 	Archived      bool         `json:"archived"`
@@ -146,7 +148,7 @@ func ViewOf(b store.Bot) View {
 	var a avatar
 	_ = json.Unmarshal(b.Avatar, &a)
 	return View{ID: b.ID, Name: b.Name, Title: b.Title, Description: b.Description, Soul: b.Soul,
-		Color: Color(b.Color), Shape: Shape(a.Shape), Eyes: Eyes(a.Eyes), Image: a.Image, Engine: b.Engine, Model: b.Model, Fallback: first(b.Fallback), Effort: b.Effort,
+		Color: Color(b.Color), Shape: Shape(a.Shape), Eyes: Eyes(a.Eyes), Image: a.Image, Engine: b.Engine, Model: b.Model, Fallback: first(b.Fallback), Effort: b.Effort, IdleMinutes: idleView(b.IdleMinutes),
 		ApprovalMode: ApprovalMode(b.ApprovalMode), MemoryEnabled: b.MemoryEnabled, Archived: b.Archived, HostID: b.HostID,
 		TeamID: b.TeamID, ReportsTo: b.ReportsTo, CanManage: b.CanManage, Primary: b.IsChief, CreatedBy: b.CreatedBy, UpdatedBy: b.UpdatedBy,
 		CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt}
@@ -203,6 +205,7 @@ type UpdateIn struct {
 	MemoryEnabled *bool         `json:"memory_enabled,omitempty" desc:"打開或關掉記憶（下次開機生效）"`
 	HostID        *string       `json:"host_id,omitempty" resource:"host" max:"64" desc:"放在哪台主機（CL-1）；空白字串＝自動擺放。已經有電腦的 Bot 換主機要等搬家（CL-5）"`
 	CanManage     *bool         `json:"can_manage,omitempty" desc:"團隊管理權限；打開要你核准"`
+	IdleMinutes   *int          `json:"idle_minutes,omitempty" desc:"電腦閒置多久休眠（分鐘，5–10080）；-1 是永不休眠（一直開著，會一直佔主機的記憶體）"`
 	Primary       *bool         `json:"primary,omitempty" desc:"設成你的主要 Bot（大總管：側欄最上面的大卡片，隊友有事不知道找誰時找它）；同時只有一個，設了別的就取消"`
 }
 
@@ -621,6 +624,13 @@ func apply(b *store.Bot, in UpdateIn) error {
 	if in.Effort != nil {
 		b.Effort = string(*in.Effort)
 	}
+	if in.IdleMinutes != nil {
+		n := *in.IdleMinutes
+		if n != limits.BoxNeverSleep && (n < limits.BoxIdleMinutesMin || n > limits.BoxIdleMinutesMax) {
+			return ops.InvalidInput(ops.FieldError{Field: "idle_minutes", Message: fmt.Sprintf("要是 %d 到 %d 分鐘，或 -1（永不休眠）", limits.BoxIdleMinutesMin, limits.BoxIdleMinutesMax)})
+		}
+		b.IdleMinutes = n
+	}
 	if in.ApprovalMode != nil {
 		b.ApprovalMode = string(*in.ApprovalMode)
 	}
@@ -658,3 +668,11 @@ func ValidImage(img string) error {
 
 // soulOf 是會寫進 SOUL.md 的欄位。
 func soulOf(b store.Bot) [4]string { return [4]string{b.Name, b.Title, b.Description, b.Soul} }
+
+// idleView 是畫面上的閒置休眠時間：沒設（0）時是預設值。
+func idleView(n int) int {
+	if n == 0 {
+		return limits.BoxIdleMinutes
+	}
+	return n
+}
