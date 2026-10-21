@@ -116,7 +116,7 @@ function Messages({
     if (Card) out.push(createElement(Card, { key: m.id, msg: m, bot, threadId, activity: it.activity }))
     else if (m.sender === 'owner') {
       // 先判斷列（C15）放在泡泡下面、懸停的複製列上面
-      if (m.content || !m.streaming) out.push(<OwnerMessage key={m.id} msg={m} below={<PreCheckRow taskId={m.taskId} />} />)
+      if (m.content || !m.streaming) out.push(<OwnerMessage key={m.id} msg={m} botId={bot?.id} below={<PreCheckRow taskId={m.taskId} />} />)
     } else if (m.content) out.push(<BotMessage key={m.id} msg={m} last={isLast} botId={bot?.id} color={bot?.color} />)
     if (it.activity && live && lastOf.get(it.activity.taskId) === it) out.push(<WorkSteps key={'a' + it.activity.taskId} a={it.activity} bot={bot} />)
     const retryText = m.taskId ? asked.get(m.taskId) : undefined
@@ -648,7 +648,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
         <div className="pointer-events-none absolute inset-3 z-30 flex flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-accent bg-app/85 text-center" data-testid="drop-overlay">
           <Icon icon={FolderOpen} size={28} className="text-accent-ink" />
           <p className="m-0 text-title">放開就傳給{name}</p>
-          <p className="m-0 text-sub text-ink-2">檔案會放進它電腦的 /workspace/uploads/，送出時附上路徑</p>
+          <p className="m-0 text-sub text-ink-2">圖片、檔案都可以，放開就傳給它</p>
         </div>
       )}
       {/* 頁面標題給螢幕閱讀器（畫面上的名字在頁首）；空白對話的歡迎畫面自己有 h1 */}

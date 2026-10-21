@@ -1,5 +1,5 @@
 import { memo, useContext, useMemo, type ReactNode } from 'react'
-import { boxPath, FileLinkContext, fileRefProps, touchScreen, webRefProps } from './fileLink'
+import { baseName, boxPath, FileLinkContext, fileRefProps, PATH_RE, touchScreen, webRefProps } from './fileLink'
 import type { Token, Tokens } from 'marked'
 import { CircleAlert, Info, Lightbulb, MessageSquareWarning, Square, SquareCheck, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { Icon } from '../../ui/Icon'
@@ -22,11 +22,33 @@ function Codespan({ text }: { text: string }) {
   const href = link?.(decodeEntities(text))
   const cls = 'break-words rounded-[6px] bg-inset px-1.5 py-0.5 font-mono text-[13px]'
   if (!href) return <code className={cls}>{text}</code>
+  return <FileChip href={href} path={decodeEntities(text)} />
+}
+
+/** 回覆裡的檔案：只顯示檔名（不給看不懂的路徑，2026-10-21 使用者），點了打開；完整路徑放在提示。 */
+function FileChip({ href, path }: { href: string; path: string }) {
   return (
-    <span {...fileRefProps(href)} className="cursor-pointer text-accent-ink underline decoration-accent-ink/40 underline-offset-2">
-      <code className={cls}>{text}</code>
+    <span {...fileRefProps(href)} title={path.trim()} className="cursor-pointer break-all text-accent-ink underline decoration-accent-ink/40 underline-offset-2">
+      {baseName(path.trim())}
     </span>
   )
+}
+
+/** 一段文字裡的 /workspace/… 檔案路徑換成檔名（有 Bot 時）。 */
+function TextWithFiles({ text }: { text: string }) {
+  const link = useContext(FileLinkContext)
+  if (!link || !text.includes('/workspace/')) return <>{text}</>
+  const out: ReactNode[] = []
+  let last = 0
+  for (const m of text.matchAll(new RegExp(PATH_RE.source, 'g'))) {
+    const p = m[0].replace(/[.,;:!?]+$/, '')
+    const href = link(p)
+    if (!href) continue
+    out.push(text.slice(last, m.index), <FileChip key={m.index} href={href} path={p} />)
+    last = (m.index ?? 0) + p.length
+  }
+  out.push(text.slice(last))
+  return <>{out}</>
 }
 
 /** 連結；指到 Bot 電腦裡的檔案時（`[報告](file:///workspace/…)` 等）在旁邊打開那個檔案，不另開分頁。 */
@@ -86,7 +108,7 @@ function inlineOne(t: Token, k: string): ReactNode {
     case 'escape': {
       const tt = t as Tokens.Text
       if (tt.tokens?.length) return inline(tt.tokens, k)
-      return decodeEntities(tt.text)
+      return <TextWithFiles key={k} text={decodeEntities(tt.text)} />
     }
     case 'strong':
       return (

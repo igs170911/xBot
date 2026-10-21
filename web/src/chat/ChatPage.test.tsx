@@ -419,10 +419,27 @@ it('回覆裡的檔案路徑可以點：打開 Bot 的檔案頁並預覽那個�
   messages = [{ id: 'm1', seq: 1, sender: 'bot:b1', kind: 'text', content: '報告在 `/workspace/reports/漲粉方案.md`，資料夾是 `/workspace/reports/`。', status: 'complete', created_at: Date.now(), updated_at: Date.now() }]
   window.history.replaceState(null, '', '/bots/b1/threads/t1')
   render(<App />)
-  const link = await screen.findByRole('link', { name: '/workspace/reports/漲粉方案.md' })
+  // 只顯示檔名（2026-10-21 使用者：不要給看不懂的路徑），點了打開
+  const link = await screen.findByRole('link', { name: '漲粉方案.md' })
   expect(link).toHaveAttribute('data-href', `/bots/b1/files?path=${encodeURIComponent('/workspace/reports/漲粉方案.md')}`)
+  expect(screen.queryByText(/\/workspace\/reports\/漲粉方案/)).toBeNull()
+  // 下面有一張檔案卡
+  expect(screen.getByRole('link', { name: '預覽 漲粉方案.md' })).toBeInTheDocument()
   // 資料夾不變成連結
   expect(screen.queryByRole('link', { name: '/workspace/reports/' })).toBeNull()
+})
+
+it('你上傳的附件：圖片直接顯示、檔案是卡片，不顯示「附件：路徑」', async () => {
+  messages = [
+    { id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '幫我看這張\n\n附件：/workspace/uploads/IMG_0401.png\n附件：/workspace/uploads/訂單.csv', created_at: Date.now(), updated_at: Date.now() },
+  ]
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  expect(await screen.findByText('幫我看這張')).toBeInTheDocument()
+  expect(screen.queryByText(/附件：/)).toBeNull()
+  const img = screen.getByRole('img', { name: 'IMG_0401.png' })
+  expect(img.getAttribute('src')).toContain('thumb=1')
+  expect(screen.getByRole('link', { name: '預覽 訂單.csv' })).toBeInTheDocument()
 })
 
 it('這條對話串還沒回答的提問：對話裡也有同一張卡，可以就地回答', async () => {

@@ -12,6 +12,7 @@ import type { CardProps } from './cards'
 import { chatStore } from './chatStore'
 import { clockLabel, isLong, judgeBy, VERDICT_LABEL } from './format'
 import { Markdown } from './markdown/Markdown'
+import { FileTiles, filesIn, splitAttachments } from './Attachments'
 import { botFileLinker, FileLinkContext } from './markdown/fileLink'
 import { splitBubbles } from './markdown/bubbles'
 import { isRich } from './markdown/parse'
@@ -93,14 +94,19 @@ export function botBubble(color: string): string {
 }
 
 /** 你的訊息：#5A5A5A 靠右；照原樣顯示（不轉 Markdown）。 */
-export function OwnerMessage({ msg, below }: { msg: ChatMsg; below?: ReactNode }) {
+export function OwnerMessage({ msg, below, botId }: { msg: ChatMsg; below?: ReactNode; botId?: string }) {
+  // 附件：訊息後面的「附件：路徑」不顯示，改成圖片／檔案卡（像一般聊天軟體）
+  const { text, paths } = botId ? splitAttachments(msg.content) : { text: msg.content, paths: [] }
   return (
     <div className="group flex flex-col gap-2">
-      <div data-testid="msg-owner" className="max-w-[75%] self-end whitespace-pre-wrap break-words rounded-bubble bg-bubble-user px-4 py-2.5 text-[15px] leading-[1.6] text-ink">
-        <Collapsible long={isLong(msg)} mine>
-          {msg.content}
-        </Collapsible>
-      </div>
+      {text && (
+        <div data-testid="msg-owner" className="max-w-[75%] self-end whitespace-pre-wrap break-words rounded-bubble bg-bubble-user px-4 py-2.5 text-[15px] leading-[1.6] text-ink">
+          <Collapsible long={isLong(msg)} mine>
+            {text}
+          </Collapsible>
+        </div>
+      )}
+      {botId && <FileTiles botId={botId} paths={paths} mine />}
       {msg.actorName && <AgentMark name={msg.actorName} via={msg.via} verb="傳送" className="self-end" />}
       {below}
       {msg.content && <OwnerActions msg={msg} />}
@@ -161,6 +167,7 @@ export function BotMessage({ msg, last, botId, color }: { msg: ChatMsg; last: bo
           )}
         </Collapsible>
       </div>
+      {done && botId && !raw && <FileTiles botId={botId} paths={filesIn(msg.content)} />}
       {done && msg.content && <BotActions msg={msg} raw={raw} onRaw={() => setRaw((r) => !r)} always={last} botId={botId} />}
     </div>
   )

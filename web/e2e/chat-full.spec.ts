@@ -86,7 +86,9 @@ test('回覆排版（C07）：標題、提示框、表格工具列、程式碼�
   await expect(msg.getByRole('checkbox')).toHaveCount(3)
   await expect(msg.getByRole('link', { name: '點我' })).toHaveCount(0)
   await expect(msg.locator('img')).toHaveCount(0)
-  await expect(msg.getByRole('link', { name: '檔案' })).toHaveAttribute('rel', /noopener/)
+  // 桌面是另開分頁的 <a>；手機是可以點的文字（iPhone 從 <a> 上開始滑會滑不動，2026-10-21）
+  if (info.project.name === 'desktop') await expect(msg.getByRole('link', { name: '檔案' })).toHaveAttribute('rel', /noopener/)
+  else await expect(msg.getByRole('link', { name: '檔案' })).toHaveAttribute('data-href', /^https?:/)
   await settle(page)
   // 整頁不會被寬表格撐開（只在框內橫向捲動）
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)

@@ -55,7 +55,8 @@ async function smallTargets(page: Page): Promise<Violation[]> {
       if (cs.visibility === 'hidden' || cs.pointerEvents === 'none' || (cs.clip !== 'auto' && cs.clip !== '')) continue
       if (el instanceof HTMLInputElement && (el.type === 'range' || el.type === 'file')) continue
       // 句子裡的連結（WCAG 2.5.8 例外：inline）
-      if (el.tagName === 'A' && cs.display === 'inline' && (el.parentElement?.textContent ?? '').trim().length > (el.textContent ?? '').trim().length) continue
+      // 手機上回覆裡的連結、檔名是 role=link 的文字（iPhone 從 <a> 上滑不動），一樣是句子裡的連結
+      if ((el.tagName === 'A' || el.getAttribute('role') === 'link') && cs.display === 'inline' && (el.parentElement?.textContent ?? '').trim().length > (el.textContent ?? '').trim().length) continue
       // 可以捲動、只為了鍵盤能捲而可聚焦的區塊（pre、表格）不是按鈕
       if (el.tagName === 'PRE' || (!el.matches('button, a, input, textarea, select') && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1))) continue
       let w = r.width

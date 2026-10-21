@@ -10,6 +10,12 @@ export type FileLinker = (path: string) => string | undefined
 
 export const FileLinkContext = createContext<FileLinker | null>(null)
 
+/** 文字裡的 /workspace/… 路徑（到空白、引號、括號、全形標點為止）。 */
+export const PATH_RE = /\/workspace\/[^\s`'"<>()（）「」『』，。、；：！？]+/
+
+/** 路徑的檔名（最後一段）。 */
+export const baseName = (p: string) => p.slice(p.lastIndexOf('/') + 1)
+
 /** 看起來是 Bot 電腦裡的一個檔案（不是資料夾、沒有空白）。 */
 export function isBoxFile(text: string): boolean {
   return /^\/workspace\/\S*[^/\s]$/.test(text.trim())

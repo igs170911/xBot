@@ -319,7 +319,8 @@ test('右邊面板：頁首的檔案鈕開檔案面板（和電腦二選一）�
   await expect(page.getByTestId('computer-panel')).toHaveCount(0)
 
   // 回覆裡的檔案路徑：在旁邊的面板打開
-  await main.getByRole('link', { name: '/workspace/週報.md' }).click()
+  // 回覆裡只顯示檔名（2026-10-21 使用者：不要看不懂的路徑）
+  await main.getByRole('link', { name: '週報.md', exact: true }).first().click()
   await expect(page.getByTestId('files-panel').getByTestId('file-preview')).toContainText('退貨率下降')
   await expect(page).toHaveURL(new RegExp(`/threads/${th.id}$`))
 
