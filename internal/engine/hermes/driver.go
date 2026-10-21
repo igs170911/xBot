@@ -84,6 +84,8 @@ type session struct {
 
 	mu     sync.Mutex
 	resume string
+	// effort 是這個 session 現在的思考強度（Bot 的 bot.effort；改了下一則就換，setEffort）。
+	effort string
 	// running：收到 message.start 到 message.complete 之間。
 	running bool
 	// busy：Hermes 那邊這個 session 還在忙。message.complete 之後 Hermes 還要收尾，收完才放開，
@@ -201,6 +203,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	bc.mu.Lock()
 	if s := bc.threads[o.ThreadID]; s != nil {
 		bc.mu.Unlock()
+		d.setEffort(ctx, s, o.Effort)
 		return s, nil
 	}
 	bc.mu.Unlock()
@@ -223,6 +226,9 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		if o.Model != "" {
 			params["model"] = o.Model
 		}
+		if o.Effort != "" {
+			params["reasoning_effort"] = o.Effort
+		}
 		if o.Title != "" {
 			params["title"] = o.Title
 		}
@@ -235,6 +241,9 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		}
 	}
 	s := &session{bc: bc, id: res.SessionID, threadID: o.ThreadID, q: newQueue()}
+	if !resumed {
+		s.effort = o.Effort
+	}
 	switch {
 	case res.StoredSessionID != "":
 		s.resume = res.StoredSessionID
@@ -252,7 +261,26 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	bc.sessions[s.id] = s
 	bc.threads[o.ThreadID] = s
 	bc.mu.Unlock()
+	d.setEffort(ctx, s, o.Effort) // 接回的 session：照現在的設定
 	return s, nil
+}
+
+// setEffort 把 session 的思考強度換成 Bot 現在的設定（config.set reasoning，只影響這個 session）。
+// 2026-10-21：原本思考強度只在電腦開機時寫進 config.yaml，改了要等下次開機才生效，看起來像壞掉。
+func (d *Driver) setEffort(ctx context.Context, s *session, effort string) {
+	s.mu.Lock()
+	same := effort == "" || effort == s.effort
+	s.mu.Unlock()
+	if same {
+		return
+	}
+	if _, err := s.bc.c.call(ctx, "config.set", map[string]any{"session_id": s.id, "key": "reasoning", "value": effort}, 0); err != nil {
+		d.log.Warn("設定思考強度失敗", "session", s.id, "effort", effort, "err", err)
+		return
+	}
+	s.mu.Lock()
+	s.effort = effort
+	s.mu.Unlock()
 }
 
 func (d *Driver) own(s engine.Session) (*session, error) {

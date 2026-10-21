@@ -19,6 +19,59 @@ const EFFORTS = [
   { value: 'high', label: '高' },
 ] as const
 
+/**
+ * 思考強度（bot.effort）：Hermes 和訂閱引擎（Grok、Claude Code、Codex…）都有，改了下一則就生效。
+ * 2026-10-21 使用者：「每個模型的思考多久好像功能是壞掉的」——原本只有 Hermes 的模型選單有，而且要等電腦重開才生效。
+ */
+export function EffortPicker({ bot, onSaved, className }: { bot: { id: string; effort?: string }; onSaved: (b: Bot) => void; className?: string }) {
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const save = async (effort: 'low' | 'medium' | 'high') => {
+    setBusy(true)
+    setErr('')
+    try {
+      onSaved(await botsUpdate({ id: bot.id, effort }))
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className={cx('mt-3 border-t border-line pt-3', className)}>
+      <div className="flex items-baseline justify-between">
+        <span id={`effort-${bot.id}`} className="text-ui">
+          思考強度
+        </span>
+        <span className="text-meta text-ink-3">越高越仔細，也越慢、越花錢；下一則就生效</span>
+      </div>
+      <div role="radiogroup" aria-labelledby={`effort-${bot.id}`} className="mt-2 flex gap-0.5 rounded-field bg-inset p-1">
+        {EFFORTS.map((e) => {
+          const on = (bot.effort || 'medium') === e.value
+          return (
+            <button
+              key={e.value}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              disabled={busy}
+              onClick={() => !on && void save(e.value)}
+              className={cx('h-8 flex-1 rounded-seg text-ui-sm max-sm:h-11', on ? 'bg-hover text-ink' : 'bg-transparent text-ink-2 hover:text-ink')}
+            >
+              {e.label}
+            </button>
+          )
+        })}
+      </div>
+      {err && (
+        <span role="alert" className="pt-1 text-sub text-danger">
+          {err}
+        </span>
+      )}
+    </div>
+  )
+}
+
 function abbr(id: string): string {
   const parts = id.split(/[-_\s]+/).filter(Boolean)
   return (parts.length > 1 ? parts[0][0] + parts[1][0] : id.slice(0, 2)).toUpperCase()
@@ -154,30 +207,7 @@ function Body({ bot, models, close }: { bot: Bot; models: ModelsGetOutput; close
                 </span>
               )}
               <span className="flex-1" />
-              <div className="mt-3 flex items-baseline justify-between border-t border-line pt-3">
-                <span id="effort-l" className="text-ui">
-                  推理強度
-                </span>
-                <span className="text-meta text-ink-3">越高越仔細，也越慢、越花錢</span>
-              </div>
-              <div role="radiogroup" aria-labelledby="effort-l" className="mt-2 flex gap-0.5 rounded-field bg-inset p-1">
-                {EFFORTS.map((e) => {
-                  const on = (bot.effort || 'medium') === e.value
-                  return (
-                    <button
-                      key={e.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={on}
-                      disabled={busy}
-                      onClick={() => !on && void save({ effort: e.value })}
-                      className={cx('h-8 flex-1 rounded-seg text-ui-sm', on ? 'bg-hover text-ink' : 'bg-transparent text-ink-2 hover:text-ink')}
-                    >
-                      {e.label}
-                    </button>
-                  )
-                })}
-              </div>
+              <EffortPicker bot={bot} onSaved={upsertBot} />
             </>
           )}
         </div>
@@ -261,6 +291,7 @@ function PlanBody({ bot, st, close }: { bot: Bot; st: EngineStatus | null; close
             {err}
           </span>
         )}
+        <EffortPicker bot={bot} onSaved={upsertBot} />
       </div>
       <button type="button" onClick={() => navigate(settings)} className="flex h-12 items-center gap-2.5 border-t border-line bg-transparent px-4 text-left text-ui text-ink hover:bg-control">
         <Icon icon={Settings} size={18} className="text-ink-2" />

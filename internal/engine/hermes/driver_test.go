@@ -254,3 +254,40 @@ func TestWrongKeyRejected(t *testing.T) {
 		t.Fatal("錯的 key 應該連不上")
 	}
 }
+
+// 思考強度照 Bot 現在的設定（2026-10-21：原本只在開機時寫進 config.yaml，改了要等重開才生效）：
+// 開新的 session 帶 reasoning_effort；改了之後同一條對話串的下一則用 config.set 換掉，一樣的不重送。
+func TestEffortFollowsTheBot(t *testing.T) {
+	g, d, _ := setup(t)
+	ctx := context.Background()
+	if _, err := d.Start(ctx, engine.StartOptions{BotID: "b1", ThreadID: "t1", Effort: "low"}); err != nil {
+		t.Fatal(err)
+	}
+	var created map[string]any
+	for _, c := range g.Calls() {
+		if c.Method == "session.create" {
+			created = c.Params
+		}
+	}
+	if created["reasoning_effort"] != "low" {
+		t.Fatalf("session.create：%v", created)
+	}
+	sets := func() []any {
+		var out []any
+		for _, c := range g.Calls() {
+			if c.Method == "config.set" && c.Params["key"] == "reasoning" {
+				out = append(out, c.Params["value"])
+			}
+		}
+		return out
+	}
+	if _, err := d.Start(ctx, engine.StartOptions{BotID: "b1", ThreadID: "t1", Effort: "low"}); err != nil || len(sets()) != 0 {
+		t.Fatalf("一樣的不重送：%v %v", sets(), err)
+	}
+	if _, err := d.Start(ctx, engine.StartOptions{BotID: "b1", ThreadID: "t1", Effort: "high"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := sets(); len(got) != 1 || got[0] != "high" {
+		t.Fatalf("改了要換：%v", got)
+	}
+}

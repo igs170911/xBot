@@ -110,8 +110,12 @@ type session struct {
 	running    bool
 	cancelling bool
 	// mode 是 Bot 的權限等級（XBot 代答權限請求時看，autoAllow）。
-	mode  string
-	tools map[string]*toolState
+	mode string
+	// effortOpt、efforts 是 agent 的思考強度選項（configId 與可以選的值）；effort 是現在設的值。改了下一則就換。
+	effortOpt string
+	efforts   []string
+	effort    string
+	tools     map[string]*toolState
 	// 背景工作（Grok 的 _x.ai/session/update）：workflow、背景子代理在 session/prompt 回來之後還在跑，做完時 agent 會
 	// 自己再開一輪回報。這一輪先不結束：held 留著 prompt 的回覆，等背景工作做完、agent 回報的那一輪也結束才收尾
 	// （2026-10-21 島灰：研究丟到背景就結束這一輪，子代理要讀網頁的權限請求全被取消，做完的回報也沒人收）。
@@ -315,6 +319,9 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		s.mu.Lock()
 		s.mode = o.Mode // XBot 代答的權限（autoAllow）照目前的等級；agent 自己的模式要新的 session 才換
 		s.mu.Unlock()
+		cctx, cancel := context.WithTimeout(ctx, limits.ACPCallTimeout)
+		d.applyEffort(cctx, s, o.BotID, o.Effort) // 思考強度改了：這一則就換
+		cancel()
 		return s, nil
 	}
 	ac.mu.Unlock()
@@ -460,28 +467,47 @@ var effortLevels = []string{"minimal", "low", "medium", "high", "xhigh"}
 // reasoning_effort）。2026-10-21 實測：島灰設「低」，Grok 卻一直用它預設的 high，簡單的問題先想 10～19 秒才查。
 // agent 沒有這個選項、或沒有一樣的值時，挑最接近的。
 func (d *Driver) setEffort(ctx context.Context, s *session, res sessionResult, o engine.StartOptions) {
-	want := slices.Index(effortLevels, o.Effort)
-	if want < 0 {
-		return
-	}
 	for _, opt := range res.ConfigOptions {
 		if opt.ID != "reasoning_effort" && opt.Category != "thought_level" {
 			continue
 		}
-		best, gap := "", len(effortLevels)
+		s.mu.Lock()
+		s.effortOpt, s.efforts = opt.ID, nil
 		for _, v := range opt.Options {
-			if i := slices.Index(effortLevels, v.Value); i >= 0 && abs(i-want) < gap {
-				best, gap = v.Value, abs(i-want)
-			}
+			s.efforts = append(s.efforts, v.Value)
 		}
-		if best == "" || opt.CurrentValue == best {
-			return
-		}
-		if _, err := s.ac.c.call(ctx, "session/set_config_option", map[string]any{"sessionId": s.id, "configId": opt.ID, "value": best}); err != nil {
-			d.log.Warn("設定思考強度失敗", "bot", o.BotID, "effort", best, "err", err)
-		}
+		s.effort, _ = opt.CurrentValue.(string)
+		s.mu.Unlock()
+		d.applyEffort(ctx, s, o.BotID, o.Effort)
 		return
 	}
+}
+
+// applyEffort 把 session 的思考強度換成最接近 effort 的值；agent 沒有這個選項、或已經是這個值時不動。
+func (d *Driver) applyEffort(ctx context.Context, s *session, botID, effort string) {
+	want := slices.Index(effortLevels, effort)
+	s.mu.Lock()
+	opt, values, cur := s.effortOpt, s.efforts, s.effort
+	s.mu.Unlock()
+	if want < 0 || opt == "" {
+		return
+	}
+	best, gap := "", len(effortLevels)
+	for _, v := range values {
+		if i := slices.Index(effortLevels, v); i >= 0 && abs(i-want) < gap {
+			best, gap = v, abs(i-want)
+		}
+	}
+	if best == "" || best == cur {
+		return
+	}
+	if _, err := s.ac.c.call(ctx, "session/set_config_option", map[string]any{"sessionId": s.id, "configId": opt, "value": best}); err != nil {
+		d.log.Warn("設定思考強度失敗", "bot", botID, "effort", best, "err", err)
+		return
+	}
+	s.mu.Lock()
+	s.effort = best
+	s.mu.Unlock()
 }
 
 func abs(n int) int {

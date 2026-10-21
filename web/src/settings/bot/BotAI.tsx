@@ -26,6 +26,7 @@ import { Select } from '../../ui/Menu'
 import { StatusChip } from '../../ui/Pill'
 import { useToast } from '../../ui/toast-context'
 import { cx } from '../../ui/cx'
+import { EffortPicker } from '../../chat/ModelPicker'
 import { ModelChooser } from '../ModelChooser'
 import { Block, Group } from '../parts'
 import { ACCOUNTS, ENGINE_LABEL, PLAN_NAME } from '../botModes'
@@ -111,6 +112,14 @@ export function BotAI({ bot, eng, reload, onBot }: { bot: Bot; eng: EngineState 
           })}
         </div>
       </Group>
+      <EffortPicker
+        bot={bot}
+        className="mt-0 rounded-card border-t-0 bg-card px-4 pb-4"
+        onSaved={(b) => {
+          upsertBot(b)
+          onBot(b as unknown as Bot)
+        }}
+      />
     </Block>
   )
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -215,5 +216,30 @@ func TestEffortFollowsTheBot(t *testing.T) {
 		if got != c.want {
 			t.Fatalf("effort=%q：設了 %q，要 %q", c.effort, got, c.want)
 		}
+	}
+}
+
+// 對話進行中改了思考強度：同一條對話串的下一則就換（不用開新的對話）。
+func TestEffortChangeAppliesToOpenThread(t *testing.T) {
+	agent := acptest.NewFor(acp.EngineGrok)
+	d := newDriver(acp.EngineGrok, agent, nil)
+	for _, e := range []string{"low", "low", "high"} {
+		if _, err := d.Start(context.Background(), engine.StartOptions{BotID: "b", ThreadID: "t", Effort: e}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var got []string
+	for _, raw := range calls(agent, "session/set_config_option") {
+		var p struct {
+			ConfigID string `json:"configId"`
+			Value    string `json:"value"`
+		}
+		_ = json.Unmarshal(raw, &p)
+		if p.ConfigID == "reasoning_effort" {
+			got = append(got, p.Value)
+		}
+	}
+	if !slices.Equal(got, []string{"low", "high"}) {
+		t.Fatalf("%v", got)
 	}
 }

@@ -203,6 +203,8 @@ func (g *Gateway) handle(c *wconn, method string, p map[string]any) (any, string
 		g.mu.Unlock()
 		g.startTurn(c, sid, text)
 		return map[string]any{"status": "streaming"}, ""
+	case "config.set":
+		return map[string]any{"key": p["key"], "value": p["value"]}, ""
 	case "session.interrupt":
 		g.mu.Lock()
 		t := g.turns[sid]
