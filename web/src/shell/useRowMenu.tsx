@@ -50,7 +50,8 @@ export function useRowMenu(onNavigate?: () => void) {
   const teamTarget = (t: Team): DeleteTarget => ({ kind: 'team', id: t.id, name: t.name, roomId: t.room_id })
 
   const botItems = (b: Bot): MenuItem[] => {
-    const others = teams.filter((t) => t.id !== b.team_id)
+    // 大總管不加入團隊（後端也擋）：不給「移到…」
+    const others = b.primary ? [] : teams.filter((t) => t.id !== b.team_id)
     return [
       { label: '開啟對話', icon: MessageSquare, onSelect: () => go(`/bots/${b.id}`) },
       { label: 'Bot 設定', icon: Settings, onSelect: () => go(`/settings/bots/${encodeURIComponent(b.id)}`) },

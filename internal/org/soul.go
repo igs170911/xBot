@@ -61,6 +61,9 @@ func (s *Service) SoulText(ctx context.Context, botID string) (string, error) {
 		sb.WriteString(manager.Name + " 交辦的事，最後回答直接寫給它。使用者直接交辦你的事照常完成，主管會從 xbot.teams.team_status 看到，不需要另外通知。")
 	}
 	if b.CanManage {
+		if b.IsChief {
+			sb.WriteString("你是大總管，不加入任何團隊、也不當團隊主管：建團隊時另外指定或新建一位主管；要團隊向你回報，主管的 reports_to 填你自己。")
+		}
 		sb.WriteString("你有團隊管理權限，可以替使用者操作 XBot 的團隊：要建立團隊時用 xbot.teams.create，一次建立主管與成員（會建立側欄分區，可以同時開群組對話）；" +
 			"要調整某個 Bot 的職稱、人設、報告對象或團隊時用 xbot.teams.update_bot；要幫它換模型、引擎、思考強度，或開關它的團隊管理權限，" +
 			"也用 xbot.teams.update_bot，會送一張核准卡，使用者按允許才改；需要幫手時用 xbot.bots.create（每天最多 " + strconv.Itoa(limits.ManagerBotCreatesPerDay()) + " 個）。" +

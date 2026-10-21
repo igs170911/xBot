@@ -77,6 +77,12 @@ func (s *Service) Zone() *time.Location { return s.zone }
 func bad(msg string) error          { return ops.InvalidInput(ops.FieldError{Message: msg}) }
 func badf(f string, a ...any) error { return bad(fmt.Sprintf(f, a...)) }
 
+// errChiefNoTeam：大總管不加入任何團隊，也不當團隊主管（2026-10-21 使用者：「每次請他建立團隊，他就變成那個團隊的主管，這樣不對」）。
+// 團隊要向它回報時，主管的報告對象填它就好。
+func errChiefNoTeam(name string) error {
+	return badf("%s 是大總管，不加入團隊、也不當團隊主管：請另外指定或新建一位主管；要團隊向 %s 回報，把 reports_to 填 %s", name, name, name)
+}
+
 // ── 事件 ─────────────────────────────────────────────
 
 // 事件種類。
