@@ -317,7 +317,7 @@ func (s *Service) seatThread(ctx context.Context, room store.Room, botID string)
 	return th.ID, nil
 }
 
-// RoomMessage 是群組裡的一則訊息（message.meta 的群組欄位）。
+// roomMeta 是群組訊息的 meta（message.meta 的群組欄位）。
 type roomMeta struct {
 	SpeakerName string   `json:"speaker_name,omitempty"`
 	Mentions    []string `json:"mentions"`
@@ -335,6 +335,7 @@ type roomMeta struct {
 	FromBotID   string   `json:"from_bot_id,omitempty"`   // Bot 的發言
 	ByStartTool bool     `json:"by_start_tool,omitempty"` // Bot 用 start_group／post_to_group 發的
 	Conclusion  bool     `json:"conclusion,omitempty"`    // 2026-10-22：結案訊息（closer 貼了 Conclusion:）
+	ConsecEmpty int      `json:"consec_empty,omitempty"`  // 2026-10-22b：連續無進展次數（room 級）
 }
 
 func (s *Service) addRoomMessage(ctx context.Context, roomID, sender, text string, meta roomMeta) (store.Message, error) {
@@ -391,6 +392,33 @@ func (s *Service) deriveCloser(ctx context.Context, room store.Room) (botID, bot
 	return "", ""
 }
 
+// isRoomConcluded 檢查群組是否已結案（2026-10-22b）。
+// 檢查最近 5 則訊息，看是否有 Conclusion: 訊息。
+func (s *Service) isRoomConcluded(ctx context.Context, roomID string) bool {
+	msgs, err := s.db.ListMessages(ctx, store.ScopeRoom, roomID, 0, 5)
+	if err != nil {
+		return false
+	}
+	for _, msg := range msgs {
+		if strings.Contains(msg.Content, "Conclusion:") || strings.Contains(msg.Content, "Conclusion：") {
+			return true
+		}
+	}
+	return false
+}
+
+// getConsecEmpty 取得群組的連續無進展次數（2026-10-22b）。
+// 從最近的訊息 meta 裡讀取。
+func (s *Service) getConsecEmpty(ctx context.Context, roomID string) int {
+	msgs, err := s.db.ListMessages(ctx, store.ScopeRoom, roomID, 0, 1)
+	if err != nil || len(msgs) == 0 {
+		return 0
+	}
+	var meta roomMeta
+	_ = json.Unmarshal(msgs[0].Meta, &meta)
+	return meta.ConsecEmpty
+}
+
 // PostResult 是你在群組發言的結果。
 type PostResult struct {
 	Message  store.Message `json:"message"`
@@ -398,6 +426,7 @@ type PostResult struct {
 	PickedBy string        `json:"picked_by,omitempty" desc:"沒點名時誰決定的：lead（主責）、judge（快判）、everyone（所有成員）"`
 	Paused   []string      `json:"paused,omitempty" desc:"被點名但暫停中的成員（不會自動恢復）"`
 	Stopped  []string      `json:"stopped,omitempty" desc:"正在接力、被你的發言打斷重來的成員"`
+	Note     string        `json:"note,omitempty" desc:"補充說明"`
 }
 
 // Post 是你在群組發言（LazyBoy post）：@ 誰就叫醒誰；沒有 @ 時照回應規則。你的發言優先、輪數重算；
@@ -414,6 +443,22 @@ func (s *Service) Post(ctx context.Context, roomID, text, requestID string) (Pos
 	if runes(text) > limits.BotMessageMax {
 		return PostResult{}, &Error{Code: CodeLimit, Msg: fmt.Sprintf("訊息最多 %d 字元", limits.BotMessageMax)}
 	}
+
+	// 2026-10-22b：RequestID 去重（檢查 room messages，不是 DM table）
+	if requestID != "" {
+		recentMsgs, err := s.db.ListMessages(ctx, store.ScopeRoom, roomID, 0, 20)
+		if err == nil {
+			for _, rm := range recentMsgs {
+				var meta roomMeta
+				_ = json.Unmarshal(rm.Meta, &meta)
+				if meta.RequestID == requestID {
+					// 找到重複的 RequestID
+					return PostResult{Message: rm, Note: "這則訊息先前已發送，不會重複發送。"}, nil
+				}
+			}
+		}
+	}
+
 	bots, seats, err := s.members(ctx, roomID)
 	if err != nil {
 		return PostResult{}, err
@@ -557,10 +602,20 @@ func (s *Service) seat(ctx context.Context, room store.Room, botID, cause string
 	}
 
 	// 2026-10-22：攜帶 hop count 從 DM 到 room（防止 hop 重設）
+	// 2026-10-22b：讀取寄件者 chain 的 hop，而不是被叫醒 bot 的 task
 	hop := 0
-	if origin, ok := s.origin(ctx, botID); ok {
-		m := metaOf(origin)
-		hop = m.Hop
+	// 嘗試找這個 Bot 最近在做什麼，看它的 chain hop
+	if activeThread, activeTaskID := s.rt.Active(botID); activeThread != "" {
+		if activeTask, ok := s.task(ctx, activeTaskID); ok {
+			activeMeta := metaOf(activeTask)
+			hop = activeMeta.Hop
+		}
+	}
+	// 如果沒有 active task，就看最近的訊息
+	if hop == 0 {
+		if recentMsgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Pair: []string{botID, ""}, Limit: 1}); err == nil && len(recentMsgs) > 0 {
+			hop = recentMsgs[0].Hop
+		}
 	}
 
 	raw, _ := json.Marshal(taskMeta{RoomID: room.ID, Addressed: addressed, Round: round, Cause: cause, ByOwner: byOwner, Hop: hop})
@@ -747,30 +802,34 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	failed := verdict == runtime.VerdictFailed
 
 	// 2026-10-22：統一發送閘門，防止群組感謝循環
-	// 獲取最近從這個 Bot 發出的群組訊息，用於重複檢測
-	recentMsgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Limit: 10})
+	// 檢查是否應該發送（2026-10-22b：當 bot 回覆被 @ 或問及的訊息時，isAnswer=true）
+	// 檢查最近幾則群組訊息，看是否有 @ 這個 bot 或向它提問
+	isAnswer := false
+	recentMsgs, _ := s.db.ListMessages(ctx, store.ScopeRoom, room.ID, 0, 5)
 	var recentTexts []string
-	if err == nil {
-		for _, msg := range recentMsgs {
-			// 只取這個 Bot 發出的
-			if msg.From == task.BotID {
-				recentTexts = append(recentTexts, msg.Text)
-				if len(recentTexts) >= 5 {
-					break
-				}
-			}
+	for _, rm := range recentMsgs {
+		recentTexts = append(recentTexts, rm.Content)
+		// 檢查是否有 @ 這個 bot，或內容包含該 bot 的名字
+		botName := ""
+		if b, err := s.db.GetBot(ctx, task.BotID); err == nil {
+			botName = b.Name
+		}
+		if strings.Contains(rm.Content, "@"+botName) || (botName != "" && strings.Contains(rm.Content, botName+"？")) {
+			isAnswer = true
+		}
+		if len(recentTexts) >= 5 {
+			break
 		}
 	}
 
-	// 檢查是否應該發送（答案情境 = false for room replies）
 	judgeVerdict := s.peerReplyJudge(ctx, content, task.BotID)
-	shouldSend, reason := ShouldSendToPeer(content, verdict, false, recentTexts, judgeVerdict)
+	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswer, recentTexts, judgeVerdict, false) // room reply 不是主動發送
 
-	// 2026-10-22：連續無進展自動停止
-	consecBlocked := m.ConsecBlocked
+	// 2026-10-22b：連續無進展自動停止（從 room 讀取，而非 task meta）
+	consecEmpty := s.getConsecEmpty(ctx, room.ID)
 	if !shouldSend || reason == "no_new_info" {
-		consecBlocked++
-		if consecBlocked >= 2 {
+		consecEmpty++
+		if consecEmpty >= 2 {
 			s.log.Info("連續 2 輪無新資訊，自動停止", "bot", task.BotID, "room", room.ID)
 			// 通知使用者
 			thread, _ := s.rt.Active(task.BotID)
@@ -786,19 +845,18 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 			return
 		}
 	} else {
-		consecBlocked = 0 // 有新資訊，重設計數
+		consecEmpty = 0 // 有新資訊，重設計數
 	}
 
 	if !shouldSend {
 		s.log.Debug("blocked room reply", "bot", task.BotID, "room", room.ID, "reason", reason, "content", plain(content, 100))
-		// 更新連續阻擋計數（下一輪繼續計數）
-		_ = s.db.PatchTaskMeta(ctx, task.ID, map[string]any{"consec_blocked": consecBlocked})
+		// 2026-10-22b：對於非 [silent] 的阻擋，存儲 consecEmpty
+		// [silent] 是 Bot 故意標記的，不計入連續無進展
+		if !IsSilent(content) {
+			// 通過發一則空的標記訊息來存儲計數
+			_, _ = s.addRoomMessage(ctx, room.ID, "system", "", roomMeta{Notice: "blocked", ConsecEmpty: consecEmpty, FromBotID: task.BotID})
+		}
 		return
-	}
-
-	// 有送出訊息，重設連續阻擋計數
-	if consecBlocked > 0 {
-		_ = s.db.PatchTaskMeta(ctx, task.ID, map[string]any{"consec_blocked": 0})
 	}
 
 	text := content
@@ -807,22 +865,31 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	}
 
 	// 2026-10-22：檢測 Conclusion:（結案訊息）
+	// 2026-10-22b：結案後取消所有該群組的進行中任務，並標記群組已結案
 	isConclusion := strings.Contains(content, "Conclusion:") || strings.Contains(content, "Conclusion：")
 
 	round := m.Round + 1
-	msg, named, err := s.speak(ctx, room, task.BotID, text, roomMeta{TaskID: task.ID, Failed: failed, Round: m.Round, Conclusion: isConclusion}, round)
+	_, named, err := s.speak(ctx, room, task.BotID, text, roomMeta{TaskID: task.ID, Failed: failed, Round: m.Round, Conclusion: isConclusion, ConsecEmpty: consecEmpty}, round)
 	if err != nil {
 		s.log.Warn("貼到群組失敗", "room", room.ID, "err", err)
 		return
 	}
 	if round > limits.RoomRounds() || failed || isConclusion {
-		// 結案後不再叫醒成員
+		// 2026-10-22b：結案後取消該群組的所有進行中工作
 		if isConclusion {
 			s.log.Info("結案訊息已貼出，群組停止接力", "room", room.ID, "bot", task.BotID)
+			// 取消該群組所有進行中的任務
+			open, _ := s.db.ListTasksByMeta(ctx, "$.room_id", room.ID, true)
+			for _, t := range open {
+				if t.State == store.TaskRunning || t.State == store.TaskQueued {
+					_, _ = s.rt.StopTask(ctx, t.ID)
+					s.log.Info("取消群組任務", "room", room.ID, "task", t.ID, "bot", t.BotID)
+				}
+			}
 		}
 		return
 	}
-	s.wake(ctx, room, named, msg.ID, round, true)
+	s.wake(ctx, room, named, "mention", round, true)
 }
 
 // speak 把 Bot 的話貼到群組，回傳那則訊息與它 @ 的成員（LazyBoy speak）。handoff 是被 @ 的成員醒來時的輪數；
@@ -878,6 +945,12 @@ func (s *Service) speak(ctx context.Context, room store.Room, botID, text string
 
 // wake 叫醒被交棒的成員（LazyBoy wake）。
 func (s *Service) wake(ctx context.Context, room store.Room, members []store.Bot, cause string, round int, addressed bool) {
+	// 2026-10-22b：如果群組已結案，不再叫醒任何人
+	if s.isRoomConcluded(ctx, room.ID) {
+		s.log.Info("群組已結案，停止叫醒", "room", room.ID)
+		return
+	}
+
 	if s.AllPaused(ctx) {
 		return // 全部停下中：群組裡 Bot 之間不再接力
 	}

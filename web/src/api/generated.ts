@@ -9640,6 +9640,8 @@ export interface RoomsPostOutput {
   paused?: string[]
   /** 正在接力、被你的發言打斷重來的成員 */
   stopped?: string[]
+  /** 補充說明 */
+  note?: string
 }
 
 /**

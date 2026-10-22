@@ -180,15 +180,19 @@ func ClassifyMessage(text string) MessageClass {
 	}
 
 	// 2.5. 檢查動作動詞（命令/請求）- 2026-10-22 加入以識別任務指派
-	// 這些是常見的任務動詞，出現時通常是在指派工作
+	// 2026-10-22b：檢測整個訊息，不只是開頭（修復「幫我寫一句咖啡標語」等請求被漏掉）
+	// 這些是常見的任務動詞和請求詞，出現時通常是在指派工作
+	// 但要避免誤判：只在較短訊息（<50 字）且開頭或緊跟空格時才判定為 handoff
 	actionVerbs := []string{
 		"寫", "做", "查", "找", "確認", "檢查", "測試", "修", "改", "建",
-		"整理", "分析", "研究", "比較", "評估",
+		"整理", "分析", "研究", "比較", "評估", "幫", "請", "麻煩",
 	}
-	// 只在訊息較短時檢查（長訊息可能只是在描述，不是命令）
-	if len([]rune(body)) < 50 {
+	// 檢查較短訊息（長訊息更可能是描述或說明）
+	bodyRunes := len([]rune(body))
+	if bodyRunes < 50 {
 		for _, verb := range actionVerbs {
-			if strings.HasPrefix(body, verb) || strings.Contains(body, " "+verb) {
+			// 只在詞的開頭或前面有空格時判定
+			if strings.HasPrefix(body, verb) || strings.Contains(body, " "+verb) || strings.Contains(body, "　"+verb) {
 				return ClassHandoff
 			}
 		}
@@ -240,11 +244,21 @@ func HasNewInformation(text string) bool {
 		return false
 	}
 
-	// 2026-10-22：即使分類為 new_info，如果是純客套話（感謝、問候、鼓勵）也視為 filler
-	trimmed := strings.TrimSpace(text)
-	lower := strings.ToLower(trimmed)
+	// 2026-10-22b：任務交接／請求永遠算有新資訊
+	if class == ClassHandoff {
+		return true
+	}
 
-	// 常見客套話模式（即使有「幫」「可以」等詞也算客套）
+	// 2026-10-22：即使分類為 new_info，如果是純客套話（感謝、問候、鼓勵）也視為 filler
+	// 2026-10-22b：Conclusion: 訊息永不阻擋；只在移除客套話後幾乎沒內容時才阻擋
+	trimmed := strings.TrimSpace(text)
+
+	// Conclusion: 訊息是結案，永遠不阻擋
+	if strings.Contains(text, "Conclusion:") || strings.Contains(text, "Conclusion：") {
+		return true
+	}
+
+	// 常見客套話模式
 	pleasantries := []string{
 		"不客氣", "不用謝", "沒問題", "沒關係", "不好意思",
 		"很高興", "樂意", "隨時", "歡迎", "加油",
@@ -252,25 +266,33 @@ func HasNewInformation(text string) bool {
 		"you're welcome", "no problem", "my pleasure", "glad to help",
 	}
 
-	// 檢查是否主要內容是客套話
+	// 嘗試移除所有客套話，看剩下什麼
+	remaining := trimmed
 	for _, p := range pleasantries {
-		if strings.Contains(lower, p) {
-			// 如果超過 60 字且不只有客套話，可能有實質內容
-			if len([]rune(trimmed)) > 60 {
-				// 檢查是否有數據、路徑、代碼等實質內容
-				hasSubstance := strings.ContainsAny(text, "0123456789") ||
-					strings.Contains(text, "/workspace") ||
-					strings.Contains(text, "http") ||
-					strings.Contains(text, "```")
-				if !hasSubstance {
-					// 長篇客套話，無實質內容
-					return false
-				}
-			} else {
-				// 短於 60 字且含客套話，很可能是純客套
-				return false
-			}
-		}
+		// 移除客套話及其常見搭配（標點、空格）
+		remaining = strings.ReplaceAll(remaining, p+"。", "")
+		remaining = strings.ReplaceAll(remaining, p+"，", "")
+		remaining = strings.ReplaceAll(remaining, p+"！", "")
+		remaining = strings.ReplaceAll(remaining, p, "")
+	}
+	remaining = strings.TrimSpace(remaining)
+
+	// 檢查剩餘內容長度和實質性
+	remainingRunes := len([]rune(remaining))
+	if remainingRunes < 3 {
+		// 移除客套話後幾乎沒有內容（< 3 字）
+		return false
+	}
+
+	// 如果有數據、路徑、代碼等實質內容，或剩餘內容充足，通過
+	hasSubstance := strings.ContainsAny(remaining, "0123456789") ||
+		strings.Contains(remaining, "/workspace") ||
+		strings.Contains(remaining, "http") ||
+		strings.Contains(remaining, "```") ||
+		remainingRunes >= 4 // 剩餘內容 >= 4 字（如 "done", "OK", "成功"）就通過
+
+	if !hasSubstance {
+		return false
 	}
 
 	return class != ClassFiller
@@ -322,17 +344,32 @@ func IsSimilarTo(a, b string) bool {
 
 // ShouldSendToPeer 檢查 Bot 的訊息是否應該送給隊友（統一的發送閘門，2026-10-22）。
 // 用於群組回覆、Bot 主動傳訊、DM 回覆。回傳 (應該送出, 阻擋原因)。
-// judgeVerdict 是 peer_reply 快判的結果（handle/fyi/skip），空白時用規則兜底。
-func ShouldSendToPeer(content, verdict string, isAnswer bool, recentFrom []string, judgeVerdict string) (bool, string) {
+// 2026-10-22b：judgeVerdict 是 peer_reply 快判的結果（handle/fyi/skip），但它是為接收設計的。
+// 對於發送（isOutgoing=true），只阻擋 filler，讓 results/answers/handoffs 通過。
+func ShouldSendToPeer(content, verdict string, isAnswer bool, recentFrom []string, judgeVerdict string, isOutgoing bool) (bool, string) {
 	// 0. 快判優先（2026-10-22：整合 peer_reply 判斷）
-	switch judgeVerdict {
-	case "skip":
-		return false, "judge:skip"
-	case "fyi":
-		// FYI 訊息：只要知道，不用回覆
-		return false, "judge:fyi"
-	case "handle":
-		// 明確要處理的，通過（但仍然要檢查 silent/ack 和重複）
+	// 2026-10-22b：對於發送操作，只在明確 skip 時阻擋；fyi 允許通過（因為對方可能需要知道）
+	if isOutgoing {
+		// 發送分類：只阻擋純 filler
+		switch judgeVerdict {
+		case "skip":
+			// 明確無用的訊息
+			return false, "judge:skip"
+		case "fyi", "handle":
+			// 對方可能需要知道，或需要處理，都通過
+			// 但仍然要檢查 silent/ack 和重複
+		}
+	} else {
+		// 接收分類：原邏輯
+		switch judgeVerdict {
+		case "skip":
+			return false, "judge:skip"
+		case "fyi":
+			// FYI 訊息：只要知道，不用回覆
+			return false, "judge:fyi"
+		case "handle":
+			// 明確要處理的，通過（但仍然要檢查 silent/ack 和重複）
+		}
 	}
 	// judgeVerdict == "" 或其他值：照規則檢查
 

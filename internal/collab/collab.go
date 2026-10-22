@@ -485,10 +485,15 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	// 檢查是否應該發送（答案情境 = 回覆 request/question）
 	isAnswer := o.intent == IntentResult || intent == IntentRequest || intent == IntentQuestion
 	judgeVerdict := s.peerReplyJudge(ctx, text, senderID)
-	shouldSend, reason := ShouldSendToPeer(text, "answer", isAnswer, recentTexts, judgeVerdict)
+	shouldSend, reason := ShouldSendToPeer(text, "answer", isAnswer, recentTexts, judgeVerdict, true) // Send 是主動發送
 	if !shouldSend && !o.Relay {
+		// 2026-10-22b：對於任務/請求（handoff 分類）且原因是無新資訊，給出明確錯誤
+		// 如果是其他原因（如重複、客套話），靜默阻擋
+		if reason == "no_new_info" && ClassifyMessage(text) == ClassHandoff {
+			return SendResult{}, invalid(fmt.Sprintf("訊息看起來像任務指派（「%s」），但缺少明確意圖或目標。請說明：要做什麼、為什麼、做到什麼程度。", plain(text, 50)))
+		}
 		s.log.Debug("blocked bot-initiated message", "from", senderID, "to", ref, "reason", reason, "content", plain(text, 100))
-		// 不算錯誤，只是靜默阻擋
+		// 其他情況（如純客套話、重複）靜默阻擋
 		return SendResult{Sent: false, To: target.Name, ToID: target.ID, Note: "訊息無新資訊，已阻擋"}, nil
 	}
 
@@ -903,7 +908,7 @@ func (s *Service) reply(ctx context.Context, task store.Task, m taskMeta, verdic
 	// 答案情境：回覆 request/question
 	isAnswerToWork := verdict == runtime.VerdictAnswer && replyExpected(m.Intent)
 	judgeVerdict := s.peerReplyJudge(ctx, content, task.BotID)
-	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswerToWork, recentTexts, judgeVerdict)
+	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswerToWork, recentTexts, judgeVerdict, false) // DM reply 是回覆工作
 	if !shouldSend {
 		s.log.Debug("blocked DM reply", "from", task.BotID, "to", m.FromBot, "roomID", m.RoomID, "reason", reason, "content", plain(content, 100))
 		return
