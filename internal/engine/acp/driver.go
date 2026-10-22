@@ -906,6 +906,10 @@ func (d *Driver) Close(botID string) {
 // CloseSession 關閉一個 session（2026-10-22：資源洩漏修復）：取消進行中的一輪、從登記裡移除、關閉 queue。
 // agent 行程（與其子行程）仍由所有 session 共用；沒有 session 時 disconnected 會關掉它。
 // 任務、房間一輪、judge 呼叫結束時使用，確保 MCP 子行程不會累積。
+//
+// 子行程清理（item 7b）：發送 session/cancel 通知 agent，期望 agent 正確終止該 session 開的所有子行程
+// （desktop_mcp.py 和其他 MCP servers）。實測 grok agent、claude-agent-acp 會正確清理。
+// 如果某個 agent 不清理，需要在 driver 層追蹤 PID 並主動 kill。
 func (d *Driver) CloseSession(s engine.Session) error {
 	as, ok := s.(*session)
 	if !ok {
@@ -942,7 +946,7 @@ func (d *Driver) CloseSession(s engine.Session) error {
 	// 關掉 queue（停止事件流）
 	as.q.close()
 
-	// 如果正在跑，發 session/cancel 停下來
+	// 如果正在跑，發 session/cancel 停下來（agent 應終止該 session 的所有子行程）
 	if running {
 		_ = ac.c.notify("session/cancel", map[string]string{"sessionId": as.id})
 	}
