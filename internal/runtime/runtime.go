@@ -215,20 +215,20 @@ type turn struct {
 	cancel                  context.CancelFunc
 	done                    chan struct{}
 
-	mu        sync.Mutex
-	session   engine.Session
-	messageID string
-	text      strings.Builder
-	persisted time.Time
-	stopping  bool
-	paused    bool // 使用者接手電腦而中斷（B14）：交還時接著做
-	finished  bool
-	waiting   bool
-	lastErr   string
-	pending   *pending // Bot 正在等人回覆的請求（一次一個）
-	usedTools bool     // 這一輪呼叫過工具（判斷「只說要做」用）
-	toolsAt   int      // 最後一次呼叫工具時 text 寫到哪（之後那段才是最後的回答）
-	lastMilestone string // 最後一個里程碑工具的 ID，用於判斷是否需要發布進度更新
+	mu            sync.Mutex
+	session       engine.Session
+	messageID     string
+	text          strings.Builder
+	persisted     time.Time
+	stopping      bool
+	paused        bool // 使用者接手電腦而中斷（B14）：交還時接著做
+	finished      bool
+	waiting       bool
+	lastErr       string
+	pending       *pending // Bot 正在等人回覆的請求（一次一個）
+	usedTools     bool     // 這一輪呼叫過工具（判斷「只說要做」用）
+	toolsAt       int      // 最後一次呼叫工具時 text 寫到哪（之後那段才是最後的回答）
+	lastMilestone string   // 最後一個里程碑工具的 ID，用於判斷是否需要發布進度更新
 	// engine、provider：這一輪用的引擎與 Model Proxy 供應商；started：開始送出的時間；quota：引擎報的額度錯誤（EN-7）。
 	engine, provider string
 	started          time.Time
