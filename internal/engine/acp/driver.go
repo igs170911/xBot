@@ -429,8 +429,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	ac.mu.Unlock()
 
 	// B2.3 (2026-10-22): Snapshot MCP PIDs before session/new
-	// Note: Will be compared after session/new to detect new MCP processes
-	_ = d.snapshotMCPPids(ac.botID) // TODO: implement PID tracking properly
+	mcpPidsBefore := d.snapshotMCPPids(ac.botID)
 
 	var mcp []MCPServer
 	if d.o.MCPServers != nil {
@@ -493,6 +492,14 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	if inst != "" && !d.o.Agent.SystemPrompt && !d.o.Agent.Rules && !loaded {
 		s.intro = IntroText(inst)
 	}
+
+	// B2.3 (2026-10-22): Snapshot MCP PIDs after session/new and record new ones
+	mcpPidsAfter := d.snapshotMCPPids(ac.botID)
+	s.mcpPids = diffPids(mcpPidsAfter, mcpPidsBefore)
+	if len(s.mcpPids) > 0 {
+		d.log.Info("Detected new MCP processes for session", "bot", o.BotID, "session", s.id, "pids", s.mcpPids)
+	}
+
 	ac.mu.Lock()
 	if old := ac.threads[o.ThreadID]; old != nil {
 		ac.mu.Unlock()
@@ -1085,9 +1092,11 @@ func (d *Driver) CloseSession(s engine.Session) error {
 	// 關掉 queue（停止事件流）
 	as.q.close()
 
-	// B2.3 (2026-10-22): Search and kill MCP processes in container on close
-	// Instead of tracking per-session PIDs, we search for MCP processes each time
-	d.searchAndKillMCPProcesses(as.ac.botID)
+	// B2.3 (2026-10-22): Kill this session's MCP processes only (fixed to be per-session)
+	if len(as.mcpPids) > 0 {
+		d.log.Info("Killing session's MCP processes", "bot", as.ac.botID, "session", as.id, "pids", as.mcpPids)
+		d.killMCPPidsInContainer(as.ac.botID, as.mcpPids)
+	}
 
 	// 如果正在跑，發 session/cancel 停下來（agent 應終止該 session 的所有子行程）
 	if running {
@@ -1097,16 +1106,23 @@ func (d *Driver) CloseSession(s engine.Session) error {
 	return nil
 }
 
-// searchAndKillMCPProcesses searches for and kills MCP processes in the container (B2.3, 2026-10-22).
-// This is called on session close to clean up any orphaned MCP processes.
-func (d *Driver) searchAndKillMCPProcesses(botID string) {
-	pids := d.snapshotMCPPids(botID)
-	if len(pids) > 0 {
-		// B2.4 (2026-10-22): Log MCP process count for debugging
-		d.log.Info("Found MCP processes to clean up", "bot", botID, "mcp_process_count", len(pids), "pids", pids)
-		d.killMCPPidsInContainer(botID, pids)
+// diffPids 回傳 after 中有但 before 中沒有的 PIDs（B2.3, 2026-10-22）。
+func diffPids(after, before []int) []int {
+	beforeSet := make(map[int]bool)
+	for _, pid := range before {
+		beforeSet[pid] = true
 	}
+	var diff []int
+	for _, pid := range after {
+		if !beforeSet[pid] {
+			diff = append(diff, pid)
+		}
+	}
+	return diff
 }
+
+// searchAndKillMCPProcesses is REMOVED - was too aggressive, killed other sessions' MCP processes.
+// Now we track per-session PIDs and only kill those on close.
 
 // snapshotMCPPids 快照容器內的 desktop_mcp / MCP 相關行程 PIDs（B2.3, 2026-10-22）。
 func (d *Driver) snapshotMCPPids(botID string) []int {

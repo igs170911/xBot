@@ -1,3 +1,4 @@
+//go:build leak
 // +build leak
 
 package acp_test
@@ -10,6 +11,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/moby/moby/client"
 
 	"xbot/internal/engine"
 	"xbot/internal/engine/acp"
@@ -145,6 +148,72 @@ func TestSessionCounterBasic(t *testing.T) {
 	})
 }
 
+// TestMCPCleanupPerSession 測試 B2.3 fix：關閉一個 session 不會殺死其他 session 的 MCP 進程。
+func TestMCPCleanupPerSession(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	// 創建帶有跟蹤 MCP PIDs 的 launcher
+	launcher := &trackingLauncher{}
+	driver := acp.New(acp.Options{
+		Agent:  acp.Agents["grok"],
+		Launch: launcher.Launch,
+		Logger: log,
+	})
+	defer driver.Shutdown()
+
+	ctx := context.Background()
+	botID := "test-bot"
+
+	// 創建兩個並發 sessions
+	s1, err := driver.Start(ctx, engine.StartOptions{
+		BotID:    botID,
+		ThreadID: "thread-1",
+		Mode:     "read",
+	})
+	if err != nil {
+		t.Fatalf("Failed to start session 1: %v", err)
+	}
+
+	s2, err := driver.Start(ctx, engine.StartOptions{
+		BotID:    botID,
+		ThreadID: "thread-2",
+		Mode:     "read",
+	})
+	if err != nil {
+		t.Fatalf("Failed to start session 2: %v", err)
+	}
+
+	// 記錄兩個 sessions 的 PIDs
+	pids1 := launcher.getPidsForSession(s1)
+	pids2 := launcher.getPidsForSession(s2)
+
+	t.Logf("Session 1 PIDs: %v", pids1)
+	t.Logf("Session 2 PIDs: %v", pids2)
+
+	// 關閉 session 1
+	if err := driver.CloseSession(s1); err != nil {
+		t.Fatalf("Failed to close session 1: %v", err)
+	}
+
+	// 等待一下讓 kill 完成
+	time.Sleep(200 * time.Millisecond)
+
+	// 檢查 session 1 的 PIDs 是否被標記為已 kill
+	if !launcher.allKilled(pids1) {
+		t.Error("Session 1 PIDs should have been killed")
+	}
+
+	// 檢查 session 2 的 PIDs 是否還活著（未被誤殺）
+	if launcher.anyKilled(pids2) {
+		t.Error("Session 2 PIDs should still be alive (not killed)")
+	}
+
+	// 清理 session 2
+	if err := driver.CloseSession(s2); err != nil {
+		t.Errorf("Failed to close session 2: %v", err)
+	}
+}
+
 // fakeLauncher 提供一個假的 process 用於測試。
 type fakeLauncher struct{}
 
@@ -176,3 +245,132 @@ func (p *fakeProcess) Close() error {
 	return nil
 }
 
+// trackingLauncher 跟蹤 MCP PIDs 並記錄哪些被 kill 了。
+type trackingLauncher struct {
+	mu          sync.Mutex
+	nextPid     int
+	sessionPids map[engine.Session][]int
+	killedPids  map[int]bool
+}
+
+func (t *trackingLauncher) Launch(ctx context.Context, botID string, agent acp.Agent) (acp.Process, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if t.sessionPids == nil {
+		t.sessionPids = make(map[engine.Session][]int)
+		t.killedPids = make(map[int]bool)
+		t.nextPid = 1000
+	}
+
+	return &trackingProcess{launcher: t}, nil
+}
+
+func (t *trackingLauncher) registerSession(s engine.Session, pids []int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.sessionPids[s] = pids
+}
+
+func (t *trackingLauncher) getPidsForSession(s engine.Session) []int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.sessionPids[s]
+}
+
+func (t *trackingLauncher) markKilled(pid int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.killedPids[pid] = true
+}
+
+func (t *trackingLauncher) allKilled(pids []int) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for _, pid := range pids {
+		if !t.killedPids[pid] {
+			return false
+		}
+	}
+	return len(pids) > 0
+}
+
+func (t *trackingLauncher) anyKilled(pids []int) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for _, pid := range pids {
+		if t.killedPids[pid] {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *trackingLauncher) allocatePid() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	pid := t.nextPid
+	t.nextPid++
+	return pid
+}
+
+// trackingProcess 實現 acp.Process 並模擬 MCP PIDs。
+type trackingProcess struct {
+	launcher *trackingLauncher
+	closed   bool
+	pids     []int
+}
+
+func (p *trackingProcess) Read(b []byte) (int, error) {
+	if !p.closed {
+		response := `{"jsonrpc":"2.0","id":"1","result":{"protocolVersion":1,"agentCapabilities":{}}}`
+		return copy(b, response+"\n"), nil
+	}
+	return 0, fmt.Errorf("EOF")
+}
+
+func (p *trackingProcess) Write(b []byte) (int, error) {
+	return len(b), nil
+}
+
+func (p *trackingProcess) Close() error {
+	p.closed = true
+	// 模擬 kill 這個 process 的 PIDs
+	for _, pid := range p.pids {
+		p.launcher.markKilled(pid)
+	}
+	return nil
+}
+
+// ContainerID 實現用於 MCP cleanup 測試。
+func (p *trackingProcess) ContainerID() string {
+	return "test-container"
+}
+
+// Execer 實現用於 MCP cleanup 測試。
+func (p *trackingProcess) Execer() acp.Execer {
+	return &trackingExecer{launcher: p.launcher, process: p}
+}
+
+// trackingExecer 模擬 Docker exec 操作。
+type trackingExecer struct {
+	launcher *trackingLauncher
+	process  *trackingProcess
+}
+
+func (e *trackingExecer) ExecCreate(ctx context.Context, containerID string, options client.ExecCreateOptions) (client.ExecCreateResult, error) {
+	// 模擬創建 2 個 MCP PIDs for this session
+	pid1 := e.launcher.allocatePid()
+	pid2 := e.launcher.allocatePid()
+	e.process.pids = []int{pid1, pid2}
+
+	return client.ExecCreateResult{ID: "exec-1"}, nil
+}
+
+func (e *trackingExecer) ExecAttach(ctx context.Context, execID string, options client.ExecAttachOptions) (client.ExecAttachResult, error) {
+	return client.ExecAttachResult{}, nil
+}
+
+func (e *trackingExecer) ExecInspect(ctx context.Context, execID string, options client.ExecInspectOptions) (client.ExecInspectResult, error) {
+	return client.ExecInspectResult{PID: 0, Running: false}, nil
+}
