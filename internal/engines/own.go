@@ -303,6 +303,48 @@ func (s *Service) syncOwn(ctx context.Context, c Container, b store.Bot) error {
 		if !ok {
 			continue
 		}
+		// Lock each engine's credentials to prevent concurrent refresh conflicts
+		err := s.ensureCredLock().withLock(ctx, sp.ownPath(), func() error {
+			switch {
+			case m[e].Revoked:
+				if err := s.wipe(ctx, c, sp); err != nil {
+					return err
+				}
+				delete(m, e)
+				changed = true
+			case e == cur:
+				if err := s.activate(ctx, c, sp); err != nil {
+					return err
+				}
+			default:
+				if err := s.park(ctx, c, sp); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+	if changed {
+		return s.saveOwns(ctx, b.ID, m)
+	}
+	return nil
+}
+
+// syncOwnNoLock is like syncOwn but assumes the lock is already held (used by adopt)
+func (s *Service) syncOwnNoLock(ctx context.Context, c Container, b store.Bot) error {
+	m, err := s.owns(ctx, b.ID)
+	if err != nil || len(m) == 0 {
+		return err
+	}
+	cur, changed := engineOf(b), false
+	for _, e := range slices.Sorted(maps.Keys(m)) {
+		sp, ok := Specs[e]
+		if !ok {
+			continue
+		}
 		switch {
 		case m[e].Revoked:
 			if err := s.wipe(ctx, c, sp); err != nil {
@@ -329,70 +371,80 @@ func (s *Service) syncOwn(ctx context.Context, c Container, b store.Bot) error {
 // Logout 登出 Bot 自己登入的一個 CLI：記成已登出（驅動立刻拒絕）、結束 agent 行程、清掉憑證；
 // 電腦連不上時下次開機前清。回傳的 cleared 表示電腦裡已確定沒有這份憑證。
 func (s *Service) Logout(ctx context.Context, botID, engine string) (cleared bool, err error) {
-	m, err := s.owns(ctx, botID)
-	if err != nil {
-		return false, err
-	}
-	if _, ok := m[engine]; !ok {
-		return true, nil
-	}
-	m[engine] = Own{At: m[engine].At, Revoked: true}
-	if err := s.saveOwns(ctx, botID, m); err != nil {
-		return false, err
-	}
-	if s.Close != nil {
-		s.Close(botID)
-	}
-	if s.Locate == nil {
-		return false, nil
-	}
-	c, err := s.Locate(ctx, botID)
-	if err != nil {
-		s.log().Warn("暫時無法清掉 Bot 電腦裡的登入，開機前再清", "bot", botID, "engine", engine, "err", err)
-		return false, nil
-	}
-	if c.ID != "" {
-		if err := s.wipe(ctx, c, Specs[engine]); err != nil {
-			s.log().Warn("暫時無法清掉 Bot 電腦裡的登入，開機前再清", "bot", botID, "engine", engine, "err", err)
-			return false, nil
+	sp := Specs[engine]
+	// Lock to prevent concurrent credential refresh conflicts
+	return false, s.ensureCredLock().withLock(ctx, sp.ownPath(), func() error {
+		m, err := s.owns(ctx, botID)
+		if err != nil {
+			return err
 		}
-	}
-	delete(m, engine)
-	return true, s.saveOwns(ctx, botID, m)
+		if _, ok := m[engine]; !ok {
+			cleared = true
+			return nil
+		}
+		m[engine] = Own{At: m[engine].At, Revoked: true}
+		if err := s.saveOwns(ctx, botID, m); err != nil {
+			return err
+		}
+		if s.Close != nil {
+			s.Close(botID)
+		}
+		if s.Locate == nil {
+			return nil
+		}
+		c, err := s.Locate(ctx, botID)
+		if err != nil {
+			s.log().Warn("暫時無法清掉 Bot 電腦裡的登入，開機前再清", "bot", botID, "engine", engine, "err", err)
+			return nil
+		}
+		if c.ID != "" {
+			if err := s.wipe(ctx, c, sp); err != nil {
+				s.log().Warn("暫時無法清掉 Bot 電腦裡的登入，開機前再清", "bot", botID, "engine", engine, "err", err)
+				return nil
+			}
+		}
+		delete(m, engine)
+		cleared = true
+		return s.saveOwns(ctx, botID, m)
+	})
 }
 
 // adopt 記下 Bot 自己登入了這個 CLI：同一個 CLI 原本用這台電腦的登入就不再用（那份清掉），
 // Bot 正在用這個 CLI 時把憑證搬進家目錄、重開 agent。
 func (s *Service) adopt(ctx context.Context, c Container, botID, engine string) error {
-	m, err := s.owns(ctx, botID)
-	if err != nil {
-		return err
-	}
-	m[engine] = Own{At: store.NowMS()}
-	if err := s.saveOwns(ctx, botID, m); err != nil {
-		return err
-	}
-	if l, ok, err := s.Get(ctx, botID); err != nil {
-		return err
-	} else if ok && l.Engine == engine {
-		if err := s.DB.DeleteSetting(ctx, settingKey(botID)); err != nil {
+	sp := Specs[engine]
+	// Lock to prevent concurrent credential refresh conflicts
+	return s.ensureCredLock().withLock(ctx, sp.ownPath(), func() error {
+		m, err := s.owns(ctx, botID)
+		if err != nil {
 			return err
 		}
-		if err := s.clearHostCopy(ctx, c, Specs[engine]); err != nil {
-			s.log().Warn("清掉原本用這台電腦的登入失敗", "bot", botID, "engine", engine, "err", err)
+		m[engine] = Own{At: store.NowMS()}
+		if err := s.saveOwns(ctx, botID, m); err != nil {
+			return err
 		}
-	}
-	b, err := s.DB.GetBot(ctx, botID)
-	if err != nil {
-		return err
-	}
-	if err := s.syncOwn(ctx, c, b); err != nil {
-		return err
-	}
-	if engineOf(b) == engine && s.Close != nil {
-		s.Close(botID)
-	}
-	return nil
+		if l, ok, err := s.Get(ctx, botID); err != nil {
+			return err
+		} else if ok && l.Engine == engine {
+			if err := s.DB.DeleteSetting(ctx, settingKey(botID)); err != nil {
+				return err
+			}
+			if err := s.clearHostCopy(ctx, c, sp); err != nil {
+				s.log().Warn("清掉原本用這台電腦的登入失敗", "bot", botID, "engine", engine, "err", err)
+			}
+		}
+		b, err := s.DB.GetBot(ctx, botID)
+		if err != nil {
+			return err
+		}
+		if err := s.syncOwnNoLock(ctx, c, b); err != nil {
+			return err
+		}
+		if engineOf(b) == engine && s.Close != nil {
+			s.Close(botID)
+		}
+		return nil
+	})
 }
 
 // clearHostCopy 清掉 /opt/xbot/cred/<引擎>/ 裡從這台電腦複製來的那份（家目錄不動）。
@@ -703,13 +755,17 @@ func (s *Service) SetKeys(ctx context.Context, botID string, keys map[string]str
 	if err != nil {
 		return err
 	}
-	if err := s.writeOwn(ctx, c, sp, append(data, '\n')); err != nil {
-		return err
-	}
-	if err := s.adopt(ctx, c, botID, sp.Engine); err != nil {
-		return err
-	}
-	return s.Probe(ctx, botID, sp.Engine)
+
+	// Lock to prevent concurrent credential refresh conflicts
+	return s.ensureCredLock().withLock(ctx, sp.ownPath(), func() error {
+		if err := s.writeOwn(ctx, c, sp, append(data, '\n')); err != nil {
+			return err
+		}
+		if err := s.adopt(ctx, c, botID, sp.Engine); err != nil {
+			return err
+		}
+		return s.Probe(ctx, botID, sp.Engine)
+	})
 }
 
 // boot 找 Bot 的電腦；還沒有時開機建立（用 Exec 跑一個空指令）。

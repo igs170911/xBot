@@ -165,8 +165,9 @@ type Service struct {
 	Exec   func(ctx context.Context, botID, home string, a acp.Agent) (acp.Process, error)
 	Launch acp.Launcher
 
-	loginMu sync.Mutex
-	logins  map[string]*login
+	loginMu  sync.Mutex
+	logins   map[string]*login
+	credLock *credLock
 }
 
 func (s *Service) log() *slog.Logger {
@@ -174,6 +175,13 @@ func (s *Service) log() *slog.Logger {
 		return slog.Default()
 	}
 	return s.Logger
+}
+
+func (s *Service) ensureCredLock() *credLock {
+	if s.credLock == nil {
+		s.credLock = newCredLock()
+	}
+	return s.credLock
 }
 
 // HostPath 回傳這台電腦上某個 CLI 的憑證檔位置。
