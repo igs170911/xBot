@@ -1077,6 +1077,8 @@ func (d *Driver) CloseSession(s engine.Session) error {
 
 	// B2 (2026-10-22): Decrement session count and signal waiters
 	ac.sessionCount--
+	// B2.4 (2026-10-22): Log session count for debugging
+	d.log.Info("Closed session", "bot", ac.botID, "session", as.id, "live_sessions", ac.sessionCount, "cap", limits.ACPMaxSessionsPerBox)
 	ac.sessionWait.Signal()
 	ac.mu.Unlock()
 
@@ -1100,7 +1102,8 @@ func (d *Driver) CloseSession(s engine.Session) error {
 func (d *Driver) searchAndKillMCPProcesses(botID string) {
 	pids := d.snapshotMCPPids(botID)
 	if len(pids) > 0 {
-		d.log.Debug("Found MCP processes to clean up", "bot", botID, "pids", pids)
+		// B2.4 (2026-10-22): Log MCP process count for debugging
+		d.log.Info("Found MCP processes to clean up", "bot", botID, "mcp_process_count", len(pids), "pids", pids)
 		d.killMCPPidsInContainer(botID, pids)
 	}
 }

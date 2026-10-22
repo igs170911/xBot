@@ -17,7 +17,7 @@ XBOT_INSTALLED = $(shell command -v $(HOME)/.local/bin/xbot 2>/dev/null || echo 
 # 主機指令（host-add、host-check）要新版的 xbot：有建好的 bin/xbot 就用它，否則用已安裝的。
 XBOT_CLI = $(shell test -x $(XBOT) && echo $(XBOT) || command -v $(HOME)/.local/bin/xbot 2>/dev/null || echo $(XBOT))
 
-.PHONY: help doctor setup deps dev check fmt gen test test-docker test-race bench eval-judge bundle e2e e2e-docker box box-latest box-test build web-build install start stop restart \
+.PHONY: help doctor setup deps dev check fmt gen test test-docker test-race leak-test bench eval-judge bundle e2e e2e-docker box box-latest box-test build web-build install start stop restart \
         status logs token up down update box-if-changed backup restore clean uninstall host-add host-check deploy test-host
 
 help: ## 列出所有指令
