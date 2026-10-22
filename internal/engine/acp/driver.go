@@ -59,6 +59,10 @@ type Driver struct {
 	mu    sync.Mutex
 	bots  map[string]*agentConn
 	dials map[string]*sync.Mutex
+
+	// B2 (2026-10-22): 閒置 session 清理器
+	stopIdleReaper chan struct{}
+	reaperDone     chan struct{}
 }
 
 var _ engine.Driver = (*Driver)(nil)
@@ -68,11 +72,75 @@ func New(o Options) *Driver {
 	if o.Logger == nil {
 		o.Logger = slog.Default()
 	}
-	return &Driver{o: o, log: o.Logger.With("engine", o.Agent.Engine), bots: map[string]*agentConn{}, dials: map[string]*sync.Mutex{}}
+	d := &Driver{
+		o:              o,
+		log:            o.Logger.With("engine", o.Agent.Engine),
+		bots:           map[string]*agentConn{},
+		dials:          map[string]*sync.Mutex{},
+		stopIdleReaper: make(chan struct{}),
+		reaperDone:     make(chan struct{}),
+	}
+	// B2 (2026-10-22): 啟動閒置 session 清理器
+	go d.idleReaper()
+	return d
 }
 
 // Name 實作 engine.Driver。
 func (d *Driver) Name() string { return d.o.Agent.Engine }
+
+// Shutdown 停止驅動並清理資源（B2, 2026-10-22）。
+func (d *Driver) Shutdown() error {
+	// B2 (2026-10-22): 停止閒置 session 清理器
+	close(d.stopIdleReaper)
+	<-d.reaperDone
+	return nil
+}
+
+// idleReaper periodically checks for idle sessions and closes them (B2, 2026-10-22).
+func (d *Driver) idleReaper() {
+	defer close(d.reaperDone)
+	ticker := time.NewTicker(30 * time.Second) // 每 30 秒檢查一次
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-d.stopIdleReaper:
+			return
+		case <-ticker.C:
+			d.reapIdleSessions()
+		}
+	}
+}
+
+// reapIdleSessions closes sessions that have been idle for too long (B2, 2026-10-22).
+func (d *Driver) reapIdleSessions() {
+	d.mu.Lock()
+	conns := make([]*agentConn, 0, len(d.bots))
+	for _, ac := range d.bots {
+		conns = append(conns, ac)
+	}
+	d.mu.Unlock()
+
+	now := time.Now()
+	for _, ac := range conns {
+		ac.mu.Lock()
+		var toClose []*session
+		for _, s := range ac.sessions {
+			s.mu.Lock()
+			idle := !s.running && now.Sub(s.lastUsed) > limits.ACPSessionIdleTimeout
+			s.mu.Unlock()
+			if idle {
+				toClose = append(toClose, s)
+			}
+		}
+		ac.mu.Unlock()
+
+		for _, s := range toClose {
+			d.log.Info("Closing idle session", "bot", ac.botID, "session", s.id, "idle_duration", now.Sub(s.lastUsed).Round(time.Second))
+			_ = d.CloseSession(s)
+		}
+	}
+}
 
 // agentConn 是一個 Bot 的 agent 行程與上面的 session。
 type agentConn struct {
