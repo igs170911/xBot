@@ -922,42 +922,15 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	}
 
 	// 2026-10-22e：對 owner DM 回覆應用長度限制
+	// 2026-10-22i：≤600 runes 全文顯示；>600 時保留 ≥400 runes + 檔案連結
 	if t.source == SourceOwner && t.ownerText != "" && final != "" && msgID != "" {
-		// 判斷是否為短事實問題（使用 lenient 模式）
-		isFact := isShortFactQuestion(t.ownerText)
-		class := classResearch
-		lenient := false
-		if isFact {
-			class = classFact
-			lenient = true
-		}
+		finalRunes := runes(final)
 
-		outText, overflow := enforceOwnerReplyLength(final, class, lenient)
-
-		// 研究類：溢出時寫檔案，前文至少 300 字
-		if overflow != "" && r.o.Files != nil {
-			// 確保截斷文字至少 300 字（研究回覆需要足夠上下文）
-			minText := 300
-			if runes(outText) < minText {
-				// Re-cut to keep at least 300 runes
-				textRunes := []rune(final)
-				if len(textRunes) > minText {
-					cutpoint := minText
-					// Find sentence boundary near minText
-					for i := cutpoint; i < len(textRunes) && i < cutpoint+50; i++ {
-						r := textRunes[i]
-						if r == '。' || r == '.' || r == '\n' {
-							cutpoint = i + 1
-							break
-						}
-					}
-					if cutpoint > len(textRunes) {
-						cutpoint = minText
-					}
-					outText = string(textRunes[:cutpoint])
-				}
-			}
-
+		// ≤600 runes: 全文顯示，不寫檔案
+		if finalRunes <= 600 {
+			// Keep full text, no truncation
+		} else {
+			// >600 runes: 寫檔案，保留 ≥400 runes + 連結
 			botName := t.botName
 			if botName == "" {
 				if b, err := r.o.DB.GetBot(ctx, t.botID); err == nil {
@@ -968,44 +941,35 @@ func (r *Runtime) finish(t *turn, status, text string) {
 			}
 			home := "dm-reply-" + botName + "-" + time.Now().Format("20060102-150405") + ".md"
 			if err := r.o.Files.Write(ctx, t.botID, home, []byte(final)); err == nil {
-				// 寫入成功：加上連結行，確保總長度在 cap 內
-				linkLine := formatResearchOverflow(final, home, runes(final))
-				linkLen := runes(linkLine)
-				cap := lengthCap(class)
-				maxText := cap - linkLen
-				if maxText < minText {
-					maxText = minText // 研究類至少保留 300 字文字
-				}
-				if runes(outText) > maxText {
-					// Re-truncate to make room for the link
-					textRunes := []rune(final)
-					if len(textRunes) > maxText {
-						cutpoint := maxText
-						for i := maxText - 1; i >= 0 && i > maxText-20; i-- {
-							if textRunes[i] == '。' || textRunes[i] == '.' || textRunes[i] == '\n' {
-								cutpoint = i + 1
-								break
-							}
-						}
-						if cutpoint > len(textRunes) {
-							cutpoint = maxText
-						}
-						if cutpoint > 0 {
-							outText = string(textRunes[:cutpoint])
-						} else {
-							outText = ""
+				// 寫入成功：保留至少 400 runes，加上連結行
+				minText := 400
+				linkLine := formatResearchOverflow(final, home, finalRunes)
+
+				// Find good cut point at or after minText (at sentence boundary)
+				textRunes := []rune(final)
+				cutpoint := minText
+				if cutpoint < len(textRunes) {
+					// Look for sentence boundary within next 100 chars
+					for i := cutpoint; i < len(textRunes) && i < cutpoint+100; i++ {
+						r := textRunes[i]
+						if r == '。' || r == '.' || r == '\n' {
+							cutpoint = i + 1
+							break
 						}
 					}
+					if cutpoint > len(textRunes) {
+						cutpoint = len(textRunes)
+					}
+				} else {
+					cutpoint = len(textRunes)
 				}
-				outText += linkLine
+
+				outText := string(textRunes[:cutpoint]) + linkLine
 				final = outText
 			} else {
-				// 寫入失敗：保留完整內容，不截斷
+				// 寫入失敗：保留完整內容
 				r.log.Warn("DM 回覆存檔失敗，保留完整內容", "bot", t.botID, "task", t.taskID, "err", err)
 			}
-		} else if overflow == "" {
-			// 沒有溢出：使用已截斷的內容
-			final = outText
 		}
 	}
 

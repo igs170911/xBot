@@ -1025,8 +1025,13 @@ func (s *Service) speak(ctx context.Context, room store.Room, botID, text string
 	meta.SpeakerName, meta.FromBotID = me.Name, botID
 
 	// 2026-10-22c：長度限制（#7 room post）
-	// Room posts always use ClassRoom (200 chars), not fact/research
-	outText, overflow := EnforceLength(text, ClassRoom, false)
+	// 2026-10-22i：Conclusion 訊息允許 600 runes（ClassResearch），其他 room post 用 200 runes（ClassRoom）
+	isConclusion := strings.Contains(text, "Conclusion:") || strings.Contains(text, "Conclusion：")
+	class := ClassRoom
+	if isConclusion {
+		class = ClassResearch // 600 runes for Conclusion
+	}
+	outText, overflow := EnforceLength(text, class, false)
 	if overflow != "" && s.o.Files != nil {
 		// Write overflow to the speaking bot's own storage
 		home := "from/" + Filename(me.Name) + "/room-" + s.o.Now().Format("20060102-150405") + ".md"
@@ -1034,9 +1039,9 @@ func (s *Service) speak(ctx context.Context, room store.Room, botID, text string
 
 		// Try to write the file
 		if err := s.o.Files.Write(ctx, botID, home, []byte(text)); err == nil {
-			// Success: ensure outText + linkLine ≤ 200
+			// Success: ensure outText + linkLine ≤ cap
 			linkLen := runes(linkLine)
-			cap := LengthCap(ClassRoom)
+			cap := LengthCap(class)
 			maxText := cap - linkLen
 			if maxText < 0 {
 				maxText = 0
