@@ -59,7 +59,7 @@ func (d *countingDriver) Send(ctx context.Context, s engine.Session, m engine.Me
 	cs.mu.Lock()
 	cs.running = true // Mark as running
 	cs.mu.Unlock()
-	
+
 	if d.sendFunc != nil {
 		return d.sendFunc(ctx, s, m)
 	}
@@ -306,7 +306,7 @@ func TestLRUNeverCloseBusySession(t *testing.T) {
 	// Create 6 sessions directly (exceeds limit of 5)
 	// Start sending on each to make them busy
 	blockChan := make(chan struct{})
-	
+
 	driver.sendFunc = func(ctx context.Context, s engine.Session, m engine.Message) error {
 		cs := s.(*countingSession)
 		cs.mu.Lock()
@@ -330,13 +330,13 @@ func TestLRUNeverCloseBusySession(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		
+
 		s, err := driver.Start(ctx, engine.StartOptions{BotID: b.ID, ThreadID: thread.ID})
 		if err != nil {
 			t.Fatal(err)
 		}
 		sessions = append(sessions, s)
-		
+
 		// Start a send to make it busy
 		if err := driver.Send(ctx, s, engine.Message{Text: fmt.Sprintf("test %d", i)}); err != nil {
 			t.Fatal(err)

@@ -823,7 +823,9 @@ func (r *Runtime) finishErr(t *turn, err error) {
 
 // finish 寫下最後的回覆、結束任務、發布 done，並釋放這個 Bot。只會做一次。
 func (r *Runtime) finish(t *turn, status, text string) {
-	// 2026-10-22i：確保 session 被關閉（資源洩漏修復）
+	// 2026-10-22i：確保 session 被關閉（資源洩漏修復，item 7）
+	// 這涵蓋所有來源：owner DM、rooms、peer messages、routines（item 7c）。
+	// Judge 不使用 engine session，直接呼叫 Model Proxy API。
 	defer func() {
 		if t.session != nil {
 			if closer, ok := r.o.Driver.(interface{ CloseSession(engine.Session) error }); ok {
