@@ -336,6 +336,7 @@ type roomMeta struct {
 	ByStartTool bool     `json:"by_start_tool,omitempty"` // Bot 用 start_group／post_to_group 發的
 	Conclusion  bool     `json:"conclusion,omitempty"`    // 2026-10-22：結案訊息（closer 貼了 Conclusion:）
 	ConsecEmpty int      `json:"consec_empty,omitempty"`  // 2026-10-22b：連續無進展次數（room 級）
+	SenderHop   int      `json:"sender_hop,omitempty"`    // 2026-10-22c：發言者的 hop count
 }
 
 func (s *Service) addRoomMessage(ctx context.Context, roomID, sender, text string, meta roomMeta) (store.Message, error) {
@@ -595,6 +596,10 @@ func (s *Service) seat(ctx context.Context, room store.Room, botID, cause string
 				_ = s.db.SetTaskPriority(ctx, t.ID, false)
 			}
 		}
+		// 2026-10-22c：記錄觸發訊息 ID
+		if cause != "" {
+			patch["triggering_msg_id"] = cause
+		}
 		if len(patch) > 0 {
 			_ = s.db.PatchTaskMeta(ctx, t.ID, patch)
 		}
@@ -618,7 +623,7 @@ func (s *Service) seat(ctx context.Context, room store.Room, botID, cause string
 		}
 	}
 
-	raw, _ := json.Marshal(taskMeta{RoomID: room.ID, Addressed: addressed, Round: round, Cause: cause, ByOwner: byOwner, Hop: hop})
+	raw, _ := json.Marshal(taskMeta{RoomID: room.ID, Addressed: addressed, Round: round, Cause: cause, TriggeringMsgID: cause, ByOwner: byOwner, Hop: hop})
 	if _, err := s.rt.Start(ctx, runtime.ChatRequest{BotID: botID, ThreadID: thread, Text: "群組「" + room.Name + "」有新訊息",
 		Sender: "system", Source: runtime.SourceRoom, TaskMeta: raw, LowPriority: !byOwner, Queue: true}); err != nil {
 		return err
@@ -801,29 +806,34 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	}
 	failed := verdict == runtime.VerdictFailed
 
-	// 2026-10-22：統一發送閘門，防止群組感謝循環
-	// 檢查是否應該發送（2026-10-22b：當 bot 回覆被 @ 或問及的訊息時，isAnswer=true）
-	// 檢查最近幾則群組訊息，看是否有 @ 這個 bot 或向它提問
-	isAnswer := false
+	// 2026-10-22c：檢查是否應該發送（只檢查觸發訊息是否 @ 這個 bot）
+	isAnswer := m.Addressed // 如果 task 已標記為 addressed，就是 answer
+	if m.TriggeringMsgID != "" && !isAnswer {
+		// 讀取觸發訊息檢查是否真的被 @
+		if trigMsg, err := s.db.GetMessage(ctx, m.TriggeringMsgID); err == nil {
+			botName := ""
+			if b, err := s.db.GetBot(ctx, task.BotID); err == nil {
+				botName = b.Name
+			}
+			if strings.Contains(trigMsg.Content, "@"+botName) || (botName != "" && strings.Contains(trigMsg.Content, botName+"？")) {
+				isAnswer = true
+			}
+		}
+	}
+
+	// 獲取最近的群組訊息文字（用於去重檢測）
 	recentMsgs, _ := s.db.ListMessages(ctx, store.ScopeRoom, room.ID, 0, 5)
 	var recentTexts []string
 	for _, rm := range recentMsgs {
 		recentTexts = append(recentTexts, rm.Content)
-		// 檢查是否有 @ 這個 bot，或內容包含該 bot 的名字
-		botName := ""
-		if b, err := s.db.GetBot(ctx, task.BotID); err == nil {
-			botName = b.Name
-		}
-		if strings.Contains(rm.Content, "@"+botName) || (botName != "" && strings.Contains(rm.Content, botName+"？")) {
-			isAnswer = true
-		}
 		if len(recentTexts) >= 5 {
 			break
 		}
 	}
 
+	// 2026-10-22c：room reply 用 isOutgoing=true（只阻擋 filler）
 	judgeVerdict := s.peerReplyJudge(ctx, content, task.BotID)
-	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswer, recentTexts, judgeVerdict, false) // room reply 不是主動發送
+	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswer, recentTexts, judgeVerdict, true)
 
 	// 2026-10-22b：連續無進展自動停止（從 room 讀取，而非 task meta）
 	consecEmpty := s.getConsecEmpty(ctx, room.ID)

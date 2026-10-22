@@ -92,6 +92,7 @@ func IsAcknowledgement(text string) bool {
 	// 純粹的致謝/確認詞（完全匹配，避免誤判實質內容）
 	acknowledgements := []string{
 		"收到", "了解", "明白", "好的", "知道了", "謝謝", "感謝", "好", "行",
+		"不客氣", "不用謝", // 2026-10-22c：常見回覆
 		"ok", "okay", "got it", "received", "understood", "thanks", "thank you",
 		"will do", "on it", "sure", "noted", "ack", "roger", "copy",
 	}
@@ -239,6 +240,11 @@ func ClassifyMessage(text string) MessageClass {
 // Bot-to-bot 回覆必須符合其中之一，否則應該保持 [silent]（結構化規則）。
 // 2026-10-22：加強規則，避免客套話誤判為新資訊。
 func HasNewInformation(text string) bool {
+	// 2026-10-22c：Conclusion: 訊息永遠不阻擋（移到最前面，避免被 ClassFiller 擋掉）
+	if strings.Contains(text, "Conclusion:") || strings.Contains(text, "Conclusion：") {
+		return true
+	}
+
 	class := ClassifyMessage(text)
 	if class == ClassFiller {
 		return false
@@ -250,13 +256,8 @@ func HasNewInformation(text string) bool {
 	}
 
 	// 2026-10-22：即使分類為 new_info，如果是純客套話（感謝、問候、鼓勵）也視為 filler
-	// 2026-10-22b：Conclusion: 訊息永不阻擋；只在移除客套話後幾乎沒內容時才阻擋
+	// 2026-10-22b：只在移除客套話後幾乎沒內容時才阻擋
 	trimmed := strings.TrimSpace(text)
-
-	// Conclusion: 訊息是結案，永遠不阻擋
-	if strings.Contains(text, "Conclusion:") || strings.Contains(text, "Conclusion：") {
-		return true
-	}
 
 	// 常見客套話模式
 	pleasantries := []string{

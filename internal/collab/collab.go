@@ -117,13 +117,14 @@ type taskMeta struct {
 	AssignmentID string         `json:"assignment_id,omitempty"`
 	Deferred     *deferredReply `json:"deferred_reply,omitempty"`
 	// 群組座位的一輪
-	RoomID    string `json:"room_id,omitempty"`
-	Round     int    `json:"round,omitempty"`
-	Addressed bool   `json:"addressed,omitempty"`
-	Cause     string `json:"cause,omitempty"`    // 叫醒它的那則群組訊息
-	ByOwner   bool   `json:"by_owner,omitempty"` // 你發言叫醒的（輪數從 0 算）
-	SeenFrom  int64  `json:"seen_from,omitempty"`
-	SeenTo    int64  `json:"seen_to,omitempty"`
+	RoomID          string `json:"room_id,omitempty"`
+	Round           int    `json:"round,omitempty"`
+	Addressed       bool   `json:"addressed,omitempty"`
+	Cause           string `json:"cause,omitempty"`             // 叫醒它的那則群組訊息
+	TriggeringMsgID string `json:"triggering_msg_id,omitempty"` // 2026-10-22c：觸發這一輪的訊息 ID（用於檢查 addressed）
+	ByOwner         bool   `json:"by_owner,omitempty"`          // 你發言叫醒的（輪數從 0 算）
+	SeenFrom        int64  `json:"seen_from,omitempty"`
+	SeenTo          int64  `json:"seen_to,omitempty"`
 	// 2026-10-22：no-progress 自動停止
 	ConsecBlocked int `json:"consec_blocked,omitempty"` // 連續被阻擋（gate 或 no-new-info）的輪數
 }
@@ -908,7 +909,8 @@ func (s *Service) reply(ctx context.Context, task store.Task, m taskMeta, verdic
 	// 答案情境：回覆 request/question
 	isAnswerToWork := verdict == runtime.VerdictAnswer && replyExpected(m.Intent)
 	judgeVerdict := s.peerReplyJudge(ctx, content, task.BotID)
-	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswerToWork, recentTexts, judgeVerdict, false) // DM reply 是回覆工作
+	// 2026-10-22c：DM reply 是 bot 回覆，用 isOutgoing=true（只阻擋 filler，允許 fyi）
+	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswerToWork, recentTexts, judgeVerdict, true)
 	if !shouldSend {
 		s.log.Debug("blocked DM reply", "from", task.BotID, "to", m.FromBot, "roomID", m.RoomID, "reason", reason, "content", plain(content, 100))
 		return
