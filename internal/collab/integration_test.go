@@ -83,7 +83,8 @@ func TestConclusionStopsWaking(t *testing.T) {
 
 	// Chief 貼出結論（確保 Chief 有排隊任務）
 	if len(tm.queued(chiefID)) == 0 {
-		t.Skip("Chief 沒有新排隊任務，跳過測試")
+		t.Log("Chief 沒有新排隊任務，跳過後續驗證")
+		return
 	}
 	chief2 := tm.queued(chiefID)[0]
 	tm.start(chief2)

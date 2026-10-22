@@ -852,14 +852,8 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	}
 
 	// 獲取最近的群組訊息文字（用於去重檢測）
-	recentMsgs, _ := s.db.ListMessages(ctx, store.ScopeRoom, room.ID, 0, 5)
+	// 2026-10-22：群組接力時可能重複 @同一人，不做去重（只在 DM 去重）
 	var recentTexts []string
-	for _, rm := range recentMsgs {
-		recentTexts = append(recentTexts, rm.Content)
-		if len(recentTexts) >= 5 {
-			break
-		}
-	}
 
 	// 2026-10-22c：room reply 用 isOutgoing=true（只阻擋 filler）
 	judgeVerdict := s.peerReplyJudge(ctx, content, task.BotID)
@@ -867,7 +861,7 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 
 	// 2026-10-22d：連續無進展自動停止（從 room.ConsecEmpty 讀取）
 	consecEmpty := room.ConsecEmpty
-	s.log.Debug("auto-stop check", "room", room.ID, "bot", task.BotID, "shouldSend", shouldSend, "reason", reason, "consecEmpty", consecEmpty)
+	s.log.Debug("auto-stop check", "room", room.ID, "bot", task.BotID, "round", m.Round, "shouldSend", shouldSend, "reason", reason, "consecEmpty", consecEmpty)
 
 	// 2026-10-22g：[silent] 不計入 consecEmpty（明確表示無需補充，與被阻擋的 filler 不同）
 	isSilent := IsSilent(content)

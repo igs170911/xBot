@@ -166,6 +166,7 @@ func TestG2ThreeBotsInARoom(t *testing.T) {
 	if err != nil || strings.Join(res.Woke, ",") != "Chief" {
 		t.Fatalf("%+v %v", res, err)
 	}
+
 	e.waitFor("接力停下", func() bool {
 		log := e.room(room.ID)
 		return e.idle() && len(log) > 0 && log[len(log)-1].Notice == "capped"
