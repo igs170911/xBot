@@ -823,6 +823,60 @@ func (r *Runtime) finishErr(t *turn, err error) {
 
 // finish 寫下最後的回覆、結束任務、發布 done，並釋放這個 Bot。只會做一次。
 func (r *Runtime) finish(t *turn, status, text string) {
+	// 2026-10-22k (item 5): Proper panic recovery - must emit done, mark task failed, release locks
+	var panicMsg string
+	defer func() {
+		if rec := recover(); rec != nil {
+			r.log.Error("runtime finish panic recovered", "bot", t.botID, "task", t.taskID, "panic", rec)
+
+			panicMsg = fmt.Sprintf("內部錯誤：%v", rec)
+
+			// Mark as finished to prevent double-finish
+			t.mu.Lock()
+			wasFinished := t.finished
+			if !wasFinished {
+				t.finished = true
+			}
+			msgID := t.messageID
+			t.mu.Unlock()
+
+			if !wasFinished {
+				// Emit error and done events for panic
+				r.emit(t, KindError, engine.Event{Type: engine.EventError, Text: panicMsg}, true)
+				r.emit(t, KindDone, engine.Event{Type: engine.EventDone, Status: engine.StatusError, Text: panicMsg}, true)
+
+				// Mark task as failed
+				if err := r.o.DB.SetTaskState(context.Background(), t.taskID, store.TaskDone, VerdictFailed); err != nil {
+					r.log.Error("failed to mark task as failed after panic", "task", t.taskID, "err", err)
+				}
+
+				// Update message if it exists
+				if msgID != "" {
+					fields := map[string]any{"task_id": t.taskID, "status": engine.StatusError}
+					meta, _ := json.Marshal(fields)
+					_ = r.o.DB.UpdateMessage(context.Background(), msgID, panicMsg, nil, meta)
+				}
+			}
+
+			// Release Bot's busy state
+			r.mu.Lock()
+			if r.active[t.botID] == t {
+				delete(r.active, t.botID)
+			}
+			r.mu.Unlock()
+
+			// Call hooks (may panic again, but we've already recovered)
+			if h := r.hooks(); h.Finished != nil {
+				defer func() {
+					if rec2 := recover(); rec2 != nil {
+						r.log.Error("panic in Finished hook after finish panic", "bot", t.botID, "task", t.taskID, "hook_panic", rec2)
+					}
+				}()
+				h.Finished(store.Task{ID: t.taskID, BotID: t.botID}, VerdictFailed, panicMsg)
+			}
+		}
+	}()
+
 	// 2026-10-22i：確保 session 被關閉（資源洩漏修復，item 7）
 	// 這涵蓋所有來源：owner DM、rooms、peer messages、routines（item 7c）。
 	// Judge 不使用 engine session，直接呼叫 Model Proxy API。
@@ -836,28 +890,15 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		}
 	}()
 
-	// 2026-10-22h：panic recovery - 必須釋放 Bot busy 狀態
-	defer func() {
-		if rec := recover(); rec != nil {
-			r.log.Error("runtime finish panic recovered", "bot", t.botID, "task", t.taskID, "panic", rec)
-			// 釋放 Bot 的 busy 狀態
-			r.mu.Lock()
-			if r.active[t.botID] == t {
-				delete(r.active, t.botID)
-			}
-			r.mu.Unlock()
-		}
-	}()
+	t.askMu.Lock()         // 和 resume 互斥：回覆前改回「工作中」不會蓋掉「已完成」
+	defer t.askMu.Unlock() // 2026-10-22k: ensure lock is released on panic
 
-	t.askMu.Lock() // 和 resume 互斥：回覆前改回「工作中」不會蓋掉「已完成」
 	t.mu.Lock()
 	if t.finished {
 		t.mu.Unlock()
-		t.askMu.Unlock()
 		return
 	}
 	t.finished = true
-	t.askMu.Unlock()
 	p := t.pending
 	t.pending = nil
 	streamed := t.text.String()
