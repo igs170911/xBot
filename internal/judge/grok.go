@@ -34,7 +34,7 @@ type GrokJudge struct {
 
 // Classify implements collab.PeerJudge by spawning a one-shot ACP session, prompting it with
 // the peer-reply classification task, parsing the output, and closing the session immediately.
-// Timeout or error -> returns ("", err), signaling fallback to Rules.
+// Timeout or error -> returns ("", err), signaling fallback to Rules (B3: strict fallback).
 func (g *GrokJudge) Classify(ctx context.Context, prev, msg, botID string) (string, error) {
 	if g.Driver == nil {
 		return "", fmt.Errorf("grok judge: no driver")
@@ -52,23 +52,27 @@ func (g *GrokJudge) Classify(ctx context.Context, prev, msg, botID string) (stri
 
 	model := g.ModelName
 	if model == "" {
-		model = "grok-2-mini-public"
+		// B3: Default to a real model name (grok-beta is the fast free-tier model)
+		model = "grok-beta"
 	}
 
 	// Create a one-shot session context with timeout
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// Spawn ACP session for this judgment only (synthetic botID: never reused, immediately closed)
-	sessionID := fmt.Sprintf("judge-%s-%d", botID, time.Now().UnixNano())
-	sess, err := g.Driver.Start(ctx, engine.StartOptions{BotID: sessionID, Model: model})
+	// B3: Use REAL botID (not synthetic) to get per-bot credential path.
+	// The session is still one-shot and immediately closed, but uses the actual bot's auth.
+	// ThreadID is synthetic to avoid interfering with real sessions.
+	threadID := fmt.Sprintf("judge-%d", time.Now().UnixNano())
+	sess, err := g.Driver.Start(ctx, engine.StartOptions{BotID: botID, ThreadID: threadID, Model: model})
 	if err != nil {
 		log.Warn("grok judge: failed to start session", "err", err)
+		// B3: Return error to trigger strict fallback
 		return "", fmt.Errorf("grok judge start: %w", err)
 	}
 	// CRITICAL: close session on every exit path via defer
 	defer func() {
-		g.Driver.Close(sessionID)
+		_ = g.Driver.CloseSession(sess)
 	}()
 
 	// Build peer-reply judgment prompt (same logic as judge.Service uses for "peer_reply")
@@ -78,10 +82,10 @@ func (g *GrokJudge) Classify(ctx context.Context, prev, msg, botID string) (stri
 	events := g.Driver.Events(sess)
 	if err := g.Driver.Send(ctx, sess, engine.Message{Text: prompt}); err != nil {
 		if ctx.Err() != nil {
-			log.Debug("grok judge: send timeout", "session", sessionID)
+			log.Debug("grok judge: send timeout", "thread", threadID)
 			return "", fmt.Errorf("grok judge timeout: %w", ctx.Err())
 		}
-		log.Warn("grok judge: send failed", "session", sessionID, "err", err)
+		log.Warn("grok judge: send failed", "thread", threadID, "err", err)
 		return "", fmt.Errorf("grok judge send: %w", err)
 	}
 
@@ -93,32 +97,32 @@ func (g *GrokJudge) Classify(ctx context.Context, prev, msg, botID string) (stri
 			content.WriteString(evt.Text)
 		case "done":
 			if evt.Status == "error" {
-				log.Warn("grok judge: done with error", "session", sessionID, "status", evt.Status, "text", evt.Text)
+				log.Warn("grok judge: done with error", "thread", threadID, "status", evt.Status, "text", evt.Text)
 				return "", fmt.Errorf("grok judge error: %s", evt.Text)
 			}
 			// Success: parse the accumulated content
 			verdict, err := parseGrokContent(content.String())
 			if err != nil {
-				log.Warn("grok judge: parse failed", "session", sessionID, "err", err)
+				log.Warn("grok judge: parse failed", "thread", threadID, "err", err)
 				return "", fmt.Errorf("grok judge parse: %w", err)
 			}
-			log.Debug("grok judge: classified", "verdict", verdict, "session", sessionID)
+			log.Debug("grok judge: classified", "verdict", verdict, "thread", threadID)
 			return verdict, nil
 		case "error":
 			if evt.Fatal {
-				log.Warn("grok judge: fatal error", "session", sessionID, "text", evt.Text)
+				log.Warn("grok judge: fatal error", "thread", threadID, "text", evt.Text)
 				return "", fmt.Errorf("grok judge fatal: %s", evt.Text)
 			}
 		}
 		// Check context timeout on each event
 		if ctx.Err() != nil {
-			log.Debug("grok judge: timeout while reading events", "session", sessionID)
+			log.Debug("grok judge: timeout while reading events", "thread", threadID)
 			return "", fmt.Errorf("grok judge timeout: %w", ctx.Err())
 		}
 	}
 
 	// Events channel closed without done event
-	log.Warn("grok judge: events closed without done", "session", sessionID)
+	log.Warn("grok judge: events closed without done", "thread", threadID)
 	return "", fmt.Errorf("grok judge: incomplete response")
 }
 

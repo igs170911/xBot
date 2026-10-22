@@ -289,7 +289,9 @@ func openStack(cfg config.Config) (*stack, error) {
 	// Check if Model Proxy API judge is configured. If not, default to Grok CLI judge.
 	var peerJudge collab.PeerJudge
 	set, _ := s.judge.Settings(context.Background())
-	hasAPIJudge := set.Tier1.On() || set.Tier2.On()
+	// B3: A tier is "configured" only if it has both provider AND model set
+	hasAPIJudge := (set.Tier1.Provider != "" && set.Tier1.Model != "") ||
+		(set.Tier2.Provider != "" && set.Tier2.Model != "")
 
 	if hasAPIJudge {
 		// Use Model Proxy API-based judge (current production path)
@@ -331,7 +333,7 @@ func openStack(cfg config.Config) (*stack, error) {
 				Driver:    grokDriver,
 				Log:       logger,
 				Timeout:   5 * time.Second,
-				ModelName: "grok-2-mini-public",
+				ModelName: "grok-beta", // B3: Use real model name
 			}
 			logger.Info("judge backend: Grok CLI (one-shot ACP sessions, exempt from LRU cap)")
 		}
