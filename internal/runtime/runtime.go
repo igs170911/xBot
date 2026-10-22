@@ -745,6 +745,11 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 			}()
 			return
 		}
+		// B.4: 高風險瀏覽器操作（表單提交、購買、登入、發送等）需要人工核准（伺服器端攔截）。
+		// 這裡不自動允許，讓它走正常的核准流程。
+		if consequentialBrowserAction(e.Request) {
+			r.log.Info("瀏覽器高風險操作需要核准", "bot", botID, "task", t.taskID)
+		}
 		r.askApproval(t, e)
 	case engine.EventRequestClosed:
 
