@@ -424,23 +424,6 @@ func (s *Service) isRoomConcluded(ctx context.Context, roomID string) bool {
 
 // getConsecEmpty 取得群組的連續無進展次數（2026-10-22c）。
 // 從最近的 Bot 或系統訊息 meta 裡讀取（跳過 owner 訊息）。
-func (s *Service) getConsecEmpty(ctx context.Context, roomID string) int {
-	msgs, err := s.db.ListMessages(ctx, store.ScopeRoom, roomID, 0, 10)
-	if err != nil || len(msgs) == 0 {
-		return 0
-	}
-	// 從新到舊掃描，找第一個非 owner 訊息的 ConsecEmpty
-	for i := len(msgs) - 1; i >= 0; i-- {
-		msg := msgs[i]
-		if msg.Sender != "owner" {
-			var meta roomMeta
-			_ = json.Unmarshal(msg.Meta, &meta)
-			return meta.ConsecEmpty
-		}
-	}
-	return 0
-}
-
 // PostResult 是你在群組發言的結果。
 type PostResult struct {
 	Message  store.Message `json:"message"`
@@ -527,6 +510,10 @@ func (s *Service) Post(ctx context.Context, roomID, text, requestID string) (Pos
 	if err != nil {
 		return PostResult{}, err
 	}
+
+	// 2026-10-22d：使用者發言重設 consecEmpty
+	_ = s.db.UpdateRoomConsecEmpty(ctx, roomID, 0)
+
 	var stopped []string
 	for _, b := range awake {
 		if s.interruptRelay(ctx, roomID, b.ID) {
@@ -828,17 +815,31 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	}
 	failed := verdict == runtime.VerdictFailed
 
-	// 2026-10-22c：檢查是否應該發送（只檢查觸發訊息是否 @ 這個 bot）
-	isAnswer := m.Addressed // 如果 task 已標記為 addressed，就是 answer
-	if m.TriggeringMsgID != "" && !isAnswer {
-		// 讀取觸發訊息檢查是否真的被 @
-		if trigMsg, err := s.db.GetMessage(ctx, m.TriggeringMsgID); err == nil {
-			botName := ""
-			if b, err := s.db.GetBot(ctx, task.BotID); err == nil {
-				botName = b.Name
+	// 2026-10-22d：檢查是否應該發送
+	// 如果被 @ 了，要看去除客套話後是否有實質內容
+	isAnswer := false
+	if m.Addressed || m.TriggeringMsgID != "" {
+		// 檢查是否真的被 @，以及回覆是否有實質內容
+		wasAtMentioned := m.Addressed
+		if m.TriggeringMsgID != "" && !wasAtMentioned {
+			if trigMsg, err := s.db.GetMessage(ctx, m.TriggeringMsgID); err == nil {
+				botName := ""
+				if b, err := s.db.GetBot(ctx, task.BotID); err == nil {
+					botName = b.Name
+				}
+				if strings.Contains(trigMsg.Content, "@"+botName) || (botName != "" && strings.Contains(trigMsg.Content, botName+"？")) {
+					wasAtMentioned = true
+				}
 			}
-			if strings.Contains(trigMsg.Content, "@"+botName) || (botName != "" && strings.Contains(trigMsg.Content, botName+"？")) {
+		}
+
+		if wasAtMentioned {
+			// 被 @ 了，但要檢查回覆是否有實質內容
+			// 去除 @ 和客套話後，如果沒有實質內容，不發送
+			if HasSubstanceAfterMention(content) {
 				isAnswer = true
+			} else {
+				s.log.Debug("@-mention without substance", "bot", task.BotID, "room", room.ID, "content", plain(content, 100))
 			}
 		}
 	}
@@ -857,11 +858,14 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	judgeVerdict := s.peerReplyJudge(ctx, content, task.BotID)
 	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswer, recentTexts, judgeVerdict, true)
 
-	// 2026-10-22c：連續無進展自動停止（從 room 讀取，而非 task meta）
-	consecEmpty := s.getConsecEmpty(ctx, room.ID)
+	// 2026-10-22d：連續無進展自動停止（從 room.ConsecEmpty 讀取）
+	consecEmpty := room.ConsecEmpty
 	s.log.Debug("auto-stop check", "room", room.ID, "bot", task.BotID, "shouldSend", shouldSend, "reason", reason, "consecEmpty", consecEmpty)
+
 	if !shouldSend {
 		consecEmpty++
+		_ = s.db.UpdateRoomConsecEmpty(ctx, room.ID, consecEmpty)
+
 		if consecEmpty >= 2 {
 			s.log.Info("連續 2 輪無新資訊，自動停止", "bot", task.BotID, "room", room.ID)
 			// 2026-10-22c：通過 Inbox 通知 owner，不在群組貼訊息、不開新輪次
@@ -894,22 +898,20 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 			} else {
 				s.log.Debug("inbox ref already exists or error checking", "exists", exists, "err", err)
 			}
-			// 仍然存儲 blocked 標記以維護 consecEmpty 計數
-			_, _ = s.addRoomMessage(ctx, room.ID, "system", "", roomMeta{Notice: "blocked", ConsecEmpty: consecEmpty, FromBotID: task.BotID})
+			// 2026-10-22d：自動停止不再寫入空的 room message，只透過 inbox 通知
 			return
 		}
 	} else {
-		consecEmpty = 0 // 有新資訊，重設計數
+		// 有新資訊或是 answer，重設計數
+		if HasNewInformation(content) {
+			consecEmpty = 0
+			_ = s.db.UpdateRoomConsecEmpty(ctx, room.ID, consecEmpty)
+		}
 	}
 
 	if !shouldSend {
 		s.log.Debug("blocked room reply", "bot", task.BotID, "room", room.ID, "reason", reason, "content", plain(content, 100))
-		// 2026-10-22b：對於非 [silent] 的阻擋，存儲 consecEmpty
-		// [silent] 是 Bot 故意標記的，不計入連續無進展
-		if !IsSilent(content) {
-			// 通過發一則空的標記訊息來存儲計數
-			_, _ = s.addRoomMessage(ctx, room.ID, "system", "", roomMeta{Notice: "blocked", ConsecEmpty: consecEmpty, FromBotID: task.BotID})
-		}
+		// 2026-10-22d：非 [silent] 的阻擋已經更新了 consecEmpty，不需要額外動作
 		return
 	}
 

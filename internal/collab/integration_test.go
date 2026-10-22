@@ -129,14 +129,10 @@ func TestConsecutiveBlockedAutoStop(t *testing.T) {
 	tm.start(chief1)
 	tm.finish(chief1.ID, "answer", "好") // ClassFiller
 
-	// 檢查 consec_empty = 1（存在 room message meta 中）
-	msgs1, _ := tm.db.ListMessages(tm.ctx, store.ScopeRoom, room.ID, 0, 1)
-	var meta1 roomMeta
-	if len(msgs1) > 0 {
-		_ = json.Unmarshal(msgs1[0].Meta, &meta1)
-	}
-	if meta1.ConsecEmpty != 1 {
-		t.Errorf("第一次阻擋後 consec_empty 應為 1，got %d", meta1.ConsecEmpty)
+	// 檢查 consec_empty = 1（2026-10-22d：存在 room 記錄中）
+	room1, _ := tm.db.GetRoom(tm.ctx, room.ID)
+	if room1.ConsecEmpty != 1 {
+		t.Errorf("第一次阻擋後 consec_empty 應為 1，got %d", room1.ConsecEmpty)
 	}
 
 	// Chief 第二次回覆低資訊內容（再次被阻擋，觸發自動停止）

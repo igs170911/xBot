@@ -28,16 +28,17 @@ type Room struct {
 	Cwd           string `json:"cwd"`
 	CreatedBy     string `json:"created_by"`
 	LastMessageAt int64  `json:"last_message_at"`
+	ConsecEmpty   int    `json:"consec_empty"` // 2026-10-22d：連續無新資訊次數（auto-stop）
 	CreatedAt     int64  `json:"created_at"`
 	UpdatedAt     int64  `json:"updated_at"`
 }
 
-const roomCols = `id, name, auto_name, responder_rule, lead_id, bulletin, cwd, created_by, last_message_at, created_at, updated_at`
+const roomCols = `id, name, auto_name, responder_rule, lead_id, bulletin, cwd, created_by, last_message_at, consec_empty, created_at, updated_at`
 
 func scanRoom(s scanner) (Room, error) {
 	var r Room
 	var lead sql.NullString
-	err := s.Scan(&r.ID, &r.Name, &r.AutoName, &r.ResponderRule, &lead, &r.Bulletin, &r.Cwd, &r.CreatedBy, &r.LastMessageAt, &r.CreatedAt, &r.UpdatedAt)
+	err := s.Scan(&r.ID, &r.Name, &r.AutoName, &r.ResponderRule, &lead, &r.Bulletin, &r.Cwd, &r.CreatedBy, &r.LastMessageAt, &r.ConsecEmpty, &r.CreatedAt, &r.UpdatedAt)
 	r.LeadID = lead.String
 	return r, err
 }
@@ -52,8 +53,8 @@ func (q *Queries) CreateRoom(ctx context.Context, r Room) (Room, error) {
 	}
 	r.CreatedAt = nowMS()
 	r.UpdatedAt = r.CreatedAt
-	_, err := q.w.ExecContext(ctx, `INSERT INTO room(`+roomCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-		r.ID, r.Name, b2i(r.AutoName), r.ResponderRule, nullStr(r.LeadID), r.Bulletin, r.Cwd, r.CreatedBy, r.LastMessageAt, r.CreatedAt, r.UpdatedAt)
+	_, err := q.w.ExecContext(ctx, `INSERT INTO room(`+roomCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+		r.ID, r.Name, b2i(r.AutoName), r.ResponderRule, nullStr(r.LeadID), r.Bulletin, r.Cwd, r.CreatedBy, r.LastMessageAt, r.ConsecEmpty, r.CreatedAt, r.UpdatedAt)
 	return r, err
 }
 
@@ -80,6 +81,11 @@ func (q *Queries) UpdateRoom(ctx context.Context, r Room) error {
 func (q *Queries) TouchRoom(ctx context.Context, id string) error {
 	now := nowMS()
 	return affected(q.w.ExecContext(ctx, `UPDATE room SET last_message_at=?, updated_at=? WHERE id=?`, now, now, id))
+}
+
+// UpdateRoomConsecEmpty 更新群組的連續無進展計數（2026-10-22d）
+func (q *Queries) UpdateRoomConsecEmpty(ctx context.Context, roomID string, consecEmpty int) error {
+	return affected(q.w.ExecContext(ctx, `UPDATE room SET consec_empty=?, updated_at=? WHERE id=?`, consecEmpty, nowMS(), roomID))
 }
 
 // DeleteRoom 刪群組，連同訊息、成員與座位對話串（trigger）。
