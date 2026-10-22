@@ -918,6 +918,11 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 		stopThreshold := 2
 		if isAtPleasantry {
 			stopThreshold = 1 // @-pleasantry: stop immediately after first blocked reply
+		} else if isDMThanks {
+			// C6 (2026-10-22): DM thanks uses threshold=2 (same as default for now)
+			// isDMThanks was computed but not used. Explicitly set threshold here
+			// for clarity and future tuning.
+			stopThreshold = 2
 		}
 
 		if consecEmpty >= stopThreshold {
