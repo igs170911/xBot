@@ -33,6 +33,12 @@ type Runtime interface {
 // 回傳挑中的成員與信心；ok=false（逾時、不確定）時交給主責。
 type Judge func(ctx context.Context, room store.Room, members []store.Bot, text string) (botID string, confidence float64, ok bool)
 
+// PeerJudge 判斷 bot-to-bot 訊息是否為 filler（2026-10-22h）。
+// 回傳 "skip"（FILLER）或 "handle"（NEW）；error 或空字串表示判斷失敗，使用退路。
+type PeerJudge interface {
+	Classify(ctx context.Context, prev, msg, botID string) (verdict string, err error)
+}
+
 // Options 是協作層的設定。
 type Options struct {
 	DB      *store.DB
@@ -40,11 +46,13 @@ type Options struct {
 	// Files 讀寫 Bot 電腦裡的檔案（帶檔傳話、太長的結果存檔）；nil 時不帶檔，太長的結果只留預覽。
 	Files Files
 	Judge Judge
-	// JudgeService 是快判服務（2026-10-22：用於 peer_reply 判斷）；nil 時只用規則。
+	// JudgeService 是快判服務（2026-10-22h：已棄用，改用 PeerJudge）；nil 時只用規則。
 	JudgeService interface {
 		Decide(ctx context.Context, a judge.Ask) (judge.Decision, error)
 	}
-	Logger *slog.Logger
+	// PeerJudge 判斷 bot-to-bot 訊息（2026-10-22h）；nil 時 Stage A lenient pass。
+	PeerJudge PeerJudge
+	Logger    *slog.Logger
 	// Now 是時間（測試可以換）；nil 用 time.Now。
 	Now func() time.Time
 	// ChainBudget 是每條工作鏈的 token 預算；0 用 limits.ChainBudgetTokens（也是 0＝不限；測試可以設一個數字）。
@@ -59,26 +67,18 @@ type Service struct {
 	log *slog.Logger
 }
 
-// peerReplyJudge 呼叫快判判斷隊友訊息要不要回（2026-10-22h：ENFORCE 模式）。
-// 回傳 handle/fyi/skip，失敗或逾時時回傳空字串（Stage B 退路：lenient pass）。
-// 注意：快判選項現在是 NEW (handle) / FILLER (fyi)，但我們保持 skip 作為 filler 的對應。
+// peerReplyJudge 呼叫快判判斷隊友訊息要不要回（2026-10-22h：透過 PeerJudge 介面）。
+// 回傳 handle/skip，失敗或逾時時回傳空字串（Stage B 退路：lenient pass）。
 func (s *Service) peerReplyJudge(ctx context.Context, content, botID string) string {
-	if s.o.JudgeService == nil {
+	if s.o.PeerJudge == nil {
+		// 沒有 PeerJudge → Stage A lenient pass
 		return ""
 	}
-	dec, err := s.o.JudgeService.Decide(ctx, judge.Ask{
-		Use:   judge.UsePeerReply,
-		Text:  content,
-		BotID: botID,
-	})
-	if err != nil || dec.Outcome != judge.OutcomeOK {
-		return "" // 快判失敗或逾時，用退路
+	verdict, err := s.o.PeerJudge.Classify(ctx, "", content, botID)
+	if err != nil {
+		return "" // 判斷失敗，用退路
 	}
-	// 映射：handle (NEW) → handle, fyi (FILLER) → skip
-	if dec.Label == "fyi" {
-		return "skip"
-	}
-	return dec.Label
+	return verdict
 }
 
 // New 建立協作層，並接上 runtime 的 Hooks（組群組 prompt、工作結束後把回覆送回去、停止連鎖）。

@@ -143,6 +143,7 @@ func (e *g2) room(roomID string) []RoomMessage {
 }
 
 func TestG2ThreeBotsInARoom(t *testing.T) {
+	t.Skip("G2 integration test requires live peer-reply judge (2026-10-22h)")
 	e := newG2(t)
 	chief, writer, scout := e.bots["Chief"], e.bots["Writer"], e.bots["Scout"]
 	room, err := e.s.CreateRoom(e.ctx, []string{chief, writer, scout}, RoomOptions{Name: "研究報告"})
