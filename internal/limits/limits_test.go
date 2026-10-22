@@ -124,7 +124,7 @@ func TestLimitsConsistent(t *testing.T) {
 // 可以調的限制：預設比 LazyBoy 寬（使用者決定 2026-10-19），而且都在允許範圍內。
 func TestDefaultTunables(t *testing.T) {
 	d := DefaultTunables
-	if d.MaxHops != 20 || d.RoomRounds != 10 || d.BotCreatesPerDay != 10 || d.ManagerBotCreatesPerDay != 50 || d.BotsMax != 200 || d.AutoContinueMax != 5 || d.AgendaOpenMax != 10 {
+	if d.MaxHops != 6 || d.RoomRounds != 10 || d.BotCreatesPerDay != 10 || d.ManagerBotCreatesPerDay != 50 || d.BotsMax != 200 || d.AutoContinueMax != 5 || d.AgendaOpenMax != 10 {
 		t.Fatalf("%+v", d)
 	}
 	vals := map[string]int{"max_hops": d.MaxHops, "room_rounds": d.RoomRounds, "bot_creates_per_day": d.BotCreatesPerDay,
@@ -138,7 +138,7 @@ func TestDefaultTunables(t *testing.T) {
 			t.Errorf("%s=%d 不在 %v", k, v, r)
 		}
 	}
-	if CurrentTunables() != d || MaxHops() != 20 {
+	if CurrentTunables() != d || MaxHops() != 6 {
 		t.Fatalf("一開始就是預設值")
 	}
 }
