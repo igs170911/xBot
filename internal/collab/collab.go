@@ -831,7 +831,11 @@ func (s *Service) reply(ctx context.Context, task store.Task, m taskMeta, verdic
 		return
 	}
 	answered()
-	if verdict != runtime.VerdictFailed && IsSilent(content) {
+	// 阻止無意義的致謝/確認訊息造成對話循環
+	if verdict != runtime.VerdictFailed && (IsSilent(content) || IsAcknowledgement(content)) {
+		if IsAcknowledgement(content) && !IsSilent(content) {
+			s.log.Debug("blocked acknowledgement to prevent loop", "from", task.BotID, "to", m.FromBot, "content", plain(content, 100))
+		}
 		return
 	}
 	s.deliver(ctx, task.BotID, m.FromBot, content, verdict, task)
@@ -870,7 +874,7 @@ func (s *Service) continueReply(ctx context.Context, task store.Task, m taskMeta
 	if id := metaOf(origin).MessageID; id != "" {
 		_ = s.db.MarkBotMessageAnswered(ctx, id)
 	}
-	if verdict != runtime.VerdictFailed && IsSilent(content) {
+	if verdict != runtime.VerdictFailed && (IsSilent(content) || IsAcknowledgement(content)) {
 		return
 	}
 	s.deliver(ctx, task.BotID, owed.To, content, verdict, origin)

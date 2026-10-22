@@ -79,6 +79,42 @@ func IsSilent(text string) bool {
 	return body == "" || lower == Silent || (strings.HasPrefix(lower, Silent) && runes(body) < runes(Silent)+limits.SilentTailMax)
 }
 
+// IsAcknowledgement 檢測純粹的致謝/確認訊息（沒有實質內容）。
+// 這些訊息不應該觸發對方回覆，會造成無限對話循環（bot loop bug）。
+func IsAcknowledgement(text string) bool {
+	body := strings.TrimSpace(text)
+	if body == "" || len([]rune(body)) < 3 {
+		return true
+	}
+	
+	// 訊息太短（< 20 字）且不是 [silent] 通常是無意義的確認
+	if len([]rune(body)) < 20 && !strings.HasPrefix(strings.ToLower(body), Silent) {
+		return true
+	}
+	
+	lower := strings.ToLower(body)
+	
+	// 純粹的致謝/確認詞
+	acknowledgements := []string{
+		"收到", "了解", "明白", "好的", "知道了", "謝謝", "感謝",
+		"ok", "okay", "got it", "received", "understood", "thanks",
+		"will do", "on it", "sure", "noted", "ack",
+	}
+	
+	for _, ack := range acknowledgements {
+		if lower == ack || lower == ack+"。" || lower == ack+"!" || lower == ack+"！" {
+			return true
+		}
+	}
+	
+	// 只是重述對方的話，沒有新資訊
+	if strings.Count(lower, "收到你") > 0 && len([]rune(body)) < 50 {
+		return true
+	}
+	
+	return false
+}
+
 // Member 是 @ 比對用的成員（id、名字）。
 type Member struct {
 	ID   string
