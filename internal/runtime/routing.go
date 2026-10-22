@@ -34,18 +34,18 @@ func (r *Router) Route(ctx context.Context, b store.Bot, threadID, text string) 
 
 	// 對話分流快判（UseRoute）
 	ask := judge.Ask{
-		Use:    judge.UseRoute,
-		Text:   text,
-		BotID:  b.ID,
-		Ref:    threadID,
+		Use:   judge.UseRoute,
+		Text:  text,
+		BotID: b.ID,
+		Ref:   threadID,
 	}
-	
+
 	dec, err := r.Decider.Decide(ctx, ask)
 	if err != nil || dec.Outcome != judge.OutcomeOK {
 		// 快判失敗或未設定：走完整流程
 		return true, ""
 	}
-	
+
 	if r.Logger != nil {
 		r.Logger.Debug("對話分流", "text", routingClipText(text, 50), "label", dec.Label, "p", dec.P, "by", dec.By, "outcome", dec.Outcome)
 	}
@@ -55,12 +55,12 @@ func (r *Router) Route(ctx context.Context, b store.Bot, threadID, text string) 
 	case "chat":
 		// 閒聊：用聊天模型快速回應，不開電腦
 		return false, r.quickChatReply(ctx, b, text)
-		
+
 	case "progress":
 		// 查進度：直接回報進度，不開電腦
 		// 注意：進度資訊的組裝在 runtime.Progress 裡，這裡只做決策
 		return false, ""
-		
+
 	case "work":
 		// 實際工作：需要完整流程
 		// 如果是複雜任務，先回一句確認讓使用者知道 Bot 收到了
@@ -86,7 +86,7 @@ func (r *Router) quickChatReply(ctx context.Context, b store.Bot, text string) s
 func (r *Router) workAckReply(text string) string {
 	// 分析文字判斷是什麼類型的工作，生成對應的確認訊息
 	text = strings.TrimSpace(strings.ToLower(text))
-	
+
 	// 常見工作類型的確認語句
 	patterns := []struct {
 		keywords []string
@@ -115,7 +115,7 @@ func (r *Router) workAckReply(text string) string {
 // 判斷依據：訊息長度、關鍵字等
 func (r *Router) shouldAck(text string) bool {
 	textRunes := []rune(text)
-	
+
 	// 非常簡短的訊息（< 10 字）通常不需要確認
 	if len(textRunes) < 10 {
 		return false

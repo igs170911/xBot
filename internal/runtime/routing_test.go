@@ -34,7 +34,7 @@ func TestRoute_Chat(t *testing.T) {
 		Decider: &mockDecider{decision: judge.Decision{Answer: judge.Answer{Label: "chat", P: 0.95, By: judge.ByModel}, Outcome: judge.OutcomeOK}},
 	}
 	b := store.Bot{ID: "bot1", Name: "測試"}
-	
+
 	openBox, reply := r.Route(context.Background(), b, "thread1", "嗨")
 	if openBox {
 		t.Error("閒聊不應該開電腦")
@@ -48,7 +48,7 @@ func TestRoute_Progress(t *testing.T) {
 		Decider: &mockDecider{decision: judge.Decision{Answer: judge.Answer{Label: "progress", P: 0.92, By: judge.ByModel}, Outcome: judge.OutcomeOK}},
 	}
 	b := store.Bot{ID: "bot1", Name: "測試"}
-	
+
 	openBox, reply := r.Route(context.Background(), b, "thread1", "現在做到哪了")
 	if openBox {
 		t.Error("查進度不應該開電腦")
@@ -64,7 +64,7 @@ func TestRoute_Work(t *testing.T) {
 		Decider: &mockDecider{decision: judge.Decision{Answer: judge.Answer{Label: "work", P: 0.88, By: judge.ByModel}, Outcome: judge.OutcomeOK}},
 	}
 	b := store.Bot{ID: "bot1", Name: "測試"}
-	
+
 	// 簡短工作：不需要確認
 	openBox, reply := r.Route(context.Background(), b, "thread1", "查一下天氣")
 	if !openBox {
@@ -73,7 +73,7 @@ func TestRoute_Work(t *testing.T) {
 	if reply != "" {
 		t.Errorf("簡短工作不需要確認，got %q", reply)
 	}
-	
+
 	// 複雜工作：需要確認
 	longTask := "請幫我查三家電商的價格，然後比較規格，最後整理成表格給我"
 	openBox, reply = r.Route(context.Background(), b, "thread1", longTask)
@@ -93,7 +93,7 @@ func TestRoute_NoDecider(t *testing.T) {
 		Decider: nil, // 沒有快判服務
 	}
 	b := store.Bot{ID: "bot1", Name: "測試"}
-	
+
 	// 沒有快判時：所有訊息都走完整流程
 	openBox, reply := r.Route(context.Background(), b, "thread1", "嗨")
 	if !openBox {
@@ -106,18 +106,18 @@ func TestRoute_NoDecider(t *testing.T) {
 
 func TestShouldAck(t *testing.T) {
 	r := &Router{}
-	
+
 	cases := []struct {
 		text string
 		want bool
 	}{
-		{"嗨", false},                                      // 太短
-		{"查一下", false},                                   // 簡短指令
-		{"請幫我查三家電商的價格然後比較", true},                        // 多步驟
-		{"第一步查資料，第二步整理，第三步做表格", true},                   // 明確的多步驟
-		{strings.Repeat("這是一個很長的訊息", 20), true},             // 很長的訊息
+		{"嗨", false},   // 太短
+		{"查一下", false}, // 簡短指令
+		{"請幫我查三家電商的價格然後比較", true},               // 多步驟
+		{"第一步查資料，第二步整理，第三步做表格", true},           // 明確的多步驟
+		{strings.Repeat("這是一個很長的訊息", 20), true}, // 很長的訊息
 	}
-	
+
 	for _, c := range cases {
 		got := r.shouldAck(c.text)
 		if got != c.want {
@@ -128,7 +128,7 @@ func TestShouldAck(t *testing.T) {
 
 func TestWorkAckReply(t *testing.T) {
 	r := &Router{}
-	
+
 	cases := []struct {
 		text    string
 		wantKey string // 確認訊息應該包含的關鍵字
@@ -140,7 +140,7 @@ func TestWorkAckReply(t *testing.T) {
 		{"download the file", "下載"},
 		{"做一件事", "處理"}, // 預設回覆
 	}
-	
+
 	for _, c := range cases {
 		got := r.workAckReply(c.text)
 		if got == "" {
