@@ -309,12 +309,15 @@ func TestLRUNeverCloseBusySession(t *testing.T) {
 
 	driver.sendFunc = func(ctx context.Context, s engine.Session, m engine.Message) error {
 		cs := s.(*countingSession)
+		// Mark as running
 		cs.mu.Lock()
-		cs.mu.Unlock() // Mark as running by setting flag in Send (simulated by driver state)
+		cs.running = true
+		cs.mu.Unlock()
 		go func() {
 			<-blockChan // Block until released
 			cs.mu.Lock()
 			closed := cs.closed
+			cs.running = false
 			cs.mu.Unlock()
 			if !closed {
 				cs.events <- engine.Event{Type: engine.EventText, Text: "done"}
