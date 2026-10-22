@@ -2,6 +2,7 @@ package collab
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strings"
 	"sync"
@@ -48,9 +49,13 @@ func (p *ProductionJudge) Classify(ctx context.Context, prev, msg, botID string)
 
 	// Call judge service
 	verdict, err := p.decide(ctx, "peer_reply", msg, botID)
-	if err != nil {
-		p.log.Debug("judge call failed", "err", err)
-		return "", err
+	if errors.Is(err, ErrJudgeNotConfigured) || err != nil {
+		// Judge not configured or failed -> fall back to STRICT (2026-10-22i)
+		p.log.Debug("judge failed, falling back to STRICT", "err", err)
+		if !hasConcreteResidue(msg) {
+			return "skip", nil
+		}
+		return "handle", nil
 	}
 	return verdict, nil
 }

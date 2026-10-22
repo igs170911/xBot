@@ -39,6 +39,9 @@ type PeerJudge interface {
 	Classify(ctx context.Context, prev, msg, botID string) (verdict string, err error)
 }
 
+// ErrJudgeNotConfigured is returned when judge backend is not available (2026-10-22i).
+var ErrJudgeNotConfigured = errors.New("judge backend not configured")
+
 // Options 是協作層的設定。
 type Options struct {
 	DB      *store.DB

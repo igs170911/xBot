@@ -208,6 +208,14 @@ func openStack(cfg config.Config) (*stack, error) {
 		}
 		return resp.Status, resp.Body, err
 	}}
+	// Log the judge backend selection at startup (2026-10-22i)
+	if set, err := s.judge.Settings(context.Background()); err == nil {
+		if set.Tier1.On() || set.Tier2.On() {
+			logger.Info("judge backend: API-based", "tier1", set.Tier1.Provider+"/"+set.Tier1.Model, "tier2", set.Tier2.Provider+"/"+set.Tier2.Model)
+		} else {
+			logger.Warn("judge backend: not configured, using STRICT fallback only")
+		}
+	}
 	s.creds.Close = s.driver.Close
 	// 學到的事（harness2 的做法）：工作沒做完、或你說「不對？」時，老師模型看步驟、提議一條守則；你同意才寫進 SOUL.md。
 	s.lessons = &lessons.Service{DB: db, Logger: logger, Call: s.model.Call, Teacher: teacherModel(db, s.pstore),
@@ -277,31 +285,29 @@ func openStack(cfg config.Config) (*stack, error) {
 	s.skills = &skills.Service{Locate: comp.BotFS, Library: &skills.Library{Dir: filepath.Join(cfg.DataDir, "skills")}}
 	s.memory = &memory.Service{DB: db, Locate: comp.BotFS, Active: s.runtime.Active}
 
-	// Wire production judge for collab layer (2026-10-22)
+	// Wire production judge for collab layer (2026-10-22, fixed 2026-10-22i)
+	// Judge service is always created (line 203), so check if it has a working backend.
+	// not_configured, errors, or timeouts -> nil decideFn -> STRICT fallback.
 	var peerJudge collab.PeerJudge
-	if s.judge != nil {
-		// Wrap judge service's Decide method
-		decideFn := func(ctx context.Context, kind, content, botID string) (string, error) {
-			ask := judge.Ask{Use: "peer_reply", Text: content, BotID: botID}
-			decision, err := s.judge.Decide(ctx, ask)
-			if err != nil {
-				return "", err
-			}
-			// Map decision answer label to peer_reply format
-			switch decision.Answer.Label {
-			case "fyi", "skip":
-				return "skip", nil
-			case "handle", "ok":
-				return "handle", nil
-			default:
-				return "", nil // Unknown answer -> no judgment
-			}
+	decideFn := func(ctx context.Context, kind, content, botID string) (string, error) {
+		ask := judge.Ask{Use: "peer_reply", Text: content, BotID: botID}
+		decision, err := s.judge.Decide(ctx, ask)
+		// Treat not_configured, errors, and timeouts as "no verdict" -> STRICT fallback
+		if err != nil || decision.Outcome == judge.OutcomeNotConfigured ||
+			decision.Outcome == judge.OutcomeError || decision.Outcome == judge.OutcomeTimeout {
+			return "", collab.ErrJudgeNotConfigured
 		}
-		peerJudge = collab.NewProductionJudge(decideFn, logger)
-	} else {
-		// No judge service -> strict Stage A
-		peerJudge = collab.NewProductionJudge(nil, logger)
+		// Map decision answer label to peer_reply format
+		switch decision.Answer.Label {
+		case "fyi", "skip":
+			return "skip", nil
+		case "handle", "ok":
+			return "handle", nil
+		default:
+			return "", nil // Unknown answer -> no judgment
+		}
 	}
+	peerJudge = collab.NewProductionJudge(decideFn, logger)
 
 	// Bot 之間的傳話與群組（X02）：接上 runtime 的 Hooks；帶檔經 Docker 讀寫兩邊電腦的 /workspace（已在 runtime 初始化時共用）。
 	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Judge: s.judge.Responder, JudgeService: s.judge, Files: carry, PeerJudge: peerJudge})
