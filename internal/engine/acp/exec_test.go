@@ -77,9 +77,9 @@ func TestExecProcess(t *testing.T) {
 		t.Errorf("經 exec 的回覆 = %q", got)
 	}
 	o := f.created[0]
-	// 2026-10-22k: 預期有 setsid 包裝 (item 7b process group)
+	// 2026-10-22k (B1): 預期有 setsid -w 包裝
 	if f.target != "c1" || o.User != "1000:1000" || o.WorkingDir != "/workspace" || !o.AttachStdin || !o.AttachStdout || o.TTY ||
-		!slices.Equal(o.Cmd, []string{"setsid", "claude-agent-acp"}) || !slices.Contains(o.Env, "HOME=/home/box") || !slices.Contains(o.Env, "X=1") ||
+		!slices.Equal(o.Cmd, []string{"setsid", "-w", "claude-agent-acp"}) || !slices.Contains(o.Env, "HOME=/home/box") || !slices.Contains(o.Env, "X=1") ||
 		!slices.Contains(o.Env, "DISABLE_AUTOUPDATER=1") {
 		t.Errorf("exec 參數 = %+v", o)
 	}

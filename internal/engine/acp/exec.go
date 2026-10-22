@@ -43,8 +43,8 @@ func Exec(ctx context.Context, api Execer, spec ExecSpec, a Agent) (Process, err
 	env := append([]string{"HOME=" + spec.Home}, a.Env...)
 	env = append(env, spec.Env...)
 
-	// 2026-10-22k: 使用 setsid 包裝命令，讓 agent 和它的子行程（desktop_mcp.py 等）在新的 process group
-	wrappedCmd := append([]string{"setsid"}, a.Command...)
+	// 2026-10-22j (B1): setsid -w creates process group AND waits for child, keeping docker stream open
+	wrappedCmd := append([]string{"setsid", "-w"}, a.Command...)
 
 	created, err := api.ExecCreate(ctx, spec.ContainerID, client.ExecCreateOptions{
 		User: spec.User, AttachStdin: true, AttachStdout: true, AttachStderr: true,
