@@ -81,6 +81,7 @@ func IsSilent(text string) bool {
 
 // IsAcknowledgement 檢測純粹的致謝/確認訊息（沒有實質內容）。
 // 這些訊息不應該觸發對方回覆，會造成無限對話循環（bot loop bug）。
+// B4 (2026-10-22): 增強中文短確認訊息的檢測。
 func IsAcknowledgement(text string) bool {
 	body := strings.TrimSpace(text)
 	if body == "" {
@@ -97,11 +98,34 @@ func IsAcknowledgement(text string) bool {
 		"ok", "okay", "got it", "received", "understood", "thanks", "thank you",
 		"will do", "on it", "sure", "noted", "ack", "roger", "copy",
 		"agree", "agreed", // 2026-10-22c：英文同意
+		// B4: 更多中文確認詞
+		"好的謝謝", "謝謝了", "辛苦了", "沒問題", "可以", "沒事", "知道", "懂了",
+		"+1", "同上", "我也是", "贊同", "支持", "沒意見",
 	}
 
 	trimmed := strings.TrimRight(lower, "。！？!?.,;；，、")
 	for _, ack := range acknowledgements {
 		if trimmed == ack {
+			return true
+		}
+	}
+
+	// B4: 短組合確認訊息（≤12 字，包含多個確認詞）
+	// 例：「好的謝謝」「收到辛苦了」「了解，沒問題」
+	if runes(body) <= 12 {
+		ackParts := []string{
+			"好的", "好", "收到", "了解", "明白", "知道", "謝謝", "感謝", "辛苦",
+			"沒問題", "可以", "同意", "贊同", "+1", "同上", "沒事", "懂了",
+			"ok", "thanks", "got it", "sure",
+		}
+		matchCount := 0
+		for _, part := range ackParts {
+			if strings.Contains(lower, part) {
+				matchCount++
+			}
+		}
+		// 短訊息包含 2 個或更多確認詞 -> 是 acknowledgement
+		if matchCount >= 2 {
 			return true
 		}
 	}
