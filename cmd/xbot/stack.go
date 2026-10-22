@@ -577,21 +577,9 @@ func detectGrokJudgeModel(logger *slog.Logger) string {
 	// Try to query grok CLI for available models
 	// The grok CLI can list models via `grok model list` or similar command
 	// For now, use a set of known good models in preference order
-	knownModels := []string{
-		"grok-beta",          // Free tier fast model
-		"grok-2-mini-public", // Alternative fast model
-		"grok-2-mini",        // Mini model
-	}
 
-	// Try each known model (in production, we could actually query `grok model list`)
-	// For now, we'll just return the first known model as a reasonable default
-	for _, model := range knownModels {
-		logger.Debug("judge model: trying known model", "model", model)
-		// In a full implementation, we'd exec `grok model list` and parse the output
-		// For now, just return the first one
-		logger.Info("judge model: selected model", "model", model, "source", "default")
-		return model
-	}
-
-	return ""
+	// C5 (2026-10-22): Default to grok-4.7-build-fast (not grok-beta)
+	model := "grok-4.7-build-fast"
+	logger.Info("judge model: selected model", "model", model, "source", "default")
+	return model
 }
