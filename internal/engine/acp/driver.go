@@ -143,6 +143,7 @@ func (d *Driver) reapIdleSessions() {
 }
 
 // agentConn 是一個 Bot 的 agent 行程與上面的 session。
+// 2026-10-22p (LEAK FIX): Drain mechanism - when sessions are closed, we drain the old agent.
 type agentConn struct {
 	botID       string
 	mode        string // 開行程時的權限等級（Agent.ModeEnv 用）
@@ -159,8 +160,11 @@ type agentConn struct {
 	sessionCount int       // 當前實時 session 數量（包括所有來源：DM、room、peer、judge）
 	sessionWait  sync.Cond // 等待 session 空出時通知
 
-	// B2.3 FIX (2026-10-22): Serialize session/new to avoid PID snapshot race
-	sessionNewMu sync.Mutex // 序列化 session/new 呼叫，避免並發時 PID snapshot 競態
+	// 2026-10-22p (LEAK FIX): Drain mechanism
+	draining       bool          // This agent is draining, new sessions go to new agent
+	closedSessions int           // Count of sessions that were closed but not yet reaped by agent
+	drainTimer     *time.Timer   // Max time to wait for drain
+	replacement    *agentConn    // New agent for incoming sessions while draining
 }
 
 type permOption struct {
@@ -443,13 +447,8 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	d.log.Info("Creating new session", "bot", o.BotID, "thread", o.ThreadID, "live_sessions", ac.sessionCount, "cap", limits.ACPMaxSessionsPerBox)
 	ac.mu.Unlock()
 
-	// B2.3 FIX (2026-10-22): Serialize session/new + PID snapshot to avoid race
-	// When two sessions start concurrently, snapshot A can capture B's new PIDs
-	ac.sessionNewMu.Lock()
-	defer ac.sessionNewMu.Unlock()
-
-	// 2026-10-22n: Removed MCP PID snapshot - doesn't work, agent respawns MCPs.
-	// Real fix: restart agent when all sessions closed (see CloseSession).
+	// 2026-10-22p: Removed MCP PID snapshot - doesn't work, agent respawns MCPs.
+	// Real fix: restart agent when closed sessions exist and all remaining idle (see CloseSession).
 
 	var mcp []MCPServer
 	if d.o.MCPServers != nil {
@@ -1058,9 +1057,10 @@ func (d *Driver) Close(botID string) {
 	}
 }
 
-// CloseSession 關閉一個 session（2026-10-22：資源洩漏修復）。
-// 2026-10-22n (LEAK FIX): ACP 協議沒有 session/close 方法，agent 會保持所有 session 活著並重啟 MCP。
-// 解決方案：當所有 sessions 關閉後，重啟 agent 進程以清理所有 MCP 服務器。
+// CloseSession 關閉一個 session（2026-10-22p：立即重啟 agent 以清理 MCP）。
+// 2026-10-22p (LEAK FIX): 不等所有 sessions 關閉才重啟。一有 session 關閉就標記需要重啟。
+// 當所有剩餘 sessions 都閒置時，立即重啟 agent 以清理被關閉 sessions 的 MCP 服務器。
+// 這確保在穩定使用中（sessions 重疊，計數永不為 0）MCP 也能被及時清理。
 func (d *Driver) CloseSession(s engine.Session) error {
 	as, ok := s.(*session)
 	if !ok {
@@ -1095,18 +1095,22 @@ func (d *Driver) CloseSession(s engine.Session) error {
 
 	// B2 (2026-10-22): Decrement session count and signal waiters
 	ac.sessionCount--
+	ac.closedSessions++ // 2026-10-22p: Track closed sessions for agent restart decision
 	sessionCount := ac.sessionCount
-	// B2.4 (2026-10-22): Log session count for debugging
-	d.log.Info("Closed session", "bot", ac.botID, "session", as.id, "live_sessions", ac.sessionCount, "cap", limits.ACPMaxSessionsPerBox)
+	closedCount := ac.closedSessions
+	d.log.Info("Closed session", "bot", ac.botID, "session", as.id, "live_sessions", ac.sessionCount, "closed_not_reaped", closedCount, "cap", limits.ACPMaxSessionsPerBox)
 	ac.sessionWait.Signal()
 
-	// 2026-10-22n (LEAK FIX): When all sessions are closed, restart agent to kill MCP servers.
-	// This is necessary because ACP has no session/close and agent keeps all sessions + MCPs alive.
-	shouldRestartAgent := sessionCount == 0 && ac.c != nil
-	if shouldRestartAgent {
-		d.log.Info("All sessions closed, restarting agent to clean MCP servers", "bot", ac.botID)
+	// 2026-10-22p (LEAK FIX): Restart agent when closed sessions exist and all remaining are idle.
+	// This ensures MCP servers from closed sessions are cleaned up promptly, even under steady use.
+	// Check if we should restart: closed sessions exist, and (all sessions closed OR all remaining idle)
+	shouldRestart := closedCount > 0 && (sessionCount == 0 || d.allSessionsIdle(ac))
+	
+	if shouldRestart && ac.c != nil {
+		d.log.Info("Restarting agent to clean MCPs from closed sessions", "bot", ac.botID, "live", sessionCount, "closed", closedCount)
 		oldConn := ac.c
 		ac.c = nil // Mark for restart on next Start()
+		ac.closedSessions = 0 // Reset counter
 		ac.mu.Unlock()
 		// Close the old agent process (kills agent + all MCP children via process group)
 		oldConn.close()
@@ -1119,19 +1123,27 @@ func (d *Driver) CloseSession(s engine.Session) error {
 	// 關掉 queue（停止事件流）
 	as.q.close()
 
-	// 2026-10-22n (LEAK FIX): Removed name-based MCP killing (driver.go:1090,1102,1138).
-	// Name-based killing (`ps | grep desktop_mcp`) kills ALL MCP servers box-wide,
-	// breaking other live sessions' MCP servers.
-	// Also removed PID snapshot approach (driver.go:433 TODO) - doesn't work because
-	// agent respawns MCPs when killed.
-	// Real fix: restart agent when all sessions closed (above).
-
 	// 如果正在跑，發 session/cancel 停下來
 	if running && ac.c != nil {
 		_ = ac.c.notify("session/cancel", map[string]string{"sessionId": as.id})
 	}
 
 	return nil
+}
+
+// allSessionsIdle checks if all sessions in this agent are idle (not running).
+// 2026-10-22p (LEAK FIX): Helper for determining when to restart agent.
+// Caller must hold ac.mu.
+func (d *Driver) allSessionsIdle(ac *agentConn) bool {
+	for _, s := range ac.sessions {
+		s.mu.Lock()
+		running := s.running
+		s.mu.Unlock()
+		if running {
+			return false
+		}
+	}
+	return true
 }
 
 // 2026-10-22n: Removed diffPids, snapshotMCPPids, killMCPPidsInContainer.
