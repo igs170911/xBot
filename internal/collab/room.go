@@ -8,7 +8,9 @@ import (
 	"slices"
 	"strings"
 
+	"xbot/internal/events"
 	"xbot/internal/limits"
+	"xbot/internal/notify"
 	"xbot/internal/runtime"
 	"xbot/internal/store"
 )
@@ -420,16 +422,23 @@ func (s *Service) isRoomConcluded(ctx context.Context, roomID string) bool {
 	return concluded
 }
 
-// getConsecEmpty 取得群組的連續無進展次數（2026-10-22b）。
-// 從最近的訊息 meta 裡讀取。
+// getConsecEmpty 取得群組的連續無進展次數（2026-10-22c）。
+// 從最近的 Bot 或系統訊息 meta 裡讀取（跳過 owner 訊息）。
 func (s *Service) getConsecEmpty(ctx context.Context, roomID string) int {
-	msgs, err := s.db.ListMessages(ctx, store.ScopeRoom, roomID, 0, 1)
+	msgs, err := s.db.ListMessages(ctx, store.ScopeRoom, roomID, 0, 10)
 	if err != nil || len(msgs) == 0 {
 		return 0
 	}
-	var meta roomMeta
-	_ = json.Unmarshal(msgs[0].Meta, &meta)
-	return meta.ConsecEmpty
+	// 從新到舊掃描，找第一個非 owner 訊息的 ConsecEmpty
+	for i := len(msgs) - 1; i >= 0; i-- {
+		msg := msgs[i]
+		if msg.Sender != "owner" {
+			var meta roomMeta
+			_ = json.Unmarshal(msg.Meta, &meta)
+			return meta.ConsecEmpty
+		}
+	}
+	return 0
 }
 
 // PostResult 是你在群組發言的結果。
@@ -848,21 +857,45 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	judgeVerdict := s.peerReplyJudge(ctx, content, task.BotID)
 	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswer, recentTexts, judgeVerdict, true)
 
-	// 2026-10-22b：連續無進展自動停止（從 room 讀取，而非 task meta）
+	// 2026-10-22c：連續無進展自動停止（從 room 讀取，而非 task meta）
 	consecEmpty := s.getConsecEmpty(ctx, room.ID)
 	s.log.Debug("auto-stop check", "room", room.ID, "bot", task.BotID, "shouldSend", shouldSend, "reason", reason, "consecEmpty", consecEmpty)
 	if !shouldSend {
 		consecEmpty++
 		if consecEmpty >= 2 {
 			s.log.Info("連續 2 輪無新資訊，自動停止", "bot", task.BotID, "room", room.ID)
-			// 2026-10-22c：直接在群組加入系統提示，不產生新的 Bot 輪次
+			// 2026-10-22c：通過 Inbox 通知 owner，不在群組貼訊息、不開新輪次
 			botName := ""
 			if b, err := s.db.GetBot(ctx, task.BotID); err == nil {
 				botName = b.Name
 			}
-			_, _ = s.addRoomMessage(ctx, room.ID, "system",
-				fmt.Sprintf("[系統] %s 連續兩輪沒有新進展，已自動停止。", botName),
-				roomMeta{Notice: "auto_stop", FromBotID: task.BotID, ConsecEmpty: consecEmpty})
+			ref := "auto_stop:" + room.ID + ":" + task.BotID
+			s.log.Debug("checking inbox ref", "ref", ref)
+			if exists, err := s.db.InboxRefExists(ctx, ref); err == nil && !exists {
+				s.log.Debug("creating inbox item for auto-stop", "ref", ref)
+				payload, _ := json.Marshal(map[string]any{"room_id": room.ID, "room_name": room.Name, "bot_id": task.BotID, "bot_name": botName})
+				it, err := s.db.CreateInboxItem(ctx, store.InboxItem{
+					Kind:    "mention", // 使用 mention 作為通知類型（auto_stop 不在允許清單中）
+					BotID:   task.BotID,
+					Ref:     ref,
+					Title:   botName + " 在群組「" + room.Name + "」已自動停止",
+					Body:    fmt.Sprintf("%s 連續兩輪沒有新進展，已自動停止。需要時可以重新 @ 它。", botName),
+					Payload: payload,
+				})
+				if err != nil {
+					s.log.Warn("failed to create inbox item", "err", err)
+				} else {
+					s.log.Debug("inbox item created", "id", it.ID)
+					e := notify.Event(notify.KindCreated, it)
+					if row, err := s.db.AppendEvent(ctx, e); err == nil && s.rt != nil {
+						s.rt.Bus().Publish(events.FromStore(row))
+					}
+				}
+			} else {
+				s.log.Debug("inbox ref already exists or error checking", "exists", exists, "err", err)
+			}
+			// 仍然存儲 blocked 標記以維護 consecEmpty 計數
+			_, _ = s.addRoomMessage(ctx, room.ID, "system", "", roomMeta{Notice: "blocked", ConsecEmpty: consecEmpty, FromBotID: task.BotID})
 			return
 		}
 	} else {

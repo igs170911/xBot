@@ -2,6 +2,7 @@ package collab
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"xbot/internal/runtime"
@@ -159,7 +160,7 @@ func TestRound3Issue3ConcludedRoomReopenOnUserMessage(t *testing.T) {
 }
 
 // TestRound3Issue4AutoStopDirectNotification tests that:
-// - Auto-stop after 2 consecutive no-progress rounds adds a system message to the room
+// - Auto-stop after 2 consecutive no-progress rounds creates an inbox notification
 func TestRound3Issue4AutoStopDirectNotification(t *testing.T) {
 	tm := setup(t)
 	chief, writer := tm.bots["Chief"], tm.bots["Writer"]
@@ -175,20 +176,16 @@ func TestRound3Issue4AutoStopDirectNotification(t *testing.T) {
 	tm.start(task1)
 	tm.finish(task1.ID, runtime.VerdictAnswer, "收到")
 
-	// Check: no auto-stop yet (only 1 round)
-	log := tm.roomLog(room.ID)
-	autoStopFound := false
-	for _, msg := range log {
-		if msg.Sender == "system" {
-			var meta roomMeta
-			_ = json.Unmarshal(msg.Meta, &meta)
-			if meta.Notice == "auto_stop" {
-				autoStopFound = true
-			}
+	// Check: no auto-stop inbox notification yet (only 1 round)
+	inboxItems, _ := tm.db.ListInboxFiltered(tm.ctx, store.InboxFilter{BotID: chief})
+	autoStopCount := 0
+	for _, item := range inboxItems {
+		if strings.HasPrefix(item.Ref, "auto_stop:") {
+			autoStopCount++
 		}
 	}
-	if autoStopFound {
-		t.Error("第一輪就自動停止（應該要兩輪）")
+	if autoStopCount > 0 {
+		t.Error("第一輪就產生 auto-stop 通知（應該要兩輪）")
 	}
 
 	// User posts again
@@ -199,24 +196,29 @@ func TestRound3Issue4AutoStopDirectNotification(t *testing.T) {
 	tm.start(task2)
 	tm.finish(task2.ID, runtime.VerdictAnswer, "好的")
 
-	// Check: auto-stop notification should appear in room
-	log = tm.roomLog(room.ID)
-	t.Logf("Room log after second round (%d messages):", len(log))
-	autoStopFound = false
-	for i, msg := range log {
-		t.Logf("  [%d] %s: %q", i, msg.Sender, msg.Content)
-		if msg.Sender == "system" {
-			var meta roomMeta
-			_ = json.Unmarshal(msg.Meta, &meta)
-			t.Logf("    meta.Notice: %s", meta.Notice)
-			if meta.Notice == "auto_stop" {
-				autoStopFound = true
-				t.Logf("找到 auto-stop 系統訊息：%s", msg.Content)
-			}
+	// Check: auto-stop inbox notification should appear
+	inboxItems, err := tm.db.ListInboxFiltered(tm.ctx, store.InboxFilter{BotID: chief})
+	if err != nil {
+		t.Fatalf("Failed to list inbox items: %v", err)
+	}
+	autoStopItems := []store.InboxItem{}
+	for _, item := range inboxItems {
+		if strings.HasPrefix(item.Ref, "auto_stop:") {
+			autoStopItems = append(autoStopItems, item)
 		}
 	}
-	if !autoStopFound {
-		t.Error("第二輪沒有新進展應該產生 auto-stop 系統訊息")
+	t.Logf("Found %d auto-stop inbox items", len(autoStopItems))
+	if len(autoStopItems) == 0 {
+		t.Error("第二輪沒有新進展應該產生 auto-stop inbox 通知")
+	} else {
+		item := autoStopItems[0]
+		t.Logf("找到 auto-stop inbox 通知：%s - %s", item.Title, item.Body)
+		if !strings.Contains(item.Title, "Auto-stop 測試") {
+			t.Errorf("通知標題應包含群組名稱，got: %s", item.Title)
+		}
+		if !strings.Contains(item.Body, "連續兩輪沒有新進展") {
+			t.Errorf("通知內容應說明原因，got: %s", item.Body)
+		}
 	}
 }
 
