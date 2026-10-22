@@ -50,8 +50,8 @@ func TestSoulAsksForChatStyleReplies(t *testing.T) {
 			t.Fatalf("不該再有 %q：%s", gone, soul)
 		}
 	}
-	// 回話提醒在最後（名冊之後）
-	if soul := Soul(Profile{Name: "A", Team: "## 隊友與協作\nB"}); !strings.HasSuffix(strings.TrimSpace(soul), "不寫過程。）") {
+	// 回話提醒在最後（名冊之後）- 2026-10-22：更新為強調計畫與結論的版本
+	if soul := Soul(Profile{Name: "A", Team: "## 隊友與協作\nB"}); !strings.HasSuffix(strings.TrimSpace(soul), "多步驟工作說計畫→報里程碑→給結論。）") {
 		t.Fatalf("提醒要放最後：%s", soul)
 	}
 }

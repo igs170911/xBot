@@ -688,7 +688,7 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 		return
 	}
 	failed := verdict == runtime.VerdictFailed
-	
+
 	// 2026-10-22：統一發送閘門，防止群組感謝循環
 	// 獲取最近從這個 Bot 發出的群組訊息，用於重複檢測
 	recentMsgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Limit: 10})
@@ -704,14 +704,14 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 			}
 		}
 	}
-	
+
 	// 檢查是否應該發送（答案情境 = false for room replies）
 	shouldSend, reason := ShouldSendToPeer(content, verdict, false, recentTexts)
 	if !shouldSend {
 		s.log.Debug("blocked room reply", "bot", task.BotID, "room", room.ID, "reason", reason, "content", plain(content, 100))
 		return
 	}
-	
+
 	text := content
 	if failed {
 		text = "（這次沒有完成）" + content

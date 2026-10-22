@@ -90,7 +90,7 @@ func TestTwoBotLoopPrevention(t *testing.T) {
 		{
 			name:      "longer substantive content",
 			message:   "我已經把資料整理好放在報告裡了，請查收",
-			wantClass: ClassHandoff, // contains "請", <30 chars
+			wantClass: ClassResult, // "整理好" is a result indicator (takes precedence)
 			wantNew:   true,
 		},
 	}
@@ -121,8 +121,9 @@ func TestMessageClassification(t *testing.T) {
 		{"路徑：/workspace/test.txt", ClassNewInfo},
 		{"網址 https://example.com", ClassNewInfo},
 		{"程式碼：\n```go\nfunc main() {}\n```", ClassNewInfo},
-		// 31+ chars → classified as new_info based on length
-		{"這是一段超過三十個中文字元的測試訊息內容用來驗證長度判斷邏輯是否正確運作", ClassNewInfo},
+		// 2026-10-22: Changed threshold from 30→80 chars to block pleasantries
+		// This message is ~40 chars, now classified as filler (not new_info)
+		{"這是一段超過三十個中文字元的測試訊息內容用來驗證長度判斷邏輯是否正確運作", ClassFiller},
 
 		// question
 		{"要繼續嗎？", ClassQuestion},
@@ -134,7 +135,9 @@ func TestMessageClassification(t *testing.T) {
 		{"@工程師 請處理", ClassHandoff},
 		{"請你檢查一下", ClassHandoff},
 		{"已派工給測試組", ClassHandoff},
-		{"幫我看看這個問題", ClassHandoff},
+		// 2026-10-22: Removed "幫" from handoff patterns (was causing false positives in pleasantries)
+		// "幫我看看這個問題" is now a question, not handoff
+		{"請幫我確認資料", ClassHandoff}, // "請幫" is explicit request
 
 		// result
 		{"完成了，檔案已存", ClassResult},

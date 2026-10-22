@@ -432,7 +432,17 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	if runes(text) > limits.BotMessageMax {
 		return SendResult{}, &Error{Code: CodeLimit, Msg: fmt.Sprintf("訊息最多 %d 字元；長資料請寫成檔案再說明位置", limits.BotMessageMax)}
 	}
-	
+
+	// 2026-10-22：RequestID 去重優先於發送閘門（重試不需要重新檢查內容）
+	rid := ""
+	if o.RequestID != "" {
+		rid = senderID + ":" + o.RequestID
+		if prev, err := s.db.FindBotMessageByRequest(ctx, target.ID, rid); err == nil {
+			return SendResult{Sent: true, To: target.Name, ToID: target.ID, Replayed: true, TaskID: prev.TaskID, Hop: prev.Hop, Chain: prev.ChainID,
+				Assignment: prev.AssignmentID, Note: fmt.Sprintf("這則訊息先前已送達 %s，不會重複傳送。", target.Name)}, nil
+		}
+	}
+
 	// 2026-10-22：統一發送閘門，防止 Bot 主動傳送無意義訊息
 	// 獲取最近從這個 Bot 發給目標的訊息，用於重複檢測
 	recentMsgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Pair: []string{senderID, target.ID}, Limit: 10})
@@ -448,7 +458,7 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 			}
 		}
 	}
-	
+
 	// 檢查是否應該發送（答案情境 = 回覆 request/question）
 	isAnswer := o.intent == IntentResult || intent == IntentRequest || intent == IntentQuestion
 	shouldSend, reason := ShouldSendToPeer(text, "answer", isAnswer, recentTexts)
@@ -457,7 +467,7 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 		// 不算錯誤，只是靜默阻擋
 		return SendResult{Sent: false, To: target.Name, ToID: target.ID, Note: "訊息無新資訊，已阻擋"}, nil
 	}
-	
+
 	if o.intent == IntentResult {
 		intent = IntentResult
 	} else {
@@ -497,15 +507,6 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	if senderThread == "" {
 		if senderThread, err = s.peerThread(ctx, senderID, target.ID, target.Name); err != nil {
 			return SendResult{}, err
-		}
-	}
-	// 同一個請求重送（重試的工具呼叫）已經送到了；每個 Bot 自己取編號，所以兩個寄件者的「task-1」是不同的訊息。
-	rid := ""
-	if o.RequestID != "" {
-		rid = senderID + ":" + o.RequestID
-		if prev, err := s.db.FindBotMessageByRequest(ctx, target.ID, rid); err == nil {
-			return SendResult{Sent: true, To: target.Name, ToID: target.ID, Replayed: true, TaskID: prev.TaskID, Hop: prev.Hop, Chain: prev.ChainID,
-				Assignment: prev.AssignmentID, Note: fmt.Sprintf("這則訊息先前已送達 %s，不會重複傳送。", target.Name)}, nil
 		}
 	}
 	// 寄件者的對話保留自己的路徑；收件者拿到檔案的副本與指向副本的路徑。
@@ -857,7 +858,7 @@ func (s *Service) reply(ctx context.Context, task store.Task, m taskMeta, verdic
 		return
 	}
 	answered()
-	
+
 	// 2026-10-22：統一發送閘門（取代分散的檢查）
 	// 獲取最近從這個 Bot 發給對方的訊息（包括群組和 DM），用於重複檢測
 	recentMsgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Limit: 20})
@@ -873,7 +874,7 @@ func (s *Service) reply(ctx context.Context, task store.Task, m taskMeta, verdic
 			}
 		}
 	}
-	
+
 	// 答案情境：回覆 request/question
 	isAnswerToWork := verdict == runtime.VerdictAnswer && replyExpected(m.Intent)
 	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswerToWork, recentTexts)
@@ -881,7 +882,7 @@ func (s *Service) reply(ctx context.Context, task store.Task, m taskMeta, verdic
 		s.log.Debug("blocked DM reply", "from", task.BotID, "to", m.FromBot, "roomID", m.RoomID, "reason", reason, "content", plain(content, 100))
 		return
 	}
-	
+
 	s.deliver(ctx, task.BotID, m.FromBot, content, verdict, task)
 }
 

@@ -168,7 +168,7 @@ func ClassifyMessage(text string) MessageClass {
 
 	// 2. 檢查結果回報（優先於數字檢查，因為"完成 5 個"應該是 result 不是 new_info）
 	completionIndicators := []string{
-		"完成", "做好", "修好", "搞定", "處理好", "準備好",
+		"完成", "做好", "修好", "搞定", "處理好", "準備好", "整理好",
 		"已經完成", "已經做好", "已經修好", "已經處理好",
 		"成功", "完畢",
 		"done", "finished", "completed", "fixed", "resolved",
@@ -176,6 +176,21 @@ func ClassifyMessage(text string) MessageClass {
 	for _, ind := range completionIndicators {
 		if strings.Contains(lowerBody, ind) {
 			return ClassResult
+		}
+	}
+
+	// 2.5. 檢查動作動詞（命令/請求）- 2026-10-22 加入以識別任務指派
+	// 這些是常見的任務動詞，出現時通常是在指派工作
+	actionVerbs := []string{
+		"寫", "做", "查", "找", "確認", "檢查", "測試", "修", "改", "建",
+		"整理", "分析", "研究", "比較", "評估",
+	}
+	// 只在訊息較短時檢查（長訊息可能只是在描述，不是命令）
+	if len([]rune(body)) < 50 {
+		for _, verb := range actionVerbs {
+			if strings.HasPrefix(body, verb) || strings.Contains(body, " "+verb) {
+				return ClassHandoff
+			}
 		}
 	}
 
@@ -224,11 +239,11 @@ func HasNewInformation(text string) bool {
 	if class == ClassFiller {
 		return false
 	}
-	
+
 	// 2026-10-22：即使分類為 new_info，如果是純客套話（感謝、問候、鼓勵）也視為 filler
 	trimmed := strings.TrimSpace(text)
 	lower := strings.ToLower(trimmed)
-	
+
 	// 常見客套話模式（即使有「幫」「可以」等詞也算客套）
 	pleasantries := []string{
 		"不客氣", "不用謝", "沒問題", "沒關係", "不好意思",
@@ -236,7 +251,7 @@ func HasNewInformation(text string) bool {
 		"辛苦了", "謝謝", "感謝", "太好了", "真棒",
 		"you're welcome", "no problem", "my pleasure", "glad to help",
 	}
-	
+
 	// 檢查是否主要內容是客套話
 	for _, p := range pleasantries {
 		if strings.Contains(lower, p) {
@@ -257,7 +272,7 @@ func HasNewInformation(text string) bool {
 			}
 		}
 	}
-	
+
 	return class != ClassFiller
 }
 
