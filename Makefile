@@ -72,6 +72,9 @@ COUNT ?= 3
 bench: ## 效能基準（中介層、SSE 50 人、對話 1 萬則、待我處理 5000 張、用量 10 萬筆、事件補送）；結果記在 docs/perf.md
 	$(RUN) go test -run '^$$' -bench . -benchmem -count=$(COUNT) ./internal/ops/ ./internal/events/ ./internal/chat/ ./internal/inbox/ ./internal/usage/
 
+eval-judge: ## 執行 filler judge 測試（fixtures against real judge）
+	@$(RUN) go test ./internal/collab -run TestFillerEvalRealJudge -v
+
 bundle: ## 前端建置大小報告（首頁要下載多少、按需載入的 chunk）
 	@$(MAKE) --no-print-directory web-build
 	cd web && $(RUN) node scripts/bundle-report.mjs

@@ -276,8 +276,35 @@ func openStack(cfg config.Config) (*stack, error) {
 	s.comp = comp
 	s.skills = &skills.Service{Locate: comp.BotFS, Library: &skills.Library{Dir: filepath.Join(cfg.DataDir, "skills")}}
 	s.memory = &memory.Service{DB: db, Locate: comp.BotFS, Active: s.runtime.Active}
+
+	// Wire production judge for collab layer (2026-10-22)
+	var peerJudge collab.PeerJudge
+	if s.judge != nil {
+		// Wrap judge service's Decide method
+		decideFn := func(ctx context.Context, kind, content, botID string) (string, error) {
+			ask := judge.Ask{Use: "peer_reply", Text: content, BotID: botID}
+			decision, err := s.judge.Decide(ctx, ask)
+			if err != nil {
+				return "", err
+			}
+			// Map decision answer label to peer_reply format
+			switch decision.Answer.Label {
+			case "fyi", "skip":
+				return "skip", nil
+			case "handle", "ok":
+				return "handle", nil
+			default:
+				return "", nil // Unknown answer -> no judgment
+			}
+		}
+		peerJudge = collab.NewProductionJudge(decideFn, logger)
+	} else {
+		// No judge service -> strict Stage A
+		peerJudge = collab.NewProductionJudge(nil, logger)
+	}
+
 	// Bot 之間的傳話與群組（X02）：接上 runtime 的 Hooks；帶檔經 Docker 讀寫兩邊電腦的 /workspace（已在 runtime 初始化時共用）。
-	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Judge: s.judge.Responder, JudgeService: s.judge, Files: carry})
+	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Judge: s.judge.Responder, JudgeService: s.judge, Files: carry, PeerJudge: peerJudge})
 	// 檔案面板（C33）：經 Docker 讀寫 Bot 電腦的 /workspace；在電腦裡執行的指令用 Bot 自己的使用者。傳給別的 Bot 沿用 X02 帶檔。
 	s.files = &files.Service{Locate: files.DockerLocator(comp.BotFS, fmt.Sprintf("%d:%d", box.BotUID, box.BotGID)), Carry: carry}
 	// 團隊、匯報線、提案與討論（X03）。Bot 的系統提示：隊友名冊＋組織與回報。
