@@ -415,36 +415,42 @@ func (s *Service) adopt(ctx context.Context, c Container, botID, engine string) 
 	sp := Specs[engine]
 	// Lock to prevent concurrent credential refresh conflicts
 	return s.ensureCredLock().withLock(ctx, sp.ownPath(), func() error {
-		m, err := s.owns(ctx, botID)
-		if err != nil {
-			return err
-		}
-		m[engine] = Own{At: store.NowMS()}
-		if err := s.saveOwns(ctx, botID, m); err != nil {
-			return err
-		}
-		if l, ok, err := s.Get(ctx, botID); err != nil {
-			return err
-		} else if ok && l.Engine == engine {
-			if err := s.DB.DeleteSetting(ctx, settingKey(botID)); err != nil {
-				return err
-			}
-			if err := s.clearHostCopy(ctx, c, sp); err != nil {
-				s.log().Warn("清掉原本用這台電腦的登入失敗", "bot", botID, "engine", engine, "err", err)
-			}
-		}
-		b, err := s.DB.GetBot(ctx, botID)
-		if err != nil {
-			return err
-		}
-		if err := s.syncOwnNoLock(ctx, c, b); err != nil {
-			return err
-		}
-		if engineOf(b) == engine && s.Close != nil {
-			s.Close(botID)
-		}
-		return nil
+		return s.adoptNoLock(ctx, c, botID, engine)
 	})
+}
+
+// adoptNoLock is the unlocked version of adopt, for use when already holding the lock.
+func (s *Service) adoptNoLock(ctx context.Context, c Container, botID, engine string) error {
+	sp := Specs[engine]
+	m, err := s.owns(ctx, botID)
+	if err != nil {
+		return err
+	}
+	m[engine] = Own{At: store.NowMS()}
+	if err := s.saveOwns(ctx, botID, m); err != nil {
+		return err
+	}
+	if l, ok, err := s.Get(ctx, botID); err != nil {
+		return err
+	} else if ok && l.Engine == engine {
+		if err := s.DB.DeleteSetting(ctx, settingKey(botID)); err != nil {
+			return err
+		}
+		if err := s.clearHostCopy(ctx, c, sp); err != nil {
+			s.log().Warn("清掉原本用這台電腦的登入失敗", "bot", botID, "engine", engine, "err", err)
+		}
+	}
+	b, err := s.DB.GetBot(ctx, botID)
+	if err != nil {
+		return err
+	}
+	if err := s.syncOwnNoLock(ctx, c, b); err != nil {
+		return err
+	}
+	if engineOf(b) == engine && s.Close != nil {
+		s.Close(botID)
+	}
+	return nil
 }
 
 // clearHostCopy 清掉 /opt/xbot/cred/<引擎>/ 裡從這台電腦複製來的那份（家目錄不動）。
@@ -761,7 +767,7 @@ func (s *Service) SetKeys(ctx context.Context, botID string, keys map[string]str
 		if err := s.writeOwn(ctx, c, sp, append(data, '\n')); err != nil {
 			return err
 		}
-		if err := s.adopt(ctx, c, botID, sp.Engine); err != nil {
+		if err := s.adoptNoLock(ctx, c, botID, sp.Engine); err != nil {
 			return err
 		}
 		return s.Probe(ctx, botID, sp.Engine)

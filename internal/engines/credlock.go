@@ -35,13 +35,14 @@ var (
 // The lock is held until unlock() is called with the same path.
 // Multiple goroutines within the same process are serialized by a mutex,
 // and multiple processes are serialized by flock.
+// Non-reentrant: attempting to lock an already-held path returns an error.
 func (cl *credLock) lock(ctx context.Context, credPath string) error {
 	cl.mu.Lock()
 	defer cl.mu.Unlock()
 
 	if _, ok := cl.locks[credPath]; ok {
-		// Already locked in this process
-		return nil
+		// Non-reentrant: reject if already locked in this process
+		return fmt.Errorf("credential lock already held for %s (non-reentrant)", credPath)
 	}
 
 	lockDir := filepath.Join(os.TempDir(), "xbot-cred-locks")
