@@ -430,11 +430,9 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 
 	// Round 10 fix + C4: Use semaphore channel for cap enforcement
 	// Try to evict LRU idle session if at cap
-	liveCount := len(ac.sessions)
-	for liveCount >= limits.ACPMaxSessionsPerBox {
+	for len(ac.sessions) >= limits.ACPMaxSessionsPerBox {
 		// Try to evict oldest idle session
 		if d.tryEvictIdleSession(ac) {
-			liveCount = len(ac.sessions)
 			break // Evicted one, proceed
 		}
 		// No idle sessions available, wait with semaphore
@@ -446,7 +444,6 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		case ac.sem <- struct{}{}:
 			// Got slot, proceed
 			ac.mu.Lock()
-			liveCount = len(ac.sessions)
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
@@ -473,8 +470,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	// Take current gen and increment live count
 	g := ac.cur
 	g.live++
-	liveCount = len(ac.sessions)
-	d.log.Info("Creating new session", "bot", o.BotID, "thread", o.ThreadID, "live_sessions", liveCount+1, "cap", limits.ACPMaxSessionsPerBox, "gen_live", g.live)
+	d.log.Info("Creating new session", "bot", o.BotID, "thread", o.ThreadID, "live_sessions", len(ac.sessions)+1, "cap", limits.ACPMaxSessionsPerBox, "gen_live", g.live)
 	ac.mu.Unlock()
 
 	// 2026-10-22p: Removed MCP PID snapshot - doesn't work, agent respawns MCPs.
