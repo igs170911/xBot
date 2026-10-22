@@ -62,6 +62,7 @@ type reply func(result json.RawMessage, err error)
 // conn 是一條到 agent 行程的 JSON-RPC 連線。
 type conn struct {
 	p      Process
+	proc   Process // D1: Exposed process for killProcessGroup
 	log    *slog.Logger
 	onNote func(method string, params json.RawMessage)
 	onReq  func(request)
@@ -77,7 +78,7 @@ type conn struct {
 }
 
 func newConn(p Process, log *slog.Logger, onNote func(string, json.RawMessage), onReq func(request), onExit func(error)) *conn {
-	c := &conn{p: p, log: log, onNote: onNote, onReq: onReq, onExit: onExit, pending: map[string]reply{}, done: make(chan struct{})}
+	c := &conn{p: p, proc: p, log: log, onNote: onNote, onReq: onReq, onExit: onExit, pending: map[string]reply{}, done: make(chan struct{})}
 	go c.read()
 	return c
 }
