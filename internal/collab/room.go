@@ -988,7 +988,7 @@ func (s *Service) speak(ctx context.Context, room store.Room, botID, text string
 
 	// 2026-10-22c：長度限制（#7 room post）
 	// Room posts always use ClassRoom (200 chars), not fact/research
-	outText, overflow := EnforceLength(text, ClassRoom)
+	outText, overflow := EnforceLength(text, ClassRoom, false)
 	if overflow != "" && s.o.Files != nil {
 		// Write overflow to file (for reference, even though room uses fixed 200 limit)
 		home := "from/" + Filename(me.Name) + "/room-" + s.o.Now().Format("20060102-150405") + ".md"

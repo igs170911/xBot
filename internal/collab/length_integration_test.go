@@ -8,11 +8,72 @@ import (
 	"xbot/internal/store"
 )
 
+// TestLengthEnforcement_NormalChatAnswer tests that a 120-character normal chat answer
+// to a non-fact question passes through untouched
+func TestLengthEnforcement_NormalChatAnswer(t *testing.T) {
+	tm := setup(t)
+	chief, writer := tm.bots["Chief"], tm.bots["Writer"]
+
+	// Chief asks a normal (non-fact) question
+	tm.running(chief, nil)
+	normalQuestion := "Can you help me understand how the new feature works and what the implications are?"
+	must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Writer", normalQuestion, "request", SendOptions{}))
+	task := tm.queued(writer)[0]
+	tm.start(task)
+
+	// Writer's 120-character normal answer
+	normalAnswer := "Sure! The feature works by processing requests in batches. It improves performance significantly and reduces latency."
+
+	actualLen := len([]rune(normalAnswer))
+	t.Logf("Normal answer length: %d runes", actualLen)
+
+	if actualLen < 110 || actualLen > 130 {
+		t.Fatalf("Normal answer wrong length: %d runes, need ~120", actualLen)
+	}
+
+	// Finish the task with the normal answer
+	tm.finish(task.ID, runtime.VerdictAnswer, normalAnswer)
+
+	// Get the message that was sent back to Chief
+	msgs, err := tm.db.ListBotMessages(tm.ctx, store.BotMessageFilter{Pair: []string{chief, writer}})
+	if err != nil || len(msgs) == 0 {
+		t.Fatalf("No message sent back to Chief")
+	}
+
+	// Find the reply message
+	var msg *store.BotMessage
+	for i := len(msgs) - 1; i >= 0; i-- {
+		if msgs[i].From == writer && msgs[i].To == chief && msgs[i].Intent == IntentResult {
+			msg = &msgs[i]
+			break
+		}
+	}
+	if msg == nil {
+		t.Fatalf("No result message found from Writer to Chief")
+	}
+
+	sentLen := len([]rune(msg.Text))
+	t.Logf("Sent message length: %d runes", sentLen)
+	t.Logf("Sent message: %s", msg.Text)
+
+	// Check: message should pass through untouched (question is not a fact query)
+	if msg.Text != normalAnswer {
+		t.Errorf("Normal answer should pass through untouched.\nExpected: %s\nGot: %s", normalAnswer, msg.Text)
+	}
+}
+
 // TestLengthEnforcement_ResearchReply tests that a 1121-character research reply
 // is enforced to ≤600 characters with a file link, and the full text is in the file
 func TestLengthEnforcement_ResearchReply(t *testing.T) {
 	tm := setup(t)
 	chief, writer := tm.bots["Chief"], tm.bots["Writer"]
+
+	// Chief asks a complex (non-fact) question
+	tm.running(chief, nil)
+	complexQuestion := "Can you give me a comprehensive analysis of the system architecture and performance characteristics?"
+	must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Writer", complexQuestion, "request", SendOptions{}))
+	task := tm.queued(writer)[0]
+	tm.start(task)
 
 	// Create a 1121-character research reply (not a simple fact)
 	researchText := strings.Repeat("This is detailed research analysis with substantial information that provides deep insights into the problem. ", 10) // ~1050 chars
@@ -25,16 +86,25 @@ func TestLengthEnforcement_ResearchReply(t *testing.T) {
 		t.Fatalf("Research text too short: %d runes, need >1100", actualLen)
 	}
 
-	// Chief sends research to Writer
-	result, err := tm.s.Send(tm.ctx, chief, writer, researchText, IntentRequest, SendOptions{})
-	if err != nil {
-		t.Fatalf("Send failed: %v", err)
+	// Finish the task with research reply
+	tm.finish(task.ID, runtime.VerdictAnswer, researchText)
+
+	// Get the message that was sent back to Chief
+	msgs, err := tm.db.ListBotMessages(tm.ctx, store.BotMessageFilter{Pair: []string{chief, writer}})
+	if err != nil || len(msgs) == 0 {
+		t.Fatalf("No message sent back to Chief")
 	}
 
-	// Get the message that was actually sent
-	msg, err := tm.db.GetBotMessage(tm.ctx, result.MessageID)
-	if err != nil {
-		t.Fatalf("Failed to get message: %v", err)
+	// Find the reply message
+	var msg *store.BotMessage
+	for i := len(msgs) - 1; i >= 0; i-- {
+		if msgs[i].From == writer && msgs[i].To == chief && msgs[i].Intent == IntentResult {
+			msg = &msgs[i]
+			break
+		}
+	}
+	if msg == nil {
+		t.Fatalf("No result message found from Writer to Chief")
 	}
 
 	sentLen := len([]rune(msg.Text))
@@ -77,7 +147,7 @@ func TestLengthEnforcement_ResearchReply(t *testing.T) {
 	}
 
 	// Check: full text should be in the file
-	fileContent, err := tm.files.Read(tm.ctx, writer, strings.TrimPrefix(fileLink, "/workspace/"))
+	fileContent, err := tm.files.Read(tm.ctx, chief, strings.TrimPrefix(fileLink, "/workspace/"))
 	if err != nil {
 		t.Fatalf("Failed to read file: %v", err)
 	}
@@ -85,64 +155,6 @@ func TestLengthEnforcement_ResearchReply(t *testing.T) {
 	if string(fileContent) != researchText {
 		t.Errorf("File content doesn't match original text\nExpected length: %d\nActual length: %d",
 			len([]rune(researchText)), len([]rune(string(fileContent))))
-	}
-}
-
-// TestLengthEnforcement_FactReply tests that a 92-character fact reply
-// is enforced to ≤60 characters
-func TestLengthEnforcement_FactReply(t *testing.T) {
-	tm := setup(t)
-	chief, writer := tm.bots["Chief"], tm.bots["Writer"]
-
-	// Create a scenario where Writer replies to Chief with a short fact
-	tm.running(chief, nil)
-	must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Writer", "What is the answer?", "request", SendOptions{}))
-	task := tm.queued(writer)[0]
-	tm.start(task)
-
-	// Writer's 92-character fact reply (simple, direct answer)
-	factText := "The answer is 42. This is a simple fact with some extra text to reach exactly 92 chars!!!!"
-
-	actualLen := len([]rune(factText))
-	t.Logf("Fact text length: %d runes", actualLen)
-
-	if actualLen < 90 {
-		t.Fatalf("Fact text too short: %d runes, need ~92", actualLen)
-	}
-
-	// Finish the task with the fact reply
-	tm.finish(task.ID, runtime.VerdictAnswer, factText)
-
-	// Get the message that was sent back to Chief
-	msgs, err := tm.db.ListBotMessages(tm.ctx, store.BotMessageFilter{Pair: []string{chief, writer}})
-	if err != nil || len(msgs) == 0 {
-		t.Fatalf("No message sent back to Chief")
-	}
-
-	// Find the reply message (last message from Writer to Chief with IntentResult)
-	var msg *store.BotMessage
-	for i := len(msgs) - 1; i >= 0; i-- {
-		if msgs[i].From == writer && msgs[i].To == chief && msgs[i].Intent == IntentResult {
-			msg = &msgs[i]
-			break
-		}
-	}
-	if msg == nil {
-		t.Fatalf("No result message found from Writer to Chief")
-	}
-
-	sentLen := len([]rune(msg.Text))
-	t.Logf("Sent message length: %d runes", sentLen)
-	t.Logf("Sent message: %s", msg.Text)
-
-	// Check: message should be ≤60 characters (fact limit)
-	if sentLen > 60 {
-		t.Errorf("Sent message too long: %d runes, expected ≤60", sentLen)
-	}
-
-	// Fact replies should contain the core answer
-	if !strings.Contains(msg.Text, "answer is 42") {
-		t.Errorf("Message should contain core fact, got: %s", msg.Text)
 	}
 }
 

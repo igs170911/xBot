@@ -136,7 +136,7 @@ func TestEnforceLength(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotOut, gotOver := EnforceLength(tt.text, tt.class)
+			gotOut, gotOver := EnforceLength(tt.text, tt.class, false)
 
 			if gotOut != tt.wantOut {
 				t.Errorf("EnforceLength() out = %q, want %q", gotOut, tt.wantOut)

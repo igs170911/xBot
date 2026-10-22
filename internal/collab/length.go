@@ -33,9 +33,19 @@ func LengthCap(class LengthClass) int {
 
 // EnforceLength truncates text to the class limit, cutting at sentence boundaries.
 // Returns (output, overflow). Never cuts inside code fences or URLs.
-func EnforceLength(text string, class LengthClass) (out string, overflow string) {
+// For fact class with lenient=true, only enforces when text exceeds 90 characters (1.5x the 60-char limit),
+// and when cutting, still cuts at 60 but allows up to 90 without any truncation.
+func EnforceLength(text string, class LengthClass, lenient bool) (out string, overflow string) {
 	cap := LengthCap(class)
 	runes := []rune(text)
+
+	// Lenient fact enforcement: allow up to 90 chars without cutting
+	if lenient && class == ClassFact {
+		if len(runes) <= 90 {
+			return text, ""
+		}
+		// Text > 90 chars, still cut at standard 60-char boundary
+	}
 
 	if len(runes) <= cap {
 		return text, ""

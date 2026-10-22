@@ -552,7 +552,7 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	// Skip enforcement for relayed messages (already processed by deliver())
 	// Peer sends always use ClassPeer (300 chars)
 	if !o.Relay {
-		outText, overflow := EnforceLength(carried, ClassPeer)
+		outText, overflow := EnforceLength(carried, ClassPeer, false)
 		if overflow != "" && s.o.Files != nil {
 			// Peer overflow: write full text to file
 			home := "from/" + Filename(sender.Name) + "/peer-" + s.o.Now().Format("20060102-150405") + ".md"
@@ -997,12 +997,15 @@ func (s *Service) deliver(ctx context.Context, botID, to, content, verdict strin
 		text = s.longResult(ctx, botID, to, text)
 	} else {
 		// 2026-10-22c：長度限制（#7 owner DM reply）
-		// Apply concise length limits for normal-length messages
-		isFact := runes(text) <= 150
-		class := ClassifyLength(isFact)
-		outText, overflow := EnforceLength(text, class)
-		if overflow != "" && class == ClassResearch && s.o.Files != nil {
-			// Research overflow: write full text to file
+		// For bot-to-bot replies: always use research class (600 chars)
+		// For owner DM replies: ideally would classify based on owner's question,
+		// but that requires access to the original owner message which isn't
+		// available here. Use research class (600 chars) for now.
+		class := ClassResearch
+		lenient := false
+		outText, overflow := EnforceLength(text, class, lenient)
+		if overflow != "" && s.o.Files != nil {
+			// Overflow: write full text to file
 			botName := "Bot"
 			if b, err := s.db.GetBot(ctx, botID); err == nil {
 				botName = b.Name
@@ -1011,7 +1014,7 @@ func (s *Service) deliver(ctx context.Context, botID, to, content, verdict strin
 			if err := s.o.Files.Write(ctx, to, home, []byte(text)); err == nil {
 				outText += FormatResearchOverflow(text, home, runes(text))
 			} else {
-				s.log.Warn("研究回覆存檔失敗", "from", botID, "to", to, "err", err)
+				s.log.Warn("回覆存檔失敗", "from", botID, "to", to, "err", err)
 			}
 		}
 		text = outText
