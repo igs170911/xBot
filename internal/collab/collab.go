@@ -124,6 +124,8 @@ type taskMeta struct {
 	ByOwner   bool   `json:"by_owner,omitempty"` // 你發言叫醒的（輪數從 0 算）
 	SeenFrom  int64  `json:"seen_from,omitempty"`
 	SeenTo    int64  `json:"seen_to,omitempty"`
+	// 2026-10-22：no-progress 自動停止
+	ConsecBlocked int `json:"consec_blocked,omitempty"` // 連續被阻擋（gate 或 no-new-info）的輪數
 }
 
 func metaOf(t store.Task) taskMeta {
