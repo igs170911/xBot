@@ -102,6 +102,10 @@ type Options struct {
 	// Unfinished 在一件工作確定沒做完（判成只說要做、交回、卡住，而且不再自動繼續）時，在背景呼叫：
 	// 請老師模型看哪裡做錯、提議一條學到的事（lessons.Service.Consider）。額度用完、要你處理的不算。可為 nil。
 	Unfinished func(ctx context.Context, taskID, why string)
+	// Files 讀寫 Bot 電腦裡的檔案（太長的回覆存檔）；nil 時不截斷、保留完整內容。
+	Files interface {
+		Write(ctx context.Context, botID, rel string, data []byte) error
+	}
 }
 
 // Watchdog 是對話看門狗的時間（LazyBoy runtime.watch()）。
@@ -917,13 +921,60 @@ func (r *Runtime) finish(t *turn, status, text string) {
 
 		outText, overflow := enforceOwnerReplyLength(final, class, lenient)
 		if overflow != "" {
-			// 有溢出內容：將完整回覆存檔
-			// TODO: 實際寫檔需要 Files 介面（類似 collab 的實作）
-			// 這裡先加上連結行
-			home := "dm-reply-" + time.Now().Format("20060102-150405") + ".md"
-			outText += formatResearchOverflow(final, home, runes(final))
+			// 有溢出內容：嘗試將完整回覆存檔
+			if r.o.Files != nil {
+				botName := t.botName
+				if botName == "" {
+					if b, err := r.o.DB.GetBot(ctx, t.botID); err == nil {
+						botName = b.Name
+					} else {
+						botName = "Bot"
+					}
+				}
+				home := "dm-reply-" + botName + "-" + time.Now().Format("20060102-150405") + ".md"
+				if err := r.o.Files.Write(ctx, t.botID, home, []byte(final)); err == nil {
+					// 寫入成功：加上連結行，確保總長度在 cap 內
+					linkLine := formatResearchOverflow(final, home, runes(final))
+					linkLen := runes(linkLine)
+					cap := lengthCap(class)
+					maxText := cap - linkLen
+					if maxText < 0 {
+						maxText = 0
+					}
+					if runes(outText) > maxText {
+						// Re-truncate to make room for the link
+						textRunes := []rune(final)
+						if len(textRunes) > maxText {
+							// Find a good cutpoint at a sentence boundary if possible
+							cutpoint := maxText
+							for i := maxText - 1; i >= 0 && i > maxText-20; i-- {
+								if textRunes[i] == '。' || textRunes[i] == '.' || textRunes[i] == '\n' {
+									cutpoint = i + 1
+									break
+								}
+							}
+							if cutpoint > len(textRunes) {
+								cutpoint = maxText
+							}
+							if cutpoint > 0 {
+								outText = string(textRunes[:cutpoint])
+							} else {
+								outText = ""
+							}
+						}
+					}
+					outText += linkLine
+					final = outText
+				} else {
+					// 寫入失敗：保留完整內容，不截斷
+					r.log.Warn("DM 回覆存檔失敗，保留完整內容", "bot", t.botID, "task", t.taskID, "err", err)
+				}
+			}
+			// r.o.Files == nil：保留完整內容，不截斷
+		} else {
+			// 沒有溢出：使用已截斷的內容
+			final = outText
 		}
-		final = outText
 	}
 
 	if msgID != "" {

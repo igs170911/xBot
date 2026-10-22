@@ -193,9 +193,9 @@ func TestHopCountCarriesDMToRoom(t *testing.T) {
 		t.Fatalf("Writer's DM task should have hop=1, got %v", writerMeta["hop"])
 	}
 
-	// Writer 發言到群組並 @ Chief（應該攜帶 hop 1）
-	// 使用 Post 並指定 requestID 來模擬在 DM 任務中發言
-	_ = must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, "@Chief 報告完成", writerTask.ID))
+	// Writer 使用 PostGroup 發言到群組（這是 bot 實際使用的路徑）
+	// 這應該攜帶 Writer 的 DM hop (1) 作為 SenderHop
+	_ = must[PostGroupResult](t)(tm.s.PostGroup(tm.ctx, writerID, room.ID, "@Chief 報告完成"))
 
 	// 檢查 Chief 的座位任務是否有 hop = 2
 	chiefTasks, _ := tm.db.ListTasksByMeta(tm.ctx, "$.room_id", room.ID, true)

@@ -1191,7 +1191,13 @@ func (s *Service) PostGroup(ctx context.Context, botID, ref, message string) (Po
 		round = om.Round + 1
 	}
 	capped := round > limits.RoomRounds()
-	posted, named, err := s.speak(ctx, room, botID, text, roomMeta{ByStartTool: true, Round: round - 1}, round)
+	// 2026-10-22e：PostGroup 從 DM 發言時攜帶 sender hop
+	senderHop := 0
+	if ok && om.RoomID != room.ID {
+		// Bot 從 DM（或其他 room）發言到這個 room：攜帶 hop
+		senderHop = om.Hop
+	}
+	posted, named, err := s.speak(ctx, room, botID, text, roomMeta{ByStartTool: true, Round: round - 1, SenderHop: senderHop}, round)
 	if err != nil {
 		return PostGroupResult{}, err
 	}

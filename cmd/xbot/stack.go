@@ -234,6 +234,17 @@ func openStack(cfg config.Config) (*stack, error) {
 		FastModel: nil, // TODO: 配置快速聊天模型
 		Logger:    logger,
 	}
+	// 2026-10-22e：Bot 之間的傳話與群組（X02）檔案操作，也用於 owner DM 太長的回覆存檔
+	carry := collab.DockerFiles{
+		Locate: func(ctx context.Context, botID string) (collab.CopyAPI, string, error) {
+			api, id, err := comp.Docker(ctx, botID)
+			if api == nil {
+				return nil, id, err
+			}
+			return api, id, err
+		},
+		UID: box.BotUID, GID: box.BotGID,
+	}
 	s.runtime = runtime.New(runtime.Options{DB: db, Driver: s.driver, Bus: bus, Models: comp, Logger: logger, OwnerNote: runtime.OwnerNote,
 		Router:     router,
 		Unfinished: s.lessons.Consider,
@@ -247,7 +258,8 @@ func openStack(cfg config.Config) (*stack, error) {
 			return s.budgets.CheckProvider(ctx, botID, providerID)
 		},
 		Judge: s.judge.TaskDoneJudge(), Namer: s.judge.Title, Summarize: s.judge.Summary,
-		QuotaLog: quotaLog, QuotaCard: s.creds.QuotaCard})
+		QuotaLog: quotaLog, QuotaCard: s.creds.QuotaCard,
+		Files: carry}) // owner DM 太長的回覆存檔
 	// 額度用完時換引擎（xbot.engines.switch）。
 	s.creds.Models = modelChoices(db, s.pstore, s.providers)
 	s.creds.Busy = func(botID string) bool { busy, _ := s.runtime.Busy(botID); return busy }
@@ -264,17 +276,7 @@ func openStack(cfg config.Config) (*stack, error) {
 	s.comp = comp
 	s.skills = &skills.Service{Locate: comp.BotFS, Library: &skills.Library{Dir: filepath.Join(cfg.DataDir, "skills")}}
 	s.memory = &memory.Service{DB: db, Locate: comp.BotFS, Active: s.runtime.Active}
-	// Bot 之間的傳話與群組（X02）：接上 runtime 的 Hooks；帶檔經 Docker 讀寫兩邊電腦的 /workspace。
-	carry := collab.DockerFiles{
-		Locate: func(ctx context.Context, botID string) (collab.CopyAPI, string, error) {
-			api, id, err := comp.Docker(ctx, botID)
-			if api == nil {
-				return nil, id, err
-			}
-			return api, id, err
-		},
-		UID: box.BotUID, GID: box.BotGID,
-	}
+	// Bot 之間的傳話與群組（X02）：接上 runtime 的 Hooks；帶檔經 Docker 讀寫兩邊電腦的 /workspace（已在 runtime 初始化時共用）。
 	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Judge: s.judge.Responder, JudgeService: s.judge, Files: carry})
 	// 檔案面板（C33）：經 Docker 讀寫 Bot 電腦的 /workspace；在電腦裡執行的指令用 Bot 自己的使用者。傳給別的 Bot 沿用 X02 帶檔。
 	s.files = &files.Service{Locate: files.DockerLocator(comp.BotFS, fmt.Sprintf("%d:%d", box.BotUID, box.BotGID)), Carry: carry}
