@@ -852,8 +852,30 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	}
 
 	// 獲取最近的群組訊息文字（用於去重檢測）
-	// 2026-10-22：群組接力時可能重複 @同一人，不做去重（只在 DM 去重）
+	// 2026-10-22h：只檢查這個 bot 在最近一輪「新資訊」之後的訊息
+	// 允許接力：A: @Scout 換你 / Scout: <實際工作> / A: @Scout 換你
+	// 阻擋循環：A: X / B: filler / A: X
+	recentMsgs, _ := s.db.ListMessages(ctx, store.ScopeRoom, room.ID, 0, 20)
 	var recentTexts []string
+	botSender := "bot:" + task.BotID
+	// 找到最近一則有新資訊的訊息（任何人）
+	lastNewInfoIdx := -1
+	for i := len(recentMsgs) - 1; i >= 0; i-- {
+		if HasNewInformation(recentMsgs[i].Content) {
+			lastNewInfoIdx = i
+			break
+		}
+	}
+	// 只取這個 bot 在那之後的訊息
+	startIdx := 0
+	if lastNewInfoIdx >= 0 {
+		startIdx = lastNewInfoIdx + 1
+	}
+	for i := len(recentMsgs) - 1; i >= startIdx; i-- {
+		if recentMsgs[i].Sender == botSender {
+			recentTexts = append(recentTexts, recentMsgs[i].Content)
+		}
+	}
 
 	// 2026-10-22c：room reply 用 isOutgoing=true（只阻擋 filler）
 	judgeVerdict := s.peerReplyJudge(ctx, content, task.BotID)
