@@ -117,7 +117,8 @@ const (
 	ACPMaxSessionsPerBox = 5
 
 	// ACPSessionIdleTimeout 是 session 閒置多久自動關閉。XBot 新增（2026-10-22）。
-	ACPSessionIdleTimeout = 5 * time.Minute
+	// 2026-10-22n (LEAK FIX 4): Changed from 5 min to 2 min as specified.
+	ACPSessionIdleTimeout = 2 * time.Minute
 )
 
 // Bot 自己登入訂閱 CLI（2026-10-20，xbot.engines.login_start）。XBot 自己的數字。

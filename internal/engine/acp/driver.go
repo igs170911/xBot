@@ -418,7 +418,23 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		}
 		// No idle sessions available, wait for one to be closed
 		d.log.Info("At session cap, waiting for session to close", "bot", o.BotID, "cap", limits.ACPMaxSessionsPerBox)
-		ac.sessionWait.Wait()
+		
+		// 2026-10-22n (LEAK FIX 3): ctx-aware wait using channel
+		// sessionWait.Wait() ignores ctx and hangs (TestSessionCounterBasic hung for 642s)
+		waitCh := make(chan struct{})
+		go func() {
+			ac.sessionWait.Wait()
+			close(waitCh)
+		}()
+		ac.mu.Unlock() // Unlock before select to avoid deadlock
+		select {
+		case <-waitCh:
+			// Session became available
+		case <-ctx.Done():
+			// Context cancelled, fail fast
+			return nil, ctx.Err()
+		}
+		ac.mu.Lock() // Re-lock for next iteration
 	}
 
 	// Reserve slot
