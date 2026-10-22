@@ -45,8 +45,8 @@ func TestAutoStopOnAgreementChain(t *testing.T) {
 	}
 
 	// Verify inbox item created at consec_empty=2
-	// Auto-stop creates inbox for the last bot that triggered it (Writer)
-	ref := "auto_stop:" + room.ID + ":" + writer
+	// 2026-10-22k: ref 只包含 room.ID（item 6 fix）
+	ref := "auto_stop:" + room.ID
 	exists, err := tm.db.InboxRefExists(tm.ctx, ref)
 	if err != nil {
 		t.Fatalf("Error checking inbox ref: %v", err)
@@ -213,20 +213,17 @@ func TestThreeBotsPleasantries(t *testing.T) {
 		t.Errorf("Expected consec_empty ≥ 2, got %d", room1.ConsecEmpty)
 	}
 
-	// Count inbox items for this room (at least 1, may be more if multiple bots trigger)
-	// The system creates inbox for each bot that would have been blocked
-	inboxCount := 0
-	for _, botID := range []string{chief, writer, scout} {
-		ref := "auto_stop:" + room.ID + ":" + botID
-		exists, _ := tm.db.InboxRefExists(tm.ctx, ref)
-		if exists {
-			inboxCount++
-		}
+	// Count inbox items for this room (should be exactly 1 after 3 bots reply with fillers)
+	// 2026-10-22k: ref 只包含 room.ID，所以只會有一個 inbox item
+	ref := "auto_stop:" + room.ID
+	exists, err := tm.db.InboxRefExists(tm.ctx, ref)
+	if err != nil {
+		t.Fatalf("Error checking inbox ref: %v", err)
 	}
-	if inboxCount < 1 {
-		t.Errorf("Expected at least 1 inbox card for auto-stop, got %d", inboxCount)
+	if !exists {
+		t.Error("Expected exactly 1 inbox card for auto-stop, got 0")
 	}
-	t.Logf("Auto-stop created %d inbox cards", inboxCount)
+	t.Logf("Auto-stop inbox exists with ref=%s", ref)
 }
 
 // TestMentionPlusPleasantryLoop tests item 6: @+pleasantry loop stops at ≤1 reply

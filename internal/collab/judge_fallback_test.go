@@ -83,7 +83,8 @@ func TestThreeBotFillerChainTripsAutoStop(t *testing.T) {
 	}
 
 	// Verify exactly 1 inbox card created
-	ref := "auto_stop:" + room.ID + ":" + writer
+	// 2026-10-22k: ref 只包含 room.ID（item 6 fix）
+	ref := "auto_stop:" + room.ID
 	exists, err := tm.db.InboxRefExists(tm.ctx, ref)
 	if err != nil {
 		t.Fatalf("Error checking inbox ref: %v", err)

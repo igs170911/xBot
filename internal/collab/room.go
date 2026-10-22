@@ -898,11 +898,12 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 		if consecEmpty >= 2 {
 			s.log.Info("連續 2 輪無新資訊，自動停止", "bot", task.BotID, "room", room.ID)
 			// 2026-10-22c：通過 Inbox 通知 owner，不在群組貼訊息、不開新輪次
+			// 2026-10-22k (item 6): ref 只包含 room.ID，確保每個 room 只創建一個 inbox item
 			botName := ""
 			if b, err := s.db.GetBot(ctx, task.BotID); err == nil {
 				botName = b.Name
 			}
-			ref := "auto_stop:" + room.ID + ":" + task.BotID
+			ref := "auto_stop:" + room.ID
 			s.log.Debug("checking inbox ref", "ref", ref)
 			if exists, err := s.db.InboxRefExists(ctx, ref); err == nil && !exists {
 				s.log.Debug("creating inbox item for auto-stop", "ref", ref)
