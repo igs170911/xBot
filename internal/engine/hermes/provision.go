@@ -281,7 +281,7 @@ func Config(cfg map[string]any, p Profile) map[string]any {
 		"api": base, "key_env": TokenEnv, "default_model": p.Model, "transport": transport,
 	}}
 	cfg["terminal"] = map[string]any{"backend": "local", "cwd": "/workspace", "timeout": limits.HermesTerminalTimeoutSeconds}
-	cfg["browser"] = map[string]any{"backend": "browser-use", "cdp_url": "http://127.0.0.1:9222", "allow_private_urls": true}
+	cfg["browser"] = map[string]any{"backend": "browser-use", "cdp_url": "http://127.0.0.1:9222", "allow_private_urls": false}
 	// delegation（delegate_task，2026-10-20 開回來）：容器裡的 hermes_host.py 告訴 Hermes「這個對話收不到之後才送來的結果」，
 	// Hermes 就照它對無狀態頻道的做法，在同一個工具呼叫裡等子代理做完才回來（這一輪等著、停止會連子代理一起停）。
 	// 2026-10-19 關掉是因為子代理一律在背景跑，這一輪先結束、結果十分鐘後才當成新訊息回來，XBot 看不到也停不了。
