@@ -285,29 +285,57 @@ func openStack(cfg config.Config) (*stack, error) {
 	s.skills = &skills.Service{Locate: comp.BotFS, Library: &skills.Library{Dir: filepath.Join(cfg.DataDir, "skills")}}
 	s.memory = &memory.Service{DB: db, Locate: comp.BotFS, Active: s.runtime.Active}
 
-	// Wire production judge for collab layer (2026-10-22, fixed 2026-10-22i)
-	// Judge service is always created (line 203), so check if it has a working backend.
-	// not_configured, errors, or timeouts -> nil decideFn -> STRICT fallback.
+	// Wire production judge for collab layer (2026-10-22, fixed 2026-10-22i, item 1: Grok CLI backend)
+	// Check if Model Proxy API judge is configured. If not, default to Grok CLI judge.
 	var peerJudge collab.PeerJudge
-	decideFn := func(ctx context.Context, kind, content, botID string) (string, error) {
-		ask := judge.Ask{Use: "peer_reply", Text: content, BotID: botID}
-		decision, err := s.judge.Decide(ctx, ask)
-		// Treat not_configured, errors, and timeouts as "no verdict" -> STRICT fallback
-		if err != nil || decision.Outcome == judge.OutcomeNotConfigured ||
-			decision.Outcome == judge.OutcomeError || decision.Outcome == judge.OutcomeTimeout {
-			return "", collab.ErrJudgeNotConfigured
+	set, _ := s.judge.Settings(context.Background())
+	hasAPIJudge := set.Tier1.On() || set.Tier2.On()
+
+	if hasAPIJudge {
+		// Use Model Proxy API-based judge (current production path)
+		decideFn := func(ctx context.Context, kind, content, botID string) (string, error) {
+			ask := judge.Ask{Use: "peer_reply", Text: content, BotID: botID}
+			decision, err := s.judge.Decide(ctx, ask)
+			// Treat not_configured, errors, and timeouts as "no verdict" -> STRICT fallback
+			if err != nil || decision.Outcome == judge.OutcomeNotConfigured ||
+				decision.Outcome == judge.OutcomeError || decision.Outcome == judge.OutcomeTimeout {
+				return "", collab.ErrJudgeNotConfigured
+			}
+			// Map decision answer label to peer_reply format
+			switch decision.Answer.Label {
+			case "fyi", "skip":
+				return "skip", nil
+			case "handle", "ok":
+				return "handle", nil
+			default:
+				return "", nil // Unknown answer -> no judgment
+			}
 		}
-		// Map decision answer label to peer_reply format
-		switch decision.Answer.Label {
-		case "fyi", "skip":
-			return "skip", nil
-		case "handle", "ok":
-			return "handle", nil
-		default:
-			return "", nil // Unknown answer -> no judgment
+		peerJudge = collab.NewProductionJudge(decideFn, logger)
+		logger.Info("judge backend: API-based (Model Proxy)", "tier1", set.Tier1.Provider+"/"+set.Tier1.Model, "tier2", set.Tier2.Provider+"/"+set.Tier2.Model)
+	} else {
+		// Default to Grok CLI judge when no API key is set (item 1: one-shot ACP session)
+		// Find Grok ACP driver from the already-created drivers
+		var grokDriver *acp.Driver
+		for _, drv := range drivers {
+			if acpD, ok := drv.(*acp.Driver); ok && acpD.Name() == acp.EngineGrok {
+				grokDriver = acpD
+				break
+			}
+		}
+		if grokDriver == nil {
+			logger.Warn("judge backend: Grok CLI driver not found, using STRICT fallback only")
+			peerJudge = nil
+		} else {
+			peerJudge = &judge.GrokJudge{
+				Driver:    grokDriver,
+				Log:       logger,
+				Timeout:   5 * time.Second,
+				ModelName: "grok-2-mini-public",
+			}
+			logger.Info("judge backend: Grok CLI (one-shot ACP sessions, exempt from LRU cap)")
 		}
 	}
-	peerJudge = collab.NewProductionJudge(decideFn, logger)
 
 	// Bot 之間的傳話與群組（X02）：接上 runtime 的 Hooks；帶檔經 Docker 讀寫兩邊電腦的 /workspace（已在 runtime 初始化時共用）。
 	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Judge: s.judge.Responder, JudgeService: s.judge, Files: carry, PeerJudge: peerJudge})
