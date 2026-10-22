@@ -286,7 +286,7 @@ func openStack(cfg config.Config) (*stack, error) {
 	s.memory = &memory.Service{DB: db, Locate: comp.BotFS, Active: s.runtime.Active}
 
 	// Wire production judge for collab layer (2026-10-22, fixed 2026-10-22i, item 1: Grok CLI backend)
-	// Check if Model Proxy API judge is configured. If not, default to Grok CLI judge.
+	// 2026-10-22q (Item 3): No API key configured -> Grok CLI judge (not deepseek API tier)
 	var peerJudge collab.PeerJudge
 	set, _ := s.judge.Settings(context.Background())
 	// B3: A tier is "configured" only if it has both provider AND model set
