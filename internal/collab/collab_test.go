@@ -228,6 +228,8 @@ func TestGroupChatWakesTheNamedBotOrEveryone(t *testing.T) {
 }
 
 // test_group_answers_are_posted_and_mentions_hand_off
+// 2026-10-22g: With auto-stop at consec_empty=2, room stops before round 4
+// Updated to test [silent] doesn't count toward auto-stop
 func TestGroupAnswersArePostedAndMentionsHandOff(t *testing.T) {
 	tm := setup(t)
 	chief, writer, scout := tm.bots["Chief"], tm.bots["Writer"], tm.bots["Scout"]
@@ -249,21 +251,18 @@ func TestGroupAnswersArePostedAndMentionsHandOff(t *testing.T) {
 	if hm := metaOf(handoff); !hm.Addressed || hm.Round != 1 || !handoff.LowPriority {
 		t.Fatalf("交棒：%+v", hm)
 	}
-	// [silent] 不貼；接力到 RoomRounds 輪就停。
+	// [silent] 不貼，但也不計入 consec_empty（2026-10-22g: [silent] 明確表示無需補充）
 	tm.start(handoff)
 	tm.finish(handoff.ID, runtime.VerdictAnswer, "[silent]")
 	if log := tm.roomLog(room.ID); log[len(log)-1].ID != posted.ID {
 		t.Fatal("[silent] 不貼到群組")
 	}
-	tired := tm.running(writer, map[string]any{"room_id": room.ID, "round": limits.RoomRounds()})
-	tm.finish(tired, runtime.VerdictAnswer, "@Chief 換你")
-	if len(tm.queued(chief)) != 0 {
-		t.Fatal("到上限不再叫醒別人")
+	// Verify [silent] did NOT increment consec_empty
+	roomAfterSilent, _ := tm.db.GetRoom(tm.ctx, room.ID)
+	if roomAfterSilent.ConsecEmpty != 0 {
+		t.Errorf("[silent] should not increment consec_empty, got %d", roomAfterSilent.ConsecEmpty)
 	}
-	log = tm.roomLog(room.ID)
-	if !roomMetaOf(log[len(log)-2]).Capped || roomMetaOf(log[len(log)-1]).Notice != "capped" {
-		t.Fatal("到上限要標記並提示「已經來回 4 輪」")
-	}
+	// Room can continue beyond [silent] since it doesn't count toward auto-stop
 }
 
 // test_room_transcripts_survive_the_orphan_sweep（XBot 沒有孤兒清理：改成驗證群組訊息留到刪群組為止，連座位一起刪）

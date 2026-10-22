@@ -271,14 +271,18 @@ func ClassifyMessage(text string) MessageClass {
 		stripped = stripped[:atIdx] + stripped[endIdx:]
 	}
 
-	// Remove pure deference/agreement phrases
+	// Remove pure deference/agreement phrases (2026-10-22g: longest first)
 	deferencePatterns := []string{
+		// Longer patterns first to avoid partial matches
+		"我完全同意你的看法", "完全同意你的看法", "我完全同意你的建議", "我完全同意你的",
 		"照你說的", "你說的那個", "你說的", "我都可以", "都可以", "交給你",
 		"輪到你", "輪到", "同意你", "贊成你", "很好", "不錯", "沒意見",
-		"謝謝", "感謝", "收到", "了解", "明白", "好的", "知道了",
-		"不客氣", "不用謝", "ok", "okay",
-		"我完全同意", "我同意", "完全同意", "你的回覆", "你的看法", "你的建議",
-		"辛苦了", "謝謝你", "感謝你",
+		"謝謝你的回覆", "謝謝你的看法", "謝謝你的建議", "謝謝你的", "感謝你的",
+		"你的回覆", "你的看法", "你的建議", "你的",
+		"謝謝你", "感謝你", "謝謝", "感謝", "收到", "了解", "明白", "好的", "知道了",
+		"不客氣", "不用謝", "辛苦了",
+		"我完全同意", "我同意", "完全同意",
+		"ok", "okay",
 	}
 	for _, p := range deferencePatterns {
 		stripped = strings.ReplaceAll(stripped, p, " ")
@@ -335,8 +339,21 @@ func ClassifyMessage(text string) MessageClass {
 			cjkCount++
 		}
 	}
+	// 2026-10-22g: After stripping, also check that it's not just punctuation fragments
 	if cjkCount >= 6 {
-		hasConcreteResidue = true
+		// Check if stripped text is mostly punctuation/spaces
+		nonPunctCount := 0
+		for _, r := range stripped {
+			if r >= '\u4e00' && r <= '\u9fff' {
+				nonPunctCount++
+			} else if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' {
+				nonPunctCount++
+			}
+		}
+		// If >50% is actual content (not punct/space), count as concrete
+		if nonPunctCount >= len([]rune(stripped))/2 {
+			hasConcreteResidue = true
+		}
 	}
 
 	// 7e. 路徑、URL、代碼塊

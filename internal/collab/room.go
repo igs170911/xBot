@@ -869,7 +869,11 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	consecEmpty := room.ConsecEmpty
 	s.log.Debug("auto-stop check", "room", room.ID, "bot", task.BotID, "shouldSend", shouldSend, "reason", reason, "consecEmpty", consecEmpty)
 
-	if !shouldSend {
+	// 2026-10-22g：[silent] 不計入 consecEmpty（明確表示無需補充，與被阻擋的 filler 不同）
+	isSilent := IsSilent(content)
+
+	if !shouldSend && !isSilent {
+		// 被阻擋的 filler 才計入 consecEmpty
 		consecEmpty++
 		_ = s.db.UpdateRoomConsecEmpty(ctx, room.ID, consecEmpty)
 
