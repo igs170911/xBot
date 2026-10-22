@@ -891,10 +891,12 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	}()
 
 	t.askMu.Lock()         // 和 resume 互斥：回覆前改回「工作中」不會蓋掉「已完成」
-	defer t.askMu.Unlock() // 2026-10-22k: ensure lock is released on panic
+	defer t.askMu.Unlock() // B6: ensure lock is released on panic
 
 	t.mu.Lock()
 	if t.finished {
+		// B6: Already finished, but still emit done event for idempotence
+		r.emit(t, KindDone, engine.Event{Type: engine.EventDone, Status: status, Text: text}, true)
 		t.mu.Unlock()
 		return
 	}
@@ -907,7 +909,7 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	stopping := t.stopping
 	paused := t.paused
 	lastErr := t.lastErr
-	t.mu.Unlock()
+	t.mu.Unlock() // explicit unlock before long operations
 
 	verdict := VerdictAnswer
 	switch {

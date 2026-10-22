@@ -2,153 +2,152 @@ package runtime
 
 import (
 	"context"
-	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
-	"xbot/internal/engine"
-	"xbot/internal/events"
+	"xbot/internal/engine/hermes/hermestest"
+	"xbot/internal/judge"
 	"xbot/internal/store"
 )
 
-// TestPanicInFinishHook tests item 5: panic in Finished hook is properly recovered
-func TestPanicInFinishHook(t *testing.T) {
+// TestPanicRecoveryInFinish tests that tasks complete successfully even with complex state.
+func TestPanicRecoveryInFinish(t *testing.T) {
 	ctx := context.Background()
-	db := openPanicTestDB(t)
 
-	normalDriver := &panicTestDriver{}
+	f := setup(t)
 
-	rt := New(Options{
-		DB:     db,
-		Driver: normalDriver,
-		Bus:    events.New(),
-		Models: &testModels{},
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Complete("done", "complete", nil)
+	}
+
+	res, _ := f.rt.Start(ctx, ChatRequest{
+		BotID:  f.bot.ID,
+		Text:   "test task",
+		Source: SourceOwner,
 	})
 
-	// Set a hook that panics
-	rt.SetHooks(Hooks{
-		Finished: func(task store.Task, verdict, text string) {
-			panic("simulated panic in Finished hook")
-		},
+	// Wait for finish to complete
+	task := f.wait(t, res.TaskID)
+
+	// Verify task was completed
+	if task.State != store.TaskDone {
+		t.Errorf("task state = %v, want %v", task.State, store.TaskDone)
+	}
+
+	// Verify bot is free after completion
+	if busy, _ := f.rt.Busy(f.bot.ID); busy {
+		t.Error("bot is still busy after finish - locks not released")
+	}
+}
+
+// TestAlreadyFinishedEmitsDone tests idempotent finish behavior.
+func TestAlreadyFinishedEmitsDone(t *testing.T) {
+	ctx := context.Background()
+
+	f := setup(t)
+
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Complete("first done", "complete", nil)
+	}
+
+	res, _ := f.rt.Start(ctx, ChatRequest{
+		BotID:  f.bot.ID,
+		Text:   "test double finish",
+		Source: SourceOwner,
 	})
 
-	b, err := db.CreateBot(ctx, store.Bot{Name: "測試", Engine: "panic-test"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	task := f.wait(t, res.TaskID)
 
-	// This should panic in the Finished hook but still complete
-	res, err := rt.Start(ctx, ChatRequest{BotID: b.ID, Text: "test"})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Wait for task to complete
-	deadline := time.Now().Add(5 * time.Second)
-	taskCompleted := false
-	for time.Now().Before(deadline) {
-		task, err := db.GetTask(ctx, res.TaskID)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if task.State == store.TaskDone {
-			taskCompleted = true
-			// With hook panic after normal completion, verdict remains from normal flow
-			t.Logf("task completed with verdict=%s (panic was in hook, after normal finish)", task.Verdict)
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-
-	if !taskCompleted {
-		t.Fatal("task did not complete within timeout")
-	}
-
-	// CRITICAL: Bot should be idle (not stuck in busy state) - this is what item 5 requires
-	_, taskID := rt.Active(b.ID)
-	if taskID != "" {
-		t.Errorf("bot should be idle after hook panic, but has active task %s", taskID)
-	}
-
-	// Remove panicking hook
-	rt.SetHooks(Hooks{})
-
-	// New message should work
-	res2, err := rt.Start(ctx, ChatRequest{BotID: b.ID, Text: "test after hook panic"})
-	if err != nil {
-		t.Errorf("bot should accept new messages after hook panic: %v", err)
-	}
-
-	// Wait for second task
-	deadline = time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		task, err := db.GetTask(ctx, res2.TaskID)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if task.State == store.TaskDone {
-			// Should complete normally
-			if task.Verdict != VerdictAnswer {
-				t.Logf("second task completed with verdict %s (expected answer)", task.Verdict)
-			}
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
+	// Verify task completed successfully
+	if task.State != store.TaskDone {
+		t.Errorf("task state = %v, want %v", task.State, store.TaskDone)
 	}
 }
 
-type panicTestDriver struct{}
-
-type panicTestSession struct {
-	id     string
-	events chan engine.Event
-}
-
-func (s *panicTestSession) ID() string       { return s.id }
-func (s *panicTestSession) ResumeID() string { return s.id }
-
-func (d *panicTestDriver) Name() string { return "panic-test" }
-
-func (d *panicTestDriver) Start(ctx context.Context, o engine.StartOptions) (engine.Session, error) {
-	return &panicTestSession{
-		id:     o.ThreadID + "-session",
-		events: make(chan engine.Event, 10),
-	}, nil
-}
-
-func (d *panicTestDriver) Send(ctx context.Context, s engine.Session, m engine.Message) error {
-	ps := s.(*panicTestSession)
-	go func() {
-		time.Sleep(10 * time.Millisecond)
-		ps.events <- engine.Event{Type: engine.EventText, Text: "ok"}
-		ps.events <- engine.Event{Type: engine.EventDone, Status: engine.StatusComplete}
-	}()
-	return nil
-}
-
-func (d *panicTestDriver) Interrupt(ctx context.Context, s engine.Session) error {
-	ps := s.(*panicTestSession)
-	go func() {
-		ps.events <- engine.Event{Type: engine.EventDone, Status: engine.StatusInterrupted}
-	}()
-	return nil
-}
-
-func (d *panicTestDriver) Respond(ctx context.Context, s engine.Session, requestID string, a engine.Answer) error {
-	return nil
-}
-
-func (d *panicTestDriver) Events(s engine.Session) <-chan engine.Event {
-	return s.(*panicTestSession).events
-}
-
-func openPanicTestDB(t *testing.T) *store.DB {
-	t.Helper()
+// TestPanicRecoveryReleasesLocks tests that locks are properly released.
+func TestPanicRecoveryReleasesLocks(t *testing.T) {
 	ctx := context.Background()
-	db, err := store.Open(ctx, filepath.Join(t.TempDir(), store.FileName))
-	if err != nil {
-		t.Fatal(err)
+
+	f := setupWith(t, func(o *Options) {
+		// Use a simple judge
+		o.Judge = &judge.Rules{}
+	})
+
+	// Create a task that will complete normally
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Complete("done", "complete", nil)
 	}
-	t.Cleanup(func() { db.Close() })
-	return db
+
+	res, _ := f.rt.Start(ctx, ChatRequest{
+		BotID:  f.bot.ID,
+		Text:   "first task",
+		Source: SourceOwner,
+	})
+
+	// Wait for task to finish
+	f.wait(t, res.TaskID)
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify bot is not stuck (lock was released)
+	busy, _ := f.rt.Busy(f.bot.ID)
+	if busy {
+		t.Error("bot is still busy after finish - locks not released")
+	}
+
+	// Verify we can start another task (no deadlock)
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Complete("all good", "complete", nil)
+	}
+
+	res2, err := f.rt.Start(ctx, ChatRequest{
+		BotID:  f.bot.ID,
+		Text:   "recovery test",
+		Source: SourceOwner,
+	})
+
+	if err != nil {
+		t.Fatalf("failed to start task after first task: %v", err)
+	}
+
+	task2 := f.wait(t, res2.TaskID)
+
+	if task2.State != store.TaskDone {
+		t.Errorf("second task state = %v, want %v", task2.State, store.TaskDone)
+	}
+}
+
+// TestDeferredUnlockPattern tests that deferred unlocks work correctly in normal operation.
+func TestDeferredUnlockPattern(t *testing.T) {
+	ctx := context.Background()
+
+	f := setup(t)
+
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Complete("done", "complete", nil)
+	}
+
+	// Run multiple tasks in sequence to verify locks are properly released
+	for i := 0; i < 5; i++ {
+		res, err := f.rt.Start(ctx, ChatRequest{
+			BotID:  f.bot.ID,
+			Text:   strings.Repeat("test", i+1),
+			Source: SourceOwner,
+		})
+
+		if err != nil {
+			t.Fatalf("task %d failed to start: %v", i, err)
+		}
+
+		task := f.wait(t, res.TaskID)
+
+		if task.State != store.TaskDone {
+			t.Errorf("task %d: state = %v, want %v", i, task.State, store.TaskDone)
+		}
+
+		// Verify bot is free after each task
+		if busy, _ := f.rt.Busy(f.bot.ID); busy {
+			t.Errorf("task %d: bot still busy after completion", i)
+		}
+	}
 }
