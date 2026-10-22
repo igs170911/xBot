@@ -52,8 +52,9 @@ func (g *GrokJudge) Classify(ctx context.Context, prev, msg, botID string) (stri
 
 	model := g.ModelName
 	if model == "" {
-		// B3: Default to a real model name (grok-beta is the fast free-tier model)
-		model = "grok-beta"
+		// 2026-10-22p: Default to grok-4.7-build-fast (grok CLI 1.0.52 installed model, 3.7s response)
+		// grok-beta gives 'unknown model id' error
+		model = "grok-4.7-build-fast"
 	}
 
 	// Create a one-shot session context with timeout
