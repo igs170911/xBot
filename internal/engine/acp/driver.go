@@ -907,9 +907,9 @@ func (d *Driver) Close(botID string) {
 // agent 行程（與其子行程）仍由所有 session 共用；沒有 session 時 disconnected 會關掉它。
 // 任務、房間一輪、judge 呼叫結束時使用，確保 MCP 子行程不會累積。
 //
-// 子行程清理（item 7b）：發送 session/cancel 通知 agent，期望 agent 正確終止該 session 開的所有子行程
-// （desktop_mcp.py 和其他 MCP servers）。實測 grok agent、claude-agent-acp 會正確清理。
-// 如果某個 agent 不清理，需要在 driver 層追蹤 PID 並主動 kill。
+// 子行程清理（item 7b）：Process.Close() 會終止整個 process group（exec.go:82-118）。
+// 使用 setsid 啟動 agent，讓它和子行程（desktop_mcp.py 等）在同一個 process group。
+// Close 時透過 Docker API 取得 PID，然後 kill -TERM -- -PID 終止整個 group，等待後如需要發 SIGKILL。
 func (d *Driver) CloseSession(s engine.Session) error {
 	as, ok := s.(*session)
 	if !ok {
