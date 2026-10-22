@@ -86,6 +86,10 @@ type agentConn struct {
 	threads  map[string]*session // XBot thread id → session
 	children map[string]*session // agent 開的子代理 session → 開它的 session（權限請求、背景工作對回去）
 	requests map[string]pending  // 等人回覆的權限請求
+
+	// B2 (2026-10-22): session 計數和等待
+	sessionCount int       // 當前實時 session 數量（包括所有來源：DM、room、peer、judge）
+	sessionWait  sync.Cond // 等待 session 空出時通知
 }
 
 type permOption struct {
@@ -187,7 +191,8 @@ func (d *Driver) client(ctx context.Context, botID, mode string) (*agentConn, er
 		return nil, err
 	}
 	ac = &agentConn{botID: botID, mode: mode, sessions: map[string]*session{}, threads: map[string]*session{}, children: map[string]*session{},
-		requests: map[string]pending{}}
+		requests: map[string]pending{}, sessionCount: 0}
+	ac.sessionWait.L = &ac.mu // 綁定 cond 到 mutex
 	log := d.log.With("bot", botID)
 	ac.c = newConn(p, log, func(m string, params json.RawMessage) { d.notification(ac, m, params) },
 		func(r request) { d.request(ac, r) },
@@ -317,17 +322,35 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	if err != nil {
 		return nil, err
 	}
+
 	ac.mu.Lock()
+	// Check if thread already has a session
 	if s := ac.threads[o.ThreadID]; s != nil {
 		ac.mu.Unlock()
 		s.mu.Lock()
-		s.mode = o.Mode // XBot 代答的權限（autoAllow）照目前的等級；agent 自己的模式要新的 session 才換
+		s.mode = o.Mode
+		s.lastUsed = time.Now()
 		s.mu.Unlock()
 		cctx, cancel := context.WithTimeout(ctx, limits.ACPCallTimeout)
-		d.applyEffort(cctx, s, o.BotID, o.Effort) // 思考強度改了：這一則就換
+		d.applyEffort(cctx, s, o.BotID, o.Effort)
 		cancel()
 		return s, nil
 	}
+
+	// B2 (2026-10-22): Enforce hard cap before creating new session
+	// Wait for space if at cap; try to evict LRU idle session first
+	for ac.sessionCount >= limits.ACPMaxSessionsPerBox {
+		// Try to evict oldest idle session
+		if d.tryEvictIdleSession(ac) {
+			break // Evicted one, proceed
+		}
+		// No idle sessions available, wait for one to be closed
+		d.log.Info("At session cap, waiting for session to close", "bot", o.BotID, "cap", limits.ACPMaxSessionsPerBox)
+		ac.sessionWait.Wait()
+	}
+
+	// Reserve slot
+	ac.sessionCount++
 	ac.mu.Unlock()
 
 	var mcp []MCPServer
@@ -520,6 +543,37 @@ func abs(n int) int {
 		return -n
 	}
 	return n
+}
+
+// tryEvictIdleSession tries to close the LRU idle session to make room for a new one (B2).
+// Returns true if a session was evicted, false if all sessions are busy.
+// Called with ac.mu held.
+func (d *Driver) tryEvictIdleSession(ac *agentConn) bool {
+	var oldest *session
+	var oldestTime time.Time
+
+	for _, s := range ac.sessions {
+		s.mu.Lock()
+		isIdle := !s.running
+		lastUsed := s.lastUsed
+		s.mu.Unlock()
+
+		if isIdle && (oldest == nil || lastUsed.Before(oldestTime)) {
+			oldest = s
+			oldestTime = lastUsed
+		}
+	}
+
+	if oldest == nil {
+		return false // All sessions are busy
+	}
+
+	d.log.Info("Evicting LRU idle session to make room", "bot", ac.botID, "session", oldest.id, "cap", limits.ACPMaxSessionsPerBox)
+	// Unlock before closing to avoid deadlock
+	ac.mu.Unlock()
+	_ = d.CloseSession(oldest)
+	ac.mu.Lock()
+	return true
 }
 
 // quota 看這一輪的錯誤是不是額度用完、限流、餘額不足或登入過期（EN-7）：agent 的訊息加上結構化的 data
@@ -941,6 +995,10 @@ func (d *Driver) CloseSession(s engine.Session) error {
 			delete(ac.requests, k)
 		}
 	}
+
+	// B2 (2026-10-22): Decrement session count and signal waiters
+	ac.sessionCount--
+	ac.sessionWait.Signal()
 	ac.mu.Unlock()
 
 	// 關掉 queue（停止事件流）

@@ -112,19 +112,38 @@ func IsAcknowledgement(text string) bool {
 
 	// B4: 短組合確認訊息（≤12 字，包含多個確認詞）
 	// 例：「好的謝謝」「收到辛苦了」「了解，沒問題」
+	// 注意：避免重疊計數（如「好的」和「好」），按長度降序檢查並標記已匹配範圍
 	if runes(body) <= 12 {
 		ackParts := []string{
-			"好的", "好", "收到", "了解", "明白", "知道", "謝謝", "感謝", "辛苦",
-			"沒問題", "可以", "同意", "贊同", "+1", "同上", "沒事", "懂了",
-			"ok", "thanks", "got it", "sure",
+			// 長詞在前，避免重疊計數
+			"沒問題", "got it", "了解", "明白", "知道", "收到", "好的", "謝謝", "感謝", "辛苦",
+			"可以", "同意", "贊同", "沒事", "懂了",
+			"+1", "同上",
+			"ok", "thanks", "sure",
 		}
 		matchCount := 0
+		matched := make([]bool, len([]rune(lower))) // 記錄已匹配的字符位置
 		for _, part := range ackParts {
-			if strings.Contains(lower, part) {
-				matchCount++
+			if idx := strings.Index(lower, part); idx >= 0 {
+				// 檢查是否與已匹配範圍重疊
+				partRunes := []rune(part)
+				overlaps := false
+				for i := idx; i < idx+len(partRunes) && i < len(matched); i++ {
+					if matched[i] {
+						overlaps = true
+						break
+					}
+				}
+				if !overlaps {
+					matchCount++
+					// 標記已匹配範圍
+					for i := idx; i < idx+len(partRunes) && i < len(matched); i++ {
+						matched[i] = true
+					}
+				}
 			}
 		}
-		// 短訊息包含 2 個或更多確認詞 -> 是 acknowledgement
+		// 短訊息包含 2 個或更多不重疊的確認詞 -> 是 acknowledgement
 		if matchCount >= 2 {
 			return true
 		}
