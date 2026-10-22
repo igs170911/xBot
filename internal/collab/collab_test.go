@@ -206,10 +206,10 @@ func TestGroupChatWakesTheNamedBotOrEveryone(t *testing.T) {
 	if len(tm.queued(writer)) != 1 {
 		t.Fatal("不該多排一輪")
 	}
-	woke = must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, "大家早", ""))
+	woke = must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, "@所有人 大家早", ""))
 	slices.Sort(woke.Woke)
 	if strings.Join(woke.Woke, ",") != "Chief,Scout,Writer" {
-		t.Fatalf("大家早：%v", woke.Woke)
+		t.Fatalf("@所有人：%v", woke.Woke)
 	}
 	// 群組座位是隱藏的對話串，不是 Bot 自己的對話。
 	seat := tm.queued(writer)[0]
@@ -220,7 +220,7 @@ func TestGroupChatWakesTheNamedBotOrEveryone(t *testing.T) {
 		t.Fatal("座位不能出現在 Bot 的對話串清單")
 	}
 	prompt := tm.start(seat)
-	for _, want := range []string{"寫一段開場", "再補一句結尾", "大家早", "你被點名了"} {
+	for _, want := range []string{"寫一段開場", "再補一句結尾", "@所有人 大家早", "你被點名了"} {
 		if !strings.Contains(prompt, want) {
 			t.Fatalf("prompt 少了 %q：%s", want, prompt)
 		}
@@ -270,8 +270,9 @@ func TestGroupAnswersArePostedAndMentionsHandOff(t *testing.T) {
 func TestRoomTranscriptsLiveAsLongAsTheRoom(t *testing.T) {
 	tm := setup(t)
 	room := must[store.Room](t)(tm.s.CreateRoom(tm.ctx, []string{tm.bots["Chief"], tm.bots["Writer"]}, RoomOptions{ResponderRule: store.RuleEveryone}))
-	must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, "hello", ""))
-	if log := tm.roomLog(room.ID); log[0].Content != "hello" {
+	// 修正：移除群組豁免後，必須明確 @mention 才會叫醒成員
+	must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, "@Writer hello", ""))
+	if log := tm.roomLog(room.ID); log[0].Content != "@Writer hello" {
 		t.Fatalf("%+v", log)
 	}
 	seat := tm.queued(tm.bots["Writer"])[0]

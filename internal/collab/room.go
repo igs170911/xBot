@@ -445,6 +445,7 @@ func nonNil(s []string) []string {
 }
 
 // responders 決定沒點名時誰回（D01 回應規則）。
+// 修正：移除群組豁免，沒有 @ 時不叫醒任何人（防止 Bot 之間無限閒聊）。
 func (s *Service) responders(ctx context.Context, room store.Room, bots []store.Bot, text string) ([]store.Bot, bool, string, float64) {
 	lead := func() []store.Bot {
 		for _, b := range bots {
@@ -456,8 +457,8 @@ func (s *Service) responders(ctx context.Context, room store.Room, bots []store.
 	}
 	switch room.ResponderRule {
 	case store.RuleEveryone:
-		// 每位成員都看；不關自己的事就回 [silent]（LazyBoy 的做法）。
-		return bots, false, store.RuleEveryone, 0
+		// 修正：即使規則是「所有人」，沒有明確 @ 時也不叫醒，避免無意義的接力
+		return nil, true, "", 0
 	case store.RuleMentioned:
 		return nil, true, "", 0
 	case store.RuleAuto:
@@ -835,16 +836,9 @@ func (s *Service) StartGroup(ctx context.Context, botID string, members []string
 		if err != nil {
 			return StartGroupResult{}, err
 		}
+		// 修正：移除群組豁免，只叫醒被 @ 的成員
 		targets := named
 		addressed := len(named) > 0
-		if !addressed {
-			bots, seats, _ := s.members(ctx, room.ID)
-			for _, b := range bots {
-				if b.ID != botID && !seats[b.ID].Paused {
-					targets = append(targets, b)
-				}
-			}
-		}
 		s.wake(ctx, room, targets, posted.ID, 1, addressed)
 		for _, b := range targets {
 			woke = append(woke, b.Name)

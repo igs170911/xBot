@@ -832,23 +832,23 @@ func (s *Service) reply(ctx context.Context, task store.Task, m taskMeta, verdic
 	}
 	answered()
 	// 結構化規則：Bot-to-bot 回覆必須包含新資訊、結果、問題或交接，否則保持 silent
+	// 不再豁免群組訊息 - 群組正是多 bot 閒聊發生的地方
 	// 例外：
-	// - Silent 和純致謝永遠阻擋（即使是回答工作）
-	// - 群組訊息（協作情境）不受 HasNewInformation 限制
-	// - 回覆 request/question 的答案（verdict=Answer）不受 HasNewInformation 檢查（允許短答案如"修好了"）
+	// - Silent 和純致謝永遠阻擋
+	// - 回覆 request/question 的答案（verdict=Answer）允許短答案如"修好了"
 	// - 其他情況必須有新資訊
 
 	// 先檢查是否為 silent 或純致謝（永遠阻擋）
 	if verdict != runtime.VerdictFailed && (IsSilent(content) || IsAcknowledgement(content)) {
-		s.log.Debug("blocked silent or acknowledgement", "from", task.BotID, "to", m.FromBot, "content", plain(content, 100))
+		s.log.Debug("blocked silent or acknowledgement", "from", task.BotID, "to", m.FromBot, "roomID", m.RoomID, "content", plain(content, 100))
 		return
 	}
 
-	// 非群組、非答案情境：必須有新資訊
+	// 非答案情境：必須有新資訊（包括群組訊息）
 	isAnswerToWork := verdict == runtime.VerdictAnswer && replyExpected(m.Intent)
-	if verdict != runtime.VerdictFailed && m.RoomID == "" && !isAnswerToWork {
+	if verdict != runtime.VerdictFailed && !isAnswerToWork {
 		if !HasNewInformation(content) {
-			s.log.Debug("blocked reply without new information", "from", task.BotID, "to", m.FromBot, "content", plain(content, 100))
+			s.log.Debug("blocked reply without new information", "from", task.BotID, "to", m.FromBot, "roomID", m.RoomID, "content", plain(content, 100))
 			return
 		}
 		// 近似重複檢測

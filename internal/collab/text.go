@@ -96,17 +96,32 @@ func IsAcknowledgement(text string) bool {
 		"will do", "on it", "sure", "noted", "ack", "roger", "copy",
 	}
 
-	trimmed := strings.TrimRight(lower, "。！？!?.,;；")
+	trimmed := strings.TrimRight(lower, "。！？!?.,;；，、")
 	for _, ack := range acknowledgements {
 		if trimmed == ack {
 			return true
 		}
 	}
 
-	// 只是重述對方的話（"收到你的訊息"、"收到你說的"等），沒有新資訊
-	if (strings.Contains(lower, "收到你") || strings.Contains(lower, "收到了") ||
-		strings.Contains(lower, "got your") || strings.Contains(lower, "received your")) &&
-		len([]rune(body)) < 40 {
+	// 只是重述對方的話（"收到你的訊息"、"收到你說的"等），但要排除有後續實質內容的
+	// 例："收到你的訊息" → true，"收到你的請求，需要一些時間處理" → false
+	if strings.Contains(lower, "收到你") || strings.Contains(lower, "收到了") ||
+		strings.Contains(lower, "got your") || strings.Contains(lower, "received your") {
+		// 如果很短（<20字）且沒有逗號分隔的後續內容，才算純致謝
+		if len([]rune(body)) < 20 {
+			return true
+		}
+		// 如果有逗號，檢查逗號後面是否有實質內容（使用 rune 切片以正確處理 UTF-8）
+		runes := []rune(body)
+		for i, r := range runes {
+			if r == '，' || r == ',' {
+				after := strings.TrimSpace(string(runes[i+1:]))
+				// 逗號後有實質內容（超過5字），不算純致謝
+				if len([]rune(after)) > 5 {
+					return false
+				}
+			}
+		}
 		return true
 	}
 
@@ -123,46 +138,86 @@ func IsAcknowledgement(text string) bool {
 	return false
 }
 
-// HasNewInformation 檢查訊息是否包含新資訊、結果、問題或交接。
-// Bot-to-bot 回覆必須符合其中之一，否則應該保持 [silent]（結構化規則）。
-func HasNewInformation(text string) bool {
+// MessageClass 是訊息的分類（判斷是否包含新資訊）。
+type MessageClass string
+
+const (
+	ClassNewInfo  MessageClass = "new_info" // 新資訊：數據、結果、具體內容
+	ClassQuestion MessageClass = "question" // 問題：詢問對方
+	ClassHandoff  MessageClass = "handoff"  // 交接：派工、請求協助
+	ClassResult   MessageClass = "result"   // 結果：工作完成的回報
+	ClassFiller   MessageClass = "filler"   // 填充：沒有實質內容的回覆
+)
+
+// ClassifyMessage 分類訊息內容（新資訊判斷的基礎）。
+// 未來可接入 judge 模型；目前用結構化規則實作。
+func ClassifyMessage(text string) MessageClass {
 	body := strings.TrimSpace(text)
 	if body == "" {
-		return false
+		return ClassFiller
 	}
 
-	// 包含問題（詢問對方）
+	lowerBody := strings.ToLower(body)
+
+	// 1. 優先檢查問題（避免被其他規則覆蓋）
 	if strings.Contains(body, "？") || strings.Contains(body, "?") ||
 		strings.Contains(body, "請問") || strings.Contains(body, "能否") ||
-		strings.Contains(body, "可以嗎") {
-		return true
+		strings.Contains(body, "可以嗎") || strings.Contains(body, "怎麼") {
+		return ClassQuestion
 	}
 
-	// 包含結果/數據/具體內容（數字、路徑、URL、代碼等）
-	hasNumbers := strings.ContainsAny(body, "0123456789")
-	hasPath := strings.Contains(body, "/") && (strings.Contains(body, "workspace") || strings.Contains(body, "."))
-	hasURL := strings.Contains(body, "http") || strings.Contains(body, "://")
-	if hasNumbers || hasPath || hasURL {
-		return true
+	// 2. 檢查結果回報（優先於數字檢查，因為"完成 5 個"應該是 result 不是 new_info）
+	completionIndicators := []string{
+		"完成", "做好", "修好", "搞定", "處理好", "準備好",
+		"已經完成", "已經做好", "已經修好", "已經處理好",
+		"成功", "完畢",
+		"done", "finished", "completed", "fixed", "resolved",
 	}
-
-	// 包含交接/派工
-	handoffs := []string{
-		"已派工", "轉給", "請", "幫", "負責", "處理",
-		"assigned", "delegated", "forwarded", "please", "could you",
-	}
-	for _, h := range handoffs {
-		if strings.Contains(strings.ToLower(body), h) {
-			return true
+	for _, ind := range completionIndicators {
+		if strings.Contains(lowerBody, ind) {
+			return ClassResult
 		}
 	}
 
-	// 包含具體動作/結果描述（> 30 字通常有實質內容）
-	if len([]rune(body)) > 30 {
-		return true
+	// 3. 檢查數據/具體內容（數字、路徑、URL、代碼等）
+	hasNumbers := strings.ContainsAny(body, "0123456789")
+	hasPath := strings.Contains(body, "/") && (strings.Contains(body, "workspace") || strings.Contains(body, "."))
+	hasURL := strings.Contains(body, "http") || strings.Contains(body, "://")
+	hasCodeBlock := strings.Contains(body, "```") || strings.Contains(body, "~~~")
+	if hasNumbers || hasPath || hasURL || hasCodeBlock {
+		return ClassNewInfo
 	}
 
-	return false
+	// 4. 長內容優先判定為 new_info（在檢查 handoff 之前）
+	if len([]rune(body)) > 30 {
+		return ClassNewInfo
+	}
+
+	// 5. 檢查交接/派工（簡單模式，避免誤判）
+	handoffPatterns := []string{
+		"已派工", "轉給", "@",
+		"assigned", "delegated", "forwarded",
+	}
+	for _, h := range handoffPatterns {
+		if strings.Contains(lowerBody, h) {
+			return ClassHandoff
+		}
+	}
+
+	// 6. "請"、"幫" 等詞（最後檢查，避免覆蓋前面的判定）
+	if strings.Contains(lowerBody, "請") || strings.Contains(lowerBody, "幫") ||
+		strings.Contains(lowerBody, "please") || strings.Contains(lowerBody, "could you") {
+		return ClassHandoff
+	}
+
+	return ClassFiller
+}
+
+// HasNewInformation 檢查訊息是否包含新資訊、結果、問題或交接。
+// Bot-to-bot 回覆必須符合其中之一，否則應該保持 [silent]（結構化規則）。
+func HasNewInformation(text string) bool {
+	class := ClassifyMessage(text)
+	return class != ClassFiller
 }
 
 // IsSimilarTo 檢查兩則訊息是否相似（近似重複檢測，防止循環）。
