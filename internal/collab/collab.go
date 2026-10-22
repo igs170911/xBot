@@ -757,7 +757,8 @@ func framed(sender store.Bot, target Mate, text, intent, owedTo string) string {
 		label = "（" + sender.Title + "）"
 	}
 	// 送回隊友的回答不照回話風格（hermes.replyStyleText，給使用者看的聊天口吻）：Bot 之間要完整、精簡，長資料給檔案路徑。
-	const toPeer = "這是給隊友看的，不用像跟使用者聊天那樣分段：一次寫完整、精簡，長的資料給檔案路徑，不要貼全文。"
+	// 2026-10-22：長度規則 - 隊友訊息最多 300 字，資料給檔案路徑。
+	const toPeer = "這是給隊友看的，不用像跟使用者聊天那樣分段：一次寫完整、精簡（最多 300 字），長的資料給檔案路徑，不要貼全文。"
 	var rule string
 	switch intent {
 	case IntentQuestion:
