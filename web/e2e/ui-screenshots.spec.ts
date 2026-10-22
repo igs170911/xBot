@@ -60,6 +60,12 @@ test('capture UI screenshots with seeded data', async ({ page }) => {
   await page.screenshot({ path: 'e2e-results/screens/ui-02-sidebar-more-open.png', fullPage: false })
   console.log('✓ Captured: 02-sidebar-more-open.png')
 
+  // Close 更多 menu for remaining screenshots
+  if (await moreButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await moreButton.click()
+    await settle(page)
+  }
+
   // 3. WorkSteps in progress
   // Start a new task to show work in progress
   const box = main.getByRole('textbox')
