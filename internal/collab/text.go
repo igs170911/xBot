@@ -133,7 +133,7 @@ func IsAcknowledgement(text string) bool {
 			// Convert byte offset to rune index
 			runeIdx := len([]rune(lower[:byteIdx]))
 			partRunes := []rune(part)
-			
+
 			// 檢查是否與已匹配範圍重疊
 			overlaps := false
 			for i := runeIdx; i < runeIdx+len(partRunes) && i < len(matched); i++ {

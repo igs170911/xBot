@@ -65,7 +65,12 @@ func (g *GrokJudge) Classify(ctx context.Context, prev, msg, botID string) (stri
 	// The session is still one-shot and immediately closed, but uses the actual bot's auth.
 	// ThreadID is synthetic to avoid interfering with real sessions.
 	threadID := fmt.Sprintf("judge-%d", time.Now().UnixNano())
-	sess, err := g.Driver.Start(ctx, engine.StartOptions{BotID: botID, ThreadID: threadID, Model: model})
+	sess, err := g.Driver.Start(ctx, engine.StartOptions{
+		BotID:       botID,
+		ThreadID:    threadID,
+		Model:       model,
+		StrictModel: true, // 2026-10-22q: Judge requires strict model match
+	})
 	if err != nil {
 		log.Warn("grok judge: failed to start session", "err", err)
 		// B3: Return error to trigger strict fallback

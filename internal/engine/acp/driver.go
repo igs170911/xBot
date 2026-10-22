@@ -160,11 +160,8 @@ type agentConn struct {
 	sessionCount int       // 當前實時 session 數量（包括所有來源：DM、room、peer、judge）
 	sessionWait  sync.Cond // 等待 session 空出時通知
 
-	// 2026-10-22p (LEAK FIX): Drain mechanism
-	draining       bool          // This agent is draining, new sessions go to new agent
-	closedSessions int           // Count of sessions that were closed but not yet reaped by agent
-	drainTimer     *time.Timer   // Max time to wait for drain
-	replacement    *agentConn    // New agent for incoming sessions while draining
+	// 2026-10-22p (LEAK FIX): Track closed sessions for restart decision
+	closedSessions int // Count of sessions that were closed but MCPs not yet reaped by agent
 }
 
 type permOption struct {
@@ -422,7 +419,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		}
 		// No idle sessions available, wait for one to be closed
 		d.log.Info("At session cap, waiting for session to close", "bot", o.BotID, "cap", limits.ACPMaxSessionsPerBox)
-		
+
 		// 2026-10-22n (LEAK FIX 3): ctx-aware wait using channel
 		// sessionWait.Wait() ignores ctx and hangs (TestSessionCounterBasic hung for 642s)
 		// FIXED 2026-10-22p: Must keep mutex locked for Wait(), release in goroutine after signal
@@ -587,6 +584,8 @@ func (d *Driver) configure(ctx context.Context, s *session, res sessionResult, o
 				return
 			}
 		}
+		// 2026-10-22q (Item 1): StrictModel check moved to Start() for early failure.
+		// This path is only reached when StrictModel=false.
 		d.log.Info("agent 沒有這個模型，用它的預設", "bot", o.BotID, "model", o.Model)
 	}
 }
@@ -1108,11 +1107,11 @@ func (d *Driver) CloseSession(s engine.Session) error {
 	// This ensures MCP servers from closed sessions are cleaned up promptly, even under steady use.
 	// Check if we should restart: closed sessions exist, and (all sessions closed OR all remaining idle)
 	shouldRestart := closedCount > 0 && (sessionCount == 0 || d.allSessionsIdle(ac))
-	
+
 	if shouldRestart && ac.c != nil {
 		d.log.Info("Restarting agent to clean MCPs from closed sessions", "bot", ac.botID, "live", sessionCount, "closed", closedCount)
 		oldConn := ac.c
-		ac.c = nil // Mark for restart on next Start()
+		ac.c = nil            // Mark for restart on next Start()
 		ac.closedSessions = 0 // Reset counter
 		ac.mu.Unlock()
 		// Close the old agent process (kills agent + all MCP children via process group)
