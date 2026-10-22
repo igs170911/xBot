@@ -697,9 +697,37 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 	case engine.EventThinking:
 		r.emit(t, KindThinking, map[string]string{"message_id": msgID, "text": e.Text}, false)
 	case engine.EventToolCall:
-		r.emit(t, KindToolCall, e, true)
+		// 只有里程碑工具才發布進度更新
+		if isMilestone(e) {
+			*lastMilestone = e.Tool.ID
+			r.emit(t, KindToolCall, e, true)
+		} else {
+			// 非里程碑工具：只存資料庫，不發布到事件匯流排（不打斷使用者）
+			raw, _ := json.Marshal(e)
+			_ = r.o.DB.AddEvent(context.Background(), store.Event{
+				BotID:    botID,
+				ThreadID: t.threadID,
+				TaskID:   t.taskID,
+				Kind:     KindToolCall,
+				Payload:  raw,
+			})
+		}
 	case engine.EventToolResult:
-		r.emit(t, KindToolResult, e, true)
+		// 只有里程碑工具的結果才發布
+		if shouldNotifyToolResult(e, *lastMilestone) {
+			r.emit(t, KindToolResult, e, true)
+			*lastMilestone = "" // 清空，避免重複通知
+		} else {
+			// 非里程碑工具的結果：只存資料庫
+			raw, _ := json.Marshal(e)
+			_ = r.o.DB.AddEvent(context.Background(), store.Event{
+				BotID:    botID,
+				ThreadID: t.threadID,
+				TaskID:   t.taskID,
+				Kind:     KindToolResult,
+				Payload:  raw,
+			})
+		}
 	case engine.EventUsage:
 		r.emit(t, KindUsage, e, true)
 	case engine.EventStatus:
