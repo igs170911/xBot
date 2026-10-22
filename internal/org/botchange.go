@@ -8,23 +8,27 @@ import (
 
 	"xbot/internal/bots"
 	"xbot/internal/engine/acp"
+	"xbot/internal/engine/hermes"
 	"xbot/internal/ops"
 	"xbot/internal/store"
 )
 
-// 主管 Bot 換隊友的模型、引擎、思考強度，或開關它的團隊管理權限（使用者回報 2026-10-19：主管想幫隊友「換模型」，
+// 主管 Bot 換隊友的模型、引擎、思考強度、人設，或開關它的團隊管理權限（使用者回報 2026-10-19：主管想幫隊友「換模型」，
 // 「update_bot 的參數裡沒有 can_manage」）。這些都要使用者本人按允許：模型、引擎、思考強度會改變花費；
-// 團隊管理權限是放寬權限（能建 Bot、建團隊、調整別的 Bot）。允許之後用你在網頁上改 Bot 的同一個操作（xbot.bots.update），
-// 和刪 Bot 一樣（remove.go）。職稱、人設、報告對象、團隊照舊直接改。
+// 人設會改變 Bot 的身分和行為（B.2）；團隊管理權限是放寬權限（能建 Bot、建團隊、調整別的 Bot）。
+// 允許之後用你在網頁上改 Bot 的同一個操作（xbot.bots.update），和刪 Bot 一樣（remove.go）。
+// 職稱、報告對象、團隊照舊直接改。
 
 // needsOwner 回答這次調整有沒有要使用者按允許的欄位。
 func (in UpdateBotIn) needsOwner() bool {
-	return in.Engine != nil || in.Model != nil || in.Effort != nil || in.CanManage != nil
+	// B.2: Persona 改為需要使用者核准（會改變 Bot 的行為和身分）
+	return in.Engine != nil || in.Model != nil || in.Effort != nil || in.CanManage != nil || strings.TrimSpace(in.Persona) != ""
 }
 
 // safeUpdate 是不用核准、直接改的欄位。
 func (in UpdateBotIn) safeUpdate() BotUpdate {
-	return BotUpdate{Title: in.Title, Persona: in.Persona, ReportsTo: in.ReportsTo, Team: in.Team}
+	// B.2: Persona 需要核准，不再直接改
+	return BotUpdate{Title: in.Title, ReportsTo: in.ReportsTo, Team: in.Team}
 }
 
 func (u BotUpdate) empty() bool {
@@ -157,6 +161,12 @@ func updateBot(ctx context.Context, reg *ops.Registry, s *Service, call *ops.Cal
 	}
 	if in.Effort != nil {
 		upd["effort"], fields, labels = *in.Effort, append(fields, "effort"), append(labels, "思考強度")
+	}
+	// B.2: Persona 改為需要核准（清理後再傳給 xbot.bots.update）
+	if p := strings.TrimSpace(in.Persona); p != "" {
+		// 使用 PersonaOnly 移除系統生成的規則
+		clean := hermes.PersonaOnly(p)
+		upd["soul"], fields, labels = clean, append(fields, "soul"), append(labels, "人設")
 	}
 	if in.CanManage != nil {
 		upd["can_manage"], fields, labels = *in.CanManage, append(fields, "can_manage"), append(labels, "團隊管理權限")
