@@ -856,6 +856,7 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	// 允許接力：A: @Scout 換你 / Scout: <實際工作> / A: @Scout 換你
 	// 阻擋循環：A: X / B: filler / A: X
 	// 阻擋立即重複：A: X / A: X
+	// B5 (2026-10-22m)：Dedupe fix - 只比較發送者之前有實質內容的訊息，忽略中間的 filler
 	recentMsgs, _ := s.db.ListMessages(ctx, store.ScopeRoom, room.ID, 0, 20)
 	var recentTexts []string
 	botSender := "bot:" + task.BotID
@@ -868,13 +869,13 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 			break
 		}
 	}
-	// 取這個 bot 在其他人新資訊之後的所有訊息（包含 bot 自己的最後一則）
+	// B5 (2026-10-22m): 取這個 bot 在其他人新資訊之後的訊息，但只收集有新資訊的那些（忽略中間的 filler）
 	startIdx := 0
 	if lastOtherNewInfoIdx >= 0 {
 		startIdx = lastOtherNewInfoIdx + 1
 	}
 	for i := len(recentMsgs) - 1; i >= startIdx; i-- {
-		if recentMsgs[i].Sender == botSender {
+		if recentMsgs[i].Sender == botSender && HasNewInformation(recentMsgs[i].Content) {
 			recentTexts = append(recentTexts, recentMsgs[i].Content)
 		}
 	}
@@ -890,13 +891,37 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	// 2026-10-22g：[silent] 不計入 consecEmpty（明確表示無需補充，與被阻擋的 filler 不同）
 	isSilent := IsSilent(content)
 
+	// B5 (2026-10-22m): Check if triggering message was @-pleasantry or DM thanks
+	isAtPleasantry := false
+	isDMThanks := false
+	if m.TriggeringMsgID != "" {
+		if trigMsg, err := s.db.GetMessage(ctx, m.TriggeringMsgID); err == nil {
+			// @-pleasantry: owner message with @ mention and is filler/thanks
+			isAtPleasantry = trigMsg.Sender == "owner" &&
+				strings.Contains(trigMsg.Content, "@") &&
+				!HasNewInformation(trigMsg.Content)
+			// DM thanks: owner message that is pure thanks
+			isDMThanks = trigMsg.Sender == "owner" &&
+				!strings.Contains(trigMsg.Content, "@") &&
+				!HasNewInformation(trigMsg.Content)
+		}
+	}
+
 	if !shouldSend && !isSilent {
 		// 被阻擋的 filler 才計入 consecEmpty
 		consecEmpty++
 		_ = s.db.UpdateRoomConsecEmpty(ctx, room.ID, consecEmpty)
 
-		if consecEmpty >= 2 {
-			s.log.Info("連續 2 輪無新資訊，自動停止", "bot", task.BotID, "room", room.ID)
+		// B5 (2026-10-22m): @-pleasantry loop stops at ≤1 reply (consecEmpty=1)
+		// DM thanks loop stops at ≤2 turns (consecEmpty=2)
+		// Default: stop at consecEmpty=2
+		stopThreshold := 2
+		if isAtPleasantry {
+			stopThreshold = 1 // @-pleasantry: stop immediately after first blocked reply
+		}
+
+		if consecEmpty >= stopThreshold {
+			s.log.Info("連續無新資訊，自動停止", "bot", task.BotID, "room", room.ID, "consecEmpty", consecEmpty, "threshold", stopThreshold, "isAtPleasantry", isAtPleasantry, "isDMThanks", isDMThanks)
 			// 2026-10-22c：通過 Inbox 通知 owner，不在群組貼訊息、不開新輪次
 			// 2026-10-22k (item 6): ref 只包含 room.ID，確保每個 room 只創建一個 inbox item
 			botName := ""
