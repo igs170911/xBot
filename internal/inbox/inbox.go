@@ -411,17 +411,6 @@ func decide(ctx context.Context, reg *ops.Registry, call *ops.Call, in DecideIn)
 		if call.Identity.Kind != ops.KindAgent {
 			return Outcome{}, ops.Forbidden("只有你本人能核准；請用 xbot.approvals.wait 等結果")
 		}
-		// B.3: 代理不能核准自己提出的請求（RELEASE-NOTES-v1.0.md ~104）
-		a, err := call.DB.GetApproval(ctx, in.ApprovalID)
-		if errors.Is(err, store.ErrNotFound) {
-			return Outcome{}, ops.NotFound("找不到這個核准")
-		}
-		if err != nil {
-			return Outcome{}, err
-		}
-		if a.RequestedBy == call.Identity.Actor() {
-			return Outcome{}, ops.Forbidden("代理不能核准自己提出的請求")
-		}
 		return decideDelegated(ctx, reg, call, in)
 	}
 	a, err := getApproval(ctx, reg, call, in.ApprovalID)
