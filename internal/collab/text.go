@@ -122,24 +122,31 @@ func IsAcknowledgement(text string) bool {
 			"ok", "thanks", "sure",
 		}
 		matchCount := 0
-		matched := make([]bool, len([]rune(lower))) // 記錄已匹配的字符位置
+		lowerRunes := []rune(lower)
+		matched := make([]bool, len(lowerRunes)) // 記錄已匹配的字符位置（rune 索引）
 		for _, part := range ackParts {
-			if idx := strings.Index(lower, part); idx >= 0 {
-				// 檢查是否與已匹配範圍重疊
-				partRunes := []rune(part)
-				overlaps := false
-				for i := idx; i < idx+len(partRunes) && i < len(matched); i++ {
-					if matched[i] {
-						overlaps = true
-						break
-					}
+			// 2026-10-22p (B4 FIX): strings.Index returns byte offset, convert to rune index
+			byteIdx := strings.Index(lower, part)
+			if byteIdx < 0 {
+				continue // Not found
+			}
+			// Convert byte offset to rune index
+			runeIdx := len([]rune(lower[:byteIdx]))
+			partRunes := []rune(part)
+			
+			// 檢查是否與已匹配範圍重疊
+			overlaps := false
+			for i := runeIdx; i < runeIdx+len(partRunes) && i < len(matched); i++ {
+				if matched[i] {
+					overlaps = true
+					break
 				}
-				if !overlaps {
-					matchCount++
-					// 標記已匹配範圍
-					for i := idx; i < idx+len(partRunes) && i < len(matched); i++ {
-						matched[i] = true
-					}
+			}
+			if !overlaps {
+				matchCount++
+				// 標記已匹配範圍（rune 索引）
+				for i := runeIdx; i < runeIdx+len(partRunes) && i < len(matched); i++ {
+					matched[i] = true
 				}
 			}
 		}
