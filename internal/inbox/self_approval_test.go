@@ -73,4 +73,3 @@ func TestOwnerCanApprove(t *testing.T) {
 		t.Fatal("Bot 應該被刪除")
 	}
 }
-
