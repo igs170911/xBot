@@ -305,8 +305,8 @@ func (s *Service) syncOwn(ctx context.Context, c Container, b store.Bot) error {
 		if !ok {
 			continue
 		}
-		// Lock each engine's credentials to prevent concurrent refresh conflicts
-		err := s.ensureCredLock().withLock(ctx, sp.ownPath(), func() error {
+		// 2026-10-22h: Lock each bot's credentials with per-bot lock
+		err := s.ensureCredLock().withLock(ctx, sp.botCredPath(b.ID), func() error {
 			switch {
 			case m[e].Revoked:
 				if err := s.wipe(ctx, c, sp); err != nil {
@@ -374,8 +374,8 @@ func (s *Service) syncOwnNoLock(ctx context.Context, c Container, b store.Bot) e
 // 電腦連不上時下次開機前清。回傳的 cleared 表示電腦裡已確定沒有這份憑證。
 func (s *Service) Logout(ctx context.Context, botID, engine string) (cleared bool, err error) {
 	sp := Specs[engine]
-	// Lock to prevent concurrent credential refresh conflicts
-	return false, s.ensureCredLock().withLock(ctx, sp.ownPath(), func() error {
+	// 2026-10-22h: Lock with per-bot lock (touches per-bot dirs)
+	return false, s.ensureCredLock().withLock(ctx, sp.botCredPath(botID), func() error {
 		cleared, err = s.logoutNoLock(ctx, botID, engine)
 		return err
 	})
@@ -420,8 +420,8 @@ func (s *Service) logoutNoLock(ctx context.Context, botID, engine string) (clear
 // Bot 正在用這個 CLI 時把憑證搬進家目錄、重開 agent。
 func (s *Service) adopt(ctx context.Context, c Container, botID, engine string) error {
 	sp := Specs[engine]
-	// Lock to prevent concurrent credential refresh conflicts
-	return s.ensureCredLock().withLock(ctx, sp.ownPath(), func() error {
+	// 2026-10-22h: Lock with per-bot lock (touches per-bot dirs)
+	return s.ensureCredLock().withLock(ctx, sp.botCredPath(botID), func() error {
 		return s.adoptNoLock(ctx, c, botID, engine)
 	})
 }
@@ -769,8 +769,8 @@ func (s *Service) SetKeys(ctx context.Context, botID string, keys map[string]str
 		return err
 	}
 
-	// Lock to prevent concurrent credential refresh conflicts
-	return s.ensureCredLock().withLock(ctx, sp.ownPath(), func() error {
+	// 2026-10-22h: Lock with per-bot lock (touches per-bot dirs)
+	return s.ensureCredLock().withLock(ctx, sp.botCredPath(botID), func() error {
 		if err := s.writeOwn(ctx, c, sp, append(data, '\n')); err != nil {
 			return err
 		}

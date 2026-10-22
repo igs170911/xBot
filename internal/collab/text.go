@@ -652,53 +652,100 @@ func IsSimilarTo(a, b string) bool {
 	return false
 }
 
-// ShouldSendToPeer 檢查 Bot 的訊息是否應該送給隊友（統一的發送閘門，2026-10-22）。
-// 用於群組回覆、Bot 主動傳訊、DM 回覆。回傳 (應該送出, 阻擋原因)。
-// 2026-10-22b：judgeVerdict 是 peer_reply 快判的結果（handle/fyi/skip），但它是為接收設計的。
-// 對於發送（isOutgoing=true），只阻擋 filler，讓 results/answers/handoffs 通過。
-func ShouldSendToPeer(content, verdict string, isAnswer bool, recentFrom []string, judgeVerdict string, isOutgoing bool) (bool, string) {
-	// 0. 快判優先（2026-10-22：整合 peer_reply 判斷）
-	// 2026-10-22b：對於發送操作，只在明確 skip 時阻擋；fyi 允許通過（因為對方可能需要知道）
-	if isOutgoing {
-		// 發送分類：只阻擋純 filler
-		switch judgeVerdict {
-		case "skip":
-			// 明確無用的訊息
-			return false, "judge:skip"
-		case "fyi", "handle":
-			// 對方可能需要知道，或需要處理，都通過
-			// 但仍然要檢查 silent/ack 和重複
-		}
-	} else {
-		// 接收分類：原邏輯
-		switch judgeVerdict {
-		case "skip":
-			return false, "judge:skip"
-		case "fyi":
-			// FYI 訊息：只要知道，不用回覆
-			return false, "judge:fyi"
-		case "handle":
-			// 明確要處理的，通過（但仍然要檢查 silent/ack 和重複）
-		}
-	}
-	// judgeVerdict == "" 或其他值：照規則檢查
+// StageADecision 是 Stage A 的確定性規則結果（2026-10-22h）。
+type StageADecision int
 
-	// 1. 永遠阻擋：silent 或純致謝
+const (
+	StageAUnsure StageADecision = iota // 不確定，交給 Stage B
+	StageABlock                        // 確定阻擋（空白、純致謝）
+	StageAPass                         // 確定通過（Conclusion、問句、數字日期、URL、程式碼）
+)
+
+var (
+	conclusionRE = regexp.MustCompile(`(?i)^Conclusion[：:]`)
+	urlRE        = regexp.MustCompile(`https?://`)
+	codeFenceRE  = regexp.MustCompile("```")
+	numberDateRE = regexp.MustCompile(`\d{1,4}[/-]\d{1,2}[/-]\d{1,4}|\d+[.,]\d+|[¥$€£]\s*\d+`)
+)
+
+// StageAFiller 是 Stage A：確定性規則（2026-10-22h）。
+// 空白或純致謝 → 阻擋；Conclusion/問號/數字日期/URL/程式碼 → 通過；其他 → 不確定。
+func StageAFiller(content, verdict string) StageADecision {
+	// [silent] 或純致謝：確定阻擋
 	if verdict != "failed" && (IsSilent(content) || IsAcknowledgement(content)) {
-		return false, "silent_or_ack"
+		return StageABlock
 	}
 
-	// 2. 答案情境（回覆 request/question）允許短答案
-	if isAnswer && verdict == "answer" {
-		return true, ""
+	stripped := strings.TrimSpace(content)
+	if stripped == "" {
+		return StageABlock
 	}
 
-	// 3. 非答案情境：必須有新資訊
-	if verdict != "failed" && !HasNewInformation(content) {
-		return false, "no_new_info"
+	// Conclusion: → 確定通過
+	if conclusionRE.MatchString(stripped) {
+		return StageAPass
 	}
 
-	// 4. 近似重複檢測（檢查最近發送的訊息）
+	// 問號 → 確定通過
+	if strings.ContainsAny(stripped, "?？") {
+		return StageAPass
+	}
+
+	// 數字、日期 → 確定通過
+	if numberDateRE.MatchString(stripped) {
+		return StageAPass
+	}
+
+	// URL → 確定通過
+	if urlRE.MatchString(stripped) {
+		return StageAPass
+	}
+
+	// 程式碼圍欄 → 確定通過
+	if codeFenceRE.MatchString(stripped) {
+		return StageAPass
+	}
+
+	return StageAUnsure
+}
+
+// ShouldSendToPeer 檢查 Bot 的訊息是否應該送給隊友（統一的發送閘門，2026-10-22h 兩階段）。
+// 用於群組回覆、Bot 主動傳訊、DM 回覆。回傳 (應該送出, 阻擋原因)。
+// Stage A（確定性規則）→ Stage B（peer_reply 快判 ENFORCE）→ 退路（lenient pass）。
+func ShouldSendToPeer(content, verdict string, isAnswer bool, recentFrom []string, judgeVerdict string, isOutgoing bool) (bool, string) {
+	// Stage A：確定性規則
+	switch StageAFiller(content, verdict) {
+	case StageABlock:
+		return false, "stageA:block"
+	case StageAPass:
+		// Stage A 確定通過，仍檢查重複
+		goto checkDuplicate
+	case StageAUnsure:
+		// 繼續 Stage B
+	}
+
+	// Stage B：peer_reply 快判（judgeVerdict 由 peerReplyJudge 提供，ENFORCE 模式）
+	// judgeVerdict 空字串表示快判失敗或逾時 → 退路（lenient pass）
+	if judgeVerdict == "" {
+		// 快判失敗或逾時 → 退路：lenient pass（只阻擋答案情境外的短文字）
+		if !isAnswer && verdict == "answer" && !HasNewInformation(content) {
+			return false, "stageB:fallback:no_new_info"
+		}
+		goto checkDuplicate
+	}
+
+	// 快判成功：handle → 通過；fyi/skip → 阻擋
+	switch judgeVerdict {
+	case "handle":
+		goto checkDuplicate
+	case "fyi":
+		return false, "stageB:fyi"
+	case "skip":
+		return false, "stageB:skip"
+	}
+
+checkDuplicate:
+	// 近似重複檢測（檢查最近發送的訊息）
 	for _, recent := range recentFrom {
 		if IsSimilarTo(content, recent) {
 			return false, "duplicate"

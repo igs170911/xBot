@@ -823,7 +823,8 @@ func (r *Runtime) finishErr(t *turn, err error) {
 
 // finish 寫下最後的回覆、結束任務、發布 done，並釋放這個 Bot。只會做一次。
 func (r *Runtime) finish(t *turn, status, text string) {
-	// 2026-10-22f：panic recovery to prevent server crash
+	// 2026-10-22h：defer 順序：recover 先 defer（後執行），explicit unlock 後執行（先執行）
+	// LIFO 順序：先釋放 busy 狀態，再 recover panic
 	defer func() {
 		if rec := recover(); rec != nil {
 			r.log.Error("runtime finish panic recovered", "bot", t.botID, "task", t.taskID, "panic", rec)

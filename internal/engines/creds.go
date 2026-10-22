@@ -281,7 +281,7 @@ func (s *Service) Authorize(ctx context.Context, botID, engine string) error {
 }
 
 // Link 記下同意，並把憑證放進 Bot 的電腦（電腦已存在時；還沒建立的話開機前會放）。
-// 2026-10-22b：加入檔案鎖，防止多個容器同時寫入憑證。
+// 2026-10-22h：使用 per-bot lock（觸碰 per-bot 目錄）。
 func (s *Service) Link(ctx context.Context, botID, engine string) (Link, error) {
 	sp, ok := Specs[engine]
 	if !ok {
@@ -289,7 +289,7 @@ func (s *Service) Link(ctx context.Context, botID, engine string) (Link, error) 
 	}
 
 	var result Link
-	err := s.ensureCredLock().withLock(ctx, sp.ownPath(), func() error {
+	err := s.ensureCredLock().withLock(ctx, sp.botCredPath(botID), func() error {
 		data, err := s.ReadHost(sp)
 		if err != nil {
 			return err

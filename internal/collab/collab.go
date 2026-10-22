@@ -59,8 +59,9 @@ type Service struct {
 	log *slog.Logger
 }
 
-// peerReplyJudge 呼叫快判判斷隊友訊息要不要回（2026-10-22）。
-// 回傳 handle/fyi/skip，失敗或沒有快判時回傳空字串（用規則兜底）。
+// peerReplyJudge 呼叫快判判斷隊友訊息要不要回（2026-10-22h：ENFORCE 模式）。
+// 回傳 handle/fyi/skip，失敗或逾時時回傳空字串（Stage B 退路：lenient pass）。
+// 注意：快判選項現在是 NEW (handle) / FILLER (fyi)，但我們保持 skip 作為 filler 的對應。
 func (s *Service) peerReplyJudge(ctx context.Context, content, botID string) string {
 	if s.o.JudgeService == nil {
 		return ""
@@ -71,7 +72,11 @@ func (s *Service) peerReplyJudge(ctx context.Context, content, botID string) str
 		BotID: botID,
 	})
 	if err != nil || dec.Outcome != judge.OutcomeOK {
-		return "" // 快判失敗，用規則
+		return "" // 快判失敗或逾時，用退路
+	}
+	// 映射：handle (NEW) → handle, fyi (FILLER) → skip
+	if dec.Label == "fyi" {
+		return "skip"
 	}
 	return dec.Label
 }
