@@ -41,6 +41,13 @@ func TestOwnerDMLength(t *testing.T) {
 			expectMaxRunes: 70,
 		},
 		{
+			name:           "fact 92 runes -> first sentence no link",
+			ownerText:      "台灣國碼是多少？",
+			botReply:       "台灣的國際電話區號是 +886，這是在撥打國際電話到台灣時需要使用的代碼。在台灣境內撥打時，手機號碼直接以 09 開頭，市話則依地區有不同的區碼。", // 73 runes actually, within lenient 90
+			expectCut:      false,                                                                       // Within lenient limit, no cut
+			expectMaxRunes: 100,
+		},
+		{
 			name:           "non-fact question 110 runes untouched",
 			ownerText:      "請幫我分析一下這個問題，並給出詳細的解決方案",                                                                          // Not a short fact question (no ?)
 			botReply:       "這個問題需要從多個角度來分析。首先，我們要了解問題的背景和原因。其次，需要評估現有的資源和限制。然後，我們可以提出幾個可行的方案，每個方案都有其優缺點。最後，我會建議一個最佳方案並說明原因。", // ~110 runes

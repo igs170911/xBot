@@ -793,6 +793,13 @@ func (s *Service) roomPrompt(ctx context.Context, task store.Task, m taskMeta) (
 }
 
 func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, verdict, content string) {
+	// 2026-10-22f：panic recovery to prevent server crash
+	defer func() {
+		if r := recover(); r != nil {
+			s.log.Error("roomAnswer panic recovered", "room", m.RoomID, "bot", task.BotID, "panic", r)
+		}
+	}()
+
 	s.log.Debug("roomAnswer called", "room", m.RoomID, "bot", task.BotID, "verdict", verdict, "content_preview", plain(content, 50))
 	room, err := s.db.GetRoom(ctx, m.RoomID)
 	if err != nil {
@@ -966,6 +973,13 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 // speak 把 Bot 的話貼到群組，回傳那則訊息與它 @ 的成員（LazyBoy speak）。handoff 是被 @ 的成員醒來時的輪數；
 // 超過 RoomRounds 時記成 capped，並貼一行系統提示。
 func (s *Service) speak(ctx context.Context, room store.Room, botID, text string, meta roomMeta, handoff int) (store.Message, []store.Bot, error) {
+	// 2026-10-22f：panic recovery to prevent server crash
+	defer func() {
+		if r := recover(); r != nil {
+			s.log.Error("speak panic recovered", "room", room.ID, "bot", botID, "panic", r)
+		}
+	}()
+
 	me, err := s.db.GetBot(ctx, botID)
 	if err != nil {
 		return store.Message{}, nil, err

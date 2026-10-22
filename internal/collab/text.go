@@ -235,12 +235,25 @@ func ClassifyMessage(text string) MessageClass {
 		return ClassQuestion
 	}
 
+	// 1.5. 優先檢查提議/建議/推薦（2026-10-22f：避免被 result 誤判）
+	// "我建議" vs "建議採用" - 前者是提議，不是結果
+	proposalVerbs := []string{"提議", "推薦"}
+	for _, verb := range proposalVerbs {
+		if strings.Contains(body, verb) {
+			return ClassHandoff
+		}
+	}
+	// "建議"需要更精確：避免"已建議"被誤判
+	if strings.Contains(body, "建議") && !strings.Contains(lowerBody, "已") && !strings.Contains(lowerBody, "已經") {
+		return ClassHandoff
+	}
+
 	// 2. 檢查結果回報（優先於數字檢查，因為"完成 5 個"應該是 result 不是 new_info）
 	// 2026-10-22d：只包含明確的"已完成"意義的詞，避免誤判請求為結果
 	completionIndicators := []string{
 		"完成", "做好", "修好", "搞定", "處理好", "準備好", "整理好",
 		"已經完成", "已經做好", "已經修好", "已經處理好",
-		"成功", "完畢", "選", "決定", "建議", "已經核准", "已核准", "已批准",
+		"成功", "完畢", "選", "決定", "已經核准", "已核准", "已批准",
 		"上架", "下架", "發布", "部署",
 		"done", "finished", "completed", "fixed", "resolved", "approved",
 	}
@@ -395,7 +408,8 @@ func HasSubstanceAfterMention(text string) bool {
 	requestVerbs := []string{
 		"請", "幫", "能否", "可以", "麻煩",
 		"查", "找", "寫", "做", "修", "改", "建", "整理", "分析",
-		"please", "could you", "can you", "would you",
+		"提議", "建議", "推薦", // 2026-10-22f：提議也算請求/交接
+		"please", "could you", "can you", "would you", "propose",
 	}
 	lowerStripped := strings.ToLower(stripped)
 	for _, verb := range requestVerbs {
@@ -416,31 +430,39 @@ func HasSubstanceAfterMention(text string) bool {
 
 	// 2026-10-22d：檢查原始訊息（去除@後）的分類
 	// 先移除 @ mentions，保留其他內容
-	bodyWithoutAt := text
-	for strings.Contains(bodyWithoutAt, "@") {
-		atIdx := strings.Index(bodyWithoutAt, "@")
-		if atIdx >= 0 {
-			bodyRunes := []rune(bodyWithoutAt)
-			endIdx := atIdx + 1
-			for endIdx < len(bodyRunes) {
-				r := bodyRunes[endIdx]
-				if r == ' ' || r == ',' || r == '，' || r == '。' || r == '！' || r == '？' || r == '\n' {
-					break
-				}
-				endIdx++
+	// 2026-10-22e：修正 byte/rune 混用造成的 panic（用 rune slice 找 @）
+	bodyRunes := []rune(text)
+	for {
+		atIdx := -1
+		for i, r := range bodyRunes {
+			if r == '@' {
+				atIdx = i
+				break
 			}
-			// 跳過後面的逗號和空格
-			for endIdx < len(bodyRunes) {
-				r := bodyRunes[endIdx]
-				if r != ' ' && r != ',' && r != '，' {
-					break
-				}
-				endIdx++
-			}
-			bodyWithoutAt = string(bodyRunes[:atIdx]) + string(bodyRunes[endIdx:])
 		}
+		if atIdx < 0 {
+			break
+		}
+		// 找到 @mention 的結束位置
+		endIdx := atIdx + 1
+		for endIdx < len(bodyRunes) {
+			r := bodyRunes[endIdx]
+			if r == ' ' || r == ',' || r == '，' || r == '。' || r == '！' || r == '？' || r == '\n' {
+				break
+			}
+			endIdx++
+		}
+		// 跳過後面的逗號和空格
+		for endIdx < len(bodyRunes) {
+			r := bodyRunes[endIdx]
+			if r != ' ' && r != ',' && r != '，' {
+				break
+			}
+			endIdx++
+		}
+		bodyRunes = append(bodyRunes[:atIdx], bodyRunes[endIdx:]...)
 	}
-	bodyWithoutAt = strings.TrimSpace(bodyWithoutAt)
+	bodyWithoutAt := strings.TrimSpace(string(bodyRunes))
 
 	// 如果去除@後的內容包含實質資訊，返回true
 	// 使用 ClassifyMessage 但允許 ClassResult 和 ClassQuestion 通過

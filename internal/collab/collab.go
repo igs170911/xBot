@@ -1018,6 +1018,13 @@ func (s *Service) continueReply(ctx context.Context, task store.Task, m taskMeta
 
 // deliver 把結果以 result 送回去（LazyBoy deliver）。太長的存成檔案、訊息只放開頭（AA-8）。
 func (s *Service) deliver(ctx context.Context, botID, to, content, verdict string, origin store.Task) {
+	// 2026-10-22f：panic recovery to prevent server crash
+	defer func() {
+		if r := recover(); r != nil {
+			s.log.Error("deliver panic recovered", "from", botID, "to", to, "panic", r)
+		}
+	}()
+
 	if _, err := s.db.GetBot(ctx, to); err != nil {
 		return
 	}

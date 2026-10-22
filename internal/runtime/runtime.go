@@ -823,6 +823,13 @@ func (r *Runtime) finishErr(t *turn, err error) {
 
 // finish 寫下最後的回覆、結束任務、發布 done，並釋放這個 Bot。只會做一次。
 func (r *Runtime) finish(t *turn, status, text string) {
+	// 2026-10-22f：panic recovery to prevent server crash
+	defer func() {
+		if rec := recover(); rec != nil {
+			r.log.Error("runtime finish panic recovered", "bot", t.botID, "task", t.taskID, "panic", rec)
+		}
+	}()
+
 	t.askMu.Lock() // 和 resume 互斥：回覆前改回「工作中」不會蓋掉「已完成」
 	t.mu.Lock()
 	if t.finished {
@@ -920,9 +927,55 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		}
 
 		outText, overflow := enforceOwnerReplyLength(final, class, lenient)
-		if overflow != "" {
-			// 有溢出內容：嘗試將完整回覆存檔
-			if r.o.Files != nil {
+
+		// 2026-10-22f：事實類問題永遠不存檔
+		// 事實答案必須直接可見。只有研究類才使用檔案+連結，且前文至少 300 字。
+		if isFact {
+			// 事實類：直接截斷，或如果第一句 ≤150 字，完整保留第一句
+			if overflow != "" {
+				// 找第一個句號
+				textRunes := []rune(final)
+				firstSentEnd := -1
+				for i, r := range textRunes {
+					if r == '。' || r == '！' || r == '？' || r == '.' || r == '!' || r == '?' {
+						firstSentEnd = i
+						break
+					}
+				}
+				// 如果第一句存在且 ≤150 字，完整保留
+				if firstSentEnd > 0 && firstSentEnd <= 150 {
+					final = string(textRunes[:firstSentEnd+1])
+				} else {
+					// 否則用 outText（已在 60 附近的句子邊界截斷）
+					final = outText
+				}
+			}
+			// 不寫檔案，outText 或第一句已經是最終內容
+		} else {
+			// 研究類：溢出時寫檔案，前文至少 300 字
+			if overflow != "" && r.o.Files != nil {
+				// 確保截斷文字至少 300 字（研究回覆需要足夠上下文）
+				minText := 300
+				if runes(outText) < minText {
+					// Re-cut to keep at least 300 runes
+					textRunes := []rune(final)
+					if len(textRunes) > minText {
+						cutpoint := minText
+						// Find sentence boundary near minText
+						for i := cutpoint; i < len(textRunes) && i < cutpoint+50; i++ {
+							r := textRunes[i]
+							if r == '。' || r == '.' || r == '\n' {
+								cutpoint = i + 1
+								break
+							}
+						}
+						if cutpoint > len(textRunes) {
+							cutpoint = minText
+						}
+						outText = string(textRunes[:cutpoint])
+					}
+				}
+
 				botName := t.botName
 				if botName == "" {
 					if b, err := r.o.DB.GetBot(ctx, t.botID); err == nil {
@@ -938,14 +991,13 @@ func (r *Runtime) finish(t *turn, status, text string) {
 					linkLen := runes(linkLine)
 					cap := lengthCap(class)
 					maxText := cap - linkLen
-					if maxText < 0 {
-						maxText = 0
+					if maxText < minText {
+						maxText = minText // 研究類至少保留 300 字文字
 					}
 					if runes(outText) > maxText {
 						// Re-truncate to make room for the link
 						textRunes := []rune(final)
 						if len(textRunes) > maxText {
-							// Find a good cutpoint at a sentence boundary if possible
 							cutpoint := maxText
 							for i := maxText - 1; i >= 0 && i > maxText-20; i-- {
 								if textRunes[i] == '。' || textRunes[i] == '.' || textRunes[i] == '\n' {
@@ -971,9 +1023,10 @@ func (r *Runtime) finish(t *turn, status, text string) {
 				}
 			}
 			// r.o.Files == nil：保留完整內容，不截斷
-		} else {
-			// 沒有溢出：使用已截斷的內容
-			final = outText
+			if overflow == "" {
+				// 沒有溢出：使用已截斷的內容
+				final = outText
+			}
 		}
 	}
 
