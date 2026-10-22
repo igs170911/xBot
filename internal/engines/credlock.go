@@ -2,6 +2,7 @@ package engines
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
@@ -13,14 +14,22 @@ import (
 
 // credLock provides file-based locking for credential operations to prevent
 // race conditions when multiple containers refresh the same credential.
-// Uses flock(2) for inter-process locking.
+// Uses flock(2) for inter-process locking and a process-level mutex.
+// The lock path is per-credential directory to allow concurrent operations
+// on different bots' credentials.
 type credLock struct {
 	mu    sync.Mutex
-	locks map[string]*os.File
+	locks map[string]*lockEntry
+}
+
+type lockEntry struct {
+	file *os.File
+	cond *sync.Cond
+	held bool
 }
 
 func newCredLock() *credLock {
-	return &credLock{locks: make(map[string]*os.File)}
+	return &credLock{locks: make(map[string]*lockEntry)}
 }
 
 // lockTimeout is how long to wait for a credential lock
@@ -33,77 +42,109 @@ var (
 
 // lock acquires an exclusive lock for the given credential path.
 // The lock is held until unlock() is called with the same path.
-// Multiple goroutines within the same process are serialized by a mutex,
-// and multiple processes are serialized by flock.
-// Non-reentrant: attempting to lock an already-held path returns an error.
+// Contention: concurrent callers WAIT up to lockTimeout.
+// The lock path is unique per credential directory.
 func (cl *credLock) lock(ctx context.Context, credPath string) error {
-	cl.mu.Lock()
-	defer cl.mu.Unlock()
-
-	if _, ok := cl.locks[credPath]; ok {
-		// Non-reentrant: reject if already locked in this process
-		return fmt.Errorf("credential lock already held for %s (non-reentrant)", credPath)
-	}
+	lockKey := filepath.Clean(credPath)
 
 	lockDir := filepath.Join(os.TempDir(), "xbot-cred-locks")
 	if err := os.MkdirAll(lockDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create lock directory: %w", err)
 	}
 
-	// Use a lock file per credential path
-	lockPath := filepath.Join(lockDir, filepath.Base(credPath)+".lock")
+	// Use a hash of the full path to create a unique lock file name
+	hash := sha256.Sum256([]byte(lockKey))
+	lockName := fmt.Sprintf("%x.lock", hash[:8])
+	lockPath := filepath.Join(lockDir, lockName)
+
+	// Process-level coordination
+	cl.mu.Lock()
+	entry, exists := cl.locks[lockKey]
+	if !exists {
+		entry = &lockEntry{cond: sync.NewCond(&cl.mu)}
+		cl.locks[lockKey] = entry
+	}
+	cl.mu.Unlock()
+
+	// Wait for our turn in the process
+	entry.cond.L.Lock()
+	for entry.held {
+		entry.cond.Wait()
+		// Check if context was canceled while waiting
+		select {
+		case <-ctx.Done():
+			entry.cond.L.Unlock()
+			return ctx.Err()
+		default:
+		}
+	}
+	// We have the process-level lock, now get the file lock
+	entry.cond.L.Unlock()
+
+	// Acquire the file lock
 	lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to open lock file: %w", err)
 	}
 
-	// Try to acquire the lock with timeout
+	// Try to acquire the flock with timeout
 	deadline := time.Now().Add(lockTimeout)
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+
 	for {
-		err := syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
-		if err == nil {
-			// Lock acquired
-			cl.locks[credPath] = lockFile
-			return nil
-		}
-
-		if !errors.Is(err, syscall.EWOULDBLOCK) {
-			lockFile.Close()
-			return fmt.Errorf("failed to acquire lock: %w", err)
-		}
-
-		// Check timeout
-		if time.Now().After(deadline) {
-			lockFile.Close()
-			return ErrLockTimeout
-		}
-
-		// Check context cancellation
 		select {
 		case <-ctx.Done():
 			lockFile.Close()
 			return ctx.Err()
-		case <-time.After(100 * time.Millisecond):
-			// Retry
+		case <-ticker.C:
+			err := syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+			if err == nil {
+				// Lock acquired
+				entry.cond.L.Lock()
+				entry.file = lockFile
+				entry.held = true
+				entry.cond.L.Unlock()
+				return nil
+			}
+
+			if !errors.Is(err, syscall.EWOULDBLOCK) {
+				lockFile.Close()
+				return fmt.Errorf("failed to acquire lock: %w", err)
+			}
+
+			// Check timeout
+			if time.Now().After(deadline) {
+				lockFile.Close()
+				return ErrLockTimeout
+			}
 		}
 	}
 }
 
 // unlock releases the lock for the given credential path
 func (cl *credLock) unlock(credPath string) {
-	cl.mu.Lock()
-	defer cl.mu.Unlock()
+	lockKey := filepath.Clean(credPath)
 
-	lockFile, ok := cl.locks[credPath]
-	if !ok {
+	cl.mu.Lock()
+	entry, ok := cl.locks[lockKey]
+	cl.mu.Unlock()
+
+	if !ok || entry == nil {
 		return
 	}
 
-	delete(cl.locks, credPath)
+	entry.cond.L.Lock()
+	if entry.file != nil {
+		_ = syscall.Flock(int(entry.file.Fd()), syscall.LOCK_UN)
+		_ = entry.file.Close()
+		entry.file = nil
+	}
+	entry.held = false
+	entry.cond.L.Unlock()
 
-	// Release the flock and close the file
-	_ = syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
-	_ = lockFile.Close()
+	// Wake up one waiting goroutine
+	entry.cond.Signal()
 }
 
 // withLock executes fn while holding an exclusive lock on credPath

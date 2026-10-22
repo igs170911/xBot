@@ -990,13 +990,46 @@ func (s *Service) speak(ctx context.Context, room store.Room, botID, text string
 	// Room posts always use ClassRoom (200 chars), not fact/research
 	outText, overflow := EnforceLength(text, ClassRoom, false)
 	if overflow != "" && s.o.Files != nil {
-		// Write overflow to file (for reference, even though room uses fixed 200 limit)
+		// Write overflow to the speaking bot's own storage
 		home := "from/" + Filename(me.Name) + "/room-" + s.o.Now().Format("20060102-150405") + ".md"
-		// Write to room creator's storage
-		if err := s.o.Files.Write(ctx, room.CreatedBy, home, []byte(text)); err == nil {
-			outText += FormatResearchOverflow(text, home, runes(text))
+		linkLine := FormatResearchOverflow(text, home, runes(text))
+
+		// Try to write the file
+		if err := s.o.Files.Write(ctx, botID, home, []byte(text)); err == nil {
+			// Success: ensure outText + linkLine ≤ 200
+			linkLen := runes(linkLine)
+			cap := LengthCap(ClassRoom)
+			maxText := cap - linkLen
+			if maxText < 0 {
+				maxText = 0
+			}
+			if runes(outText) > maxText {
+				// Re-truncate to make room for the link (without adding …)
+				textRunes := []rune(text)
+				if len(textRunes) > maxText {
+					// Find a good cutpoint at a sentence boundary if possible
+					cutpoint := maxText
+					for i := maxText - 1; i >= 0 && i > maxText-20; i-- {
+						if textRunes[i] == '。' || textRunes[i] == '.' || textRunes[i] == '\n' {
+							cutpoint = i + 1
+							break
+						}
+					}
+					if cutpoint > len(textRunes) {
+						cutpoint = maxText
+					}
+					if cutpoint > 0 {
+						outText = string(textRunes[:cutpoint])
+					} else {
+						outText = ""
+					}
+				}
+			}
+			outText += linkLine
 		} else {
-			s.log.Warn("群組回覆存檔失敗", "bot", botID, "room", room.ID, "err", err)
+			// Write failed: post full text instead of truncating
+			s.log.Warn("群組回覆存檔失敗，發送完整內容", "bot", botID, "room", room.ID, "err", err)
+			outText = text
 		}
 	}
 	text = outText

@@ -298,7 +298,8 @@ func (s *Service) Link(ctx context.Context, botID, engine string) (Link, error) 
 		if own, err := s.HasOwn(ctx, botID, engine); err != nil {
 			return err
 		} else if own {
-			if _, err := s.Logout(ctx, botID, engine); err != nil {
+			// Call logoutNoLock since we're already holding the lock
+			if _, err := s.logoutNoLock(ctx, botID, engine); err != nil {
 				return err
 			}
 		}

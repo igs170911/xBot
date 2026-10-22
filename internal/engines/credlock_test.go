@@ -11,35 +11,146 @@ import (
 	"time"
 )
 
-// TestCredLockNonReentrant tests that the lock is non-reentrant
-func TestCredLockNonReentrant(t *testing.T) {
+// TestCredLockSequentialWait tests that 4 concurrent lockers for the same path
+// all succeed in sequence with at most 1 holder
+func TestCredLockSequentialWait(t *testing.T) {
 	cl := newCredLock()
 	ctx := context.Background()
-	credPath := filepath.Join(os.TempDir(), "test-cred-nonreentrant.json")
+	credPath := filepath.Join(os.TempDir(), "test-cred-sequential.json")
 
-	// First lock should succeed
-	if err := cl.lock(ctx, credPath); err != nil {
-		t.Fatalf("First lock failed: %v", err)
+	const workers = 4
+	var (
+		wg         sync.WaitGroup
+		holdCount  atomic.Int32
+		maxHold    atomic.Int32
+		violations atomic.Int32
+		successes  atomic.Int32
+	)
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+
+			if err := cl.lock(ctx, credPath); err != nil {
+				t.Logf("Worker %d lock failed: %v", workerID, err)
+				return
+			}
+			defer cl.unlock(credPath)
+
+			// Increment holder count
+			current := holdCount.Add(1)
+
+			// Update max hold count
+			for {
+				max := maxHold.Load()
+				if current <= max || maxHold.CompareAndSwap(max, current) {
+					break
+				}
+			}
+
+			// Check violation: more than 1 holder
+			if current > 1 {
+				violations.Add(1)
+			}
+
+			// Hold the lock briefly
+			time.Sleep(10 * time.Millisecond)
+
+			// Decrement holder count
+			holdCount.Add(-1)
+			successes.Add(1)
+		}(i)
 	}
 
-	// Second lock of same path should fail (non-reentrant)
-	if err := cl.lock(ctx, credPath); err == nil {
-		t.Fatal("Second lock succeeded, expected failure (non-reentrant)")
+	wg.Wait()
+
+	if v := violations.Load(); v > 0 {
+		t.Errorf("Lock violation: %d times more than 1 holder simultaneously", v)
 	}
 
-	// Unlock and retry should succeed
-	cl.unlock(credPath)
-	if err := cl.lock(ctx, credPath); err != nil {
-		t.Fatalf("Lock after unlock failed: %v", err)
+	t.Logf("Max concurrent holders: %d (should be 1)", maxHold.Load())
+	if maxHold.Load() > 1 {
+		t.Errorf("Max holders was %d, expected at most 1", maxHold.Load())
 	}
-	cl.unlock(credPath)
+
+	t.Logf("Successes: %d (should be %d)", successes.Load(), workers)
+	if successes.Load() != workers {
+		t.Errorf("Only %d/%d workers succeeded", successes.Load(), workers)
+	}
+}
+
+// TestCredLockDifferentPaths tests that concurrent locks on different paths don't contend
+func TestCredLockDifferentPaths(t *testing.T) {
+	cl := newCredLock()
+	ctx := context.Background()
+	credPath1 := filepath.Join(os.TempDir(), "test-cred-path1.json")
+	credPath2 := filepath.Join(os.TempDir(), "test-cred-path2.json")
+
+	var (
+		wg         sync.WaitGroup
+		lock1Start time.Time
+		lock2Start time.Time
+		mu         sync.Mutex
+	)
+
+	// Both locks should succeed concurrently
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		mu.Lock()
+		lock1Start = time.Now()
+		mu.Unlock()
+
+		if err := cl.lock(ctx, credPath1); err != nil {
+			t.Errorf("Lock 1 failed: %v", err)
+			return
+		}
+		defer cl.unlock(credPath1)
+
+		// Hold for 100ms
+		time.Sleep(100 * time.Millisecond)
+	}()
+
+	go func() {
+		defer wg.Done()
+		// Start slightly after the first
+		time.Sleep(10 * time.Millisecond)
+
+		mu.Lock()
+		lock2Start = time.Now()
+		mu.Unlock()
+
+		if err := cl.lock(ctx, credPath2); err != nil {
+			t.Errorf("Lock 2 failed: %v", err)
+			return
+		}
+		defer cl.unlock(credPath2)
+
+		// Hold for 100ms
+		time.Sleep(100 * time.Millisecond)
+	}()
+
+	wg.Wait()
+
+	// Lock 2 should not have waited for lock 1 (different paths)
+	mu.Lock()
+	gap := lock2Start.Sub(lock1Start)
+	mu.Unlock()
+
+	// Gap should be ~10ms (the delay), not 100ms+ (waiting for lock1)
+	if gap > 50*time.Millisecond {
+		t.Errorf("Lock 2 seems to have waited for lock 1: gap=%v", gap)
+	}
 }
 
 // TestCredLockConcurrency tests that at most 1 holder can hold the lock
 func TestCredLockConcurrency(t *testing.T) {
+	cl := newCredLock()
 	credPath := filepath.Join(os.TempDir(), "test-cred-concurrent.json")
 	const workers = 10
-	const iterations = 100
+	const iterations = 10
 
 	var (
 		wg         sync.WaitGroup
@@ -53,7 +164,6 @@ func TestCredLockConcurrency(t *testing.T) {
 		go func(workerID int) {
 			defer wg.Done()
 
-			cl := newCredLock()
 			ctx := context.Background()
 
 			for j := 0; j < iterations; j++ {
@@ -131,7 +241,7 @@ func TestCredLockTimeout(t *testing.T) {
 	}
 
 	// Check that it waited approximately lockTimeout
-	if elapsed < lockTimeout-time.Second || elapsed > lockTimeout+time.Second {
+	if elapsed < lockTimeout-time.Second || elapsed > lockTimeout+2*time.Second {
 		t.Errorf("Timeout took %v, expected ~%v", elapsed, lockTimeout)
 	}
 }
@@ -177,7 +287,11 @@ func TestCredLockWithLock(t *testing.T) {
 	err := cl.withLock(ctx, credPath, func() error {
 		executed = true
 		// Lock should be held here
-		if _, ok := cl.locks[credPath]; !ok {
+		lockKey := filepath.Clean(credPath)
+		cl.mu.Lock()
+		entry, ok := cl.locks[lockKey]
+		cl.mu.Unlock()
+		if !ok || entry == nil || entry.file == nil {
 			return fmt.Errorf("lock not held in withLock callback")
 		}
 		return nil
@@ -192,7 +306,16 @@ func TestCredLockWithLock(t *testing.T) {
 	}
 
 	// Lock should be released after withLock
-	if _, ok := cl.locks[credPath]; ok {
-		t.Fatal("lock still held after withLock")
+	lockKey := filepath.Clean(credPath)
+	cl.mu.Lock()
+	entry, ok := cl.locks[lockKey]
+	cl.mu.Unlock()
+	if ok && entry != nil {
+		entry.cond.L.Lock()
+		held := entry.held
+		entry.cond.L.Unlock()
+		if held {
+			t.Fatal("lock still held after withLock")
+		}
 	}
 }

@@ -554,12 +554,46 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	if !o.Relay {
 		outText, overflow := EnforceLength(carried, ClassPeer, false)
 		if overflow != "" && s.o.Files != nil {
-			// Peer overflow: write full text to file
+			// Peer overflow: write full text to target bot's storage
 			home := "from/" + Filename(sender.Name) + "/peer-" + s.o.Now().Format("20060102-150405") + ".md"
+			linkLine := FormatResearchOverflow(carried, home, runes(carried))
+
+			// Try to write the file
 			if err := s.o.Files.Write(ctx, target.ID, home, []byte(carried)); err == nil {
-				outText += FormatResearchOverflow(carried, home, runes(carried))
+				// Success: ensure outText + linkLine ≤ 300
+				linkLen := runes(linkLine)
+				cap := LengthCap(ClassPeer)
+				maxText := cap - linkLen
+				if maxText < 0 {
+					maxText = 0
+				}
+				if runes(outText) > maxText {
+					// Re-truncate to make room for the link (without adding …)
+					textRunes := []rune(carried)
+					if len(textRunes) > maxText {
+						// Find a good cutpoint at a sentence boundary if possible
+						cutpoint := maxText
+						for i := maxText - 1; i >= 0 && i > maxText-20; i-- {
+							if textRunes[i] == '。' || textRunes[i] == '.' || textRunes[i] == '\n' {
+								cutpoint = i + 1
+								break
+							}
+						}
+						if cutpoint > len(textRunes) {
+							cutpoint = maxText
+						}
+						if cutpoint > 0 {
+							outText = string(textRunes[:cutpoint])
+						} else {
+							outText = ""
+						}
+					}
+				}
+				outText += linkLine
 			} else {
-				s.log.Warn("隊友回覆存檔失敗", "from", senderID, "to", target.ID, "err", err)
+				// Write failed: send full text instead of truncating
+				s.log.Warn("隊友回覆存檔失敗，發送完整內容", "from", senderID, "to", target.ID, "err", err)
+				outText = carried
 			}
 		}
 		carried = outText

@@ -374,39 +374,44 @@ func (s *Service) Logout(ctx context.Context, botID, engine string) (cleared boo
 	sp := Specs[engine]
 	// Lock to prevent concurrent credential refresh conflicts
 	return false, s.ensureCredLock().withLock(ctx, sp.ownPath(), func() error {
-		m, err := s.owns(ctx, botID)
-		if err != nil {
-			return err
-		}
-		if _, ok := m[engine]; !ok {
-			cleared = true
-			return nil
-		}
-		m[engine] = Own{At: m[engine].At, Revoked: true}
-		if err := s.saveOwns(ctx, botID, m); err != nil {
-			return err
-		}
-		if s.Close != nil {
-			s.Close(botID)
-		}
-		if s.Locate == nil {
-			return nil
-		}
-		c, err := s.Locate(ctx, botID)
-		if err != nil {
-			s.log().Warn("暫時無法清掉 Bot 電腦裡的登入，開機前再清", "bot", botID, "engine", engine, "err", err)
-			return nil
-		}
-		if c.ID != "" {
-			if err := s.wipe(ctx, c, sp); err != nil {
-				s.log().Warn("暫時無法清掉 Bot 電腦裡的登入，開機前再清", "bot", botID, "engine", engine, "err", err)
-				return nil
-			}
-		}
-		delete(m, engine)
-		cleared = true
-		return s.saveOwns(ctx, botID, m)
+		cleared, err = s.logoutNoLock(ctx, botID, engine)
+		return err
 	})
+}
+
+// logoutNoLock is the unlocked version of Logout, for use when already holding the lock.
+func (s *Service) logoutNoLock(ctx context.Context, botID, engine string) (cleared bool, err error) {
+	sp := Specs[engine]
+	m, err := s.owns(ctx, botID)
+	if err != nil {
+		return false, err
+	}
+	if _, ok := m[engine]; !ok {
+		return true, nil
+	}
+	m[engine] = Own{At: m[engine].At, Revoked: true}
+	if err := s.saveOwns(ctx, botID, m); err != nil {
+		return false, err
+	}
+	if s.Close != nil {
+		s.Close(botID)
+	}
+	if s.Locate == nil {
+		return false, nil
+	}
+	c, err := s.Locate(ctx, botID)
+	if err != nil {
+		s.log().Warn("暫時無法清掉 Bot 電腦裡的登入，開機前再清", "bot", botID, "engine", engine, "err", err)
+		return false, nil
+	}
+	if c.ID != "" {
+		if err := s.wipe(ctx, c, sp); err != nil {
+			s.log().Warn("暫時無法清掉 Bot 電腦裡的登入，開機前再清", "bot", botID, "engine", engine, "err", err)
+			return false, nil
+		}
+	}
+	delete(m, engine)
+	return true, s.saveOwns(ctx, botID, m)
 }
 
 // adopt 記下 Bot 自己登入了這個 CLI：同一個 CLI 原本用這台電腦的登入就不再用（那份清掉），
