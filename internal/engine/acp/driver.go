@@ -1098,28 +1098,15 @@ func (d *Driver) CloseSession(s engine.Session) error {
 	// B2 (2026-10-22): Decrement session count and signal waiters
 	ac.sessionCount--
 	ac.closedSessions++ // 2026-10-22p: Track closed sessions for agent restart decision
-	sessionCount := ac.sessionCount
 	closedCount := ac.closedSessions
 	d.log.Info("Closed session", "bot", ac.botID, "session", as.id, "live_sessions", ac.sessionCount, "closed_not_reaped", closedCount, "cap", limits.ACPMaxSessionsPerBox)
 	ac.sessionWait.Signal()
 
-	// 2026-10-22p (LEAK FIX): Restart agent when closed sessions exist and all remaining are idle.
-	// This ensures MCP servers from closed sessions are cleaned up promptly, even under steady use.
-	// Check if we should restart: closed sessions exist, and (all sessions closed OR all remaining idle)
-	shouldRestart := closedCount > 0 && (sessionCount == 0 || d.allSessionsIdle(ac))
-
-	if shouldRestart && ac.c != nil {
-		d.log.Info("Restarting agent to clean MCPs from closed sessions", "bot", ac.botID, "live", sessionCount, "closed", closedCount)
-		oldConn := ac.c
-		ac.c = nil            // Mark for restart on next Start()
-		ac.closedSessions = 0 // Reset counter
-		ac.mu.Unlock()
-		// Close the old agent process (kills agent + all MCP children via process group)
-		oldConn.close()
-		// Close the queue after unlocking to avoid deadlock
-		as.q.close()
-		return nil
-	}
+	// C1 (2026-10-22): NEVER restart agent from CloseSession path.
+	// Restarting here can set ac.c=nil while Start() is about to use it (after eviction),
+	// causing nil dereference panic at rpc.go:116 when Start() calls ac.c.call("session/new").
+	// Agent restart is now handled by a separate idle reaper goroutine that checks
+	// if closed sessions accumulate and all remaining sessions are idle.
 	ac.mu.Unlock()
 
 	// 關掉 queue（停止事件流）

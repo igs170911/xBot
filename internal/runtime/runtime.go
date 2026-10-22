@@ -513,6 +513,16 @@ func (r *Runtime) begin(task store.Task) {
 
 // run 在背景完成一輪：讀 Bot 與模型、開（或接回）引擎 session（必要時開機）、送出訊息；之後由 consume 處理事件直到 done。
 func (r *Runtime) run(ctx context.Context, t *turn) {
+	// C1(b) (2026-10-22): Recover from panics in goroutine to prevent server crash.
+	// finish() already has recover, but panics before reaching it (e.g. nil dereference
+	// in engine Start) would kill the entire server process, leaving queued tasks stuck.
+	defer func() {
+		if p := recover(); p != nil {
+			r.log.Error("panic in run goroutine", "panic", p, "task", t.taskID, "bot", t.botID)
+			r.finishErr(t, fmt.Errorf("internal panic: %v", p))
+		}
+	}()
+
 	b, err := r.o.DB.GetBot(ctx, t.botID)
 	if err == nil && b.Archived {
 		err = errors.New("這個 Bot 已封存")
@@ -647,6 +657,12 @@ func (r *Runtime) consume(s engine.Session, botID string) {
 	r.consumers[s] = botID
 	r.mu.Unlock()
 	go func() {
+		// C1(b) (2026-10-22): Recover from panics in event consumer goroutine.
+		defer func() {
+			if p := recover(); p != nil {
+				r.log.Error("panic in consume goroutine", "panic", p, "bot", botID, "session", s.ResumeID())
+			}
+		}()
 		for e := range r.o.Driver.Events(s) {
 			r.handle(s, botID, e)
 		}
