@@ -474,15 +474,18 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 
 	// 2026-10-22：統一發送閘門，防止 Bot 主動傳送無意義訊息
 	// 獲取最近從這個 Bot 發給目標的訊息，用於重複檢測
-	recentMsgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Pair: []string{senderID, target.ID}, Limit: 10})
+	// 2026-10-22h：對於 request/handoff 不做重複檢測（允許接力鏈中重複的指令）
 	var recentTexts []string
-	if err == nil {
-		for _, msg := range recentMsgs {
-			// 只取從 sender 發出的
-			if msg.From == senderID {
-				recentTexts = append(recentTexts, msg.Text)
-				if len(recentTexts) >= 5 {
-					break
+	if intent != IntentRequest && ClassifyMessage(text) != ClassHandoff {
+		recentMsgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Pair: []string{senderID, target.ID}, Limit: 10})
+		if err == nil {
+			for _, msg := range recentMsgs {
+				// 只取從 sender 發出的
+				if msg.From == senderID {
+					recentTexts = append(recentTexts, msg.Text)
+					if len(recentTexts) >= 5 {
+						break
+					}
 				}
 			}
 		}
