@@ -336,6 +336,20 @@ func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error
 	if b.Archived {
 		return ChatResult{}, errors.New("這個 Bot 已封存")
 	}
+
+	// 對話分流：你親手打的訊息先判斷需不需要開電腦（閒聊、查進度用快速回覆；實際工作才開電腦）
+	if r.o.Router != nil && source == SourceOwner && req.Kind == "" {
+		shouldOpenComputer, quickReply := r.o.Router.Route(ctx, b, threadID, text)
+		if !shouldOpenComputer {
+			// 不需要開電腦：直接回覆（chat 或 progress）
+			return r.quickReply(ctx, b, threadID, text, quickReply)
+		}
+		// 需要開電腦但有確認訊息：先發確認
+		if quickReply != "" {
+			_ = r.sendQuickAck(ctx, b.ID, threadID, quickReply)
+		}
+	}
+
 	ref, err := r.o.Models.ResolveModel(ctx, b)
 	if err != nil {
 		return ChatResult{}, err

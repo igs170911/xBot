@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"context"
-	"strings"
 
 	"xbot/internal/store"
 )
@@ -11,7 +10,7 @@ import (
 func (r *Runtime) quickReply(ctx context.Context, b store.Bot, threadID, userText, reply string) (ChatResult, error) {
 	var th store.Thread
 	var err error
-	
+
 	if threadID == "" {
 		// 開新對話串
 		t := title(userText)
@@ -24,7 +23,7 @@ func (r *Runtime) quickReply(ctx context.Context, b store.Bot, threadID, userTex
 			return ChatResult{}, err
 		}
 	}
-	
+
 	var userMsg, botMsg store.Message
 	err = r.o.DB.Tx(ctx, func(q *store.Queries) error {
 		// 使用者訊息
@@ -36,7 +35,7 @@ func (r *Runtime) quickReply(ctx context.Context, b store.Bot, threadID, userTex
 		if err != nil {
 			return err
 		}
-		
+
 		// Bot 回覆
 		content := reply
 		if content == "" {
@@ -47,7 +46,7 @@ func (r *Runtime) quickReply(ctx context.Context, b store.Bot, threadID, userTex
 				content = "目前沒有進行中的工作。"
 			}
 		}
-		
+
 		botMsg, err = q.AddMessage(ctx, store.Message{
 			Scope: store.ScopeThread, ScopeID: threadID,
 			Sender: "bot:" + b.ID, Kind: "text", Content: content,
@@ -57,11 +56,11 @@ func (r *Runtime) quickReply(ctx context.Context, b store.Bot, threadID, userTex
 	if err != nil {
 		return ChatResult{}, err
 	}
-	
+
 	// 發布事件
 	r.publish(b.ID, threadID, "", KindMessageCreated, userMsg, true)
 	r.publish(b.ID, threadID, "", KindMessageCreated, botMsg, true)
-	
+
 	return ChatResult{ThreadID: threadID, MessageID: userMsg.ID}, nil
 }
 

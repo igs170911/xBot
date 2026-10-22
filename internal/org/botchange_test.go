@@ -91,12 +91,12 @@ func TestUpdatePersonaKeepsDescriptionAndDropsGeneratedRules(t *testing.T) {
 	e.manage("CEO")
 	before := e.bot("Dev").Description
 	persona := "你是 Dev，寫前端。\n\n你是常駐在自己電腦裡的 Bot。一律使用繁體中文。\n\n## 隊友與協作\nCEO"
-	
+
 	// B.2: persona 更新現在需要核准
 	if err := e.call(ceo, "xbot.teams.update_bot", map[string]any{"bot": "Dev", "persona": persona}, nil); codeOf(err) != ops.CodePendingApproval {
 		t.Fatalf("persona 更新需要核准：%v", err)
 	}
-	
+
 	// 核准並執行
 	pending, _ := e.db.ListApprovals(e.ctx, "pending")
 	if len(pending) != 1 {
@@ -108,7 +108,7 @@ func TestUpdatePersonaKeepsDescriptionAndDropsGeneratedRules(t *testing.T) {
 	if _, err := e.reg.ExecuteApproved(e.ctx, pending[0].ID); err != nil {
 		t.Fatalf("執行核准失敗：%v", err)
 	}
-	
+
 	if b := e.bot("Dev"); b.Soul != "你是 Dev，寫前端。" || b.Description != before {
 		t.Fatalf("人設 %q、介紹 %q（原本 %q）", b.Soul, b.Description, before)
 	}

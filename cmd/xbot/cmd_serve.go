@@ -90,7 +90,7 @@ func cmdServe(args []string) error {
 	}
 	// B.6: 啟用 LocalNoAuth 時發出安全警告
 	if cfg.LocalNoAuth {
-		slog.Warn("⚠️  安全警告：XBOT_LOCAL_NOAUTH=1 已啟用", 
+		slog.Warn("⚠️  安全警告：XBOT_LOCAL_NOAUTH=1 已啟用",
 			"風險", "同一台機器上的任何程式都能存取你的 Bot 和資料",
 			"建議", "只在個人電腦且確定本機環境安全時使用")
 	}
