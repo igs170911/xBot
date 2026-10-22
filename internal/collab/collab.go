@@ -831,12 +831,31 @@ func (s *Service) reply(ctx context.Context, task store.Task, m taskMeta, verdic
 		return
 	}
 	answered()
-	// 阻止無意義的致謝/確認訊息造成對話循環
-	if verdict != runtime.VerdictFailed && (IsSilent(content) || IsAcknowledgement(content)) {
-		if IsAcknowledgement(content) && !IsSilent(content) {
-			s.log.Debug("blocked acknowledgement to prevent loop", "from", task.BotID, "to", m.FromBot, "content", plain(content, 100))
+	// 結構化規則：Bot-to-bot 回覆必須包含新資訊、結果、問題或交接，否則保持 silent
+	if verdict != runtime.VerdictFailed {
+		if IsAcknowledgement(content) {
+			s.log.Debug("blocked pure acknowledgement to prevent loop", "from", task.BotID, "to", m.FromBot, "content", plain(content, 100))
+			return
 		}
-		return
+		if !HasNewInformation(content) && !IsSilent(content) {
+			s.log.Debug("blocked reply without new information", "from", task.BotID, "to", m.FromBot, "content", plain(content, 100))
+			return
+		}
+		// 近似重複檢測：避免重複發送相同內容（檢查最近發送的訊息）
+		// 使用 Pair 過濾查詢兩個 bot 之間的最近訊息
+		if recent, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Pair: []string{task.BotID, m.FromBot}}); err == nil && len(recent) > 0 {
+			count := 0
+			for _, msg := range recent {
+				if msg.From == task.BotID && msg.To == m.FromBot && IsSimilarTo(content, msg.Text) {
+					s.log.Debug("blocked near-duplicate message", "from", task.BotID, "to", m.FromBot, "content", plain(content, 100))
+					return
+				}
+				count++
+				if count >= 5 {  // 只檢查最近 5 條
+					break
+				}
+			}
+		}
 	}
 	s.deliver(ctx, task.BotID, m.FromBot, content, verdict, task)
 }
@@ -874,7 +893,7 @@ func (s *Service) continueReply(ctx context.Context, task store.Task, m taskMeta
 	if id := metaOf(origin).MessageID; id != "" {
 		_ = s.db.MarkBotMessageAnswered(ctx, id)
 	}
-	if verdict != runtime.VerdictFailed && (IsSilent(content) || IsAcknowledgement(content)) {
+	if verdict != runtime.VerdictFailed && (IsSilent(content) || IsAcknowledgement(content) || !HasNewInformation(content)) {
 		return
 	}
 	s.deliver(ctx, task.BotID, owed.To, content, verdict, origin)

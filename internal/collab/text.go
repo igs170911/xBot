@@ -123,6 +123,92 @@ func IsAcknowledgement(text string) bool {
 	return false
 }
 
+// HasNewInformation 檢查訊息是否包含新資訊、結果、問題或交接。
+// Bot-to-bot 回覆必須符合其中之一，否則應該保持 [silent]（結構化規則）。
+func HasNewInformation(text string) bool {
+	body := strings.TrimSpace(text)
+	if body == "" {
+		return false
+	}
+
+	// 包含問題（詢問對方）
+	if strings.Contains(body, "？") || strings.Contains(body, "?") ||
+		strings.Contains(body, "請問") || strings.Contains(body, "能否") ||
+		strings.Contains(body, "可以嗎") {
+		return true
+	}
+
+	// 包含結果/數據/具體內容（數字、路徑、URL、代碼等）
+	hasNumbers := strings.ContainsAny(body, "0123456789")
+	hasPath := strings.Contains(body, "/") && (strings.Contains(body, "workspace") || strings.Contains(body, "."))
+	hasURL := strings.Contains(body, "http") || strings.Contains(body, "://")
+	if hasNumbers || hasPath || hasURL {
+		return true
+	}
+
+	// 包含交接/派工
+	handoffs := []string{
+		"已派工", "轉給", "請", "幫", "負責", "處理",
+		"assigned", "delegated", "forwarded", "please", "could you",
+	}
+	for _, h := range handoffs {
+		if strings.Contains(strings.ToLower(body), h) {
+			return true
+		}
+	}
+
+	// 包含具體動作/結果描述（> 30 字通常有實質內容）
+	if len([]rune(body)) > 30 {
+		return true
+	}
+
+	return false
+}
+
+// IsSimilarTo 檢查兩則訊息是否相似（近似重複檢測，防止循環）。
+// 使用簡單的詞袋模型 + 編輯距離，避免重複發送相同內容。
+func IsSimilarTo(a, b string) bool {
+	a = strings.ToLower(strings.TrimSpace(a))
+	b = strings.ToLower(strings.TrimSpace(b))
+
+	if a == b {
+		return true
+	}
+
+	// 移除標點後比較
+	stripPunct := func(s string) string {
+		// 移除所有常見標點符號
+		punct1 := "。！？，、；：（）【】《》〈〉…—·" // 中文標點
+		punct2 := ".,;:!?()[]<>-"      // 英文標點
+		punct3 := `'"`                 // 引號和反引號
+		for _, p := range punct1 + punct2 + punct3 {
+			s = strings.ReplaceAll(s, string(p), "")
+		}
+		return s
+	}
+
+	aNoPunct := stripPunct(a)
+	bNoPunct := stripPunct(b)
+
+	if aNoPunct == bNoPunct {
+		return true
+	}
+
+	// 檢查一個是否包含另一個（長度相近時）
+	aLen := len([]rune(a))
+	bLen := len([]rune(b))
+	if aLen > 0 && bLen > 0 {
+		ratio := float64(aLen) / float64(bLen)
+		if ratio > 0.7 && ratio < 1.3 {
+			if strings.Contains(aNoPunct, bNoPunct) || strings.Contains(bNoPunct, aNoPunct) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // Member 是 @ 比對用的成員（id、名字）。
 type Member struct {
 	ID   string
