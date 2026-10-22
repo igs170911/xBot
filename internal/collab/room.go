@@ -457,8 +457,8 @@ func (s *Service) responders(ctx context.Context, room store.Room, bots []store.
 	}
 	switch room.ResponderRule {
 	case store.RuleEveryone:
-		// 修正：即使規則是「所有人」，沒有明確 @ 時也不叫醒，避免無意義的接力
-		return nil, true, "", 0
+		// 2026-10-22：修正 REGRESSION - @所有人 應該叫醒全部成員（不論有沒有明確 @）
+		return bots, true, "everyone", 1.0
 	case store.RuleMentioned:
 		return nil, true, "", 0
 	case store.RuleAuto:
@@ -688,9 +688,30 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 		return
 	}
 	failed := verdict == runtime.VerdictFailed
-	if !failed && IsSilent(content) {
+	
+	// 2026-10-22：統一發送閘門，防止群組感謝循環
+	// 獲取最近從這個 Bot 發出的群組訊息，用於重複檢測
+	recentMsgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Limit: 10})
+	var recentTexts []string
+	if err == nil {
+		for _, msg := range recentMsgs {
+			// 只取這個 Bot 發出的
+			if msg.From == task.BotID {
+				recentTexts = append(recentTexts, msg.Text)
+				if len(recentTexts) >= 5 {
+					break
+				}
+			}
+		}
+	}
+	
+	// 檢查是否應該發送（答案情境 = false for room replies）
+	shouldSend, reason := ShouldSendToPeer(content, verdict, false, recentTexts)
+	if !shouldSend {
+		s.log.Debug("blocked room reply", "bot", task.BotID, "room", room.ID, "reason", reason, "content", plain(content, 100))
 		return
 	}
+	
 	text := content
 	if failed {
 		text = "（這次沒有完成）" + content

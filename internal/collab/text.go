@@ -189,11 +189,13 @@ func ClassifyMessage(text string) MessageClass {
 	}
 
 	// 4. 長內容優先判定為 new_info（在檢查 handoff 之前）
-	if len([]rune(body)) > 30 {
+	// 2026-10-22：提高門檻從 30→80 字，避免客套話誤判
+	if len([]rune(body)) > 80 {
 		return ClassNewInfo
 	}
 
 	// 5. 檢查交接/派工（簡單模式，避免誤判）
+	// 2026-10-22：移除 "幫" 和 "請"，這些常出現在客套話中
 	handoffPatterns := []string{
 		"已派工", "轉給", "@",
 		"assigned", "delegated", "forwarded",
@@ -204,9 +206,10 @@ func ClassifyMessage(text string) MessageClass {
 		}
 	}
 
-	// 6. "請"、"幫" 等詞（最後檢查，避免覆蓋前面的判定）
-	if strings.Contains(lowerBody, "請") || strings.Contains(lowerBody, "幫") ||
-		strings.Contains(lowerBody, "please") || strings.Contains(lowerBody, "could you") {
+	// 6. 明確的請求詞（最後檢查）
+	// 2026-10-22：只保留明確的請求模式，移除泛用詞
+	if strings.Contains(lowerBody, "請你") || strings.Contains(lowerBody, "請幫") ||
+		strings.Contains(lowerBody, "could you please") {
 		return ClassHandoff
 	}
 
@@ -215,8 +218,46 @@ func ClassifyMessage(text string) MessageClass {
 
 // HasNewInformation 檢查訊息是否包含新資訊、結果、問題或交接。
 // Bot-to-bot 回覆必須符合其中之一，否則應該保持 [silent]（結構化規則）。
+// 2026-10-22：加強規則，避免客套話誤判為新資訊。
 func HasNewInformation(text string) bool {
 	class := ClassifyMessage(text)
+	if class == ClassFiller {
+		return false
+	}
+	
+	// 2026-10-22：即使分類為 new_info，如果是純客套話（感謝、問候、鼓勵）也視為 filler
+	trimmed := strings.TrimSpace(text)
+	lower := strings.ToLower(trimmed)
+	
+	// 常見客套話模式（即使有「幫」「可以」等詞也算客套）
+	pleasantries := []string{
+		"不客氣", "不用謝", "沒問題", "沒關係", "不好意思",
+		"很高興", "樂意", "隨時", "歡迎", "加油",
+		"辛苦了", "謝謝", "感謝", "太好了", "真棒",
+		"you're welcome", "no problem", "my pleasure", "glad to help",
+	}
+	
+	// 檢查是否主要內容是客套話
+	for _, p := range pleasantries {
+		if strings.Contains(lower, p) {
+			// 如果超過 60 字且不只有客套話，可能有實質內容
+			if len([]rune(trimmed)) > 60 {
+				// 檢查是否有數據、路徑、代碼等實質內容
+				hasSubstance := strings.ContainsAny(text, "0123456789") ||
+					strings.Contains(text, "/workspace") ||
+					strings.Contains(text, "http") ||
+					strings.Contains(text, "```")
+				if !hasSubstance {
+					// 長篇客套話，無實質內容
+					return false
+				}
+			} else {
+				// 短於 60 字且含客套話，很可能是純客套
+				return false
+			}
+		}
+	}
+	
 	return class != ClassFiller
 }
 
@@ -262,6 +303,34 @@ func IsSimilarTo(a, b string) bool {
 	}
 
 	return false
+}
+
+// ShouldSendToPeer 檢查 Bot 的訊息是否應該送給隊友（統一的發送閘門，2026-10-22）。
+// 用於群組回覆、Bot 主動傳訊、DM 回覆。回傳 (應該送出, 阻擋原因)。
+func ShouldSendToPeer(content, verdict string, isAnswer bool, recentFrom []string) (bool, string) {
+	// 1. 永遠阻擋：silent 或純致謝
+	if verdict != "failed" && (IsSilent(content) || IsAcknowledgement(content)) {
+		return false, "silent_or_ack"
+	}
+
+	// 2. 答案情境（回覆 request/question）允許短答案
+	if isAnswer && verdict == "answer" {
+		return true, ""
+	}
+
+	// 3. 非答案情境：必須有新資訊
+	if verdict != "failed" && !HasNewInformation(content) {
+		return false, "no_new_info"
+	}
+
+	// 4. 近似重複檢測（檢查最近發送的訊息）
+	for _, recent := range recentFrom {
+		if IsSimilarTo(content, recent) {
+			return false, "duplicate"
+		}
+	}
+
+	return true, ""
 }
 
 // Member 是 @ 比對用的成員（id、名字）。

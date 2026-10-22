@@ -432,6 +432,32 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	if runes(text) > limits.BotMessageMax {
 		return SendResult{}, &Error{Code: CodeLimit, Msg: fmt.Sprintf("訊息最多 %d 字元；長資料請寫成檔案再說明位置", limits.BotMessageMax)}
 	}
+	
+	// 2026-10-22：統一發送閘門，防止 Bot 主動傳送無意義訊息
+	// 獲取最近從這個 Bot 發給目標的訊息，用於重複檢測
+	recentMsgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Pair: []string{senderID, target.ID}, Limit: 10})
+	var recentTexts []string
+	if err == nil {
+		for _, msg := range recentMsgs {
+			// 只取從 sender 發出的
+			if msg.From == senderID {
+				recentTexts = append(recentTexts, msg.Text)
+				if len(recentTexts) >= 5 {
+					break
+				}
+			}
+		}
+	}
+	
+	// 檢查是否應該發送（答案情境 = 回覆 request/question）
+	isAnswer := o.intent == IntentResult || intent == IntentRequest || intent == IntentQuestion
+	shouldSend, reason := ShouldSendToPeer(text, "answer", isAnswer, recentTexts)
+	if !shouldSend && !o.Relay {
+		s.log.Debug("blocked bot-initiated message", "from", senderID, "to", ref, "reason", reason, "content", plain(text, 100))
+		// 不算錯誤，只是靜默阻擋
+		return SendResult{Sent: false, To: target.Name, ToID: target.ID, Note: "訊息無新資訊，已阻擋"}, nil
+	}
+	
 	if o.intent == IntentResult {
 		intent = IntentResult
 	} else {
@@ -831,41 +857,31 @@ func (s *Service) reply(ctx context.Context, task store.Task, m taskMeta, verdic
 		return
 	}
 	answered()
-	// 結構化規則：Bot-to-bot 回覆必須包含新資訊、結果、問題或交接，否則保持 silent
-	// 不再豁免群組訊息 - 群組正是多 bot 閒聊發生的地方
-	// 例外：
-	// - Silent 和純致謝永遠阻擋
-	// - 回覆 request/question 的答案（verdict=Answer）允許短答案如"修好了"
-	// - 其他情況必須有新資訊
-
-	// 先檢查是否為 silent 或純致謝（永遠阻擋）
-	if verdict != runtime.VerdictFailed && (IsSilent(content) || IsAcknowledgement(content)) {
-		s.log.Debug("blocked silent or acknowledgement", "from", task.BotID, "to", m.FromBot, "roomID", m.RoomID, "content", plain(content, 100))
-		return
-	}
-
-	// 非答案情境：必須有新資訊（包括群組訊息）
-	isAnswerToWork := verdict == runtime.VerdictAnswer && replyExpected(m.Intent)
-	if verdict != runtime.VerdictFailed && !isAnswerToWork {
-		if !HasNewInformation(content) {
-			s.log.Debug("blocked reply without new information", "from", task.BotID, "to", m.FromBot, "roomID", m.RoomID, "content", plain(content, 100))
-			return
-		}
-		// 近似重複檢測
-		if recent, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Pair: []string{task.BotID, m.FromBot}}); err == nil && len(recent) > 0 {
-			count := 0
-			for _, msg := range recent {
-				if msg.From == task.BotID && msg.To == m.FromBot && IsSimilarTo(content, msg.Text) {
-					s.log.Debug("blocked near-duplicate message", "from", task.BotID, "to", m.FromBot, "content", plain(content, 100))
-					return
-				}
-				count++
-				if count >= 5 {
+	
+	// 2026-10-22：統一發送閘門（取代分散的檢查）
+	// 獲取最近從這個 Bot 發給對方的訊息（包括群組和 DM），用於重複檢測
+	recentMsgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Limit: 20})
+	var recentTexts []string
+	if err == nil {
+		for _, msg := range recentMsgs {
+			// 檢查所有從這個 Bot 發出的訊息（不限配對，避免跨群組+DM的重複）
+			if msg.From == task.BotID {
+				recentTexts = append(recentTexts, msg.Text)
+				if len(recentTexts) >= 10 {
 					break
 				}
 			}
 		}
 	}
+	
+	// 答案情境：回覆 request/question
+	isAnswerToWork := verdict == runtime.VerdictAnswer && replyExpected(m.Intent)
+	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswerToWork, recentTexts)
+	if !shouldSend {
+		s.log.Debug("blocked DM reply", "from", task.BotID, "to", m.FromBot, "roomID", m.RoomID, "reason", reason, "content", plain(content, 100))
+		return
+	}
+	
 	s.deliver(ctx, task.BotID, m.FromBot, content, verdict, task)
 }
 
