@@ -38,8 +38,12 @@ type Options struct {
 	DB      *store.DB
 	Runtime Runtime
 	// Files 讀寫 Bot 電腦裡的檔案（帶檔傳話、太長的結果存檔）；nil 時不帶檔，太長的結果只留預覽。
-	Files  Files
-	Judge  Judge
+	Files Files
+	Judge Judge
+	// JudgeService 是快判服務（2026-10-22：用於 peer_reply 判斷）；nil 時只用規則。
+	JudgeService interface {
+		Decide(ctx context.Context, a judge.Ask) (judge.Decision, error)
+	}
 	Logger *slog.Logger
 	// Now 是時間（測試可以換）；nil 用 time.Now。
 	Now func() time.Time
@@ -53,6 +57,23 @@ type Service struct {
 	db  *store.DB
 	rt  Runtime
 	log *slog.Logger
+}
+
+// peerReplyJudge 呼叫快判判斷隊友訊息要不要回（2026-10-22）。
+// 回傳 handle/fyi/skip，失敗或沒有快判時回傳空字串（用規則兜底）。
+func (s *Service) peerReplyJudge(ctx context.Context, content, botID string) string {
+	if s.o.JudgeService == nil {
+		return ""
+	}
+	dec, err := s.o.JudgeService.Decide(ctx, judge.Ask{
+		Use:   judge.UsePeerReply,
+		Text:  content,
+		BotID: botID,
+	})
+	if err != nil || dec.Outcome != judge.OutcomeOK {
+		return "" // 快判失敗，用規則
+	}
+	return dec.Label
 }
 
 // New 建立協作層，並接上 runtime 的 Hooks（組群組 prompt、工作結束後把回覆送回去、停止連鎖）。
@@ -461,7 +482,8 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 
 	// 檢查是否應該發送（答案情境 = 回覆 request/question）
 	isAnswer := o.intent == IntentResult || intent == IntentRequest || intent == IntentQuestion
-	shouldSend, reason := ShouldSendToPeer(text, "answer", isAnswer, recentTexts)
+	judgeVerdict := s.peerReplyJudge(ctx, text, senderID)
+	shouldSend, reason := ShouldSendToPeer(text, "answer", isAnswer, recentTexts, judgeVerdict)
 	if !shouldSend && !o.Relay {
 		s.log.Debug("blocked bot-initiated message", "from", senderID, "to", ref, "reason", reason, "content", plain(text, 100))
 		// 不算錯誤，只是靜默阻擋
@@ -877,7 +899,8 @@ func (s *Service) reply(ctx context.Context, task store.Task, m taskMeta, verdic
 
 	// 答案情境：回覆 request/question
 	isAnswerToWork := verdict == runtime.VerdictAnswer && replyExpected(m.Intent)
-	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswerToWork, recentTexts)
+	judgeVerdict := s.peerReplyJudge(ctx, content, task.BotID)
+	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswerToWork, recentTexts, judgeVerdict)
 	if !shouldSend {
 		s.log.Debug("blocked DM reply", "from", task.BotID, "to", m.FromBot, "roomID", m.RoomID, "reason", reason, "content", plain(content, 100))
 		return

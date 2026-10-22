@@ -706,7 +706,8 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	}
 
 	// 檢查是否應該發送（答案情境 = false for room replies）
-	shouldSend, reason := ShouldSendToPeer(content, verdict, false, recentTexts)
+	judgeVerdict := s.peerReplyJudge(ctx, content, task.BotID)
+	shouldSend, reason := ShouldSendToPeer(content, verdict, false, recentTexts, judgeVerdict)
 	if !shouldSend {
 		s.log.Debug("blocked room reply", "bot", task.BotID, "room", room.ID, "reason", reason, "content", plain(content, 100))
 		return

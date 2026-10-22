@@ -275,7 +275,7 @@ func openStack(cfg config.Config) (*stack, error) {
 		},
 		UID: box.BotUID, GID: box.BotGID,
 	}
-	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Judge: s.judge.Responder, Files: carry})
+	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Judge: s.judge.Responder, JudgeService: s.judge, Files: carry})
 	// 檔案面板（C33）：經 Docker 讀寫 Bot 電腦的 /workspace；在電腦裡執行的指令用 Bot 自己的使用者。傳給別的 Bot 沿用 X02 帶檔。
 	s.files = &files.Service{Locate: files.DockerLocator(comp.BotFS, fmt.Sprintf("%d:%d", box.BotUID, box.BotGID)), Carry: carry}
 	// 團隊、匯報線、提案與討論（X03）。Bot 的系統提示：隊友名冊＋組織與回報。

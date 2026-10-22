@@ -322,7 +322,20 @@ func IsSimilarTo(a, b string) bool {
 
 // ShouldSendToPeer 檢查 Bot 的訊息是否應該送給隊友（統一的發送閘門，2026-10-22）。
 // 用於群組回覆、Bot 主動傳訊、DM 回覆。回傳 (應該送出, 阻擋原因)。
-func ShouldSendToPeer(content, verdict string, isAnswer bool, recentFrom []string) (bool, string) {
+// judgeVerdict 是 peer_reply 快判的結果（handle/fyi/skip），空白時用規則兜底。
+func ShouldSendToPeer(content, verdict string, isAnswer bool, recentFrom []string, judgeVerdict string) (bool, string) {
+	// 0. 快判優先（2026-10-22：整合 peer_reply 判斷）
+	switch judgeVerdict {
+	case "skip":
+		return false, "judge:skip"
+	case "fyi":
+		// FYI 訊息：只要知道，不用回覆
+		return false, "judge:fyi"
+	case "handle":
+		// 明確要處理的，通過（但仍然要檢查 silent/ack 和重複）
+	}
+	// judgeVerdict == "" 或其他值：照規則檢查
+
 	// 1. 永遠阻擋：silent 或純致謝
 	if verdict != "failed" && (IsSilent(content) || IsAcknowledgement(content)) {
 		return false, "silent_or_ack"
