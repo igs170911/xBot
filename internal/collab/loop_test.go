@@ -121,9 +121,8 @@ func TestMessageClassification(t *testing.T) {
 		{"路徑：/workspace/test.txt", ClassNewInfo},
 		{"網址 https://example.com", ClassNewInfo},
 		{"程式碼：\n```go\nfunc main() {}\n```", ClassNewInfo},
-		// 2026-10-22: Changed threshold from 30→80 chars to block pleasantries
-		// This message is ~40 chars, now classified as filler (not new_info)
-		{"這是一段超過三十個中文字元的測試訊息內容用來驗證長度判斷邏輯是否正確運作", ClassFiller},
+		// 2026-10-22g: Changed classifier - ≥6 CJK = concrete
+		{"這是一段超過三十個中文字元的測試訊息內容用來驗證長度判斷邏輯是否正確運作", ClassNewInfo},
 
 		// question
 		{"要繼續嗎？", ClassQuestion},

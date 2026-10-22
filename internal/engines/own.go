@@ -56,8 +56,10 @@ func ownKey(botID string) string { return "engine.own." + botID }
 // ownDir 是 Bot 自己登入的憑證不用時放的地方（只有 root 讀得到）；登入時是 CLI 的 HOME。
 func ownDir(engine string) string { return path.Join(CredDir, "own", engine) }
 
-func (s Spec) ownPath() string  { return path.Join(ownDir(s.Engine), s.Dir, s.File) }
-func (s Spec) homePath() string { return path.Join(BoxHome, s.Dir, s.File) }
+func (s Spec) ownPath() string                 { return path.Join(ownDir(s.Engine), s.Dir, s.File) }
+func (s Spec) homePath() string                { return path.Join(BoxHome, s.Dir, s.File) }
+func (s Spec) botCredPath(botID string) string { return path.Join(CredDir, botID, s.Engine, s.File) }         // 2026-10-22g: per-bot lock
+func (s Spec) hostSourcePath() string          { return path.Join(CredDir, "host", s.Engine, s.Dir, s.File) } // 2026-10-22g: shared source
 
 // 怎麼登入一個 CLI（LoginKind）。
 const (

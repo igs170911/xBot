@@ -380,7 +380,7 @@ func (s *Service) unlinkHost(ctx context.Context, botID string) (cleared bool, e
 
 // Prepare 在每次開機前（box Prepare）呼叫：Bot 自己登入的照現在的引擎搬好（Sync）；
 // 用這台電腦的登入：已同意且引擎相同就放最新的憑證，已收回或引擎換了就清掉。
-// 2026-10-22b：加入檔案鎖，防止多個容器同時寫入憑證。
+// 2026-10-22g：Lock on bot's credential path (per-bot), not shared source. Concurrent Prepares overlap.
 func (s *Service) Prepare(ctx context.Context, c Container, b store.Bot) error {
 	if err := s.syncOwn(ctx, c, b); err != nil {
 		return err
@@ -394,7 +394,8 @@ func (s *Service) Prepare(ctx context.Context, c Container, b store.Bot) error {
 		return nil
 	}
 
-	return s.ensureCredLock().withLock(ctx, sp.ownPath(), func() error {
+	// Lock on bot's credential directory (per-bot), allowing concurrent preparation
+	return s.ensureCredLock().withLock(ctx, sp.botCredPath(b.ID), func() error {
 		if own, err := s.HasOwn(ctx, b.ID, l.Engine); err != nil || own {
 			// 同一個 CLI 已經自己登入（adopt 會刪掉這筆同意；這裡只是保險）：不要拿這台電腦的那份蓋掉。
 			return err
@@ -413,7 +414,14 @@ func (s *Service) Prepare(ctx context.Context, c Container, b store.Bot) error {
 			// Bot 換了引擎（例：改回 Hermes）：憑證不留在它的電腦裡（EN-2a）。
 			return s.clear(ctx, c, sp)
 		}
-		data, err := s.ReadHost(sp)
+
+		// Read shared host source under its own lock
+		var data []byte
+		err := s.ensureCredLock().withLock(ctx, sp.hostSourcePath(), func() error {
+			var err error
+			data, err = s.ReadHost(sp)
+			return err
+		})
 		if err != nil {
 			// 這台電腦上登出了：清掉舊的，Bot 用的時候會說要登入。不擋開機。
 			s.log().Warn("這台電腦上找不到訂閱登入，清掉 Bot 電腦裡的舊憑證", "bot", b.ID, "engine", l.Engine, "err", err)

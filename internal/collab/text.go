@@ -155,6 +155,7 @@ const (
 
 // ClassifyMessage 分類訊息內容（新資訊判斷的基礎）。
 // 未來可接入 judge 模型；目前用結構化規則實作。
+// 2026-10-22g：改進精確度：要求具體內容作為證據，減少誤判。
 func ClassifyMessage(text string) MessageClass {
 	body := strings.TrimSpace(text)
 	if body == "" {
@@ -163,167 +164,224 @@ func ClassifyMessage(text string) MessageClass {
 
 	lowerBody := strings.ToLower(body)
 
-	// 0. 先檢查是否只包含致謝/同意詞彙（2026-10-22c：防止純同意誤判為 handoff）
-	// 移除所有標點、空格、@mentions 後檢查剩餘詞彙
-	runes := []rune(body)
-	// 移除 @mentions
-	for i := 0; i < len(runes); {
-		if runes[i] == '@' {
-			// Find end of mention (alphanumeric, _, -, or CJK)
-			j := i + 1
-			for j < len(runes) {
-				r := runes[j]
-				if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') ||
-					(r >= '0' && r <= '9') || r == '_' || r == '-' ||
-					(r >= '\u4e00' && r <= '\u9fff') {
-					j++
-				} else {
-					break
-				}
-			}
-			// Remove from i to j
-			runes = append(runes[:i], runes[j:]...)
-		} else {
-			i++
-		}
-	}
-	cleaned := string(runes)
-
-	// 移除標點和空格
-	cleaned = strings.Map(func(r rune) rune {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
-			(r >= '0' && r <= '9') || (r >= '\u4e00' && r <= '\u9fff') {
-			return r
-		}
-		return ' '
-	}, cleaned)
-	words := strings.Fields(cleaned)
-
-	// 檢查是否所有詞彙都是致謝/同意詞
-	if len(words) > 0 {
-		allAckOrAgree := true
-		ackWords := []string{
-			"收到", "了解", "明白", "好的", "知道了", "謝謝", "感謝", "好", "行",
-			"不客氣", "不用謝", "同意", "我同意", "沒問題", "可以", "沒錯", "對", "是的",
-			"ok", "okay", "got", "it", "received", "understood", "thanks", "thank", "you",
-			"will", "do", "on", "sure", "noted", "ack", "roger", "copy",
-			"agree", "agreed", "sounds", "good", "fine",
-		}
-		for _, w := range words {
-			wLower := strings.ToLower(w)
-			found := false
-			for _, ack := range ackWords {
-				if wLower == ack {
-					found = true
-					break
-				}
-			}
-			if !found {
-				allAckOrAgree = false
-				break
-			}
-		}
-		if allAckOrAgree {
-			return ClassFiller
-		}
-	}
-
-	// 1. 優先檢查問題（避免被其他規則覆蓋）
+	// 1. 優先檢查問題
 	if strings.Contains(body, "？") || strings.Contains(body, "?") ||
 		strings.Contains(body, "請問") || strings.Contains(body, "能否") ||
 		strings.Contains(body, "可以嗎") || strings.Contains(body, "怎麼") {
 		return ClassQuestion
 	}
 
-	// 1.5. 優先檢查提議/建議/推薦（2026-10-22f：避免被 result 誤判）
-	// "我建議" vs "建議採用" - 前者是提議，不是結果
-	proposalVerbs := []string{"提議", "推薦"}
-	for _, verb := range proposalVerbs {
-		if strings.Contains(body, verb) {
+	// 2. 優先檢查列表 → new_info (避免被其他規則誤判)
+	hasList := strings.Contains(body, "\n- ") || strings.Contains(body, "\n1.")
+	if hasList {
+		return ClassNewInfo
+	}
+
+	// 3. 明確的派工/交接詞
+	handoffWords := []string{"派工", "轉給", "assigned", "delegated"}
+	for _, w := range handoffWords {
+		if strings.Contains(lowerBody, w) {
 			return ClassHandoff
 		}
 	}
-	// "建議"需要更精確：避免"已建議"被誤判
-	if strings.Contains(body, "建議") && !strings.Contains(lowerBody, "已") && !strings.Contains(lowerBody, "已經") {
-		return ClassHandoff
-	}
 
-	// 2. 檢查結果回報（優先於數字檢查，因為"完成 5 個"應該是 result 不是 new_info）
-	// 2026-10-22d：只包含明確的"已完成"意義的詞，避免誤判請求為結果
+	// 4. 檢查明確的完成/結果指標
+	// 排除未來式（預計...完成）和名詞用法（完成的項目）
 	completionIndicators := []string{
-		"完成", "做好", "修好", "搞定", "處理好", "準備好", "整理好",
-		"已經完成", "已經做好", "已經修好", "已經處理好",
-		"成功", "完畢", "選", "決定", "已經核准", "已核准", "已批准",
-		"上架", "下架", "發布", "部署",
-		"done", "finished", "completed", "fixed", "resolved", "approved",
+		"做好", "修好", "處理好", "準備好", "整理好", "搞定",
+		"已經", "已", "成功", "完畢", "寄出", "上線", "上架", "下架", "發布", "部署",
+		"改成",
+		"done", "finished", "completed", "fixed", "resolved", "deployed",
 	}
-	for _, ind := range completionIndicators {
-		if strings.Contains(lowerBody, ind) {
-			return ClassResult
+	hasCompletionWord := false
+	for _, w := range completionIndicators {
+		if strings.Contains(lowerBody, w) {
+			hasCompletionWord = true
+			break
 		}
 	}
-
-	// 2.5. 檢查動作動詞（命令/請求）- 2026-10-22 加入以識別任務指派
-	// 2026-10-22b：檢測整個訊息，不只是開頭（修復「幫我寫一句咖啡標語」等請求被漏掉）
-	// 2026-10-22d：「換」用於交接（如「換你」、「輪到你」）
-	// 這些是常見的任務動詞和請求詞，出現時通常是在指派工作
-	// 但要避免誤判：只在較短訊息（<50 字）且開頭或緊跟空格時才判定為 handoff
-	actionVerbs := []string{
-		"寫", "做", "查", "找", "確認", "檢查", "測試", "修", "改", "建",
-		"整理", "分析", "研究", "比較", "評估", "幫", "請", "麻煩", "換", "輪到",
+	// "完成" needs special handling
+	if strings.Contains(body, "完成") && !hasCompletionWord {
+		// "已完成" / "已經完成" / "成功完成" / "完成，" are completion
+		// "預計...完成" / "完成的" are NOT completion (future or noun)
+		if strings.Contains(body, "預計") || strings.Contains(body, "完成的") {
+			// Future or noun - not completion
+		} else if strings.Contains(body, "已完成") || strings.Contains(body, "已經完成") ||
+			strings.Contains(body, "成功完成") || strings.Contains(body, "完成，") || strings.Contains(body, "完成。") {
+			hasCompletionWord = true
+		}
 	}
-	// 檢查較短訊息（長訊息更可能是描述或說明）
-	bodyRunes := len([]rune(body))
-	if bodyRunes < 50 {
+	if hasCompletionWord {
+		return ClassResult
+	}
+
+	// 5. 短請求動詞（<50字）→ handoff
+	// 但排除 "修好"/"改好" 的情況（已在上面作為 completion 處理）
+	bodyRunes := []rune(body)
+	if len(bodyRunes) < 50 && !strings.Contains(body, "修好") && !strings.Contains(body, "改好") {
+		actionVerbs := []string{
+			"請", "寫", "做", "查", "找", "確認", "檢查", "測試",
+			"整理", "分析", "研究", "比較", "評估", "幫", "麻煩",
+		}
 		for _, verb := range actionVerbs {
-			// 只在詞的開頭或前面有空格時判定
-			if strings.HasPrefix(body, verb) || strings.Contains(body, " "+verb) || strings.Contains(body, "　"+verb) {
+			if strings.HasPrefix(body, verb) || strings.Contains(body, " "+verb) {
 				return ClassHandoff
 			}
 		}
 	}
 
-	// 3. 檢查數據/具體內容（數字、路徑、URL、代碼等）
-	hasNumbers := strings.ContainsAny(body, "0123456789")
-	hasPath := strings.Contains(body, "/") && (strings.Contains(body, "workspace") || strings.Contains(body, "."))
-	hasURL := strings.Contains(body, "http") || strings.Contains(body, "://")
-	hasCodeBlock := strings.Contains(body, "```") || strings.Contains(body, "~~~")
-
-	// 2026-10-22d：冒號後面接內容（如「標語三條已寫好：…」）或列表應算新資訊
-	hasColonContent := (strings.Contains(body, "：") || strings.Contains(body, ":")) &&
-		(strings.Contains(body, "\n") || len([]rune(body)) > 20)
-	hasList := strings.Contains(body, "\n- ") || strings.Contains(body, "\n• ") ||
-		strings.Contains(body, "\n1.") || strings.Contains(body, "\n2.")
-
-	if hasNumbers || hasPath || hasURL || hasCodeBlock || hasColonContent || hasList {
-		return ClassNewInfo
+	// 6. 移除@mentions和deference phrases以檢測具體內容
+	stripped := body
+	// Remove @mentions
+	for {
+		atIdx := strings.Index(stripped, "@")
+		if atIdx < 0 {
+			break
+		}
+		endIdx := atIdx + 1
+		for endIdx < len(stripped) {
+			if stripped[endIdx] == ' ' || stripped[endIdx] == ',' || stripped[endIdx] == '\n' {
+				break
+			}
+			if endIdx+1 < len(stripped) {
+				r, size := utf8.DecodeRuneInString(stripped[endIdx:])
+				if r == '，' {
+					break
+				}
+				endIdx += size
+			} else {
+				endIdx++
+			}
+		}
+		// Skip trailing comma/space
+		for endIdx < len(stripped) {
+			if stripped[endIdx] == ' ' || stripped[endIdx] == ',' {
+				endIdx++
+				continue
+			}
+			if endIdx+1 < len(stripped) {
+				r, size := utf8.DecodeRuneInString(stripped[endIdx:])
+				if r == '，' {
+					endIdx += size
+					continue
+				}
+			}
+			break
+		}
+		stripped = stripped[:atIdx] + stripped[endIdx:]
 	}
 
-	// 4. 長內容優先判定為 new_info（在檢查 handoff 之前）
-	// 2026-10-22：提高門檻從 30→80 字，避免客套話誤判
-	if len([]rune(body)) > 80 {
-		return ClassNewInfo
+	// Remove pure deference/agreement phrases
+	deferencePatterns := []string{
+		"照你說的", "你說的那個", "你說的", "我都可以", "都可以", "交給你",
+		"輪到你", "輪到", "同意你", "贊成你", "很好", "不錯", "沒意見",
+		"謝謝", "感謝", "收到", "了解", "明白", "好的", "知道了",
+		"不客氣", "不用謝", "ok", "okay",
+		"我完全同意", "我同意", "完全同意", "你的回覆", "你的看法", "你的建議",
+		"辛苦了", "謝謝你", "感謝你",
+	}
+	for _, p := range deferencePatterns {
+		stripped = strings.ReplaceAll(stripped, p, " ")
+	}
+	stripped = strings.TrimSpace(stripped)
+
+	// 7. 檢查具體內容證據
+	hasConcreteResidue := false
+
+	// 7a. 數字或日期/星期
+	if strings.ContainsAny(stripped, "0123456789") {
+		hasConcreteResidue = true
+	}
+	weekdays := []string{"週一", "週二", "週三", "週四", "週五", "週六", "週日", "星期"}
+	for _, w := range weekdays {
+		if strings.Contains(stripped, w) {
+			hasConcreteResidue = true
+			break
+		}
 	}
 
-	// 5. 檢查交接/派工（簡單模式，避免誤判）
-	// 2026-10-22d: 移除 "@" - 單純的 @ 不算交接，要看內容
-	handoffPatterns := []string{
-		"已派工", "轉給",
-		"assigned", "delegated", "forwarded",
+	// 7b. 引號內容（「」""）
+	if strings.Contains(stripped, "「") || strings.Contains(stripped, "\"") {
+		hasConcreteResidue = true
 	}
-	for _, h := range handoffPatterns {
-		if strings.Contains(lowerBody, h) {
+
+	// 7c. 專有名詞或拉丁詞
+	words := strings.Fields(stripped)
+	for _, w := range words {
+		if len(w) > 0 {
+			firstChar := w[0]
+			// Capitalized English word or all-caps acronym
+			// Exclude common acknowledgements like "OK"
+			wLower := strings.ToLower(w)
+			if wLower == "ok" || wLower == "okay" {
+				continue
+			}
+			if firstChar >= 'A' && firstChar <= 'Z' {
+				hasConcreteResidue = true
+				break
+			}
+			// Common Latin/English words
+			if wLower == "bug" || wLower == "issue" || wLower == "prod" || wLower == "pr" || wLower == "test" {
+				hasConcreteResidue = true
+				break
+			}
+		}
+	}
+
+	// 7d. 新句子≥6個中文字（但排除純致謝和通用長句）
+	cjkCount := 0
+	for _, r := range stripped {
+		if r >= '\u4e00' && r <= '\u9fff' {
+			cjkCount++
+		}
+	}
+	if cjkCount >= 6 {
+		hasConcreteResidue = true
+	}
+
+	// 7e. 路徑、URL、代碼塊
+	if strings.Contains(stripped, "/workspace") || strings.Contains(stripped, "http") ||
+		strings.Contains(stripped, "```") {
+		hasConcreteResidue = true
+	}
+
+	// 8. 決策/選擇/提議詞
+	decisionWords := []string{"決定", "建議", "提議", "推薦"}
+	hasDecisionWord := false
+	for _, w := range decisionWords {
+		if strings.Contains(body, w) {
+			hasDecisionWord = true
+			break
+		}
+	}
+
+	// 9. 分類邏輯
+	// 9a. 提議/建議 + 具體內容 → handoff
+	if hasDecisionWord && hasConcreteResidue {
+		if strings.Contains(body, "提議") || strings.Contains(body, "推薦") {
+			return ClassHandoff
+		}
+		if strings.Contains(body, "建議") {
 			return ClassHandoff
 		}
 	}
 
-	// 6. 明確的請求詞（最後檢查）
-	// 2026-10-22：只保留明確的請求模式，移除泛用詞
-	if strings.Contains(lowerBody, "請你") || strings.Contains(lowerBody, "請幫") ||
-		strings.Contains(lowerBody, "could you please") {
-		return ClassHandoff
+	// 9b. 純決定詞但無具體內容 → filler
+	if hasDecisionWord && !hasConcreteResidue {
+		return ClassFiller
 	}
 
+	// 9c. 冒號+具體內容 → new_info
+	if (strings.Contains(body, "：") || strings.Contains(body, ":")) && hasConcreteResidue {
+		return ClassNewInfo
+	}
+
+	// 9d. 有具體證據 → new_info
+	if hasConcreteResidue {
+		return ClassNewInfo
+	}
+
+	// 默認：filler
 	return ClassFiller
 }
 
