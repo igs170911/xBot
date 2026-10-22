@@ -832,17 +832,26 @@ func (s *Service) reply(ctx context.Context, task store.Task, m taskMeta, verdic
 	}
 	answered()
 	// 結構化規則：Bot-to-bot 回覆必須包含新資訊、結果、問題或交接，否則保持 silent
-	if verdict != runtime.VerdictFailed {
-		if IsAcknowledgement(content) {
-			s.log.Debug("blocked pure acknowledgement to prevent loop", "from", task.BotID, "to", m.FromBot, "content", plain(content, 100))
-			return
-		}
-		if !HasNewInformation(content) && !IsSilent(content) {
+	// 例外：
+	// - Silent 和純致謝永遠阻擋（即使是回答工作）
+	// - 群組訊息（協作情境）不受 HasNewInformation 限制
+	// - 回覆 request/question 的答案（verdict=Answer）不受 HasNewInformation 檢查（允許短答案如"修好了"）
+	// - 其他情況必須有新資訊
+	
+	// 先檢查是否為 silent 或純致謝（永遠阻擋）
+	if verdict != runtime.VerdictFailed && (IsSilent(content) || IsAcknowledgement(content)) {
+		s.log.Debug("blocked silent or acknowledgement", "from", task.BotID, "to", m.FromBot, "content", plain(content, 100))
+		return
+	}
+	
+	// 非群組、非答案情境：必須有新資訊
+	isAnswerToWork := verdict == runtime.VerdictAnswer && replyExpected(m.Intent)
+	if verdict != runtime.VerdictFailed && m.RoomID == "" && !isAnswerToWork {
+		if !HasNewInformation(content) {
 			s.log.Debug("blocked reply without new information", "from", task.BotID, "to", m.FromBot, "content", plain(content, 100))
 			return
 		}
-		// 近似重複檢測：避免重複發送相同內容（檢查最近發送的訊息）
-		// 使用 Pair 過濾查詢兩個 bot 之間的最近訊息
+		// 近似重複檢測
 		if recent, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Pair: []string{task.BotID, m.FromBot}}); err == nil && len(recent) > 0 {
 			count := 0
 			for _, msg := range recent {
@@ -851,7 +860,7 @@ func (s *Service) reply(ctx context.Context, task store.Task, m taskMeta, verdic
 					return
 				}
 				count++
-				if count >= 5 {  // 只檢查最近 5 條
+				if count >= 5 {
 					break
 				}
 			}
@@ -893,7 +902,8 @@ func (s *Service) continueReply(ctx context.Context, task store.Task, m taskMeta
 	if id := metaOf(origin).MessageID; id != "" {
 		_ = s.db.MarkBotMessageAnswered(ctx, id)
 	}
-	if verdict != runtime.VerdictFailed && (IsSilent(content) || IsAcknowledgement(content) || !HasNewInformation(content)) {
+	// continueReply 交回的是實際工作結果，不受結構化規則限制（只阻擋 silent 和純致謝）
+	if verdict != runtime.VerdictFailed && (IsSilent(content) || (IsAcknowledgement(content) && len(strings.TrimSpace(content)) < 10)) {
 		return
 	}
 	s.deliver(ctx, task.BotID, owed.To, content, verdict, origin)
