@@ -44,7 +44,7 @@ func (g *GrokJudge) Classify(ctx context.Context, prev, msg, botID string) (stri
 
 	timeout := g.Timeout
 	if timeout == 0 {
-		timeout = 5 * time.Second
+		timeout = 10 * time.Second // D3: Raised to 10s
 	}
 
 	model := g.ModelName
@@ -65,10 +65,9 @@ func (g *GrokJudge) Classify(ctx context.Context, prev, msg, botID string) (stri
 	// Build prompt
 	prompt := buildGrokPrompt(msg)
 
-	// Execute `grok ask <prompt>` in the container
-	// Use `docker exec <container> grok ask --model <model> --no-stream "<prompt>"`
+	// D3 (Round 11): Execute `grok -p "<prompt>" --model <model>` in the container
 	cmd := exec.CommandContext(ctx, "docker", "exec", containerID,
-		"grok", "ask", "--model", model, "--no-stream", prompt)
+		"grok", "-p", prompt, "--model", model)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {

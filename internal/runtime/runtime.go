@@ -658,9 +658,50 @@ func (r *Runtime) consume(s engine.Session, botID string) {
 	r.mu.Unlock()
 	go func() {
 		// C1(b) (2026-10-22): Recover from panics in event consumer goroutine.
+		// D4 (Round 11): On panic, mark task failed and emit done.
 		defer func() {
 			if p := recover(); p != nil {
 				r.log.Error("panic in consume goroutine", "panic", p, "bot", botID, "session", s.ResumeID())
+				
+				// Find and mark the active task as failed
+				r.mu.Lock()
+				t := r.active[botID]
+				r.mu.Unlock()
+				
+				if t != nil {
+					t.mu.Lock()
+					wasFinished := t.finished
+					t.finished = true
+					taskID := t.taskID
+					msgID := t.messageID
+					t.mu.Unlock()
+					
+					if !wasFinished {
+						panicMsg := fmt.Sprintf("panic in event consumer: %v", p)
+						// Emit error and done events
+						r.emit(t, KindError, engine.Event{Type: engine.EventError, Text: panicMsg, Fatal: true}, true)
+						r.emit(t, KindDone, engine.Event{Type: engine.EventDone, Status: engine.StatusError, Text: panicMsg}, true)
+						
+						// Mark task as failed in DB
+						if err := r.o.DB.SetTaskState(context.Background(), taskID, store.TaskDone, VerdictFailed); err != nil {
+							r.log.Error("failed to mark task as failed after consume panic", "task", taskID, "err", err)
+						}
+						
+						// Update message if it exists
+						if msgID != "" {
+							fields := map[string]any{"task_id": taskID, "status": engine.StatusError}
+							meta, _ := json.Marshal(fields)
+							_ = r.o.DB.UpdateMessage(context.Background(), msgID, panicMsg, nil, meta)
+						}
+					}
+					
+					// Release Bot's busy state
+					r.mu.Lock()
+					if r.active[botID] == t {
+						delete(r.active, botID)
+					}
+					r.mu.Unlock()
+				}
 			}
 		}()
 		for e := range r.o.Driver.Events(s) {
