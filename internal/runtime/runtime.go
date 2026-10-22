@@ -228,6 +228,7 @@ type turn struct {
 	pending   *pending // Bot 正在等人回覆的請求（一次一個）
 	usedTools bool     // 這一輪呼叫過工具（判斷「只說要做」用）
 	toolsAt   int      // 最後一次呼叫工具時 text 寫到哪（之後那段才是最後的回答）
+	lastMilestone string // 最後一個里程碑工具的 ID，用於判斷是否需要發布進度更新
 	// engine、provider：這一輪用的引擎與 Model Proxy 供應商；started：開始送出的時間；quota：引擎報的額度錯誤（EN-7）。
 	engine, provider string
 	started          time.Time
@@ -699,34 +700,27 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 	case engine.EventToolCall:
 		// 只有里程碑工具才發布進度更新
 		if isMilestone(e) {
-			*lastMilestone = e.Tool.ID
+			t.mu.Lock()
+			t.lastMilestone = e.Tool.ID
+			t.mu.Unlock()
 			r.emit(t, KindToolCall, e, true)
 		} else {
 			// 非里程碑工具：只存資料庫，不發布到事件匯流排（不打斷使用者）
-			raw, _ := json.Marshal(e)
-			_ = r.o.DB.AddEvent(context.Background(), store.Event{
-				BotID:    botID,
-				ThreadID: t.threadID,
-				TaskID:   t.taskID,
-				Kind:     KindToolCall,
-				Payload:  raw,
-			})
+			r.persistOnly(t, KindToolCall, e)
 		}
 	case engine.EventToolResult:
 		// 只有里程碑工具的結果才發布
-		if shouldNotifyToolResult(e, *lastMilestone) {
+		t.mu.Lock()
+		lastMilestone := t.lastMilestone
+		t.mu.Unlock()
+		if shouldNotifyToolResult(e, lastMilestone) {
 			r.emit(t, KindToolResult, e, true)
-			*lastMilestone = "" // 清空，避免重複通知
+			t.mu.Lock()
+			t.lastMilestone = "" // 清空，避免重複通知
+			t.mu.Unlock()
 		} else {
 			// 非里程碑工具的結果：只存資料庫
-			raw, _ := json.Marshal(e)
-			_ = r.o.DB.AddEvent(context.Background(), store.Event{
-				BotID:    botID,
-				ThreadID: t.threadID,
-				TaskID:   t.taskID,
-				Kind:     KindToolResult,
-				Payload:  raw,
-			})
+			r.persistOnly(t, KindToolResult, e)
 		}
 	case engine.EventUsage:
 		r.emit(t, KindUsage, e, true)
@@ -987,6 +981,19 @@ func (r *Runtime) setState(t *turn, state string) {
 // emit 發布一個事件；persist 時先寫進 event 表，帶著流水號發布。
 func (r *Runtime) emit(t *turn, kind string, payload any, persist bool) {
 	r.publish(t.botID, t.threadID, t.taskID, kind, payload, persist)
+}
+
+// persistOnly 只寫進 event 表，不發布到匯流排（非里程碑的工具呼叫）。
+func (r *Runtime) persistOnly(t *turn, kind string, payload any) {
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		r.log.Error("事件無法轉成 JSON", "kind", kind, "err", err)
+		return
+	}
+	_, err = r.o.DB.AppendEvent(context.Background(), store.Event{BotID: t.botID, ThreadID: t.threadID, TaskID: t.taskID, Kind: kind, Payload: raw})
+	if err != nil {
+		r.log.Warn("寫入事件失敗", "kind", kind, "err", err)
+	}
 }
 
 // publish 發布一個 Bot 的事件；persist 時先寫進 event 表，帶著流水號發布。
