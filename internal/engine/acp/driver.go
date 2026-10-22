@@ -272,6 +272,11 @@ func (d *Driver) client(ctx context.Context, botID, mode string) (*agentConn, er
 		return nil, err
 	}
 	// Round 10 fix: Initialize with semaphore channel for C4
+	// Semaphore starts FULL of tokens (one per slot)
+	sem := make(chan struct{}, limits.ACPMaxSessionsPerBox)
+	for i := 0; i < limits.ACPMaxSessionsPerBox; i++ {
+		sem <- struct{}{} // Fill with available slots
+	}
 	ac = &agentConn{
 		botID:    botID,
 		mode:     mode,
@@ -279,7 +284,7 @@ func (d *Driver) client(ctx context.Context, botID, mode string) (*agentConn, er
 		threads:  map[string]*session{},
 		children: map[string]*session{},
 		requests: map[string]pending{},
-		sem:      make(chan struct{}, limits.ACPMaxSessionsPerBox),
+		sem:      sem,
 		draining: []*agentGen{},
 	}
 	log := d.log.With("bot", botID)
@@ -429,34 +434,37 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	}
 
 	// Round 10 fix + C4: Use semaphore channel for cap enforcement
-	// Try to evict LRU idle session if at cap
+	// Semaphore pattern: channel contains available slots (tokens)
+	// Acquire = receive a token, Release = send a token back
 	for len(ac.sessions) >= limits.ACPMaxSessionsPerBox {
 		// Try to evict oldest idle session
 		if d.tryEvictIdleSession(ac) {
 			break // Evicted one, proceed
 		}
-		// No idle sessions available, wait with semaphore
+		// No idle sessions available, wait for one to close
 		d.log.Info("At session cap, waiting for session to close", "bot", o.BotID, "cap", limits.ACPMaxSessionsPerBox)
 		ac.mu.Unlock()
 
-		// C4: Use buffered semaphore channel instead of sync.Cond + goroutine
+		// C4: Wait for a slot token (blocks until CloseSession sends one back)
 		select {
-		case ac.sem <- struct{}{}:
-			// Got slot, proceed
-			ac.mu.Lock()
+		case <-ac.sem:
+			// Got a token (slot freed by CloseSession)
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
+		// Re-lock and check count again (loop will re-check cap)
+		ac.mu.Lock()
 	}
 
-	// Acquire semaphore slot for new session
+	// Now acquire our slot token
+	ac.mu.Unlock()
 	select {
-	case ac.sem <- struct{}{}:
-		// Reserved slot
+	case <-ac.sem:
+		// Reserved our slot token
 	case <-ctx.Done():
-		ac.mu.Unlock()
 		return nil, ctx.Err()
 	}
+	ac.mu.Lock()
 
 	// Round 10: Spawn new gen if cur is draining or nil
 	if ac.cur == nil || ac.cur.draining {
@@ -1203,11 +1211,8 @@ func (d *Driver) CloseSession(s engine.Session) error {
 	g.closed++
 	d.log.Info("Closed session", "bot", ac.botID, "session", as.id, "live_sessions", len(ac.sessions), "gen_live", g.live, "gen_closed", g.closed)
 
-	// C4: Release semaphore
-	select {
-	case <-ac.sem:
-	default:
-	}
+	// C4: Release semaphore (return token to pool)
+	ac.sem <- struct{}{}
 
 	// Round 10: Trigger drain if closed >= 2 and this is current gen
 	if g.closed >= 2 && g == ac.cur && !g.draining {
