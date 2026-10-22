@@ -51,7 +51,6 @@ func (r *Runtime) quickReply(ctx context.Context, b store.Bot, threadID, userTex
 		botMsg, err = q.AddMessage(ctx, store.Message{
 			Scope: store.ScopeThread, ScopeID: threadID,
 			Sender: "bot:" + b.ID, Kind: "text", Content: content,
-			Status: "complete",
 		})
 		return err
 	})
@@ -77,21 +76,4 @@ func (r *Runtime) sendQuickAck(ctx context.Context, botID, threadID, ack string)
 	}
 	r.publish(botID, threadID, "", KindMessageCreated, msg, true)
 	return nil
-}
-
-// title 從訊息產生對話串標題（取前 40 字，LazyBoy chat.title_from_text）。
-func title(text string) string {
-	text = strings.TrimSpace(text)
-	text = strings.ReplaceAll(text, "\r\n", " ")
-	text = strings.ReplaceAll(text, "\n", " ")
-	text = strings.ReplaceAll(text, "\t", " ")
-	// 去掉多餘空格
-	for strings.Contains(text, "  ") {
-		text = strings.ReplaceAll(text, "  ", " ")
-	}
-	runes := []rune(text)
-	if len(runes) > 40 {
-		return string(runes[:40]) + "..."
-	}
-	return text
 }
