@@ -127,6 +127,8 @@ func (d *Driver) reapIdleSessions() {
 		var toClose []*session
 		for _, s := range ac.sessions {
 			s.mu.Lock()
+			// C2 (2026-10-22): Never reap a session with an in-flight turn.
+			// Check both !running (no active turn) AND that it's been idle long enough.
 			idle := !s.running && now.Sub(s.lastUsed) > limits.ACPSessionIdleTimeout
 			s.mu.Unlock()
 			if idle {
