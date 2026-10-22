@@ -114,26 +114,23 @@ func (r *Router) workAckReply(text string) string {
 // shouldAck 判斷是否需要先回應確認訊息。
 // 判斷依據：訊息長度、關鍵字等
 func (r *Router) shouldAck(text string) bool {
-	// 簡短的訊息（< 20 字）通常不需要確認
-	if len([]rune(text)) < 20 {
+	textRunes := []rune(text)
+	
+	// 非常簡短的訊息（< 10 字）通常不需要確認
+	if len(textRunes) < 10 {
 		return false
 	}
 
-	// 包含多個步驟的工作需要確認
-	stepIndicators := []string{"然後", "接著", "再", "之後", "最後", "第一", "第二", "第三"}
-	lower := strings.ToLower(text)
-	matchCount := 0
+	// 包含多個步驟的工作需要確認（優先於長度檢查）
+	stepIndicators := []string{"然後", "接著", "再", "之後", "最後", "第一", "第二", "第三", "並且"}
 	for _, ind := range stepIndicators {
-		if strings.Contains(lower, ind) {
-			matchCount++
-			if matchCount >= 2 {
-				return true
-			}
+		if strings.Contains(text, ind) {
+			return true
 		}
 	}
 
 	// 很長的訊息（> 100 字）需要確認
-	if len([]rune(text)) > 100 {
+	if len(textRunes) > 100 {
 		return true
 	}
 
