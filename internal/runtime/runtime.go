@@ -73,6 +73,8 @@ type Options struct {
 	Models interface {
 		ResolveModel(ctx context.Context, b store.Bot) (ModelRef, error)
 	}
+	// Router 對話分流：判斷是閒聊、查進度還是實際工作，決定要不要開電腦（nil 時一律開電腦）。
+	Router *Router
 	Logger *slog.Logger
 	// QuestionTTL 是無人在場的工作裡提問多久沒回就過期；0 用 limits.QuestionTTL（測試可以調短）。
 	QuestionTTL time.Duration
