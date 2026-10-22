@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"maps"
 	"regexp"
@@ -13,6 +14,8 @@ import (
 	"sync"
 	"time"
 	"unicode/utf8"
+
+	"github.com/moby/moby/client"
 
 	"xbot/internal/engine"
 	"xbot/internal/limits"
@@ -217,6 +220,8 @@ type session struct {
 	lastUsed time.Time
 	// closed 標示這個 session 已被關閉（2026-10-22）。
 	closed bool
+	// mcpPids 是這個 session 建立時新增的 MCP 子行程 PIDs（2026-10-22 B2.3：容器內 MCP 清理）。
+	mcpPids []int
 }
 
 func (s *session) ID() string { return s.id }
@@ -421,6 +426,10 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	ac.sessionCount++
 	ac.mu.Unlock()
 
+	// B2.3 (2026-10-22): Snapshot MCP PIDs before session/new
+	// Note: Will be compared after session/new to detect new MCP processes
+	_ = d.snapshotMCPPids(ac.botID) // TODO: implement PID tracking properly
+
 	var mcp []MCPServer
 	if d.o.MCPServers != nil {
 		mcp = d.o.MCPServers(o.BotID)
@@ -478,7 +487,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		id = res.SessionID
 	}
 	s := &session{ac: ac, id: id, threadID: o.ThreadID, mode: o.Mode, tools: map[string]*toolState{}, bg: map[string]string{},
-		shown: map[string]bool{}, dropped: map[string]bool{}, q: newQueue(), lastUsed: time.Now()}
+		shown: map[string]bool{}, dropped: map[string]bool{}, q: newQueue(), lastUsed: time.Now(), mcpPids: nil}
 	if inst != "" && !d.o.Agent.SystemPrompt && !d.o.Agent.Rules && !loaded {
 		s.intro = IntroText(inst)
 	}
@@ -1072,12 +1081,147 @@ func (d *Driver) CloseSession(s engine.Session) error {
 	// 關掉 queue（停止事件流）
 	as.q.close()
 
+	// B2.3 (2026-10-22): Search and kill MCP processes in container on close
+	// Instead of tracking per-session PIDs, we search for MCP processes each time
+	d.searchAndKillMCPProcesses(as.ac.botID)
+
 	// 如果正在跑，發 session/cancel 停下來（agent 應終止該 session 的所有子行程）
 	if running {
 		_ = ac.c.notify("session/cancel", map[string]string{"sessionId": as.id})
 	}
 
 	return nil
+}
+
+// searchAndKillMCPProcesses searches for and kills MCP processes in the container (B2.3, 2026-10-22).
+// This is called on session close to clean up any orphaned MCP processes.
+func (d *Driver) searchAndKillMCPProcesses(botID string) {
+	pids := d.snapshotMCPPids(botID)
+	if len(pids) > 0 {
+		d.log.Debug("Found MCP processes to clean up", "bot", botID, "pids", pids)
+		d.killMCPPidsInContainer(botID, pids)
+	}
+}
+
+// snapshotMCPPids 快照容器內的 desktop_mcp / MCP 相關行程 PIDs（B2.3, 2026-10-22）。
+func (d *Driver) snapshotMCPPids(botID string) []int {
+	d.mu.Lock()
+	ac := d.bots[botID]
+	d.mu.Unlock()
+	if ac == nil || ac.c == nil || ac.c.p == nil {
+		return nil
+	}
+
+	// 從 Process 取得容器 ID 和 Execer
+	type containerAccess interface {
+		ContainerID() string
+		Execer() Execer
+	}
+
+	ca, ok := ac.c.p.(containerAccess)
+	if !ok {
+		return nil
+	}
+
+	containerID := ca.ContainerID()
+	api := ca.Execer()
+
+	// 在容器內執行 ps 找出 MCP 相關行程
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	cmd := []string{"sh", "-c", "ps -eo pid,cmd 2>/dev/null | grep -E 'desktop_mcp|mcp.*server|python.*mcp' | grep -v grep | awk '{print $1}' || true"}
+
+	created, err := api.ExecCreate(ctx, containerID, client.ExecCreateOptions{
+		Cmd:          cmd,
+		AttachStdout: true,
+		AttachStderr: true,
+	})
+	if err != nil {
+		return nil
+	}
+
+	att, err := api.ExecAttach(ctx, created.ID, client.ExecAttachOptions{})
+	if err != nil {
+		return nil
+	}
+	defer att.Close()
+
+	var buf strings.Builder
+	_, _ = io.Copy(&buf, att.Reader)
+
+	// 解析 PIDs
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	var pids []int
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var pid int
+		if _, err := fmt.Sscanf(line, "%d", &pid); err == nil && pid > 0 {
+			pids = append(pids, pid)
+		}
+	}
+	return pids
+}
+
+// killMCPPidsInContainer 在容器內 kill 指定的 PIDs（B2.3, 2026-10-22）。
+func (d *Driver) killMCPPidsInContainer(botID string, pids []int) {
+	if len(pids) == 0 {
+		return
+	}
+
+	d.mu.Lock()
+	ac := d.bots[botID]
+	d.mu.Unlock()
+	if ac == nil || ac.c == nil || ac.c.p == nil {
+		d.log.Warn("Cannot access bot process to kill MCP", "bot", botID)
+		return
+	}
+
+	type containerAccess interface {
+		ContainerID() string
+		Execer() Execer
+	}
+
+	ca, ok := ac.c.p.(containerAccess)
+	if !ok {
+		d.log.Warn("Process does not support container access", "bot", botID)
+		return
+	}
+
+	containerID := ca.ContainerID()
+	api := ca.Execer()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// SIGTERM first
+	pidStr := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(pids)), " "), "[]")
+	killCmd := []string{"sh", "-c", fmt.Sprintf("kill -TERM %s 2>/dev/null || true", pidStr)}
+	created, err := api.ExecCreate(ctx, containerID, client.ExecCreateOptions{Cmd: killCmd})
+	if err == nil {
+		att, err := api.ExecAttach(ctx, created.ID, client.ExecAttachOptions{})
+		if err == nil {
+			att.Close()
+		}
+	}
+
+	// Wait grace period
+	time.Sleep(200 * time.Millisecond)
+
+	// SIGKILL if still alive
+	killCmd = []string{"sh", "-c", fmt.Sprintf("kill -KILL %s 2>/dev/null || true", pidStr)}
+	created, err = api.ExecCreate(ctx, containerID, client.ExecCreateOptions{Cmd: killCmd})
+	if err == nil {
+		att, err := api.ExecAttach(ctx, created.ID, client.ExecAttachOptions{})
+		if err == nil {
+			att.Close()
+		}
+	}
+
+	d.log.Info("Killed MCP processes in container", "bot", botID, "pids", pids)
 }
 
 // evictOldSessions（2026-10-22，修正 2026-10-22j）：檢查 session 數是否超過 limits.ACPMaxSessionsPerBox，

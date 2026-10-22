@@ -72,6 +72,12 @@ type execProcess struct {
 	once sync.Once
 }
 
+// ContainerID 回傳容器 ID（B2.3, 2026-10-22）。
+func (p *execProcess) ContainerID() string { return p.containerID }
+
+// Execer 回傳 Docker API execer（B2.3, 2026-10-22）。
+func (p *execProcess) Execer() Execer { return p.api }
+
 func newExecProcess(api Execer, containerID, execID string, resp client.HijackedResponse) *execProcess {
 	pr, pw := io.Pipe()
 	p := &execProcess{
