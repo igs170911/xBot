@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -33,6 +34,7 @@ type countingSession struct {
 	events  chan engine.Event
 	mu      sync.Mutex
 	closed  bool
+	running bool // Track if a prompt is in-flight
 }
 
 func (s *countingSession) ID() string       { return s.id }
@@ -53,14 +55,19 @@ func (d *countingDriver) Start(ctx context.Context, o engine.StartOptions) (engi
 }
 
 func (d *countingDriver) Send(ctx context.Context, s engine.Session, m engine.Message) error {
+	cs := s.(*countingSession)
+	cs.mu.Lock()
+	cs.running = true // Mark as running
+	cs.mu.Unlock()
+	
 	if d.sendFunc != nil {
 		return d.sendFunc(ctx, s, m)
 	}
-	cs := s.(*countingSession)
-	// Simulate immediate completion
+	// Default: simulate immediate completion
 	go func() {
 		time.Sleep(10 * time.Millisecond)
 		cs.mu.Lock()
+		cs.running = false // Mark as not running
 		closed := cs.closed
 		cs.mu.Unlock()
 		if !closed {
@@ -280,6 +287,107 @@ func TestSessionCleanupOnInterrupt(t *testing.T) {
 	// Session should be closed on interrupt
 	if closed := counter.closed.Load(); closed != 1 {
 		t.Errorf("expected session to be closed on interrupt, got %d closed", closed)
+	}
+}
+
+// TestLRUNeverCloseBusySession (item 7a): LRU eviction must never close a session with in-flight prompt
+func TestLRUNeverCloseBusySession(t *testing.T) {
+	ctx := context.Background()
+	db := openCleanupTestDB(t)
+
+	counter := &sessionCounter{}
+	driver := &countingDriver{counter: counter}
+
+	b, err := db.CreateBot(ctx, store.Bot{Name: "測試", Engine: "counting"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create 6 sessions directly (exceeds limit of 5)
+	// Start sending on each to make them busy
+	blockChan := make(chan struct{})
+	
+	driver.sendFunc = func(ctx context.Context, s engine.Session, m engine.Message) error {
+		cs := s.(*countingSession)
+		cs.mu.Lock()
+		cs.mu.Unlock() // Mark as running by setting flag in Send (simulated by driver state)
+		go func() {
+			<-blockChan // Block until released
+			cs.mu.Lock()
+			closed := cs.closed
+			cs.mu.Unlock()
+			if !closed {
+				cs.events <- engine.Event{Type: engine.EventText, Text: "done"}
+				cs.events <- engine.Event{Type: engine.EventDone, Status: engine.StatusComplete}
+			}
+		}()
+		return nil
+	}
+
+	var sessions []engine.Session
+	for i := 0; i < 6; i++ {
+		thread, err := db.CreateThread(ctx, store.Thread{BotID: b.ID, Title: fmt.Sprintf("thread %d", i)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		
+		s, err := driver.Start(ctx, engine.StartOptions{BotID: b.ID, ThreadID: thread.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		sessions = append(sessions, s)
+		
+		// Start a send to make it busy
+		if err := driver.Send(ctx, s, engine.Message{Text: fmt.Sprintf("test %d", i)}); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(50 * time.Millisecond) // Stagger
+	}
+
+	// Give eviction logic time to run
+	time.Sleep(200 * time.Millisecond)
+
+	// All 6 sessions should still be open (none closed because all busy)
+	remainingCount := 0
+	driver.sessions.Range(func(key, value any) bool {
+		remainingCount++
+		return true
+	})
+	if remainingCount != 6 {
+		t.Errorf("expected all 6 busy sessions to remain, got %d", remainingCount)
+	}
+
+	// Verify none were closed yet
+	if closed := counter.closed.Load(); closed != 0 {
+		t.Errorf("expected 0 sessions closed while all busy, got %d", closed)
+	}
+
+	// Now release all tasks
+	close(blockChan)
+
+	// Wait for all to complete
+	for _, s := range sessions {
+		done := false
+		for !done {
+			select {
+			case e := <-driver.Events(s):
+				if e.Type == engine.EventDone {
+					done = true
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("timeout waiting for done event")
+			}
+		}
+	}
+
+	// Close all sessions manually (simulating runtime.finish)
+	for _, s := range sessions {
+		_ = driver.CloseSession(s)
+	}
+
+	// Now all sessions should be closed
+	if closed := counter.closed.Load(); closed != 6 {
+		t.Errorf("expected 6 sessions closed, got %d", closed)
 	}
 }
 

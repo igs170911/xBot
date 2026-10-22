@@ -950,7 +950,9 @@ func (d *Driver) CloseSession(s engine.Session) error {
 	return nil
 }
 
-// evictOldSessions（2026-10-22）：檢查 session 數是否超過 limits.ACPMaxSessionsPerBox，超過時關閉最久沒用的。
+// evictOldSessions（2026-10-22，修正 2026-10-22j）：檢查 session 數是否超過 limits.ACPMaxSessionsPerBox，
+// 超過時關閉最久沒用的**閒置** session。絕不關閉有進行中 prompt 的 session（7a）。
+// 如果全部都忙，不關閉任何 session（排隊等閒置）。
 func (d *Driver) evictOldSessions(ac *agentConn) {
 	ac.mu.Lock()
 	sessions := make([]*session, 0, len(ac.sessions))
@@ -963,22 +965,46 @@ func (d *Driver) evictOldSessions(ac *agentConn) {
 		return
 	}
 
-	// 按 lastUsed 排序，最舊的在前
-	slices.SortFunc(sessions, func(a, b *session) int {
-		return a.lastUsed.Compare(b.lastUsed)
-	})
-
-	// 關掉超出上限的舊 session（保留最近的 ACPMaxSessionsPerBox 個）
-	toClose := len(sessions) - limits.ACPMaxSessionsPerBox
-	for i := 0; i < toClose; i++ {
-		s := sessions[i]
+	// 分離閒置和忙碌的 session（7a）
+	var idle []*session
+	var busy []*session
+	for _, s := range sessions {
 		s.mu.Lock()
 		running := s.running
 		s.mu.Unlock()
-		if !running { // 只關閉閒置的 session
-			d.log.Info("淘汰閒置 session", "bot", ac.botID, "session", s.id, "thread", s.threadID)
-			_ = d.CloseSession(s)
+		if running {
+			busy = append(busy, s)
+		} else {
+			idle = append(idle, s)
 		}
+	}
+
+	// 如果沒有閒置的 session，全都在忙，不淘汰（等它們完成）
+	if len(idle) == 0 {
+		d.log.Debug("所有 session 都在忙，不淘汰", "bot", ac.botID, "busy", len(busy))
+		return
+	}
+
+	// 按 lastUsed 排序閒置的 session，最舊的在前
+	slices.SortFunc(idle, func(a, b *session) int {
+		return a.lastUsed.Compare(b.lastUsed)
+	})
+
+	// 計算需要淘汰多少個：只從閒置的中選，保留至少 (limit - busy_count) 個閒置
+	totalNeeded := limits.ACPMaxSessionsPerBox - len(busy)
+	if totalNeeded < 0 {
+		totalNeeded = 0 // 忙碌的已超過上限，但不關它們
+	}
+	toClose := len(idle) - totalNeeded
+	if toClose <= 0 {
+		return // 不需要淘汰
+	}
+
+	// 關閉最舊的閒置 session
+	for i := 0; i < toClose; i++ {
+		s := idle[i]
+		d.log.Info("淘汰閒置 session", "bot", ac.botID, "session", s.id, "thread", s.threadID, "idle_count", len(idle), "busy_count", len(busy))
+		_ = d.CloseSession(s)
 	}
 }
 
