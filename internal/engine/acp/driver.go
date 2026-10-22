@@ -161,6 +161,9 @@ type agentConn struct {
 	// B2 (2026-10-22): session 計數和等待
 	sessionCount int       // 當前實時 session 數量（包括所有來源：DM、room、peer、judge）
 	sessionWait  sync.Cond // 等待 session 空出時通知
+	
+	// B2.3 FIX (2026-10-22): Serialize session/new to avoid PID snapshot race
+	sessionNewMu sync.Mutex // 序列化 session/new 呼叫，避免並發時 PID snapshot 競態
 }
 
 type permOption struct {
@@ -427,6 +430,11 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	// B2.4 (2026-10-22): Log session count for debugging
 	d.log.Info("Creating new session", "bot", o.BotID, "thread", o.ThreadID, "live_sessions", ac.sessionCount, "cap", limits.ACPMaxSessionsPerBox)
 	ac.mu.Unlock()
+
+	// B2.3 FIX (2026-10-22): Serialize session/new + PID snapshot to avoid race
+	// When two sessions start concurrently, snapshot A can capture B's new PIDs
+	ac.sessionNewMu.Lock()
+	defer ac.sessionNewMu.Unlock()
 
 	// B2.3 (2026-10-22): Snapshot MCP PIDs before session/new
 	mcpPidsBefore := d.snapshotMCPPids(ac.botID)

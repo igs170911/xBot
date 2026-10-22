@@ -117,7 +117,7 @@ func TestSessionLeakWithDocker(t *testing.T) {
 	// Helper: count MCP processes in container
 	countMCP := func() int {
 		cmd := exec.CommandContext(ctx, "docker", "exec", containerID, "sh", "-c",
-			"ps -eo cmd 2>/dev/null | grep -E 'desktop_mcp|mcp.*server|python.*mcp' | grep -v grep | wc -l")
+			"ps -eo cmd 2>/dev/null | grep -E 'sleep 3600|python.*sleep' | grep -v grep | wc -l")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Logf("Warning: failed to count MCP: %v", err)
@@ -228,14 +228,27 @@ type dockerLauncher struct {
 }
 
 func (d *dockerLauncher) Launch(ctx context.Context, botID string, agent acp.Agent) (acp.Process, error) {
-	return &dockerFakeProcess{containerID: d.containerID, docker: d.docker}, nil
+	p := &dockerFakeProcess{containerID: d.containerID, docker: d.docker}
+	
+	// Spawn 2 long-lived child processes to simulate MCP servers (desktop_mcp, etc.)
+	if err := p.spawnChild(); err != nil {
+		return nil, fmt.Errorf("failed to spawn child 1: %w", err)
+	}
+	if err := p.spawnChild(); err != nil {
+		return nil, fmt.Errorf("failed to spawn child 2: %w", err)
+	}
+	
+	return p, nil
 }
 
 // dockerFakeProcess implements acp.Process for Docker testing.
+// It spawns real long-lived child processes inside the container to simulate MCP servers.
 type dockerFakeProcess struct {
 	containerID string
 	docker      *client.Client
 	closed      bool
+	childPIDs   []int // PIDs of spawned children
+	mu          sync.Mutex
 }
 
 func (p *dockerFakeProcess) Read(b []byte) (int, error) {
@@ -251,7 +264,29 @@ func (p *dockerFakeProcess) Write(b []byte) (int, error) {
 }
 
 func (p *dockerFakeProcess) Close() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	
+	if p.closed {
+		return nil
+	}
 	p.closed = true
+	
+	// Kill spawned children
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
+	for _, pid := range p.childPIDs {
+		killCmd := []string{"sh", "-c", fmt.Sprintf("kill %d 2>/dev/null || true", pid)}
+		created, err := p.docker.ExecCreate(ctx, p.containerID, client.ExecCreateOptions{Cmd: killCmd})
+		if err == nil {
+			att, err := p.docker.ExecAttach(ctx, created.ID, client.ExecAttachOptions{})
+			if err == nil {
+				att.Close()
+			}
+		}
+	}
+	
 	return nil
 }
 
@@ -261,4 +296,41 @@ func (p *dockerFakeProcess) ContainerID() string {
 
 func (p *dockerFakeProcess) Execer() acp.Execer {
 	return p.docker
+}
+
+// spawnChild spawns a long-lived child process inside the container to simulate desktop_mcp.
+func (p *dockerFakeProcess) spawnChild() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	
+	if p.closed {
+		return fmt.Errorf("process already closed")
+	}
+	
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
+	// Spawn a long-lived process that simulates desktop_mcp behavior
+	// Run in background using sh -c with & to detach
+	cmd := []string{"sh", "-c", "(python3 -c 'import time; time.sleep(3600)' 2>/dev/null || sleep 3600) &"}
+	
+	created, err := p.docker.ExecCreate(ctx, p.containerID, client.ExecCreateOptions{
+		Cmd:          cmd,
+		AttachStdout: false,
+		AttachStderr: false,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create exec: %w", err)
+	}
+	
+	att, err := p.docker.ExecAttach(ctx, created.ID, client.ExecAttachOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to attach exec: %w", err)
+	}
+	att.Close()
+	
+	// Give it a moment to start
+	time.Sleep(100 * time.Millisecond)
+	
+	return nil
 }
