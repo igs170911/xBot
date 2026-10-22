@@ -144,26 +144,31 @@ func (d *Driver) reapIdleSessions() {
 	}
 }
 
+// agentGen wraps an agent process with lifecycle tracking.
+// Round 10 fix (2026-10-22): Each generation tracks live/closed sessions independently.
+// When closed sessions accumulate (≥2), we drain this gen and spawn a new one for new sessions.
+type agentGen struct {
+	c        *conn
+	live     int  // Live sessions in this gen
+	closed   int  // Closed sessions (MCP servers not yet reaped)
+	draining bool // True when this gen is being drained (no new sessions)
+	drainAt  time.Time
+}
+
 // agentConn 是一個 Bot 的 agent 行程與上面的 session。
-// 2026-10-22p (LEAK FIX): Drain mechanism - when sessions are closed, we drain the old agent.
 type agentConn struct {
 	botID       string
 	mode        string // 開行程時的權限等級（Agent.ModeEnv 用）
-	c           *conn
 	loadSession bool
 
 	mu       sync.Mutex
+	cur      *agentGen           // Current agent generation
 	sessions map[string]*session // ACP sessionId → session
 	threads  map[string]*session // XBot thread id → session
 	children map[string]*session // agent 開的子代理 session → 開它的 session（權限請求、背景工作對回去）
 	requests map[string]pending  // 等人回覆的權限請求
-
-	// B2 (2026-10-22): session 計數和等待
-	sessionCount int       // 當前實時 session 數量（包括所有來源：DM、room、peer、judge）
-	sessionWait  sync.Cond // 等待 session 空出時通知
-
-	// 2026-10-22p (LEAK FIX): Track closed sessions for restart decision
-	closedSessions int // Count of sessions that were closed but MCPs not yet reaped by agent
+	sem      chan struct{}       // C4: semaphore for session cap (buffered, cap = limits.ACPMaxSessionsPerBox)
+	draining []*agentGen         // Old gens being drained
 }
 
 type permOption struct {
@@ -181,6 +186,7 @@ type pending struct {
 // session 實作 engine.Session。
 type session struct {
 	ac       *agentConn
+	gen      *agentGen // Round 10: Generation this session belongs to
 	id       string
 	threadID string
 
@@ -254,27 +260,35 @@ func (d *Driver) client(ctx context.Context, botID, mode string) (*agentConn, er
 	d.mu.Lock()
 	ac := d.bots[botID]
 	d.mu.Unlock()
-	if ac != nil && ac.c.alive() {
+	if ac != nil && ac.cur != nil && ac.cur.c.alive() {
 		if len(d.o.Agent.ModeEnv) == 0 || ac.mode == mode || ac.busy() {
 			return ac, nil
 		}
 		d.log.Info("權限等級改了，重開 agent", "bot", botID, "from", ac.mode, "to", mode)
-		ac.c.close()
+		ac.cur.c.close()
 	}
 	p, err := d.o.Launch(ctx, botID, d.o.Agent.ForMode(mode))
 	if err != nil {
 		return nil, err
 	}
-	ac = &agentConn{botID: botID, mode: mode, sessions: map[string]*session{}, threads: map[string]*session{}, children: map[string]*session{},
-		requests: map[string]pending{}, sessionCount: 0}
-	ac.sessionWait.L = &ac.mu // 綁定 cond 到 mutex
+	// Round 10 fix: Initialize with semaphore channel for C4
+	ac = &agentConn{
+		botID:    botID,
+		mode:     mode,
+		sessions: map[string]*session{},
+		threads:  map[string]*session{},
+		children: map[string]*session{},
+		requests: map[string]pending{},
+		sem:      make(chan struct{}, limits.ACPMaxSessionsPerBox),
+		draining: []*agentGen{},
+	}
 	log := d.log.With("bot", botID)
-	ac.c = newConn(p, log, func(m string, params json.RawMessage) { d.notification(ac, m, params) },
+	c := newConn(p, log, func(m string, params json.RawMessage) { d.notification(ac, m, params) },
 		func(r request) { d.request(ac, r) },
 		func(cause error) { d.disconnected(ac, p, cause) })
 	ictx, cancel := context.WithTimeout(ctx, limits.ACPInitTimeout)
 	defer cancel()
-	raw, err := ac.c.call(ictx, "initialize", map[string]any{
+	raw, err := c.call(ictx, "initialize", map[string]any{
 		"protocolVersion": ProtocolVersion,
 		"clientCapabilities": map[string]any{
 			// 檔案與終端機都在 Bot 自己的電腦裡，agent 自己處理；XBot 不代讀寫。
@@ -284,7 +298,7 @@ func (d *Driver) client(ctx context.Context, botID, mode string) (*agentConn, er
 		"clientInfo": map[string]string{"name": "xbot", "title": "XBot", "version": version.Version},
 	})
 	if err != nil {
-		ac.c.close()
+		c.close()
 		// 有些 CLI 找不到（或登入過期）時，開機就停下來要人輸入授權碼（例：Gemini CLI），stderr 會寫認證失敗。
 		if t, ok := p.(StderrTail); ok && authFailRe.MatchString(t.StderrTail()) {
 			return nil, fmt.Errorf("%s 沒有啟動：%s 還沒登入或登入已過期。請在這台電腦重新登入，再到 Bot 設定確認已同意使用你的訂閱", d.o.Agent.Label, d.o.Agent.Label)
@@ -298,14 +312,16 @@ func (d *Driver) client(ctx context.Context, botID, mode string) (*agentConn, er
 		} `json:"agentCapabilities"`
 	}
 	if err := json.Unmarshal(raw, &init); err != nil {
-		ac.c.close()
+		c.close()
 		return nil, fmt.Errorf("%s 的 initialize 回覆看不懂：%w", d.o.Agent.Label, err)
 	}
 	if init.ProtocolVersion != ProtocolVersion {
-		ac.c.close()
+		c.close()
 		return nil, fmt.Errorf("%s 講的 ACP 版本是 %d，XBot 支援 %d", d.o.Agent.Label, init.ProtocolVersion, ProtocolVersion)
 	}
 	ac.loadSession = init.AgentCapabilities.LoadSession
+	// Round 10 fix: Create initial agent generation
+	ac.cur = &agentGen{c: c, live: 0, closed: 0}
 	d.mu.Lock()
 	d.bots[botID] = ac
 	d.mu.Unlock()
@@ -412,41 +428,53 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		return s, nil
 	}
 
-	// B2 (2026-10-22): Enforce hard cap before creating new session
-	// Wait for space if at cap; try to evict LRU idle session first
-	for ac.sessionCount >= limits.ACPMaxSessionsPerBox {
+	// Round 10 fix + C4: Use semaphore channel for cap enforcement
+	// Try to evict LRU idle session if at cap
+	liveCount := len(ac.sessions)
+	for liveCount >= limits.ACPMaxSessionsPerBox {
 		// Try to evict oldest idle session
 		if d.tryEvictIdleSession(ac) {
+			liveCount = len(ac.sessions)
 			break // Evicted one, proceed
 		}
-		// No idle sessions available, wait for one to be closed
+		// No idle sessions available, wait with semaphore
 		d.log.Info("At session cap, waiting for session to close", "bot", o.BotID, "cap", limits.ACPMaxSessionsPerBox)
+		ac.mu.Unlock()
 
-		// 2026-10-22n (LEAK FIX 3): ctx-aware wait using channel
-		// sessionWait.Wait() ignores ctx and hangs (TestSessionCounterBasic hung for 642s)
-		// FIXED 2026-10-22p: Must keep mutex locked for Wait(), release in goroutine after signal
-		waitCh := make(chan struct{})
-		go func() {
-			ac.mu.Lock()
-			ac.sessionWait.Wait()
-			ac.mu.Unlock()
-			close(waitCh)
-		}()
-		ac.mu.Unlock() // Unlock while waiting on channel
+		// C4: Use buffered semaphore channel instead of sync.Cond + goroutine
 		select {
-		case <-waitCh:
-			// Session became available
+		case ac.sem <- struct{}{}:
+			// Got slot, proceed
+			ac.mu.Lock()
+			liveCount = len(ac.sessions)
 		case <-ctx.Done():
-			// Context cancelled, fail fast
 			return nil, ctx.Err()
 		}
-		ac.mu.Lock() // Re-lock for next iteration
 	}
 
-	// Reserve slot
-	ac.sessionCount++
-	// B2.4 (2026-10-22): Log session count for debugging
-	d.log.Info("Creating new session", "bot", o.BotID, "thread", o.ThreadID, "live_sessions", ac.sessionCount, "cap", limits.ACPMaxSessionsPerBox)
+	// Acquire semaphore slot for new session
+	select {
+	case ac.sem <- struct{}{}:
+		// Reserved slot
+	case <-ctx.Done():
+		ac.mu.Unlock()
+		return nil, ctx.Err()
+	}
+
+	// Round 10: Spawn new gen if cur is draining or nil
+	if ac.cur == nil || ac.cur.draining {
+		if err := d.spawnNewGen(ctx, ac, o.BotID); err != nil {
+			<-ac.sem // Release semaphore
+			ac.mu.Unlock()
+			return nil, err
+		}
+	}
+
+	// Take current gen and increment live count
+	g := ac.cur
+	g.live++
+	liveCount = len(ac.sessions)
+	d.log.Info("Creating new session", "bot", o.BotID, "thread", o.ThreadID, "live_sessions", liveCount+1, "cap", limits.ACPMaxSessionsPerBox, "gen_live", g.live)
 	ac.mu.Unlock()
 
 	// 2026-10-22p: Removed MCP PID snapshot - doesn't work, agent respawns MCPs.
@@ -487,28 +515,31 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	loaded := false
 	if o.Resume != "" && ac.loadSession {
 		// session/load 會把舊的對話以 session/update 重播；這時 session 還沒登記，重播的內容不會變成事件。
-		raw, err := ac.c.call(sctx, "session/load", withPrompt(map[string]any{"sessionId": o.Resume, "cwd": Workspace, "mcpServers": mcp}))
+		raw, err := g.c.call(sctx, "session/load", withPrompt(map[string]any{"sessionId": o.Resume, "cwd": Workspace, "mcpServers": mcp}))
 		switch {
 		case err == nil:
 			id, loaded = o.Resume, true
 			_ = json.Unmarshal(raw, &res)
 		case errors.Is(err, engine.ErrDisconnected):
+			<-ac.sem // Release semaphore
 			return nil, err
 		default:
 			d.log.Info("接不回之前的 session，開新的", "bot", o.BotID, "session", o.Resume, "err", err)
 		}
 	}
 	if id == "" {
-		raw, err := ac.c.call(sctx, "session/new", withPrompt(map[string]any{"cwd": Workspace, "mcpServers": mcp}))
+		raw, err := g.c.call(sctx, "session/new", withPrompt(map[string]any{"cwd": Workspace, "title": o.Title, "mcpServers": mcp}))
 		if err != nil {
+			<-ac.sem // Release semaphore on error
 			return nil, d.explain("無法開始對話", err)
 		}
 		if err := json.Unmarshal(raw, &res); err != nil || res.SessionID == "" {
+			<-ac.sem // Release semaphore
 			return nil, fmt.Errorf("開始對話的回覆不完整：%s", truncate(string(raw), 200))
 		}
 		id = res.SessionID
 	}
-	s := &session{ac: ac, id: id, threadID: o.ThreadID, mode: o.Mode, tools: map[string]*toolState{}, bg: map[string]string{},
+	s := &session{ac: ac, gen: g, id: id, threadID: o.ThreadID, mode: o.Mode, tools: map[string]*toolState{}, bg: map[string]string{},
 		shown: map[string]bool{}, dropped: map[string]bool{}, q: newQueue(), lastUsed: time.Now()}
 	if inst != "" && !d.o.Agent.SystemPrompt && !d.o.Agent.Rules && !loaded {
 		s.intro = IntroText(inst)
@@ -543,6 +574,68 @@ func (d *Driver) instructions(ctx context.Context, botID string) string {
 	return strings.TrimSpace(text)
 }
 
+// launch creates a new agent process.
+// Round 10: Helper for spawnNewGen.
+func (d *Driver) launch(ctx context.Context, botID, mode string) (Process, error) {
+	agent := d.o.Agent.ForMode(mode)
+	return d.o.Launch(ctx, botID, agent)
+}
+
+// spawnNewGen creates a new agent generation for new sessions.
+// Round 10 fix: Called when cur gen is draining or nil.
+// Caller must hold ac.mu.
+func (d *Driver) spawnNewGen(ctx context.Context, ac *agentConn, botID string) error {
+	// Launch new agent process
+	p, err := d.launch(ctx, botID, ac.mode)
+	if err != nil {
+		return err
+	}
+
+	log := d.log.With("bot", botID)
+	c := newConn(p, log, func(m string, params json.RawMessage) { d.notification(ac, m, params) },
+		func(r request) { d.request(ac, r) },
+		func(cause error) { d.disconnected(ac, p, cause) })
+
+	ictx, cancel := context.WithTimeout(ctx, limits.ACPInitTimeout)
+	defer cancel()
+	raw, err := c.call(ictx, "initialize", map[string]any{
+		"protocolVersion": ProtocolVersion,
+		"clientCapabilities": map[string]any{
+			"fs":       map[string]bool{"readTextFile": false, "writeTextFile": false},
+			"terminal": false,
+		},
+		"clientInfo": map[string]string{"name": "xbot", "title": "XBot", "version": version.Version},
+	})
+	if err != nil {
+		c.close()
+		if t, ok := p.(StderrTail); ok && authFailRe.MatchString(t.StderrTail()) {
+			return fmt.Errorf("%s 沒有啟動：%s 還沒登入或登入已過期", d.o.Agent.Label, d.o.Agent.Label)
+		}
+		return fmt.Errorf("%s 沒有啟動：%w", d.o.Agent.Label, err)
+	}
+
+	var init struct {
+		ProtocolVersion int `json:"protocolVersion"`
+	}
+	if err := json.Unmarshal(raw, &init); err != nil || init.ProtocolVersion != ProtocolVersion {
+		c.close()
+		return fmt.Errorf("%s protocol version mismatch", d.o.Agent.Label)
+	}
+
+	// Add old cur to draining list if it exists
+	if ac.cur != nil && !ac.cur.draining {
+		ac.cur.draining = true
+		ac.cur.drainAt = time.Now()
+		ac.draining = append(ac.draining, ac.cur)
+		d.log.Info("Draining old agent generation", "bot", botID, "gen_live", ac.cur.live, "gen_closed", ac.cur.closed)
+	}
+
+	// Set new current gen
+	ac.cur = &agentGen{c: c, live: 0, closed: 0}
+	d.log.Info("Spawned new agent generation", "bot", botID)
+	return nil
+}
+
 // identityNote：agent 自己的系統提示說它是 Claude Code、Grok…；在 XBot 裡它就是這個 Bot。
 const identityNote = "你在 XBot 裡就是下面這位 Bot：用它的名字、個性和語言（繁體中文）回應；被問到用的是哪個引擎或模型時可以照實說。" +
 	"XBot 的工具在 MCP 伺服器 xbot 裡，名稱寫成 xbot_<領域>_<動作>；守則裡寫成 xbot.<領域>.<動作> 的就是同一個工具。"
@@ -562,7 +655,7 @@ func (d *Driver) configure(ctx context.Context, s *session, res sessionResult, o
 	defer cancel()
 	if mode := d.o.Agent.Modes[o.Mode]; mode != "" && res.Modes != nil && res.Modes.CurrentModeID != mode &&
 		slices.ContainsFunc(res.Modes.AvailableModes, func(m modeInfo) bool { return m.ID == mode }) {
-		if _, err := s.ac.c.call(cctx, "session/set_mode", map[string]any{"sessionId": s.id, "modeId": mode}); err != nil {
+		if _, err := s.gen.c.call(cctx, "session/set_mode", map[string]any{"sessionId": s.id, "modeId": mode}); err != nil {
 			d.log.Warn("設定 session 模式失敗", "bot", o.BotID, "mode", mode, "err", err)
 		}
 	}
@@ -580,7 +673,7 @@ func (d *Driver) configure(ctx context.Context, s *session, res sessionResult, o
 		}
 		for _, v := range models {
 			if v.Value == o.Model {
-				if _, err := s.ac.c.call(cctx, "session/set_config_option", map[string]any{"sessionId": s.id, "configId": "model", "value": o.Model}); err != nil {
+				if _, err := s.gen.c.call(cctx, "session/set_config_option", map[string]any{"sessionId": s.id, "configId": "model", "value": o.Model}); err != nil {
 					d.log.Warn("設定模型失敗", "bot", o.BotID, "model", o.Model, "err", err)
 				}
 				return
@@ -633,7 +726,7 @@ func (d *Driver) applyEffort(ctx context.Context, s *session, botID, effort stri
 	if best == "" || best == cur {
 		return
 	}
-	if _, err := s.ac.c.call(ctx, "session/set_config_option", map[string]any{"sessionId": s.id, "configId": opt, "value": best}); err != nil {
+	if _, err := s.gen.c.call(ctx, "session/set_config_option", map[string]any{"sessionId": s.id, "configId": opt, "value": best}); err != nil {
 		d.log.Warn("設定思考強度失敗", "bot", botID, "effort", best, "err", err)
 		return
 	}
@@ -720,7 +813,7 @@ func (d *Driver) own(s engine.Session) (*session, error) {
 	if !ok {
 		return nil, errors.New("不是 ACP 的 session")
 	}
-	if !as.ac.c.alive() {
+	if !as.gen.c.alive() {
 		return nil, engine.ErrDisconnected
 	}
 	return as, nil
@@ -762,7 +855,7 @@ func (d *Driver) Send(ctx context.Context, s engine.Session, m engine.Message) e
 		prompt = append([]map[string]string{{"type": "text", "text": intro}}, prompt...)
 	}
 	params := map[string]any{"sessionId": as.id, "prompt": prompt}
-	_, err = as.ac.c.start("session/prompt", params, func(raw json.RawMessage, err error) { d.promptDone(as, raw, err) })
+	_, err = as.gen.c.start("session/prompt", params, func(raw json.RawMessage, err error) { d.promptDone(as, raw, err) })
 	if err != nil {
 		as.mu.Lock()
 		as.running = false
@@ -803,7 +896,7 @@ func (d *Driver) resumeAfterDeny(s *session, raw json.RawMessage) bool {
 	s.tail.Reset()
 	s.mu.Unlock()
 	params := map[string]any{"sessionId": s.id, "prompt": []map[string]string{{"type": "text", "text": DeniedNote}}}
-	if _, err := s.ac.c.start("session/prompt", params, func(raw json.RawMessage, err error) { d.promptDone(s, raw, err) }); err != nil {
+	if _, err := s.gen.c.start("session/prompt", params, func(raw json.RawMessage, err error) { d.promptDone(s, raw, err) }); err != nil {
 		d.log.Warn("拒絕後請 agent 接著做失敗", "bot", s.ac.botID, "err", err)
 		return false
 	}
@@ -994,9 +1087,9 @@ func (d *Driver) Interrupt(_ context.Context, s engine.Session) error {
 	}
 	ac.mu.Unlock()
 	for _, p := range open {
-		_ = ac.c.answer(p.id, cancelledOutcome)
+		_ = as.gen.c.answer(p.id, cancelledOutcome)
 	}
-	return ac.c.notify("session/cancel", map[string]string{"sessionId": as.id})
+	return as.gen.c.notify("session/cancel", map[string]string{"sessionId": as.id})
 }
 
 var cancelledOutcome = map[string]any{"outcome": map[string]string{"outcome": "cancelled"}}
@@ -1033,11 +1126,11 @@ func (d *Driver) Respond(_ context.Context, s engine.Session, requestID string, 
 	for _, k := range want {
 		for _, o := range p.options {
 			if o.Kind == k {
-				return ac.c.answer(p.id, map[string]any{"outcome": map[string]string{"outcome": "selected", "optionId": o.OptionID}})
+				return as.gen.c.answer(p.id, map[string]any{"outcome": map[string]string{"outcome": "selected", "optionId": o.OptionID}})
 			}
 		}
 	}
-	return ac.c.answer(p.id, cancelledOutcome)
+	return as.gen.c.answer(p.id, cancelledOutcome)
 }
 
 // Events 實作 engine.Driver。
@@ -1056,8 +1149,18 @@ func (d *Driver) Close(botID string) {
 	d.mu.Lock()
 	ac := d.bots[botID]
 	d.mu.Unlock()
-	if ac != nil && ac.c != nil {
-		ac.c.close()
+	// Round 10: Close all gens
+	if ac != nil {
+		ac.mu.Lock()
+		if ac.cur != nil && ac.cur.c != nil {
+			ac.cur.c.close()
+		}
+		for _, g := range ac.draining {
+			if g.c != nil {
+				g.c.close()
+			}
+		}
+		ac.mu.Unlock()
 	}
 }
 
@@ -1087,6 +1190,8 @@ func (d *Driver) CloseSession(s engine.Session) error {
 	as.mu.Unlock()
 
 	ac := as.ac
+	g := as.gen // Round 10: Session's generation
+
 	ac.mu.Lock()
 	delete(ac.sessions, as.id)
 	delete(ac.threads, as.threadID)
@@ -1097,26 +1202,51 @@ func (d *Driver) CloseSession(s engine.Session) error {
 		}
 	}
 
-	// B2 (2026-10-22): Decrement session count and signal waiters
-	ac.sessionCount--
-	ac.closedSessions++ // 2026-10-22p: Track closed sessions for agent restart decision
-	closedCount := ac.closedSessions
-	d.log.Info("Closed session", "bot", ac.botID, "session", as.id, "live_sessions", ac.sessionCount, "closed_not_reaped", closedCount, "cap", limits.ACPMaxSessionsPerBox)
-	ac.sessionWait.Signal()
+	// Round 10: Update generation counters
+	g.live--
+	g.closed++
+	d.log.Info("Closed session", "bot", ac.botID, "session", as.id, "live_sessions", len(ac.sessions), "gen_live", g.live, "gen_closed", g.closed)
 
-	// C1 (2026-10-22): NEVER restart agent from CloseSession path.
-	// Restarting here can set ac.c=nil while Start() is about to use it (after eviction),
-	// causing nil dereference panic at rpc.go:116 when Start() calls ac.c.call("session/new").
-	// Agent restart is now handled by a separate idle reaper goroutine that checks
-	// if closed sessions accumulate and all remaining sessions are idle.
+	// C4: Release semaphore
+	select {
+	case <-ac.sem:
+	default:
+	}
+
+	// Round 10: Trigger drain if closed >= 2 and this is current gen
+	if g.closed >= 2 && g == ac.cur && !g.draining {
+		g.draining = true
+		g.drainAt = time.Now()
+		ac.draining = append(ac.draining, g)
+		ac.cur = nil // Next Start will spawn new gen
+		d.log.Info("Triggering drain of current gen", "bot", ac.botID, "gen_live", g.live, "gen_closed", g.closed)
+	}
+
+	// Round 10: Kill gen if draining and no live sessions
+	shouldKill := g.draining && g.live == 0
+	if shouldKill {
+		// Remove from draining list
+		for i, dg := range ac.draining {
+			if dg == g {
+				ac.draining = append(ac.draining[:i], ac.draining[i+1:]...)
+				break
+			}
+		}
+	}
 	ac.mu.Unlock()
 
 	// 關掉 queue（停止事件流）
 	as.q.close()
 
 	// 如果正在跑，發 session/cancel 停下來
-	if running && ac.c != nil {
-		_ = ac.c.notify("session/cancel", map[string]string{"sessionId": as.id})
+	if running && g.c != nil {
+		_ = g.c.notify("session/cancel", map[string]string{"sessionId": as.id})
+	}
+
+	// Round 10: Kill drained gen process group
+	if shouldKill {
+		d.log.Info("Killing drained gen", "bot", ac.botID, "gen_closed", g.closed)
+		g.c.close()
 	}
 
 	return nil
@@ -1384,9 +1514,15 @@ func (d *Driver) background(ac *agentConn, params json.RawMessage) {
 
 // request 處理 agent 發來的請求：權限請求交給人（needs_approval）；XBot 沒宣告支援的檔案、終端機請求一律拒絕。
 func (d *Driver) request(ac *agentConn, r request) {
+	// Round 10: For non-permission requests, we don't have a session yet, use cur gen
 	if r.Method != "session/request_permission" {
-		if err := ac.c.refuse(r.ID, codeMethodNotFound, "XBot 不提供 "+r.Method); err != nil {
-			d.log.Debug("回覆 agent 請求失敗", "bot", ac.botID, "method", r.Method, "err", err)
+		ac.mu.Lock()
+		c := ac.cur
+		ac.mu.Unlock()
+		if c != nil && c.c != nil {
+			if err := c.c.refuse(r.ID, codeMethodNotFound, "XBot 不提供 "+r.Method); err != nil {
+				d.log.Debug("回覆 agent 請求失敗", "bot", ac.botID, "method", r.Method, "err", err)
+			}
 		}
 		return
 	}
@@ -1403,21 +1539,27 @@ func (d *Driver) request(ac *agentConn, r request) {
 	}
 	ac.mu.Unlock()
 	if s == nil {
-		_ = ac.c.answer(r.ID, cancelledOutcome)
+		// No session found, try cur gen
+		ac.mu.Lock()
+		c := ac.cur
+		ac.mu.Unlock()
+		if c != nil && c.c != nil {
+			_ = c.c.answer(r.ID, cancelledOutcome)
+		}
 		return
 	}
 	s.mu.Lock()
 	running, cancelling, mode := s.running, s.cancelling, s.mode
 	s.mu.Unlock()
 	if !running || cancelling {
-		_ = ac.c.answer(r.ID, cancelledOutcome)
+		_ = s.gen.c.answer(r.ID, cancelledOutcome)
 		return
 	}
 	if autoAllow(mode, params.ToolCall) {
 		for _, k := range []string{"allow_once", "allow_always"} {
 			for _, o := range params.Options {
 				if o.Kind == k {
-					if err := ac.c.answer(r.ID, map[string]any{"outcome": map[string]string{"outcome": "selected", "optionId": o.OptionID}}); err != nil {
+					if err := s.gen.c.answer(r.ID, map[string]any{"outcome": map[string]string{"outcome": "selected", "optionId": o.OptionID}}); err != nil {
 						d.log.Debug("代答權限請求失敗", "bot", ac.botID, "err", err)
 					}
 					return
