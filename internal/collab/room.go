@@ -393,19 +393,31 @@ func (s *Service) deriveCloser(ctx context.Context, room store.Room) (botID, bot
 	return "", ""
 }
 
-// isRoomConcluded 檢查群組是否已結案（2026-10-22b）。
-// 檢查最近 5 則訊息，看是否有 Conclusion: 訊息。
+// isRoomConcluded 檢查群組是否已結案（2026-10-22c：檢查結案後是否有新的使用者訊息）。
+// 如果最近的 Conclusion: 訊息之後有使用者發言，群組就不再是已結案狀態。
 func (s *Service) isRoomConcluded(ctx context.Context, roomID string) bool {
-	msgs, err := s.db.ListMessages(ctx, store.ScopeRoom, roomID, 0, 5)
+	// 讀取最近 20 則訊息，找出最新的 Conclusion 訊息和最新的 owner 訊息
+	msgs, err := s.db.ListMessages(ctx, store.ScopeRoom, roomID, 0, 20)
 	if err != nil {
 		return false
 	}
-	for _, msg := range msgs {
-		if strings.Contains(msg.Content, "Conclusion:") || strings.Contains(msg.Content, "Conclusion：") {
-			return true
+
+	// ListMessages 回傳的訊息是由舊到新排序，所以從後往前找最新的訊息
+	var conclusionTime, lastOwnerTime int64
+	for i := len(msgs) - 1; i >= 0; i-- {
+		msg := msgs[i]
+		if msg.Sender == "owner" && lastOwnerTime == 0 {
+			lastOwnerTime = msg.CreatedAt
+		}
+		if (strings.Contains(msg.Content, "Conclusion:") || strings.Contains(msg.Content, "Conclusion：")) && conclusionTime == 0 {
+			conclusionTime = msg.CreatedAt
 		}
 	}
-	return false
+
+	// 有 Conclusion 且最新的使用者訊息在 Conclusion 之前（或沒有使用者訊息）才算結案
+	concluded := conclusionTime > 0 && (lastOwnerTime == 0 || conclusionTime > lastOwnerTime)
+	s.log.Debug("isRoomConcluded check", "room", roomID, "conclusionTime", conclusionTime, "lastOwnerTime", lastOwnerTime, "concluded", concluded)
+	return concluded
 }
 
 // getConsecEmpty 取得群組的連續無進展次數（2026-10-22b）。
@@ -486,7 +498,7 @@ func (s *Service) Post(ctx context.Context, roomID, text, requestID string) (Pos
 	default:
 		targets, addressed, pickedBy, confidence = s.responders(ctx, room, bots, text)
 	}
-	meta := roomMeta{PickedBy: pickedBy, Confidence: confidence, RequestID: requestID}
+	meta := roomMeta{PickedBy: pickedBy, Confidence: confidence, RequestID: requestID, SenderHop: 0}
 	for _, m := range named {
 		meta.Mentions = append(meta.Mentions, m.ID)
 	}
@@ -606,20 +618,14 @@ func (s *Service) seat(ctx context.Context, room store.Room, botID, cause string
 		return nil
 	}
 
-	// 2026-10-22：攜帶 hop count 從 DM 到 room（防止 hop 重設）
-	// 2026-10-22b：讀取寄件者 chain 的 hop，而不是被叫醒 bot 的 task
-	hop := 0
-	// 嘗試找這個 Bot 最近在做什麼，看它的 chain hop
-	if activeThread, activeTaskID := s.rt.Active(botID); activeThread != "" {
-		if activeTask, ok := s.task(ctx, activeTaskID); ok {
-			activeMeta := metaOf(activeTask)
-			hop = activeMeta.Hop
-		}
-	}
-	// 如果沒有 active task，就看最近的訊息
-	if hop == 0 {
-		if recentMsgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Pair: []string{botID, ""}, Limit: 1}); err == nil && len(recentMsgs) > 0 {
-			hop = recentMsgs[0].Hop
+	// 2026-10-22c：Hop 從觸發訊息的 sender_hop 讀取並遞增
+	hop := 1
+	if cause != "" {
+		if trigMsg, err := s.db.GetMessage(ctx, cause); err == nil {
+			var trigMeta roomMeta
+			_ = json.Unmarshal(trigMsg.Meta, &trigMeta)
+			hop = trigMeta.SenderHop + 1
+			s.log.Debug("seat hop calc", "cause", cause, "senderHop", trigMeta.SenderHop, "hop", hop, "bot", botID)
 		}
 	}
 
@@ -790,12 +796,19 @@ func (s *Service) roomPrompt(ctx context.Context, task store.Task, m taskMeta) (
 	return b.String(), nil
 }
 
-// roomAnswer 把成員這一輪的回答貼到群組，並叫醒它 @ 的成員（LazyBoy room_answer）。輪數到上限時照貼、不再叫醒。
 func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, verdict, content string) {
+	s.log.Debug("roomAnswer called", "room", m.RoomID, "bot", task.BotID, "verdict", verdict, "content_preview", plain(content, 50))
 	room, err := s.db.GetRoom(ctx, m.RoomID)
 	if err != nil {
 		return // 群組刪掉了：座位跟著不見，回答也不貼
 	}
+
+	// 2026-10-22c：結案後不再貼訊息（除非使用者新發言解除結案）
+	if s.isRoomConcluded(ctx, room.ID) {
+		s.log.Info("群組已結案，不貼回答", "room", room.ID, "bot", task.BotID, "task", task.ID)
+		return
+	}
+
 	s.publish("", room.ID, "", KindRoomSeat, map[string]string{"room_id": room.ID, "bot_id": task.BotID, "state": "idle"})
 	if verdict == runtime.VerdictCancelled || verdict == runtime.VerdictInterrupted {
 		// 沒有真的讀完：下一輪從原本的地方讀起。
@@ -837,21 +850,19 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 
 	// 2026-10-22b：連續無進展自動停止（從 room 讀取，而非 task meta）
 	consecEmpty := s.getConsecEmpty(ctx, room.ID)
-	if !shouldSend || reason == "no_new_info" {
+	s.log.Debug("auto-stop check", "room", room.ID, "bot", task.BotID, "shouldSend", shouldSend, "reason", reason, "consecEmpty", consecEmpty)
+	if !shouldSend {
 		consecEmpty++
 		if consecEmpty >= 2 {
 			s.log.Info("連續 2 輪無新資訊，自動停止", "bot", task.BotID, "room", room.ID)
-			// 通知使用者
-			thread, _ := s.rt.Active(task.BotID)
-			if thread != "" {
-				_, _ = s.rt.Start(ctx, runtime.ChatRequest{
-					BotID:    task.BotID,
-					ThreadID: thread,
-					Text:     "[系統] 群組「" + room.Name + "」連續兩輪沒有新進展，已自動停止。",
-					Sender:   "system",
-					Queue:    true,
-				})
+			// 2026-10-22c：直接在群組加入系統提示，不產生新的 Bot 輪次
+			botName := ""
+			if b, err := s.db.GetBot(ctx, task.BotID); err == nil {
+				botName = b.Name
 			}
+			_, _ = s.addRoomMessage(ctx, room.ID, "system",
+				fmt.Sprintf("[系統] %s 連續兩輪沒有新進展，已自動停止。", botName),
+				roomMeta{Notice: "auto_stop", FromBotID: task.BotID, ConsecEmpty: consecEmpty})
 			return
 		}
 	} else {
@@ -879,7 +890,7 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	isConclusion := strings.Contains(content, "Conclusion:") || strings.Contains(content, "Conclusion：")
 
 	round := m.Round + 1
-	_, named, err := s.speak(ctx, room, task.BotID, text, roomMeta{TaskID: task.ID, Failed: failed, Round: m.Round, Conclusion: isConclusion, ConsecEmpty: consecEmpty}, round)
+	msg, named, err := s.speak(ctx, room, task.BotID, text, roomMeta{TaskID: task.ID, Failed: failed, Round: m.Round, Conclusion: isConclusion, ConsecEmpty: consecEmpty, SenderHop: m.Hop}, round)
 	if err != nil {
 		s.log.Warn("貼到群組失敗", "room", room.ID, "err", err)
 		return
@@ -899,7 +910,22 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 		}
 		return
 	}
-	s.wake(ctx, room, named, "mention", round, true)
+	// 2026-10-22c：純同意/filler 不叫醒其他人（防止 thanks 循環），除非是回答使用者的問題
+	isFillerMsg := !HasNewInformation(content) || ClassifyMessage(content) == ClassFiller
+	if isFillerMsg {
+		// 檢查觸發訊息是否來自 owner（使用者）
+		triggeredByUser := false
+		if m.TriggeringMsgID != "" {
+			if trigMsg, err := s.db.GetMessage(ctx, m.TriggeringMsgID); err == nil {
+				triggeredByUser = trigMsg.Sender == "owner"
+			}
+		}
+		if !triggeredByUser {
+			s.log.Debug("filler message not triggered by user, not waking others", "bot", task.BotID, "room", room.ID)
+			return
+		}
+	}
+	s.wake(ctx, room, named, msg.ID, round, true)
 }
 
 // speak 把 Bot 的話貼到群組，回傳那則訊息與它 @ 的成員（LazyBoy speak）。handoff 是被 @ 的成員醒來時的輪數；

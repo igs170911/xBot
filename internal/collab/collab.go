@@ -512,8 +512,13 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	}
 	om := metaOf(origin)
 	hop := 1
-	if hasOrigin && om.FromBot != "" {
-		hop = om.Hop + 1
+	if hasOrigin {
+		if om.Hop > 0 {
+			hop = om.Hop + 1
+		} else if om.FromBot != "" {
+			// Legacy: if FromBot is set but Hop is 0, assume hop 1
+			hop = 2
+		}
 	}
 	if hop > limits.MaxHops() && !o.Relay {
 		return SendResult{}, &Error{Code: CodeLimit, Msg: fmt.Sprintf("這段 Bot 之間的往來已經 %d 次了。先停下來，把目前結果回報給使用者，由使用者決定下一步。", limits.MaxHops())}

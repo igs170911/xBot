@@ -93,8 +93,10 @@ func IsAcknowledgement(text string) bool {
 	acknowledgements := []string{
 		"收到", "了解", "明白", "好的", "知道了", "謝謝", "感謝", "好", "行",
 		"不客氣", "不用謝", // 2026-10-22c：常見回覆
+		"同意", "我同意", // 2026-10-22c：純同意屬於 filler
 		"ok", "okay", "got it", "received", "understood", "thanks", "thank you",
 		"will do", "on it", "sure", "noted", "ack", "roger", "copy",
+		"agree", "agreed", // 2026-10-22c：英文同意
 	}
 
 	trimmed := strings.TrimRight(lower, "。！？!?.,;；，、")
@@ -128,7 +130,8 @@ func IsAcknowledgement(text string) bool {
 
 	// 單純的同意/認同，沒有補充
 	agreements := []string{
-		"同意", "沒問題", "可以", "沒錯", "對", "是的", "agree", "agreed", "sounds good", "fine",
+		"同意", "沒問題", "可以", "沒錯", "對", "是的",
+		"agree", "agreed", "sounds good", "fine",
 	}
 	for _, agr := range agreements {
 		if trimmed == agr {
@@ -159,6 +162,71 @@ func ClassifyMessage(text string) MessageClass {
 	}
 
 	lowerBody := strings.ToLower(body)
+
+	// 0. 先檢查是否只包含致謝/同意詞彙（2026-10-22c：防止純同意誤判為 handoff）
+	// 移除所有標點、空格、@mentions 後檢查剩餘詞彙
+	runes := []rune(body)
+	// 移除 @mentions
+	for i := 0; i < len(runes); {
+		if runes[i] == '@' {
+			// Find end of mention (alphanumeric, _, -, or CJK)
+			j := i + 1
+			for j < len(runes) {
+				r := runes[j]
+				if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') ||
+					(r >= '0' && r <= '9') || r == '_' || r == '-' ||
+					(r >= '\u4e00' && r <= '\u9fff') {
+					j++
+				} else {
+					break
+				}
+			}
+			// Remove from i to j
+			runes = append(runes[:i], runes[j:]...)
+		} else {
+			i++
+		}
+	}
+	cleaned := string(runes)
+
+	// 移除標點和空格
+	cleaned = strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
+			(r >= '0' && r <= '9') || (r >= '\u4e00' && r <= '\u9fff') {
+			return r
+		}
+		return ' '
+	}, cleaned)
+	words := strings.Fields(cleaned)
+
+	// 檢查是否所有詞彙都是致謝/同意詞
+	if len(words) > 0 {
+		allAckOrAgree := true
+		ackWords := []string{
+			"收到", "了解", "明白", "好的", "知道了", "謝謝", "感謝", "好", "行",
+			"不客氣", "不用謝", "同意", "我同意", "沒問題", "可以", "沒錯", "對", "是的",
+			"ok", "okay", "got", "it", "received", "understood", "thanks", "thank", "you",
+			"will", "do", "on", "sure", "noted", "ack", "roger", "copy",
+			"agree", "agreed", "sounds", "good", "fine",
+		}
+		for _, w := range words {
+			wLower := strings.ToLower(w)
+			found := false
+			for _, ack := range ackWords {
+				if wLower == ack {
+					found = true
+					break
+				}
+			}
+			if !found {
+				allAckOrAgree = false
+				break
+			}
+		}
+		if allAckOrAgree {
+			return ClassFiller
+		}
+	}
 
 	// 1. 優先檢查問題（避免被其他規則覆蓋）
 	if strings.Contains(body, "？") || strings.Contains(body, "?") ||
