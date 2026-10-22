@@ -228,7 +228,14 @@ func openStack(cfg config.Config) (*stack, error) {
 			}
 		}}
 	comp.Lessons = s.lessons.For
+	// 對話分流路由器（即時確認）：用快判判斷閒聊、查進度還是實際工作
+	router := &runtime.Router{
+		Decider:   s.judge,
+		FastModel: nil, // TODO: 配置快速聊天模型
+		Logger:    logger,
+	}
 	s.runtime = runtime.New(runtime.Options{DB: db, Driver: s.driver, Bus: bus, Models: comp, Logger: logger, OwnerNote: runtime.OwnerNote,
+		Router:     router,
 		Unfinished: s.lessons.Consider,
 		Admit: func(ctx context.Context, botID string, wait func(any)) (func(), error) {
 			return s.hosts.Admit(ctx, botID, func(w hosts.Wait) { wait(w) })
