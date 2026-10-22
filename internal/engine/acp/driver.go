@@ -424,6 +424,8 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 
 	// Reserve slot
 	ac.sessionCount++
+	// B2.4 (2026-10-22): Log session count for debugging
+	d.log.Info("Creating new session", "bot", o.BotID, "thread", o.ThreadID, "live_sessions", ac.sessionCount, "cap", limits.ACPMaxSessionsPerBox)
 	ac.mu.Unlock()
 
 	// B2.3 (2026-10-22): Snapshot MCP PIDs before session/new
