@@ -425,12 +425,15 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		
 		// 2026-10-22n (LEAK FIX 3): ctx-aware wait using channel
 		// sessionWait.Wait() ignores ctx and hangs (TestSessionCounterBasic hung for 642s)
+		// FIXED 2026-10-22p: Must keep mutex locked for Wait(), release in goroutine after signal
 		waitCh := make(chan struct{})
 		go func() {
+			ac.mu.Lock()
 			ac.sessionWait.Wait()
+			ac.mu.Unlock()
 			close(waitCh)
 		}()
-		ac.mu.Unlock() // Unlock before select to avoid deadlock
+		ac.mu.Unlock() // Unlock while waiting on channel
 		select {
 		case <-waitCh:
 			// Session became available

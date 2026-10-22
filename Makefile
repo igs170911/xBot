@@ -68,6 +68,9 @@ test-docker: ## Docker 整合測試（真的開 Bot 電腦，含對話端對端�
 test-race: ## 用 race detector 重複跑 Go 測試，抓偶發失敗（合併前建議跑）
 	$(RUN) go test -race -count=3 ./...
 
+leak-test: ## 執行 MCP 記憶體洩漏測試（需要 Docker）
+	$(RUN) go test -v -tags leak -run '^TestSession' ./internal/engine/acp/
+
 COUNT ?= 3
 bench: ## 效能基準（中介層、SSE 50 人、對話 1 萬則、待我處理 5000 張、用量 10 萬筆、事件補送）；結果記在 docs/perf.md
 	$(RUN) go test -run '^$$' -bench . -benchmem -count=$(COUNT) ./internal/ops/ ./internal/events/ ./internal/chat/ ./internal/inbox/ ./internal/usage/
