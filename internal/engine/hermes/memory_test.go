@@ -35,16 +35,17 @@ func TestSoulTellsHowToChangeAGroup(t *testing.T) {
 
 // 2026-10-20：回覆太長看不下去，要像傳訊息一樣短、分段傳。回話風格取代原本的四段報告格式；給隊友的不套。
 // 2026-10-21：講話不夠自然。口語、句子接得順、長度跟著問題走；拿掉「每段 40 字以內」和一句一段的電報範例。
+// 2026-10-22：改善忙碌感：「簡潔 = 點子少一點、每個點子說完整」取代「不要寫成電報」，reply-class 取代硬性字數限制。
 func TestSoulAsksForChatStyleReplies(t *testing.T) {
 	soul := Soul(Profile{Name: "水哥哥"})
-	for _, want := range []string{"## 回話風格", "講話自然的朋友", "句子之間接得順", "不要寫成電報", "長度跟著需要走", "段落之間空一行", "直接給答案和理由",
-		"一題自己一段", "其他專案", "不要寫「無」", "工具之間也不要寫旁白", "不要用 # 標題和 ** 粗體", "兩件事的比較寫成兩句話", "存成 /workspace 裡的檔案", "看使用者之後會不會再用", "/workspace/tmp/",
+	for _, want := range []string{"## 回話風格", "講話自然的朋友", "句子之間接得順", "簡潔 = 點子少一點", "不是寫成電報句", "大小跟著需要走", "段落之間空一行", "直接給答案和理由",
+		"一題自己一段", "其他專案", "也不寫「無」", "工具之間也不要寫旁白", "不要用 # 標題和 ** 粗體", "兩件事的比較寫成兩句話", "存成 /workspace 裡的檔案", "看使用者之後會不會再用", "/workspace/tmp/",
 		"```mermaid", "所以沒算進去。要照 A 店的價格調嗎？\n\n", "給隊友的訊息", "（回話提醒："} {
 		if !strings.Contains(soul, want) {
 			t.Fatalf("少了 %q：%s", want, soul)
 		}
 	}
-	for _, gone := range []string{"**結論**", "四段", "區分已完成、估計和未取得的資料", "40 個字", "傳訊息給老闆", "一次最多 4 段"} {
+	for _, gone := range []string{"**結論**", "四段", "區分已完成、估計和未取得的資料", "40 個字", "傳訊息給老闆", "一次最多 4 段", "三到五句"} {
 		if strings.Contains(soul, gone) {
 			t.Fatalf("不該再有 %q：%s", gone, soul)
 		}
@@ -65,8 +66,9 @@ func TestSoulSaysWhenToUseTools(t *testing.T) {
 	}
 }
 
+// 2026-10-22：Reply-class 取代硬性長度限制，檢查各模式有對應的指引。
 func TestSoulFollowsTheReplyStyleSetting(t *testing.T) {
-	cases := map[ReplyStyle]string{"": "簡單的問題三到五句", ReplyBrief: "簡單的問題三到五句", ReplyNormal: "需要時最多六段", ReplyDetailed: "可以完整說明", "loud": "簡單的問題三到五句"}
+	cases := map[ReplyStyle]string{"": "簡單問題或事實", ReplyBrief: "簡單問題或事實", ReplyNormal: "需要時最多 6 段", ReplyDetailed: "完整說明", "loud": "簡單問題或事實"}
 	for style, want := range cases {
 		if soul := Soul(Profile{Name: "A", ReplyStyle: style}); !strings.Contains(soul, want) {
 			t.Fatalf("%q 要有 %q：%s", style, want, soul)
@@ -97,13 +99,15 @@ func TestPersonaOnlyDropsGeneratedRules(t *testing.T) {
 
 // 2026-10-20：「要我持續確認，他才會開始動作」。交代的事直接做到完成，不問「要開始嗎」、不說「接下來去做」就停；
 // 2026-10-21：「現在好破碎」：使用者要建團隊就一次建完整，只有 Bot 自己想找隊友時先確認計畫。
+// 2026-10-22：多步驟工作先說計畫、報里程碑、給結論；保留「完整做」的例子（建團隊）但改強調規劃。
 func TestSoulSaysFinishWhatYouStart(t *testing.T) {
 	soul := Soul(Profile{Name: "水哥哥"})
-	for _, want := range []string{"直接做到完成", "不要停下來問「要開始嗎」", "說要做的同一輪就做完", "先照假設做", "一次做完整", "報告線、群組一起建好", "你自己想找隊友分工或建新 Bot 時", "沒真的查過不要說研究過", "子代理（delegate_task）不是隊友"} {
+	for _, want := range []string{"多步驟工作：先說一行計畫", "完成時給結論", "先照假設做", "直接做完整套", "報告線、群組一起建好", "你自己想找隊友分工或建新 Bot 時", "沒真的查過不要說研究過", "子代理（delegate_task）不是隊友"} {
 		if !strings.Contains(soul, want) {
 			t.Fatalf("少了 %q：%s", want, soul)
 		}
 	}
+	// 2026-10-22：刪掉反規劃的指令（「不要停下來問」「說要做的同一輪就做完」），改成正面的規劃要求。
 	if strings.Contains(soul, "建 Bot 或團隊之前，先列計畫") {
 		t.Fatal("使用者要建的團隊也先確認計畫，就做一部分停一次")
 	}
