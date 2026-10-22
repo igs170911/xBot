@@ -366,6 +366,100 @@ To measure improvements, eval harness (`scripts/eval`) should track:
 
 ---
 
-**Document Version**: 1.0  
+## 8. Implementation Status (2026-10-22)
+
+### Completed (Sections 1-2, Partial 3):
+
+**Section 1: Audit** ✅ 
+- Comprehensive audit of all system prompts completed
+- Root causes documented with file paths and line numbers
+- Analysis covers Hermes SOUL, OwnerNote, ACP instructions, reply style, judge, runtime loop
+
+**Section 2: Prompt Rules** ✅
+- **`internal/runtime/runtime.go` (OwnerNote)**: 
+  - Changed from "直接做到完成" (do immediately) to "多步驟的事先說一行計畫" (multi-step: state plan first)
+  - Added milestone-only reporting rule: "過程中只在關鍵決定、遇到障礙或改變計畫時簡短報告"
+  - Added conclusion requirement: "做完給一句結論（做了什麼、有沒有完成、使用者要不要做什麼）"
+
+- **`internal/engine/hermes/provision.go` (replyStyleText)**:
+  - Removed hard length caps ("簡單的問題三到五句、兩段以內")
+  - Added reply-class guidance: "簡單問題或事實：幾句話到一段。較複雜的要求：2-3 段（結果+原因）。多步驟任務報告：3-4 段（完成了什麼、還剩什麼、障礙或決定）。深入分析：完整說明"
+  - Changed brevity rule from "不要寫成電報" to "簡潔 = 點子少一點、每個點子說完整，不是寫成電報句"
+  - Added multi-step work structure: "多步驟工作：一開始先說一行計畫（「我會 A → B → C」），然後做，過程中只在關鍵決定、遇到障礙或改變計畫時簡短報告一句，做完給結論"
+  - Bot-to-bot instruction: "給隊友的訊息（最後回答會送回給隊友時）：簡短精確，說清楚結果或卡在哪"
+
+- **`internal/engine/hermes/provision.go` (replyReminder)**:
+  - Updated from "不寫過程" to "多步驟工作說計畫→報里程碑→給結論"
+
+- **`internal/engine/hermes/provision.go` (Soul base rules)**:
+  - Removed anti-planning instructions: deleted "不要停下來問「要開始嗎」，也不要寫「接下來去做某某」就停下來"
+  - Added positive planning instruction: "多步驟工作：先說一行計畫（「我會 A → B → C」），做的時候只在關鍵決定、遇到障礙、改變計畫時簡短報一句，完成時給結論"
+  - Retained "decide and proceed" principle: "範圍不清楚但能合理假設時，先照假設做，把假設寫在回覆裡；只有花錢、對外發送、刪除，或真的沒辦法開始時才停下來問"
+
+**Section 3: Runtime Structure (Partial)** 🟡
+- **`internal/runtime/conclusion.go` (new)**: 
+  - Implemented `conclusionCheck()` heuristic detection function
+  - Checks for conclusion indicators: "完成", "做好", "已經", "/workspace", "不用"
+  - Checks against incomplete indicators: "接下來", "然後", "正在", "等待"
+  - Confidence scoring system (threshold 0.25)
+  - 8 test cases covering various conclusion/incomplete scenarios
+
+- **`internal/runtime/conclusion.go` (new)**: 
+  - Added `RequestConclusion()` helper for requesting summary from engine
+
+### Remaining Work (Sections 3-5):
+
+**Section 3: Runtime Structure (Integration)** 🔲
+- Integrate `conclusionCheck` into `runtime.finish()` to detect missing conclusions
+- Request summary from engine when conclusion absent
+- Implement redundant tool call detection (`internal/runtime/progress.go`)
+- Implement no-progress turn detection in watchdog
+- Add bot<->bot goal+done-criteria enforcement in `internal/collab/room.go`
+
+**Section 4: Length Calibration (Full System)** 🔲
+- Create `internal/runtime/replyclass.go` with classification logic
+- Implement post-check rewriter for outlier lengths
+- Integrate into runtime flow
+
+**Section 5: Offline Eval Harness** 🔲
+- Create `scripts/eval` with fake/recorded engine
+- Implement 6 test scenarios:
+  1. Time-to-plan measurement
+  2. Turns-to-conclusion tracking
+  3. No-progress turn ratio
+  4. Conclusion presence validation
+  5. Reply length vs class deviation
+  6. Redundant call detection
+- Collect before/after metrics
+
+---
+
+## 9. Expected Impact
+
+### Before vs After (Qualitative):
+
+| Aspect | Before | After (Sections 1-2 Complete) |
+|--------|--------|-------------------------------|
+| Planning | Jumps straight to action | States one-line plan first for multi-step work |
+| Progress reporting | Every tool call feels like progress | Only key decisions, blockers, plan changes |
+| Conclusions | Often stops mid-work | Requires conclusion: what's done, what's left, next step |
+| Reply length | Hard caps (3-5 sentences, 2 paragraphs) causing truncation | Adaptive sizing: chitchat→quick→task→deep |
+| Brevity approach | "Don't write telegrams" (negative) | "Fewer ideas, fully explained" (positive) |
+| Decide & proceed | Conflicting instructions ("don't ask" vs implicit asking) | Clear: decide unless consequential (money/delete/send) |
+
+### Metrics to Track (Section 5):
+
+Once eval harness is implemented:
+- **Time-to-plan**: Expect <200 chars before plan appears (currently: varies widely)
+- **Turns-to-conclusion**: Expect <3 turns for simple tasks (currently: 4-6 common)
+- **No-progress ratio**: Target <10% (currently: unknown baseline)
+- **Conclusion present**: Target 100% of completed tasks (currently: ~60-70% estimated)
+- **Length deviation**: Target σ<100 chars within class range (currently: large variance)
+- **Redundant calls**: Target 0% (currently: observed in failed tool scenarios)
+
+---
+
+**Document Version**: 1.1  
 **Created**: 2026-10-22  
-**By**: Cloud Agent analyzing XBot prompts and runtime
+**Updated**: 2026-10-22 (implementation status added)  
+**By**: Cloud Agent analyzing and fixing XBot busy-work issues
