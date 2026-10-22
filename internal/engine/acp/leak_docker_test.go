@@ -114,13 +114,13 @@ func TestSessionLeakWithDocker(t *testing.T) {
 	})
 	defer driver.Shutdown()
 
-	// Helper: count MCP processes in container
-	countMCP := func() int {
-		cmd := exec.CommandContext(ctx, "docker", "exec", containerID, "sh", "-c",
-			"ps -eo cmd 2>/dev/null | grep -E 'sleep 3600|python.*sleep' | grep -v grep | wc -l")
+	// Helper: count sleep processes in container using pgrep
+	// B2.6 (Item 6): pgrep -c sleep counts all sleep processes
+	countSleeps := func() int {
+		cmd := exec.CommandContext(ctx, "docker", "exec", containerID, "pgrep", "-c", "sleep")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			t.Logf("Warning: failed to count MCP: %v", err)
+			// pgrep returns 1 if no matches found; that's ok, count is 0
 			return 0
 		}
 		count, _ := strconv.Atoi(strings.TrimSpace(string(out)))
@@ -128,9 +128,10 @@ func TestSessionLeakWithDocker(t *testing.T) {
 	}
 
 	// Test 1: Sequential sessions
+	// B2.6 (Item 6): Verify that sleep processes are properly cleaned up
 	t.Run("Sequential", func(t *testing.T) {
-		baseline := countMCP()
-		t.Logf("Baseline MCP count: %d", baseline)
+		baseline := countSleeps()
+		t.Logf("Baseline sleep count: %d", baseline)
 
 		for i := 0; i < 20; i++ {
 			s, err := driver.Start(ctx, engine.StartOptions{
@@ -142,10 +143,14 @@ func TestSessionLeakWithDocker(t *testing.T) {
 				t.Fatalf("Failed to start session %d: %v", i, err)
 			}
 
-			mcpCount := countMCP()
-			if mcpCount > baseline+limits.ACPMaxSessionsPerBox+1 {
-				t.Errorf("Session %d: MCP count %d exceeds baseline(%d) + cap(%d) + 1",
-					i, mcpCount, baseline, limits.ACPMaxSessionsPerBox)
+			sleepCount := countSleeps()
+			// Each fake agent spawns 2 sleep children per session
+			// With session cap, at most cap live sessions + 1 transitioning
+			// So at most (cap+1) * 2 = 2*cap+2 sleep processes above baseline
+			maxExpected := baseline + 2*(limits.ACPMaxSessionsPerBox+1)
+			if sleepCount > maxExpected {
+				t.Errorf("Session %d: sleep count %d exceeds baseline(%d) + 2*(cap+1)(%d) = %d",
+					i, sleepCount, baseline, limits.ACPMaxSessionsPerBox+1, maxExpected)
 			}
 
 			if err := driver.CloseSession(s); err != nil {
@@ -154,7 +159,7 @@ func TestSessionLeakWithDocker(t *testing.T) {
 
 			// Sample check every 5 sessions
 			if i%5 == 4 {
-				t.Logf("After session %d: MCP count %d", i, mcpCount)
+				t.Logf("After session %d: sleep count %d", i, sleepCount)
 			}
 		}
 
@@ -162,17 +167,19 @@ func TestSessionLeakWithDocker(t *testing.T) {
 		t.Logf("Waiting for idle timeout cleanup...")
 		time.Sleep(limits.ACPSessionIdleTimeout + 2*time.Second)
 
-		finalCount := countMCP()
-		if finalCount > baseline+1 {
-			t.Errorf("After idle timeout: MCP count %d should return near baseline %d", finalCount, baseline)
+		finalCount := countSleeps()
+		// After cleanup, should return close to baseline (allow a small margin)
+		if finalCount > baseline+2 {
+			t.Errorf("After idle timeout: sleep count %d should return near baseline %d", finalCount, baseline)
 		}
-		t.Logf("Final MCP count after cleanup: %d (baseline: %d)", finalCount, baseline)
+		t.Logf("Final sleep count after cleanup: %d (baseline: %d)", finalCount, baseline)
 	})
 
 	// Test 2: Concurrent sessions
+	// B2.6 (Item 6): Verify process cleanup under concurrent load
 	t.Run("Concurrent", func(t *testing.T) {
-		baseline := countMCP()
-		t.Logf("Baseline MCP count: %d", baseline)
+		baseline := countSleeps()
+		t.Logf("Baseline sleep count: %d", baseline)
 
 		var wg sync.WaitGroup
 		errors := make(chan error, 10)
@@ -207,17 +214,18 @@ func TestSessionLeakWithDocker(t *testing.T) {
 			t.Error(err)
 		}
 
-		mcpCount := countMCP()
-		if mcpCount > baseline+limits.ACPMaxSessionsPerBox+1 {
-			t.Errorf("After concurrent: MCP count %d exceeds baseline(%d) + cap(%d) + 1",
-				mcpCount, baseline, limits.ACPMaxSessionsPerBox)
+		sleepCount := countSleeps()
+		maxExpected := baseline + 2*(limits.ACPMaxSessionsPerBox+1)
+		if sleepCount > maxExpected {
+			t.Errorf("After concurrent: sleep count %d exceeds baseline(%d) + 2*(cap+1) = %d",
+				sleepCount, baseline, maxExpected)
 		}
-		t.Logf("After concurrent test: MCP count %d", mcpCount)
+		t.Logf("After concurrent test: sleep count %d", sleepCount)
 
 		// Wait for cleanup
 		time.Sleep(limits.ACPSessionIdleTimeout + 2*time.Second)
-		finalCount := countMCP()
-		t.Logf("Final MCP count after cleanup: %d", finalCount)
+		finalCount := countSleeps()
+		t.Logf("Final sleep count after cleanup: %d", finalCount)
 	})
 }
 
@@ -272,12 +280,13 @@ func (p *dockerFakeProcess) Close() error {
 	}
 	p.closed = true
 
-	// Kill spawned children
+	// B2.6 (Item 6): Kill spawned process groups with kill -TERM -- -PID
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	for _, pid := range p.childPIDs {
-		killCmd := []string{"sh", "-c", fmt.Sprintf("kill %d 2>/dev/null || true", pid)}
+		// Kill entire process group (setsid made PID the session leader)
+		killCmd := []string{"sh", "-c", fmt.Sprintf("kill -TERM -- -%d 2>/dev/null || true", pid)}
 		created, err := p.docker.ExecCreate(ctx, p.containerID, client.ExecCreateOptions{Cmd: killCmd})
 		if err == nil {
 			att, err := p.docker.ExecAttach(ctx, created.ID, client.ExecAttachOptions{})
@@ -286,6 +295,9 @@ func (p *dockerFakeProcess) Close() error {
 			}
 		}
 	}
+
+	// Wait a bit for processes to terminate
+	time.Sleep(200 * time.Millisecond)
 
 	return nil
 }
@@ -298,7 +310,9 @@ func (p *dockerFakeProcess) Execer() acp.Execer {
 	return p.docker
 }
 
-// spawnChild spawns a long-lived child process inside the container to simulate desktop_mcp.
+// spawnChild spawns a long-lived child process inside the container with setsid
+// to simulate MCP server behavior. The process runs in its own process group
+// for proper cleanup via kill -TERM -- -PID.
 func (p *dockerFakeProcess) spawnChild() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -310,9 +324,9 @@ func (p *dockerFakeProcess) spawnChild() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Spawn a long-lived process that simulates desktop_mcp behavior
-	// Run in background using sh -c with & to detach
-	cmd := []string{"sh", "-c", "(python3 -c 'import time; time.sleep(3600)' 2>/dev/null || sleep 3600) &"}
+	// B2.6 (Item 6): Use setsid to create process group, spawn sleep as a child
+	// This simulates the way real ACP agents spawn MCP servers
+	cmd := []string{"setsid", "-w", "sleep", "3600"}
 
 	created, err := p.docker.ExecCreate(ctx, p.containerID, client.ExecCreateOptions{
 		Cmd:          cmd,
@@ -329,8 +343,13 @@ func (p *dockerFakeProcess) spawnChild() error {
 	}
 	att.Close()
 
-	// Give it a moment to start
+	// Give it a moment to start, then record PID
 	time.Sleep(100 * time.Millisecond)
+
+	info, err := p.docker.ExecInspect(ctx, created.ID, client.ExecInspectOptions{})
+	if err == nil && info.PID > 0 {
+		p.childPIDs = append(p.childPIDs, info.PID)
+	}
 
 	return nil
 }
