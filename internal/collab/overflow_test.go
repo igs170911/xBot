@@ -10,7 +10,6 @@ import (
 
 // TestRoomOverflowWritesToSpeaker tests that overflow files are written to the speaking bot's storage, not the owner
 func TestRoomOverflowWritesToSpeaker(t *testing.T) {
-	t.Skip("Temporarily skipped: requires peer judge tuning for test fixtures (2026-10-22h)")
 	tm := setup(t)
 	chief, writer := tm.bots["Chief"], tm.bots["Writer"]
 
@@ -19,23 +18,27 @@ func TestRoomOverflowWritesToSpeaker(t *testing.T) {
 		ResponderRule: store.RuleEveryone, // Ensure Chief gets queued
 	}))
 
-	// Post a very long message from Chief
-	longText := strings.Repeat("This is a very long room post that will definitely exceed the 200 character limit for room posts. ", 10) // ~1000 chars
+	// Post a very long message
+	longText := strings.Repeat("User posts a very long message here with lots of content. ", 18) // ~1000 chars
 
 	must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, longText, ""))
 
-	// Chief responds with the long text
+	// Chief responds with DIFFERENT text to avoid duplicate detection
 	task1 := tm.queued(chief)[0]
 	tm.start(task1)
-	tm.finish(task1.ID, runtime.VerdictAnswer, longText)
+	botResponse := strings.Repeat("Bot responds with detailed analysis and important findings. ", 18) // ~1000 chars
+	tm.finish(task1.ID, runtime.VerdictAnswer, botResponse)
 
 	// Check room messages
 	msgs := tm.roomLog(room.ID)
 	t.Logf("Room has %d messages", len(msgs))
+	for i, m := range msgs {
+		t.Logf("  Message %d: sender=%s, len=%d", i, m.Sender, len(m.Content))
+	}
 
 	var chiefMsg *store.Message
 	for i := range msgs {
-		if strings.HasPrefix(msgs[i].Sender, "bot:") && msgs[i].Content != "" && len([]rune(msgs[i].Content)) > 100 {
+		if strings.HasPrefix(msgs[i].Sender, "bot:") && msgs[i].Content != "" {
 			chiefMsg = &msgs[i]
 			break
 		}
@@ -75,8 +78,8 @@ func TestRoomOverflowWritesToSpeaker(t *testing.T) {
 		t.Fatalf("Failed to read file from Chief's storage: %v", err)
 	}
 
-	if string(fileContent) != longText {
-		t.Errorf("File content doesn't match original text")
+	if string(fileContent) != botResponse {
+		t.Errorf("File content doesn't match original bot response text")
 	}
 
 	// Verify it's NOT in the owner's (room creator's) storage - should fail
@@ -88,7 +91,6 @@ func TestRoomOverflowWritesToSpeaker(t *testing.T) {
 
 // TestRoomOverflowWriteFailureKeepsFullText tests that if file write fails, full text is posted
 func TestRoomOverflowWriteFailureKeepsFullText(t *testing.T) {
-	t.Skip("Temporarily skipped: requires peer judge tuning for test fixtures (2026-10-22h)")
 	tm := setup(t)
 	chief, writer := tm.bots["Chief"], tm.bots["Writer"]
 
@@ -102,10 +104,11 @@ func TestRoomOverflowWriteFailureKeepsFullText(t *testing.T) {
 
 	must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, longText, ""))
 
-	// Chief responds with the long text
+	// Chief responds with DIFFERENT text to avoid duplicate detection
 	task1 := tm.queued(chief)[0]
 	tm.start(task1)
-	tm.finish(task1.ID, runtime.VerdictAnswer, longText)
+	botResponse := strings.Repeat("My response contains important details about the situation and analysis. ", 10) // ~700 chars
+	tm.finish(task1.ID, runtime.VerdictAnswer, botResponse)
 
 	// Check room messages
 	msgs := tm.roomLog(room.ID)
@@ -135,7 +138,6 @@ func TestRoomOverflowWriteFailureKeepsFullText(t *testing.T) {
 
 // TestRoomOverflowLinkCountsTowardCap tests that the link line counts toward the 200-char cap
 func TestRoomOverflowLinkCountsTowardCap(t *testing.T) {
-	t.Skip("Temporarily skipped: requires peer judge tuning for test fixtures (2026-10-22h)")
 	tm := setup(t)
 	chief, writer := tm.bots["Chief"], tm.bots["Writer"]
 
@@ -149,10 +151,11 @@ func TestRoomOverflowLinkCountsTowardCap(t *testing.T) {
 
 	must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, longText, ""))
 
-	// Chief responds with the long text
+	// Chief responds with DIFFERENT text to avoid duplicate detection
 	task1 := tm.queued(chief)[0]
 	tm.start(task1)
-	tm.finish(task1.ID, runtime.VerdictAnswer, longText)
+	botResponse := strings.Repeat("Here is my comprehensive response with detailed analysis and findings. ", 16) // ~1100 chars
+	tm.finish(task1.ID, runtime.VerdictAnswer, botResponse)
 
 	// Check room messages
 	msgs := tm.roomLog(room.ID)

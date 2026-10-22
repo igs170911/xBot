@@ -58,5 +58,10 @@
     "需要你核准：這個改動會影響所有現有使用者。",
     "已部署到測試環境，連結是 https://test.example.com。",
     "Conclusion: 專案完成，所有測試通過，文件已更新。"
-  ]
+  ],
+  "g2_scenario": {
+    "relay_pattern": "@{next} 這段我做好了，換你接著做",
+    "interrupt_pattern": "等一下，我來改",
+    "assigned_pattern": "@{bot} 你負責{task}"
+  }
 }

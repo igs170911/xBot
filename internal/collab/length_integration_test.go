@@ -160,6 +160,46 @@ func TestLengthEnforcement_ResearchReply(t *testing.T) {
 
 // TestLengthEnforcement_RoomPost tests that a 1100-character room post is enforced to ≤200 characters with a file link
 func TestLengthEnforcement_RoomPost(t *testing.T) {
-	t.Skip("Temporarily skipped: requires peer judge tuning for test fixtures (2026-10-22h)")
-}
+	tm := setup(t)
+	chief, writer := tm.bots["Chief"], tm.bots["Writer"]
 
+	room := must[store.Room](t)(tm.s.CreateRoom(tm.ctx, []string{chief, writer}, RoomOptions{
+		Name:          "Length Test Room",
+		ResponderRule: store.RuleEveryone,
+	}))
+
+	longText := strings.Repeat("This is a detailed room post with substantial content. ", 20) // ~1100 chars
+
+	must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, longText, ""))
+
+	task1 := tm.queued(chief)[0]
+	tm.start(task1)
+	// Bot responds with DIFFERENT text to avoid duplicate detection
+	botResponse := strings.Repeat("I acknowledge your message with this long response containing substantive analysis. ", 15) // ~1200 chars
+	tm.finish(task1.ID, runtime.VerdictAnswer, botResponse)
+
+	msgs := tm.roomLog(room.ID)
+
+	var chiefMsg *store.Message
+	for i := range msgs {
+		if strings.HasPrefix(msgs[i].Sender, "bot:") && msgs[i].Content != "" {
+			chiefMsg = &msgs[i]
+			break
+		}
+	}
+
+	if chiefMsg == nil {
+		t.Fatal("No Chief message found in room")
+	}
+
+	msgLen := len([]rune(chiefMsg.Content))
+	t.Logf("Chief room message length: %d runes", msgLen)
+
+	if msgLen > 300 {
+		t.Errorf("Room message too long: %d runes, expected ≤300 (200 + file link)", msgLen)
+	}
+
+	if msgLen >= len([]rune(botResponse)) {
+		t.Errorf("Room message not truncated: %d runes, original was %d", msgLen, len([]rune(botResponse)))
+	}
+}

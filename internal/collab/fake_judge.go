@@ -22,6 +22,11 @@ func newFakeJudge() (*fakeJudge, error) {
 	var fixtures struct {
 		Filler []string `json:"filler"`
 		Real   []string `json:"real"`
+		G2     struct {
+			RelayPattern     string `json:"relay_pattern"`
+			InterruptPattern string `json:"interrupt_pattern"`
+			AssignedPattern  string `json:"assigned_pattern"`
+		} `json:"g2_scenario"`
 	}
 	if err := json.Unmarshal(data, &fixtures); err != nil {
 		return nil, err
@@ -38,6 +43,14 @@ func newFakeJudge() (*fakeJudge, error) {
 	for _, r := range fixtures.Real {
 		fj.real[r] = true
 	}
+
+	// Add G2 scenario patterns as real content (handle)
+	// These are relay messages like "@Scout 這段我做好了，換你接著做"
+	for _, bot := range []string{"Chief", "Scout", "Writer"} {
+		msg := strings.Replace(fixtures.G2.RelayPattern, "{next}", bot, -1)
+		fj.real[msg] = true
+	}
+	fj.real[strings.Replace(fixtures.G2.InterruptPattern, "{bot}", "Chief", -1)] = true
 
 	return fj, nil
 }
