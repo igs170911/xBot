@@ -141,6 +141,10 @@ type session struct {
 	// all 是這一輪全部的回覆文字；tail 是最後一次呼叫工具之後的文字。用工具前說的「我先看一下…」不算最後的回答
 	// （同 Hermes 的 interim message；2026-10-19 Grok 的 Bot 把開頭那句一起交回給隊友）。
 	all, tail strings.Builder
+	// lastUsed 是這個 session 最後使用的時間（2026-10-22：資源洩漏修復，LRU 淘汰閒置 session）。
+	lastUsed time.Time
+	// closed 標示這個 session 已被關閉（2026-10-22）。
+	closed bool
 }
 
 func (s *session) ID() string { return s.id }
@@ -383,7 +387,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		id = res.SessionID
 	}
 	s := &session{ac: ac, id: id, threadID: o.ThreadID, mode: o.Mode, tools: map[string]*toolState{}, bg: map[string]string{},
-		shown: map[string]bool{}, dropped: map[string]bool{}, q: newQueue()}
+		shown: map[string]bool{}, dropped: map[string]bool{}, q: newQueue(), lastUsed: time.Now()}
 	if inst != "" && !d.o.Agent.SystemPrompt && !d.o.Agent.Rules && !loaded {
 		s.intro = IntroText(inst)
 	}
@@ -397,6 +401,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	ac.threads[o.ThreadID] = s
 	ac.mu.Unlock()
 	d.configure(ctx, s, res, o)
+	d.evictOldSessions(ac) // 2026-10-22：檢查是否超過 session 上限，淘汰舊的
 	return s, nil
 }
 
@@ -590,6 +595,7 @@ func (d *Driver) Send(ctx context.Context, s engine.Session, m engine.Message) e
 		return ErrBusy
 	}
 	as.running, as.cancelling, as.denied, as.resumes = true, false, false, 0
+	as.lastUsed = time.Now() // 2026-10-22：記錄使用時間
 	intro := as.intro
 	as.intro = ""
 	as.mu.Unlock()
@@ -894,6 +900,85 @@ func (d *Driver) Close(botID string) {
 	d.mu.Unlock()
 	if ac != nil && ac.c != nil {
 		ac.c.close()
+	}
+}
+
+// CloseSession 關閉一個 session（2026-10-22：資源洩漏修復）：取消進行中的一輪、從登記裡移除、關閉 queue。
+// agent 行程（與其子行程）仍由所有 session 共用；沒有 session 時 disconnected 會關掉它。
+// 任務、房間一輪、judge 呼叫結束時使用，確保 MCP 子行程不會累積。
+func (d *Driver) CloseSession(s engine.Session) error {
+	as, ok := s.(*session)
+	if !ok {
+		return errors.New("不是 ACP 的 session")
+	}
+	as.mu.Lock()
+	if as.closed {
+		as.mu.Unlock()
+		return nil // 已關閉
+	}
+	as.closed = true
+	running := as.running
+	if running {
+		as.cancelling = true
+	}
+	if as.holding {
+		as.unhold()
+	}
+	as.abandon()
+	as.mu.Unlock()
+
+	ac := as.ac
+	ac.mu.Lock()
+	delete(ac.sessions, as.id)
+	delete(ac.threads, as.threadID)
+	// 清掉這個 session 等待中的權限請求
+	for k, p := range ac.requests {
+		if p.session == as.id {
+			delete(ac.requests, k)
+		}
+	}
+	ac.mu.Unlock()
+
+	// 關掉 queue（停止事件流）
+	as.q.close()
+
+	// 如果正在跑，發 session/cancel 停下來
+	if running {
+		_ = ac.c.notify("session/cancel", map[string]string{"sessionId": as.id})
+	}
+
+	return nil
+}
+
+// evictOldSessions（2026-10-22）：檢查 session 數是否超過 limits.ACPMaxSessionsPerBox，超過時關閉最久沒用的。
+func (d *Driver) evictOldSessions(ac *agentConn) {
+	ac.mu.Lock()
+	sessions := make([]*session, 0, len(ac.sessions))
+	for _, s := range ac.sessions {
+		sessions = append(sessions, s)
+	}
+	ac.mu.Unlock()
+
+	if len(sessions) <= limits.ACPMaxSessionsPerBox {
+		return
+	}
+
+	// 按 lastUsed 排序，最舊的在前
+	slices.SortFunc(sessions, func(a, b *session) int {
+		return a.lastUsed.Compare(b.lastUsed)
+	})
+
+	// 關掉超出上限的舊 session（保留最近的 ACPMaxSessionsPerBox 個）
+	toClose := len(sessions) - limits.ACPMaxSessionsPerBox
+	for i := 0; i < toClose; i++ {
+		s := sessions[i]
+		s.mu.Lock()
+		running := s.running
+		s.mu.Unlock()
+		if !running { // 只關閉閒置的 session
+			d.log.Info("淘汰閒置 session", "bot", ac.botID, "session", s.id, "thread", s.threadID)
+			_ = d.CloseSession(s)
+		}
 	}
 }
 

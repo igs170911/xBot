@@ -823,6 +823,17 @@ func (r *Runtime) finishErr(t *turn, err error) {
 
 // finish 寫下最後的回覆、結束任務、發布 done，並釋放這個 Bot。只會做一次。
 func (r *Runtime) finish(t *turn, status, text string) {
+	// 2026-10-22i：確保 session 被關閉（資源洩漏修復）
+	defer func() {
+		if t.session != nil {
+			if closer, ok := r.o.Driver.(interface{ CloseSession(engine.Session) error }); ok {
+				if err := closer.CloseSession(t.session); err != nil {
+					r.log.Warn("關閉 session 失敗", "bot", t.botID, "task", t.taskID, "err", err)
+				}
+			}
+		}
+	}()
+
 	// 2026-10-22h：panic recovery - 必須釋放 Bot busy 狀態
 	defer func() {
 		if rec := recover(); rec != nil {
