@@ -329,19 +329,25 @@ func openStack(cfg config.Config) (*stack, error) {
 			logger.Warn("judge backend: Grok CLI driver not found, using STRICT fallback only")
 			peerJudge = nil
 		} else {
-			// B3 follow-up (2026-10-22m): Configurable judge model with CLI query & fallback logging
+			// Item 2 (2026-10-22): Judge uses direct grok CLI exec, not ACP Driver
 			modelName := detectGrokJudgeModel(logger)
 			if modelName == "" {
 				logger.Warn("judge backend: No suitable Grok model found, falling back to STRICT mode")
 				peerJudge = nil
 			} else {
 				peerJudge = &judge.GrokJudge{
-					Driver:    grokDriver,
+					ContainerFinder: func(botID string) string {
+						box, err := db.GetBox(context.Background(), botID)
+						if err != nil || box.ContainerID == "" {
+							return ""
+						}
+						return box.ContainerID
+					},
 					Log:       logger,
 					Timeout:   5 * time.Second,
 					ModelName: modelName,
 				}
-				logger.Info("judge backend: Grok CLI (one-shot ACP sessions, exempt from LRU cap)", "model", modelName)
+				logger.Info("judge backend: Grok CLI (direct exec, no ACP sessions, exempt from session cap)", "model", modelName)
 			}
 		}
 	}

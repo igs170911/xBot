@@ -4,40 +4,37 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os/exec"
 	"strings"
 	"time"
-
-	"xbot/internal/engine"
-	"xbot/internal/engine/acp"
 )
 
-// GrokJudge is a peer-reply judge backed by a one-shot ACP session on the grok engine.
-// It uses a fast model for quick classification and does not count toward the per-box
-// LRU session cap since it never shares sessions with user conversations.
-// Each judgment spawns, uses, and closes a fresh ACP session immediately.
+// GrokJudge is a peer-reply judge backed by direct `grok` CLI exec.
+// It bypasses the ACP Driver and MCP servers entirely: each classification
+// runs `grok ask <prompt>` directly in the bot's container via Docker exec.
+//
+// Session isolation: Does NOT count toward the bot's session cap because
+// it never creates an ACP session. Each judgment is a one-shot CLI invocation
+// that terminates immediately after producing output.
 //
 // On timeout or error, falls back to strict (Rules).
-//
-// Session lifecycle and LRU cap: GrokJudge does NOT count toward the per-box LRU cap
-// because it uses synthetic botIDs (judge-<timestamp>) that are never reused and are
-// immediately closed after each classification. The ACP driver's session LRU only
-// evicts when the cap is reached, so these short-lived judge sessions are closed
-// before they can displace user conversation sessions.
 type GrokJudge struct {
-	Driver *acp.Driver
-	Log    *slog.Logger
-	// Timeout for each one-shot judgment (2026-10-22: 5 seconds as per judge use definitions).
+	// ContainerFinder returns the Docker container ID for a given botID.
+	// If nil or returns empty string, judge will fail and fall back to Rules.
+	ContainerFinder func(botID string) string
+	Log             *slog.Logger
+	// Timeout for each CLI invocation (default 5 seconds).
 	Timeout time.Duration
-	// ModelName is the fast model to use for classification (e.g. "grok-2-mini-public", "grok-beta").
+	// ModelName is the fast model to use (e.g. "grok-4.7-build-fast", "grok-beta").
 	ModelName string
 }
 
-// Classify implements collab.PeerJudge by spawning a one-shot ACP session, prompting it with
-// the peer-reply classification task, parsing the output, and closing the session immediately.
+// Classify implements collab.PeerJudge by executing `grok ask <prompt>` directly
+// in the bot's container, bypassing the ACP Driver and MCP servers entirely.
 // Timeout or error -> returns ("", err), signaling fallback to Rules (B3: strict fallback).
 func (g *GrokJudge) Classify(ctx context.Context, prev, msg, botID string) (string, error) {
-	if g.Driver == nil {
-		return "", fmt.Errorf("grok judge: no driver")
+	if g.ContainerFinder == nil {
+		return "", fmt.Errorf("grok judge: no container finder")
 	}
 
 	log := g.Log
@@ -52,84 +49,46 @@ func (g *GrokJudge) Classify(ctx context.Context, prev, msg, botID string) (stri
 
 	model := g.ModelName
 	if model == "" {
-		// 2026-10-22p: Default to grok-4.7-build-fast (grok CLI 1.0.52 installed model, 3.7s response)
-		// grok-beta gives 'unknown model id' error
 		model = "grok-4.7-build-fast"
 	}
 
-	// Create a one-shot session context with timeout
+	containerID := g.ContainerFinder(botID)
+	if containerID == "" {
+		log.Warn("grok judge: no container found", "bot", botID)
+		return "", fmt.Errorf("grok judge: no container for bot %s", botID)
+	}
+
+	// Create timeout context
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// B3: Use REAL botID (not synthetic) to get per-bot credential path.
-	// The session is still one-shot and immediately closed, but uses the actual bot's auth.
-	// ThreadID is synthetic to avoid interfering with real sessions.
-	threadID := fmt.Sprintf("judge-%d", time.Now().UnixNano())
-	sess, err := g.Driver.Start(ctx, engine.StartOptions{
-		BotID:       botID,
-		ThreadID:    threadID,
-		Model:       model,
-		StrictModel: true, // 2026-10-22q: Judge requires strict model match
-	})
-	if err != nil {
-		log.Warn("grok judge: failed to start session", "err", err)
-		// B3: Return error to trigger strict fallback
-		return "", fmt.Errorf("grok judge start: %w", err)
-	}
-	// CRITICAL: close session on every exit path via defer
-	defer func() {
-		_ = g.Driver.CloseSession(sess)
-	}()
-
-	// Build peer-reply judgment prompt (same logic as judge.Service uses for "peer_reply")
+	// Build prompt
 	prompt := buildGrokPrompt(msg)
 
-	// Send judgment request to the ACP session and collect events
-	events := g.Driver.Events(sess)
-	if err := g.Driver.Send(ctx, sess, engine.Message{Text: prompt}); err != nil {
+	// Execute `grok ask <prompt>` in the container
+	// Use `docker exec <container> grok ask --model <model> --no-stream "<prompt>"`
+	cmd := exec.CommandContext(ctx, "docker", "exec", containerID,
+		"grok", "ask", "--model", model, "--no-stream", prompt)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
 		if ctx.Err() != nil {
-			log.Debug("grok judge: send timeout", "thread", threadID)
+			log.Debug("grok judge: timeout", "bot", botID)
 			return "", fmt.Errorf("grok judge timeout: %w", ctx.Err())
 		}
-		log.Warn("grok judge: send failed", "thread", threadID, "err", err)
-		return "", fmt.Errorf("grok judge send: %w", err)
+		log.Warn("grok judge: exec failed", "bot", botID, "err", err, "output", string(output))
+		return "", fmt.Errorf("grok judge exec: %w", err)
 	}
 
-	// Collect response from events stream until done or error
-	var content strings.Builder
-	for evt := range events {
-		switch evt.Type {
-		case "content":
-			content.WriteString(evt.Text)
-		case "done":
-			if evt.Status == "error" {
-				log.Warn("grok judge: done with error", "thread", threadID, "status", evt.Status, "text", evt.Text)
-				return "", fmt.Errorf("grok judge error: %s", evt.Text)
-			}
-			// Success: parse the accumulated content
-			verdict, err := parseGrokContent(content.String())
-			if err != nil {
-				log.Warn("grok judge: parse failed", "thread", threadID, "err", err)
-				return "", fmt.Errorf("grok judge parse: %w", err)
-			}
-			log.Debug("grok judge: classified", "verdict", verdict, "thread", threadID)
-			return verdict, nil
-		case "error":
-			if evt.Fatal {
-				log.Warn("grok judge: fatal error", "thread", threadID, "text", evt.Text)
-				return "", fmt.Errorf("grok judge fatal: %s", evt.Text)
-			}
-		}
-		// Check context timeout on each event
-		if ctx.Err() != nil {
-			log.Debug("grok judge: timeout while reading events", "thread", threadID)
-			return "", fmt.Errorf("grok judge timeout: %w", ctx.Err())
-		}
+	// Parse output
+	verdict, err := parseGrokContent(string(output))
+	if err != nil {
+		log.Warn("grok judge: parse failed", "bot", botID, "err", err, "output", string(output))
+		return "", fmt.Errorf("grok judge parse: %w", err)
 	}
 
-	// Events channel closed without done event
-	log.Warn("grok judge: events closed without done", "thread", threadID)
-	return "", fmt.Errorf("grok judge: incomplete response")
+	log.Debug("grok judge: classified", "verdict", verdict, "bot", botID)
+	return verdict, nil
 }
 
 // buildGrokPrompt constructs the peer-reply classification prompt for the fast model.

@@ -63,6 +63,7 @@ func IsAcknowledgement(text string) bool {
 func stripPunctWhitespaceEmoji(s string) string {
 	var sb strings.Builder
 	for _, r := range s {
+		// 保留字母、數字和中文
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
 			sb.WriteRune(r)
 		}
@@ -75,19 +76,21 @@ func isAllAckTokens(cleaned string) bool {
 	// 常見的確認/感謝/讚美詞彙（中英文）
 	// 按長度降序排列，避免短詞先匹配導致長詞無法識別
 	ackTokens := []string{
-		// 長詞優先
-		"acknowledged", "thankyou", "沒問題", "瞭解", "了解",
-		"awesome", "perfect", "excellent", "alright",
+		// 長詞優先，確保長詞先匹配
+		"acknowledged", "gotyourmessage", "thankyou", "understood", "received", "沒問題", "瞭解", "了解",
+		"message", "awesome", "perfect", "excellent", "alright",
 		"感謝", "謝謝", "多謝", "謝了", "知道", "明白", "清楚",
-		"太好", "很好", "不錯", "厲害", "優秀", "收到",
-		"thanks", "thank", "great", "sweet", "roger",
-		"okay", "gotit", "right", "cool", "good", "fine", "sure",
-		"贊", "讚", "棒", "可以", "問題", "行", "懂",
-		"copy", "nice", "yep", "yeah", "thx",
-		// 單字
-		"ok", "k", "y", "you", "got", "it", "ack", "ty",
-		"好", "的", "嗯", "哦", "喔", "啊", "呀", "呢", "了", "沒",
+		"太好", "很好", "不錯", "厲害", "優秀", "收到", "訊息", "請求",
+		"thanks", "thank", "great", "sweet", "roger", "noted",
+		"okay", "gotit", "right", "cool", "good", "fine", "sure", "your",
+		"贊", "讚", "棒", "可以", "問題", "行", "懂", "同意", "沒錯", "是的",
+		"copy", "nice", "yep", "yeah", "thx", "will", "got", "ack",
+		// 短詞最後
+		"do", "on", "ok", "ty", "it", "you",
+		"好", "的", "嗯", "哦", "喔", "啊", "呀", "呢", "了", "沒", "對", "是", "你",
 		"謝", "太", "很", "yup",
+		// 單字母最後
+		"k", "y",
 	}
 
 	// 將 cleaned 小寫（for 英文）
@@ -111,11 +114,6 @@ func isAllAckTokens(cleaned string) bool {
 
 	// 如果全部都能被 token 匹配掉，則是 filler
 	return remaining == ""
-}
-
-// isFiller 是 IsAcknowledgement 的別名，供外部呼叫
-func isFiller(text string) bool {
-	return IsAcknowledgement(text)
 }
 
 // 用於提取關鍵字的輔助函數（保留原有用途）
