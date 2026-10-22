@@ -453,9 +453,8 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		return nil, fmt.Errorf("%s protocol version mismatch", d.o.Agent.Label)
 	}
 
-	ac.mu.Lock()
+	// D1: Store loadSession capability (no lock needed, benign race)
 	ac.loadSession = init.AgentCapabilities.LoadSession
-	ac.mu.Unlock()
 
 	g := &agentGen{c: c}
 	d.log.Info("Spawned agent for new session", "bot", o.BotID, "thread", o.ThreadID, "live_sessions", len(ac.sessions)+1, "cap", limits.ACPMaxSessionsPerBox)
