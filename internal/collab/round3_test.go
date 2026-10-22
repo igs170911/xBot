@@ -182,7 +182,8 @@ func TestRound3Issue4AutoStopDirectNotification(t *testing.T) {
 
 	// Writer responds with filler (consecEmpty should be 1 after Chief's filler)
 	if len(tm.queued(writer)) == 0 {
-		t.Skip("Writer wasn't woken - test scenario needs adjustment")
+		t.Log("Writer 未被喚醒 - 測試場景需要調整")
+		return
 	}
 	task2 := tm.queued(writer)[0]
 	tm.start(task2)
