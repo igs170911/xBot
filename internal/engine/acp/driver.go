@@ -1122,21 +1122,6 @@ func (d *Driver) CloseSession(s engine.Session) error {
 	return nil
 }
 
-// allSessionsIdle checks if all sessions in this agent are idle (not running).
-// 2026-10-22p (LEAK FIX): Helper for determining when to restart agent.
-// Caller must hold ac.mu.
-func (d *Driver) allSessionsIdle(ac *agentConn) bool {
-	for _, s := range ac.sessions {
-		s.mu.Lock()
-		running := s.running
-		s.mu.Unlock()
-		if running {
-			return false
-		}
-	}
-	return true
-}
-
 // 2026-10-22n: Removed diffPids, snapshotMCPPids, killMCPPidsInContainer.
 // These don't work because the agent respawns MCP servers when they're killed.
 // Real fix: restart agent process when all sessions are closed (see CloseSession above).
