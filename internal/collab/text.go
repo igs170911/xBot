@@ -83,35 +83,43 @@ func IsSilent(text string) bool {
 // 這些訊息不應該觸發對方回覆，會造成無限對話循環（bot loop bug）。
 func IsAcknowledgement(text string) bool {
 	body := strings.TrimSpace(text)
-	if body == "" || len([]rune(body)) < 3 {
+	if body == "" {
 		return true
 	}
-	
-	// 訊息太短（< 20 字）且不是 [silent] 通常是無意義的確認
-	if len([]rune(body)) < 20 && !strings.HasPrefix(strings.ToLower(body), Silent) {
-		return true
-	}
-	
+
 	lower := strings.ToLower(body)
-	
-	// 純粹的致謝/確認詞
+
+	// 純粹的致謝/確認詞（完全匹配，避免誤判實質內容）
 	acknowledgements := []string{
-		"收到", "了解", "明白", "好的", "知道了", "謝謝", "感謝",
-		"ok", "okay", "got it", "received", "understood", "thanks",
-		"will do", "on it", "sure", "noted", "ack",
+		"收到", "了解", "明白", "好的", "知道了", "謝謝", "感謝", "好", "行",
+		"ok", "okay", "got it", "received", "understood", "thanks", "thank you",
+		"will do", "on it", "sure", "noted", "ack", "roger", "copy",
 	}
-	
+
+	trimmed := strings.TrimRight(lower, "。！？!?.,;；")
 	for _, ack := range acknowledgements {
-		if lower == ack || lower == ack+"。" || lower == ack+"!" || lower == ack+"！" {
+		if trimmed == ack {
 			return true
 		}
 	}
-	
-	// 只是重述對方的話，沒有新資訊
-	if strings.Count(lower, "收到你") > 0 && len([]rune(body)) < 50 {
+
+	// 只是重述對方的話（"收到你的訊息"、"收到你說的"等），沒有新資訊
+	if (strings.Contains(lower, "收到你") || strings.Contains(lower, "收到了") ||
+		strings.Contains(lower, "got your") || strings.Contains(lower, "received your")) &&
+		len([]rune(body)) < 40 {
 		return true
 	}
-	
+
+	// 單純的同意/認同，沒有補充
+	agreements := []string{
+		"同意", "沒問題", "可以", "沒錯", "對", "是的", "agree", "agreed", "sounds good", "fine",
+	}
+	for _, agr := range agreements {
+		if trimmed == agr {
+			return true
+		}
+	}
+
 	return false
 }
 
