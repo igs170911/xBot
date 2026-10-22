@@ -837,13 +837,13 @@ func (s *Service) reply(ctx context.Context, task store.Task, m taskMeta, verdic
 	// - 群組訊息（協作情境）不受 HasNewInformation 限制
 	// - 回覆 request/question 的答案（verdict=Answer）不受 HasNewInformation 檢查（允許短答案如"修好了"）
 	// - 其他情況必須有新資訊
-	
+
 	// 先檢查是否為 silent 或純致謝（永遠阻擋）
 	if verdict != runtime.VerdictFailed && (IsSilent(content) || IsAcknowledgement(content)) {
 		s.log.Debug("blocked silent or acknowledgement", "from", task.BotID, "to", m.FromBot, "content", plain(content, 100))
 		return
 	}
-	
+
 	// 非群組、非答案情境：必須有新資訊
 	isAnswerToWork := verdict == runtime.VerdictAnswer && replyExpected(m.Intent)
 	if verdict != runtime.VerdictFailed && m.RoomID == "" && !isAnswerToWork {
