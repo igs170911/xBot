@@ -167,56 +167,59 @@ func TestConsecutiveBlockedAutoStop(t *testing.T) {
 	}
 }
 
-// TestHopCountCarriesDMToRoom 測試 hop count 從 DM 攜帶到 room（2026-10-22）。
+// TestHopCountCarriesDMToRoom 測試 hop count 從 DM 攜帶到 room（2026-10-22e）。
+// DM hop 1，然後發言到 room，座位應該得到 hop 2。
 func TestHopCountCarriesDMToRoom(t *testing.T) {
 	tm := setup(t)
-	chiefID, writerID := tm.bots["Chief"], tm.bots["Writer"]
+	chiefID, writerID, scoutID := tm.bots["Chief"], tm.bots["Writer"], tm.bots["Scout"]
 
-	// Chief 發訊息給 Writer（模擬已有 hop）
+	// 先創建群組
+	room := must[store.Room](t)(tm.s.CreateRoom(tm.ctx, []string{writerID, chiefID, scoutID}, RoomOptions{
+		Name: "Hop Test Room",
+	}))
+
+	// Chief 發訊息給 Writer（DM），產生 hop 1
 	tm.running(chiefID, nil)
-	result := must[SendResult](t)(tm.s.Send(tm.ctx, chiefID, "Writer", "請整理報告", "", SendOptions{}))
+	_ = must[SendResult](t)(tm.s.Send(tm.ctx, chiefID, "Writer", "請到群組報告", "request", SendOptions{}))
 
-	// 設定 Writer 收到的任務 hop = 5
-	tasks, _ := tm.db.ListTasks(tm.ctx, writerID, true)
-	for _, task := range tasks {
-		m := metaOf(task)
-		if m.MessageID == result.MessageID {
-			_ = tm.db.PatchTaskMeta(tm.ctx, task.ID, map[string]any{"hop": 5})
+	// Writer 處理任務
+	writerTask := tm.queued(writerID)[0]
+	tm.start(writerTask)
+
+	// 確認 Writer 的任務有 hop = 1
+	var writerMeta map[string]any
+	_ = json.Unmarshal(writerTask.Meta, &writerMeta)
+	if hop, ok := writerMeta["hop"].(float64); !ok || int(hop) != 1 {
+		t.Fatalf("Writer's DM task should have hop=1, got %v", writerMeta["hop"])
+	}
+
+	// Writer 發言到群組並 @ Chief（應該攜帶 hop 1）
+	// 使用 Post 並指定 requestID 來模擬在 DM 任務中發言
+	_ = must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, "@Chief 報告完成", writerTask.ID))
+
+	// 檢查 Chief 的座位任務是否有 hop = 2
+	chiefTasks, _ := tm.db.ListTasksByMeta(tm.ctx, "$.room_id", room.ID, true)
+	foundChief := false
+	for _, task := range chiefTasks {
+		if task.BotID == chiefID {
+			var chiefMeta map[string]any
+			_ = json.Unmarshal(task.Meta, &chiefMeta)
+			hop, ok := chiefMeta["hop"].(float64)
+			if !ok {
+				t.Errorf("Chief's seat should have hop, got none")
+			} else if int(hop) != 2 {
+				t.Errorf("Chief's seat should have hop=2 (Writer's DM hop 1 + 1), got %d", int(hop))
+			}
+			foundChief = true
 			break
 		}
 	}
-
-	// Writer 開始處理
-	tm.running(writerID, nil)
-	writerQueued := tm.queued(writerID)
-	if len(writerQueued) == 0 {
-		t.Skip("Writer 沒有排隊任務，跳過測試")
+	if !foundChief {
+		t.Error("Chief should have a seat task in the room")
 	}
 
-	// Writer 在處理時創建群組並叫醒 Chief
-	room := must[store.Room](t)(tm.s.CreateRoom(tm.ctx, []string{writerID, chiefID}, RoomOptions{
-		Name:      "Hop Test Room",
-		CreatedBy: "bot:" + writerID,
-	}))
-
-	must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, "@Chief 幫忙檢查", ""))
-
-	// 檢查 Chief 的 room task 是否攜帶了 hop
-	chiefRoomTasks, _ := tm.db.ListTasksByMeta(tm.ctx, "$.room_id", room.ID, true)
-	foundHop := false
-	for _, task := range chiefRoomTasks {
-		if task.BotID == chiefID {
-			m := metaOf(task)
-			// 在實際場景中，如果 Writer 當時有 origin task 且 hop=5，
-			// room task 應該攜帶 hop（seat() 會從 origin 複製）
-			foundHop = true
-			t.Logf("Chief room task hop = %d (origin task 有 hop 時應攜帶)", m.Hop)
-			// 測試環境中 origin 可能不存在，但邏輯已實現
-		}
-	}
-	if !foundHop {
-		t.Error("應該創建 Chief 的 room task")
-	}
+	// 清理：完成 Writer 的任務
+	tm.finish(writerTask.ID, "answer", "完成")
 }
 
 // TestEveryoneRuleGetsReply 測試 @所有人 規則（2026-10-22 修正 REGRESSION）。

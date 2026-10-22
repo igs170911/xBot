@@ -212,6 +212,7 @@ type turn struct {
 	lowPriority             bool   // Bot 交辦、群組接力（你的訊息會排在它後面第一個）
 	input                   string
 	orig                    string // 交辦時的原文（額度用完後可以重送的那一則）
+	ownerText               string // 2026-10-22e：owner 的原始訊息（用於判斷回覆長度限制）
 	cancel                  context.CancelFunc
 	done                    chan struct{}
 
@@ -402,6 +403,13 @@ func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error
 	err = r.o.DB.Tx(ctx, func(q *store.Queries) error {
 		var err error
 		taskMeta := req.TaskMeta
+		// 2026-10-22e：儲存原始 owner text 用於判斷回覆長度限制
+		if source == SourceOwner && req.Kind == "" {
+			m := map[string]any{}
+			_ = json.Unmarshal(taskMeta, &m)
+			m["owner_text"] = text
+			taskMeta, _ = json.Marshal(m)
+		}
 		if req.Actor != "" && req.Actor != "owner" {
 			m := map[string]any{}
 			_ = json.Unmarshal(taskMeta, &m)
@@ -485,6 +493,14 @@ func (r *Runtime) begin(task store.Task) {
 	runCtx, cancel := context.WithCancel(context.Background())
 	t := &turn{botID: task.BotID, threadID: task.ThreadID, taskID: task.ID, source: task.Source, lowPriority: task.LowPriority,
 		input: task.Input, orig: task.Input, cancel: cancel, done: make(chan struct{})}
+	// 2026-10-22e：提取原始 owner text 用於判斷回覆長度限制
+	if task.Source == SourceOwner {
+		var meta map[string]any
+		_ = json.Unmarshal(task.Meta, &meta)
+		if ownerText, ok := meta["owner_text"].(string); ok {
+			t.ownerText = ownerText
+		}
+	}
 	r.mu.Lock()
 	r.active[task.BotID] = t
 	r.mu.Unlock()
@@ -887,6 +903,29 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		j := judgmentOf(*res)
 		judged = &j
 	}
+
+	// 2026-10-22e：對 owner DM 回覆應用長度限制
+	if t.source == SourceOwner && t.ownerText != "" && final != "" && msgID != "" {
+		// 判斷是否為短事實問題（使用 lenient 模式）
+		isFact := isShortFactQuestion(t.ownerText)
+		class := classResearch
+		lenient := false
+		if isFact {
+			class = classFact
+			lenient = true
+		}
+
+		outText, overflow := enforceOwnerReplyLength(final, class, lenient)
+		if overflow != "" {
+			// 有溢出內容：將完整回覆存檔
+			// TODO: 實際寫檔需要 Files 介面（類似 collab 的實作）
+			// 這裡先加上連結行
+			home := "dm-reply-" + time.Now().Format("20060102-150405") + ".md"
+			outText += formatResearchOverflow(final, home, runes(final))
+		}
+		final = outText
+	}
+
 	if msgID != "" {
 		fields := map[string]any{"task_id": t.taskID, "status": status}
 		if paused && verdict == VerdictCancelled {
