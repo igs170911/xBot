@@ -477,25 +477,27 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 
 	// 2026-10-22：統一發送閘門，防止 Bot 主動傳送無意義訊息
 	// 獲取最近從這個 Bot 發給目標的訊息，用於重複檢測
-	// 2026-10-22h：對於 request/handoff，只檢查最近一輪「新資訊」之後的訊息
+	// 2026-10-22i：修正去重視窗邏輯 - 找「其他人」的最後新資訊，不排除發送者自己的最後一則
+	// 2026-10-22i：對於 request/handoff 在 relay 鏈中（有較小 hop 的同文字訊息），允許重複
 	var recentTexts []string
 	recentMsgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Pair: []string{senderID, target.ID}, Limit: 20})
 	if err == nil {
 		isHandoffOrRequest := intent == IntentRequest || ClassifyMessage(text) == ClassHandoff
-		// 找到最近一則有新資訊的訊息（任何方向）
-		lastNewInfoIdx := -1
+		// 找到最近一則「其他人」有新資訊的訊息（不是當前發送者）
+		lastOtherNewInfoIdx := -1
 		if isHandoffOrRequest {
 			for i := len(recentMsgs) - 1; i >= 0; i-- {
-				if HasNewInformation(recentMsgs[i].Text) {
-					lastNewInfoIdx = i
+				// 只看非當前發送者的訊息
+				if recentMsgs[i].From != senderID && HasNewInformation(recentMsgs[i].Text) {
+					lastOtherNewInfoIdx = i
 					break
 				}
 			}
 		}
-		// 只取從 sender 發出、在新資訊之後的訊息
+		// 取從 sender 發出、在其他人新資訊之後的所有訊息（包含 sender 自己的最後一則）
 		startIdx := 0
-		if lastNewInfoIdx >= 0 {
-			startIdx = lastNewInfoIdx + 1
+		if lastOtherNewInfoIdx >= 0 {
+			startIdx = lastOtherNewInfoIdx + 1
 		}
 		for i := len(recentMsgs) - 1; i >= startIdx; i-- {
 			if recentMsgs[i].From == senderID {
@@ -503,6 +505,22 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 				if len(recentTexts) >= 5 {
 					break
 				}
+			}
+		}
+		// For relay chains: if any recent message has the same text with a hop number,
+		// this might be a relay chain. Check if there are ascending hops.
+		if isHandoffOrRequest && len(recentTexts) > 0 {
+			hasRelay := false
+			for _, rm := range recentMsgs {
+				if rm.From == senderID && rm.Text == text && rm.Hop > 0 {
+					hasRelay = true
+					break
+				}
+			}
+			// If this looks like a relay chain (same text with hops), allow it
+			// The hop limit check will catch it if it exceeds MaxHops
+			if hasRelay {
+				recentTexts = nil
 			}
 		}
 	}

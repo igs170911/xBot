@@ -852,24 +852,26 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	}
 
 	// 獲取最近的群組訊息文字（用於去重檢測）
-	// 2026-10-22h：只檢查這個 bot 在最近一輪「新資訊」之後的訊息
+	// 2026-10-22i：修正去重視窗邏輯 - 找「其他人」的最後新資訊，不排除發送者自己的最後一則
 	// 允許接力：A: @Scout 換你 / Scout: <實際工作> / A: @Scout 換你
 	// 阻擋循環：A: X / B: filler / A: X
+	// 阻擋立即重複：A: X / A: X
 	recentMsgs, _ := s.db.ListMessages(ctx, store.ScopeRoom, room.ID, 0, 20)
 	var recentTexts []string
 	botSender := "bot:" + task.BotID
-	// 找到最近一則有新資訊的訊息（任何人）
-	lastNewInfoIdx := -1
+	// 找到最近一則「其他人」有新資訊的訊息（不是當前 bot）
+	lastOtherNewInfoIdx := -1
 	for i := len(recentMsgs) - 1; i >= 0; i-- {
-		if HasNewInformation(recentMsgs[i].Content) {
-			lastNewInfoIdx = i
+		// 只看非當前 bot 的訊息
+		if recentMsgs[i].Sender != botSender && HasNewInformation(recentMsgs[i].Content) {
+			lastOtherNewInfoIdx = i
 			break
 		}
 	}
-	// 只取這個 bot 在那之後的訊息
+	// 取這個 bot 在其他人新資訊之後的所有訊息（包含 bot 自己的最後一則）
 	startIdx := 0
-	if lastNewInfoIdx >= 0 {
-		startIdx = lastNewInfoIdx + 1
+	if lastOtherNewInfoIdx >= 0 {
+		startIdx = lastOtherNewInfoIdx + 1
 	}
 	for i := len(recentMsgs) - 1; i >= startIdx; i-- {
 		if recentMsgs[i].Sender == botSender {
