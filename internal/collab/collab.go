@@ -547,6 +547,24 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	// 寄件者的對話保留自己的路徑；收件者拿到檔案的副本與指向副本的路徑。
 	sent := text
 	carried, files := s.carryFiles(ctx, senderID, target.ID, sender.Name, text, target.Name)
+
+	// 2026-10-22c：長度限制（#7 peer send）
+	// Skip enforcement for relayed messages (already processed by deliver())
+	// Peer sends always use ClassPeer (300 chars)
+	if !o.Relay {
+		outText, overflow := EnforceLength(carried, ClassPeer)
+		if overflow != "" && s.o.Files != nil {
+			// Peer overflow: write full text to file
+			home := "from/" + Filename(sender.Name) + "/peer-" + s.o.Now().Format("20060102-150405") + ".md"
+			if err := s.o.Files.Write(ctx, target.ID, home, []byte(carried)); err == nil {
+				outText += FormatResearchOverflow(carried, home, runes(carried))
+			} else {
+				s.log.Warn("隊友回覆存檔失敗", "from", senderID, "to", target.ID, "err", err)
+			}
+		}
+		carried = outText
+	}
+
 	answers := ""
 	if intent == IntentResult {
 		answers = om.ParentTask
@@ -973,9 +991,32 @@ func (s *Service) deliver(ctx context.Context, botID, to, content, verdict strin
 	if verdict == runtime.VerdictFailed {
 		text = "我這次沒有完成你的請求：\n" + content
 	}
+
+	// Check for extremely long messages first (>8000 chars)
 	if runes(text) > limits.BotMessageMax {
 		text = s.longResult(ctx, botID, to, text)
+	} else {
+		// 2026-10-22c：長度限制（#7 owner DM reply）
+		// Apply concise length limits for normal-length messages
+		isFact := runes(text) <= 150
+		class := ClassifyLength(isFact)
+		outText, overflow := EnforceLength(text, class)
+		if overflow != "" && class == ClassResearch && s.o.Files != nil {
+			// Research overflow: write full text to file
+			botName := "Bot"
+			if b, err := s.db.GetBot(ctx, botID); err == nil {
+				botName = b.Name
+			}
+			home := "from/" + Filename(botName) + "/result-" + s.o.Now().Format("20060102-150405") + ".md"
+			if err := s.o.Files.Write(ctx, to, home, []byte(text)); err == nil {
+				outText += FormatResearchOverflow(text, home, runes(text))
+			} else {
+				s.log.Warn("研究回覆存檔失敗", "from", botID, "to", to, "err", err)
+			}
+		}
+		text = outText
 	}
+
 	if strings.TrimSpace(text) == "" {
 		return
 	}

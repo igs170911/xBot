@@ -985,6 +985,22 @@ func (s *Service) speak(ctx context.Context, room store.Room, botID, text string
 	}
 	var named []store.Bot
 	meta.SpeakerName, meta.FromBotID = me.Name, botID
+
+	// 2026-10-22c：長度限制（#7 room post）
+	// Room posts always use ClassRoom (200 chars), not fact/research
+	outText, overflow := EnforceLength(text, ClassRoom)
+	if overflow != "" && s.o.Files != nil {
+		// Write overflow to file (for reference, even though room uses fixed 200 limit)
+		home := "from/" + Filename(me.Name) + "/room-" + s.o.Now().Format("20060102-150405") + ".md"
+		// Write to room creator's storage
+		if err := s.o.Files.Write(ctx, room.CreatedBy, home, []byte(text)); err == nil {
+			outText += FormatResearchOverflow(text, home, runes(text))
+		} else {
+			s.log.Warn("群組回覆存檔失敗", "bot", botID, "room", room.ID, "err", err)
+		}
+	}
+	text = outText
+
 	for _, f := range found {
 		meta.Mentions = append(meta.Mentions, f.ID)
 		if seats[f.ID].Paused {

@@ -122,8 +122,9 @@ func findProtectedRegions(text string) []protectedRegion {
 	}
 
 	// Find URLs (simple pattern: http:// or https:// until whitespace)
+	// Also protect /workspace/ paths
 	for i := 0; i < len(runes)-7; i++ {
-		if isURLStart(runes, i) {
+		if isURLStart(runes, i) || isWorkspacePath(runes, i) {
 			urlEnd := i
 			for urlEnd < len(runes) && !unicode.IsSpace(runes[urlEnd]) {
 				urlEnd++
@@ -134,6 +135,14 @@ func findProtectedRegions(text string) []protectedRegion {
 	}
 
 	return regions
+}
+
+// isWorkspacePath checks if position i starts a /workspace/ path
+func isWorkspacePath(runes []rune, i int) bool {
+	if i+11 >= len(runes) {
+		return false
+	}
+	return string(runes[i:i+11]) == "/workspace/"
 }
 
 // isURLStart checks if position i starts a URL

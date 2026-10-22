@@ -232,8 +232,10 @@ func TestAMessageTooLongIsRefusedButGroupPostsAreCut(t *testing.T) {
 	}
 	must[PostGroupResult](t)(tm.s.PostGroup(tm.ctx, chief, "群", long))
 	log := tm.roomLog(room.ID)
-	if n := len([]rune(log[len(log)-1].Content)); n != 12000 {
-		t.Fatalf("Bot 在群組發言截斷：%d", n)
+	msgLen := len([]rune(log[len(log)-1].Content))
+	// 2026-10-22c: Room posts now use ClassRoom (200 chars) + file link overhead
+	if msgLen > 300 || msgLen >= len([]rune(long)) {
+		t.Fatalf("Bot 在群組發言應截斷到 ≤300 字（200 + 檔案連結），實際：%d", msgLen)
 	}
 }
 
