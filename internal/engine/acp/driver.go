@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"maps"
 	"regexp"
@@ -14,8 +13,6 @@ import (
 	"sync"
 	"time"
 	"unicode/utf8"
-
-	"github.com/moby/moby/client"
 
 	"xbot/internal/engine"
 	"xbot/internal/limits"
@@ -223,8 +220,7 @@ type session struct {
 	lastUsed time.Time
 	// closed 標示這個 session 已被關閉（2026-10-22）。
 	closed bool
-	// mcpPids 是這個 session 建立時新增的 MCP 子行程 PIDs（2026-10-22 B2.3：容器內 MCP 清理）。
-	mcpPids []int
+	// 2026-10-22n: Removed mcpPids tracking - doesn't work because agent respawns MCPs when killed.
 }
 
 func (s *session) ID() string { return s.id }
@@ -436,8 +432,8 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	ac.sessionNewMu.Lock()
 	defer ac.sessionNewMu.Unlock()
 
-	// B2.3 (2026-10-22): Snapshot MCP PIDs before session/new
-	mcpPidsBefore := d.snapshotMCPPids(ac.botID)
+	// 2026-10-22n: Removed MCP PID snapshot - doesn't work, agent respawns MCPs.
+	// Real fix: restart agent when all sessions closed (see CloseSession).
 
 	var mcp []MCPServer
 	if d.o.MCPServers != nil {
@@ -496,17 +492,12 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		id = res.SessionID
 	}
 	s := &session{ac: ac, id: id, threadID: o.ThreadID, mode: o.Mode, tools: map[string]*toolState{}, bg: map[string]string{},
-		shown: map[string]bool{}, dropped: map[string]bool{}, q: newQueue(), lastUsed: time.Now(), mcpPids: nil}
+		shown: map[string]bool{}, dropped: map[string]bool{}, q: newQueue(), lastUsed: time.Now()}
 	if inst != "" && !d.o.Agent.SystemPrompt && !d.o.Agent.Rules && !loaded {
 		s.intro = IntroText(inst)
 	}
 
-	// B2.3 (2026-10-22): Snapshot MCP PIDs after session/new and record new ones
-	mcpPidsAfter := d.snapshotMCPPids(ac.botID)
-	s.mcpPids = diffPids(mcpPidsAfter, mcpPidsBefore)
-	if len(s.mcpPids) > 0 {
-		d.log.Info("Detected new MCP processes for session", "bot", o.BotID, "session", s.id, "pids", s.mcpPids)
-	}
+	// 2026-10-22n: Removed MCP PID tracking - see CloseSession for real fix.
 
 	ac.mu.Lock()
 	if old := ac.threads[o.ThreadID]; old != nil {
@@ -1051,13 +1042,9 @@ func (d *Driver) Close(botID string) {
 	}
 }
 
-// CloseSession 關閉一個 session（2026-10-22：資源洩漏修復）：取消進行中的一輪、從登記裡移除、關閉 queue。
-// agent 行程（與其子行程）仍由所有 session 共用；沒有 session 時 disconnected 會關掉它。
-// 任務、房間一輪、judge 呼叫結束時使用，確保 MCP 子行程不會累積。
-//
-// 子行程清理（item 7b）：Process.Close() 會終止整個 process group（exec.go:82-118）。
-// 使用 setsid 啟動 agent，讓它和子行程（desktop_mcp.py 等）在同一個 process group。
-// Close 時透過 Docker API 取得 PID，然後 kill -TERM -- -PID 終止整個 group，等待後如需要發 SIGKILL。
+// CloseSession 關閉一個 session（2026-10-22：資源洩漏修復）。
+// 2026-10-22n (LEAK FIX): ACP 協議沒有 session/close 方法，agent 會保持所有 session 活著並重啟 MCP。
+// 解決方案：當所有 sessions 關閉後，重啟 agent 進程以清理所有 MCP 服務器。
 func (d *Driver) CloseSession(s engine.Session) error {
 	as, ok := s.(*session)
 	if !ok {
@@ -1092,166 +1079,48 @@ func (d *Driver) CloseSession(s engine.Session) error {
 
 	// B2 (2026-10-22): Decrement session count and signal waiters
 	ac.sessionCount--
+	sessionCount := ac.sessionCount
 	// B2.4 (2026-10-22): Log session count for debugging
 	d.log.Info("Closed session", "bot", ac.botID, "session", as.id, "live_sessions", ac.sessionCount, "cap", limits.ACPMaxSessionsPerBox)
 	ac.sessionWait.Signal()
+
+	// 2026-10-22n (LEAK FIX): When all sessions are closed, restart agent to kill MCP servers.
+	// This is necessary because ACP has no session/close and agent keeps all sessions + MCPs alive.
+	shouldRestartAgent := sessionCount == 0 && ac.c != nil
+	if shouldRestartAgent {
+		d.log.Info("All sessions closed, restarting agent to clean MCP servers", "bot", ac.botID)
+		oldConn := ac.c
+		ac.c = nil // Mark for restart on next Start()
+		ac.mu.Unlock()
+		// Close the old agent process (kills agent + all MCP children via process group)
+		oldConn.close()
+		// Close the queue after unlocking to avoid deadlock
+		as.q.close()
+		return nil
+	}
 	ac.mu.Unlock()
 
 	// 關掉 queue（停止事件流）
 	as.q.close()
 
-	// B2.3 (2026-10-22): Kill this session's MCP processes only (fixed to be per-session)
-	if len(as.mcpPids) > 0 {
-		d.log.Info("Killing session's MCP processes", "bot", as.ac.botID, "session", as.id, "pids", as.mcpPids)
-		d.killMCPPidsInContainer(as.ac.botID, as.mcpPids)
-	}
+	// 2026-10-22n (LEAK FIX): Removed name-based MCP killing (driver.go:1090,1102,1138).
+	// Name-based killing (`ps | grep desktop_mcp`) kills ALL MCP servers box-wide,
+	// breaking other live sessions' MCP servers.
+	// Also removed PID snapshot approach (driver.go:433 TODO) - doesn't work because
+	// agent respawns MCPs when killed.
+	// Real fix: restart agent when all sessions closed (above).
 
-	// 如果正在跑，發 session/cancel 停下來（agent 應終止該 session 的所有子行程）
-	if running {
+	// 如果正在跑，發 session/cancel 停下來
+	if running && ac.c != nil {
 		_ = ac.c.notify("session/cancel", map[string]string{"sessionId": as.id})
 	}
 
 	return nil
 }
 
-// diffPids 回傳 after 中有但 before 中沒有的 PIDs（B2.3, 2026-10-22）。
-func diffPids(after, before []int) []int {
-	beforeSet := make(map[int]bool)
-	for _, pid := range before {
-		beforeSet[pid] = true
-	}
-	var diff []int
-	for _, pid := range after {
-		if !beforeSet[pid] {
-			diff = append(diff, pid)
-		}
-	}
-	return diff
-}
-
-// searchAndKillMCPProcesses is REMOVED - was too aggressive, killed other sessions' MCP processes.
-// Now we track per-session PIDs and only kill those on close.
-
-// snapshotMCPPids 快照容器內的 desktop_mcp / MCP 相關行程 PIDs（B2.3, 2026-10-22）。
-func (d *Driver) snapshotMCPPids(botID string) []int {
-	d.mu.Lock()
-	ac := d.bots[botID]
-	d.mu.Unlock()
-	if ac == nil || ac.c == nil || ac.c.p == nil {
-		return nil
-	}
-
-	// 從 Process 取得容器 ID 和 Execer
-	type containerAccess interface {
-		ContainerID() string
-		Execer() Execer
-	}
-
-	ca, ok := ac.c.p.(containerAccess)
-	if !ok {
-		return nil
-	}
-
-	containerID := ca.ContainerID()
-	api := ca.Execer()
-
-	// 在容器內執行 ps 找出 MCP 相關行程
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
-	cmd := []string{"sh", "-c", "ps -eo pid,cmd 2>/dev/null | grep -E 'desktop_mcp|mcp.*server|python.*mcp' | grep -v grep | awk '{print $1}' || true"}
-
-	created, err := api.ExecCreate(ctx, containerID, client.ExecCreateOptions{
-		Cmd:          cmd,
-		AttachStdout: true,
-		AttachStderr: true,
-	})
-	if err != nil {
-		return nil
-	}
-
-	att, err := api.ExecAttach(ctx, created.ID, client.ExecAttachOptions{})
-	if err != nil {
-		return nil
-	}
-	defer att.Close()
-
-	var buf strings.Builder
-	_, _ = io.Copy(&buf, att.Reader)
-
-	// 解析 PIDs
-	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
-	var pids []int
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		var pid int
-		if _, err := fmt.Sscanf(line, "%d", &pid); err == nil && pid > 0 {
-			pids = append(pids, pid)
-		}
-	}
-	return pids
-}
-
-// killMCPPidsInContainer 在容器內 kill 指定的 PIDs（B2.3, 2026-10-22）。
-func (d *Driver) killMCPPidsInContainer(botID string, pids []int) {
-	if len(pids) == 0 {
-		return
-	}
-
-	d.mu.Lock()
-	ac := d.bots[botID]
-	d.mu.Unlock()
-	if ac == nil || ac.c == nil || ac.c.p == nil {
-		d.log.Warn("Cannot access bot process to kill MCP", "bot", botID)
-		return
-	}
-
-	type containerAccess interface {
-		ContainerID() string
-		Execer() Execer
-	}
-
-	ca, ok := ac.c.p.(containerAccess)
-	if !ok {
-		d.log.Warn("Process does not support container access", "bot", botID)
-		return
-	}
-
-	containerID := ca.ContainerID()
-	api := ca.Execer()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// SIGTERM first
-	pidStr := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(pids)), " "), "[]")
-	killCmd := []string{"sh", "-c", fmt.Sprintf("kill -TERM %s 2>/dev/null || true", pidStr)}
-	created, err := api.ExecCreate(ctx, containerID, client.ExecCreateOptions{Cmd: killCmd})
-	if err == nil {
-		att, err := api.ExecAttach(ctx, created.ID, client.ExecAttachOptions{})
-		if err == nil {
-			att.Close()
-		}
-	}
-
-	// Wait grace period
-	time.Sleep(200 * time.Millisecond)
-
-	// SIGKILL if still alive
-	killCmd = []string{"sh", "-c", fmt.Sprintf("kill -KILL %s 2>/dev/null || true", pidStr)}
-	created, err = api.ExecCreate(ctx, containerID, client.ExecCreateOptions{Cmd: killCmd})
-	if err == nil {
-		att, err := api.ExecAttach(ctx, created.ID, client.ExecAttachOptions{})
-		if err == nil {
-			att.Close()
-		}
-	}
-
-	d.log.Info("Killed MCP processes in container", "bot", botID, "pids", pids)
-}
+// 2026-10-22n: Removed diffPids, snapshotMCPPids, killMCPPidsInContainer.
+// These don't work because the agent respawns MCP servers when they're killed.
+// Real fix: restart agent process when all sessions are closed (see CloseSession above).
 
 // evictOldSessions（2026-10-22，修正 2026-10-22j）：檢查 session 數是否超過 limits.ACPMaxSessionsPerBox，
 // 超過時關閉最久沒用的**閒置** session。絕不關閉有進行中 prompt 的 session（7a）。
