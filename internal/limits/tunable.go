@@ -25,9 +25,9 @@ type Tunables struct {
 	AgendaOpenMax int `json:"agenda_open_max"`
 }
 
-// DefaultTunables 是預設值（比 LazyBoy 寬）。
+// DefaultTunables 是預設值（降回 LazyBoy MaxHops=6 以防 Bot 對話循環，2026-10-22 bot loop fix）。
 var DefaultTunables = Tunables{
-	MaxHops:                 20,
+	MaxHops:                 6,
 	RoomRounds:              10,
 	BotCreatesPerDay:        10,
 	ManagerBotCreatesPerDay: 50,

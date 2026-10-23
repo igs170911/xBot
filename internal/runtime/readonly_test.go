@@ -111,3 +111,89 @@ func TestReadOnlyScriptAutoAllowed(t *testing.T) {
 		t.Fatalf("會寫檔的要開核准卡：%+v", card)
 	}
 }
+
+// B.4: 高風險瀏覽器操作（表單提交、購買、登入、發送等）需要人工核准（伺服器端攔截）。
+func TestConsequentialBrowserActionRequiresApproval(t *testing.T) {
+	req := func(command, key string, keys []string) *engine.Request {
+		if keys == nil {
+			keys = []string{key}
+		}
+		p, _ := json.Marshal(map[string]any{"command": command, "pattern_key": key, "pattern_keys": keys})
+		return &engine.Request{ID: "r1", Kind: "approval", Params: p}
+	}
+
+	// 高風險操作：需要核准
+	consequential := []struct {
+		desc    string
+		command string
+		key     string
+		keys    []string
+	}{
+		{"表單提交", "browser_exec('click', selector='button[type=submit]')", "browser_exec", nil},
+		{"輸入密碼", "cdp('Input.dispatchKeyEvent', text='password123')", "cdp_", nil},
+		{"購買操作", "browser_click('button.buy-now')", "browser_", []string{"browser_click"}},
+		{"發送訊息", "browser_exec('send_message', text='hello')", "browser_exec", nil},
+		{"登入操作", "browser_signin('user@example.com')", "browser_", []string{"browser_signin"}},
+		{"刪除操作", "browser_exec('delete_item')", "browser_exec", nil},
+		{"確認購買", "browser_click('button#confirm-purchase')", "browser_", []string{"browser_click"}},
+	}
+
+	for _, tc := range consequential {
+		if !consequentialBrowserAction(req(tc.command, tc.key, tc.keys)) {
+			t.Errorf("%s 應該需要核准：%s", tc.desc, tc.command)
+		}
+	}
+
+	// 低風險操作：可以不攔截（但目前所有 browser 操作都會走 Hermes 的 DANGEROUS_PATTERNS，這裡只驗證邏輯）
+	safe := []struct {
+		desc    string
+		command string
+		key     string
+	}{
+		{"讀取內容", "read_file('/workspace/a.txt')", "read_file"},
+		{"執行查詢", "execute_code <<'PY'\nprint(1+1)\nPY", "execute_code"},
+		{"非瀏覽器操作", "terminal('ls')", "terminal"},
+	}
+
+	for _, tc := range safe {
+		if consequentialBrowserAction(req(tc.command, tc.key, nil)) {
+			t.Errorf("%s 不應該被誤判為瀏覽器操作：%s", tc.desc, tc.command)
+		}
+	}
+}
+
+// 驗證高風險瀏覽器操作會開核准卡，不會自動允許（bypass test）。
+func TestBrowserActionApprovalBypass(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t)
+
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Event("message.start", nil)
+		// 模擬 Hermes 請求核准瀏覽器提交操作
+		go tr.Request("approval", map[string]any{
+			"command":      "browser_exec('click', selector='button[type=submit]')",
+			"pattern_key":  "browser_exec",
+			"pattern_keys": []string{"browser_exec"},
+			"choices":      []string{"once", "deny"},
+		})
+		time.Sleep(300 * time.Millisecond)
+		tr.Complete("等待核准", "complete", nil)
+	}
+
+	res, err := f.rt.Chat(ctx, f.bot.ID, "", "提交表單")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 驗證：應該開核准卡
+	card := f.waitCard(t, res.TaskID)
+	if card.Kind != "approval" {
+		t.Fatalf("瀏覽器高風險操作應該開核准卡：%+v", card)
+	}
+
+	// 驗證：工作狀態應該是 waiting_approval
+	task, _ := f.db.GetTask(ctx, res.TaskID)
+	if task.State != store.TaskWaitingApproval {
+		t.Fatalf("工作應該在等核准：%s", task.State)
+	}
+}

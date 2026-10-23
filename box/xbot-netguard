@@ -26,6 +26,7 @@ set -uo pipefail
 STATE=${XBOT_NETGUARD_STATE:-/var/lib/xbot-netguard}
 READY=${XBOT_NETGUARD_READY:-/var/lib/xbot-netguard-ready}
 RULES=$STATE/rules.v4
+RULES_V6=$STATE/rules.v6
 APPLIED=$STATE/applied
 INTERVAL=${XBOT_NETGUARD_INTERVAL:-5}
 LOCK=/run/xbot-netguard.lock
@@ -41,7 +42,9 @@ variant() {
 }
 V=$(variant)
 ipt() { "iptables-$V" -w "$@"; }
+ipt6() { "ip6tables-$V" -w "$@"; }
 restore() { "iptables-$V-restore" -w --noflush; }
+restore6() { "ip6tables-$V-restore" -w --noflush; }
 
 parent() { if ipt -n -L DOCKER-USER >/dev/null 2>&1; then echo DOCKER-USER; else echo FORWARD; fi; }
 
@@ -63,6 +66,13 @@ snapshot() {
   ipt -S XBOT-IN 2>/dev/null
 }
 
+# snapshot6: same for IPv6 (separate because IPv6 rules are simple: DROP everything).
+snapshot6() {
+  [ -s "$RULES_V6" ] && sha256sum "$RULES_V6" | cut -d' ' -f1
+  ipt6 -S XBOT-FWD 2>/dev/null
+  ipt6 -S XBOT-IN 2>/dev/null
+}
+
 # in_place: the rules file was applied, nothing changed the chains since, and both are jumped to first.
 in_place() {
   [ -s "$RULES" ] && [ -s "$APPLIED" ] || return 1
@@ -70,7 +80,14 @@ in_place() {
   p=$(parent)
   [ "$(ipt -S "$p" 2>/dev/null | sed -n 2p)" = "-A $p -j XBOT-FWD" ] || return 1
   [ "$(ipt -S INPUT 2>/dev/null | sed -n 2p)" = "-A INPUT -j XBOT-IN" ] || return 1
-  [ "$(snapshot)" = "$(cat "$APPLIED")" ]
+  [ "$(snapshot)" = "$(cat "$APPLIED")" ] || return 1
+  # IPv6: verify DROP-all rules are in place.
+  if [ -s "$RULES_V6" ]; then
+    [ "$(ipt6 -S FORWARD 2>/dev/null | sed -n 2p)" = "-A FORWARD -i xbot-box0 -j DROP" ] || return 1
+    [ "$(ipt6 -S INPUT 2>/dev/null | sed -n 2p)" = "-A INPUT -i xbot-box0 -j DROP" ] || return 1
+    [ "$(snapshot6)" = "$(cat "$APPLIED.v6" 2>/dev/null)" ] || return 1
+  fi
+  return 0
 }
 
 boot_id() { cat /proc/sys/kernel/random/boot_id; }
@@ -97,6 +114,18 @@ apply() {
   if ! { snapshot >"$APPLIED.tmp" && mv -f "$APPLIED.tmp" "$APPLIED"; }; then
     unready
     return 1
+  fi
+  # IPv6: apply DROP-all rules (B.5: block all IPv6 from bot containers).
+  if [ -s "$RULES_V6" ]; then
+    if ! restore6 <"$RULES_V6"; then
+      log "ip6tables-$V-restore failed"
+      unready
+      return 1
+    fi
+    if ! { snapshot6 >"$APPLIED.v6.tmp" && mv -f "$APPLIED.v6.tmp" "$APPLIED.v6"; }; then
+      unready
+      return 1
+    fi
   fi
   if ! in_place; then
     log "rules did not stick"
@@ -129,10 +158,13 @@ case "${1:-run}" in
     # The run loop leaves them out until XBot applies rules again.
     touch "$STATE/disabled"
     unready
-    rm -f "$APPLIED"
+    rm -f "$APPLIED" "$APPLIED.v6"
     while ipt -D "$(parent)" -j XBOT-FWD 2>/dev/null; do :; done
     while ipt -D INPUT -j XBOT-IN 2>/dev/null; do :; done
     for chain in XBOT-FWD XBOT-IN; do ipt -F "$chain" 2>/dev/null; ipt -X "$chain" 2>/dev/null; done
+    # IPv6: remove DROP-all rules.
+    while ipt6 -D FORWARD -i xbot-box0 -j DROP 2>/dev/null; do :; done
+    while ipt6 -D INPUT -i xbot-box0 -j DROP 2>/dev/null; do :; done
     ;;
   run)
     log "using iptables-$V"

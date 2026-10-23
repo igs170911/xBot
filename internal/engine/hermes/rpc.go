@@ -88,32 +88,41 @@ type conn struct {
 
 // dial 連上 ws://addr/rpc，等 gateway.ready，再宣告會回覆伺服器請求。
 func dial(ctx context.Context, addr, key string, log *slog.Logger, onEvent func(eventParams), onReq func(serverRequest), onClose func(error)) (*conn, error) {
+	log.Debug("hermes: dialing WebSocket", "addr", addr)
 	h := http.Header{}
 	h.Set("Authorization", "Bearer "+key)
 	dctx, cancel := context.WithTimeout(ctx, limits.HermesReadyTimeout)
 	defer cancel()
 	ws, _, err := websocket.Dial(dctx, "ws://"+addr+"/rpc", &websocket.DialOptions{HTTPHeader: h})
 	if err != nil {
+		log.Error("hermes: WebSocket dial failed", "addr", addr, "error", err)
 		return nil, fmt.Errorf("連不上 Bot 的 Hermes：%w", err)
 	}
+	log.Debug("hermes: WebSocket connected", "addr", addr)
 	ws.SetReadLimit(limits.HermesMaxFrameBytes)
 	life, stop := context.WithCancel(context.Background())
 	c := &conn{ws: ws, log: log, onEvent: onEvent, onReq: onReq, onClose: onClose, pending: map[string]chan callResult{},
 		done: make(chan struct{}), ready: make(chan struct{}), cancel: stop}
 	go c.read(life)
 	go c.heartbeat(life)
+	log.Debug("hermes: waiting for gateway.ready")
 	select {
 	case <-c.ready:
+		log.Debug("hermes: gateway ready")
 	case <-c.done:
+		log.Error("hermes: connection closed before ready")
 		return nil, fmt.Errorf("連上 Hermes 後還沒就緒就斷線了：%w", engine.ErrDisconnected)
 	case <-dctx.Done():
+		log.Error("hermes: ready timeout", "error", dctx.Err())
 		c.close()
 		return nil, fmt.Errorf("等不到 Bot 的 Hermes 就緒：%w", dctx.Err())
 	}
 	if _, err := c.call(ctx, "client.capabilities", map[string]any{"server_requests": true}, limits.HermesReadyTimeout); err != nil {
+		log.Error("hermes: client.capabilities failed", "error", err)
 		c.close()
 		return nil, err
 	}
+	log.Debug("hermes: RPC connection established")
 	return c, nil
 }
 

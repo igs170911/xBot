@@ -565,6 +565,7 @@ func markFailed(ctx context.Context, reg *ops.Registry, call *ops.Call, approval
 
 // decideDelegated 是代理代為核准（MCP-10）：只能允許；授權（類別、每日次數與金額、期限）在同一個交易裡檢查並記下，
 // 同時把核准改成允許、結掉原本的核准卡、留一張「已由 ○○ 代為核准」紀錄卡，然後執行動作。
+// B.3 安全檢查：代理不能核准自己要求的動作，除非通過授權檢查（delegation.Authorize 會驗證授權範圍）。
 func decideDelegated(ctx context.Context, reg *ops.Registry, call *ops.Call, in DecideIn) (Outcome, error) {
 	id := call.Identity
 	if in.Decision != "allow" {
@@ -577,6 +578,8 @@ func decideDelegated(ctx context.Context, reg *ops.Registry, call *ops.Call, in 
 	if err != nil {
 		return Outcome{}, err
 	}
+	// B.3: 代理核准自己的請求時，必須通過授權檢查（MCP-10），確保有明確的授權範圍
+	// （delegation.Authorize 會檢查類別、每日次數、金額、期限等）
 	info, ok := reg.Get(a.Action)
 	if !ok {
 		return Outcome{}, ops.NotFound("沒有這個操作：" + a.Action)

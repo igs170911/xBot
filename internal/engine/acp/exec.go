@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/client"
@@ -17,6 +18,8 @@ import (
 type Execer interface {
 	ExecCreate(ctx context.Context, containerID string, options client.ExecCreateOptions) (client.ExecCreateResult, error)
 	ExecAttach(ctx context.Context, execID string, options client.ExecAttachOptions) (client.ExecAttachResult, error)
+	// 2026-10-22k (item 7b): ExecInspect 取得 PID 與清理子行程
+	ExecInspect(ctx context.Context, execID string, options client.ExecInspectOptions) (client.ExecInspectResult, error)
 }
 
 // ExecSpec 是在容器裡開 agent 行程的方式。
@@ -32,15 +35,20 @@ type ExecSpec struct {
 
 // Exec 用 docker exec（不配 TTY，stdin／stdout 各自一條）在容器裡開 agent 行程。
 // 行程的 stdout 就是 ACP；stderr 只留最後一段寫紀錄。關掉 Process 會關掉 stdin 與連線，adapter 讀到 EOF 就會結束。
+// 2026-10-22k (item 7b): 使用 setsid 建立新的 process group，以便清理子行程。
 func Exec(ctx context.Context, api Execer, spec ExecSpec, a Agent) (Process, error) {
 	if len(a.Command) == 0 {
 		return nil, errors.New("沒有設定 agent 的指令")
 	}
 	env := append([]string{"HOME=" + spec.Home}, a.Env...)
 	env = append(env, spec.Env...)
+
+	// 2026-10-22j (B1): setsid -w creates process group AND waits for child, keeping docker stream open
+	wrappedCmd := append([]string{"setsid", "-w"}, a.Command...)
+
 	created, err := api.ExecCreate(ctx, spec.ContainerID, client.ExecCreateOptions{
 		User: spec.User, AttachStdin: true, AttachStdout: true, AttachStderr: true,
-		Env: env, WorkingDir: Workspace, Cmd: a.Command,
+		Env: env, WorkingDir: Workspace, Cmd: wrappedCmd,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("無法在 Bot 的電腦裡開 %s：%w", a.Label, err)
@@ -50,20 +58,36 @@ func Exec(ctx context.Context, api Execer, spec ExecSpec, a Agent) (Process, err
 	if err != nil {
 		return nil, fmt.Errorf("無法連上 Bot 電腦裡的 %s：%w", a.Label, err)
 	}
-	return newExecProcess(att.HijackedResponse), nil
+	return newExecProcess(api, spec.ContainerID, created.ID, att.HijackedResponse), nil
 }
 
 type execProcess struct {
-	resp   client.HijackedResponse
-	stdout *io.PipeReader
-	stderr *tail
+	api         Execer
+	containerID string
+	execID      string
+	resp        client.HijackedResponse
+	stdout      *io.PipeReader
+	stderr      *tail
 
 	once sync.Once
 }
 
-func newExecProcess(resp client.HijackedResponse) *execProcess {
+// ContainerID 回傳容器 ID（B2.3, 2026-10-22）。
+func (p *execProcess) ContainerID() string { return p.containerID }
+
+// Execer 回傳 Docker API execer（B2.3, 2026-10-22）。
+func (p *execProcess) Execer() Execer { return p.api }
+
+func newExecProcess(api Execer, containerID, execID string, resp client.HijackedResponse) *execProcess {
 	pr, pw := io.Pipe()
-	p := &execProcess{resp: resp, stdout: pr, stderr: &tail{max: limits.ACPStderrTailBytes}}
+	p := &execProcess{
+		api:         api,
+		containerID: containerID,
+		execID:      execID,
+		resp:        resp,
+		stdout:      pr,
+		stderr:      &tail{max: limits.ACPStderrTailBytes},
+	}
 	go func() {
 		_, err := stdcopy.StdCopy(pw, p.stderr, resp.Reader)
 		if err == nil {
@@ -79,11 +103,94 @@ func (p *execProcess) Write(b []byte) (int, error) { return p.resp.Conn.Write(b)
 
 func (p *execProcess) Close() error {
 	p.once.Do(func() {
+		// H4: Proper shutdown order for faster eviction
+		// 1. Close stdin first so ACP agent exits cleanly
 		_ = p.resp.CloseWrite()
+
+		// 2. Wait up to 300ms for clean exit
+		if p.waitForExit(300 * time.Millisecond) {
+			// Clean exit, cleanup and return
+			p.resp.Close()
+			_ = p.stdout.Close()
+			return
+		}
+
+		// 3. SIGTERM the process group, wait up to 500ms
+		p.killProcessGroup()
+
+		// Cleanup
 		p.resp.Close()
 		_ = p.stdout.Close()
 	})
 	return nil
+}
+
+// H4: waitForExit polls for process exit up to the given timeout
+func (p *execProcess) waitForExit(timeout time.Duration) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		info, err := p.api.ExecInspect(ctx, p.execID, client.ExecInspectOptions{})
+		if err != nil || info.PID == 0 || !info.Running {
+			return true // Process exited
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	return false
+}
+
+// killProcessGroup 終止這個 exec 及其子行程（2026-10-22k item 7b）
+// H4: SIGTERM with 500ms wait, then SIGKILL
+func (p *execProcess) killProcessGroup() {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	// 取得 exec 的 PID
+	info, err := p.api.ExecInspect(ctx, p.execID, client.ExecInspectOptions{})
+	if err != nil {
+		// Exec 可能已經結束，這不是錯誤
+		return
+	}
+
+	if info.PID == 0 || !info.Running {
+		return // 已經結束
+	}
+
+	// 使用 Docker exec 發送 SIGTERM 到整個 process group
+	// 因為我們用 setsid 啟動，PID 就是 session ID
+	// kill -- -PID 會 kill 整個 process group
+	killCmd := []string{"sh", "-c", fmt.Sprintf("kill -TERM -- -%d 2>/dev/null || true", info.PID)}
+	killExec, err := p.api.ExecCreate(ctx, p.containerID, client.ExecCreateOptions{
+		Cmd: killCmd,
+	})
+	if err == nil {
+		killAtt, err := p.api.ExecAttach(ctx, killExec.ID, client.ExecAttachOptions{})
+		if err == nil {
+			killAtt.Close()
+		}
+	}
+
+	// H4: Wait up to 500ms for SIGTERM to take effect
+	if p.waitForExit(500 * time.Millisecond) {
+		return // Process exited after SIGTERM
+	}
+
+	// H4: SIGKILL the process group
+	info3, err := p.api.ExecInspect(ctx, p.execID, client.ExecInspectOptions{})
+	if err == nil && info3.Running {
+		killCmd := []string{"sh", "-c", fmt.Sprintf("kill -KILL -- -%d 2>/dev/null || true", info.PID)}
+		killExec, err := p.api.ExecCreate(ctx, p.containerID, client.ExecCreateOptions{
+			Cmd: killCmd,
+		})
+		if err == nil {
+			killAtt, err := p.api.ExecAttach(ctx, killExec.ID, client.ExecAttachOptions{})
+			if err == nil {
+				killAtt.Close()
+			}
+		}
+	}
 }
 
 func (p *execProcess) StderrTail() string { return p.stderr.String() }

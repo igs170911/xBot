@@ -55,6 +55,11 @@ func (f *fakeExec) ExecAttach(context.Context, string, client.ExecAttachOptions)
 	return client.ExecAttachResult{HijackedResponse: client.NewHijackedResponse(ours, "")}, nil
 }
 
+// 2026-10-22k: 添加 ExecInspect 實現 (item 7b)
+func (f *fakeExec) ExecInspect(context.Context, string, client.ExecInspectOptions) (client.ExecInspectResult, error) {
+	return client.ExecInspectResult{Running: false, PID: 0}, nil
+}
+
 func TestExecProcess(t *testing.T) {
 	f := &fakeExec{agent: acptest.New()}
 	agent := acp.Agents[acp.EngineClaude]
@@ -72,8 +77,9 @@ func TestExecProcess(t *testing.T) {
 		t.Errorf("經 exec 的回覆 = %q", got)
 	}
 	o := f.created[0]
+	// 2026-10-22k (B1): 預期有 setsid -w 包裝
 	if f.target != "c1" || o.User != "1000:1000" || o.WorkingDir != "/workspace" || !o.AttachStdin || !o.AttachStdout || o.TTY ||
-		!slices.Equal(o.Cmd, []string{"claude-agent-acp"}) || !slices.Contains(o.Env, "HOME=/home/box") || !slices.Contains(o.Env, "X=1") ||
+		!slices.Equal(o.Cmd, []string{"setsid", "-w", "claude-agent-acp"}) || !slices.Contains(o.Env, "HOME=/home/box") || !slices.Contains(o.Env, "X=1") ||
 		!slices.Contains(o.Env, "DISABLE_AUTOUPDATER=1") {
 		t.Errorf("exec 參數 = %+v", o)
 	}

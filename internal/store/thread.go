@@ -194,6 +194,12 @@ func (q *Queries) UpdateMessage(ctx context.Context, id, content string, attachm
 		content, jsonOr(attachments, "[]"), jsonOr(meta, "{}"), nowMS(), id))
 }
 
+// UpdateMessageMeta updates only the meta field of a message
+func (q *Queries) UpdateMessageMeta(ctx context.Context, id string, meta json.RawMessage) error {
+	return affected(q.w.ExecContext(ctx, `UPDATE message SET meta=?, updated_at=? WHERE id=?`,
+		jsonOr(meta, "{}"), nowMS(), id))
+}
+
 // CountMessages 回傳一個範圍裡的訊息數。
 func (q *Queries) CountMessages(ctx context.Context, scope, scopeID string) (int, error) {
 	var n int

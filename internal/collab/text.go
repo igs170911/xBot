@@ -79,6 +79,619 @@ func IsSilent(text string) bool {
 	return body == "" || lower == Silent || (strings.HasPrefix(lower, Silent) && runes(body) < runes(Silent)+limits.SilentTailMax)
 }
 
+// MessageClass 是訊息的分類（判斷是否包含新資訊）。
+type MessageClass string
+
+const (
+	ClassNewInfo  MessageClass = "new_info" // 新資訊：數據、結果、具體內容
+	ClassQuestion MessageClass = "question" // 問題：詢問對方
+	ClassHandoff  MessageClass = "handoff"  // 交接：派工、請求協助
+	ClassResult   MessageClass = "result"   // 結果：工作完成的回報
+	ClassFiller   MessageClass = "filler"   // 填充：沒有實質內容的回覆
+)
+
+// ClassifyMessage 分類訊息內容（新資訊判斷的基礎）。
+// 未來可接入 judge 模型；目前用結構化規則實作。
+// 2026-10-22g：改進精確度：要求具體內容作為證據，減少誤判。
+func ClassifyMessage(text string) MessageClass {
+	body := strings.TrimSpace(text)
+	if body == "" {
+		return ClassFiller
+	}
+
+	lowerBody := strings.ToLower(body)
+
+	// 1. 優先檢查問題
+	if strings.Contains(body, "？") || strings.Contains(body, "?") ||
+		strings.Contains(body, "請問") || strings.Contains(body, "能否") ||
+		strings.Contains(body, "可以嗎") || strings.Contains(body, "怎麼") {
+		return ClassQuestion
+	}
+
+	// 2. 優先檢查列表 → new_info (避免被其他規則誤判)
+	hasList := strings.Contains(body, "\n- ") || strings.Contains(body, "\n1.")
+	if hasList {
+		return ClassNewInfo
+	}
+
+	// 3. 明確的派工/交接詞
+	handoffWords := []string{"派工", "轉給", "assigned", "delegated"}
+	for _, w := range handoffWords {
+		if strings.Contains(lowerBody, w) {
+			return ClassHandoff
+		}
+	}
+
+	// 4. 檢查明確的完成/結果指標
+	// 排除未來式（預計...完成）和名詞用法（完成的項目）
+	completionIndicators := []string{
+		"做好", "修好", "處理好", "準備好", "整理好", "搞定",
+		"已經", "已", "成功", "完畢", "寄出", "上線", "上架", "下架", "發布", "部署",
+		"改成",
+		"done", "finished", "completed", "fixed", "resolved", "deployed",
+	}
+	hasCompletionWord := false
+	for _, w := range completionIndicators {
+		if strings.Contains(lowerBody, w) {
+			hasCompletionWord = true
+			break
+		}
+	}
+	// "完成" needs special handling
+	if strings.Contains(body, "完成") && !hasCompletionWord {
+		// "已完成" / "已經完成" / "成功完成" / "完成，" are completion
+		// "預計...完成" / "完成的" are NOT completion (future or noun)
+		if strings.Contains(body, "預計") || strings.Contains(body, "完成的") {
+			// Future or noun - not completion
+		} else if strings.Contains(body, "已完成") || strings.Contains(body, "已經完成") ||
+			strings.Contains(body, "成功完成") || strings.Contains(body, "完成，") || strings.Contains(body, "完成。") {
+			hasCompletionWord = true
+		}
+	}
+	if hasCompletionWord {
+		return ClassResult
+	}
+
+	// 5. 短請求動詞（<50字）→ handoff
+	// 但排除 "修好"/"改好" 的情況（已在上面作為 completion 處理）
+	bodyRunes := []rune(body)
+	if len(bodyRunes) < 50 && !strings.Contains(body, "修好") && !strings.Contains(body, "改好") {
+		actionVerbs := []string{
+			"請", "寫", "做", "查", "找", "確認", "檢查", "測試",
+			"整理", "分析", "研究", "比較", "評估", "幫", "麻煩",
+		}
+		for _, verb := range actionVerbs {
+			if strings.HasPrefix(body, verb) || strings.Contains(body, " "+verb) {
+				return ClassHandoff
+			}
+		}
+	}
+
+	// 6. 移除@mentions和deference phrases以檢測具體內容
+	stripped := body
+	// Remove @mentions
+	for {
+		atIdx := strings.Index(stripped, "@")
+		if atIdx < 0 {
+			break
+		}
+		endIdx := atIdx + 1
+		for endIdx < len(stripped) {
+			if stripped[endIdx] == ' ' || stripped[endIdx] == ',' || stripped[endIdx] == '\n' {
+				break
+			}
+			if endIdx+1 < len(stripped) {
+				r, size := utf8.DecodeRuneInString(stripped[endIdx:])
+				if r == '，' {
+					break
+				}
+				endIdx += size
+			} else {
+				endIdx++
+			}
+		}
+		// Skip trailing comma/space
+		for endIdx < len(stripped) {
+			if stripped[endIdx] == ' ' || stripped[endIdx] == ',' {
+				endIdx++
+				continue
+			}
+			if endIdx+1 < len(stripped) {
+				r, size := utf8.DecodeRuneInString(stripped[endIdx:])
+				if r == '，' {
+					endIdx += size
+					continue
+				}
+			}
+			break
+		}
+		stripped = stripped[:atIdx] + stripped[endIdx:]
+	}
+
+	// Remove pure deference/agreement phrases (2026-10-22g: longest first)
+	deferencePatterns := []string{
+		// Longer patterns first to avoid partial matches
+		"我完全同意你的看法", "完全同意你的看法", "我完全同意你的建議", "我完全同意你的",
+		"照你說的", "你說的那個", "你說的", "我都可以", "都可以", "交給你",
+		"輪到你", "輪到", "同意你", "贊成你", "很好", "不錯", "沒意見",
+		"謝謝你的回覆", "謝謝你的看法", "謝謝你的建議", "謝謝你的", "感謝你的",
+		"你的回覆", "你的看法", "你的建議", "你的",
+		"謝謝你", "感謝你", "謝謝", "感謝", "收到", "了解", "明白", "好的", "知道了",
+		"不客氣", "不用謝", "辛苦了",
+		"我完全同意", "我同意", "完全同意",
+		"ok", "okay",
+	}
+	for _, p := range deferencePatterns {
+		stripped = strings.ReplaceAll(stripped, p, " ")
+	}
+	stripped = strings.TrimSpace(stripped)
+
+	// 7. 檢查具體內容證據
+	hasConcreteResidue := false
+
+	// 7a. 數字或日期/星期
+	if strings.ContainsAny(stripped, "0123456789") {
+		hasConcreteResidue = true
+	}
+	weekdays := []string{"週一", "週二", "週三", "週四", "週五", "週六", "週日", "星期"}
+	for _, w := range weekdays {
+		if strings.Contains(stripped, w) {
+			hasConcreteResidue = true
+			break
+		}
+	}
+
+	// 7b. 引號內容（「」""）
+	if strings.Contains(stripped, "「") || strings.Contains(stripped, "\"") {
+		hasConcreteResidue = true
+	}
+
+	// 7c. 專有名詞或拉丁詞
+	words := strings.Fields(stripped)
+	for _, w := range words {
+		if len(w) > 0 {
+			firstChar := w[0]
+			// Capitalized English word or all-caps acronym
+			// Exclude common acknowledgements like "OK"
+			wLower := strings.ToLower(w)
+			if wLower == "ok" || wLower == "okay" {
+				continue
+			}
+			if firstChar >= 'A' && firstChar <= 'Z' {
+				hasConcreteResidue = true
+				break
+			}
+			// Common Latin/English words
+			if wLower == "bug" || wLower == "issue" || wLower == "prod" || wLower == "pr" || wLower == "test" {
+				hasConcreteResidue = true
+				break
+			}
+		}
+	}
+
+	// 7d. 新句子≥6個中文字（但排除純致謝和通用長句）
+	cjkCount := 0
+	for _, r := range stripped {
+		if r >= '\u4e00' && r <= '\u9fff' {
+			cjkCount++
+		}
+	}
+	// 2026-10-22g: After stripping, also check that it's not just punctuation fragments
+	if cjkCount >= 6 {
+		// Check if stripped text is mostly punctuation/spaces
+		nonPunctCount := 0
+		for _, r := range stripped {
+			if r >= '\u4e00' && r <= '\u9fff' {
+				nonPunctCount++
+			} else if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' {
+				nonPunctCount++
+			}
+		}
+		// If >50% is actual content (not punct/space), count as concrete
+		if nonPunctCount >= len([]rune(stripped))/2 {
+			hasConcreteResidue = true
+		}
+	}
+
+	// 7e. 路徑、URL、代碼塊
+	if strings.Contains(stripped, "/workspace") || strings.Contains(stripped, "http") ||
+		strings.Contains(stripped, "```") {
+		hasConcreteResidue = true
+	}
+
+	// 8. 決策/選擇/提議詞
+	decisionWords := []string{"決定", "建議", "提議", "推薦"}
+	hasDecisionWord := false
+	for _, w := range decisionWords {
+		if strings.Contains(body, w) {
+			hasDecisionWord = true
+			break
+		}
+	}
+
+	// 9. 分類邏輯
+	// 9a. 提議/建議 + 具體內容 → handoff
+	if hasDecisionWord && hasConcreteResidue {
+		if strings.Contains(body, "提議") || strings.Contains(body, "推薦") {
+			return ClassHandoff
+		}
+		if strings.Contains(body, "建議") {
+			return ClassHandoff
+		}
+	}
+
+	// 9b. 純決定詞但無具體內容 → filler
+	if hasDecisionWord && !hasConcreteResidue {
+		return ClassFiller
+	}
+
+	// 9c. 冒號+具體內容 → new_info
+	if (strings.Contains(body, "：") || strings.Contains(body, ":")) && hasConcreteResidue {
+		return ClassNewInfo
+	}
+
+	// 9d. 有具體證據 → new_info
+	if hasConcreteResidue {
+		return ClassNewInfo
+	}
+
+	// 默認：filler
+	return ClassFiller
+}
+
+// StripMentionsAndPleasantries 移除 @-mention 和客套話，返回剩餘內容
+// 用於判斷一個 @-addressed 訊息是否真的有實質內容
+func StripMentionsAndPleasantries(text string) string {
+	// 移除 @mention (包括 @Name 和 @Name，等變體)
+	body := text
+	body = strings.TrimSpace(strings.Join(strings.Fields(body), " "))
+
+	// 簡化版：移除常見的 @ 模式
+	bodyRunes := []rune(body)
+	for {
+		found := false
+		for i := 0; i < len(bodyRunes); i++ {
+			if bodyRunes[i] == '@' {
+				found = true
+				// 找到 @ 後面的名字結束位置
+				endIdx := i + 1
+				for endIdx < len(bodyRunes) {
+					r := bodyRunes[endIdx]
+					if r == ' ' || r == ',' || r == '，' || r == '。' || r == '！' || r == '？' || r == '\n' {
+						break
+					}
+					endIdx++
+				}
+				// 跳過後面的逗號和空格
+				for endIdx < len(bodyRunes) {
+					r := bodyRunes[endIdx]
+					if r != ' ' && r != ',' && r != '，' {
+						break
+					}
+					endIdx++
+				}
+				bodyRunes = append(bodyRunes[:i], bodyRunes[endIdx:]...)
+				break
+			}
+		}
+		if !found {
+			break
+		}
+	}
+
+	body = strings.TrimSpace(string(bodyRunes))
+
+	// 移除常見客套話
+	pleasantries := []string{
+		"謝謝", "感謝", "辛苦了", "好的", "了解", "收到", "沒問題", "同意", "贊成",
+		"我完全同意", "我同意你的看法", "你說得對", "你的回覆", "你的建議",
+		"thank you", "thanks", "got it", "understood", "agree", "i agree",
+	}
+
+	lowerBody := strings.ToLower(body)
+	for _, p := range pleasantries {
+		lowerP := strings.ToLower(p)
+		lowerBody = strings.ReplaceAll(lowerBody, lowerP, " ")
+	}
+
+	// 移除標點和多餘空格
+	lowerBody = strings.Map(func(r rune) rune {
+		if r == '。' || r == '，' || r == '、' || r == '！' || r == '？' ||
+			r == ',' || r == '.' || r == '!' || r == '?' {
+			return ' '
+		}
+		return r
+	}, lowerBody)
+
+	return strings.TrimSpace(strings.Join(strings.Fields(lowerBody), " "))
+}
+
+// HasSubstanceAfterMention 檢查 @-mention 訊息去除客套話後是否有實質內容
+// 實質內容 = 問題、請求、新資訊、或 Conclusion
+func HasSubstanceAfterMention(text string) bool {
+	stripped := StripMentionsAndPleasantries(text)
+
+	// 如果去除客套話後太短（<5 個字），視為無實質內容
+	if len([]rune(stripped)) < 5 {
+		return false
+	}
+
+	// 檢查是否包含請求動詞
+	requestVerbs := []string{
+		"請", "幫", "能否", "可以", "麻煩",
+		"查", "找", "寫", "做", "修", "改", "建", "整理", "分析",
+		"提議", "建議", "推薦", // 2026-10-22f：提議也算請求/交接
+		"please", "could you", "can you", "would you", "propose",
+	}
+	lowerStripped := strings.ToLower(stripped)
+	for _, verb := range requestVerbs {
+		if strings.Contains(lowerStripped, strings.ToLower(verb)) {
+			return true
+		}
+	}
+
+	// 檢查是否包含問號
+	if strings.Contains(text, "？") || strings.Contains(text, "?") {
+		return true
+	}
+
+	// 檢查是否包含 Conclusion
+	if strings.Contains(text, "Conclusion:") || strings.Contains(text, "Conclusion：") {
+		return true
+	}
+
+	// 2026-10-22d：檢查原始訊息（去除@後）的分類
+	// 先移除 @ mentions，保留其他內容
+	// 2026-10-22e：修正 byte/rune 混用造成的 panic（用 rune slice 找 @）
+	bodyRunes := []rune(text)
+	for {
+		atIdx := -1
+		for i, r := range bodyRunes {
+			if r == '@' {
+				atIdx = i
+				break
+			}
+		}
+		if atIdx < 0 {
+			break
+		}
+		// 找到 @mention 的結束位置
+		endIdx := atIdx + 1
+		for endIdx < len(bodyRunes) {
+			r := bodyRunes[endIdx]
+			if r == ' ' || r == ',' || r == '，' || r == '。' || r == '！' || r == '？' || r == '\n' {
+				break
+			}
+			endIdx++
+		}
+		// 跳過後面的逗號和空格
+		for endIdx < len(bodyRunes) {
+			r := bodyRunes[endIdx]
+			if r != ' ' && r != ',' && r != '，' {
+				break
+			}
+			endIdx++
+		}
+		bodyRunes = append(bodyRunes[:atIdx], bodyRunes[endIdx:]...)
+	}
+	bodyWithoutAt := strings.TrimSpace(string(bodyRunes))
+
+	// 如果去除@後的內容包含實質資訊，返回true
+	// 使用 ClassifyMessage 但允許 ClassResult 和 ClassQuestion 通過
+	class := ClassifyMessage(bodyWithoutAt)
+	return class != ClassFiller
+}
+
+// HasNewInformation 檢查訊息是否包含新資訊、結果、問題或交接。
+// Bot-to-bot 回覆必須符合其中之一，否則應該保持 [silent]（結構化規則）。
+// 2026-10-22：加強規則，避免客套話誤判為新資訊。
+func HasNewInformation(text string) bool {
+	// 2026-10-22c：Conclusion: 訊息永遠不阻擋（移到最前面，避免被 ClassFiller 擋掉）
+	if strings.Contains(text, "Conclusion:") || strings.Contains(text, "Conclusion：") {
+		return true
+	}
+
+	class := ClassifyMessage(text)
+	if class == ClassFiller {
+		return false
+	}
+
+	// 2026-10-22b：任務交接／請求永遠算有新資訊
+	if class == ClassHandoff {
+		return true
+	}
+
+	// 2026-10-22：即使分類為 new_info，如果是純客套話（感謝、問候、鼓勵）也視為 filler
+	// 2026-10-22b：只在移除客套話後幾乎沒內容時才阻擋
+	trimmed := strings.TrimSpace(text)
+
+	// 常見客套話模式
+	pleasantries := []string{
+		"不客氣", "不用謝", "沒問題", "沒關係", "不好意思",
+		"很高興", "樂意", "隨時", "歡迎", "加油",
+		"辛苦了", "謝謝", "感謝", "太好了", "真棒",
+		"you're welcome", "no problem", "my pleasure", "glad to help",
+	}
+
+	// 嘗試移除所有客套話，看剩下什麼
+	remaining := trimmed
+	for _, p := range pleasantries {
+		// 移除客套話及其常見搭配（標點、空格）
+		remaining = strings.ReplaceAll(remaining, p+"。", "")
+		remaining = strings.ReplaceAll(remaining, p+"，", "")
+		remaining = strings.ReplaceAll(remaining, p+"！", "")
+		remaining = strings.ReplaceAll(remaining, p, "")
+	}
+	remaining = strings.TrimSpace(remaining)
+
+	// 檢查剩餘內容長度和實質性
+	remainingRunes := len([]rune(remaining))
+	if remainingRunes < 3 {
+		// 移除客套話後幾乎沒有內容（< 3 字）
+		return false
+	}
+
+	// 如果有數據、路徑、代碼等實質內容，或剩餘內容充足，通過
+	hasSubstance := strings.ContainsAny(remaining, "0123456789") ||
+		strings.Contains(remaining, "/workspace") ||
+		strings.Contains(remaining, "http") ||
+		strings.Contains(remaining, "```") ||
+		remainingRunes >= 4 // 剩餘內容 >= 4 字（如 "done", "OK", "成功"）就通過
+
+	if !hasSubstance {
+		return false
+	}
+
+	return class != ClassFiller
+}
+
+// IsSimilarTo 檢查兩則訊息是否相似（近似重複檢測，防止循環）。
+// 使用簡單的詞袋模型 + 編輯距離，避免重複發送相同內容。
+func IsSimilarTo(a, b string) bool {
+	a = strings.ToLower(strings.TrimSpace(a))
+	b = strings.ToLower(strings.TrimSpace(b))
+
+	if a == b {
+		return true
+	}
+
+	// 移除標點後比較
+	stripPunct := func(s string) string {
+		// 移除所有常見標點符號
+		punct1 := "。！？，、；：（）【】《》〈〉…—·" // 中文標點
+		punct2 := ".,;:!?()[]<>-"      // 英文標點
+		punct3 := `'"`                 // 引號和反引號
+		for _, p := range punct1 + punct2 + punct3 {
+			s = strings.ReplaceAll(s, string(p), "")
+		}
+		return s
+	}
+
+	aNoPunct := stripPunct(a)
+	bNoPunct := stripPunct(b)
+
+	if aNoPunct == bNoPunct {
+		return true
+	}
+
+	// 檢查一個是否包含另一個（長度相近時）
+	aLen := len([]rune(a))
+	bLen := len([]rune(b))
+	if aLen > 0 && bLen > 0 {
+		ratio := float64(aLen) / float64(bLen)
+		if ratio > 0.7 && ratio < 1.3 {
+			if strings.Contains(aNoPunct, bNoPunct) || strings.Contains(bNoPunct, aNoPunct) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// StageADecision 是 Stage A 的確定性規則結果（2026-10-22h）。
+type StageADecision int
+
+const (
+	StageAUnsure StageADecision = iota // 不確定，交給 Stage B
+	StageABlock                        // 確定阻擋（空白、純致謝）
+	StageAPass                         // 確定通過（Conclusion、問句、數字日期、URL、程式碼）
+)
+
+var (
+	conclusionRE = regexp.MustCompile(`(?i)^Conclusion[：:]`)
+	urlRE        = regexp.MustCompile(`https?://`)
+	codeFenceRE  = regexp.MustCompile("```")
+	numberDateRE = regexp.MustCompile(`\d{1,4}[/-]\d{1,2}[/-]\d{1,4}|\d+[.,]\d+|[¥$€£]\s*\d+`)
+)
+
+// StageAFiller 是 Stage A：確定性規則（2026-10-22h）。
+// 空白或純致謝 → 阻擋；Conclusion/問號/數字日期/URL/程式碼 → 通過；其他 → 不確定。
+func StageAFiller(content, verdict string) StageADecision {
+	// [silent] 或純致謝：確定阻擋
+	if verdict != "failed" && (IsSilent(content) || IsAcknowledgement(content)) {
+		return StageABlock
+	}
+
+	stripped := strings.TrimSpace(content)
+	if stripped == "" {
+		return StageABlock
+	}
+
+	// Conclusion: → 確定通過
+	if conclusionRE.MatchString(stripped) {
+		return StageAPass
+	}
+
+	// 問號 → 確定通過
+	if strings.ContainsAny(stripped, "?？") {
+		return StageAPass
+	}
+
+	// 數字、日期 → 確定通過
+	if numberDateRE.MatchString(stripped) {
+		return StageAPass
+	}
+
+	// URL → 確定通過
+	if urlRE.MatchString(stripped) {
+		return StageAPass
+	}
+
+	// 程式碼圍欄 → 確定通過
+	if codeFenceRE.MatchString(stripped) {
+		return StageAPass
+	}
+
+	return StageAUnsure
+}
+
+// ShouldSendToPeer 檢查 Bot 的訊息是否應該送給隊友（統一的發送閘門，2026-10-22h 兩階段）。
+// 用於群組回覆、Bot 主動傳訊、DM 回覆。回傳 (應該送出, 阻擋原因)。
+// Stage A（確定性規則）→ Stage B（peer_reply 快判 ENFORCE）→ 退路（lenient pass）。
+func ShouldSendToPeer(content, verdict string, isAnswer bool, recentFrom []string, judgeVerdict string, isOutgoing bool) (bool, string) {
+	// Stage A：確定性規則
+	switch StageAFiller(content, verdict) {
+	case StageABlock:
+		return false, "stageA:block"
+	case StageAPass:
+		// Stage A 確定通過，仍檢查重複
+		goto checkDuplicate
+	case StageAUnsure:
+		// 繼續 Stage B
+	}
+
+	// Stage B：peer_reply 快判（judgeVerdict 由 peerReplyJudge 提供，ENFORCE 模式）
+	// E5b: judgeVerdict 空字串表示快判失敗或逾時 → 退路：STRICT (block if no new info)
+	if judgeVerdict == "" {
+		// E5b: 快判失敗或逾時 → STRICT fallback: block if no new information
+		if !HasNewInformation(content) {
+			return false, "stageB:fallback:strict"
+		}
+		goto checkDuplicate
+	}
+
+	// 快判成功：handle → 通過；fyi/skip → 阻擋
+	switch judgeVerdict {
+	case "handle":
+		goto checkDuplicate
+	case "fyi":
+		return false, "stageB:fyi"
+	case "skip":
+		return false, "stageB:skip"
+	}
+
+checkDuplicate:
+	// 近似重複檢測（檢查最近發送的訊息）
+	for _, recent := range recentFrom {
+		if IsSimilarTo(content, recent) {
+			return false, "duplicate"
+		}
+	}
+
+	return true, ""
+}
+
 // Member 是 @ 比對用的成員（id、名字）。
 type Member struct {
 	ID   string

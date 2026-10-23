@@ -135,8 +135,16 @@ func setup(t *testing.T) *team {
 	}
 	t.Cleanup(func() { db.Close() })
 	rt := &fakeRT{db: db, bus: events.New(), active: map[string]string{}}
+
+	// Install fake judge backed by fixtures (2026-10-22h)
+	fakeJudge, err := newFakeJudge()
+	if err != nil {
+		t.Fatalf("Failed to create fake judge: %v", err)
+	}
+
 	tm := &team{t: t, ctx: ctx, db: db, rt: rt, files: DirFiles{Root: filepath.Join(dir, "bots")}, bots: map[string]string{}, main: map[string]string{}}
-	tm.s = New(Options{DB: db, Runtime: rt, Files: tm.files})
+	tm.s = New(Options{DB: db, Runtime: rt, Files: tm.files, PeerJudge: fakeJudge})
+	t.Cleanup(func() { tm.s.Close() }) // G5: Stop cleanup goroutine before DB closes
 	for _, b := range [][2]string{{"Chief", "總管"}, {"Writer", "文案"}, {"Scout", "研究"}} {
 		bot, err := db.CreateBot(ctx, store.Bot{Name: b[0], Title: b[1], Description: b[0] + " 的專長"})
 		if err != nil {

@@ -1,13 +1,12 @@
 import { useState } from 'react'
-import { ChevronRight, CircleAlert, CircleCheck, Check, CircleX, Loader } from 'lucide-react'
-import { Avatar } from '../ui/Avatar'
+import { ChevronRight, CircleAlert, CircleCheck, CircleX, Check, Loader } from 'lucide-react'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
 import type { Bot } from '../data/bots'
 import { useNow } from '../data/ui'
 import { linkClick } from '../router'
 import { AnsweredChip, AskCard } from './AskCard'
-import { formatElapsed, isActive, waitText, workSummary, type Activity, type Step } from './assemble'
+import { formatElapsed, isActive, waitText, type Activity, type Step } from './assemble'
 
 const STATE_TITLE: Record<string, string> = {
   queued: '排隊中',
@@ -78,12 +77,10 @@ function MemoryLink({ botId }: { botId: string }) {
   )
 }
 
-// 工作進度（CH-1，design/C01、C02）：進行中是「思考中 · 1 分 12 秒 · 6 個步驟」，預設收合、只露出最新一步（點開看全部）；
-// 做完摺疊成「工作了 N 分鐘 · M 步」，點開看步驟。沒有用到工具的回合不顯示。
+// 工作進度（簡化版）：進行中顯示「工作中…」單行可展開，做完摺疊成「工作了 N 分鐘」，點開看步驟。
 export function WorkSteps({ a, bot }: { a: Activity; bot?: Bot }) {
   const active = isActive(a)
   const [open, setOpen] = useState(false)
-  const [openDone, setOpenDone] = useState(false)
   const now = useNow(active)
   const name = bot?.name ?? 'Bot'
   const botId = a.botId ?? bot?.id
@@ -98,56 +95,57 @@ export function WorkSteps({ a, bot }: { a: Activity; bot?: Bot }) {
 
   if (!active) {
     if (a.steps.length === 0) return answered
+    // 工作完成：摺疊成一行「工作了 N 分鐘」（簡化，不顯示步數）
+    const dur = (a.endedAt ?? now) - (a.startedAt ?? 0)
+    const elapsed = Math.floor(dur / (60 * 1000))
+    const m = elapsed === 0 ? '不到 1 分鐘' : elapsed === 1 ? '1 分鐘' : `${elapsed} 分鐘`
     return (
-      <section aria-label={`${name}的工作步驟`} className="flex flex-col gap-1.5">
+      <details className="group flex flex-col" open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+        <summary className="flex cursor-pointer list-none items-center gap-2 py-1 text-meta text-ink-3 marker:hidden hover:text-ink-2 [&::-webkit-details-marker]:hidden">
+          <Icon icon={a.verdict === 'failed' ? CircleAlert : CircleCheck} size={14} color={a.verdict === 'failed' ? 'var(--color-danger)' : 'var(--color-success)'} className="flex-none" />
+          <span className="flex-1">工作了 {m}</span>
+          <ChevronRight size={14} className="flex-none transition-transform group-open:rotate-90" />
+        </summary>
+        {open && (
+          <div className="ml-6 mt-1 space-y-1">
+            <StepList steps={a.steps} compact now={now} botId={botId} />
+          </div>
+        )}
         {answered}
-        <button
-          type="button"
-          aria-expanded={openDone}
-          onClick={() => setOpenDone((o) => !o)}
-          className="relative flex h-[30px] items-center gap-1.5 self-start rounded-full border border-line bg-transparent pl-3 pr-2.5 text-[13px] text-ink/80 touch-target hover:bg-control"
-        >
-          <Icon icon={a.verdict === 'failed' ? CircleAlert : Check} size={14} strokeWidth={2.25} color={a.verdict === 'failed' ? 'var(--color-danger)' : 'var(--color-success)'} />
-          {workSummary(a)}
-          <span className={cx('flex text-ink-2 transition-transform', openDone && 'rotate-90')}>
-            <Icon icon={ChevronRight} size={16} />
-          </span>
-        </button>
-        {openDone && <StepList steps={a.steps} compact botId={botId} />}
-      </section>
+      </details>
     )
   }
 
+  // 進行中：單行「工作中…」可展開查看詳細步驟（簡化）
   const elapsed = a.startedAt ? formatElapsed(Math.max(0, now - a.startedAt)) : ''
-  const meta = [elapsed, a.steps.length ? `${a.steps.length} 個步驟` : ''].filter(Boolean).join(' · ')
+  const stepCount = a.steps.length
   const stopping = a.state === 'stopping'
   const waiting = a.state === 'waiting_input' || a.state === 'waiting_approval'
 
   return (
-    <section aria-label={`${name}的工作進度`} className="flex flex-col gap-1.5" data-state={a.state}>
-      <button
-        type="button"
-        aria-expanded={a.steps.length ? open : undefined}
-        onClick={() => setOpen((o) => !o)}
-        className="flex h-9 items-center gap-2.5 self-start rounded-full bg-transparent pl-1 pr-3 text-ink"
-      >
-        <Avatar shape={bot?.shape} color={bot?.color} state={stopping ? 'drowsy' : waiting ? 'notifying' : a.thinking || !a.steps.length ? 'thinking' : 'working'} dot="none" ring="#070707" size={24} />
-        <span className={cx('text-[15px]', stopping ? 'text-ink-2' : waiting ? 'text-warning-ink' : 'text-ink', !stopping && !waiting && 'animate-pulse [animation-duration:2.4s]')}>{title(a)}</span>
-        {meta && <span className="text-sub text-ink-3">{meta}</span>}
-        {a.steps.length > 0 && (
-          <span className={cx('flex text-ink-2 transition-transform', open && 'rotate-90')}>
-            <Icon icon={ChevronRight} size={16} />
+    <section aria-label={`${name}的工作進度`} className="flex flex-col gap-1" data-state={a.state}>
+      <details className="group" open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+        <summary className="flex cursor-pointer list-none items-center gap-2 py-1 text-meta text-ink-2 marker:hidden hover:text-ink [&::-webkit-details-marker]:hidden">
+          <Loader size={14} className="flex-none animate-spin text-accent-ink [animation-duration:2s]" />
+          <span className="flex-1">
+            {stopping ? '正在停止…' : waiting ? title(a) : '工作中…'}
+            {elapsed && ` ${elapsed}`}
           </span>
+          {stepCount > 0 && <span className="text-ink-3">{stepCount} 步</span>}
+          <ChevronRight size={14} className="flex-none transition-transform group-open:rotate-90" />
+        </summary>
+        {open && stepCount > 0 && (
+          <div className="ml-6 mt-1 space-y-1">
+            <StepList steps={a.steps} now={now} botId={botId} />
+          </div>
         )}
-      </button>
-      {open && a.steps.length > 0 && <StepList steps={a.steps} now={now} botId={botId} />}
-      {!open && a.steps.length > 0 && <StepList steps={a.steps.slice(-1)} now={now} compact botId={botId} />}
+      </details>
       {answered}
       {a.request?.inboxId ? (
         <AskCard ask={a.request} bot={bot ? { name: bot.name, shape: bot.shape, color: bot.color } : undefined} />
       ) : (
         a.request && (
-          <p className="m-0 ml-[34px] rounded-menu bg-card px-3.5 py-2.5 text-ui-sm">
+          <p className="m-0 ml-6 rounded-menu bg-card px-3.5 py-2.5 text-ui-sm">
             <span className="text-warning-ink">{name}在等你：</span>
             {a.request.prompt}
           </p>

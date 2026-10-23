@@ -111,6 +111,14 @@ const (
 
 	// ACPDenyResumeMax 是一輪裡使用者拒絕動作後，最多請 agent 換方法接著做幾次（Grok 一拒絕就整輪取消）。XBot 新增。
 	ACPDenyResumeMax = 3
+
+	// ACPMaxSessionsPerBox 是一個 Bot 同時最多幾個 ACP session（超過時關掉最久沒用的）。XBot 新增（2026-10-22）：
+	// 每個 session 會開 desktop_mcp.py 與其他 MCP 子行程（合計約 90 MB），不關的話累積到 31–35 個就超過 3 GB 記憶體上限、OOM。
+	ACPMaxSessionsPerBox = 5
+
+	// ACPSessionIdleTimeout 是 session 閒置多久自動關閉。XBot 新增（2026-10-22）。
+	// 2026-10-22n (LEAK FIX 4): Changed from 5 min to 2 min as specified.
+	ACPSessionIdleTimeout = 2 * time.Minute
 )
 
 // Bot 自己登入訂閱 CLI（2026-10-20，xbot.engines.login_start）。XBot 自己的數字。

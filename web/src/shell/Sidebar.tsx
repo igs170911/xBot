@@ -4,6 +4,7 @@ import {
   CalendarClock,
   CalendarDays,
   ChevronDown,
+  ChevronRight,
   Ellipsis,
   FolderOpen,
   Inbox,
@@ -35,7 +36,7 @@ import { openNewRoom, roomsStore, type Room } from '../data/rooms'
 import { useStore } from '../data/store'
 import { moveBot, openNewTeam, sectionsOf, teamsStore } from '../data/teams'
 import { draggingBotStore, openNewBot, setRail } from '../data/ui'
-import { BotListRow, ChiefCard, RoomListRow } from './BotList'
+import { BotListRow } from './BotList'
 import { useRowMenu, type MenuBind, type MoreOpener } from './useRowMenu'
 import { useToast } from '../ui/toast-context'
 import { usePauseMenuItem } from './PauseBanner'
@@ -153,14 +154,14 @@ export type SidebarProps = NavProps & {
   rail?: boolean
 }
 
-// 側欄（2026-10-20 改版，design 稿 A「總管置頂」）：最上面搜尋、新增；大總管（主要 Bot）的大卡片，下面是「待我處理」「辦公室」；
-// 其他 Bot 照團隊分區，一列一個（頭像、名字、職稱、最後一句話）；群組在最後。不常用的頁面收進左下角「設定與更多」。桌面可以縮成只有圖示。
+// 側欄（簡化版：聊天優先）：搜尋、新增在上方；主要 Bot 在頂部；Bot 列表照團隊分區；
+// 群組、日曆、檔案等次要功能移到「更多」選單；設定在底部。
 export function Sidebar(props: SidebarProps) {
   return props.rail ? <Rail {...props} /> : <Full {...props} />
 }
 
-/** 小膠囊連結（待我處理、辦公室）。 */
-function Chip({ to, path, icon, children, aside, onNavigate, tour }: NavProps & { to: string; icon: typeof Inbox; children: ReactNode; aside?: ReactNode; tour?: string }) {
+/** 簡單的列表項目（待我處理、辦公室）。 */
+function NavRow({ to, path, icon, children, aside, onNavigate, tour }: NavProps & { to: string; icon: typeof Inbox; children: ReactNode; aside?: ReactNode; tour?: string }) {
   const active = path === to
   return (
     <a
@@ -168,10 +169,10 @@ function Chip({ to, path, icon, children, aside, onNavigate, tour }: NavProps & 
       data-tour={tour}
       onClick={linkClick(to, onNavigate)}
       aria-current={active ? 'page' : undefined}
-      className={cx('flex h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] max-sm:h-11', active ? 'border-accent/60 bg-control text-ink' : 'border-line bg-card/60 text-ink-2 hover:text-ink')}
+      className={cx('flex min-h-[44px] items-center gap-2.5 rounded-menu px-3 text-[14px]', active ? 'bg-control text-ink' : 'text-ink-2 hover:bg-control/60 hover:text-ink')}
     >
-      <Icon icon={icon} size={15} />
-      {children}
+      <Icon icon={icon} size={18} className="flex-none" />
+      <span className="flex-1 min-w-0">{children}</span>
       {aside}
     </a>
   )
@@ -245,16 +246,13 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
         </label>
       )}
 
-      <div className="flex flex-col items-center gap-2.5 pb-1">
-        {chief && <ChiefCard bot={chief} last={last[chief.id]} active={path === `/bots/${chief.id}` || path.startsWith(`/bots/${chief.id}/`)} onNavigate={onNavigate} menu={rowMenu.bot(chief)} ring="#262626" />}
-        <div className="flex flex-wrap justify-center gap-1.5">
-          <Chip to="/" path={path} icon={Inbox} onNavigate={onNavigate} tour="inbox" aside={count > 0 ? <CountBadge count={count} label={`${count} 件等你`} /> : undefined}>
-            待我處理
-          </Chip>
-          <Chip to="/office" path={path} icon={Monitor} onNavigate={onNavigate}>
-            辦公室
-          </Chip>
-        </div>
+      <div className="flex flex-col gap-1">
+        <NavRow to="/" path={path} icon={Inbox} onNavigate={onNavigate} tour="inbox" aside={count > 0 ? <CountBadge count={count} label={`${count} 件等你`} /> : undefined}>
+          待我處理
+        </NavRow>
+        <NavRow to="/office" path={path} icon={Monitor} onNavigate={onNavigate}>
+          辦公室
+        </NavRow>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-y-contain">
@@ -267,6 +265,7 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
             </Button>
           </div>
         )}
+        {chief && <BotListRow key={chief.id} bot={chief} last={last[chief.id]} crown={false} path={path} onNavigate={onNavigate} menu={rowMenu.bot(chief)} more={rowMenu.more.bot(chief)} look="side" ring="#111111" />}
         {sections.map((sec) => {
           const list = sec.bots.filter((b) => match(b.name))
           if (query && !list.length) return null
@@ -290,14 +289,6 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
             </Section>
           )
         })}
-        {shownRooms.length > 0 && (
-          // 拖著 Bot 時標題改成提示（不另外插一行，免得放下的位置被推走）
-          <Section title={dragging ? '群組（放上去＝加進群組）' : '群組'}>
-            {shownRooms.map((r) => (
-              <RoomListRow key={r.id} room={r} path={path} onNavigate={onNavigate} menu={rowMenu.room(r)} more={rowMenu.more.room(r)} look="side" ring="#111111" />
-            ))}
-          </Section>
-        )}
         {/* 沒有「未分區」時，拖著團隊裡的 Bot 才在最下面出現（放在最後，上面的列不會被推動） */}
         {dragging?.teamId && !hasLoose && (
           <Section title="" drop={moveTo('')}>
@@ -307,34 +298,42 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
         {query && bots && !live.some((b) => match(b.name)) && !shownRooms.length && <p className="m-0 px-3 py-4 text-center text-sub text-ink-2">找不到「{q?.trim()}」</p>}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-1.5">
         <MenuButton
-          label="設定與更多"
+          label="更多"
           items={[
-            { label: '設定', icon: Settings, onSelect: go(() => navigate('/settings')) },
-            ...MORE.map((m, i) => ({ label: m.label, icon: m.icon, separator: i === 0, onSelect: go(() => navigate(m.to)) })),
+            { label: '群組', icon: MessagesSquare, onSelect: shownRooms.length > 0 ? undefined : go(openNewRoom), separator: true },
+            ...(shownRooms.length > 0
+              ? shownRooms.map((r) => ({
+                  label: r.name,
+                  onSelect: go(() => navigate(`/rooms/${r.id}`)),
+                }))
+              : []),
+            { label: '定時任務', icon: CalendarDays, onSelect: go(() => navigate('/calendar')), separator: true },
+            { label: '提案與討論', icon: CalendarClock, onSelect: go(() => navigate('/agenda')) },
+            { label: '全部檔案', icon: FolderOpen, onSelect: go(() => navigate('/files')) },
+            { label: '分享登入', icon: KeyRound, onSelect: go(() => navigate('/apps/logins')) },
+            { label: '團隊地圖', icon: LayoutGrid, onSelect: go(() => navigate('/teams')) },
+            { label: '組織架構', icon: Network, onSelect: go(() => navigate('/org')) },
+            { label: '連接應用程式', icon: Puzzle, onSelect: go(() => navigate('/apps')), separator: true },
             pauseItem,
           ]}
           trigger={(t) => (
-            <button
-              {...t}
-              type="button"
-              aria-label="設定與更多"
-              className={cx('relative flex size-10 flex-none items-center justify-center rounded-full border border-line bg-card/60 text-ink-2 touch-target hover:text-ink aria-expanded:bg-control max-sm:size-11', path.startsWith('/settings') && 'border-accent/60 text-ink')}
-            >
-              <Icon icon={Settings} size={18} />
+            <button {...t} type="button" className="flex h-[44px] items-center gap-2.5 rounded-menu px-3 text-[14px] text-ink-2 hover:bg-control/60 hover:text-ink">
+              <Icon icon={Ellipsis} size={18} className="flex-none" />
+              <span className="flex-1 min-w-0 text-left">更多</span>
+              <Icon icon={ChevronRight} size={16} className="flex-none" />
             </button>
           )}
         />
-        <a
-          href="/apps"
-          onClick={linkClick('/apps', onNavigate)}
-          aria-current={path === '/apps' ? 'page' : undefined}
-          className={cx('flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-full border border-line px-3 text-[13px] text-ink-2 hover:text-ink max-sm:h-11', path === '/apps' ? 'bg-control text-ink' : 'bg-card/60')}
+        <button
+          type="button"
+          onClick={go(() => navigate('/settings'))}
+          className={cx('flex h-[44px] items-center gap-2.5 rounded-menu px-3 text-[14px]', path.startsWith('/settings') ? 'bg-control text-ink' : 'text-ink-2 hover:bg-control/60 hover:text-ink')}
         >
-          <Icon icon={Puzzle} size={16} />
-          連接應用程式
-        </a>
+          <Icon icon={Settings} size={18} className="flex-none" />
+          <span className="flex-1 min-w-0 text-left">設定</span>
+        </button>
       </div>
       {rowMenu.ui}
     </nav>
