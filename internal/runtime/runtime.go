@@ -659,6 +659,7 @@ func (r *Runtime) consume(s engine.Session, botID string) {
 	go func() {
 		// C1(b) (2026-10-22): Recover from panics in event consumer goroutine.
 		// D4 (Round 11): On panic, mark task failed and emit done.
+		// F7: After panic recovery, start next queued task
 		defer func() {
 			if p := recover(); p != nil {
 				r.log.Error("panic in consume goroutine", "panic", p, "bot", botID, "session", s.ResumeID())
@@ -674,10 +675,13 @@ func (r *Runtime) consume(s engine.Session, botID string) {
 					t.finished = true
 					taskID := t.taskID
 					msgID := t.messageID
+					botID := t.botID // F7: capture botID for Finished hook
 					t.mu.Unlock()
 
+					// F7: Prepare panic message for both DB and hook
+					panicMsg := fmt.Sprintf("panic in event consumer: %v", p)
+
 					if !wasFinished {
-						panicMsg := fmt.Sprintf("panic in event consumer: %v", p)
 						// Emit error and done events
 						r.emit(t, KindError, engine.Event{Type: engine.EventError, Text: panicMsg, Fatal: true}, true)
 						r.emit(t, KindDone, engine.Event{Type: engine.EventDone, Status: engine.StatusError, Text: panicMsg}, true)
@@ -701,6 +705,16 @@ func (r *Runtime) consume(s engine.Session, botID string) {
 						delete(r.active, botID)
 					}
 					r.mu.Unlock()
+					
+					// F7: Call Finished hook to start the next queued task after panic
+					if h := r.hooks(); h.Finished != nil {
+						defer func() {
+							if rec2 := recover(); rec2 != nil {
+								r.log.Error("panic in Finished hook after consume panic", "bot", botID, "task", taskID, "hook_panic", rec2)
+							}
+						}()
+						h.Finished(store.Task{ID: taskID, BotID: botID}, VerdictFailed, panicMsg)
+					}
 				}
 			}
 		}()

@@ -88,6 +88,23 @@ func (q *Queries) UpdateRoomConsecEmpty(ctx context.Context, roomID string, cons
 	return affected(q.w.ExecContext(ctx, `UPDATE room SET consec_empty=?, updated_at=? WHERE id=?`, consecEmpty, nowMS(), roomID))
 }
 
+// IncrementRoomConsecEmpty atomically increments consec_empty and returns the new value.
+// F1: Used for auto-stop logic to prevent lost updates in concurrent scenarios.
+func (q *Queries) IncrementRoomConsecEmpty(ctx context.Context, roomID string) (int, error) {
+	// Atomic increment: UPDATE and return the new value
+	res, err := q.w.ExecContext(ctx, `UPDATE room SET consec_empty = consec_empty + 1, updated_at=? WHERE id=?`, nowMS(), roomID)
+	if err != nil {
+		return 0, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return 0, sql.ErrNoRows
+	}
+	// Read back the new value
+	var newVal int
+	err = q.r.QueryRowContext(ctx, `SELECT consec_empty FROM room WHERE id=?`, roomID).Scan(&newVal)
+	return newVal, err
+}
+
 // DeleteRoom 刪群組，連同訊息、成員與座位對話串（trigger）。
 func (q *Queries) DeleteRoom(ctx context.Context, id string) error {
 	return affected(q.w.ExecContext(ctx, `DELETE FROM room WHERE id=?`, id))

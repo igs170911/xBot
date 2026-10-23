@@ -589,7 +589,7 @@ func (s *Service) seat(ctx context.Context, room store.Room, botID, cause string
 	if err != nil {
 		return err
 	}
-	// E6: Dedupe per (room, message id, bot) - check if task already exists for this message
+	// F4: Dedupe per (room, message id, bot) across queued and running tasks
 	for _, t := range open {
 		if t.BotID != botID {
 			continue
@@ -597,21 +597,25 @@ func (s *Service) seat(ctx context.Context, room store.Room, botID, cause string
 		// Check if this task is for the same triggering message
 		var existingMeta taskMeta
 		_ = json.Unmarshal(t.Meta, &existingMeta)
-		if t.State == store.TaskQueued && existingMeta.TriggeringMsgID == cause && cause != "" {
-			// Task already exists for this (room, message, bot) - just update metadata
-			patch := map[string]any{}
-			if addressed {
-				patch["addressed"] = true
-			}
-			if byOwner {
-				patch["by_owner"], patch["round"] = true, 0
-				if t.LowPriority {
-					_ = s.db.SetTaskPriority(ctx, t.ID, false)
+		// F4: Check both queued AND running tasks (not just queued)
+		if (t.State == store.TaskQueued || t.State == store.TaskRunning) && existingMeta.TriggeringMsgID == cause && cause != "" {
+			// Task already exists for this (room, message, bot) - just update metadata if queued
+			if t.State == store.TaskQueued {
+				patch := map[string]any{}
+				if addressed {
+					patch["addressed"] = true
+				}
+				if byOwner {
+					patch["by_owner"], patch["round"] = true, 0
+					if t.LowPriority {
+						_ = s.db.SetTaskPriority(ctx, t.ID, false)
+					}
+				}
+				if len(patch) > 0 {
+					_ = s.db.PatchTaskMeta(ctx, t.ID, patch)
 				}
 			}
-			if len(patch) > 0 {
-				_ = s.db.PatchTaskMeta(ctx, t.ID, patch)
-			}
+			// F4: Don't create duplicate task (whether queued or running)
 			return nil
 		}
 		// Old behavior: update any queued task for this bot in this room
@@ -919,39 +923,65 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 
 	// E6: If replying to owner question/@mention with substantive content, skip judge and always post
 	// E6b: Strip leading agreement/ack phrases, then check if remainder has new information
+	// F3: Normalize before checking - trim spaces/punct, convert fullwidth to halfwidth, lowercase
 	skipJudge := false
 	if isReplyToOwnerQuestion && !IsAcknowledgement(content) {
-		// First check for pure agreement (no substantive content)
-		trimmed := strings.TrimSpace(content)
-		pureAgreement := trimmed == "同意" || trimmed == "贊同" || trimmed == "贊成" || 
-			trimmed == "+1" || trimmed == "我同意" || trimmed == "我也同意" ||
-			trimmed == "好的" || trimmed == "了解" || trimmed == "明白" ||
-			trimmed == "完全同意" || trimmed == "完全贊同" ||
-			strings.Contains(trimmed, "那我們就照這個方向走")
+		// F3: Normalize content for agreement check
+		normalized := normalizeForAgreementCheck(content)
 		
-		if pureAgreement {
+		// Pure agreement tokens that should be blocked
+		pureAgreementTokens := []string{
+			"同意", "贊同", "贊成", "+1", "我同意", "我也同意",
+			"好的", "了解", "明白", "完全同意", "完全贊同", "同上",
+		}
+		
+		// Check if normalized content is pure agreement
+		isPureAgreement := false
+		for _, token := range pureAgreementTokens {
+			if normalized == token {
+				isPureAgreement = true
+				break
+			}
+		}
+		
+		// Also check for generic restatements
+		if strings.Contains(normalized, "那我們就照這個方向走") {
+			isPureAgreement = true
+		}
+		
+		if isPureAgreement {
 			// Pure agreement with no substantive content - let normal blocking apply
 			skipJudge = false
 		} else {
 			// Strip leading agreement/ack phrases to get remainder
-			remainder := trimmed
+			remainder := strings.TrimSpace(content)
 			agreementPrefixes := []string{
-				"同意，", "同意。", "贊同，", "贊同。", "贊成，", "贊成。",
-				"好的，", "好的。", "了解，", "了解。", "明白，", "明白。",
+				"同意，", "同意。", "同意！", "贊同，", "贊同。", "贊同！", "贊成，", "贊成。", "贊成！",
+				"好的，", "好的。", "好的！", "了解，", "了解。", "了解！", "明白，", "明白。", "明白！",
 				"我同意，", "我贊同，", "我也同意，", "我也贊同，",
 				"完全同意，", "完全贊同，",
-				"+1，", "+1。",
+				"+1，", "+1。", "+1！", "＋1，", "＋1。", "＋1！",
 			}
 			for _, prefix := range agreementPrefixes {
-				if strings.HasPrefix(remainder, prefix) {
-					remainder = strings.TrimPrefix(remainder, prefix)
+				// Normalize prefix for comparison
+				normPrefix := normalizeForAgreementCheck(prefix)
+				normRemainder := normalizeForAgreementCheck(remainder)
+				if strings.HasPrefix(normRemainder, normPrefix) {
+					// Find the actual character length of the prefix to strip
+					prefixLen := len([]rune(prefix))
+					remainderRunes := []rune(remainder)
+					if len(remainderRunes) > prefixLen {
+						remainder = string(remainderRunes[prefixLen:])
+					} else {
+						remainder = ""
+					}
 					remainder = strings.TrimSpace(remainder)
 					break
 				}
 			}
 			
-			// Substantive = remainder has new information
-			if remainder != "" && HasNewInformation(remainder) {
+			// F3: Substantive = remainder has new information (not just agreement restatement like '我覺得可以')
+			if remainder != "" && HasNewInformation(remainder) && !isAgreementRestatement(remainder) {
 				skipJudge = true
 			}
 		}
@@ -966,10 +996,6 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 		judgeVerdict = "handle"
 	}
 	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswer, recentTexts, judgeVerdict, true)
-
-	// 2026-10-22d：連續無進展自動停止（從 room.ConsecEmpty 讀取）
-	consecEmpty := room.ConsecEmpty
-	s.log.Debug("auto-stop check", "room", room.ID, "bot", task.BotID, "round", m.Round, "shouldSend", shouldSend, "reason", reason, "consecEmpty", consecEmpty)
 
 	// 2026-10-22g：[silent] 不計入 consecEmpty（明確表示無需補充，與被阻擋的 filler 不同）
 	isSilent := IsSilent(content)
@@ -991,9 +1017,14 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	}
 
 	if !shouldSend && !isSilent {
-		// 被阻擋的 filler 才計入 consecEmpty
-		consecEmpty++
-		_ = s.db.UpdateRoomConsecEmpty(ctx, room.ID, consecEmpty)
+		// F1: Atomic increment to prevent lost updates in concurrent scenarios
+		consecEmpty, err := s.db.IncrementRoomConsecEmpty(ctx, room.ID)
+		if err != nil {
+			s.log.Warn("failed to increment consec_empty", "room", room.ID, "err", err)
+			return
+		}
+
+		s.log.Debug("auto-stop check after increment", "room", room.ID, "bot", task.BotID, "consecEmpty", consecEmpty)
 
 		// B5 (2026-10-22m): @-pleasantry loop stops at ≤1 reply (consecEmpty=1)
 		// DM thanks loop stops at ≤2 turns (consecEmpty=2)
@@ -1045,8 +1076,7 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	} else {
 		// 有新資訊或是 answer，重設計數
 		if HasNewInformation(content) {
-			consecEmpty = 0
-			_ = s.db.UpdateRoomConsecEmpty(ctx, room.ID, consecEmpty)
+			_ = s.db.UpdateRoomConsecEmpty(ctx, room.ID, 0)
 		}
 	}
 
@@ -1066,7 +1096,7 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	isConclusion := strings.Contains(content, "Conclusion:") || strings.Contains(content, "Conclusion：")
 
 	round := m.Round + 1
-	msg, named, err := s.speak(ctx, room, task.BotID, text, roomMeta{TaskID: task.ID, Failed: failed, Round: m.Round, Conclusion: isConclusion, ConsecEmpty: consecEmpty, SenderHop: m.Hop}, round)
+	msg, named, err := s.speak(ctx, room, task.BotID, text, roomMeta{TaskID: task.ID, Failed: failed, Round: m.Round, Conclusion: isConclusion, ConsecEmpty: 0, SenderHop: m.Hop}, round)
 	if err != nil {
 		s.log.Warn("貼到群組失敗", "room", room.ID, "err", err)
 		return
@@ -1402,4 +1432,40 @@ func (s *Service) SetPaused(ctx context.Context, roomID, botID string, paused bo
 	}
 	s.publish("", roomID, "", KindRoomUpdated, map[string]string{"room_id": roomID})
 	return nil
+}
+
+// F3: normalizeForAgreementCheck normalizes text for agreement phrase matching:
+// - Trim spaces and punctuation
+// - Convert fullwidth to halfwidth
+// - Lowercase
+func normalizeForAgreementCheck(s string) string {
+	s = strings.TrimSpace(s)
+	// Convert fullwidth to halfwidth
+	s = strings.ReplaceAll(s, "＋", "+")
+	s = strings.ReplaceAll(s, "１", "1")
+	s = strings.ReplaceAll(s, "！", "!")
+	s = strings.ReplaceAll(s, "。", ".")
+	s = strings.ReplaceAll(s, "，", ",")
+	// Remove trailing punctuation
+	s = strings.TrimRight(s, "!.。！，,")
+	s = strings.ToLower(s)
+	return s
+}
+
+// F3: isAgreementRestatement checks if text is a generic agreement restatement without substance
+func isAgreementRestatement(s string) bool {
+	s = strings.ToLower(strings.TrimSpace(s))
+	restatements := []string{
+		"我覺得可以",
+		"我也覺得可以",
+		"這樣可以",
+		"這個可以",
+		"沒問題",
+	}
+	for _, r := range restatements {
+		if strings.Contains(s, r) {
+			return true
+		}
+	}
+	return false
 }

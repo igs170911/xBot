@@ -15,9 +15,10 @@ type FillerFixtures struct {
 }
 
 // TestFillerEvalRealJudge runs fixtures against the real judge (skips if no credentials)
+// F8: Enable with XBOT_TEST_REAL_JUDGE=1 to test against actual judge service
 func TestFillerEvalRealJudge(t *testing.T) {
-	if testing.Short() {
-		t.Skip("跳過：需要真實快判服務")
+	if os.Getenv("XBOT_TEST_REAL_JUDGE") != "1" {
+		t.Skip("F8: Skipping real judge test (set XBOT_TEST_REAL_JUDGE=1 to run)")
 	}
 
 	// Load fixtures
@@ -39,7 +40,7 @@ func TestFillerEvalRealJudge(t *testing.T) {
 	// Create service with real judge
 	tm := setup(t)
 	if tm.s.o.JudgeService == nil {
-		t.Skip("跳過：沒有快判服務")
+		t.Fatal("F8: JudgeService is nil - configure judge before running real judge tests")
 	}
 
 	ctx := context.Background()

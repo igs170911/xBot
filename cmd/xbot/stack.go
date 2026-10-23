@@ -353,7 +353,7 @@ func openStack(cfg config.Config) (*stack, error) {
 						return box.ContainerID
 					},
 					Log:       logger,
-					Timeout:   5 * time.Second,
+					Timeout:   12 * time.Second, // F2: Single source of truth - Grok median is 5.3s, ~23% timeout at 5s
 					ModelName: modelName,
 				}
 				logger.Info("judge backend: Grok CLI (direct exec, no ACP sessions, exempt from session cap)", "model", modelName)

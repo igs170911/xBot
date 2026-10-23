@@ -19,6 +19,11 @@ import (
 	"xbot/internal/version"
 )
 
+// F6: Lock ordering rule - ALWAYS take locks in this order to prevent deadlock:
+// 1. agentConn.mu (ac.mu)
+// 2. session.mu (s.mu)
+// Never take s.mu then ac.mu.
+
 // ProtocolVersion 是 XBot 講的 ACP 版本。
 const ProtocolVersion = 1
 
@@ -1117,21 +1122,21 @@ func (d *Driver) CloseSession(s engine.Session) error {
 		g := as.gen
 		as.mu.Unlock()
 
-		// Release semaphore exactly once
-		as.releaseSem.Do(func() {
-			as.sem <- struct{}{}
-		})
-
 		// 如果正在跑，發 session/cancel 停下來
 		if running && g != nil && g.c != nil {
 			_ = g.c.notify("session/cancel", map[string]string{"sessionId": as.id})
 		}
 
-		// Kill this session's agent process group
-		// Note: We do NOT close queue here - let disconnect callback do that after emitting error
+		// F5: Kill this session's agent process group BEFORE releasing semaphore
+		// This prevents 6 sessions existing when cap is 5 (process takes 3s to exit)
 		if g != nil && g.c != nil {
-			go d.killProcessGroup(g.c, as.botID, as.id)
+			d.killProcessGroup(g.c, as.botID, as.id)
 		}
+
+		// F5: Release semaphore exactly once AFTER process has been killed
+		as.releaseSem.Do(func() {
+			as.sem <- struct{}{}
+		})
 	})
 
 	return nil
@@ -1337,9 +1342,23 @@ func (d *Driver) background(ac *agentConn, params json.RawMessage) {
 				s.wake = true
 			}
 		}
+		// F6: Release s.mu before taking ac.mu to maintain consistent lock order (ac.mu -> s.mu)
+		running := s.running
+		d.rearm(s)
+		s.mu.Unlock()
+		
 		ac.mu.Lock()
 		delete(ac.children, u.Child)
 		ac.mu.Unlock()
+		
+		// Skip rest of processing after unlocking
+		if !running {
+			return
+		}
+		for _, ev := range evs {
+			s.q.push(ev)
+		}
+		return
 	case "turn_completed":
 		if !own {
 			break
