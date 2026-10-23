@@ -420,6 +420,7 @@ func TestReportsModels(t *testing.T) {
 }
 
 // 用工具前的一兩句「我先看一下」不算最後的回答（同 Hermes 的 interim message）；先寫完答案再存檔的，答案要留著。
+// 2026-10-24：做了 39 步、每步前一句旁白，加起來再長也是旁白（之前整串接在「做好了」前面交出去）。
 func TestFinalAnswerSkipsShortNarration(t *testing.T) {
 	h := setup(t)
 	s := start(t, h, "th1")
@@ -433,8 +434,11 @@ func TestFinalAnswerSkipsShortNarration(t *testing.T) {
 	if e := done(acptest.PromptNarrate); e.Type != engine.EventDone || e.Text != "答案是 42。" {
 		t.Fatalf("最後的回答只要用完工具後那段：%+v", e)
 	}
-	if e := done(acptest.PromptAnswerFirst); e.Type != engine.EventDone || e.Text != "" {
-		t.Fatalf("前面是一大段答案就整段保留（Text 空白＝用串流的全部）：%q", e.Text)
+	if e := done(acptest.PromptAnswerFirst); e.Type != engine.EventDone || e.Text != acptest.AnswerFirstText+"\n\n已存檔。" {
+		t.Fatalf("前面是一大段答案就保留：%q", e.Text)
+	}
+	if e := done(acptest.PromptNarrateMany); e.Type != engine.EventDone || e.Text != "做好了，在 /workspace/a.html。" {
+		t.Fatalf("很多句短旁白加起來再長也不算回答：%q", e.Text)
 	}
 }
 

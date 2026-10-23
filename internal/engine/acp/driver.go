@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	"xbot/internal/engine"
 	"xbot/internal/limits"
@@ -140,12 +139,22 @@ type session struct {
 	resetAt int64
 	// intro 是還沒送出的身分與守則：加在這個新 session 第一則訊息的前面，送出後清掉（Options.Instructions）。
 	intro string
-	// all 是這一輪全部的回覆文字；tail 是最後一次呼叫工具之後的文字。用工具前說的「我先看一下…」不算最後的回答
-	// （同 Hermes 的 interim message；2026-10-19 Grok 的 Bot 把開頭那句一起交回給隊友）。
+	// all 是這一輪全部的回覆文字；tail 是最後一次呼叫工具之後的文字；said 是之前每次呼叫工具前寫的那幾段。
+	// 用工具前說的「我先看一下…」不算最後的回答（同 Hermes 的 interim message；2026-10-19 Grok 的 Bot 把開頭那句一起交回給隊友），
+	// 見 engine.FinalAnswer。
 	all, tail strings.Builder
+	said      []string
 }
 
 func (s *session) ID() string { return s.id }
+
+// cut 結束目前這段文字（要呼叫工具、或被拒絕後接著做）：寫過字就收進 said。呼叫者持有 s.mu。
+func (s *session) cut() {
+	if strings.TrimSpace(s.tail.String()) != "" {
+		s.said = append(s.said, s.tail.String())
+	}
+	s.tail.Reset()
+}
 
 // ResumeID 實作 engine.Session：ACP 的 sessionId 可以用 session/load 接回。
 func (s *session) ResumeID() string { return s.id }
@@ -653,7 +662,7 @@ func (d *Driver) resumeAfterDeny(s *session, raw json.RawMessage) bool {
 	}
 	s.denied = false
 	s.resumes++
-	s.tail.Reset()
+	s.cut()
 	s.mu.Unlock()
 	params := map[string]any{"sessionId": s.id, "prompt": []map[string]string{{"type": "text", "text": DeniedNote}}}
 	if _, err := s.ac.c.start("session/prompt", params, func(raw json.RawMessage, err error) { d.promptDone(s, raw, err) }); err != nil {
@@ -768,9 +777,10 @@ func (d *Driver) endTurn(s *session, raw json.RawMessage, err error) {
 	cancelling := s.cancelling
 	s.cancelling = false
 	s.tools = map[string]*toolState{}
-	all, tail := s.all.String(), strings.TrimSpace(s.tail.String())
+	all, answer := s.all.String(), engine.FinalAnswer(append(s.said, s.tail.String()))
 	s.all.Reset()
 	s.tail.Reset()
+	s.said = nil
 	s.mu.Unlock()
 	if errors.Is(err, engine.ErrDisconnected) {
 		return // disconnected 會送出連線中斷
@@ -805,9 +815,8 @@ func (d *Driver) endTurn(s *session, raw json.RawMessage, err error) {
 		s.q.push(engine.Event{Type: engine.EventStatus, Session: s.id, Text: note})
 		note = ""
 	}
-	if note == "" && status == engine.StatusComplete && tail != "" && tail != strings.TrimSpace(all) &&
-		utf8.RuneCountInString(strings.TrimSpace(all))-utf8.RuneCountInString(tail) <= limits.InterimNarrationMax {
-		note = tail // 最後的回答是用完工具之後寫的那段；前面只是一兩句「我先看一下」
+	if note == "" && status == engine.StatusComplete && answer != "" && answer != strings.TrimSpace(all) {
+		note = answer // 最後的回答是用完工具之後寫的那段；前面只是「我先看一下」這類旁白
 	}
 	s.q.push(engine.Event{Type: engine.EventDone, Session: s.id, Status: status, Text: note})
 }
@@ -1069,7 +1078,7 @@ func (d *Driver) notification(ac *agentConn, method string, params json.RawMessa
 			s.all.WriteString(e.Text)
 			s.tail.WriteString(e.Text)
 		case engine.EventToolCall:
-			s.tail.Reset()
+			s.cut()
 		}
 	}
 	s.mu.Unlock()

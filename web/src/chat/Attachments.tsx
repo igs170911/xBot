@@ -122,7 +122,7 @@ function PageTile({ botId, path }: { botId: string; path: string }) {
     }
   }, [botId, path])
   return (
-    <div ref={box} data-testid="page-tile" className="flex w-[min(100%,560px)] flex-col overflow-hidden rounded-[14px] bg-control">
+    <div ref={box} data-testid="page-tile" className="flex w-[640px] max-w-full flex-col overflow-hidden rounded-[14px] bg-control">
       <div className="flex items-center gap-2 py-1.5 pl-2.5 pr-1">
         <FileIcon kind={kindFromName(name)} size={28} />
         <span {...fileRefProps(filesHref(botId, path))} title="看原始碼" className="min-w-0 flex-1 cursor-pointer truncate text-ui hover:underline">
@@ -134,7 +134,7 @@ function PageTile({ botId, path }: { botId: string; path: string }) {
         </a>
       </div>
       {html ? (
-        <PageFrame html={html} title={name} className="h-[360px] max-md:h-[300px]" />
+        <PageFrame html={html} title={name} className="h-[440px] max-md:h-[320px]" />
       ) : (
         <div className="flex h-24 items-center justify-center px-4 text-center text-ui-sm text-ink-3">{note || '網頁載入中…'}</div>
       )}

@@ -33,6 +33,8 @@ const (
 	PromptNarrate = "narrate"
 	// PromptAnswerFirst：先寫完一大段答案、再用工具存檔、最後說「已存檔」（答案不能被丟掉）。
 	PromptAnswerFirst = "answer-first"
+	// PromptNarrateMany：做了很多步，每用一個工具前都說一句（加起來超過 limits.InterimNarrationMax），最後寫答案。
+	PromptNarrateMany = "narrate-many"
 	// PromptBackground：照 Grok 的樣子把工作丟到背景（_x.ai/session/update 的 workflow_updated），說「研究開跑了」就結束
 	// session/prompt。測試呼叫 Agent.Finish 後背景工作做完，agent 自己開一輪回報：讀一個網頁（fetch，要權限）、
 	// 改 /workspace 的報告（edit，要權限），說「報告好了」，以 turn_completed 結束。
@@ -444,6 +446,15 @@ func (p *peer) prompt(f frame) {
 		p.update(sid, map[string]any{"sessionUpdate": "tool_call", "toolCallId": "n1", "title": "cat a.txt", "kind": "read", "status": "pending"})
 		p.update(sid, map[string]any{"sessionUpdate": "tool_call_update", "toolCallId": "n1", "status": "completed"})
 		p.chunk(sid, "agent_message_chunk", last)
+		end("end_turn")
+	case PromptNarrateMany:
+		for i := range 15 {
+			p.chunk(sid, "agent_message_chunk", fmt.Sprintf("接著調整第 %d 個區塊的排版，再截圖確認一次。", i+1))
+			id := fmt.Sprintf("m%d", i)
+			p.update(sid, map[string]any{"sessionUpdate": "tool_call", "toolCallId": id, "title": "screenshot", "kind": "execute", "status": "pending"})
+			p.update(sid, map[string]any{"sessionUpdate": "tool_call_update", "toolCallId": id, "status": "completed"})
+		}
+		p.chunk(sid, "agent_message_chunk", "做好了，在 /workspace/a.html。")
 		end("end_turn")
 	case PromptHello:
 		p.chunk(sid, "agent_thought_chunk", "thinking…")

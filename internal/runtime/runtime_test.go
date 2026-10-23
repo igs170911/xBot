@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -356,6 +357,27 @@ func TestNarrationBetweenToolsIsNotTheAnswer(t *testing.T) {
 	f.wait(t, res.TaskID)
 	msgs, _ = f.db.ListMessages(ctx, store.ScopeThread, res.ThreadID, 0, 0)
 	if got := msgs[len(msgs)-1].Content; got != "A 店最便宜，B 店缺貨。" {
+		t.Fatalf("回答：%q", got)
+	}
+	// 2026-10-24：很多步、每步前一句旁白，加起來再長也是旁白
+	f.g.OnPrompt = func(t *hermestest.Turn) {
+		t.Event("message.start", nil)
+		for i := range 15 {
+			t.Event("message.delta", map[string]any{"text": "接著再查下一家店的價格，確認有沒有貨。"})
+			id := fmt.Sprintf("m%d", i)
+			t.Event("tool.start", map[string]any{"tool_id": id, "name": "web_search"})
+			t.Event("tool.complete", map[string]any{"tool_id": id, "name": "web_search", "result": "ok"})
+		}
+		t.Event("message.delta", map[string]any{"text": "C 店最便宜。"})
+		t.Complete("", "complete", nil)
+	}
+	res, err = f.rt.Chat(ctx, f.bot.ID, res.ThreadID, "再多查幾家")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.wait(t, res.TaskID)
+	msgs, _ = f.db.ListMessages(ctx, store.ScopeThread, res.ThreadID, 0, 0)
+	if got := msgs[len(msgs)-1].Content; got != "C 店最便宜。" {
 		t.Fatalf("回答：%q", got)
 	}
 }

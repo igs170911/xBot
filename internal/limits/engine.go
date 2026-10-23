@@ -4,8 +4,8 @@ import "time"
 
 // 引擎驅動與對話（E02）。
 
-// InterimNarrationMax：ACP 引擎在用工具前寫的文字不超過這麼多字（「我先看一下…」）時，最後的回答只取用完工具後的那段；
-// 比這長就整段保留（可能是先寫完答案再存檔）。XBot 自訂。
+// InterimNarrationMax：引擎在呼叫工具前寫的一段文字不超過這麼多字（「我先看一下…」）就是旁白，不算最後的回答；
+// 比這長的段落保留（可能是先寫完答案再存檔）。見 engine.FinalAnswer。XBot 自訂。
 const InterimNarrationMax = 200
 
 const (

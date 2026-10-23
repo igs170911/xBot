@@ -227,7 +227,7 @@ type turn struct {
 	pending   *pending // Bot 正在等人回覆的請求（一次一個）
 	usedTools bool     // 這一輪呼叫過工具（判斷「只說要做」用）
 	research  int      // 這一輪成功的搜尋、讀網頁、瀏覽器呼叫（判斷「說研究過卻沒查」用，judge.IsResearchTool）
-	toolsAt   int      // 最後一次呼叫工具時 text 寫到哪（之後那段才是最後的回答）
+	toolsAt   []int    // 每次呼叫工具時 text 寫到哪（最後一次之後那段才是最後的回答，見 engine.FinalAnswer）
 	// engine、provider：這一輪用的引擎與 Model Proxy 供應商；started：開始送出的時間；quota：引擎報的額度錯誤（EN-7）。
 	engine, provider string
 	started          time.Time
@@ -649,7 +649,7 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 			switch e.Type {
 			case engine.EventToolCall:
 				t.usedTools = true
-				t.toolsAt = t.text.Len()
+				t.toolsAt = append(t.toolsAt, t.text.Len())
 				if t.openTools == nil {
 					t.openTools = map[string]bool{}
 				}
@@ -774,6 +774,18 @@ func (r *Runtime) finishErr(t *turn, err error) {
 	r.finish(t, engine.StatusError, "工作未完成："+err.Error())
 }
 
+// segments 把這一輪寫出的文字依每次呼叫工具的位置切開（最後一段是最後一次呼叫工具之後寫的）。
+func segments(text string, cuts []int) []string {
+	segs := make([]string, 0, len(cuts)+1)
+	from := 0
+	for _, c := range cuts {
+		c = min(max(c, from), len(text))
+		segs = append(segs, text[from:c])
+		from = c
+	}
+	return append(segs, text[from:])
+}
+
 // finish 寫下最後的回覆、結束任務、發布 done，並釋放這個 Bot。只會做一次。
 func (r *Runtime) finish(t *turn, status, text string) {
 	t.askMu.Lock() // 和 resume 互斥：回覆前改回「工作中」不會蓋掉「已完成」
@@ -788,7 +800,7 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	p := t.pending
 	t.pending = nil
 	streamed := t.text.String()
-	tail := strings.TrimSpace(streamed[min(t.toolsAt, len(streamed)):])
+	answer := engine.FinalAnswer(segments(streamed, t.toolsAt))
 	msgID := t.messageID
 	stopping := t.stopping
 	paused := t.paused
@@ -810,9 +822,9 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		if final == "" {
 			final = streamed
 			// 引擎沒給最後的回答：用工具之間寫的旁白（「讓我試試…」）不算回答，只取用完工具之後寫的那段
-			// （和 ACP 驅動同一條規則；旁白比 InterimNarrationMax 長就整段保留，可能是先寫完答案再存檔）
-			if verdict == VerdictAnswer && tail != "" && utf8.RuneCountInString(strings.TrimSpace(streamed))-utf8.RuneCountInString(tail) <= limits.InterimNarrationMax {
-				final = tail
+			// （和 ACP 驅動同一條規則；比 InterimNarrationMax 長的段落保留，可能是先寫完答案再存檔）
+			if verdict == VerdictAnswer && answer != "" {
+				final = answer
 			}
 		}
 	case VerdictFailed:
