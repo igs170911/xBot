@@ -918,8 +918,14 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	}
 
 	// E6: If replying to owner question/@mention with substantive content, skip judge and always post
+	// Substantive = not acknowledgement AND not agreement filler
+	// Agreement filler = contains agreement words (同意/+1/贊同) OR lacks new information
 	skipJudge := false
-	if isReplyToOwnerQuestion && !IsAcknowledgement(content) {
+	hasAgreementWords := strings.Contains(content, "同意") || strings.Contains(content, "贊同") ||
+		strings.Contains(content, "贊成") || strings.Contains(content, "+1") ||
+		strings.Contains(content, "好的")
+	isAgreementFiller := hasAgreementWords || !HasNewInformation(content)
+	if isReplyToOwnerQuestion && !IsAcknowledgement(content) && !isAgreementFiller {
 		skipJudge = true
 	}
 

@@ -44,10 +44,8 @@ func TestNilJudgeFallsBackToStrict(t *testing.T) {
 }
 
 // TestThreeBotFillerChainTripsAutoStop tests that 3 bots posting '好的，那我們就照這個方向走。' triggers auto-stop (2026-10-22h)
-// TODO(E6): This test needs to be adapted for E6 semantics (substantive replies to owner @mentions skip judge)
-// "好的，那我們就照這個方向走。" is substantive (not acknowledgement), so E6 allows it through
+// E6 clarification: "好的，那我們就照這個方向走。" has no new info, so E6 does NOT exempt it
 func TestThreeBotFillerChainTripsAutoStop(t *testing.T) {
-	t.Skip("TODO(E6): Adapt for E6 semantics - substantive replies to owner @mentions skip judge and always post")
 	tm := setup(t)
 	chief, writer, scout := tm.bots["Chief"], tm.bots["Writer"], tm.bots["Scout"]
 
