@@ -1191,8 +1191,14 @@ func (d *Driver) disconnected(ac *agentConn, sessionID string, p Process, cause 
 		// Emit error event and close queue
 		s.q.push(engine.Event{Type: engine.EventError, Session: s.id, Text: engine.ErrDisconnected.Error(), Fatal: true})
 		s.q.close()
-		// E1: Also call CloseSession to ensure semaphore is released (idempotent via closeOnce)
-		_ = d.CloseSession(s)
+		// F5: Only call CloseSession if not already closing (check closed flag first)
+		// This prevents deadlock: CloseSession→killProcessGroup→disconnect→CloseSession
+		s.mu.Lock()
+		alreadyClosing := s.closed
+		s.mu.Unlock()
+		if !alreadyClosing {
+			_ = d.CloseSession(s)
+		}
 	}
 }
 
