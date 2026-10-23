@@ -726,7 +726,23 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	if round > limits.RoomRounds() || failed || IsThanksOnly(text) {
 		return // 只有道謝：貼出來，但不叫醒被 @ 的人（不然對方又回一句謝謝）
 	}
-	s.wake(ctx, room, named, msg.ID, round, true)
+	s.wake(ctx, room, s.notYetAsked(ctx, task.ID, named), msg.ID, round, true)
+}
+
+// notYetAsked 拿掉這一輪已經用傳話交辦過、還沒交回的成員：群組裡的 @ 只是告訴大家誰做什麼，不要再叫醒他做一次
+// （2026-10-23 實測：主管傳話請研究查資料，又在群組 @研究「你負責第一棒」，研究多做一輪一樣的事，做完還一直佔著）。
+func (s *Service) notYetAsked(ctx context.Context, taskID string, named []store.Bot) []store.Bot {
+	asked := map[string]bool{}
+	for _, m := range s.waitingOn(ctx, taskID) {
+		asked[m.To] = true
+	}
+	var out []store.Bot
+	for _, b := range named {
+		if !asked[b.ID] {
+			out = append(out, b)
+		}
+	}
+	return out
 }
 
 // speak 把 Bot 的話貼到群組，回傳那則訊息與它 @ 的成員（LazyBoy speak）。handoff 是被 @ 的成員醒來時的輪數；
@@ -916,6 +932,7 @@ func (s *Service) PostGroup(ctx context.Context, botID, ref, message string) (Po
 	}
 	woke := []string{}
 	if !capped && !thanks {
+		named = s.notYetAsked(ctx, origin.ID, named)
 		s.wake(ctx, room, named, posted.ID, round, true)
 		for _, b := range named {
 			woke = append(woke, b.Name)

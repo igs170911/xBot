@@ -281,3 +281,21 @@ func TestRepeatedRequestsToTheSameTeammateGetANudge(t *testing.T) {
 		t.Fatal("別的隊友不算")
 	}
 }
+
+// 主管這一輪已經傳話交辦給研究，群組裡又 @研究「你負責第一棒」：只是告訴大家誰做什麼，不再叫醒研究做一次（2026-10-23 實測）。
+func TestGroupMentionDoesNotWakeSomeoneAlreadyAsked(t *testing.T) {
+	tm := setup(t)
+	chief, writer, scout := tm.bots["Chief"], tm.bots["Writer"], tm.bots["Scout"]
+	room := must[store.Room](t)(tm.s.CreateRoom(tm.ctx, []string{chief, writer, scout}, RoomOptions{Name: "行銷團隊"}))
+	must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, "@Chief 分工下去做", ""))
+	turn := tm.queued(chief)[0]
+	tm.start(turn)
+	must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Scout", "查三個競品", IntentRequest, SendOptions{}))
+	tm.finish(turn.ID, runtime.VerdictAnswer, "@Scout 你負責第一棒：查三個競品。@Writer 等研究回來再寫。")
+	if q := tm.queued(scout); len(q) != 1 || metaOf(q[0]).RoomID != "" {
+		t.Fatalf("Scout 只有傳話那一件，不再被群組叫醒：%+v", q)
+	}
+	if q := tm.queued(writer); len(q) != 1 || metaOf(q[0]).RoomID != room.ID {
+		t.Fatalf("沒有交辦過的 Writer 照常叫醒：%+v", q)
+	}
+}
