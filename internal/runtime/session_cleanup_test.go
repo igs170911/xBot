@@ -69,11 +69,12 @@ func (d *countingDriver) Send(ctx context.Context, s engine.Session, m engine.Me
 		cs.mu.Lock()
 		cs.running = false // Mark as not running
 		closed := cs.closed
-		cs.mu.Unlock()
 		if !closed {
+			// Send events while holding lock to prevent race with CloseSession
 			cs.events <- engine.Event{Type: engine.EventText, Text: "done"}
 			cs.events <- engine.Event{Type: engine.EventDone, Status: engine.StatusComplete}
 		}
+		cs.mu.Unlock()
 	}()
 	return nil
 }
@@ -81,7 +82,11 @@ func (d *countingDriver) Send(ctx context.Context, s engine.Session, m engine.Me
 func (d *countingDriver) Interrupt(ctx context.Context, s engine.Session) error {
 	cs := s.(*countingSession)
 	go func() {
-		cs.events <- engine.Event{Type: engine.EventDone, Status: engine.StatusInterrupted}
+		cs.mu.Lock()
+		if !cs.closed {
+			cs.events <- engine.Event{Type: engine.EventDone, Status: engine.StatusInterrupted}
+		}
+		cs.mu.Unlock()
 	}()
 	return nil
 }

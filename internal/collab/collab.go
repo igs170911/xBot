@@ -70,7 +70,9 @@ type Service struct {
 	rt  Runtime
 	log *slog.Logger
 	// G5: TTL set for recently finished tasks (room, msg_id, bot) → expiry time
-	recentTasks sync.Map // map[string]int64
+	recentTasks  sync.Map // map[string]int64
+	cleanupDone  chan struct{}
+	cleanupClose chan struct{}
 }
 
 // peerReplyJudge 呼叫快判判斷隊友訊息要不要回（2026-10-22h：透過 PeerJudge 介面）。
@@ -98,7 +100,7 @@ func New(o Options) *Service {
 	if o.ChainBudget <= 0 {
 		o.ChainBudget = limits.ChainBudgetTokens
 	}
-	s := &Service{o: o, db: o.DB, rt: o.Runtime, log: o.Logger}
+	s := &Service{o: o, db: o.DB, rt: o.Runtime, log: o.Logger, cleanupDone: make(chan struct{}), cleanupClose: make(chan struct{})}
 	if s.rt != nil {
 		s.rt.SetHooks(runtime.Hooks{Prompt: s.prompt, Finished: s.finished, Stopped: s.stopped, Silent: s.silent, ContinueMeta: s.continueMeta})
 	}
@@ -107,18 +109,30 @@ func New(o Options) *Service {
 	return s
 }
 
+// Close stops the cleanup goroutine and waits for it to finish.
+func (s *Service) Close() {
+	close(s.cleanupClose)
+	<-s.cleanupDone
+}
+
 // G5: cleanupRecentTasks removes expired entries from the TTL set
 func (s *Service) cleanupRecentTasks() {
+	defer close(s.cleanupDone)
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
-	for range ticker.C {
-		now := time.Now().Unix()
-		s.recentTasks.Range(func(key, value any) bool {
-			if expiry, ok := value.(int64); ok && expiry < now {
-				s.recentTasks.Delete(key)
-			}
-			return true
-		})
+	for {
+		select {
+		case <-s.cleanupClose:
+			return
+		case <-ticker.C:
+			now := time.Now().Unix()
+			s.recentTasks.Range(func(key, value any) bool {
+				if expiry, ok := value.(int64); ok && expiry < now {
+					s.recentTasks.Delete(key)
+				}
+				return true
+			})
+		}
 	}
 }
 
