@@ -30,7 +30,7 @@ func TestH2AtomicConsecEmpty(t *testing.T) {
 
 	var createdCounts []int
 	var mu sync.Mutex
-	
+
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
 		go func() {
