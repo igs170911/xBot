@@ -55,7 +55,7 @@ const (
 	// LabelNetguard 是 xbot-netguard 容器的版本；和 guardRevision 不同時重建它。
 	LabelNetguard = "xbot.netguard"
 
-	guardRevision = "2024.10.22.v6"
+	guardRevision = "2026.10.23.v6b"
 	guardStateDir = "/var/lib/xbot-netguard"
 	guardReadyDir = "/var/lib/xbot-netguard-ready"
 	guardRules    = "rules.v4"

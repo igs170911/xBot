@@ -66,11 +66,16 @@ snapshot() {
   ipt -S XBOT-IN 2>/dev/null
 }
 
-# snapshot6: same for IPv6 (separate because IPv6 rules are simple: DROP everything).
+# snapshot6: the IPv6 rules file's checksum. IPv6 has no XBOT chains (just a DROP at the top of FORWARD and INPUT,
+# which in_place checks directly), so there is nothing else to snapshot.
 snapshot6() {
-  [ -s "$RULES_V6" ] && sha256sum "$RULES_V6" | cut -d' ' -f1
-  ipt6 -S XBOT-FWD 2>/dev/null
-  ipt6 -S XBOT-IN 2>/dev/null
+  sha256sum "$RULES_V6" | cut -d' ' -f1
+}
+
+# drop6: remove our IPv6 DROPs, so applying again (every retry inserts at the top) does not stack copies.
+drop6() {
+  while ipt6 -D FORWARD -i xbot-box0 -j DROP 2>/dev/null; do :; done
+  while ipt6 -D INPUT -i xbot-box0 -j DROP 2>/dev/null; do :; done
 }
 
 # in_place: the rules file was applied, nothing changed the chains since, and both are jumped to first.
@@ -117,6 +122,7 @@ apply() {
   fi
   # IPv6: apply DROP-all rules (B.5: block all IPv6 from bot containers).
   if [ -s "$RULES_V6" ]; then
+    drop6
     if ! restore6 <"$RULES_V6"; then
       log "ip6tables-$V-restore failed"
       unready
@@ -163,8 +169,7 @@ case "${1:-run}" in
     while ipt -D INPUT -j XBOT-IN 2>/dev/null; do :; done
     for chain in XBOT-FWD XBOT-IN; do ipt -F "$chain" 2>/dev/null; ipt -X "$chain" 2>/dev/null; done
     # IPv6: remove DROP-all rules.
-    while ipt6 -D FORWARD -i xbot-box0 -j DROP 2>/dev/null; do :; done
-    while ipt6 -D INPUT -i xbot-box0 -j DROP 2>/dev/null; do :; done
+    drop6
     ;;
   run)
     log "using iptables-$V"
