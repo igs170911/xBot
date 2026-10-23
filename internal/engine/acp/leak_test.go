@@ -72,9 +72,8 @@ func runFakeAgent() {
 			sessionCount++
 			sessID := fmt.Sprintf("sess_%d", sessionCount)
 
-			// Spawn sleep 3600 in this process group
+			// Spawn sleep 3600 in SAME process group (no Setpgid)
 			cmd := exec.Command("sleep", "3600")
-			cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 			if err := cmd.Start(); err == nil {
 				processes.Store(sessID, cmd)
 			}
@@ -295,4 +294,125 @@ func (p *fakeAgentProcess) Close() error {
 
 func (p *fakeAgentProcess) StderrTail() string {
 	return ""
+}
+
+// countSleepChildren counts live "sleep 3600" processes
+func countSleepChildren(t *testing.T) int {
+	t.Helper()
+	out, err := exec.Command("pgrep", "-f", "^sleep 3600$").CombinedOutput()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			return 0 // No matches
+		}
+		t.Logf("pgrep failed: %v, output: %s", err, out)
+		return 0
+	}
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if len(lines) == 1 && lines[0] == "" {
+		return 0
+	}
+	return len(lines)
+}
+
+// D2: Process counting tests - sleep children must equal live sessions
+func TestLeakWithProcessCounting(t *testing.T) {
+	t.Run("SequentialSessions", func(t *testing.T) {
+		d, cleanup := testDriverWithRealFakeAgent(t)
+		defer cleanup()
+
+		ctx := context.Background()
+		botID := "test-bot"
+
+		// Open sessions one at a time, verify count
+		var sessions []engine.Session
+		for i := 0; i < 3; i++ {
+			s, err := d.Start(ctx, engine.StartOptions{
+				BotID:    botID,
+				ThreadID: fmt.Sprintf("seq-%d", i),
+				Mode:     "read",
+			})
+			if err != nil {
+				t.Fatalf("Start session %d: %v", i, err)
+			}
+			sessions = append(sessions, s)
+
+			time.Sleep(50 * time.Millisecond) // Let sleep spawn
+			if count := countSleepChildren(t); count != i+1 {
+				t.Errorf("After opening session %d: sleep children = %d, want %d", i, count, i+1)
+			}
+		}
+
+		// Close sessions one at a time, verify count
+		for i, s := range sessions {
+			if err := d.CloseSession(s); err != nil {
+				t.Errorf("Close session %d: %v", i, err)
+			}
+			time.Sleep(100 * time.Millisecond) // Let kill propagate
+			remaining := len(sessions) - i - 1
+			if count := countSleepChildren(t); count != remaining {
+				t.Errorf("After closing session %d: sleep children = %d, want %d", i, count, remaining)
+			}
+		}
+
+		// All closed, should be 0
+		if count := countSleepChildren(t); count != 0 {
+			t.Errorf("After closing all sessions: sleep children = %d, want 0", count)
+		}
+	})
+
+	t.Run("CloseWhileInFlight", func(t *testing.T) {
+		d, cleanup := testDriverWithRealFakeAgent(t)
+		defer cleanup()
+
+		ctx := context.Background()
+		botID := "test-bot"
+
+		// Open two sessions
+		s1, err := d.Start(ctx, engine.StartOptions{BotID: botID, ThreadID: "t1", Mode: "read"})
+		if err != nil {
+			t.Fatalf("Start s1: %v", err)
+		}
+		s2, err := d.Start(ctx, engine.StartOptions{BotID: botID, ThreadID: "t2", Mode: "read"})
+		if err != nil {
+			t.Fatalf("Start s2: %v", err)
+		}
+
+		time.Sleep(50 * time.Millisecond)
+		if count := countSleepChildren(t); count != 2 {
+			t.Errorf("After opening 2 sessions: sleep children = %d, want 2", count)
+		}
+
+		// Start in-flight prompt on s1
+		doneCh := make(chan error, 1)
+		go func() {
+			doneCh <- d.Send(ctx, s1, engine.Message{Text: "test"})
+		}()
+
+		time.Sleep(10 * time.Millisecond) // Let prompt start
+
+		// Close s2 while s1 has in-flight prompt
+		if err := d.CloseSession(s2); err != nil {
+			t.Errorf("Close s2: %v", err)
+		}
+
+		// Wait for s1 prompt to complete
+		if err := <-doneCh; err != nil {
+			t.Errorf("s1 prompt: %v", err)
+		}
+
+		time.Sleep(100 * time.Millisecond)
+		if count := countSleepChildren(t); count != 1 {
+			t.Errorf("After closing s2 (s1 still open): sleep children = %d, want 1", count)
+		}
+
+		// Close s1
+		if err := d.CloseSession(s1); err != nil {
+			t.Errorf("Close s1: %v", err)
+		}
+
+		time.Sleep(100 * time.Millisecond)
+		if count := countSleepChildren(t); count != 0 {
+			t.Errorf("After closing all: sleep children = %d, want 0", count)
+		}
+	})
 }
