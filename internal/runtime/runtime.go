@@ -294,11 +294,23 @@ type ChatRequest struct {
 	Actor, ActorName, Via string
 }
 
+// ownerNote 是這一則要附的提醒：服務用預設的 OwnerNote 時，照目前的回話風格設定換成那個風格的版本。
+func (r *Runtime) ownerNote() string {
+	if r.o.OwnerNote != OwnerNote || r.o.DB == nil {
+		return r.o.OwnerNote
+	}
+	var style hermes.ReplyStyle
+	if _, err := r.o.DB.GetSettingInto(context.Background(), hermes.ReplyStyleSetting, &style); err != nil || !style.Valid() {
+		return r.o.OwnerNote
+	}
+	return replystyle.OwnerNoteFor(string(style))
+}
+
 // OwnerNote 附在你親手打的訊息後面（對話裡看不到），引擎才會照著回答或把工作做完。
 // 2026-10-21：原本寫「不用為了回答去上網，除非要最新資料」，Bot 連要查證的事也憑記憶回；改成和守則同一個判斷：
 // 會變的、要精確的、沒把握的先查，其他直接答。口氣要自然（使用者：講話不夠自然）。
 // 2026-10-23：內容移到 replystyle（長短的唯一來源），不再自己寫「三到五句」——它蓋過守則，連研究、規劃也只回幾句。
-const OwnerNote = replystyle.OwnerNote
+var OwnerNote = replystyle.OwnerNote
 
 // NowNote 是附在你親手打的訊息後面的現在時間（服務所在的時區，和使用者同一台電腦）。
 func NowNote(now time.Time) string {
@@ -533,10 +545,11 @@ func (r *Runtime) run(ctx context.Context, t *turn) {
 	// 你親手打的訊息後面附一句提醒（對話裡看不到）：系統提示很長，規則離問題太遠；放在問題旁邊才照做
 	// （LazyBoy runtime.py REPLY_NOTE，實測見其 docs/REPLY-QUALITY-2026-10-16.md）。XBot 另外補上「交代工作就做到完成」：
 	// LazyBoy 那份實驗沒驗證關掉強制用工具之後長工作會不會提早停，2026-10-20 真的會（「每次交代完都不會繼續執行」）。
+	note := r.ownerNote()
 	t.mu.Lock()
-	if r.o.OwnerNote != "" && t.source == SourceOwner && typedByOwner(t.input) {
+	if note != "" && t.source == SourceOwner && typedByOwner(t.input) {
 		// 附上現在的時間：Bot 不知道今天幾號、台灣現在幾點（2026-10-21：Grok 每一則都先跑一次 date，「先問我」的 Bot 每次都開一張核准卡）
-		t.input += r.o.OwnerNote + NowNote(time.Now())
+		t.input += note + NowNote(time.Now())
 	}
 	t.mu.Unlock()
 	r.setState(t, store.TaskWaitingBox)

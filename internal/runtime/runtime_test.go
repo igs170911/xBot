@@ -393,3 +393,29 @@ func TestOwnerTypedMessageGetsTheNote(t *testing.T) {
 		t.Fatal("提醒不顯示在對話裡")
 	}
 }
+
+// 2026-10-23：你訊息後面的提醒照回話風格設定寫出長短（拿掉數字後，簡單問題反而變長）。
+func TestOwnerNoteFollowsTheReplyStyle(t *testing.T) {
+	ctx := context.Background()
+	f := setupWith(t, func(o *Options) { o.OwnerNote = OwnerNote })
+	var got []string
+	f.g.OnPrompt = func(turn *hermestest.Turn) {
+		got = append(got, turn.Text)
+		hermestest.ReplyOK(turn)
+	}
+	for _, style := range []string{"", "normal"} {
+		if style != "" {
+			if err := f.db.SetSetting(ctx, hermes.ReplyStyleSetting, style); err != nil {
+				t.Fatal(err)
+			}
+		}
+		res, err := f.rt.Chat(ctx, f.bot.ID, "", "台北明天會下雨嗎")
+		if err != nil {
+			t.Fatal(err)
+		}
+		f.wait(t, res.TaskID)
+	}
+	if len(got) != 2 || !strings.Contains(got[0], "三到五句、兩段內") || !strings.Contains(got[1], "兩到四段，每段兩三句") {
+		t.Fatalf("%q", got)
+	}
+}
