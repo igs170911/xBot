@@ -10,8 +10,9 @@
   - --calibrate：先拿使用者真的反應過的 10 則回覆（results/replay/calib.jsonl）試評審，對 8 則以上才信它的分數。
   - 結果：results/replay/judge-<A>-<B>.jsonl，最後印出每類的摘要。
 """
-import json, os, subprocess, sys
+import json, os, subprocess, sys, time
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)  # python3 -I 不會把這個資料夾放進 sys.path
@@ -44,25 +45,40 @@ CALIB_RUBRIC = (ANCHORS + "請評這個回覆。給 length（too_short｜just_ri
 
 # 在測試 Bot 的電腦裡呼叫模型：讀它自己的 worker-key，經 127.0.0.1:8642 的 hermes_host 送到 Model Proxy。
 CALL = r'''
-import json, sys, urllib.request
+import json, sys, urllib.request, urllib.error
 req = json.loads(sys.stdin.read())
 key = open("/hermes/.worker-key").read().strip()
 r = urllib.request.Request("http://127.0.0.1:8642/model/openai/v1/chat/completions", data=json.dumps(req).encode(),
     headers={"Authorization": "Bearer " + key, "content-type": "application/json"})
-print(json.loads(urllib.request.urlopen(r, timeout=180).read())["choices"][0]["message"]["content"])
+try:
+    print(json.loads(urllib.request.urlopen(r, timeout=180).read())["choices"][0]["message"]["content"])
+except urllib.error.HTTPError as e:
+    print("HTTP %d %s" % (e.code, e.read()[:200].decode("utf-8", "replace")))
+except Exception as e:
+    print("ERR %s" % e)
 '''
 
 
-def ask(model, system, user):
+def ask(model, system, user, tries=3):
+    """問一次評審；出錯（限流、逾時）等一下再試，最多 tries 次。"""
     body = {"model": model, "temperature": 0, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
-    r = subprocess.run(["docker", "exec", "-i", "-u", "1000", R.BOX, "/opt/hermes/.venv/bin/python", "-I", "-c", CALL],
-                       input=json.dumps(body), capture_output=True, text=True, timeout=240)
-    out = r.stdout.strip()
-    start, end = out.find("{"), out.rfind("}")
-    try:
-        return json.loads(out[start:end + 1])
-    except Exception:
-        return {"error": (out or r.stderr)[-300:]}
+    err = ""
+    for i in range(tries):
+        try:
+            r = subprocess.run(["docker", "exec", "-i", "-u", "1000", R.BOX, "/opt/hermes/.venv/bin/python", "-I", "-c", CALL],
+                               input=json.dumps(body), capture_output=True, text=True, timeout=240)
+            out = r.stdout.strip()
+        except subprocess.TimeoutExpired:
+            out = "ERR timeout"
+        start, end = out.find("{"), out.rfind("}")
+        if start >= 0 and not out.startswith(("HTTP ", "ERR ")):
+            try:
+                return json.loads(out[start:end + 1])
+            except Exception:
+                pass
+        err = (out or "")[-200:]
+        time.sleep(10 * (i + 1))
+    return {"error": err}
 
 
 def load(label):
@@ -88,28 +104,40 @@ def calibrate(model):
     print(f"評審對了 {ok}/{len(labels)}（8 以上才信它的分數）", flush=True)
 
 
+def judge_pair(model, a_label, b_label, ra, rb):
+    user = {"題目類型": ra["cat"], "使用者的訊息": ra["q"], "評分方式": RUBRIC}
+    first = ask(model, "你是嚴格的對話品質評審。" + PREFS, json.dumps({**user, "回覆A": ra["reply"], "回覆B": rb["reply"]}, ensure_ascii=False))
+    second = ask(model, "你是嚴格的對話品質評審。" + PREFS, json.dumps({**user, "回覆A": rb["reply"], "回覆B": ra["reply"]}, ensure_ascii=False))
+    if "error" in first or "error" in second:
+        return None, (first.get("error") or second.get("error"))
+    swap = {"A": "B", "B": "A", "tie": "tie"}
+    v1, v2 = first.get("better"), swap.get(second.get("better"), "?")
+    better = v1 if v1 == v2 and v1 in ("A", "B") else "tie"
+    return {"id": ra["id"], "cat": ra["cat"], "q": ra["q"], "better": better, "why": first.get("why", ""),
+            a_label: {**(first.get("A") or {}), "chars": ra["chars"], "tools": ra["tools"], "secs": ra["secs"], "turns": ra["turns"]},
+            b_label: {**(first.get("B") or {}), "chars": rb["chars"], "tools": rb["tools"], "secs": rb["secs"], "turns": rb["turns"]}}, None
+
+
 def compare(a_label, b_label, model):
+    """接著跑：已經評過的題目不再評；評審出錯的不記，下次再試。"""
     a, b = load(a_label), load(b_label)
     out_path = os.path.join(REPLAY, f"judge-{a_label}-{b_label}.jsonl")
-    results = []
-    with open(out_path, "w", encoding="utf-8") as out:
-        for qid in sorted(set(a) & set(b)):
-            ra, rb = a[qid], b[qid]
-            if not ra.get("reply") or not rb.get("reply"):
+    done = {}
+    if os.path.exists(out_path):
+        for line in open(out_path, encoding="utf-8"):
+            d = json.loads(line)
+            done[d["id"]] = d
+    todo = [q for q in sorted(set(a) & set(b)) if q not in done and a[q].get("reply") and b[q].get("reply")]
+    with open(out_path, "a", encoding="utf-8") as out, ThreadPoolExecutor(2) as pool:
+        for row, err in pool.map(lambda q: judge_pair(model, a_label, b_label, a[q], b[q]), todo):
+            if row is None:
+                print("評審出錯，下次再試：", str(err)[:160], flush=True)
                 continue
-            user = {"題目類型": ra["cat"], "使用者的訊息": ra["q"], "評分方式": RUBRIC}
-            first = ask(model, "你是嚴格的對話品質評審。" + PREFS, json.dumps({**user, "回覆A": ra["reply"], "回覆B": rb["reply"]}, ensure_ascii=False))
-            second = ask(model, "你是嚴格的對話品質評審。" + PREFS, json.dumps({**user, "回覆A": rb["reply"], "回覆B": ra["reply"]}, ensure_ascii=False))
-            swap = {"A": "B", "B": "A", "tie": "tie"}
-            v1, v2 = first.get("better"), swap.get(second.get("better"), "?")
-            better = v1 if v1 == v2 and v1 in ("A", "B") else "tie"
-            row = {"id": qid, "cat": ra["cat"], "q": ra["q"], "better": better, "why": first.get("why", ""),
-                   a_label: {**(first.get("A") or {}), "chars": ra["chars"], "tools": ra["tools"], "secs": ra["secs"], "turns": ra["turns"]},
-                   b_label: {**(first.get("B") or {}), "chars": rb["chars"], "tools": rb["tools"], "secs": rb["secs"], "turns": rb["turns"]}}
             out.write(json.dumps(row, ensure_ascii=False) + "\n")
-            results.append(row)
-            print(f'{qid} {ra["cat"]:13} 勝：{ {"A": a_label, "B": b_label}.get(better, "平手") }  {first.get("why", "")}', flush=True)
-    summary(results, a_label, b_label)
+            out.flush()
+            done[row["id"]] = row
+            print(f'{row["id"]} {row["cat"]:13} 勝：{ {"A": a_label, "B": b_label}.get(row["better"], "平手") }  {row["why"]}', flush=True)
+    summary([done[q] for q in sorted(done)], a_label, b_label)
 
 
 def summary(results, a_label, b_label):
@@ -133,6 +161,7 @@ def summary(results, a_label, b_label):
 def main():
     if not R.BOT:
         sys.exit("要設 XBOT_BENCH_BOT（測試用 Bot 的 id；模型經它的電腦呼叫）")
+    R.wake()  # 測試 Bot 的電腦閒置會休眠；評審經它的電腦呼叫模型
     if len(sys.argv) >= 2 and sys.argv[1] == "--calibrate":
         return calibrate(sys.argv[2] if len(sys.argv) > 2 else "kimi-k3")
     if len(sys.argv) < 3:

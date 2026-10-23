@@ -69,6 +69,11 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     R.wake()
     threads = {}
+    done_path = os.path.join(out_dir, "turns.jsonl")
+    if os.path.exists(done_path):  # 接著跑：帶 after 的題目接在前一次跑過的那條對話串
+        for line in open(done_path, encoding="utf-8"):
+            d = json.loads(line)
+            threads[d["id"]] = d["thread"]
     with open(os.path.join(out_dir, "turns.jsonl"), "a", encoding="utf-8") as out:
         for it in items:
             if only and it["id"] not in only:
