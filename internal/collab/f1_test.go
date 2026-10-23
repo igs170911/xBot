@@ -68,18 +68,12 @@ func TestF1ConcurrentFillerAutoStop(t *testing.T) {
 			}
 
 			// Verify only 1 card by querying directly
-			items, err := tm.db.ListInboxItems(tm.ctx, store.InboxFilter{Status: "open"})
+			items, err := tm.db.ListInboxByRef(tm.ctx, ref)
 			if err != nil {
 				t.Fatalf("Error listing inbox items: %v", err)
 			}
-			cardCount := 0
-			for _, item := range items {
-				if item.Ref == ref {
-					cardCount++
-				}
-			}
-			if cardCount != 1 {
-				t.Errorf("Expected exactly 1 auto-stop card, got %d", cardCount)
+			if len(items) != 1 {
+				t.Errorf("Expected exactly 1 auto-stop card, got %d", len(items))
 			}
 
 			// Verify consec_empty reached threshold
