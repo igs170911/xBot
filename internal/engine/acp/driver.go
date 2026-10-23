@@ -188,6 +188,9 @@ type session struct {
 	releaseSem sync.Once
 	sem        chan struct{} // Reference to agentConn.sem
 
+	// E1: Close session exactly once
+	closeOnce sync.Once
+
 	mu         sync.Mutex
 	running    bool
 	cancelling bool
@@ -1062,57 +1065,42 @@ func (d *Driver) CloseSession(s engine.Session) error {
 	if !ok {
 		return errors.New("不是 ACP 的 session")
 	}
-	as.mu.Lock()
-	if as.closed {
-		as.mu.Unlock()
-		return nil // 已關閉
-	}
-	as.closed = true
-	running := as.running
-	if running {
-		as.cancelling = true
-	}
-	if as.holding {
-		as.unhold()
-	}
-	as.abandon()
-	g := as.gen
-	as.mu.Unlock()
 
-	// D1: Release semaphore exactly once
-	as.releaseSem.Do(func() {
-		as.sem <- struct{}{}
-	})
-
-	// D1: Remove from agentConn sessions map
-	ac := d.botConn(as.botID)
-	if ac != nil {
-		ac.mu.Lock()
-		delete(ac.sessions, as.id)
-		delete(ac.threads, as.threadID)
-		// 清掉這個 session 等待中的權限請求
-		for k, p := range ac.requests {
-			if p.session == as.id {
-				delete(ac.requests, k)
-			}
+	// E1+E2: Idempotent cleanup using closeOnce
+	as.closeOnce.Do(func() {
+		as.mu.Lock()
+		if as.closed {
+			as.mu.Unlock()
+			return
 		}
-		liveCount := len(ac.sessions)
-		ac.mu.Unlock()
+		as.closed = true
+		running := as.running
+		if running {
+			as.cancelling = true
+		}
+		if as.holding {
+			as.unhold()
+		}
+		as.abandon()
+		g := as.gen
+		as.mu.Unlock()
 
-		d.log.Info("Closed session", "bot", as.botID, "session", as.id, "live_sessions", liveCount)
-	}
+		// Release semaphore exactly once
+		as.releaseSem.Do(func() {
+			as.sem <- struct{}{}
+		})
 
-	// DON'T close queue here - let disconnect callback emit error event and close it
+		// 如果正在跑，發 session/cancel 停下來
+		if running && g != nil && g.c != nil {
+			_ = g.c.notify("session/cancel", map[string]string{"sessionId": as.id})
+		}
 
-	// 如果正在跑，發 session/cancel 停下來
-	if running && g.c != nil {
-		_ = g.c.notify("session/cancel", map[string]string{"sessionId": as.id})
-	}
-
-	// D1: Kill this session's agent process group (triggers disconnect callback)
-	if g != nil && g.c != nil {
-		go d.killProcessGroup(g.c, as.botID, as.id)
-	}
+		// Kill this session's agent process group
+		// Note: We do NOT close queue here - let disconnect callback do that after emitting error
+		if g != nil && g.c != nil {
+			go d.killProcessGroup(g.c, as.botID, as.id)
+		}
+	})
 
 	return nil
 }
@@ -1143,20 +1131,31 @@ func (d *Driver) disconnected(ac *agentConn, sessionID string, p Process, cause 
 	}
 	d.log.Info("agent process disconnected", attrs...)
 
+	// E1+E2: Remove from map, emit error, and close queue
 	ac.mu.Lock()
 	s := ac.sessions[sessionID]
 	if s != nil {
 		delete(ac.sessions, s.id)
 		delete(ac.threads, s.threadID)
+		// 清掉這個 session 等待中的權限請求
+		for k, p := range ac.requests {
+			if p.session == s.id {
+				delete(ac.requests, k)
+			}
+		}
+		liveCount := len(ac.sessions)
+		ac.mu.Unlock()
+		d.log.Info("Removed disconnected session from map", "bot", ac.botID, "session", sessionID, "live_sessions", liveCount)
+	} else {
+		ac.mu.Unlock()
 	}
-	ac.mu.Unlock()
 
 	if s != nil {
-		s.mu.Lock()
-		s.unhold()
-		s.mu.Unlock()
+		// Emit error event and close queue
 		s.q.push(engine.Event{Type: engine.EventError, Session: s.id, Text: engine.ErrDisconnected.Error(), Fatal: true})
 		s.q.close()
+		// E1: Also call CloseSession to ensure semaphore is released (idempotent via closeOnce)
+		_ = d.CloseSession(s)
 	}
 }
 
