@@ -61,7 +61,7 @@ func TestSoulAsksForChatStyleReplies(t *testing.T) {
 func TestSoulSizesRepliesByWhatTheOwnerNeeds(t *testing.T) {
 	soul := Soul(Profile{Name: "水哥哥"})
 	for _, want := range []string{"## 回話長度", "看使用者要拿這則訊息做什麼", "閒聊、打招呼：一兩句", "第一句就是答案", "先真的查過幾個來源再回",
-		"結論和骨架", "沒查過不要說研究過", "做完不要在結尾問要不要再做別的", "問進度、問東西在哪：一兩句", "不要埋在最後", "不要做一步就問「要我…嗎」", "交回給主管或隊友：結論、關鍵數字、檔案路徑，十行內",
+		"結論和骨架", "沒查過不要說研究過", "做完不要在結尾問要不要再做別的", "建 Bot、建團隊、開群組只在使用者明說要建時才做", "問進度、問東西在哪：一兩句", "不要埋在最後", "不要做一步就問「要我…嗎」", "交回給主管或隊友：結論、關鍵數字、檔案路徑，十行內",
 		"沒有具體疑點就採用", "一輪只出一個新版本", "自己做的成品做完確認真的存好"} {
 		if !strings.Contains(soul, want) {
 			t.Fatalf("少了 %q：%s", want, soul)

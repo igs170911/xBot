@@ -377,6 +377,10 @@ var (
 		`要(繼續|接著)?(建|做|開|設|寫|跑|安排|整理|處理|執行|動手|開始|建立|新增|拉|加|排)[^。\n？?]{0,40}(嗎|？|\?)\s*$`)
 	// outwardRe：會離開電腦或刪東西的動作，問一下是對的。
 	outwardRe = regexp.MustCompile(outward)
+	// buildRe：建 Bot、團隊、群組這類；designAskRe：你在問要哪些角色、怎麼分工（是要建議，不是要它建）。
+	// 2026-10-23 重播：「我想要建立一個蝦皮海巡團隊…每個 agent 要有啥職能」不能被推去建 Bot。
+	buildRe     = regexp.MustCompile(`(?i)建|新增|開[^。\n]{0,6}群組|團隊|成員|bot|隊友`)
+	designAskRe = regexp.MustCompile(`要哪些|要有啥|要有什麼|要什麼(角色|職能|人)|哪些角色|什麼角色|啥職能|什麼職能|職能是|怎麼分工|人設會是|需要哪些`)
 )
 
 // IsResearchTool 回答這個工具算不算真的去查（搜尋、讀網頁、瀏覽器）。
@@ -416,7 +420,7 @@ func offeredInstead(in Input, text string) (string, bool) {
 	paras := strings.Split(strings.TrimSpace(text), "\n\n")
 	last := paras[len(paras)-1]
 	m := offerEndRe.FindString(last)
-	if m == "" || outwardRe.MatchString(m) {
+	if m == "" || outwardRe.MatchString(m) || (buildRe.MatchString(m) && designAskRe.MatchString(in.Asked)) {
 		return "", false
 	}
 	return m, true
