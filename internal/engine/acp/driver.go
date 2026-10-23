@@ -377,7 +377,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	}
 
 	// D1: Always spawn a new agent process for this session (outside mutex)
-	p, err := d.launch(ctx, o.BotID, ac.mode)
+	p, err := d.launch(ctx, o.BotID, o.Mode) // Use session's mode, not ac.mode
 	if err != nil {
 		sem <- struct{}{} // Release token on spawn failure
 		return nil, err
@@ -1102,15 +1102,14 @@ func (d *Driver) CloseSession(s engine.Session) error {
 		d.log.Info("Closed session", "bot", as.botID, "session", as.id, "live_sessions", liveCount)
 	}
 
-	// 關掉 queue（停止事件流）
-	as.q.close()
+	// DON'T close queue here - let disconnect callback emit error event and close it
 
 	// 如果正在跑，發 session/cancel 停下來
 	if running && g.c != nil {
 		_ = g.c.notify("session/cancel", map[string]string{"sessionId": as.id})
 	}
 
-	// D1: Kill this session's agent process group (TERM, 3s wait, KILL, reap)
+	// D1: Kill this session's agent process group (triggers disconnect callback)
 	if g != nil && g.c != nil {
 		go d.killProcessGroup(g.c, as.botID, as.id)
 	}
