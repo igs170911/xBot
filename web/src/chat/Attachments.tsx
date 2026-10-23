@@ -10,7 +10,7 @@ import { IconButton } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
-import { baseName, fileRefProps, isBoxFile, PATH_RE } from './markdown/fileLink'
+import { baseName, fileRefProps, isBoxFile, PATH_RE, touchScreen } from './markdown/fileLink'
 
 // 對話裡的檔案，照一般聊天軟體的樣子（2026-10-21 使用者：「不要給我那些路徑，我又看不懂」）：
 // 圖片直接顯示，其他檔案是一張有圖示與檔名的小卡，點了預覽、右邊可以下載。
@@ -133,7 +133,12 @@ function PageTile({ botId, path }: { botId: string; path: string }) {
           <Icon icon={Download} size={18} />
         </a>
       </div>
-      {html ? (
+      {html && touchScreen() ? (
+        // 觸控螢幕：對話裡只看預覽，點一下放大再操作。iPhone 從網頁或連結上開始滑，對話會捲不動（見 webRefProps）
+        <div data-testid="page-preview" onClick={() => setBig(true)} className="cursor-pointer">
+          <PageFrame html={html} title={name} className="pointer-events-none h-[440px] max-md:h-[320px]" />
+        </div>
+      ) : html ? (
         <PageFrame html={html} title={name} className="h-[440px] max-md:h-[320px]" />
       ) : (
         <div className="flex h-24 items-center justify-center px-4 text-center text-ui-sm text-ink-3">{note || '網頁載入中…'}</div>

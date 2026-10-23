@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { FileTiles } from '../chat/Attachments'
 import { fakeApi } from '../test-api'
@@ -46,4 +46,14 @@ it('Bot 回覆裡的網頁在對話裡直接顯示（沙盒＋CSP）；太大的
   await waitFor(() => expect(api.calls.filter((c) => c.path === 'files.read').every((c) => c.input.max_bytes === 1 << 20)).toBe(true))
   render(<FileTiles botId="b1" paths={['/workspace/uploads/上傳.html']} mine />)
   expect(screen.queryByTitle('上傳.html')).toBeNull()
+})
+
+it('觸控螢幕：對話裡的網頁只是預覽（手指滑過去捲的是對話），點一下放大', async () => {
+  vi.stubGlobal('matchMedia', (q: string) => ({ matches: q === '(pointer: coarse)', addEventListener() {}, removeEventListener() {} }))
+  fakeApi({ 'files.read': (input) => ({ name: '儀表板.html', path: input.path, kind: 'code', size: 40, modified: 1, text: '<h1>營收</h1>', truncated: false, download_url: '/d' }) })
+  render(<FileTiles botId="b1" paths={['/workspace/儀表板.html']} />)
+  const frame = await screen.findByTitle('儀表板.html')
+  expect(frame).toHaveClass('pointer-events-none')
+  fireEvent.click(screen.getByTestId('page-preview'))
+  expect(await screen.findAllByTitle('儀表板.html')).toHaveLength(2)
 })

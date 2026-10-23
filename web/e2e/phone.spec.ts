@@ -230,6 +230,47 @@ test('L03 回覆裡的網址：手機上是可以點的文字，不是 <a>', asy
   expect(await page.getByTestId('composer-input').evaluate((el) => el.closest('main')?.querySelectorAll('a[href^="http"]').length ?? 0)).toBe(0)
 })
 
+test('L03 回覆裡的網頁：手指從網頁卡上開始滑，捲的是對話；點一下放大', async ({ page, browserName }, info) => {
+  test.skip(browserName !== 'chromium' || info.project.name === 'desktop', '要用 Chromium 模擬觸控')
+  const api = new MockServer(page)
+  const { mi } = seed(api)
+  const th = api.addThread(mi.id, '儀表板')
+  for (let i = 0; i < 20; i++) api.addMessage(th.id, { sender: i % 2 ? 'bot:' + mi.id : 'owner', status: 'complete', content: `第 ${i + 1} 則：` + '內容很長的一段話。'.repeat(6) })
+  api.addMessage(th.id, { sender: 'bot:' + mi.id, status: 'complete', content: '做好了，在 /workspace/儀表板.html' })
+  for (let i = 0; i < 4; i++) api.addMessage(th.id, { sender: i % 2 ? 'bot:' + mi.id : 'owner', status: 'complete', content: '之後的訊息。'.repeat(8) })
+  const html = '<h1>營收</h1>' + Array.from({ length: 80 }, (_, i) => `<p>第 ${i + 1} 列 <a href="https://example.com/${i}">連結</a></p>`).join('')
+  api.override['files.read'] = (i) => ({ name: '儀表板.html', path: i.path, dir: false, size: html.length, modified: Date.now(), kind: 'code', download_url: '/x', truncated: false, binary: false, text: html, encoding: 'utf-8' })
+  await api.install()
+  await page.goto(`/bots/${mi.id}/threads/${th.id}`)
+  const preview = page.getByTestId('page-preview')
+  await expect(preview).toBeAttached()
+  await preview.evaluate((el) => el.scrollIntoView({ block: 'start' }))
+  await page.waitForTimeout(400)
+  // iPhone 從可以捲、可以點的東西上開始滑，對話會捲不動（Chromium 模擬重現不了）：對話裡的網頁不接手勢
+  expect(await page.getByTestId('page-tile').locator('iframe').evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('none')
+  const gap = () => page.evaluate(() => {
+    const el = [...document.querySelectorAll<HTMLElement>('main *')].find((e) => getComputedStyle(e).overflowY === 'auto' && e.scrollHeight > e.clientHeight + 40)!
+    return el.scrollHeight - el.scrollTop - el.clientHeight
+  })
+  const before = await gap()
+  const box = (await preview.boundingBox())!
+  const x = box.x + box.width / 2
+  const y0 = box.y + 280
+  // 往上滑（網頁裡還有很多可以往下捲）：要捲的是對話，不是網頁
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: y0 }] })
+  for (let i = 1; i <= 12; i++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y0 - i * 20 }] })
+    await page.waitForTimeout(16)
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  await page.waitForTimeout(400)
+  expect(await gap(), '從網頁卡上滑，對話沒有捲動').toBeLessThan(before - 100)
+  await preview.scrollIntoViewIfNeeded()
+  await preview.tap()
+  await expect(page.getByRole('dialog', { name: '儀表板.html' }).getByTitle('儀表板.html')).toBeVisible()
+})
+
 test('L04 電腦（B14 的接手頁）：手機全螢幕、交還鈕', async ({ page }, info) => {
   const { bian } = await open(page, '/chats')
   await page.goto(`/bots/${bian.id}/computer`)
