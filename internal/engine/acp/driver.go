@@ -157,8 +157,8 @@ type agentConn struct {
 	mu          sync.Mutex
 	sessions    map[string]*session
 	threads     map[string]*session
-	sem         chan struct{} // D1: Per-box cap semaphore
-	loadSession bool           // Agent capability
+	sem         chan struct{}       // D1: Per-box cap semaphore
+	loadSession bool                // Agent capability
 	children    map[string]*session // agent 開的子代理 session → 開它的 session（權限請求、背景工作對回去）
 	requests    map[string]pending  // 等人回覆的權限請求
 }
@@ -442,8 +442,8 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	}
 
 	var init struct {
-		ProtocolVersion    int  `json:"protocolVersion"`
-		AgentCapabilities  struct {
+		ProtocolVersion   int `json:"protocolVersion"`
+		AgentCapabilities struct {
 			LoadSession bool `json:"loadSession"`
 		} `json:"agentCapabilities"`
 	}
@@ -520,7 +520,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	}
 	s := &session{
 		botID: o.BotID, gen: g, id: id, threadID: o.ThreadID, mode: o.Mode,
-		sem: ac.sem, // D1: Reference to semaphore for release on close
+		sem:   ac.sem, // D1: Reference to semaphore for release on close
 		tools: map[string]*toolState{}, bg: map[string]string{},
 		shown: map[string]bool{}, dropped: map[string]bool{}, q: newQueue(), lastUsed: time.Now(),
 	}
