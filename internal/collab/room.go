@@ -881,7 +881,22 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	}
 
 	// 2026-10-22c：room reply 用 isOutgoing=true（只阻擋 filler）
-	judgeVerdict := s.peerReplyJudge(ctx, content, task.BotID)
+	// E6: Check if replying to owner message BEFORE running judge
+	isReplyToOwner := false
+	if m.TriggeringMsgID != "" {
+		if trigMsg, err := s.db.GetMessage(ctx, m.TriggeringMsgID); err == nil {
+			isReplyToOwner = trigMsg.Sender == "owner"
+		}
+	}
+
+	// E6: Skip judge if replying to owner (always post owner-directed replies)
+	judgeVerdict := ""
+	if !isReplyToOwner {
+		judgeVerdict = s.peerReplyJudge(ctx, content, task.BotID)
+	} else {
+		// Replying to owner: treat as "handle" (always pass)
+		judgeVerdict = "handle"
+	}
 	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswer, recentTexts, judgeVerdict, true)
 
 	// 2026-10-22d：連續無進展自動停止（從 room.ConsecEmpty 讀取）
