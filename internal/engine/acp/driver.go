@@ -370,13 +370,41 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	sem := ac.sem
 	ac.mu.Unlock()
 
-	// Round 10 fix + C4: Use semaphore channel for cap enforcement
-	// D1: Acquire semaphore token (1 per session) - NO LOCK HELD
+	// E3: Before waiting on semaphore, try to evict LRU idle session
+	// This prevents long waits for the reaper when at cap
 	select {
 	case <-sem:
-		// Got a token (slot freed or initially available)
-	case <-ctx.Done():
-		return nil, ctx.Err()
+		// Got a token immediately (slot freed or initially available)
+	default:
+		// No slots available - try to evict LRU idle session
+		ac.mu.Lock()
+		var lruSession *session
+		var lruTime time.Time
+		for _, s := range ac.sessions {
+			s.mu.Lock()
+			idle := !s.running && !s.closed
+			lastUsed := s.lastUsed
+			s.mu.Unlock()
+			if idle && (lruSession == nil || lastUsed.Before(lruTime)) {
+				lruSession = s
+				lruTime = lastUsed
+			}
+		}
+		ac.mu.Unlock()
+
+		if lruSession != nil {
+			// Evict the LRU idle session to make room
+			d.log.Info("Evicting LRU idle session to make room", "bot", o.BotID, "session", lruSession.id, "last_used", time.Since(lruTime).Round(time.Second))
+			_ = d.CloseSession(lruSession)
+		}
+
+		// Now wait for a slot (either from eviction or reaper)
+		select {
+		case <-sem:
+			// Got a token
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
 
 	// D1: Always spawn a new agent process for this session (outside mutex)
