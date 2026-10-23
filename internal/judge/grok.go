@@ -44,7 +44,7 @@ func (g *GrokJudge) Classify(ctx context.Context, prev, msg, botID string) (stri
 
 	timeout := g.Timeout
 	if timeout == 0 {
-		timeout = 10 * time.Second // D3: Raised to 10s
+		timeout = 12 * time.Second // E5: Raised to 12s (Grok median is 5.3s)
 	}
 
 	model := g.ModelName
@@ -72,7 +72,7 @@ func (g *GrokJudge) Classify(ctx context.Context, prev, msg, botID string) (stri
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		if ctx.Err() != nil {
-			log.Debug("grok judge: timeout", "bot", botID)
+			log.Info("grok judge: timeout", "bot", botID, "timeout", timeout) // E5: Log at Info
 			return "", fmt.Errorf("grok judge timeout: %w", ctx.Err())
 		}
 		log.Warn("grok judge: exec failed", "bot", botID, "err", err, "output", string(output))
@@ -86,7 +86,7 @@ func (g *GrokJudge) Classify(ctx context.Context, prev, msg, botID string) (stri
 		return "", fmt.Errorf("grok judge parse: %w", err)
 	}
 
-	log.Debug("grok judge: classified", "verdict", verdict, "bot", botID)
+	log.Info("grok judge: classified", "verdict", verdict, "bot", botID) // E5: Log at Info
 	return verdict, nil
 }
 
