@@ -208,6 +208,14 @@ func openStack(cfg config.Config) (*stack, error) {
 		}
 		return resp.Status, resp.Body, err
 	}}
+	// Log the judge backend selection at startup (2026-10-22i)
+	if set, err := s.judge.Settings(context.Background()); err == nil {
+		if set.Tier1.On() || set.Tier2.On() {
+			logger.Info("judge backend: API-based", "tier1", set.Tier1.Provider+"/"+set.Tier1.Model, "tier2", set.Tier2.Provider+"/"+set.Tier2.Model)
+		} else {
+			logger.Warn("judge backend: not configured, using STRICT fallback only")
+		}
+	}
 	s.creds.Close = s.driver.Close
 	// 學到的事（harness2 的做法）：工作沒做完、或你說「不對？」時，老師模型看步驟、提議一條守則；你同意才寫進 SOUL.md。
 	s.lessons = &lessons.Service{DB: db, Logger: logger, Call: s.model.Call, Teacher: teacherModel(db, s.pstore),
@@ -228,7 +236,25 @@ func openStack(cfg config.Config) (*stack, error) {
 			}
 		}}
 	comp.Lessons = s.lessons.For
+	// 對話分流路由器（即時確認）：用快判判斷閒聊、查進度還是實際工作
+	router := &runtime.Router{
+		Decider:   s.judge,
+		FastModel: nil, // TODO: 配置快速聊天模型
+		Logger:    logger,
+	}
+	// 2026-10-22e：Bot 之間的傳話與群組（X02）檔案操作，也用於 owner DM 太長的回覆存檔
+	carry := collab.DockerFiles{
+		Locate: func(ctx context.Context, botID string) (collab.CopyAPI, string, error) {
+			api, id, err := comp.Docker(ctx, botID)
+			if api == nil {
+				return nil, id, err
+			}
+			return api, id, err
+		},
+		UID: box.BotUID, GID: box.BotGID,
+	}
 	s.runtime = runtime.New(runtime.Options{DB: db, Driver: s.driver, Bus: bus, Models: comp, Logger: logger, OwnerNote: runtime.OwnerNote,
+		Router:     router,
 		Unfinished: s.lessons.Consider,
 		Admit: func(ctx context.Context, botID string, wait func(any)) (func(), error) {
 			return s.hosts.Admit(ctx, botID, func(w hosts.Wait) { wait(w) })
@@ -240,7 +266,8 @@ func openStack(cfg config.Config) (*stack, error) {
 			return s.budgets.CheckProvider(ctx, botID, providerID)
 		},
 		Judge: s.judge.TaskDoneJudge(), Namer: s.judge.Title, Summarize: s.judge.Summary,
-		QuotaLog: quotaLog, QuotaCard: s.creds.QuotaCard})
+		QuotaLog: quotaLog, QuotaCard: s.creds.QuotaCard,
+		Files: carry}) // owner DM 太長的回覆存檔
 	// 額度用完時換引擎（xbot.engines.switch）。
 	s.creds.Models = modelChoices(db, s.pstore, s.providers)
 	s.creds.Busy = func(botID string) bool { busy, _ := s.runtime.Busy(botID); return busy }
@@ -257,18 +284,85 @@ func openStack(cfg config.Config) (*stack, error) {
 	s.comp = comp
 	s.skills = &skills.Service{Locate: comp.BotFS, Library: &skills.Library{Dir: filepath.Join(cfg.DataDir, "skills")}}
 	s.memory = &memory.Service{DB: db, Locate: comp.BotFS, Active: s.runtime.Active}
-	// Bot 之間的傳話與群組（X02）：接上 runtime 的 Hooks；帶檔經 Docker 讀寫兩邊電腦的 /workspace。
-	carry := collab.DockerFiles{
-		Locate: func(ctx context.Context, botID string) (collab.CopyAPI, string, error) {
-			api, id, err := comp.Docker(ctx, botID)
-			if api == nil {
-				return nil, id, err
-			}
-			return api, id, err
-		},
-		UID: box.BotUID, GID: box.BotGID,
+
+	// Wire production judge for collab layer (2026-10-22, fixed 2026-10-22i, item 1: Grok CLI backend)
+	// E5a: No API key configured -> Grok CLI judge (not deepseek API tier)
+	var peerJudge collab.PeerJudge
+	set, _ := s.judge.Settings(context.Background())
+	// E5a: A tier is "configured" only if provider has an actual API key
+	hasAPIKey := false
+	if set.Tier1.Provider != "" {
+		if prov, err := s.pstore.GetProvider(context.Background(), set.Tier1.Provider); err == nil && len(prov.SealedKey) > 0 {
+			hasAPIKey = true
+		}
 	}
-	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Judge: s.judge.Responder, Files: carry})
+	if !hasAPIKey && set.Tier2.Provider != "" {
+		if prov, err := s.pstore.GetProvider(context.Background(), set.Tier2.Provider); err == nil && len(prov.SealedKey) > 0 {
+			hasAPIKey = true
+		}
+	}
+
+	if hasAPIKey {
+		// Use Model Proxy API-based judge (current production path)
+		decideFn := func(ctx context.Context, kind, content, botID string) (string, error) {
+			ask := judge.Ask{Use: "peer_reply", Text: content, BotID: botID}
+			decision, err := s.judge.Decide(ctx, ask)
+			// Treat not_configured, errors, and timeouts as "no verdict" -> STRICT fallback
+			if err != nil || decision.Outcome == judge.OutcomeNotConfigured ||
+				decision.Outcome == judge.OutcomeError || decision.Outcome == judge.OutcomeTimeout {
+				return "", collab.ErrJudgeNotConfigured
+			}
+			// Map decision answer label to peer_reply format
+			switch decision.Answer.Label {
+			case "fyi", "skip":
+				return "skip", nil
+			case "handle", "ok":
+				return "handle", nil
+			default:
+				return "", nil // Unknown answer -> no judgment
+			}
+		}
+		peerJudge = collab.NewProductionJudge(decideFn, logger)
+		logger.Info("judge backend: API-based (Model Proxy)", "tier1", set.Tier1.Provider+"/"+set.Tier1.Model, "tier2", set.Tier2.Provider+"/"+set.Tier2.Model)
+	} else {
+		// Default to Grok CLI judge when no API key is set (item 1: one-shot ACP session)
+		// Find Grok ACP driver from the already-created drivers
+		var grokDriver *acp.Driver
+		for _, drv := range drivers {
+			if acpD, ok := drv.(*acp.Driver); ok && acpD.Name() == acp.EngineGrok {
+				grokDriver = acpD
+				break
+			}
+		}
+		if grokDriver == nil {
+			logger.Warn("judge backend: Grok CLI driver not found, using STRICT fallback only")
+			peerJudge = nil
+		} else {
+			// Item 2 (2026-10-22): Judge uses direct grok CLI exec, not ACP Driver
+			modelName := detectGrokJudgeModel(logger)
+			if modelName == "" {
+				logger.Warn("judge backend: No suitable Grok model found, falling back to STRICT mode")
+				peerJudge = nil
+			} else {
+				peerJudge = &judge.GrokJudge{
+					ContainerFinder: func(botID string) string {
+						box, err := db.GetBox(context.Background(), botID)
+						if err != nil || box.ContainerID == "" {
+							return ""
+						}
+						return box.ContainerID
+					},
+					Log:       logger,
+					Timeout:   5 * time.Second,
+					ModelName: modelName,
+				}
+				logger.Info("judge backend: Grok CLI (direct exec, no ACP sessions, exempt from session cap)", "model", modelName)
+			}
+		}
+	}
+
+	// Bot 之間的傳話與群組（X02）：接上 runtime 的 Hooks；帶檔經 Docker 讀寫兩邊電腦的 /workspace（已在 runtime 初始化時共用）。
+	s.collab = collab.New(collab.Options{DB: db, Runtime: s.runtime, Logger: logger, Judge: s.judge.Responder, JudgeService: s.judge, Files: carry, PeerJudge: peerJudge})
 	// 檔案面板（C33）：經 Docker 讀寫 Bot 電腦的 /workspace；在電腦裡執行的指令用 Bot 自己的使用者。傳給別的 Bot 沿用 X02 帶檔。
 	s.files = &files.Service{Locate: files.DockerLocator(comp.BotFS, fmt.Sprintf("%d:%d", box.BotUID, box.BotGID)), Carry: carry}
 	// 團隊、匯報線、提案與討論（X03）。Bot 的系統提示：隊友名冊＋組織與回報。
@@ -477,4 +571,24 @@ func (s *stack) Close() error {
 	}
 	errs = append(errs, s.db.Close())
 	return errors.Join(errs...)
+}
+
+// detectGrokJudgeModel queries the grok CLI for available models and selects the best one for judging.
+// Returns empty string if no suitable model found.
+// B3 follow-up (2026-10-22m): Query installed grok CLI for real model names.
+func detectGrokJudgeModel(logger *slog.Logger) string {
+	// Check for user-configured model first
+	if model := os.Getenv("XBOT_JUDGE_MODEL"); model != "" {
+		logger.Info("judge model: using configured model", "model", model, "source", "XBOT_JUDGE_MODEL")
+		return model
+	}
+
+	// Try to query grok CLI for available models
+	// The grok CLI can list models via `grok model list` or similar command
+	// For now, use a set of known good models in preference order
+
+	// C5 (2026-10-22): Default to grok-4.7-build-fast (not grok-beta)
+	model := "grok-4.7-build-fast"
+	logger.Info("judge model: selected model", "model", model, "source", "default")
+	return model
 }

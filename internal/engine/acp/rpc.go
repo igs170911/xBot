@@ -36,7 +36,6 @@ func (e *RPCError) Error() string {
 
 // JSON-RPC 錯誤碼。
 const (
-	codeMethodNotFound = -32601
 	// codeAuthRequired 是 ACP 的「需要登入」（auth_required）。
 	codeAuthRequired = -32000
 )
@@ -62,6 +61,7 @@ type reply func(result json.RawMessage, err error)
 // conn 是一條到 agent 行程的 JSON-RPC 連線。
 type conn struct {
 	p      Process
+	proc   Process // D1: Exposed process for killProcessGroup
 	log    *slog.Logger
 	onNote func(method string, params json.RawMessage)
 	onReq  func(request)
@@ -77,7 +77,7 @@ type conn struct {
 }
 
 func newConn(p Process, log *slog.Logger, onNote func(string, json.RawMessage), onReq func(request), onExit func(error)) *conn {
-	c := &conn{p: p, log: log, onNote: onNote, onReq: onReq, onExit: onExit, pending: map[string]reply{}, done: make(chan struct{})}
+	c := &conn{p: p, proc: p, log: log, onNote: onNote, onReq: onReq, onExit: onExit, pending: map[string]reply{}, done: make(chan struct{})}
 	go c.read()
 	return c
 }
@@ -168,11 +168,6 @@ func (c *conn) answer(id json.RawMessage, result any) error {
 		return err
 	}
 	return c.write(frame{ID: id, Result: raw})
-}
-
-// refuse 用 JSON-RPC 錯誤回覆 agent 的請求。
-func (c *conn) refuse(id json.RawMessage, code int, msg string) error {
-	return c.write(frame{ID: id, Error: &RPCError{Code: code, Message: msg}})
 }
 
 func (c *conn) read() {

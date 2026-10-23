@@ -56,8 +56,10 @@ func ownKey(botID string) string { return "engine.own." + botID }
 // ownDir 是 Bot 自己登入的憑證不用時放的地方（只有 root 讀得到）；登入時是 CLI 的 HOME。
 func ownDir(engine string) string { return path.Join(CredDir, "own", engine) }
 
-func (s Spec) ownPath() string  { return path.Join(ownDir(s.Engine), s.Dir, s.File) }
-func (s Spec) homePath() string { return path.Join(BoxHome, s.Dir, s.File) }
+func (s Spec) ownPath() string                 { return path.Join(ownDir(s.Engine), s.Dir, s.File) }
+func (s Spec) homePath() string                { return path.Join(BoxHome, s.Dir, s.File) }
+func (s Spec) botCredPath(botID string) string { return path.Join(CredDir, botID, s.Engine, s.File) }         // 2026-10-22g: per-bot lock
+func (s Spec) hostSourcePath() string          { return path.Join(CredDir, "host", s.Engine, s.Dir, s.File) } // 2026-10-22g: shared source
 
 // 怎麼登入一個 CLI（LoginKind）。
 const (
@@ -303,6 +305,48 @@ func (s *Service) syncOwn(ctx context.Context, c Container, b store.Bot) error {
 		if !ok {
 			continue
 		}
+		// 2026-10-22h: Lock each bot's credentials with per-bot lock
+		err := s.ensureCredLock().withLock(ctx, sp.botCredPath(b.ID), func() error {
+			switch {
+			case m[e].Revoked:
+				if err := s.wipe(ctx, c, sp); err != nil {
+					return err
+				}
+				delete(m, e)
+				changed = true
+			case e == cur:
+				if err := s.activate(ctx, c, sp); err != nil {
+					return err
+				}
+			default:
+				if err := s.park(ctx, c, sp); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+	if changed {
+		return s.saveOwns(ctx, b.ID, m)
+	}
+	return nil
+}
+
+// syncOwnNoLock is like syncOwn but assumes the lock is already held (used by adopt)
+func (s *Service) syncOwnNoLock(ctx context.Context, c Container, b store.Bot) error {
+	m, err := s.owns(ctx, b.ID)
+	if err != nil || len(m) == 0 {
+		return err
+	}
+	cur, changed := engineOf(b), false
+	for _, e := range slices.Sorted(maps.Keys(m)) {
+		sp, ok := Specs[e]
+		if !ok {
+			continue
+		}
 		switch {
 		case m[e].Revoked:
 			if err := s.wipe(ctx, c, sp); err != nil {
@@ -329,6 +373,17 @@ func (s *Service) syncOwn(ctx context.Context, c Container, b store.Bot) error {
 // Logout 登出 Bot 自己登入的一個 CLI：記成已登出（驅動立刻拒絕）、結束 agent 行程、清掉憑證；
 // 電腦連不上時下次開機前清。回傳的 cleared 表示電腦裡已確定沒有這份憑證。
 func (s *Service) Logout(ctx context.Context, botID, engine string) (cleared bool, err error) {
+	sp := Specs[engine]
+	// 2026-10-22h: Lock with per-bot lock (touches per-bot dirs)
+	return false, s.ensureCredLock().withLock(ctx, sp.botCredPath(botID), func() error {
+		cleared, err = s.logoutNoLock(ctx, botID, engine)
+		return err
+	})
+}
+
+// logoutNoLock is the unlocked version of Logout, for use when already holding the lock.
+func (s *Service) logoutNoLock(ctx context.Context, botID, engine string) (cleared bool, err error) {
+	sp := Specs[engine]
 	m, err := s.owns(ctx, botID)
 	if err != nil {
 		return false, err
@@ -352,7 +407,7 @@ func (s *Service) Logout(ctx context.Context, botID, engine string) (cleared boo
 		return false, nil
 	}
 	if c.ID != "" {
-		if err := s.wipe(ctx, c, Specs[engine]); err != nil {
+		if err := s.wipe(ctx, c, sp); err != nil {
 			s.log().Warn("暫時無法清掉 Bot 電腦裡的登入，開機前再清", "bot", botID, "engine", engine, "err", err)
 			return false, nil
 		}
@@ -364,6 +419,16 @@ func (s *Service) Logout(ctx context.Context, botID, engine string) (cleared boo
 // adopt 記下 Bot 自己登入了這個 CLI：同一個 CLI 原本用這台電腦的登入就不再用（那份清掉），
 // Bot 正在用這個 CLI 時把憑證搬進家目錄、重開 agent。
 func (s *Service) adopt(ctx context.Context, c Container, botID, engine string) error {
+	sp := Specs[engine]
+	// 2026-10-22h: Lock with per-bot lock (touches per-bot dirs)
+	return s.ensureCredLock().withLock(ctx, sp.botCredPath(botID), func() error {
+		return s.adoptNoLock(ctx, c, botID, engine)
+	})
+}
+
+// adoptNoLock is the unlocked version of adopt, for use when already holding the lock.
+func (s *Service) adoptNoLock(ctx context.Context, c Container, botID, engine string) error {
+	sp := Specs[engine]
 	m, err := s.owns(ctx, botID)
 	if err != nil {
 		return err
@@ -378,7 +443,7 @@ func (s *Service) adopt(ctx context.Context, c Container, botID, engine string) 
 		if err := s.DB.DeleteSetting(ctx, settingKey(botID)); err != nil {
 			return err
 		}
-		if err := s.clearHostCopy(ctx, c, Specs[engine]); err != nil {
+		if err := s.clearHostCopy(ctx, c, sp); err != nil {
 			s.log().Warn("清掉原本用這台電腦的登入失敗", "bot", botID, "engine", engine, "err", err)
 		}
 	}
@@ -386,7 +451,7 @@ func (s *Service) adopt(ctx context.Context, c Container, botID, engine string) 
 	if err != nil {
 		return err
 	}
-	if err := s.syncOwn(ctx, c, b); err != nil {
+	if err := s.syncOwnNoLock(ctx, c, b); err != nil {
 		return err
 	}
 	if engineOf(b) == engine && s.Close != nil {
@@ -703,13 +768,17 @@ func (s *Service) SetKeys(ctx context.Context, botID string, keys map[string]str
 	if err != nil {
 		return err
 	}
-	if err := s.writeOwn(ctx, c, sp, append(data, '\n')); err != nil {
-		return err
-	}
-	if err := s.adopt(ctx, c, botID, sp.Engine); err != nil {
-		return err
-	}
-	return s.Probe(ctx, botID, sp.Engine)
+
+	// 2026-10-22h: Lock with per-bot lock (touches per-bot dirs)
+	return s.ensureCredLock().withLock(ctx, sp.botCredPath(botID), func() error {
+		if err := s.writeOwn(ctx, c, sp, append(data, '\n')); err != nil {
+			return err
+		}
+		if err := s.adoptNoLock(ctx, c, botID, sp.Engine); err != nil {
+			return err
+		}
+		return s.Probe(ctx, botID, sp.Engine)
+	})
 }
 
 // boot 找 Bot 的電腦；還沒有時開機建立（用 Exec 跑一個空指令）。

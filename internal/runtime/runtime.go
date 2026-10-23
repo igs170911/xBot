@@ -73,6 +73,8 @@ type Options struct {
 	Models interface {
 		ResolveModel(ctx context.Context, b store.Bot) (ModelRef, error)
 	}
+	// Router 對話分流：判斷是閒聊、查進度還是實際工作，決定要不要開電腦（nil 時一律開電腦）。
+	Router *Router
 	Logger *slog.Logger
 	// QuestionTTL 是無人在場的工作裡提問多久沒回就過期；0 用 limits.QuestionTTL（測試可以調短）。
 	QuestionTTL time.Duration
@@ -100,6 +102,10 @@ type Options struct {
 	// Unfinished 在一件工作確定沒做完（判成只說要做、交回、卡住，而且不再自動繼續）時，在背景呼叫：
 	// 請老師模型看哪裡做錯、提議一條學到的事（lessons.Service.Consider）。額度用完、要你處理的不算。可為 nil。
 	Unfinished func(ctx context.Context, taskID, why string)
+	// Files 讀寫 Bot 電腦裡的檔案（太長的回覆存檔）；nil 時不截斷、保留完整內容。
+	Files interface {
+		Write(ctx context.Context, botID, rel string, data []byte) error
+	}
 }
 
 // Watchdog 是對話看門狗的時間（LazyBoy runtime.watch()）。
@@ -210,22 +216,24 @@ type turn struct {
 	lowPriority             bool   // Bot 交辦、群組接力（你的訊息會排在它後面第一個）
 	input                   string
 	orig                    string // 交辦時的原文（額度用完後可以重送的那一則）
+	ownerText               string // 2026-10-22e：owner 的原始訊息（用於判斷回覆長度限制）
 	cancel                  context.CancelFunc
 	done                    chan struct{}
 
-	mu        sync.Mutex
-	session   engine.Session
-	messageID string
-	text      strings.Builder
-	persisted time.Time
-	stopping  bool
-	paused    bool // 使用者接手電腦而中斷（B14）：交還時接著做
-	finished  bool
-	waiting   bool
-	lastErr   string
-	pending   *pending // Bot 正在等人回覆的請求（一次一個）
-	usedTools bool     // 這一輪呼叫過工具（判斷「只說要做」用）
-	toolsAt   int      // 最後一次呼叫工具時 text 寫到哪（之後那段才是最後的回答）
+	mu            sync.Mutex
+	session       engine.Session
+	messageID     string
+	text          strings.Builder
+	persisted     time.Time
+	stopping      bool
+	paused        bool // 使用者接手電腦而中斷（B14）：交還時接著做
+	finished      bool
+	waiting       bool
+	lastErr       string
+	pending       *pending // Bot 正在等人回覆的請求（一次一個）
+	usedTools     bool     // 這一輪呼叫過工具（判斷「只說要做」用）
+	toolsAt       int      // 最後一次呼叫工具時 text 寫到哪（之後那段才是最後的回答）
+	lastMilestone string   // 最後一個里程碑工具的 ID，用於判斷是否需要發布進度更新
 	// engine、provider：這一輪用的引擎與 Model Proxy 供應商；started：開始送出的時間；quota：引擎報的額度錯誤（EN-7）。
 	engine, provider string
 	started          time.Time
@@ -293,11 +301,11 @@ type ChatRequest struct {
 }
 
 // OwnerNote 附在你親手打的訊息後面（對話裡看不到），引擎才會照著回答或把工作做完。
-// 2026-10-21：原本寫「不用為了回答去上網，除非要最新資料」，Bot 連要查證的事也憑記憶回；改成和守則同一個判斷：
-// 會變的、要精確的、沒把握的先查，其他直接答。口氣要自然（使用者：講話不夠自然）。
-const OwnerNote = "\n\n[回覆前提醒：這是使用者本人剛打的訊息。是問題就直接回答，口氣自然，像真人在聊天；講重點：簡單的問題三到五句、兩段以內，細節他問了再補。" +
+// 2026-10-22：改善「看起來忙但沒規劃」問題：多步驟工作先說一行計畫，回報里程碑而非過程，結束時給結論。
+const OwnerNote = "\n\n[回覆前提醒：這是使用者本人剛打的訊息。是問題就直接回答，口氣自然，像真人在聊天；大小跟著需要走：簡單問題幾句話，細節他問了再補。" +
 	"答案會隨時間改變、要精確的數字或出處，或你沒把握的，先上網查再回答；一般常識、意見、閒聊直接回答，不用為了回答去載技能。" +
-	"是交代工作就在這一輪做到完成：說要做的事立刻呼叫工具去做，不要問要不要開始，也不要寫「接下來去做某某」就停下來。" +
+	"是交代工作：多步驟的事先說一行計畫（「我會 A → B → C」），再開始做，過程中只在關鍵決定、遇到障礙或改變計畫時簡短報告；做完給一句結論（做了什麼、有沒有完成、使用者要不要做什麼）。" +
+	"單一任務直接做，不用事先計畫也不用問要不要開始。說要做的就在這輪做完，不要只寫計畫不執行。" +
 	"照回話風格分段，一律繁體中文。]"
 
 // NowNote 是附在你親手打的訊息後面的現在時間（服務所在的時區，和使用者同一台電腦）。
@@ -334,6 +342,20 @@ func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error
 	if b.Archived {
 		return ChatResult{}, errors.New("這個 Bot 已封存")
 	}
+
+	// 對話分流：你親手打的訊息先判斷需不需要開電腦（閒聊、查進度用快速回覆；實際工作才開電腦）
+	if r.o.Router != nil && source == SourceOwner && req.Kind == "" {
+		shouldOpenComputer, quickReply := r.o.Router.Route(ctx, b, threadID, text)
+		if !shouldOpenComputer {
+			// 不需要開電腦：直接回覆（chat 或 progress）
+			return r.quickReply(ctx, b, threadID, text, quickReply)
+		}
+		// 需要開電腦但有確認訊息：先發確認
+		if quickReply != "" {
+			_ = r.sendQuickAck(ctx, b.ID, threadID, quickReply)
+		}
+	}
+
 	ref, err := r.o.Models.ResolveModel(ctx, b)
 	if err != nil {
 		return ChatResult{}, err
@@ -385,6 +407,13 @@ func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error
 	err = r.o.DB.Tx(ctx, func(q *store.Queries) error {
 		var err error
 		taskMeta := req.TaskMeta
+		// 2026-10-22e：儲存原始 owner text 用於判斷回覆長度限制
+		if source == SourceOwner && req.Kind == "" {
+			m := map[string]any{}
+			_ = json.Unmarshal(taskMeta, &m)
+			m["owner_text"] = text
+			taskMeta, _ = json.Marshal(m)
+		}
 		if req.Actor != "" && req.Actor != "owner" {
 			m := map[string]any{}
 			_ = json.Unmarshal(taskMeta, &m)
@@ -468,6 +497,14 @@ func (r *Runtime) begin(task store.Task) {
 	runCtx, cancel := context.WithCancel(context.Background())
 	t := &turn{botID: task.BotID, threadID: task.ThreadID, taskID: task.ID, source: task.Source, lowPriority: task.LowPriority,
 		input: task.Input, orig: task.Input, cancel: cancel, done: make(chan struct{})}
+	// 2026-10-22e：提取原始 owner text 用於判斷回覆長度限制
+	if task.Source == SourceOwner {
+		var meta map[string]any
+		_ = json.Unmarshal(task.Meta, &meta)
+		if ownerText, ok := meta["owner_text"].(string); ok {
+			t.ownerText = ownerText
+		}
+	}
 	r.mu.Lock()
 	r.active[task.BotID] = t
 	r.mu.Unlock()
@@ -476,6 +513,16 @@ func (r *Runtime) begin(task store.Task) {
 
 // run 在背景完成一輪：讀 Bot 與模型、開（或接回）引擎 session（必要時開機）、送出訊息；之後由 consume 處理事件直到 done。
 func (r *Runtime) run(ctx context.Context, t *turn) {
+	// C1(b) (2026-10-22): Recover from panics in goroutine to prevent server crash.
+	// finish() already has recover, but panics before reaching it (e.g. nil dereference
+	// in engine Start) would kill the entire server process, leaving queued tasks stuck.
+	defer func() {
+		if p := recover(); p != nil {
+			r.log.Error("panic in run goroutine", "panic", p, "task", t.taskID, "bot", t.botID)
+			r.finishErr(t, fmt.Errorf("internal panic: %v", p))
+		}
+	}()
+
 	b, err := r.o.DB.GetBot(ctx, t.botID)
 	if err == nil && b.Archived {
 		err = errors.New("這個 Bot 已封存")
@@ -610,6 +657,53 @@ func (r *Runtime) consume(s engine.Session, botID string) {
 	r.consumers[s] = botID
 	r.mu.Unlock()
 	go func() {
+		// C1(b) (2026-10-22): Recover from panics in event consumer goroutine.
+		// D4 (Round 11): On panic, mark task failed and emit done.
+		defer func() {
+			if p := recover(); p != nil {
+				r.log.Error("panic in consume goroutine", "panic", p, "bot", botID, "session", s.ResumeID())
+
+				// Find and mark the active task as failed
+				r.mu.Lock()
+				t := r.active[botID]
+				r.mu.Unlock()
+
+				if t != nil {
+					t.mu.Lock()
+					wasFinished := t.finished
+					t.finished = true
+					taskID := t.taskID
+					msgID := t.messageID
+					t.mu.Unlock()
+
+					if !wasFinished {
+						panicMsg := fmt.Sprintf("panic in event consumer: %v", p)
+						// Emit error and done events
+						r.emit(t, KindError, engine.Event{Type: engine.EventError, Text: panicMsg, Fatal: true}, true)
+						r.emit(t, KindDone, engine.Event{Type: engine.EventDone, Status: engine.StatusError, Text: panicMsg}, true)
+
+						// Mark task as failed in DB
+						if err := r.o.DB.SetTaskState(context.Background(), taskID, store.TaskDone, VerdictFailed); err != nil {
+							r.log.Error("failed to mark task as failed after consume panic", "task", taskID, "err", err)
+						}
+
+						// Update message if it exists
+						if msgID != "" {
+							fields := map[string]any{"task_id": taskID, "status": engine.StatusError}
+							meta, _ := json.Marshal(fields)
+							_ = r.o.DB.UpdateMessage(context.Background(), msgID, panicMsg, nil, meta)
+						}
+					}
+
+					// Release Bot's busy state
+					r.mu.Lock()
+					if r.active[botID] == t {
+						delete(r.active, botID)
+					}
+					r.mu.Unlock()
+				}
+			}
+		}()
 		for e := range r.o.Driver.Events(s) {
 			r.handle(s, botID, e)
 		}
@@ -681,9 +775,30 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 	case engine.EventThinking:
 		r.emit(t, KindThinking, map[string]string{"message_id": msgID, "text": e.Text}, false)
 	case engine.EventToolCall:
-		r.emit(t, KindToolCall, e, true)
+		// 只有里程碑工具才發布進度更新
+		if isMilestone(e) {
+			t.mu.Lock()
+			t.lastMilestone = e.Tool.ID
+			t.mu.Unlock()
+			r.emit(t, KindToolCall, e, true)
+		} else {
+			// 非里程碑工具：只存資料庫，不發布到事件匯流排（不打斷使用者）
+			r.persistOnly(t, KindToolCall, e)
+		}
 	case engine.EventToolResult:
-		r.emit(t, KindToolResult, e, true)
+		// 只有里程碑工具的結果才發布
+		t.mu.Lock()
+		lastMilestone := t.lastMilestone
+		t.mu.Unlock()
+		if shouldNotifyToolResult(e, lastMilestone) {
+			r.emit(t, KindToolResult, e, true)
+			t.mu.Lock()
+			t.lastMilestone = "" // 清空，避免重複通知
+			t.mu.Unlock()
+		} else {
+			// 非里程碑工具的結果：只存資料庫
+			r.persistOnly(t, KindToolResult, e)
+		}
 	case engine.EventUsage:
 		r.emit(t, KindUsage, e, true)
 	case engine.EventStatus:
@@ -706,6 +821,11 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 				r.log.Info("自動允許只讀的程式", "bot", botID, "task", t.taskID)
 			}()
 			return
+		}
+		// B.4: 高風險瀏覽器操作（表單提交、購買、登入、發送等）需要人工核准（伺服器端攔截）。
+		// 這裡不自動允許，讓它走正常的核准流程。
+		if consequentialBrowserAction(e.Request) {
+			r.log.Info("瀏覽器高風險操作需要核准", "bot", botID, "task", t.taskID)
 		}
 		r.askApproval(t, e)
 	case engine.EventRequestClosed:
@@ -760,15 +880,84 @@ func (r *Runtime) finishErr(t *turn, err error) {
 
 // finish 寫下最後的回覆、結束任務、發布 done，並釋放這個 Bot。只會做一次。
 func (r *Runtime) finish(t *turn, status, text string) {
-	t.askMu.Lock() // 和 resume 互斥：回覆前改回「工作中」不會蓋掉「已完成」
+	// 2026-10-22k (item 5): Proper panic recovery - must emit done, mark task failed, release locks
+	var panicMsg string
+	defer func() {
+		if rec := recover(); rec != nil {
+			r.log.Error("runtime finish panic recovered", "bot", t.botID, "task", t.taskID, "panic", rec)
+
+			panicMsg = fmt.Sprintf("內部錯誤：%v", rec)
+
+			// Mark as finished to prevent double-finish
+			t.mu.Lock()
+			wasFinished := t.finished
+			if !wasFinished {
+				t.finished = true
+			}
+			msgID := t.messageID
+			t.mu.Unlock()
+
+			if !wasFinished {
+				// Emit error and done events for panic
+				r.emit(t, KindError, engine.Event{Type: engine.EventError, Text: panicMsg}, true)
+				r.emit(t, KindDone, engine.Event{Type: engine.EventDone, Status: engine.StatusError, Text: panicMsg}, true)
+
+				// Mark task as failed
+				if err := r.o.DB.SetTaskState(context.Background(), t.taskID, store.TaskDone, VerdictFailed); err != nil {
+					r.log.Error("failed to mark task as failed after panic", "task", t.taskID, "err", err)
+				}
+
+				// Update message if it exists
+				if msgID != "" {
+					fields := map[string]any{"task_id": t.taskID, "status": engine.StatusError}
+					meta, _ := json.Marshal(fields)
+					_ = r.o.DB.UpdateMessage(context.Background(), msgID, panicMsg, nil, meta)
+				}
+			}
+
+			// Release Bot's busy state
+			r.mu.Lock()
+			if r.active[t.botID] == t {
+				delete(r.active, t.botID)
+			}
+			r.mu.Unlock()
+
+			// Call hooks (may panic again, but we've already recovered)
+			if h := r.hooks(); h.Finished != nil {
+				defer func() {
+					if rec2 := recover(); rec2 != nil {
+						r.log.Error("panic in Finished hook after finish panic", "bot", t.botID, "task", t.taskID, "hook_panic", rec2)
+					}
+				}()
+				h.Finished(store.Task{ID: t.taskID, BotID: t.botID}, VerdictFailed, panicMsg)
+			}
+		}
+	}()
+
+	// 2026-10-22i：確保 session 被關閉（資源洩漏修復，item 7）
+	// 這涵蓋所有來源：owner DM、rooms、peer messages、routines（item 7c）。
+	// Judge 不使用 engine session，直接呼叫 Model Proxy API。
+	defer func() {
+		if t.session != nil {
+			if closer, ok := r.o.Driver.(interface{ CloseSession(engine.Session) error }); ok {
+				if err := closer.CloseSession(t.session); err != nil {
+					r.log.Warn("關閉 session 失敗", "bot", t.botID, "task", t.taskID, "err", err)
+				}
+			}
+		}
+	}()
+
+	t.askMu.Lock()         // 和 resume 互斥：回覆前改回「工作中」不會蓋掉「已完成」
+	defer t.askMu.Unlock() // B6: ensure lock is released on panic
+
 	t.mu.Lock()
 	if t.finished {
+		// B6: Already finished, but still emit done event for idempotence
+		r.emit(t, KindDone, engine.Event{Type: engine.EventDone, Status: status, Text: text}, true)
 		t.mu.Unlock()
-		t.askMu.Unlock()
 		return
 	}
 	t.finished = true
-	t.askMu.Unlock()
 	p := t.pending
 	t.pending = nil
 	streamed := t.text.String()
@@ -777,7 +966,7 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	stopping := t.stopping
 	paused := t.paused
 	lastErr := t.lastErr
-	t.mu.Unlock()
+	t.mu.Unlock() // explicit unlock before long operations
 
 	verdict := VerdictAnswer
 	switch {
@@ -844,6 +1033,59 @@ func (r *Runtime) finish(t *turn, status, text string) {
 		j := judgmentOf(*res)
 		judged = &j
 	}
+
+	// 2026-10-22e：對 owner DM 回覆應用長度限制
+	// 2026-10-22i：≤600 runes 全文顯示；>600 時保留 ≥400 runes + 檔案連結
+	if t.source == SourceOwner && t.ownerText != "" && final != "" && msgID != "" {
+		finalRunes := runes(final)
+
+		// ≤600 runes: 全文顯示，不寫檔案
+		if finalRunes <= 600 {
+			// Keep full text, no truncation
+		} else {
+			// >600 runes: 寫檔案，保留 ≥400 runes + 連結
+			botName := t.botName
+			if botName == "" {
+				if b, err := r.o.DB.GetBot(ctx, t.botID); err == nil {
+					botName = b.Name
+				} else {
+					botName = "Bot"
+				}
+			}
+			home := "dm-reply-" + botName + "-" + time.Now().Format("20060102-150405") + ".md"
+			if err := r.o.Files.Write(ctx, t.botID, home, []byte(final)); err == nil {
+				// 寫入成功：保留至少 400 runes，加上連結行
+				minText := 400
+				linkLine := formatResearchOverflow(final, home, finalRunes)
+
+				// Find good cut point at or after minText (at sentence boundary)
+				textRunes := []rune(final)
+				cutpoint := minText
+				if cutpoint < len(textRunes) {
+					// Look for sentence boundary within next 100 chars
+					for i := cutpoint; i < len(textRunes) && i < cutpoint+100; i++ {
+						r := textRunes[i]
+						if r == '。' || r == '.' || r == '\n' {
+							cutpoint = i + 1
+							break
+						}
+					}
+					if cutpoint > len(textRunes) {
+						cutpoint = len(textRunes)
+					}
+				} else {
+					cutpoint = len(textRunes)
+				}
+
+				outText := string(textRunes[:cutpoint]) + linkLine
+				final = outText
+			} else {
+				// 寫入失敗：保留完整內容
+				r.log.Warn("DM 回覆存檔失敗，保留完整內容", "bot", t.botID, "task", t.taskID, "err", err)
+			}
+		}
+	}
+
 	if msgID != "" {
 		fields := map[string]any{"task_id": t.taskID, "status": status}
 		if paused && verdict == VerdictCancelled {
@@ -943,6 +1185,19 @@ func (r *Runtime) setState(t *turn, state string) {
 // emit 發布一個事件；persist 時先寫進 event 表，帶著流水號發布。
 func (r *Runtime) emit(t *turn, kind string, payload any, persist bool) {
 	r.publish(t.botID, t.threadID, t.taskID, kind, payload, persist)
+}
+
+// persistOnly 只寫進 event 表，不發布到匯流排（非里程碑的工具呼叫）。
+func (r *Runtime) persistOnly(t *turn, kind string, payload any) {
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		r.log.Error("事件無法轉成 JSON", "kind", kind, "err", err)
+		return
+	}
+	_, err = r.o.DB.AppendEvent(context.Background(), store.Event{BotID: t.botID, ThreadID: t.threadID, TaskID: t.taskID, Kind: kind, Payload: raw})
+	if err != nil {
+		r.log.Warn("寫入事件失敗", "kind", kind, "err", err)
+	}
 }
 
 // publish 發布一個 Bot 的事件；persist 時先寫進 event 表，帶著流水號發布。

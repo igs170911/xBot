@@ -33,14 +33,29 @@ type Runtime interface {
 // 回傳挑中的成員與信心；ok=false（逾時、不確定）時交給主責。
 type Judge func(ctx context.Context, room store.Room, members []store.Bot, text string) (botID string, confidence float64, ok bool)
 
+// PeerJudge 判斷 bot-to-bot 訊息是否為 filler（2026-10-22h）。
+// 回傳 "skip"（FILLER）或 "handle"（NEW）；error 或空字串表示判斷失敗，使用退路。
+type PeerJudge interface {
+	Classify(ctx context.Context, prev, msg, botID string) (verdict string, err error)
+}
+
+// ErrJudgeNotConfigured is returned when judge backend is not available (2026-10-22i).
+var ErrJudgeNotConfigured = errors.New("judge backend not configured")
+
 // Options 是協作層的設定。
 type Options struct {
 	DB      *store.DB
 	Runtime Runtime
 	// Files 讀寫 Bot 電腦裡的檔案（帶檔傳話、太長的結果存檔）；nil 時不帶檔，太長的結果只留預覽。
-	Files  Files
-	Judge  Judge
-	Logger *slog.Logger
+	Files Files
+	Judge Judge
+	// JudgeService 是快判服務（2026-10-22h：已棄用，改用 PeerJudge）；nil 時只用規則。
+	JudgeService interface {
+		Decide(ctx context.Context, a judge.Ask) (judge.Decision, error)
+	}
+	// PeerJudge 判斷 bot-to-bot 訊息（2026-10-22h）；nil 時 Stage A lenient pass。
+	PeerJudge PeerJudge
+	Logger    *slog.Logger
 	// Now 是時間（測試可以換）；nil 用 time.Now。
 	Now func() time.Time
 	// ChainBudget 是每條工作鏈的 token 預算；0 用 limits.ChainBudgetTokens（也是 0＝不限；測試可以設一個數字）。
@@ -53,6 +68,20 @@ type Service struct {
 	db  *store.DB
 	rt  Runtime
 	log *slog.Logger
+}
+
+// peerReplyJudge 呼叫快判判斷隊友訊息要不要回（2026-10-22h：透過 PeerJudge 介面）。
+// 回傳 handle/skip，失敗或逾時時回傳空字串（Stage B 退路：lenient pass）。
+func (s *Service) peerReplyJudge(ctx context.Context, content, botID string) string {
+	if s.o.PeerJudge == nil {
+		// 沒有 PeerJudge → Stage A lenient pass
+		return ""
+	}
+	verdict, err := s.o.PeerJudge.Classify(ctx, "", content, botID)
+	if err != nil {
+		return "" // 判斷失敗，用退路
+	}
+	return verdict
 }
 
 // New 建立協作層，並接上 runtime 的 Hooks（組群組 prompt、工作結束後把回覆送回去、停止連鎖）。
@@ -96,13 +125,16 @@ type taskMeta struct {
 	AssignmentID string         `json:"assignment_id,omitempty"`
 	Deferred     *deferredReply `json:"deferred_reply,omitempty"`
 	// 群組座位的一輪
-	RoomID    string `json:"room_id,omitempty"`
-	Round     int    `json:"round,omitempty"`
-	Addressed bool   `json:"addressed,omitempty"`
-	Cause     string `json:"cause,omitempty"`    // 叫醒它的那則群組訊息
-	ByOwner   bool   `json:"by_owner,omitempty"` // 你發言叫醒的（輪數從 0 算）
-	SeenFrom  int64  `json:"seen_from,omitempty"`
-	SeenTo    int64  `json:"seen_to,omitempty"`
+	RoomID          string `json:"room_id,omitempty"`
+	Round           int    `json:"round,omitempty"`
+	Addressed       bool   `json:"addressed,omitempty"`
+	Cause           string `json:"cause,omitempty"`             // 叫醒它的那則群組訊息
+	TriggeringMsgID string `json:"triggering_msg_id,omitempty"` // 2026-10-22c：觸發這一輪的訊息 ID（用於檢查 addressed）
+	ByOwner         bool   `json:"by_owner,omitempty"`          // 你發言叫醒的（輪數從 0 算）
+	SeenFrom        int64  `json:"seen_from,omitempty"`
+	SeenTo          int64  `json:"seen_to,omitempty"`
+	// 2026-10-22：no-progress 自動停止
+	ConsecBlocked int `json:"consec_blocked,omitempty"` // 連續被阻擋（gate 或 no-new-info）的輪數
 }
 
 func metaOf(t store.Task) taskMeta {
@@ -432,6 +464,82 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	if runes(text) > limits.BotMessageMax {
 		return SendResult{}, &Error{Code: CodeLimit, Msg: fmt.Sprintf("訊息最多 %d 字元；長資料請寫成檔案再說明位置", limits.BotMessageMax)}
 	}
+
+	// 2026-10-22：RequestID 去重優先於發送閘門（重試不需要重新檢查內容）
+	rid := ""
+	if o.RequestID != "" {
+		rid = senderID + ":" + o.RequestID
+		if prev, err := s.db.FindBotMessageByRequest(ctx, target.ID, rid); err == nil {
+			return SendResult{Sent: true, To: target.Name, ToID: target.ID, Replayed: true, TaskID: prev.TaskID, Hop: prev.Hop, Chain: prev.ChainID,
+				Assignment: prev.AssignmentID, Note: fmt.Sprintf("這則訊息先前已送達 %s，不會重複傳送。", target.Name)}, nil
+		}
+	}
+
+	// 2026-10-22：統一發送閘門，防止 Bot 主動傳送無意義訊息
+	// 獲取最近從這個 Bot 發給目標的訊息，用於重複檢測
+	// 2026-10-22i：修正去重視窗邏輯 - 找「其他人」的最後新資訊，不排除發送者自己的最後一則
+	// 2026-10-22i：對於 request/handoff 在 relay 鏈中（有較小 hop 的同文字訊息），允許重複
+	var recentTexts []string
+	recentMsgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Pair: []string{senderID, target.ID}, Limit: 20})
+	if err == nil {
+		isHandoffOrRequest := intent == IntentRequest || ClassifyMessage(text) == ClassHandoff
+		// 找到最近一則「其他人」有新資訊的訊息（不是當前發送者）
+		lastOtherNewInfoIdx := -1
+		if isHandoffOrRequest {
+			for i := len(recentMsgs) - 1; i >= 0; i-- {
+				// 只看非當前發送者的訊息
+				if recentMsgs[i].From != senderID && HasNewInformation(recentMsgs[i].Text) {
+					lastOtherNewInfoIdx = i
+					break
+				}
+			}
+		}
+		// 取從 sender 發出、在其他人新資訊之後的所有訊息（包含 sender 自己的最後一則）
+		startIdx := 0
+		if lastOtherNewInfoIdx >= 0 {
+			startIdx = lastOtherNewInfoIdx + 1
+		}
+		for i := len(recentMsgs) - 1; i >= startIdx; i-- {
+			if recentMsgs[i].From == senderID {
+				recentTexts = append(recentTexts, recentMsgs[i].Text)
+				if len(recentTexts) >= 5 {
+					break
+				}
+			}
+		}
+		// For relay chains: if any recent message has the same text with a hop number,
+		// this might be a relay chain. Check if there are ascending hops.
+		if isHandoffOrRequest && len(recentTexts) > 0 {
+			hasRelay := false
+			for _, rm := range recentMsgs {
+				if rm.From == senderID && rm.Text == text && rm.Hop > 0 {
+					hasRelay = true
+					break
+				}
+			}
+			// If this looks like a relay chain (same text with hops), allow it
+			// The hop limit check will catch it if it exceeds MaxHops
+			if hasRelay {
+				recentTexts = nil
+			}
+		}
+	}
+
+	// 檢查是否應該發送（答案情境 = 回覆 request/question）
+	isAnswer := o.intent == IntentResult || intent == IntentRequest || intent == IntentQuestion
+	judgeVerdict := s.peerReplyJudge(ctx, text, senderID)
+	shouldSend, reason := ShouldSendToPeer(text, "answer", isAnswer, recentTexts, judgeVerdict, true) // Send 是主動發送
+	if !shouldSend && !o.Relay {
+		// 2026-10-22b：對於任務/請求（handoff 分類）且原因是無新資訊，給出明確錯誤
+		// 如果是其他原因（如重複、客套話），靜默阻擋
+		if reason == "no_new_info" && ClassifyMessage(text) == ClassHandoff {
+			return SendResult{}, invalid(fmt.Sprintf("訊息看起來像任務指派（「%s」），但缺少明確意圖或目標。請說明：要做什麼、為什麼、做到什麼程度。", plain(text, 50)))
+		}
+		s.log.Debug("blocked bot-initiated message", "from", senderID, "to", ref, "reason", reason, "content", plain(text, 100))
+		// 其他情況（如純客套話、重複）靜默阻擋
+		return SendResult{Sent: false, To: target.Name, ToID: target.ID, Note: "訊息無新資訊，已阻擋"}, nil
+	}
+
 	if o.intent == IntentResult {
 		intent = IntentResult
 	} else {
@@ -446,8 +554,13 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	}
 	om := metaOf(origin)
 	hop := 1
-	if hasOrigin && om.FromBot != "" {
-		hop = om.Hop + 1
+	if hasOrigin {
+		if om.Hop > 0 {
+			hop = om.Hop + 1
+		} else if om.FromBot != "" {
+			// Legacy: if FromBot is set but Hop is 0, assume hop 1
+			hop = 2
+		}
 	}
 	if hop > limits.MaxHops() && !o.Relay {
 		return SendResult{}, &Error{Code: CodeLimit, Msg: fmt.Sprintf("這段 Bot 之間的往來已經 %d 次了。先停下來，把目前結果回報給使用者，由使用者決定下一步。", limits.MaxHops())}
@@ -473,18 +586,61 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 			return SendResult{}, err
 		}
 	}
-	// 同一個請求重送（重試的工具呼叫）已經送到了；每個 Bot 自己取編號，所以兩個寄件者的「task-1」是不同的訊息。
-	rid := ""
-	if o.RequestID != "" {
-		rid = senderID + ":" + o.RequestID
-		if prev, err := s.db.FindBotMessageByRequest(ctx, target.ID, rid); err == nil {
-			return SendResult{Sent: true, To: target.Name, ToID: target.ID, Replayed: true, TaskID: prev.TaskID, Hop: prev.Hop, Chain: prev.ChainID,
-				Assignment: prev.AssignmentID, Note: fmt.Sprintf("這則訊息先前已送達 %s，不會重複傳送。", target.Name)}, nil
-		}
-	}
 	// 寄件者的對話保留自己的路徑；收件者拿到檔案的副本與指向副本的路徑。
 	sent := text
 	carried, files := s.carryFiles(ctx, senderID, target.ID, sender.Name, text, target.Name)
+
+	// 2026-10-22c：長度限制（#7 peer send）
+	// Skip enforcement for relayed messages (already processed by deliver())
+	// Peer sends always use ClassPeer (300 chars)
+	if !o.Relay {
+		outText, overflow := EnforceLength(carried, ClassPeer, false)
+		if overflow != "" && s.o.Files != nil {
+			// Peer overflow: write full text to target bot's storage
+			home := "from/" + Filename(sender.Name) + "/peer-" + s.o.Now().Format("20060102-150405") + ".md"
+			linkLine := FormatResearchOverflow(carried, home, runes(carried))
+
+			// Try to write the file
+			if err := s.o.Files.Write(ctx, target.ID, home, []byte(carried)); err == nil {
+				// Success: ensure outText + linkLine ≤ 300
+				linkLen := runes(linkLine)
+				cap := LengthCap(ClassPeer)
+				maxText := cap - linkLen
+				if maxText < 0 {
+					maxText = 0
+				}
+				if runes(outText) > maxText {
+					// Re-truncate to make room for the link (without adding …)
+					textRunes := []rune(carried)
+					if len(textRunes) > maxText {
+						// Find a good cutpoint at a sentence boundary if possible
+						cutpoint := maxText
+						for i := maxText - 1; i >= 0 && i > maxText-20; i-- {
+							if textRunes[i] == '。' || textRunes[i] == '.' || textRunes[i] == '\n' {
+								cutpoint = i + 1
+								break
+							}
+						}
+						if cutpoint > len(textRunes) {
+							cutpoint = maxText
+						}
+						if cutpoint > 0 {
+							outText = string(textRunes[:cutpoint])
+						} else {
+							outText = ""
+						}
+					}
+				}
+				outText += linkLine
+			} else {
+				// Write failed: send full text instead of truncating
+				s.log.Warn("隊友回覆存檔失敗，發送完整內容", "from", senderID, "to", target.ID, "err", err)
+				outText = carried
+			}
+		}
+		carried = outText
+	}
+
 	answers := ""
 	if intent == IntentResult {
 		answers = om.ParentTask
@@ -706,7 +862,8 @@ func framed(sender store.Bot, target Mate, text, intent, owedTo string) string {
 		label = "（" + sender.Title + "）"
 	}
 	// 送回隊友的回答不照回話風格（hermes.replyStyleText，給使用者看的聊天口吻）：Bot 之間要完整、精簡，長資料給檔案路徑。
-	const toPeer = "這是給隊友看的，不用像跟使用者聊天那樣分段：一次寫完整、精簡，長的資料給檔案路徑，不要貼全文。"
+	// 2026-10-22：長度規則 - 隊友訊息最多 300 字，資料給檔案路徑。
+	const toPeer = "這是給隊友看的，不用像跟使用者聊天那樣分段：一次寫完整、精簡（最多 300 字），長的資料給檔案路徑，不要貼全文。"
 	var rule string
 	switch intent {
 	case IntentQuestion:
@@ -831,9 +988,33 @@ func (s *Service) reply(ctx context.Context, task store.Task, m taskMeta, verdic
 		return
 	}
 	answered()
-	if verdict != runtime.VerdictFailed && IsSilent(content) {
+
+	// 2026-10-22：統一發送閘門（取代分散的檢查）
+	// 獲取最近從這個 Bot 發給對方的訊息（包括群組和 DM），用於重複檢測
+	recentMsgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{Limit: 20})
+	var recentTexts []string
+	if err == nil {
+		for _, msg := range recentMsgs {
+			// 檢查所有從這個 Bot 發出的訊息（不限配對，避免跨群組+DM的重複）
+			if msg.From == task.BotID {
+				recentTexts = append(recentTexts, msg.Text)
+				if len(recentTexts) >= 10 {
+					break
+				}
+			}
+		}
+	}
+
+	// 答案情境：回覆 request/question
+	isAnswerToWork := verdict == runtime.VerdictAnswer && replyExpected(m.Intent)
+	judgeVerdict := s.peerReplyJudge(ctx, content, task.BotID)
+	// 2026-10-22c：DM reply 是 bot 回覆，用 isOutgoing=true（只阻擋 filler，允許 fyi）
+	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswerToWork, recentTexts, judgeVerdict, true)
+	if !shouldSend {
+		s.log.Debug("blocked DM reply", "from", task.BotID, "to", m.FromBot, "roomID", m.RoomID, "reason", reason, "content", plain(content, 100))
 		return
 	}
+
 	s.deliver(ctx, task.BotID, m.FromBot, content, verdict, task)
 }
 
@@ -870,7 +1051,8 @@ func (s *Service) continueReply(ctx context.Context, task store.Task, m taskMeta
 	if id := metaOf(origin).MessageID; id != "" {
 		_ = s.db.MarkBotMessageAnswered(ctx, id)
 	}
-	if verdict != runtime.VerdictFailed && IsSilent(content) {
+	// continueReply 交回的是實際工作結果，不受結構化規則限制（只阻擋 silent 和純致謝）
+	if verdict != runtime.VerdictFailed && (IsSilent(content) || (IsAcknowledgement(content) && len(strings.TrimSpace(content)) < 10)) {
 		return
 	}
 	s.deliver(ctx, task.BotID, owed.To, content, verdict, origin)
@@ -878,6 +1060,13 @@ func (s *Service) continueReply(ctx context.Context, task store.Task, m taskMeta
 
 // deliver 把結果以 result 送回去（LazyBoy deliver）。太長的存成檔案、訊息只放開頭（AA-8）。
 func (s *Service) deliver(ctx context.Context, botID, to, content, verdict string, origin store.Task) {
+	// 2026-10-22f：panic recovery to prevent server crash
+	defer func() {
+		if r := recover(); r != nil {
+			s.log.Error("deliver panic recovered", "from", botID, "to", to, "panic", r)
+		}
+	}()
+
 	if _, err := s.db.GetBot(ctx, to); err != nil {
 		return
 	}
@@ -885,9 +1074,35 @@ func (s *Service) deliver(ctx context.Context, botID, to, content, verdict strin
 	if verdict == runtime.VerdictFailed {
 		text = "我這次沒有完成你的請求：\n" + content
 	}
+
+	// Check for extremely long messages first (>8000 chars)
 	if runes(text) > limits.BotMessageMax {
 		text = s.longResult(ctx, botID, to, text)
+	} else {
+		// 2026-10-22c：長度限制（#7 owner DM reply）
+		// For bot-to-bot replies: always use research class (600 chars)
+		// For owner DM replies: ideally would classify based on owner's question,
+		// but that requires access to the original owner message which isn't
+		// available here. Use research class (600 chars) for now.
+		class := ClassResearch
+		lenient := false
+		outText, overflow := EnforceLength(text, class, lenient)
+		if overflow != "" && s.o.Files != nil {
+			// Overflow: write full text to file
+			botName := "Bot"
+			if b, err := s.db.GetBot(ctx, botID); err == nil {
+				botName = b.Name
+			}
+			home := "from/" + Filename(botName) + "/result-" + s.o.Now().Format("20060102-150405") + ".md"
+			if err := s.o.Files.Write(ctx, to, home, []byte(text)); err == nil {
+				outText += FormatResearchOverflow(text, home, runes(text))
+			} else {
+				s.log.Warn("回覆存檔失敗", "from", botID, "to", to, "err", err)
+			}
+		}
+		text = outText
 	}
+
 	if strings.TrimSpace(text) == "" {
 		return
 	}
