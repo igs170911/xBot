@@ -14,4 +14,3 @@ coverage.out
 __pycache__/
 *.pyc
 scripts/bench/results/
-/xbot

@@ -539,8 +539,8 @@ func TestRuleFallbacks(t *testing.T) {
 		}
 	}
 	for _, u := range Uses {
-		if u.Wait < 300*time.Millisecond || u.Wait > 5*time.Second {
-			t.Errorf("%s 等待上限要在 0.3–5 秒：%v", u.ID, u.Wait)
+		if u.Wait < 300*time.Millisecond || u.Wait > 2*time.Second {
+			t.Errorf("%s 等待上限要在 0.3–2 秒：%v", u.ID, u.Wait)
 		}
 	}
 }

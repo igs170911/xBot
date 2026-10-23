@@ -165,9 +165,8 @@ type Service struct {
 	Exec   func(ctx context.Context, botID, home string, a acp.Agent) (acp.Process, error)
 	Launch acp.Launcher
 
-	loginMu  sync.Mutex
-	logins   map[string]*login
-	credLock *credLock
+	loginMu sync.Mutex
+	logins  map[string]*login
 }
 
 func (s *Service) log() *slog.Logger {
@@ -175,13 +174,6 @@ func (s *Service) log() *slog.Logger {
 		return slog.Default()
 	}
 	return s.Logger
-}
-
-func (s *Service) ensureCredLock() *credLock {
-	if s.credLock == nil {
-		s.credLock = newCredLock()
-	}
-	return s.credLock
 }
 
 // HostPath 回傳這台電腦上某個 CLI 的憑證檔位置。
@@ -281,52 +273,42 @@ func (s *Service) Authorize(ctx context.Context, botID, engine string) error {
 }
 
 // Link 記下同意，並把憑證放進 Bot 的電腦（電腦已存在時；還沒建立的話開機前會放）。
-// 2026-10-22h：使用 per-bot lock（觸碰 per-bot 目錄）。
 func (s *Service) Link(ctx context.Context, botID, engine string) (Link, error) {
 	sp, ok := Specs[engine]
 	if !ok {
 		return Link{}, fmt.Errorf("不支援連結 %s 的訂閱", engine)
 	}
-
-	var result Link
-	err := s.ensureCredLock().withLock(ctx, sp.botCredPath(botID), func() error {
-		data, err := s.ReadHost(sp)
-		if err != nil {
-			return err
+	data, err := s.ReadHost(sp)
+	if err != nil {
+		return Link{}, err
+	}
+	// 改用這台電腦的登入：Bot 自己登入的那份不留（同一個 CLI 只用一份登入）。
+	if own, err := s.HasOwn(ctx, botID, engine); err != nil {
+		return Link{}, err
+	} else if own {
+		if _, err := s.Logout(ctx, botID, engine); err != nil {
+			return Link{}, err
 		}
-		// 改用這台電腦的登入：Bot 自己登入的那份不留（同一個 CLI 只用一份登入）。
-		if own, err := s.HasOwn(ctx, botID, engine); err != nil {
-			return err
-		} else if own {
-			// Call logoutNoLock since we're already holding the lock
-			if _, err := s.logoutNoLock(ctx, botID, engine); err != nil {
-				return err
-			}
-		}
-		l := Link{Engine: engine, LinkedAt: time.Now().UnixMilli()}
-		if err := s.DB.SetSetting(ctx, settingKey(botID), l); err != nil {
-			return err
-		}
-		if s.Locate == nil {
-			result = l
-			return nil
-		}
-		c, err := s.Locate(ctx, botID)
-		if err != nil {
-			// 同意已記下；開機前會再放一次。
+	}
+	l := Link{Engine: engine, LinkedAt: time.Now().UnixMilli()}
+	if err := s.DB.SetSetting(ctx, settingKey(botID), l); err != nil {
+		return Link{}, err
+	}
+	if s.Locate == nil {
+		return l, nil
+	}
+	c, err := s.Locate(ctx, botID)
+	if err != nil {
+		// 同意已記下；開機前會再放一次。
+		s.log().Warn("暫時無法把憑證放進 Bot 的電腦，開機時再放", "bot", botID, "err", err)
+		return l, nil
+	}
+	if c.ID != "" {
+		if err := s.install(ctx, c, sp, data); err != nil {
 			s.log().Warn("暫時無法把憑證放進 Bot 的電腦，開機時再放", "bot", botID, "err", err)
-			result = l
-			return nil
 		}
-		if c.ID != "" {
-			if err := s.install(ctx, c, sp, data); err != nil {
-				s.log().Warn("暫時無法把憑證放進 Bot 的電腦，開機時再放", "bot", botID, "err", err)
-			}
-		}
-		result = l
-		return nil
-	})
-	return result, err
+	}
+	return l, nil
 }
 
 // Unlink 收回：刪掉同意（驅動立刻拒絕）、結束 agent 行程、清掉容器裡的憑證；Bot 自己登入的也全部登出。
@@ -380,7 +362,6 @@ func (s *Service) unlinkHost(ctx context.Context, botID string) (cleared bool, e
 
 // Prepare 在每次開機前（box Prepare）呼叫：Bot 自己登入的照現在的引擎搬好（Sync）；
 // 用這台電腦的登入：已同意且引擎相同就放最新的憑證，已收回或引擎換了就清掉。
-// 2026-10-22g：Lock on bot's credential path (per-bot), not shared source. Concurrent Prepares overlap.
 func (s *Service) Prepare(ctx context.Context, c Container, b store.Bot) error {
 	if err := s.syncOwn(ctx, c, b); err != nil {
 		return err
@@ -393,42 +374,31 @@ func (s *Service) Prepare(ctx context.Context, c Container, b store.Bot) error {
 	if !known {
 		return nil
 	}
-
-	// Lock on bot's credential directory (per-bot), allowing concurrent preparation
-	return s.ensureCredLock().withLock(ctx, sp.botCredPath(b.ID), func() error {
-		if own, err := s.HasOwn(ctx, b.ID, l.Engine); err != nil || own {
-			// 同一個 CLI 已經自己登入（adopt 會刪掉這筆同意；這裡只是保險）：不要拿這台電腦的那份蓋掉。
+	if own, err := s.HasOwn(ctx, b.ID, l.Engine); err != nil || own {
+		// 同一個 CLI 已經自己登入（adopt 會刪掉這筆同意；這裡只是保險）：不要拿這台電腦的那份蓋掉。
+		return err
+	}
+	engine := b.Engine
+	if engine == "" {
+		engine = hermes.Name
+	}
+	switch {
+	case l.Revoked:
+		if err := s.clear(ctx, c, sp); err != nil {
 			return err
 		}
-		engine := b.Engine
-		if engine == "" {
-			engine = hermes.Name
-		}
-		switch {
-		case l.Revoked:
-			if err := s.clear(ctx, c, sp); err != nil {
-				return err
-			}
-			return s.DB.DeleteSetting(ctx, settingKey(b.ID))
-		case l.Engine != engine:
-			// Bot 換了引擎（例：改回 Hermes）：憑證不留在它的電腦裡（EN-2a）。
-			return s.clear(ctx, c, sp)
-		}
-
-		// Read shared host source under its own lock
-		var data []byte
-		err := s.ensureCredLock().withLock(ctx, sp.hostSourcePath(), func() error {
-			var err error
-			data, err = s.ReadHost(sp)
-			return err
-		})
-		if err != nil {
-			// 這台電腦上登出了：清掉舊的，Bot 用的時候會說要登入。不擋開機。
-			s.log().Warn("這台電腦上找不到訂閱登入，清掉 Bot 電腦裡的舊憑證", "bot", b.ID, "engine", l.Engine, "err", err)
-			return s.clear(ctx, c, sp)
-		}
-		return s.install(ctx, c, sp, data)
-	})
+		return s.DB.DeleteSetting(ctx, settingKey(b.ID))
+	case l.Engine != engine:
+		// Bot 換了引擎（例：改回 Hermes）：憑證不留在它的電腦裡（EN-2a）。
+		return s.clear(ctx, c, sp)
+	}
+	data, err := s.ReadHost(sp)
+	if err != nil {
+		// 這台電腦上登出了：清掉舊的，Bot 用的時候會說要登入。不擋開機。
+		s.log().Warn("這台電腦上找不到訂閱登入，清掉 Bot 電腦裡的舊憑證", "bot", b.ID, "engine", l.Engine, "err", err)
+		return s.clear(ctx, c, sp)
+	}
+	return s.install(ctx, c, sp, data)
 }
 
 func (s *Service) install(ctx context.Context, c Container, sp Spec, data []byte) error {

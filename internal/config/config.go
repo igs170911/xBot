@@ -25,9 +25,8 @@ type Config struct {
 	DataDir string
 	// Dev 為 true 時前端由 Vite 提供，服務只提供 API。
 	Dev bool
-	// LocalNoAuth 為 true 時，從本機（localhost）來的請求不用登入（SEC-7）。
-	// ⚠️  安全警告：預設關閉。設 XBOT_LOCAL_NOAUTH=1 啟用時，同一台機器上的任何程式都能存取你的 Bot 和資料。
-	// 只在你確定本機環境安全時才啟用（例如：個人電腦、沒有其他使用者）。
+	// LocalNoAuth 為 true 時，從本機（localhost）來的請求不用登入（SEC-7）。XBOT_LOCAL_NOAUTH=0 關掉；
+	// 設了 XBOT_PUBLIC_URL 或 XBOT_TRUSTED_PROXIES 時預設關掉，除非明確設 XBOT_LOCAL_NOAUTH=1。
 	LocalNoAuth bool
 	// PublicURL 是反向代理模式的對外網址（XBOT_PUBLIC_URL，例：https://xbot.example.com）。空白表示沒有用反向代理（C35）。
 	PublicURL string
@@ -79,8 +78,9 @@ func Load() (Config, error) {
 	}
 	switch v := os.Getenv("XBOT_LOCAL_NOAUTH"); v {
 	case "":
-		// B.6: 預設關閉本機免登入，必須明確設為 1 才啟用（安全優先）
-		c.LocalNoAuth = false
+		// 有反向代理（XBOT_PUBLIC_URL 或 XBOT_TRUSTED_PROXIES）時預設關掉：同一台機器上的反向代理沒帶 X-Forwarded-For
+		// 又把 Host 改成 127.0.0.1 時，外面來的請求看起來就像本機。真的要開請明確設 XBOT_LOCAL_NOAUTH=1。
+		c.LocalNoAuth = c.PublicURL == "" && strings.TrimSpace(c.TrustedProxies) == ""
 	case "1", "true":
 		c.LocalNoAuth = true
 	case "0", "false":

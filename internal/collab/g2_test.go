@@ -60,15 +60,8 @@ func newG2(t *testing.T) *g2 {
 		return hermes.Endpoint{Addr: gw.Addr(), Key: "k"}, nil
 	}, nil)
 	rt := runtime.New(runtime.Options{DB: db, Driver: drv, Bus: events.New(), Models: g2Model{}})
-
-	// Install fake judge for deterministic testing (2026-10-22h)
-	fakeJudge, err := newFakeJudge()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	e := &g2{t: t, ctx: ctx, db: db, rt: rt, files: DirFiles{Root: filepath.Join(dir, "bots")}, bots: map[string]string{}, names: map[string]string{}}
-	e.s = New(Options{DB: db, Runtime: rt, Files: e.files, PeerJudge: fakeJudge})
+	e.s = New(Options{DB: db, Runtime: rt, Files: e.files})
 	for _, n := range [][2]string{{"Chief", "總管"}, {"Writer", "文案"}, {"Scout", "研究"}} {
 		b, err := db.CreateBot(ctx, store.Bot{Name: n[0], Title: n[1]})
 		if err != nil {
@@ -166,7 +159,6 @@ func TestG2ThreeBotsInARoom(t *testing.T) {
 	if err != nil || strings.Join(res.Woke, ",") != "Chief" {
 		t.Fatalf("%+v %v", res, err)
 	}
-
 	e.waitFor("接力停下", func() bool {
 		log := e.room(room.ID)
 		return e.idle() && len(log) > 0 && log[len(log)-1].Notice == "capped"

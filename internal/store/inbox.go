@@ -68,32 +68,6 @@ func (q *Queries) CreateInboxItem(ctx context.Context, i InboxItem) (InboxItem, 
 	return i, err
 }
 
-// CreateInboxItemIgnoreDupe creates an inbox item, ignoring duplicates based on the unique index.
-// H2: Used for auto-stop cards where concurrent creates should silently fail.
-func (q *Queries) CreateInboxItemIgnoreDupe(ctx context.Context, i InboxItem) (InboxItem, bool, error) {
-	if i.ID == "" {
-		i.ID = NewID()
-	}
-	if i.Status == "" {
-		i.Status = InboxOpen
-	}
-	i.CreatedAt = nowMS()
-	i.UpdatedAt = i.CreatedAt
-	i.Payload = json.RawMessage(jsonOr(i.Payload, "{}"))
-	_, err := q.w.ExecContext(ctx, `INSERT INTO inbox_item(`+inboxCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING`,
-		i.ID, i.Kind, nullStr(i.BotID), nullStr(i.TaskID), nullStr(i.ThreadID), i.Ref, i.Title, i.Body, string(i.Payload), i.Status,
-		i.Resolution, i.ResolvedBy, i.ResolvedAt, i.ReadAt, i.ExpiresAt, i.CreatedAt, i.UpdatedAt)
-	if err != nil {
-		return i, false, err
-	}
-	// Check if the item was actually created by reading it back
-	created, err := q.GetInboxItem(ctx, i.ID)
-	if err != nil {
-		return i, false, nil // Conflict, not created
-	}
-	return created, true, nil
-}
-
 // GetInboxItem 讀一張卡。
 func (q *Queries) GetInboxItem(ctx context.Context, id string) (InboxItem, error) {
 	i, err := scanInbox(q.r.QueryRowContext(ctx, `SELECT `+inboxCols+` FROM inbox_item WHERE id = ?`, id))

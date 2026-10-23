@@ -196,16 +196,13 @@ func (d *Driver) client(ctx context.Context, botID string) (*botConn, error) {
 // Start 實作 engine.Driver：同一條連線上，同一個對話串只開一個 session；有存下的 session 就先接回（session.resume），
 // 接不回才開新的（session.create）。同 LazyBoy runtime.session()。
 func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Session, error) {
-	d.log.Debug("hermes: session start requested", "bot_id", o.BotID, "thread_id", o.ThreadID, "resume_id", o.Resume)
 	bc, err := d.client(ctx, o.BotID)
 	if err != nil {
-		d.log.Error("hermes: client connection failed", "bot_id", o.BotID, "error", err)
 		return nil, err
 	}
 	bc.mu.Lock()
 	if s := bc.threads[o.ThreadID]; s != nil {
 		bc.mu.Unlock()
-		d.log.Debug("hermes: reusing existing session", "bot_id", o.BotID, "thread_id", o.ThreadID, "session_id", s.id)
 		d.setEffort(ctx, s, o.Effort)
 		return s, nil
 	}
@@ -217,16 +214,11 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	}
 	resumed := false
 	if o.Resume != "" {
-		d.log.Debug("hermes: attempting session resume", "bot_id", o.BotID, "resume_id", o.Resume)
 		raw, err := bc.c.call(ctx, "session.resume", map[string]any{"session_id": o.Resume, "source": "cli"}, 0)
 		if err == nil && json.Unmarshal(raw, &res) == nil && res.SessionID != "" {
 			resumed = true
-			d.log.Debug("hermes: session resumed successfully", "bot_id", o.BotID, "session_id", res.SessionID)
 		} else if errors.Is(err, engine.ErrDisconnected) {
-			d.log.Error("hermes: disconnected during resume", "bot_id", o.BotID, "error", err)
 			return nil, err
-		} else {
-			d.log.Warn("hermes: resume failed, will create new session", "bot_id", o.BotID, "error", err)
 		}
 	}
 	if !resumed {
@@ -240,17 +232,13 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		if o.Title != "" {
 			params["title"] = o.Title
 		}
-		d.log.Debug("hermes: creating new session", "bot_id", o.BotID, "params", params)
 		raw, err := bc.c.call(ctx, "session.create", params, 0)
 		if err != nil {
-			d.log.Error("hermes: session.create failed", "bot_id", o.BotID, "error", err)
 			return nil, fmt.Errorf("無法開始對話：%w", err)
 		}
 		if err := json.Unmarshal(raw, &res); err != nil || res.SessionID == "" {
-			d.log.Error("hermes: session.create response invalid", "bot_id", o.BotID, "response", string(raw), "parse_error", err)
 			return nil, fmt.Errorf("開始對話的回覆不完整：%s", truncate(string(raw), 200))
 		}
-		d.log.Debug("hermes: new session created", "bot_id", o.BotID, "session_id", res.SessionID)
 	}
 	s := &session{bc: bc, id: res.SessionID, threadID: o.ThreadID, q: newQueue()}
 	if !resumed {
@@ -334,7 +322,6 @@ func (d *Driver) Send(ctx context.Context, s engine.Session, m engine.Message) e
 
 	raw, err := hs.bc.c.call(ctx, "prompt.submit", map[string]any{"session_id": hs.id, "text": m.Text, "queued": true}, 0)
 	if err != nil {
-		d.log.Error("hermes: prompt.submit failed", "session_id", hs.id, "error", err)
 		hs.mu.Lock()
 		if hs.seq == seq {
 			hs.stopAwaitingLocked()
@@ -351,7 +338,6 @@ func (d *Driver) Send(ctx context.Context, s engine.Session, m engine.Message) e
 	}
 	_ = json.Unmarshal(raw, &res)
 	hs.setResume(res.StoredSessionID)
-	d.log.Debug("hermes: prompt.submit response", "session_id", hs.id, "status", res.Status)
 	switch res.Status {
 	case "streaming", "":
 		hs.mu.Lock()

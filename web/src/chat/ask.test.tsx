@@ -167,6 +167,6 @@ describe('對話裡回覆 Bot 的提問', () => {
     const main = await screen.findByRole('main', { name: '和帳房的對話' })
     const card = await within(main).findByTestId('ask-card')
     expect(within(card).queryByRole('button', { name: '一律允許' })).toBeNull()
-    // The main point: chat.steps reconstructed the approval request
+    expect(within(main).getByText('比對帳單')).toBeInTheDocument()
   })
 })

@@ -122,9 +122,6 @@ type StartOptions struct {
 	// Mode 是 Bot 的權限等級（bot.approval_mode：ask／edits／auto／full）。ACP 引擎用它挑 session 模式；
 	// Hermes 不用（容器內的指令審核已關閉）。
 	Mode string
-	// StrictModel (2026-10-22q): If true, fail when requested model is not available (judge use).
-	// If false or unset, fall back to agent's default model with a log line.
-	StrictModel bool
 	// Effort 是 Bot 的思考強度（bot.effort：low／medium／high）。ACP 引擎有思考強度的選項時照它設（Hermes 寫在設定檔）。
 	Effort string
 }

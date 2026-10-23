@@ -200,9 +200,9 @@ var Uses = []*Use{
 		Options: opts("small", "under 20k tokens: a quick answer or one lookup", "預估 小（< 2 萬 token）", "medium", "20k-200k tokens: several steps", "預估 中",
 			"large", "over 200k tokens: long research, many files or pages", "預估 大"),
 		instr: "Estimate how much model usage this task will take.", rule: rulePreCost, inputMax: limits.JudgeRouteInputMax, Wired: true, Default: ModeShadow},
-	{ID: UsePeerReply, N: 15, Name: "隊友訊息要不要回", Desc: "要處理／只要知道／不用回，減少 Bot 之間的寒暄", Tier: Tier1, Wait: 3 * time.Second,
-		Options: opts("handle", "adds a decision, fact, request, question or deliverable", "NEW", "fyi", "just restates what was said; no new content", "FILLER"),
-		instr:   "Does this message add a decision, fact, request, question or deliverable not already in the previous message? Answer NEW or FILLER.", rule: func(Ask) Answer { return Answer{Label: "handle", Why: "照常處理"} }, Default: ModeLive, Wired: true},
+	{ID: UsePeerReply, N: 15, Name: "隊友訊息要不要回", Desc: "要處理／只要知道／不用回，減少 Bot 之間的寒暄", Tier: Tier1, Wait: limits.JudgeWaitPeerReply,
+		Options: opts("handle", "needs work or an answer", "要處理", "fyi", "just information to note", "只要知道", "skip", "small talk; no reply needed", "不用回"),
+		instr:   "Does this teammate message need a reply?", rule: func(Ask) Answer { return Answer{Label: "handle", Why: "照常處理"} }, Default: ModeShadow},
 	{ID: UseRoutine, N: 16, Name: "一句話建定時任務", Desc: "把你的話整理成排程看得懂的說法，再交給規則解析", Tier: Tier2, Wait: limits.JudgeWaitRoutine,
 		MaxOut: 200, instr: "Rewrite the request as one Traditional Chinese sentence: when (e.g. 每天早上9點, 每週一下午3點, 每30分鐘, 10月20日下午2點) " +
 			"followed by what to do. Keep bot names. Put it in label.",

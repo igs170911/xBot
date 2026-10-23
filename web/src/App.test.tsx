@@ -156,7 +156,7 @@ it('側欄的 Bot 清單來自 bots.list，有人改了 Bot 就重讀', async ()
   expect(within(within(nav).getByRole('link', { name: /小秘/ })).getByText('工作中…')).toBeInTheDocument()
 })
 
-it('側欄最上面是大總管（主要 Bot），清單不再重複列它；每一列有職稱和最後一句話', async () => {
+it('側欄最上面是大總管（主要 Bot）的大卡片，清單不再重複列它；每一列有職稱和最後一句話', async () => {
   const chief = { ...BOT, id: 'b0', name: '水哥哥', title: '幕僚長', primary: true }
   api.ops['bots.list'] = () => ({ bots: [chief, { ...BOT, title: '工程' }] })
   api.ops['chat.list_threads'] = (input) => ({
@@ -164,9 +164,9 @@ it('側欄最上面是大總管（主要 Bot），清單不再重複列它；每
   })
   render(<App />)
   const nav = await screen.findByRole('navigation', { name: '側欄' })
-  // Chief bot is now a regular row, not a special card
-  const chiefRow = await within(nav).findByRole('link', { name: /水哥哥/ })
-  expect(chiefRow).toHaveAttribute('href', '/bots/b0')
+  const card = await within(nav).findByTestId('chief-card')
+  expect(card).toHaveAttribute('href', '/bots/b0')
+  expect(card).toHaveAccessibleName(/水哥哥（大總管）/)
   expect(within(nav).getAllByRole('link', { name: /水哥哥/ })).toHaveLength(1)
   const row = within(nav).getByRole('link', { name: /抓蟲/ })
   expect(row).toHaveTextContent('工程')
@@ -175,12 +175,12 @@ it('側欄最上面是大總管（主要 Bot），清單不再重複列它；每
   expect(api.calls.find((c) => c.path === 'chat.list_threads')?.input).toMatchObject({ preview: true })
 })
 
-it('側欄可以縮成只有圖示，記在這個瀏覽器；設定和不常用的頁面收在左下角「更多」', async () => {
+it('側欄可以縮成只有圖示，記在這個瀏覽器；設定和不常用的頁面收在左下角「設定與更多」', async () => {
   api.ops['bots.list'] = () => ({ bots: [BOT] })
   render(<App />)
   const nav = await screen.findByRole('navigation', { name: '側欄' })
   expect(within(nav).queryByText('全部檔案')).toBeNull()
-  fireEvent.click(within(nav).getByRole('button', { name: '更多' }))
+  fireEvent.click(within(nav).getByRole('button', { name: '設定與更多' }))
   fireEvent.click(await screen.findByRole('menuitem', { name: '全部檔案' }))
   expect(window.location.pathname).toBe('/files')
   fireEvent.click(within(nav).getByRole('button', { name: '縮小側欄' }))
