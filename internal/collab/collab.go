@@ -73,6 +73,8 @@ type Service struct {
 	recentTasks  sync.Map // map[string]int64
 	cleanupDone  chan struct{}
 	cleanupClose chan struct{}
+	// H5: Make Close idempotent
+	closeOnce sync.Once
 }
 
 // peerReplyJudge 呼叫快判判斷隊友訊息要不要回（2026-10-22h：透過 PeerJudge 介面）。
@@ -110,9 +112,12 @@ func New(o Options) *Service {
 }
 
 // Close stops the cleanup goroutine and waits for it to finish.
+// H5: Made idempotent with sync.Once
 func (s *Service) Close() {
-	close(s.cleanupClose)
-	<-s.cleanupDone
+	s.closeOnce.Do(func() {
+		close(s.cleanupClose)
+		<-s.cleanupDone
+	})
 }
 
 // G5: cleanupRecentTasks removes expired entries from the TTL set

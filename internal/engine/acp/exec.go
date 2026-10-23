@@ -103,19 +103,48 @@ func (p *execProcess) Write(b []byte) (int, error) { return p.resp.Conn.Write(b)
 
 func (p *execProcess) Close() error {
 	p.once.Do(func() {
-		// 2026-10-22k (item 7b): 清理子行程
-		p.killProcessGroup()
+		// H4: Proper shutdown order for faster eviction
+		// 1. Close stdin first so ACP agent exits cleanly
 		_ = p.resp.CloseWrite()
+		
+		// 2. Wait up to 300ms for clean exit
+		if p.waitForExit(300 * time.Millisecond) {
+			// Clean exit, cleanup and return
+			p.resp.Close()
+			_ = p.stdout.Close()
+			return
+		}
+
+		// 3. SIGTERM the process group, wait up to 500ms
+		p.killProcessGroup()
+		
+		// Cleanup
 		p.resp.Close()
 		_ = p.stdout.Close()
 	})
 	return nil
 }
 
+// H4: waitForExit polls for process exit up to the given timeout
+func (p *execProcess) waitForExit(timeout time.Duration) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		info, err := p.api.ExecInspect(ctx, p.execID, client.ExecInspectOptions{})
+		if err != nil || info.PID == 0 || !info.Running {
+			return true // Process exited
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	return false
+}
+
 // killProcessGroup 終止這個 exec 及其子行程（2026-10-22k item 7b）
-// G3: Wait on process exit instead of sleeping 3s synchronously
+// H4: SIGTERM with 500ms wait, then SIGKILL
 func (p *execProcess) killProcessGroup() {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	// 取得 exec 的 PID
@@ -143,18 +172,12 @@ func (p *execProcess) killProcessGroup() {
 		}
 	}
 
-	// G3: Poll for process exit with 3s deadline (check every 50ms)
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		info2, err := p.api.ExecInspect(ctx, p.execID, client.ExecInspectOptions{})
-		if err != nil || info2.PID == 0 || !info2.Running {
-			// Process exited - return immediately
-			return
-		}
-		time.Sleep(50 * time.Millisecond)
+	// H4: Wait up to 500ms for SIGTERM to take effect
+	if p.waitForExit(500 * time.Millisecond) {
+		return // Process exited after SIGTERM
 	}
 
-	// 如果還在跑，發 SIGKILL
+	// H4: SIGKILL the process group
 	info3, err := p.api.ExecInspect(ctx, p.execID, client.ExecInspectOptions{})
 	if err == nil && info3.Running {
 		killCmd := []string{"sh", "-c", fmt.Sprintf("kill -KILL -- -%d 2>/dev/null || true", info.PID)}
@@ -167,8 +190,6 @@ func (p *execProcess) killProcessGroup() {
 				killAtt.Close()
 			}
 		}
-		// Wait briefly for SIGKILL to take effect
-		time.Sleep(100 * time.Millisecond)
 	}
 }
 

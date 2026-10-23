@@ -416,3 +416,112 @@ func TestLeakWithProcessCounting(t *testing.T) {
 		}
 	})
 }
+
+// TestH4EvictionIgnoresSIGTERM tests that an agent ignoring SIGTERM still exits on stdin EOF under 400ms
+func TestH4EvictionIgnoresSIGTERM(t *testing.T) {
+	if os.Getenv("CI") == "true" {
+		t.Skip("Skip Docker test in CI")
+	}
+
+	ctx := context.Background()
+	botID := "test-bot"
+
+	box, err := createTestBox(ctx)
+	if err != nil {
+		t.Fatalf("Failed to create test box: %v", err)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		box.Remove(ctx)
+	}()
+
+	// Install a fake agent that ignores SIGTERM but exits on stdin EOF
+	fakeAgentScript := `#!/bin/sh
+trap '' TERM  # Ignore SIGTERM
+while read line; do
+  if [ "$line" = "exit" ]; then
+    break
+  fi
+  echo "received: $line"
+done
+exit 0
+`
+	installCmd := box.ExecCommand(ctx, []string{"sh", "-c", "echo '" + fakeAgentScript + "' > /tmp/fake-agent.sh && chmod +x /tmp/fake-agent.sh"})
+	if err := installCmd.Run(); err != nil {
+		t.Fatalf("Failed to install fake agent: %v", err)
+	}
+
+	// Override agent path
+	cfg := acptest.DefaultConfig(box)
+	cfg.AgentPath = "/tmp/fake-agent.sh"
+	d := NewDriver(cfg)
+
+	s, err := d.Start(ctx, engine.StartOptions{BotID: botID, ThreadID: "test", Mode: "read"})
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	// H4: Close session and measure time (should be under 400ms)
+	start := time.Now()
+	if err := d.CloseSession(s); err != nil {
+		t.Errorf("CloseSession: %v", err)
+	}
+	elapsed := time.Since(start)
+
+	if elapsed > 400*time.Millisecond {
+		t.Errorf("H4: CloseSession took %v, expected under 400ms (agent ignores SIGTERM but exits on stdin EOF)", elapsed)
+	}
+}
+
+// TestH4EvictionIgnoresBoth tests that an agent ignoring both SIGTERM and stdin still exits under 1s
+func TestH4EvictionIgnoresBoth(t *testing.T) {
+	if os.Getenv("CI") == "true" {
+		t.Skip("Skip Docker test in CI")
+	}
+
+	ctx := context.Background()
+	botID := "test-bot"
+
+	box, err := createTestBox(ctx)
+	if err != nil {
+		t.Fatalf("Failed to create test box: %v", err)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		box.Remove(ctx)
+	}()
+
+	// Install a fake agent that ignores SIGTERM and doesn't read stdin
+	fakeAgentScript := `#!/bin/sh
+trap '' TERM  # Ignore SIGTERM
+sleep 10      # Just sleep, don't read stdin
+exit 0
+`
+	installCmd := box.ExecCommand(ctx, []string{"sh", "-c", "echo '" + fakeAgentScript + "' > /tmp/fake-agent2.sh && chmod +x /tmp/fake-agent2.sh"})
+	if err := installCmd.Run(); err != nil {
+		t.Fatalf("Failed to install fake agent: %v", err)
+	}
+
+	// Override agent path
+	cfg := acptest.DefaultConfig(box)
+	cfg.AgentPath = "/tmp/fake-agent2.sh"
+	d := NewDriver(cfg)
+
+	s, err := d.Start(ctx, engine.StartOptions{BotID: botID, ThreadID: "test", Mode: "read"})
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	// H4: Close session and measure time (should be under 1s, killed by SIGKILL)
+	start := time.Now()
+	if err := d.CloseSession(s); err != nil {
+		t.Errorf("CloseSession: %v", err)
+	}
+	elapsed := time.Since(start)
+
+	if elapsed > time.Second {
+		t.Errorf("H4: CloseSession took %v, expected under 1s (agent ignores both SIGTERM and stdin, requires SIGKILL)", elapsed)
+	}
+}

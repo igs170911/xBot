@@ -561,6 +561,10 @@ func (s *stack) Close() error {
 	if s.judge != nil {
 		s.judge.WaitShadow() // 背景的影子判斷寫完再關資料庫（最多 limits.JudgeShadowWait）
 	}
+	// H5: Close collab (stops G5 cleanup goroutine) before closing DB
+	if s.collab != nil {
+		s.collab.Close()
+	}
 	errs = append(errs, s.db.Close())
 	return errors.Join(errs...)
 }

@@ -91,17 +91,12 @@ func (q *Queries) UpdateRoomConsecEmpty(ctx context.Context, roomID string, cons
 // IncrementRoomConsecEmpty atomically increments consec_empty and returns the new value.
 // F1: Used for auto-stop logic to prevent lost updates in concurrent scenarios.
 func (q *Queries) IncrementRoomConsecEmpty(ctx context.Context, roomID string) (int, error) {
-	// Atomic increment: UPDATE and return the new value
-	res, err := q.w.ExecContext(ctx, `UPDATE room SET consec_empty = consec_empty + 1, updated_at=? WHERE id=?`, nowMS(), roomID)
-	if err != nil {
-		return 0, err
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
+	// H2: Atomic increment with RETURNING in a single statement
+	var newVal int
+	err := q.w.QueryRowContext(ctx, `UPDATE room SET consec_empty = consec_empty + 1, updated_at=? WHERE id=? RETURNING consec_empty`, nowMS(), roomID).Scan(&newVal)
+	if err == sql.ErrNoRows {
 		return 0, sql.ErrNoRows
 	}
-	// Read back the new value
-	var newVal int
-	err = q.r.QueryRowContext(ctx, `SELECT consec_empty FROM room WHERE id=?`, roomID).Scan(&newVal)
 	return newVal, err
 }
 

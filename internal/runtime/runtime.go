@@ -647,6 +647,72 @@ func (r *Runtime) run(ctx context.Context, t *turn) {
 	}
 }
 
+// H3: finishTask handles task cleanup for both normal and panic paths
+// It cancels the context, closes the session, closes done channel, updates DB, runs hook once, and kicks queue
+// When markFailed is true, marks the task as failed in DB (for panic paths); normal path already marked the status
+func (r *Runtime) finishTask(t *turn, verdict, text string, markFailed bool) {
+	// H3: Kick queue in defer so it always runs even if hook panics
+	defer func() {
+		r.kick(t.botID)
+	}()
+
+	// Cancel the turn context
+	t.cancel()
+
+	// H3: Delete from r.closing before other cleanup
+	r.mu.Lock()
+	delete(r.closing, t.taskID)
+	r.mu.Unlock()
+
+	// H6: Close session before signaling done
+	if t.session != nil {
+		if closer, ok := r.o.Driver.(interface{ CloseSession(engine.Session) error }); ok {
+			if err := closer.CloseSession(t.session); err != nil {
+				r.log.Warn("close session failed", "task", t.taskID, "err", err)
+			}
+		}
+	}
+
+	// Close done channel to unblock Wait() callers
+	select {
+	case <-t.done:
+		// Already closed
+	default:
+		close(t.done)
+	}
+
+	// Mark task in DB if this is a panic path
+	if markFailed {
+		// Release bot's busy state (panic paths haven't released yet)
+		r.mu.Lock()
+		if r.active[t.botID] == t {
+			delete(r.active, t.botID)
+		}
+		r.mu.Unlock()
+
+		if err := r.o.DB.SetTaskState(context.Background(), t.taskID, store.TaskDone, VerdictFailed); err != nil {
+			r.log.Warn("failed to mark task failed", "task", t.taskID, "err", err)
+		}
+	}
+
+	// H3: Call Finished hook exactly once with its own recover
+	if h := r.hooks(); h.Finished != nil {
+		func() {
+			defer func() {
+				if rec := recover(); rec != nil {
+					r.log.Error("panic in Finished hook", "bot", t.botID, "task", t.taskID, "panic", rec)
+				}
+			}()
+			task, err := r.o.DB.GetTask(context.Background(), t.taskID)
+			if err != nil {
+				r.log.Warn("failed to load task for hook", "task", t.taskID, "err", err)
+				return
+			}
+			h.Finished(task, verdict, text)
+		}()
+	}
+}
+
 // consume 為一個 session 開一個讀事件的 goroutine（每個 session 只開一次）。
 func (r *Runtime) consume(s engine.Session, botID string) {
 	r.mu.Lock()
@@ -658,8 +724,7 @@ func (r *Runtime) consume(s engine.Session, botID string) {
 	r.mu.Unlock()
 	go func() {
 		// C1(b) (2026-10-22): Recover from panics in event consumer goroutine.
-		// D4 (Round 11): On panic, mark task failed and emit done.
-		// F7: After panic recovery, start next queued task
+		// H3: Use finishTask for both normal and panic paths
 		defer func() {
 			if p := recover(); p != nil {
 				r.log.Error("panic in consume goroutine", "panic", p, "bot", botID, "session", s.ResumeID())
@@ -673,12 +738,9 @@ func (r *Runtime) consume(s engine.Session, botID string) {
 					t.mu.Lock()
 					wasFinished := t.finished
 					t.finished = true
-					taskID := t.taskID
 					msgID := t.messageID
-					botID := t.botID // F7: capture botID for Finished hook
 					t.mu.Unlock()
 
-					// F7: Prepare panic message for both DB and hook
 					panicMsg := fmt.Sprintf("panic in event consumer: %v", p)
 
 					if !wasFinished {
@@ -686,46 +748,16 @@ func (r *Runtime) consume(s engine.Session, botID string) {
 						r.emit(t, KindError, engine.Event{Type: engine.EventError, Text: panicMsg, Fatal: true}, true)
 						r.emit(t, KindDone, engine.Event{Type: engine.EventDone, Status: engine.StatusError, Text: panicMsg}, true)
 
-						// Mark task as failed in DB
-						if err := r.o.DB.SetTaskState(context.Background(), taskID, store.TaskDone, VerdictFailed); err != nil {
-							r.log.Error("failed to mark task as failed after consume panic", "task", taskID, "err", err)
-						}
-
 						// Update message if it exists
 						if msgID != "" {
-							fields := map[string]any{"task_id": taskID, "status": engine.StatusError}
+							fields := map[string]any{"task_id": t.taskID, "status": engine.StatusError}
 							meta, _ := json.Marshal(fields)
 							_ = r.o.DB.UpdateMessage(context.Background(), msgID, panicMsg, nil, meta)
 						}
-					}
 
-					// Release Bot's busy state
-					r.mu.Lock()
-					if r.active[botID] == t {
-						delete(r.active, botID)
+						// H3: Use finishTask for cleanup, hook call, and queue kick
+						r.finishTask(t, VerdictFailed, panicMsg, true)
 					}
-					r.mu.Unlock()
-
-					// G2: Close done channel to unblock Wait() callers
-					select {
-					case <-t.done:
-						// Already closed
-					default:
-						close(t.done)
-					}
-
-					// F7: Call Finished hook to start the next queued task after panic
-					if h := r.hooks(); h.Finished != nil {
-						defer func() {
-							if rec2 := recover(); rec2 != nil {
-								r.log.Error("panic in Finished hook after consume panic", "bot", botID, "task", taskID, "hook_panic", rec2)
-							}
-						}()
-						h.Finished(store.Task{ID: taskID, BotID: botID}, VerdictFailed, panicMsg)
-					}
-
-					// G2: Kick the queue to start next task
-					r.kick(botID)
 				}
 			}
 		}()
@@ -905,7 +937,7 @@ func (r *Runtime) finishErr(t *turn, err error) {
 
 // finish 寫下最後的回覆、結束任務、發布 done，並釋放這個 Bot。只會做一次。
 func (r *Runtime) finish(t *turn, status, text string) {
-	// 2026-10-22k (item 5): Proper panic recovery - must emit done, mark task failed, release locks
+	// H3: Proper panic recovery using finishTask
 	var panicMsg string
 	defer func() {
 		if rec := recover(); rec != nil {
@@ -927,61 +959,23 @@ func (r *Runtime) finish(t *turn, status, text string) {
 				r.emit(t, KindError, engine.Event{Type: engine.EventError, Text: panicMsg}, true)
 				r.emit(t, KindDone, engine.Event{Type: engine.EventDone, Status: engine.StatusError, Text: panicMsg}, true)
 
-				// Mark task as failed
-				if err := r.o.DB.SetTaskState(context.Background(), t.taskID, store.TaskDone, VerdictFailed); err != nil {
-					r.log.Error("failed to mark task as failed after panic", "task", t.taskID, "err", err)
-				}
-
 				// Update message if it exists
 				if msgID != "" {
 					fields := map[string]any{"task_id": t.taskID, "status": engine.StatusError}
 					meta, _ := json.Marshal(fields)
 					_ = r.o.DB.UpdateMessage(context.Background(), msgID, panicMsg, nil, meta)
 				}
-			}
 
-			// Release Bot's busy state
-			r.mu.Lock()
-			if r.active[t.botID] == t {
-				delete(r.active, t.botID)
+				// H3: Use finishTask for cleanup, hook call, and queue kick
+				r.finishTask(t, VerdictFailed, panicMsg, true)
 			}
-			r.mu.Unlock()
-
-			// G2: Close done channel to unblock Wait() callers
-			select {
-			case <-t.done:
-				// Already closed
-			default:
-				close(t.done)
-			}
-
-			// Call hooks (may panic again, but we've already recovered)
-			if h := r.hooks(); h.Finished != nil {
-				defer func() {
-					if rec2 := recover(); rec2 != nil {
-						r.log.Error("panic in Finished hook after finish panic", "bot", t.botID, "task", t.taskID, "hook_panic", rec2)
-					}
-				}()
-				h.Finished(store.Task{ID: t.taskID, BotID: t.botID}, VerdictFailed, panicMsg)
-			}
-
-			// G2: Kick the queue to start next task
-			r.kick(t.botID)
 		}
 	}()
 
+	// H6: Session cleanup moved into finishTask, remove defer here
 	// 2026-10-22i：確保 session 被關閉（資源洩漏修復，item 7）
 	// 這涵蓋所有來源：owner DM、rooms、peer messages、routines（item 7c）。
 	// Judge 不使用 engine session，直接呼叫 Model Proxy API。
-	defer func() {
-		if t.session != nil {
-			if closer, ok := r.o.Driver.(interface{ CloseSession(engine.Session) error }); ok {
-				if err := closer.CloseSession(t.session); err != nil {
-					r.log.Warn("關閉 session 失敗", "bot", t.botID, "task", t.taskID, "err", err)
-				}
-			}
-		}
-	}()
 
 	t.askMu.Lock()         // 和 resume 互斥：回覆前改回「工作中」不會蓋掉「已完成」
 	defer t.askMu.Unlock() // B6: ensure lock is released on panic
@@ -1188,13 +1182,8 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	}
 	r.emit(t, KindTaskState, map[string]string{"state": store.TaskDone, "verdict": verdict}, true)
 	r.emit(t, KindDone, DonePayload{MessageID: msgID, Status: status, Verdict: verdict, Text: final, Judge: judged, Quota: quotaView}, true)
-	r.finished(t.taskID, verdict, final)
-	t.cancel()
-	close(t.done)
-	r.mu.Lock()
-	delete(r.closing, t.taskID)
-	r.mu.Unlock()
-	r.kick(t.botID)
+	// H3: Use finishTask for cleanup, hook call, and queue kick (markFailed=false since we already marked above)
+	r.finishTask(t, verdict, final, false)
 }
 
 // finished 呼叫協作層的 Finished（回覆送回、貼到群組）。

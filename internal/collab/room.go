@@ -1073,7 +1073,7 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 		}
 
 		if consecEmpty == stopThreshold {
-			// G4: Only create card if atomic increment returned EXACTLY the threshold
+			// H2: Only create card if atomic increment returned EXACTLY the threshold
 			s.log.Info("連續無新資訊，自動停止", "bot", task.BotID, "room", room.ID, "consecEmpty", consecEmpty, "threshold", stopThreshold, "isAtPleasantry", isAtPleasantry, "isDMThanks", isDMThanks)
 			// 2026-10-22c：通過 Inbox 通知 owner，不在群組貼訊息、不開新輪次
 			// 2026-10-22k (item 6): ref 只包含 room.ID，確保每個 room 只創建一個 inbox item
@@ -1082,29 +1082,26 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 				botName = b.Name
 			}
 			ref := "auto_stop:" + room.ID
-			s.log.Debug("checking inbox ref", "ref", ref)
-			if exists, err := s.db.InboxRefExists(ctx, ref); err == nil && !exists {
-				s.log.Debug("creating inbox item for auto-stop", "ref", ref)
-				payload, _ := json.Marshal(map[string]any{"room_id": room.ID, "room_name": room.Name, "bot_id": task.BotID, "bot_name": botName})
-				it, err := s.db.CreateInboxItem(ctx, store.InboxItem{
-					Kind:    "mention", // 使用 mention 作為通知類型（auto_stop 不在允許清單中）
-					BotID:   task.BotID,
-					Ref:     ref,
-					Title:   botName + " 在群組「" + room.Name + "」已自動停止",
-					Body:    fmt.Sprintf("%s 連續兩輪沒有新進展，已自動停止。需要時可以重新 @ 它。", botName),
-					Payload: payload,
-				})
-				if err != nil {
-					s.log.Warn("failed to create inbox item", "err", err)
-				} else {
-					s.log.Debug("inbox item created", "id", it.ID)
-					e := notify.Event(notify.KindCreated, it)
-					if row, err := s.db.AppendEvent(ctx, e); err == nil && s.rt != nil {
-						s.rt.Bus().Publish(events.FromStore(row))
-					}
+			// H2: Use CreateInboxItemIgnoreDupe with ON CONFLICT DO NOTHING as backstop
+			payload, _ := json.Marshal(map[string]any{"room_id": room.ID, "room_name": room.Name, "bot_id": task.BotID, "bot_name": botName})
+			it, created, err := s.db.CreateInboxItemIgnoreDupe(ctx, store.InboxItem{
+				Kind:    "mention", // 使用 mention 作為通知類型（auto_stop 不在允許清單中）
+				BotID:   task.BotID,
+				Ref:     ref,
+				Title:   botName + " 在群組「" + room.Name + "」已自動停止",
+				Body:    fmt.Sprintf("%s 連續兩輪沒有新進展，已自動停止。需要時可以重新 @ 它。", botName),
+				Payload: payload,
+			})
+			if err != nil {
+				s.log.Warn("failed to create inbox item", "err", err)
+			} else if created {
+				s.log.Debug("inbox item created", "id", it.ID)
+				e := notify.Event(notify.KindCreated, it)
+				if row, err := s.db.AppendEvent(ctx, e); err == nil && s.rt != nil {
+					s.rt.Bus().Publish(events.FromStore(row))
 				}
 			} else {
-				s.log.Debug("inbox ref already exists or error checking", "exists", exists, "err", err)
+				s.log.Debug("inbox item not created (conflict)", "ref", ref)
 			}
 			// 2026-10-22d：自動停止不再寫入空的 room message，只透過 inbox 通知
 			return
