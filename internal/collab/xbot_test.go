@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"xbot/internal/limits"
+	"xbot/internal/replystyle"
 	"xbot/internal/runtime"
 	"xbot/internal/store"
 )
@@ -189,7 +190,7 @@ func TestPeerRepliesSkipTheOwnerFormat(t *testing.T) {
 	}
 	room := must[store.Room](t)(tm.s.CreateRoom(tm.ctx, []string{chief, writer}, RoomOptions{}))
 	must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, "@Writer 開始", ""))
-	if p := tm.start(tm.queued(writer)[len(tm.queued(writer))-1]); !strings.Contains(p, "群組裡的發言使用者都看得到：照回話風格") {
+	if p := tm.start(tm.queued(writer)[len(tm.queued(writer))-1]); !strings.Contains(p, replystyle.Room) {
 		t.Fatalf("群組：%s", p)
 	}
 }

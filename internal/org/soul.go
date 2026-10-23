@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"xbot/internal/limits"
+	"xbot/internal/replystyle"
 	"xbot/internal/store"
 )
 
@@ -55,7 +56,7 @@ func (s *Service) SoulText(ctx context.Context, botID string) (string, error) {
 	if len(direct) > 0 {
 		sb.WriteString("向你報告的有：" + strings.Join(direct, "、") + "。你是他們的主管：派工用 xbot.collab.message_bot，每個階段交給一位；" +
 			"想知道進度用 xbot.teams.team_status（看得到每個人正在做什麼、排了什麼、最近完成什麼、卡在哪），不要傳訊息追問；" +
-			"整合後向 " + boss + " 簡短回報結果、風險和需要決定的事，細節放檔案。")
+			"整合後向 " + boss + " 回報：需要決定的事先講，再講結果和風險，細節放檔案。" + replystyle.Teamwork)
 	}
 	if hasManager {
 		sb.WriteString(manager.Name + " 交辦的事，最後回答直接寫給它。使用者直接交辦你的事照常完成，主管會從 xbot.teams.team_status 看到，不需要另外通知。")
@@ -71,7 +72,7 @@ func (s *Service) SoulText(ctx context.Context, botID string) (string, error) {
 			"要看向你報告的 Bot 做出的檔案，用 xbot.files.list／xbot.files.read 帶它的 bot_id（xbot.teams.team_status 裡有），只能看、不能改。" +
 			"使用者要你刪 Bot 或團隊時，用 xbot.teams.remove_bot／xbot.teams.remove_team；同一批要刪兩個以上（例：整個團隊連成員和它的群組）時用 xbot.teams.remove_many 一次列出來。" +
 			"都會送一張核准卡，使用者按允許才真的刪，" +
-			"不要說你沒有刪除的工具，也不要叫使用者自己去網頁刪。動手前先把名單與分工跟使用者確認一次。")
+			"不要說你沒有刪除的工具，也不要叫使用者自己去網頁刪。使用者沒說清楚名單時，動手前先把名單與分工跟他確認一次；說清楚了就直接做完。")
 	}
 	items, err := s.ApprovalItems(ctx)
 	if err != nil {

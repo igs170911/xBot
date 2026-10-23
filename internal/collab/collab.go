@@ -17,6 +17,7 @@ import (
 	"xbot/internal/judge"
 	"xbot/internal/limits"
 	"xbot/internal/notify"
+	"xbot/internal/replystyle"
 	"xbot/internal/runtime"
 	"xbot/internal/store"
 )
@@ -577,6 +578,11 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	if replyExpected(intent) {
 		out.Note = target.Name + " 處理完會自動把結果送回這個對話，不需要查詢或催促。"
 	}
+	if intent == IntentRequest {
+		if n := s.requestsInChain(ctx, senderID, target.ID, chain); n >= limits.PeerRepeatNote {
+			out.Note += fmt.Sprintf("這是這件工作第 %d 次請 %s 做事了：成果能用就採用、小地方自己改，要改的意見一次寫齊，不要一版一版退。", n, target.Name)
+		}
+	}
 	if len(missing) > 0 {
 		// 當下就說：不然對方拿到不存在的路徑，回「我這邊是空的」，兩邊又多來回幾次（2026-10-19～21 約 10 則）。
 		out.NotCarried = missing
@@ -740,7 +746,7 @@ func framed(sender store.Bot, target Mate, text, intent, owedTo, room string) st
 		label = "（" + sender.Title + "）"
 	}
 	// 送回隊友的回答不照回話風格（hermes.replyStyleText，給使用者看的聊天口吻）：Bot 之間要完整、精簡，長資料給檔案路徑。
-	const toPeer = "這是給隊友看的，不用像跟使用者聊天那樣分段：一次寫完整、精簡，長的資料給檔案路徑，不要貼全文。"
+	const toPeer = "這是給隊友看的，不用像跟使用者聊天那樣分段。" + replystyle.PeerResult
 	var rule string
 	switch intent {
 	case IntentQuestion:
@@ -751,9 +757,8 @@ func framed(sender store.Bot, target Mate, text, intent, owedTo, room string) st
 			rule = "這是 " + sender.Name + " 對你先前訊息的回覆。整合後寫出最終結果（結論、資料、檔案路徑），這次的最後回答會自動送回給 " + owedTo + "；" +
 				"還需要其他隊友時可以繼續派工，等全部回來後的最後回答才會送出。不需要再回覆 " + sender.Name + "。" + toPeer
 		case room != "":
-			rule = "這是 " + sender.Name + " 對你在群組「" + room + "」交辦的事的回覆。這次的最後回答會貼到群組，使用者看得到：先講結果；" +
-				"還在等其他隊友就說收到了什麼、還在等誰；要使用者決定或提供的事寫清楚。這一輪又交辦給隊友時不會貼，等結果回來整合後才貼。" +
-				"不需要再回覆 " + sender.Name + "；沒有新的進展要讓使用者知道時，最後回答只寫 [silent]。"
+			// 貼不貼到群組、還在等誰，開始這一輪時才知道（roomStatus 接在後面）。
+			rule = "這是 " + sender.Name + " 對你在群組「" + room + "」交辦的事的回覆，不需要再回覆 " + sender.Name + "。"
 		default:
 			rule = "這是 " + sender.Name + " 對你先前訊息的回覆。整合後在這個對話回報使用者（照回話風格：像傳訊息一樣短，先講結果），不需要再回覆 " + sender.Name + "。"
 		}
@@ -935,8 +940,8 @@ func (s *Service) reportToRoom(ctx context.Context, task store.Task, verdict, co
 	if err != nil || th.RoomID == "" {
 		return // 在一對一對話裡交辦的：結果本來就在你看得到的對話裡
 	}
-	if len(s.waitingOn(ctx, task.ID)) > 0 {
-		return // 又交給別人了：等那些結果回來整合後再貼
+	if len(s.pendingInChain(ctx, task.BotID, metaOf(task).Chain)) > 0 && !strings.Contains(content, needsYou) {
+		return // 還在等隊友（或這一輪又交辦出去）：等全部回來再一起回報；要你決定的事才先貼
 	}
 	room, err := s.db.GetRoom(ctx, th.RoomID)
 	if err != nil {
@@ -952,6 +957,68 @@ func (s *Service) reportToRoom(ctx context.Context, task store.Task, verdict, co
 	if _, _, err := s.speak(ctx, room, task.BotID, text, roomMeta{TaskID: task.ID, Failed: failed}, 0); err != nil {
 		s.log.Warn("把交辦的結果貼到群組失敗", "room", room.ID, "err", err)
 	}
+}
+
+// requestsInChain 是 from 在這條工作鏈請 to 做事（request）的次數（含這一則）。
+func (s *Service) requestsInChain(ctx context.Context, from, to, chain string) int {
+	msgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{ChainID: chain, Intents: []string{IntentRequest}})
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, m := range msgs {
+		if m.From == from && m.To == to {
+			n++
+		}
+	}
+	return n
+}
+
+// needsYou 是還在等隊友時，主管要先貼到群組的那種回答的開頭（要使用者決定或提供的事）。
+const needsYou = "需要你決定"
+
+// pendingInChain 是 botID 在這條工作鏈交辦出去、還沒回來的請求與提問（收件 Bot 的名字）。
+func (s *Service) pendingInChain(ctx context.Context, botID, chain string) []string {
+	if chain == "" {
+		return nil
+	}
+	msgs, err := s.db.ListBotMessages(ctx, store.BotMessageFilter{ChainID: chain, Intents: []string{IntentRequest, IntentQuestion}, Unanswered: true})
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, m := range msgs {
+		if m.From == botID && !slices.Contains(names, m.ToName) {
+			names = append(names, m.ToName)
+		}
+	}
+	return names
+}
+
+// roomStatus：在群組裡交辦出去的結果回來、這一輪開始時，告訴主管這次的回答會不會貼到群組。主管原本每收到一份就貼一次進度，
+// 要你決定的事卻寫在最後一行（2026-10-21 一小時 14 則進度、第 60 分鐘才發卡）：現在等全部回來再一起回報，要你決定的事才先貼。
+// 不是群組座位裡、或要交回給別的 Bot 的結果，回 ""。
+func (s *Service) roomStatus(ctx context.Context, task store.Task, m taskMeta) string {
+	if m.Answers == "" {
+		return ""
+	}
+	if parent, ok := s.task(ctx, m.Answers); !ok || metaOf(parent).Deferred != nil {
+		return ""
+	}
+	th, err := s.db.GetThread(ctx, task.ThreadID)
+	if err != nil || th.RoomID == "" {
+		return ""
+	}
+	room, err := s.db.GetRoom(ctx, th.RoomID)
+	if err != nil {
+		return ""
+	}
+	if waiting := s.pendingInChain(ctx, task.BotID, m.Chain); len(waiting) > 0 {
+		return "\n\n（你在群組「" + room.Name + "」交辦的還在等：" + strings.Join(waiting, "、") + "。這次只有要使用者決定或提供的事才寫，" +
+			"第一行寫「" + needsYou + "：」，會貼到群組；沒有就只寫 [silent]，等全部回來再一起回報。）"
+	}
+	return "\n\n（你在群組「" + room.Name + "」交辦的都回來了：這次的最後回答會貼到群組。" + replystyle.RoomReport +
+		"這一輪又交辦給隊友時不會貼，等結果回來才貼。）"
 }
 
 // deliver 把結果以 result 送回去（LazyBoy deliver）。太長的存成檔案、訊息只放開頭（AA-8）。

@@ -14,6 +14,7 @@ import (
 	"xbot/internal/judge"
 	"xbot/internal/limits"
 	"xbot/internal/notify"
+	"xbot/internal/replystyle"
 	"xbot/internal/store"
 )
 
@@ -243,7 +244,7 @@ func (r *Runtime) retryAfterError(t *turn, task store.Task, errText string) *Cha
 	meta["auto_continue"], meta["continue_root"], meta["auto_retry"] = am.Depth+1, firstNonEmpty(am.Root, task.ID), true
 	raw, _ := json.Marshal(meta)
 	prompt := "（系統自動繼續）剛才這一輪被模型或連線的暫時錯誤打斷了（" + clipText(errText, 200) + "）。" +
-		"請接著把原本的事做完：已經做完的不要重做，出錯的那一步重新做一次；做完給一份完整的最終回報，包含先前已完成的部分。"
+		"請接著把原本的事做完：已經做完的不要重做，出錯的那一步重新做一次。" + replystyle.Final
 	if task.Source == SourceBot {
 		name, _ := meta["from_name"].(string)
 		prompt += "\n（這件事是隊友 " + firstNonEmpty(name, "隊友") + " 交辦的；你這次的最後回答會自動送回給它，請直接寫給它看。）"

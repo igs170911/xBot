@@ -37,14 +37,15 @@ func TestSoulTellsHowToChangeAGroup(t *testing.T) {
 // 2026-10-21：講話不夠自然。口語、句子接得順、長度跟著問題走；拿掉「每段 40 字以內」和一句一段的電報範例。
 func TestSoulAsksForChatStyleReplies(t *testing.T) {
 	soul := Soul(Profile{Name: "水哥哥"})
-	for _, want := range []string{"## 回話風格", "講話自然的朋友", "句子之間接得順", "不要寫成電報", "長度跟著需要走", "段落之間空一行", "直接給答案和理由",
-		"一題自己一段", "其他專案", "不要寫「無」", "工具之間也不要寫旁白", "不要用 # 標題和 ** 粗體", "兩件事的比較寫成兩句話", "存成 /workspace 裡的檔案", "看使用者之後會不會再用", "/workspace/tmp/",
+	for _, want := range []string{"## 回話風格", "講話自然的朋友", "句子之間接得順", "不要寫成電報", "段落之間空一行", "直接給答案和理由",
+		"不要寫「無」", "工具之間也不要寫旁白", "不要用 # 標題和 ** 粗體", "兩件事的比較寫成兩句話", "存成 /workspace 裡的檔案", "看使用者之後會不會再用", "/workspace/tmp/",
 		"```mermaid", "所以沒算進去。要照 A 店的價格調嗎？\n\n", "給隊友的訊息", "（回話提醒："} {
 		if !strings.Contains(soul, want) {
 			t.Fatalf("少了 %q：%s", want, soul)
 		}
 	}
-	for _, gone := range []string{"**結論**", "四段", "區分已完成、估計和未取得的資料", "40 個字", "傳訊息給老闆", "一次最多 4 段"} {
+	for _, gone := range []string{"**結論**", "四段", "區分已完成、估計和未取得的資料", "40 個字", "傳訊息給老闆", "一次最多 4 段",
+		"值得做的下一步可以順口提一件", "完成後驗證結果"} {
 		if strings.Contains(soul, gone) {
 			t.Fatalf("不該再有 %q：%s", gone, soul)
 		}
@@ -52,6 +53,19 @@ func TestSoulAsksForChatStyleReplies(t *testing.T) {
 	// 回話提醒在最後（名冊之後）
 	if soul := Soul(Profile{Name: "A", Team: "## 隊友與協作\nB"}); !strings.HasSuffix(strings.TrimSpace(soul), "不寫過程。）") {
 		t.Fatalf("提醒要放最後：%s", soul)
+	}
+}
+
+// 2026-10-23：長短看使用者要拿這則訊息做什麼（replystyle）：研究、規劃先真的查、給結論和骨架；要他決定的事不埋在最後；
+// 不一步一步問「要我…嗎」；隊友的成果沒有疑點就採用、修改意見一次寫齊。
+func TestSoulSizesRepliesByWhatTheOwnerNeeds(t *testing.T) {
+	soul := Soul(Profile{Name: "水哥哥"})
+	for _, want := range []string{"## 回話長度", "看使用者要拿這則訊息做什麼", "閒聊、打招呼：一兩句", "第一句就是答案", "先真的查過幾個來源再回",
+		"結論和骨架", "沒查過不要說研究過", "問進度：一兩句", "不要埋在最後", "不要做一步就問「要我…嗎」", "交回給主管或隊友：結論、關鍵數字、檔案路徑，十行內",
+		"沒有具體疑點就採用", "一輪只出一個新版本", "自己做的成品做完確認真的存好"} {
+		if !strings.Contains(soul, want) {
+			t.Fatalf("少了 %q：%s", want, soul)
+		}
 	}
 }
 
@@ -66,7 +80,7 @@ func TestSoulSaysWhenToUseTools(t *testing.T) {
 }
 
 func TestSoulFollowsTheReplyStyleSetting(t *testing.T) {
-	cases := map[ReplyStyle]string{"": "簡單的問題三到五句", ReplyBrief: "簡單的問題三到五句", ReplyNormal: "需要時最多六段", ReplyDetailed: "可以完整說明", "loud": "簡單的問題三到五句"}
+	cases := map[ReplyStyle]string{"": "第一句就是答案，三到五句、兩段內", ReplyBrief: "第一句就是答案，三到五句、兩段內", ReplyNormal: "兩到四段，每段兩三句", ReplyDetailed: "可以完整說明", "loud": "第一句就是答案，三到五句、兩段內"}
 	for style, want := range cases {
 		if soul := Soul(Profile{Name: "A", ReplyStyle: style}); !strings.Contains(soul, want) {
 			t.Fatalf("%q 要有 %q：%s", style, want, soul)

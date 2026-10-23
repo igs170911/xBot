@@ -20,6 +20,7 @@ import (
 	"xbot/internal/events"
 	"xbot/internal/judge"
 	"xbot/internal/limits"
+	"xbot/internal/replystyle"
 	"xbot/internal/store"
 )
 
@@ -295,10 +296,8 @@ type ChatRequest struct {
 // OwnerNote 附在你親手打的訊息後面（對話裡看不到），引擎才會照著回答或把工作做完。
 // 2026-10-21：原本寫「不用為了回答去上網，除非要最新資料」，Bot 連要查證的事也憑記憶回；改成和守則同一個判斷：
 // 會變的、要精確的、沒把握的先查，其他直接答。口氣要自然（使用者：講話不夠自然）。
-const OwnerNote = "\n\n[回覆前提醒：這是使用者本人剛打的訊息。是問題就直接回答，口氣自然，像真人在聊天；講重點：簡單的問題三到五句、兩段以內，細節他問了再補。" +
-	"答案會隨時間改變、要精確的數字或出處，或你沒把握的，先上網查再回答；一般常識、意見、閒聊直接回答，不用為了回答去載技能。" +
-	"是交代工作就在這一輪做到完成：說要做的事立刻呼叫工具去做，不要問要不要開始，也不要寫「接下來去做某某」就停下來。" +
-	"照回話風格分段，一律繁體中文。]"
+// 2026-10-23：內容移到 replystyle（長短的唯一來源），不再自己寫「三到五句」——它蓋過守則，連研究、規劃也只回幾句。
+const OwnerNote = replystyle.OwnerNote
 
 // NowNote 是附在你親手打的訊息後面的現在時間（服務所在的時區，和使用者同一台電腦）。
 func NowNote(now time.Time) string {

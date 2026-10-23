@@ -1,9 +1,11 @@
 package collab
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
+	"xbot/internal/limits"
 	"xbot/internal/runtime"
 	"xbot/internal/store"
 )
@@ -79,8 +81,8 @@ func TestSendRefusesThanksOnly(t *testing.T) {
 	must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Writer", "謝謝，請再補一段結論", IntentRequest, SendOptions{}))
 }
 
-// 在群組裡交辦出去的結果回來了：整合後貼到群組（不然你只能自己去問，2026-10-21「我不問你都不講?」）。
-// 又交辦出去的那一輪不貼、[silent] 不貼；貼出來的不叫醒任何人。
+// 在群組裡交辦出去的結果回來了（2026-10-21「我不問你都不講?」；一小時 14 則進度、要你決定的事第 60 分鐘才說）：
+// 還在等別人時，只有「需要你決定：」才先貼；全部回來才一起回報。又交辦出去的那一輪不貼、[silent] 不貼；貼出來的不叫醒任何人。
 func TestDelegatedResultsFromAGroupArePostedBack(t *testing.T) {
 	tm := setup(t)
 	chief, writer, scout := tm.bots["Chief"], tm.bots["Writer"], tm.bots["Scout"]
@@ -92,47 +94,61 @@ func TestDelegatedResultsFromAGroupArePostedBack(t *testing.T) {
 	must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Scout", "查三個競品", IntentRequest, SendOptions{}))
 	tm.finish(turn.ID, runtime.VerdictAnswer, "已經分給 Writer 和 Scout。")
 	before := len(tm.roomLog(room.ID))
+	posts := func() []store.Message { return tm.roomLog(room.ID)[before:] }
 
-	// Writer 交回：Chief 整合後的回答貼到群組，不叫醒任何人。
+	// Writer 先交回：還在等 Scout。一般進度不貼；「需要你決定：」先貼。
 	w := tm.queued(writer)[0]
 	tm.start(w)
 	tm.finish(w.ID, runtime.VerdictAnswer, "文案 v1 在 /workspace/a.md")
-	got := tm.results(chief)
-	if len(got) != 1 {
-		t.Fatalf("Chief 要收到 Writer 的回覆：%+v", got)
+	r1 := tm.results(chief)[0]
+	if p := tm.start(r1); !strings.Contains(p, "還在等：Scout") || !strings.Contains(p, "需要你決定：") {
+		t.Fatalf("要告訴 Chief 還在等誰、什麼時候才貼：%s", p)
 	}
-	prompt := tm.start(got[0])
-	if !strings.Contains(prompt, "會貼到群組") || !strings.Contains(prompt, "行銷團隊") {
-		t.Fatalf("要告訴 Chief 這次的回答會貼到群組：%s", prompt)
+	tm.finish(r1.ID, runtime.VerdictAnswer, "文案 v1 到了，Scout 還在查。")
+	if got := posts(); len(got) != 0 {
+		t.Fatalf("還在等別人的進度不貼：%+v", got)
 	}
-	tm.finish(got[0].ID, runtime.VerdictAnswer, "@Writer 文案 v1 到了；Scout 的競品還在查。")
-	log := tm.roomLog(room.ID)
-	if len(log) != before+1 || log[len(log)-1].Content != "@Writer 文案 v1 到了；Scout 的競品還在查。" || roomMetaOf(log[len(log)-1]).SpeakerName != "Chief" {
-		t.Fatalf("要貼到群組：%+v", log[before:])
-	}
-	if len(tm.queued(writer)) != 0 {
-		t.Fatal("貼回群組不叫醒別人")
+	w2 := tm.queued(writer)
+	if len(w2) != 0 {
+		t.Fatal("不叫醒任何人")
 	}
 
-	// Scout 交回：Chief 這一輪又交辦給 Writer，不貼；Writer 再交回時才貼。[silent] 不貼。
+	// Scout 交回：Chief 這一輪又交辦給 Writer、但有要你決定的事：先貼。
 	sc := tm.queued(scout)[0]
 	tm.start(sc)
 	tm.finish(sc.ID, runtime.VerdictAnswer, "競品三個在 /workspace/b.md")
 	r2 := tm.results(chief)[1]
-	tm.start(r2)
-	must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Writer", "照競品改第二版", IntentRequest, SendOptions{}))
-	tm.finish(r2.ID, runtime.VerdictAnswer, "已請 Writer 改第二版。")
-	if len(tm.roomLog(room.ID)) != before+1 {
-		t.Fatal("又交辦出去的那一輪不貼")
+	if p := tm.start(r2); !strings.Contains(p, "都回來了") || !strings.Contains(p, "會貼到群組") {
+		t.Fatalf("都回來了要說會貼：%s", p)
 	}
-	w2 := tm.queued(writer)[0]
-	tm.start(w2)
-	tm.finish(w2.ID, runtime.VerdictAnswer, "第二版在 /workspace/a2.md")
+	must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Writer", "照競品改第二版", IntentRequest, SendOptions{}))
+	tm.finish(r2.ID, runtime.VerdictAnswer, "需要你決定：定價走 A 案（1,990）還是 B 案（2,490）？我建議 A。\n\n文案已請 Writer 照競品改第二版。")
+	if got := posts(); len(got) != 1 || !strings.HasPrefix(got[0].Content, "需要你決定：") || roomMetaOf(got[0]).SpeakerName != "Chief" {
+		t.Fatalf("要你決定的事先貼：%+v", got)
+	}
+
+	// Writer 交回第二版：全部回來了，整合後的回答貼到群組；[silent] 不貼。
+	w3 := tm.queued(writer)[0]
+	tm.start(w3)
+	tm.finish(w3.ID, runtime.VerdictAnswer, "第二版在 /workspace/a2.md")
 	r3 := tm.results(chief)[2]
 	tm.start(r3)
-	tm.finish(r3.ID, runtime.VerdictAnswer, "[silent]")
-	if len(tm.roomLog(room.ID)) != before+1 {
-		t.Fatal("[silent] 不貼")
+	tm.finish(r3.ID, runtime.VerdictAnswer, "第二版文案和競品比較都好了：/workspace/a2.md、/workspace/b.md。")
+	if got := posts(); len(got) != 2 || !strings.Contains(got[1].Content, "第二版文案") {
+		t.Fatalf("全部回來才一起回報：%+v", got)
+	}
+	if len(tm.queued(writer))+len(tm.queued(scout)) != 0 {
+		t.Fatal("貼回群組不叫醒別人")
+	}
+	must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Scout", "再查一個", IntentRequest, SendOptions{Origin: &r3}))
+	sc2 := tm.queued(scout)[0]
+	tm.start(sc2)
+	tm.finish(sc2.ID, runtime.VerdictAnswer, "第四個競品在 /workspace/c.md")
+	r4 := tm.results(chief)[3]
+	tm.start(r4)
+	tm.finish(r4.ID, runtime.VerdictAnswer, "[silent]")
+	if got := posts(); len(got) != 2 {
+		t.Fatalf("[silent] 不貼：%+v", got)
 	}
 }
 
@@ -244,5 +260,24 @@ func TestSendTellsTheSenderWhichFilesWereNotCarried(t *testing.T) {
 	ok := must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Writer", "只讀 /workspace/plan.md", IntentFYI, SendOptions{}))
 	if len(ok.NotCarried) != 0 || strings.Contains(ok.Note, "注意") {
 		t.Fatalf("都帶到了就不提：%+v", ok)
+	}
+}
+
+// 同一件工作第三次請同一位隊友做事：照送，但提醒能用就採用、意見一次寫齊（2026-10-21 文案 52 分鐘改了六版）。
+func TestRepeatedRequestsToTheSameTeammateGetANudge(t *testing.T) {
+	tm := setup(t)
+	chief := tm.bots["Chief"]
+	origin := tm.running(chief, nil)
+	o := tm.task(origin)
+	for i := 1; i <= limits.PeerRepeatNote; i++ {
+		res := must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Writer", fmt.Sprintf("改第 %d 版", i), IntentRequest, SendOptions{Origin: &o}))
+		nudged := strings.Contains(res.Note, "一次寫齊")
+		if nudged != (i >= limits.PeerRepeatNote) {
+			t.Fatalf("第 %d 次：%s", i, res.Note)
+		}
+	}
+	other := must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Scout", "查一下", IntentRequest, SendOptions{Origin: &o}))
+	if strings.Contains(other.Note, "一次寫齊") {
+		t.Fatal("別的隊友不算")
 	}
 }

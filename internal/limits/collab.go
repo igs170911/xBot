@@ -34,6 +34,10 @@ const (
 	StopAllRounds = 3
 	StopAllSettle = 2 * time.Second
 
+	// PeerRepeatNote 是同一條工作鏈裡第幾次請同一位隊友做事時，提醒寄件者一次寫齊、能用就採用（不擋，只提醒）。
+	// 2026-10-21 主管 52 分鐘裡請文案改了六版、同一份表退回六次。XBot 新增。
+	PeerRepeatNote = 3
+
 	// ThanksOnlyMax 是「只有道謝、收到」的訊息最多幾個字（不算 @名字）；更長的一律當成有內容。
 	// 這種訊息不叫醒別人、Bot 也不必傳給隊友，免得互相道謝停不下來（2026-10-23）。XBot 新增。
 	ThanksOnlyMax = 40
