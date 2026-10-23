@@ -468,8 +468,10 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		return nil, fmt.Errorf("%s protocol version mismatch", d.o.Agent.Label)
 	}
 
-	// D1: Store loadSession capability (no lock needed, benign race)
+	// E4: Store loadSession capability (with lock for safety)
+	ac.mu.Lock()
 	ac.loadSession = init.AgentCapabilities.LoadSession
+	ac.mu.Unlock()
 
 	g := &agentGen{c: c}
 	d.log.Info("Spawned agent for new session", "bot", o.BotID, "thread", o.ThreadID, "live_sessions", len(ac.sessions)+1, "cap", limits.ACPMaxSessionsPerBox)
@@ -524,10 +526,12 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	if id == "" {
 		raw, err := g.c.call(sctx, "session/new", withPrompt(map[string]any{"cwd": Workspace, "title": o.Title, "mcpServers": mcp}))
 		if err != nil {
+			c.close() // E4: Kill process on session/new failure
 			sem <- struct{}{} // Release semaphore on error
 			return nil, d.explain("無法開始對話", err)
 		}
 		if err := json.Unmarshal(raw, &res); err != nil || res.SessionID == "" {
+			c.close() // E4: Kill process on unmarshal failure
 			sem <- struct{}{} // Release semaphore
 			return nil, fmt.Errorf("開始對話的回覆不完整：%s", truncate(string(raw), 200))
 		}

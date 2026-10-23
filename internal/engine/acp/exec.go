@@ -142,8 +142,8 @@ func (p *execProcess) killProcessGroup() {
 		}
 	}
 
-	// 等一下讓行程有時間清理
-	time.Sleep(100 * time.Millisecond)
+	// E4: 等 3 秒讓行程有時間清理
+	time.Sleep(3 * time.Second)
 
 	// 如果還在跑，發 SIGKILL
 	info2, err := p.api.ExecInspect(ctx, p.execID, client.ExecInspectOptions{})
