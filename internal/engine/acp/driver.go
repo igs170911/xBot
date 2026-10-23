@@ -80,6 +80,7 @@ type agentConn struct {
 	mode        string // 開行程時的權限等級（Agent.ModeEnv 用）
 	c           *conn
 	loadSession bool
+	canClose    bool // agent 支援 session/close（sessionCapabilities.close）：閒置的 session 可以單獨收掉
 
 	mu       sync.Mutex
 	sessions map[string]*session // ACP sessionId → session
@@ -109,6 +110,7 @@ type session struct {
 	mu         sync.Mutex
 	running    bool
 	cancelling bool
+	lastUsed   time.Time // 最近一次開始或結束一輪；收掉閒置 session 時從最久沒用的開始（trim）
 	// mode 是 Bot 的權限等級（XBot 代答權限請求時看，autoAllow）。
 	mode string
 	// effortOpt、efforts 是 agent 的思考強度選項（configId 與可以選的值）；effort 是現在設的值。改了下一則就換。
@@ -210,7 +212,10 @@ func (d *Driver) client(ctx context.Context, botID, mode string) (*agentConn, er
 	var init struct {
 		ProtocolVersion   int `json:"protocolVersion"`
 		AgentCapabilities struct {
-			LoadSession bool `json:"loadSession"`
+			LoadSession         bool `json:"loadSession"`
+			SessionCapabilities struct {
+				Close json.RawMessage `json:"close"`
+			} `json:"sessionCapabilities"`
 		} `json:"agentCapabilities"`
 	}
 	if err := json.Unmarshal(raw, &init); err != nil {
@@ -222,6 +227,7 @@ func (d *Driver) client(ctx context.Context, botID, mode string) (*agentConn, er
 		return nil, fmt.Errorf("%s 講的 ACP 版本是 %d，XBot 支援 %d", d.o.Agent.Label, init.ProtocolVersion, ProtocolVersion)
 	}
 	ac.loadSession = init.AgentCapabilities.LoadSession
+	ac.canClose = ac.loadSession && len(init.AgentCapabilities.SessionCapabilities.Close) > 0 && string(init.AgentCapabilities.SessionCapabilities.Close) != "null"
 	d.mu.Lock()
 	d.bots[botID] = ac
 	d.mu.Unlock()
@@ -318,6 +324,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		ac.mu.Unlock()
 		s.mu.Lock()
 		s.mode = o.Mode // XBot 代答的權限（autoAllow）照目前的等級；agent 自己的模式要新的 session 才換
+		s.lastUsed = time.Now()
 		s.mu.Unlock()
 		cctx, cancel := context.WithTimeout(ctx, limits.ACPCallTimeout)
 		d.applyEffort(cctx, s, o.BotID, o.Effort) // 思考強度改了：這一則就換
@@ -325,6 +332,16 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		return s, nil
 	}
 	ac.mu.Unlock()
+	// 要開新的 session：先收掉多出來的閒置 session，它們的 MCP 子行程才會結束（ACPOpenSessionsMax）。
+	if d.crowded(ac) {
+		d.log.Info("agent 上的對話串太多又都閒置，重開 agent 釋放記憶體", "bot", o.BotID)
+		d.recycle(ac)
+		if ac, err = d.client(ctx, o.BotID, o.Mode); err != nil {
+			return nil, err
+		}
+	} else {
+		d.trim(ac)
+	}
 
 	var mcp []MCPServer
 	if d.o.MCPServers != nil {
@@ -383,7 +400,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		id = res.SessionID
 	}
 	s := &session{ac: ac, id: id, threadID: o.ThreadID, mode: o.Mode, tools: map[string]*toolState{}, bg: map[string]string{},
-		shown: map[string]bool{}, dropped: map[string]bool{}, q: newQueue()}
+		shown: map[string]bool{}, dropped: map[string]bool{}, q: newQueue(), lastUsed: time.Now()}
 	if inst != "" && !d.o.Agent.SystemPrompt && !d.o.Agent.Rules && !loaded {
 		s.intro = IntroText(inst)
 	}
@@ -747,6 +764,7 @@ func (s *session) unhold() {
 func (d *Driver) endTurn(s *session, raw json.RawMessage, err error) {
 	s.mu.Lock()
 	s.running = false
+	s.lastUsed = time.Now()
 	cancelling := s.cancelling
 	s.cancelling = false
 	s.tools = map[string]*toolState{}
@@ -885,6 +903,94 @@ func (d *Driver) Events(s engine.Session) <-chan engine.Event {
 		return ch
 	}
 	return as.q.out
+}
+
+// idleSessions 是 ac 上閒置的 session（沒在跑、沒在等背景工作或權限回覆、沒有子代理），最久沒用的在前。
+// 鎖的順序是 s.mu → ac.mu（background），所以這裡不在持有 ac.mu 時鎖 session。
+func idleSessions(ac *agentConn) (idle []*session, total int) {
+	ac.mu.Lock()
+	all := make([]*session, 0, len(ac.threads))
+	for _, s := range ac.threads {
+		all = append(all, s)
+	}
+	waiting := map[string]bool{}
+	for _, p := range ac.requests {
+		waiting[p.session] = true
+	}
+	for _, parent := range ac.children {
+		waiting[parent.id] = true
+	}
+	ac.mu.Unlock()
+	at := map[*session]time.Time{}
+	for _, s := range all {
+		s.mu.Lock()
+		free := !s.running && !s.holding && len(s.bg) == 0 && !waiting[s.id]
+		at[s] = s.lastUsed
+		s.mu.Unlock()
+		if free {
+			idle = append(idle, s)
+		}
+	}
+	slices.SortFunc(idle, func(a, b *session) int { return at[a].Compare(at[b]) })
+	return idle, len(all)
+}
+
+// trim 在開新的 session 之前，把最久沒用的閒置 session 收掉（session/close），讓開著的不超過 limits.ACPOpenSessionsMax。
+// 每個 session 帶著自己的 MCP 子行程（desktop_mcp、xbot_mcp），不收就在 Bot 的電腦裡越積越多（2026-10-22 OOM）。
+// 收掉的對話串下次用時以 session/load 接回（agent 要支援 loadSession 才算 canClose）。
+func (d *Driver) trim(ac *agentConn) {
+	if !ac.canClose {
+		return
+	}
+	idle, total := idleSessions(ac)
+	excess := total - (limits.ACPOpenSessionsMax - 1)
+	if excess <= 0 {
+		return
+	}
+	if len(idle) > excess {
+		idle = idle[:excess]
+	}
+	ac.mu.Lock()
+	var gone []*session
+	for _, s := range idle {
+		if ac.threads[s.threadID] != s {
+			continue
+		}
+		delete(ac.threads, s.threadID)
+		delete(ac.sessions, s.id)
+		gone = append(gone, s)
+	}
+	ac.mu.Unlock()
+	for _, s := range gone {
+		s.q.close() // 讀這個 session 事件的 runtime 跟著結束
+		d.log.Info("收掉閒置的對話串，釋放它的 MCP 子行程", "bot", ac.botID, "thread", s.threadID, "session", s.id)
+		go func(id string) {
+			ctx, cancel := context.WithTimeout(context.Background(), limits.ACPCallTimeout)
+			defer cancel()
+			if _, err := ac.c.call(ctx, "session/close", map[string]string{"sessionId": id}); err != nil {
+				d.log.Info("session/close 沒有成功", "bot", ac.botID, "session", id, "err", err)
+			}
+		}(s.id)
+	}
+}
+
+// crowded 回答不支援 session/close 的 agent 是不是該整個重開：開著的 session 已經到上限，而且全部閒置。
+func (d *Driver) crowded(ac *agentConn) bool {
+	if ac.canClose {
+		return false
+	}
+	idle, total := idleSessions(ac)
+	return total >= limits.ACPOpenSessionsMax && len(idle) == total
+}
+
+// recycle 關掉 agent 行程（它的 MCP 子行程跟著結束）；下一次 client 會開新的，舊的對話串以 session/load 接回。
+func (d *Driver) recycle(ac *agentConn) {
+	d.mu.Lock()
+	if d.bots[ac.botID] == ac {
+		delete(d.bots, ac.botID)
+	}
+	d.mu.Unlock()
+	ac.c.close()
 }
 
 // Close 結束一個 Bot 的 agent 行程（電腦停止、刪除、收回憑證時）；它的 session 都會收到連線中斷。

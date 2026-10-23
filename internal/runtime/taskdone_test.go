@@ -566,6 +566,47 @@ func TestTransientErrorIsRetriedOnce(t *testing.T) {
 	}
 }
 
+// 隊友交辦的工作被暫時的錯誤打斷：也自動再做一次，再做的那一輪帶著原本的交辦（它的回答才送回隊友）。
+// 原本只有你本人的會再試；隊友收到一句「HTTP 429」只好自己重傳，越傳越亂（2026-10-21 行銷長↔文案）。
+func TestTeammateWorkIsRetriedAfterATransientError(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t)
+	var mu sync.Mutex
+	var prompts []string
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		mu.Lock()
+		prompts = append(prompts, tr.Text)
+		n := len(prompts)
+		mu.Unlock()
+		tr.Event("message.start", nil)
+		if n == 1 {
+			tr.Complete("", "error", map[string]any{"error": "HTTP 429: Upstream request failed: Endpoint is unavailable."})
+			return
+		}
+		tr.Complete("價格：A 店 120 元。", "complete", nil)
+	}
+	f.rt.SetHooks(Hooks{ContinueMeta: func(task store.Task) (json.RawMessage, bool) {
+		return json.RawMessage(`{"from_bot":"b2","from_name":"行銷長","intent":"request","message_id":"m1"}`), true
+	}})
+	res, _ := f.rt.Start(ctx, ChatRequest{BotID: f.bot.ID, Text: "幫我查價格", Source: SourceBot, LowPriority: true, Queue: true,
+		TaskMeta: json.RawMessage(`{"from_bot":"b2","intent":"request"}`)})
+	js := chain(t, f, res.TaskID)
+	if len(js) != 2 || js[0] == nil || js[0].ContinuedBy == "" {
+		t.Fatalf("要自動再試一次：%+v", js)
+	}
+	retry, _ := f.db.GetTask(ctx, js[0].ContinuedBy)
+	var m map[string]any
+	_ = json.Unmarshal(retry.Meta, &m)
+	if retry.Source != SourceBot || m["from_bot"] != "b2" || m["message_id"] != "m1" || m["auto_retry"] != true || retry.Verdict != VerdictAnswer {
+		t.Fatalf("再試的那一輪要帶原本的交辦：%+v %s", retry, retry.Meta)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(prompts) != 2 || !strings.Contains(prompts[1], "隊友 行銷長 交辦的") {
+		t.Fatalf("%q", prompts)
+	}
+}
+
 // 不是暫時的錯誤（例：工具真的失敗、模型拒絕）不自動再試。
 func TestOtherErrorsAreNotRetried(t *testing.T) {
 	ctx := context.Background()

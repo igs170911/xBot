@@ -491,6 +491,12 @@ func (s *Service) interruptRelay(ctx context.Context, roomID, botID string) bool
 
 // seat 給成員在群組裡一輪（LazyBoy seat）；已經有一輪在排隊就不再加（開始時會讀到全部新訊息）。
 func (s *Service) seat(ctx context.Context, room store.Room, botID, cause string, addressed bool, round int, byOwner bool) error {
+	return s.seatTurn(ctx, room, botID, taskMeta{RoomID: room.ID, Addressed: addressed, Round: round, Cause: cause, ByOwner: byOwner})
+}
+
+// seatTurn 是 seat 的本體：tm 是這一輪的群組欄位（RoomID、Round、Cause…）。
+func (s *Service) seatTurn(ctx context.Context, room store.Room, botID string, tm taskMeta) error {
+	addressed, byOwner, cause := tm.Addressed, tm.ByOwner, tm.Cause
 	thread, err := s.seatThread(ctx, room, botID)
 	if err != nil {
 		return err
@@ -519,7 +525,7 @@ func (s *Service) seat(ctx context.Context, room store.Room, botID, cause string
 		}
 		return nil
 	}
-	raw, _ := json.Marshal(taskMeta{RoomID: room.ID, Addressed: addressed, Round: round, Cause: cause, ByOwner: byOwner})
+	raw, _ := json.Marshal(tm)
 	if _, err := s.rt.Start(ctx, runtime.ChatRequest{BotID: botID, ThreadID: thread, Text: "群組「" + room.Name + "」有新訊息",
 		Sender: "system", Source: runtime.SourceRoom, TaskMeta: raw, LowPriority: !byOwner, Queue: true}); err != nil {
 		return err
@@ -691,7 +697,19 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 		return
 	}
 	text := content
-	if failed {
+	if failed && runtime.IsTransient(content) {
+		if !m.Retried {
+			// 模型或連線的暫時錯誤：不把錯誤貼到群組，從原本的地方重讀、自動再排一輪（只一次）。
+			if m.SeenTo > 0 {
+				_ = s.db.RestoreSeen(ctx, room.ID, task.BotID, m.SeenTo, m.SeenFrom)
+			}
+			retry := taskMeta{RoomID: room.ID, Addressed: m.Addressed, Round: m.Round, Cause: m.Cause, ByOwner: m.ByOwner, Retried: true}
+			if err := s.seatTurn(ctx, room, task.BotID, retry); err == nil {
+				return
+			}
+		}
+		text = "（這次沒有完成：模型或連線暫時出錯，自動再試也沒成功）" + content
+	} else if failed {
 		text = "（這次沒有完成）" + content
 	}
 	round := m.Round + 1
@@ -700,8 +718,8 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 		s.log.Warn("貼到群組失敗", "room", room.ID, "err", err)
 		return
 	}
-	if round > limits.RoomRounds() || failed {
-		return
+	if round > limits.RoomRounds() || failed || IsThanksOnly(text) {
+		return // 只有道謝：貼出來，但不叫醒被 @ 的人（不然對方又回一句謝謝）
 	}
 	s.wake(ctx, room, named, msg.ID, round, true)
 }
@@ -886,12 +904,13 @@ func (s *Service) PostGroup(ctx context.Context, botID, ref, message string) (Po
 		round = om.Round + 1
 	}
 	capped := round > limits.RoomRounds()
+	thanks := IsThanksOnly(text)
 	posted, named, err := s.speak(ctx, room, botID, text, roomMeta{ByStartTool: true, Round: round - 1}, round)
 	if err != nil {
 		return PostGroupResult{}, err
 	}
 	woke := []string{}
-	if !capped {
+	if !capped && !thanks {
 		s.wake(ctx, room, named, posted.ID, round, true)
 		for _, b := range named {
 			woke = append(woke, b.Name)
@@ -899,6 +918,9 @@ func (s *Service) PostGroup(ctx context.Context, botID, ref, message string) (Po
 	}
 	s.note(ctx, botID, origin.ThreadID, origin.ID, text, PeerEvent{Event: "group_post", RoomID: room.ID, PeerName: room.Name})
 	out := PostGroupResult{Posted: true, Group: room.Name, Woke: woke}
+	if thanks && !capped {
+		out.Note = "這則只有道謝或收到，已貼出但沒有叫醒任何人；大家不需要回覆。"
+	}
 	if capped {
 		out.Note = fmt.Sprintf("這段群組討論已經來回 %d 輪了，訊息已發出但不再喚醒別人；需要的話請使用者接手。", limits.RoomRounds())
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"xbot/internal/engine"
 	"xbot/internal/engine/acp"
 	"xbot/internal/engine/acp/acptest"
+	"xbot/internal/limits"
 )
 
 type harness struct {
@@ -434,4 +436,111 @@ func TestFinalAnswerSkipsShortNarration(t *testing.T) {
 	if e := done(acptest.PromptAnswerFirst); e.Type != engine.EventDone || e.Text != "" {
 		t.Fatalf("前面是一大段答案就整段保留（Text 空白＝用串流的全部）：%q", e.Text)
 	}
+}
+
+// turn 送一則訊息並讀到這一輪結束。
+func turn(t *testing.T, h *harness, s engine.Session, text string) {
+	t.Helper()
+	if err := h.d.Send(context.Background(), s, engine.Message{Text: text}); err != nil {
+		t.Fatal(err)
+	}
+	until(t, h.d.Events(s), engine.EventDone)
+}
+
+// eventually 等到 cond 成立（session/close 在背景送出）。
+func eventually(t *testing.T, what string, cond func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for !cond() {
+		if time.Now().After(deadline) {
+			t.Fatal(what)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// 每個 session 帶著自己的 MCP 子行程（2026-10-22 一台電腦累積 31～35 個、3 GB 用完）：開新對話串時，超過
+// limits.ACPOpenSessionsMax 的就把最久沒用的閒置 session 收掉（session/close），之後用 session/load 接回。
+func TestIdleSessionsAreClosedPastTheCap(t *testing.T) {
+	h := setup(t)
+	h.agent.CanClose = true
+	var ss []engine.Session
+	for i := range limits.ACPOpenSessionsMax {
+		s := start(t, h, fmt.Sprintf("th%d", i+1))
+		turn(t, h, s, "hi")
+		ss = append(ss, s)
+	}
+	if got := len(h.agent.Open()); got != limits.ACPOpenSessionsMax {
+		t.Fatalf("開著 %d 個", got)
+	}
+	// 用過第一個：最久沒用的變成第二個。
+	turn(t, h, start(t, h, "th1"), "hi")
+	start(t, h, "th-new")
+	eventually(t, "第二個（最久沒用）要被收掉", func() bool {
+		return len(h.agent.Open()) == limits.ACPOpenSessionsMax && !slices.Contains(h.agent.Open(), ss[1].ID())
+	})
+	if _, ok := <-h.d.Events(ss[1]); ok {
+		t.Error("收掉的 session 事件要關閉")
+	}
+	if !slices.Contains(h.agent.Open(), ss[0].ID()) {
+		t.Error("剛用過的不收")
+	}
+	// 收掉的對話串再用：session/load 接回同一個 session，agent 行程沒有重開。
+	back, err := h.d.Start(context.Background(), engine.StartOptions{BotID: "bot1", ThreadID: "th2", Resume: ss[1].ResumeID()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if back.ID() != ss[1].ID() || h.agent.Launches() != 1 {
+		t.Fatalf("session=%s launches=%d", back.ID(), h.agent.Launches())
+	}
+	turn(t, h, back, "hi")
+}
+
+// 還在跑的、在等權限回覆的 session 不收，即使超過上限。
+func TestBusySessionsAreNotClosed(t *testing.T) {
+	h := setup(t)
+	h.agent.CanClose = true
+	busy := start(t, h, "busy")
+	if err := h.d.Send(context.Background(), busy, engine.Message{Text: acptest.PromptPermission}); err != nil {
+		t.Fatal(err)
+	}
+	until(t, h.d.Events(busy), engine.EventNeedsApproval)
+	for i := range limits.ACPOpenSessionsMax + 1 {
+		turn(t, h, start(t, h, fmt.Sprintf("th%d", i+1)), "hi")
+	}
+	time.Sleep(100 * time.Millisecond)
+	if !slices.Contains(h.agent.Open(), busy.ID()) {
+		t.Fatal("在等權限回覆的不能收")
+	}
+	if err := h.d.Interrupt(context.Background(), busy); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// 不支援 session/close 的 agent：開著的對話串到上限而且全部閒置，就整個重開（MCP 子行程跟著結束），舊的用 session/load 接回。
+func TestAgentWithoutCloseIsRestartedWhenCrowded(t *testing.T) {
+	h := setup(t)
+	var first engine.Session
+	for i := range limits.ACPOpenSessionsMax {
+		s := start(t, h, fmt.Sprintf("th%d", i+1))
+		turn(t, h, s, "hi")
+		if first == nil {
+			first = s
+		}
+	}
+	if h.agent.Launches() != 1 {
+		t.Fatalf("launches=%d", h.agent.Launches())
+	}
+	turn(t, h, start(t, h, "th-new"), "hi")
+	if h.agent.Launches() != 2 {
+		t.Fatalf("要重開 agent：launches=%d", h.agent.Launches())
+	}
+	back, err := h.d.Start(context.Background(), engine.StartOptions{BotID: "bot1", ThreadID: "th1", Resume: first.ResumeID()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if back.ID() != first.ID() {
+		t.Fatalf("接回 %s，要 %s", back.ID(), first.ID())
+	}
+	turn(t, h, back, "hi")
 }

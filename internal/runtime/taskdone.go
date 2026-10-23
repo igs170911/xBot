@@ -190,15 +190,32 @@ var transientRe = regexp.MustCompile(`(?i)invalid tool call|malformed (tool|func
 	`unexpected eof|server[ _]error|bad gateway|service unavailable|gateway time|overloaded|temporarily unavailable|stream (ended|closed|error)|\b50[0234]\b|` +
 	`upstream request failed|endpoint is unavailable`)
 
+// IsTransient 回答一段錯誤是不是模型或連線的暫時錯誤（再做一次多半就好）；群組的一輪用它決定要不要自動重排。
+func IsTransient(errText string) bool {
+	return errText != StalledText && transientRe.MatchString(errText)
+}
+
 // retryAfterError 決定失敗的這一輪要不要自動再做一次：只有模型或連線的暫時錯誤（transientRe），你本人、定時任務、
-// Webhook 交代的，同一個請求只再試一次（auto_retry；自動續做也算在 limits.AutoContinueMax 裡）。額度、登入過期（quota）、
+// Webhook、隊友交代的（隊友的照 Hooks.ContinueMeta 帶上原本的交辦），同一個請求只再試一次（auto_retry；自動續做也算在 limits.AutoContinueMax 裡）。額度、登入過期（quota）、
 // 看門狗停下的、有待核准的動作、你又傳了新訊息時不試。不試時回 nil。
 func (r *Runtime) retryAfterError(t *turn, task store.Task, errText string) *ChatRequest {
 	if !transientRe.MatchString(errText) || errText == StalledText {
 		return nil
 	}
+	meta := map[string]any{}
 	switch task.Source {
 	case SourceOwner, SourceRoutine, SourceWebhook:
+	case SourceBot:
+		// 隊友交辦的：再做的那一輪帶著原本的交辦，它的回答才送回隊友（不然隊友只收到一句錯誤，自己重傳，越傳越亂）。
+		h := r.hooks()
+		if h.ContinueMeta == nil {
+			return nil
+		}
+		raw, ok := h.ContinueMeta(task)
+		if !ok {
+			return nil
+		}
+		_ = json.Unmarshal(raw, &meta)
 	default:
 		return nil
 	}
@@ -223,10 +240,14 @@ func (r *Runtime) retryAfterError(t *turn, task store.Task, errText string) *Cha
 			return nil
 		}
 	}
-	root := firstNonEmpty(am.Root, task.ID)
-	raw, _ := json.Marshal(map[string]any{"auto_continue": am.Depth + 1, "continue_root": root, "auto_retry": true})
+	meta["auto_continue"], meta["continue_root"], meta["auto_retry"] = am.Depth+1, firstNonEmpty(am.Root, task.ID), true
+	raw, _ := json.Marshal(meta)
 	prompt := "（系統自動繼續）剛才這一輪被模型或連線的暫時錯誤打斷了（" + clipText(errText, 200) + "）。" +
 		"請接著把原本的事做完：已經做完的不要重做，出錯的那一步重新做一次；做完給一份完整的最終回報，包含先前已完成的部分。"
+	if task.Source == SourceBot {
+		name, _ := meta["from_name"].(string)
+		prompt += "\n（這件事是隊友 " + firstNonEmpty(name, "隊友") + " 交辦的；你這次的最後回答會自動送回給它，請直接寫給它看。）"
+	}
 	return &ChatRequest{BotID: t.botID, ThreadID: t.threadID, Text: "自動再試一次：剛才被暫時的錯誤打斷", Prompt: prompt, Sender: "system",
 		Kind: KindActivity, MessageMeta: map[string]any{"activity": ActivityContinue},
 		Source: task.Source, LowPriority: true, Queue: true, TaskMeta: raw}

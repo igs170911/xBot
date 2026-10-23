@@ -17,6 +17,7 @@
 | `CarryFilesMax` | 10 | 個 | server/collab.py:62 `CARRY_FILES` | §12、§18、AA-7 | **有**：PRD §18 原寫「超過時拒絕並說明」。程式是訊息照送、超出的檔案略過不複製、不報錯。PRD 已更正 |
 | `CarryBytesMax` | 50 MiB | 位元組 | server/collab.py:62 `CARRY_BYTES` | §12、§18、AA-7 | 同上（會超過的那個檔案略過，後面較小的仍可能被複製） |
 | `SilentTailMax` | 40 | 字元 | server/collab.py:56 `is_silent` | AA-4 | PRD 沒寫：`[silent]` 後面 40 字內仍算不發言 |
+| `ThanksOnlyMax` | 40 | 字元 | XBot 新增（2026-10-23） | AA-4 | 只有道謝、收到的話（不算 @名字）最多幾個字：這種話不傳給隊友、群組裡不叫醒被 @ 的人，免得互相道謝停不下來 |
 | `RosterAboutMax` | 160 | 字元 | server/collab.py:124 `directory` | AA-1 | — |
 
 ## 2. 群組（`collab.go`）

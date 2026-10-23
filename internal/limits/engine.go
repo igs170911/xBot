@@ -111,6 +111,15 @@ const (
 
 	// ACPDenyResumeMax 是一輪裡使用者拒絕動作後，最多請 agent 換方法接著做幾次（Grok 一拒絕就整輪取消）。XBot 新增。
 	ACPDenyResumeMax = 3
+
+	// ACPOpenSessionsMax 是一個 agent 行程上同時開著的 session（對話串）上限。每個 session 帶著自己的 MCP 子行程
+	// （desktop_mcp、xbot_mcp，Grok 實測一個對話串約 120 MB），開新對話串時超過的就把最久沒用的閒置 session 收掉
+	// （session/close，之後用 session/load 接回）；agent 不支援 session/close 時，全部閒置才整個重開。
+	// 2026-10-22 一台電腦累積到 31～35 個 MCP 子行程、3 GB 用完。XBot 新增。
+	ACPOpenSessionsMax = 4
+
+	// ACPExitGrace 是關掉 agent 的 stdin 後等它自己結束的時間；還在跑就在電腦裡強制結束（Gemini CLI 讀到 EOF 不會結束）。XBot 新增。
+	ACPExitGrace = 5 * time.Second
 )
 
 // Bot 自己登入訂閱 CLI（2026-10-20，xbot.engines.login_start）。XBot 自己的數字。

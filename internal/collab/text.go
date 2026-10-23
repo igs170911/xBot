@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"xbot/internal/limits"
@@ -77,6 +78,41 @@ func IsSilent(text string) bool {
 	body := strings.TrimSpace(strings.Trim(strings.TrimSpace(text), "`"))
 	lower := strings.ToLower(body)
 	return body == "" || lower == Silent || (strings.HasPrefix(lower, Silent) && runes(body) < runes(Silent)+limits.SilentTailMax)
+}
+
+// thanksWords 是只表示道謝、收到、客套的說法（長的先比）。不含「好、可以、是、對」：那些可能是在回答問題。
+var thanksWords = []string{"不用客氣", "不客氣", "非常感謝", "感謝你", "感謝您", "感謝", "謝謝你", "謝謝您", "謝謝", "多謝", "謝啦", "謝了",
+	"辛苦了", "辛苦", "合作愉快", "收到", "了解", "瞭解", "明白", "thank you", "thanks", "thx", "got it", "noted"}
+
+// thanksFiller 是道謝前後常見的語助詞與稱呼，本身沒有內容。
+var thanksFiller = []string{"大家", "各位", "你們", "啦", "喔", "哦", "囉", "呀", "啊", "唷", "耶", "哈", "嗯", "的", "了"}
+
+// IsThanksOnly 回答一則訊息是不是只有道謝、收到這類客套（去掉 @名字、標點、表情）。這種話不叫醒被 @ 的成員，
+// Bot 也不必傳給隊友：兩邊互相道謝會一直叫醒對方（2026-10-22 實測一句話引出 11 則道謝）。
+func IsThanksOnly(text string) bool {
+	body := strings.ToLower(mentionRE.ReplaceAllString(text, ""))
+	if strings.TrimSpace(body) == "" || runes(strings.TrimSpace(body)) > limits.ThanksOnlyMax {
+		return false
+	}
+	found := false
+	for _, w := range thanksWords {
+		if strings.Contains(body, w) {
+			found = true
+			body = strings.ReplaceAll(body, w, " ")
+		}
+	}
+	if !found {
+		return false
+	}
+	for _, w := range thanksFiller {
+		body = strings.ReplaceAll(body, w, " ")
+	}
+	for _, r := range body {
+		if !unicode.IsSpace(r) && !unicode.IsPunct(r) && !unicode.IsSymbol(r) && r != '～' && r != '~' {
+			return false
+		}
+	}
+	return true
 }
 
 // Member 是 @ 比對用的成員（id、名字）。

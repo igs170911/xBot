@@ -103,6 +103,7 @@ type taskMeta struct {
 	ByOwner   bool   `json:"by_owner,omitempty"` // 你發言叫醒的（輪數從 0 算）
 	SeenFrom  int64  `json:"seen_from,omitempty"`
 	SeenTo    int64  `json:"seen_to,omitempty"`
+	Retried   bool   `json:"room_retry,omitempty"` // 上一輪被暫時的錯誤打斷，這是自動重排的那一輪
 }
 
 func metaOf(t store.Task) taskMeta {
@@ -436,6 +437,10 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 		intent = IntentResult
 	} else {
 		intent = normalizeIntent(intent)
+		if IsThanksOnly(text) {
+			// 只有道謝、收到：對方又會回一句，兩邊停不下來。
+			return SendResult{}, invalid("這則只有道謝或收到，不用傳；隊友不需要回覆。沒有新的內容或要求時，這一輪的最後回答寫 [silent] 就好")
+		}
 	}
 	var origin store.Task
 	hasOrigin := false
@@ -526,9 +531,14 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 		ReplyThread: senderThread, MessageID: msg.ID, Answers: answers, AssignmentID: asg.ID}
 	rawMeta, _ := json.Marshal(tm)
 	thread := o.ReplyThread
+	room := "" // 結果送回群組座位（在群組裡交辦出去的）：整合後會貼到這個群組
 	if thread != "" {
 		if th, err := s.db.GetThread(ctx, thread); err != nil || th.BotID != target.ID {
 			thread = ""
+		} else if th.RoomID != "" && intent == IntentResult && owedTo == "" {
+			if r, err := s.db.GetRoom(ctx, th.RoomID); err == nil {
+				room = r.Name
+			}
 		}
 	}
 	if thread == "" {
@@ -537,7 +547,7 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 		}
 	}
 	res, err := s.rt.Start(ctx, runtime.ChatRequest{BotID: target.ID, ThreadID: thread, Text: carried,
-		Prompt: framed(sender, target, carried, intent, owedTo), Sender: "bot:" + senderID, Kind: "peer", Source: runtime.SourceBot,
+		Prompt: framed(sender, target, carried, intent, owedTo, room), Sender: "bot:" + senderID, Kind: "peer", Source: runtime.SourceBot,
 		MessageMeta: map[string]any{"peer": PeerEvent{Event: "message_in", PeerID: senderID, PeerName: sender.Name, Intent: intent, MessageID: msg.ID,
 			Hop: hop, Chain: chain, Files: len(files)}},
 		TaskMeta: rawMeta, LowPriority: true, Queue: true})
@@ -700,7 +710,8 @@ func sameFile(ctx context.Context, f Files, aBot, aRel, bBot, bRel string, size 
 }
 
 // framed 是收件者引擎看到的那一輪（LazyBoy framed）：隊友的文字是資料，不是使用者的同意（SEC-8）。
-func framed(sender store.Bot, target Mate, text, intent, owedTo string) string {
+// room 不是空的：這是在群組裡交辦出去的結果，整合後的回答會貼到那個群組（reportToRoom）。
+func framed(sender store.Bot, target Mate, text, intent, owedTo, room string) string {
 	label := ""
 	if sender.Title != "" {
 		label = "（" + sender.Title + "）"
@@ -712,10 +723,15 @@ func framed(sender store.Bot, target Mate, text, intent, owedTo string) string {
 	case IntentQuestion:
 		rule = "你這次的最後回答會自動送回給 " + sender.Name + "。簡短直接回答問題即可。" + toPeer
 	case IntentResult:
-		if owedTo != "" {
+		switch {
+		case owedTo != "":
 			rule = "這是 " + sender.Name + " 對你先前訊息的回覆。整合後寫出最終結果（結論、資料、檔案路徑），這次的最後回答會自動送回給 " + owedTo + "；" +
 				"還需要其他隊友時可以繼續派工，等全部回來後的最後回答才會送出。不需要再回覆 " + sender.Name + "。" + toPeer
-		} else {
+		case room != "":
+			rule = "這是 " + sender.Name + " 對你在群組「" + room + "」交辦的事的回覆。這次的最後回答會貼到群組，使用者看得到：先講結果；" +
+				"還在等其他隊友就說收到了什麼、還在等誰；要使用者決定或提供的事寫清楚。這一輪又交辦給隊友時不會貼，等結果回來整合後才貼。" +
+				"不需要再回覆 " + sender.Name + "；沒有新的進展要讓使用者知道時，最後回答只寫 [silent]。"
+		default:
 			rule = "這是 " + sender.Name + " 對你先前訊息的回覆。整合後在這個對話回報使用者（照回話風格：像傳訊息一樣短，先講結果），不需要再回覆 " + sender.Name + "。"
 		}
 	case IntentFYI:
@@ -735,17 +751,21 @@ func (s *Service) finished(task store.Task, verdict, text string) {
 	ctx := context.Background()
 	m := metaOf(task)
 	if m.FromBot != "" && m.RoomID == "" && replyExpected(m.Intent) {
-		if j := runtime.TaskJudgment(task); j != nil && verdict == runtime.VerdictAnswer && j.Verdict == judge.OnlyPromised {
-			if j.ContinuedBy != "" {
-				// 只回了「我來查一下」：不算回答了（X04）。系統叫它接著做，那一輪的回答才送回去；交辦與傳話改記在那一輪。
-				if m.AssignmentID != "" {
-					_ = s.db.SetAssignmentTask(ctx, m.AssignmentID, j.ContinuedBy)
-				}
-				if m.MessageID != "" {
-					_ = s.db.SetBotMessageTask(ctx, m.MessageID, j.ContinuedBy)
-				}
-				return
+		j := runtime.TaskJudgment(task)
+		// 只回了「我來查一下」（X04），或被模型、連線的暫時錯誤打斷（系統自動再做一次）：都不算回答了。
+		// 系統叫它接著做的那一輪的回答才送回去；交辦與傳話改記在那一輪。
+		promised := j != nil && verdict == runtime.VerdictAnswer && j.Verdict == judge.OnlyPromised
+		retried := j != nil && verdict == runtime.VerdictFailed && j.ContinuedBy != ""
+		if (promised || retried) && j.ContinuedBy != "" {
+			if m.AssignmentID != "" {
+				_ = s.db.SetAssignmentTask(ctx, m.AssignmentID, j.ContinuedBy)
 			}
+			if m.MessageID != "" {
+				_ = s.db.SetBotMessageTask(ctx, m.MessageID, j.ContinuedBy)
+			}
+			return
+		}
+		if promised {
 			// 叫它接著做也還是只說要做（或不能再續做了）：照沒有完成回覆，交辦人不會把一句承諾當成答案。
 			verdict = runtime.VerdictFailed
 		}
@@ -844,7 +864,11 @@ func (s *Service) continueReply(ctx context.Context, task store.Task, m taskMeta
 		return
 	}
 	owed := metaOf(parent).Deferred
-	if owed == nil || verdict == runtime.VerdictCancelled || verdict == runtime.VerdictInterrupted {
+	if verdict == runtime.VerdictCancelled || verdict == runtime.VerdictInterrupted {
+		return
+	}
+	if owed == nil {
+		s.reportToRoom(ctx, task, verdict, content)
 		return
 	}
 	_ = s.db.PatchTaskMeta(ctx, parent.ID, map[string]any{"deferred_reply": nil})
@@ -874,6 +898,37 @@ func (s *Service) continueReply(ctx context.Context, task store.Task, m taskMeta
 		return
 	}
 	s.deliver(ctx, task.BotID, owed.To, content, verdict, origin)
+}
+
+// reportToRoom：在群組裡交辦出去的結果回來了（落在 Bot 在群組的隱藏座位對話串）。這一輪的整合沒有再交給別人時，
+// 貼到群組讓你看到，不叫醒任何人。LazyBoy 沒有這段：結果整合只留在看不到的座位裡，你得自己去問
+// （2026-10-21 使用者：「要等我的為甚麼要我問你才說? 我不問你都不講?」）。
+func (s *Service) reportToRoom(ctx context.Context, task store.Task, verdict, content string) {
+	failed := verdict == runtime.VerdictFailed
+	if !failed && IsSilent(content) {
+		return
+	}
+	th, err := s.db.GetThread(ctx, task.ThreadID)
+	if err != nil || th.RoomID == "" {
+		return // 在一對一對話裡交辦的：結果本來就在你看得到的對話裡
+	}
+	if len(s.waitingOn(ctx, task.ID)) > 0 {
+		return // 又交給別人了：等那些結果回來整合後再貼
+	}
+	room, err := s.db.GetRoom(ctx, th.RoomID)
+	if err != nil {
+		return
+	}
+	if _, err := s.db.GetRoomMember(ctx, room.ID, task.BotID); err != nil {
+		return // 已經不在這個群組
+	}
+	text := content
+	if failed {
+		text = "（這次沒有完成）" + content
+	}
+	if _, _, err := s.speak(ctx, room, task.BotID, text, roomMeta{TaskID: task.ID, Failed: failed}, 0); err != nil {
+		s.log.Warn("把交辦的結果貼到群組失敗", "room", room.ID, "err", err)
+	}
 }
 
 // deliver 把結果以 result 送回去（LazyBoy deliver）。太長的存成檔案、訊息只放開頭（AA-8）。
@@ -1038,7 +1093,7 @@ func (s *Service) ForgetBot(ctx context.Context, botID string) {
 			continue // 全部停下中：不叫醒任何 Bot
 		}
 		if _, err := s.rt.Start(ctx, runtime.ChatRequest{BotID: sender.ID, ThreadID: thread, Text: text, Source: runtime.SourceBot,
-			Prompt: framed(store.Bot{Name: gone}, Mate{ID: sender.ID, Name: sender.Name}, text, IntentResult, ""), Sender: "system", Kind: "peer",
+			Prompt: framed(store.Bot{Name: gone}, Mate{ID: sender.ID, Name: sender.Name}, text, IntentResult, "", ""), Sender: "system", Kind: "peer",
 			MessageMeta: map[string]any{"peer": PeerEvent{Event: "message_in", PeerID: botID, PeerName: gone, Intent: IntentResult, MessageID: m.ID}},
 			TaskMeta:    raw, LowPriority: true, Queue: true}); err != nil {
 			s.log.Warn("告訴隊友 Bot 已刪除失敗", "to", sender.ID, "err", err)

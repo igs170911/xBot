@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -87,12 +88,15 @@ type Agent struct {
 	AuthRequired bool
 	// NoLoad 時不支援 session/load。
 	NoLoad bool
+	// CanClose 時支援 session/close（sessionCapabilities.close）：收掉的 session 還能用 session/load 接回。
+	CanClose bool
 	// Profile 是這個假 agent 扮演的引擎（New 是 Claude Code）。
 	Profile Profile
 
 	mu       sync.Mutex
 	calls    []Call
 	sessions map[string]bool
+	open     map[string]bool // 開著（還沒 session/close）的 session
 	cancels  map[string]chan struct{}
 	waiting  map[string]chan json.RawMessage // 等 XBot 回覆的請求 id → 回覆
 	nextID   int
@@ -100,6 +104,26 @@ type Agent struct {
 	launches int
 	finish   chan struct{}
 	answers  []json.RawMessage
+}
+
+func (a *Agent) capabilities() map[string]any {
+	c := map[string]any{"loadSession": !a.NoLoad}
+	if a.CanClose {
+		c["sessionCapabilities"] = map[string]any{"close": map[string]any{}}
+	}
+	return c
+}
+
+// Open 是現在開著的 session（開過、還沒 session/close；行程重開後歸零）。
+func (a *Agent) Open() []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	var out []string
+	for id := range a.open {
+		out = append(out, id)
+	}
+	slices.Sort(out)
+	return out
 }
 
 // Finish 讓 PromptBackground 的背景工作做完。
@@ -117,7 +141,7 @@ func New() *Agent { return NewFor("claude-code") }
 
 // NewFor 建立扮演某個引擎的假 agent（Profiles）。
 func NewFor(engine string) *Agent {
-	return &Agent{Profile: Profiles[engine], sessions: map[string]bool{}, cancels: map[string]chan struct{}{}, waiting: map[string]chan json.RawMessage{},
+	return &Agent{Profile: Profiles[engine], sessions: map[string]bool{}, open: map[string]bool{}, cancels: map[string]chan struct{}{}, waiting: map[string]chan json.RawMessage{},
 		finish: make(chan struct{})}
 }
 
@@ -165,6 +189,7 @@ func (a *Agent) Start() *Process {
 	outR, outW := io.Pipe()
 	a.mu.Lock()
 	a.launches++
+	a.open = map[string]bool{} // 新的行程：之前開著的 session 跟著舊行程結束了
 	a.mu.Unlock()
 	pr := &peer{a: a, out: outW}
 	go pr.serve(inR)
@@ -304,7 +329,7 @@ func (p *peer) handle(f frame) {
 	case "initialize":
 		p.result(f.ID, map[string]any{
 			"protocolVersion":   1,
-			"agentCapabilities": map[string]any{"loadSession": !a.NoLoad},
+			"agentCapabilities": a.capabilities(),
 			"agentInfo":         map[string]string{"name": "fake-agent", "version": "0"},
 			"authMethods":       []any{},
 		})
@@ -317,6 +342,7 @@ func (p *peer) handle(f frame) {
 		a.nextSess++
 		id := fmt.Sprintf("sess-%d", a.nextSess)
 		a.sessions[id] = true
+		a.open[id] = true
 		a.mu.Unlock()
 		opts := []map[string]any{{"id": "model", "type": "select", "currentValue": "default",
 			"options": []map[string]string{{"value": "default"}, {"value": "sonnet"}}}}
@@ -343,6 +369,9 @@ func (p *peer) handle(f frame) {
 		_ = json.Unmarshal(f.Params, &params)
 		a.mu.Lock()
 		ok := a.sessions[params.SessionID]
+		if ok {
+			a.open[params.SessionID] = true
+		}
 		a.mu.Unlock()
 		if !ok {
 			p.fail(f.ID, -32002, "Resource not found")
@@ -353,6 +382,19 @@ func (p *peer) handle(f frame) {
 		p.chunk(params.SessionID, "agent_message_chunk", "old answer")
 		p.result(f.ID, nil)
 	case "session/set_mode", "session/set_config_option":
+		p.result(f.ID, map[string]any{})
+	case "session/close":
+		if !a.CanClose {
+			p.fail(f.ID, -32601, "Method not found: "+f.Method)
+			return
+		}
+		var params struct {
+			SessionID string `json:"sessionId"`
+		}
+		_ = json.Unmarshal(f.Params, &params)
+		a.mu.Lock()
+		delete(a.open, params.SessionID)
+		a.mu.Unlock()
 		p.result(f.ID, map[string]any{})
 	default:
 		p.fail(f.ID, -32601, "Method not found: "+f.Method)

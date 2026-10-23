@@ -180,10 +180,10 @@ func TestPeerRepliesSkipTheOwnerFormat(t *testing.T) {
 		t.Fatalf("送回隊友的回答要說不用分段：%s", in)
 	}
 	sender := store.Bot{Name: "Writer"}
-	if s := framed(sender, Mate{}, "好了", IntentResult, ""); !strings.Contains(s, "照回話風格") || strings.Contains(s, "不用像跟使用者聊天") {
+	if s := framed(sender, Mate{}, "好了", IntentResult, "", ""); !strings.Contains(s, "照回話風格") || strings.Contains(s, "不用像跟使用者聊天") {
 		t.Fatalf("結果回來、要回報使用者時照回話風格：%s", s)
 	}
-	if s := framed(sender, Mate{}, "好了", IntentResult, "Boss"); !strings.Contains(s, "不用像跟使用者聊天那樣分段") {
+	if s := framed(sender, Mate{}, "好了", IntentResult, "Boss", ""); !strings.Contains(s, "不用像跟使用者聊天那樣分段") {
 		t.Fatalf("結果要再送回交辦的隊友時不用分段：%s", s)
 	}
 	room := must[store.Room](t)(tm.s.CreateRoom(tm.ctx, []string{chief, writer}, RoomOptions{}))

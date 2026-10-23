@@ -28,6 +28,10 @@ const (
 	// SilentTailMax 是 "[silent]" 後面最多還能多幾個字，仍算「不發言」。
 	// LazyBoy server/collab.py:56 is_silent（len(SILENT) + 40）
 	SilentTailMax = 40
+
+	// ThanksOnlyMax 是「只有道謝、收到」的訊息最多幾個字（不算 @名字）；更長的一律當成有內容。
+	// 這種訊息不叫醒別人、Bot 也不必傳給隊友，免得互相道謝停不下來（2026-10-23）。XBot 新增。
+	ThanksOnlyMax = 40
 )
 
 // 群組（PRD §18、RM-*、LP-3）。
