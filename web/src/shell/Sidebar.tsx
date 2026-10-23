@@ -38,7 +38,7 @@ import { draggingBotStore, openNewBot, setRail } from '../data/ui'
 import { BotListRow, ChiefCard, RoomListRow } from './BotList'
 import { useRowMenu, type MenuBind, type MoreOpener } from './useRowMenu'
 import { useToast } from '../ui/toast-context'
-import { usePauseMenuItem } from './PauseBanner'
+import { useStopAllMenuItem } from './StopAll'
 
 type NavProps = { path: string; onNavigate?: () => void }
 
@@ -178,7 +178,7 @@ function Chip({ to, path, icon, children, aside, onNavigate, tour }: NavProps & 
 }
 
 function Full({ path, onNavigate, onClose }: SidebarProps) {
-  const pauseItem = usePauseMenuItem()
+  const pauseItem = useStopAllMenuItem()
   const { bots, error } = useStore(botsStore)
   const inbox = useStore(inboxStore).items
   const rooms = useStore(roomsStore).rooms
@@ -343,7 +343,7 @@ function Full({ path, onNavigate, onClose }: SidebarProps) {
 
 // 窄版：只有圖示，滑過顯示名字；不常用的頁面在「更多」選單裡。
 function Rail({ path }: SidebarProps) {
-  const pauseItem = usePauseMenuItem()
+  const pauseItem = useStopAllMenuItem()
   const rowMenu = useRowMenu()
   const { bots, activity } = useStore(botsStore)
   const inbox = useStore(inboxStore).items

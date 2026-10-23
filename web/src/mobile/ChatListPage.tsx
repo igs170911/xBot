@@ -13,7 +13,7 @@ import { Icon } from '../ui/Icon'
 import { MenuButton } from '../ui/Menu'
 import { cx } from '../ui/cx'
 import { BotListRow, ChiefCard, RoomListRow } from '../shell/BotList'
-import { usePauseMenuItem } from '../shell/PauseBanner'
+import { useStopAllMenuItem } from '../shell/StopAll'
 import { useRowMenu, type MenuBind, type MoreOpener } from '../shell/useRowMenu'
 import { TabHeader } from './Phone'
 import { useOnline } from './pwa'
@@ -53,7 +53,7 @@ export function ChatListPage() {
   const rooms = useStore(roomsStore).rooms
   const teams = useStore(teamsStore).teams
   const last = useLastThreads(bots)
-  const pauseItem = usePauseMenuItem()
+  const pauseItem = useStopAllMenuItem()
   const online = useOnline()
   const [q, setQ] = useState<string | null>(null)
   const query = (q ?? '').trim()

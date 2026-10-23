@@ -239,15 +239,9 @@ type AssignmentOut struct {
 	Note         string `json:"note"`
 }
 
-// PauseAllIn 是 xbot.collab.pause_all 的輸入。
-type PauseAllIn struct {
-	Paused bool `json:"paused" desc:"true＝全部停下並暫停 Bot 之間的往來；false＝繼續"`
-}
-
-// PauseAllOut 是全部停下的狀態。
-type PauseAllOut struct {
-	Paused  bool `json:"paused"`
-	Stopped int  `json:"stopped,omitempty" desc:"這次停掉幾件工作"`
+// StopAllOut 是 xbot.collab.stop_all 的輸出。
+type StopAllOut struct {
+	Stopped int `json:"stopped" desc:"這次停掉幾件工作"`
 }
 
 // StopChainIn 是 xbot.collab.stop_chain 的輸入。
@@ -458,32 +452,22 @@ func Register(reg *ops.Registry, s *Service) {
 			return out, nil
 		},
 	})
-	ops.Register(reg, ops.Op[PauseAllIn, PauseAllOut]{
-		Name: "xbot.collab.pause_all", Summary: "全部停下：停掉所有 Bot 的工作，並暫停 Bot 之間的往來（paused=false 恢復）",
-		Description: "暫停時 Bot 不能交辦隊友，隊友的結果、群組接力都不會再叫醒任何 Bot；你自己對 Bot 說話不受影響。只有你本人能用。",
+	ops.Register(reg, ops.Op[struct{}, StopAllOut]{
+		Name: "xbot.collab.stop_all", Summary: "全部停下（緊急停止）：馬上停掉所有 Bot 正在做與排隊的工作",
+		Description: "停完就照常，不用恢復。停的那幾秒 Bot 之間的交辦、交回的結果、群組接力都不會再叫醒任何 Bot；之後你或 Bot 再交代的事照常做。只有你本人能用。",
 		Scope:       ops.ScopeOperate, Risk: ops.RiskSafe,
-		Handle: func(ctx context.Context, call *ops.Call, in PauseAllIn) (PauseAllOut, error) {
+		Handle: func(ctx context.Context, call *ops.Call, _ struct{}) (StopAllOut, error) {
 			if err := ready(s); err != nil {
-				return PauseAllOut{}, err
+				return StopAllOut{}, err
 			}
 			if call.Identity.Kind != ops.KindOwner {
-				return PauseAllOut{}, ops.Forbidden("只有你本人能按全部停下或繼續")
+				return StopAllOut{}, ops.Forbidden("只有你本人能按全部停下")
 			}
 			if call.DryRun {
-				return PauseAllOut{Paused: in.Paused}, nil
+				return StopAllOut{}, nil
 			}
-			n, err := s.PauseAll(ctx, in.Paused)
-			return PauseAllOut{Paused: in.Paused, Stopped: n}, err
-		},
-	})
-	ops.Register(reg, ops.Op[struct{}, PauseAllOut]{
-		Name: "xbot.collab.pause_state", Summary: "Bot 之間的往來是不是暫停中（全部停下）",
-		Scope: ops.ScopeRead, Risk: ops.RiskSafe,
-		Handle: func(ctx context.Context, _ *ops.Call, _ struct{}) (PauseAllOut, error) {
-			if err := ready(s); err != nil {
-				return PauseAllOut{}, err
-			}
-			return PauseAllOut{Paused: s.AllPaused(ctx)}, nil
+			n, err := s.StopAll(ctx)
+			return StopAllOut{Stopped: n}, err
 		},
 	})
 	ops.Register(reg, ops.Op[StopChainIn, StopChainOut]{

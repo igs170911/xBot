@@ -37,7 +37,7 @@ import { ThreadMenu, type Thread } from './ThreadMenu'
 import { DeleteThreadDialog } from './DeleteThread'
 import { ThreadDrawer } from './ThreadDrawer'
 import { TakeoverBar } from './TakeoverBar'
-import { PauseBanner, usePauseMenuItem } from '../shell/PauseBanner'
+import { useStopAllMenuItem } from '../shell/StopAll'
 import { WorkSteps } from './WorkSteps'
 import { FirstHome, FirstTasks, useFirstHome } from '../onboard/FirstHome'
 import { dismissCard } from '../onboard/state'
@@ -251,7 +251,7 @@ function Header({
   onAutoRead?: () => void
   onDelete: (t: Pick<Thread, 'id' | 'title'>) => void
 }) {
-  const pauseItem = usePauseMenuItem()
+  const pauseItem = useStopAllMenuItem()
   const st = statusOf(bot, act, busyElsewhere)
   const { lesson } = useLesson(bot.id)
   const model = useModelLabel(bot, models)
@@ -692,7 +692,6 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
         <div className="mx-auto flex max-w-[780px] flex-col gap-2">
           {noModel && <NoModelCard name={name} onSetup={() => setModelDialog(true)} />}
           <TakeoverBar botId={botId} name={name} queued={act?.state === 'queued'} />
-          {phone && <PauseBanner place="inline" />}
           {notice && <NoticeRow notice={notice} onStop={() => void stop(false)} onClose={() => setNotice(null)} />}
           {empty && firstHome && <FirstTasks onPick={(t) => composer.current?.fill(t)} />}
           <div data-tour="composer" className="rounded-[26px]">

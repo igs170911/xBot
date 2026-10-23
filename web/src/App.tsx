@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react'
 import { Construction } from 'lucide-react'
 import { authStatus } from './api/generated'
 import { navigate, usePath } from './router'
-import { startPause } from './data/pause'
 import { useNarrow } from './files/useNarrow'
 import { SettingsModal } from './shell/SettingsModal'
 import { AppShell } from './shell/AppShell'
@@ -151,7 +150,6 @@ function Main() {
     startEvents()
     startBots()
     startInbox()
-    startPause()
     startChat()
     startRooms()
     startTeams()

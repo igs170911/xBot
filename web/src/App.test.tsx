@@ -8,7 +8,6 @@ import { setRail } from './data/ui'
 import { resetInbox } from './data/inbox'
 import { resetChat } from './chat/chatStore'
 import { dispatchEvent } from './data/events'
-import { setPauseAll } from './data/pause'
 
 const BOT = {
   id: 'b1',
@@ -266,40 +265,15 @@ it('/dev/components 列出元件與頭像矩陣（7 列 × 10 形狀）', async 
   expect(table.querySelectorAll('[data-shape]')).toHaveLength(70)
 })
 
-it('全部停下中：最上方有提示，按「繼續」恢復', async () => {
-  let paused = true
-  api.ops['collab.pause_state'] = () => ({ paused })
-  api.ops['collab.pause_all'] = (input) => {
-    paused = !!input.paused
-    return { paused }
-  }
+it('全部停下是緊急停止：按下去就停掉所有工作、說停了幾件，沒有「繼續」也沒有停下中的提示', async () => {
+  api.ops['collab.stop_all'] = () => ({ stopped: 3 })
   render(<App />)
-  const banner = await screen.findByTestId('pause-banner')
-  fireEvent.click(within(banner).getByRole('button', { name: '繼續' }))
-  await waitFor(() => expect(api.calls.find((c) => c.path === 'collab.pause_all')?.input).toEqual({ paused: false }))
-  await waitFor(() => expect(screen.queryByTestId('pause-banner')).toBeNull())
-})
-
-it('全部停下中：按 ✕ 只收起提示，Bot 還是停著；再按一次全部停下又出現', async () => {
-  window.localStorage.removeItem('xbot.pauseBannerHidden')
-  let paused = true
-  api.ops['collab.pause_state'] = () => ({ paused })
-  api.ops['collab.pause_all'] = (input) => {
-    paused = !!input.paused
-    return { paused, stopped: 0 }
-  }
-  render(<App />)
-  const banner = await screen.findByTestId('pause-banner')
-  fireEvent.click(within(banner).getByRole('button', { name: '收起提示（Bot 還是停著）' }))
-  await waitFor(() => expect(screen.queryByTestId('pause-banner')).toBeNull())
-  expect(api.calls.some((c) => c.path === 'collab.pause_all')).toBe(false)
-  expect(window.localStorage.getItem('xbot.pauseBannerHidden')).toBe('1')
-  // 收起後在「⋯」選單還找得到「繼續」
+  fireEvent.click((await screen.findAllByRole('button', { name: /更多|設定與更多/ }))[0])
+  fireEvent.click(await screen.findByRole('menuitem', { name: '全部停下（所有 Bot）' }))
+  await waitFor(() => expect(api.calls.some((c) => c.path === 'collab.stop_all')).toBe(true))
+  expect(await screen.findByText('全部停下了（停掉 3 件工作）')).toBeInTheDocument()
+  expect(screen.queryByTestId('pause-banner')).toBeNull()
   fireEvent.click(screen.getAllByRole('button', { name: /更多|設定與更多/ })[0])
-  expect(await screen.findByRole('menuitem', { name: '繼續（恢復 Bot 之間的往來）' })).toBeInTheDocument()
-  fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
-  await act(async () => {
-    await setPauseAll(true)
-  })
-  expect(await screen.findByTestId('pause-banner')).toBeInTheDocument()
+  expect(await screen.findByRole('menuitem', { name: '全部停下（所有 Bot）' })).toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: /繼續/ })).toBeNull()
 })

@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"xbot/internal/events"
@@ -53,6 +54,9 @@ type Service struct {
 	db  *store.DB
 	rt  Runtime
 	log *slog.Logger
+
+	stopping atomic.Int32  // 正在全部停下（StopAll）
+	settle   time.Duration // 全部停下時每次掃完等多久再掃（limits.StopAllSettle；測試改短）
 }
 
 // New 建立協作層，並接上 runtime 的 Hooks（組群組 prompt、工作結束後把回覆送回去、停止連鎖）。
@@ -66,7 +70,7 @@ func New(o Options) *Service {
 	if o.ChainBudget <= 0 {
 		o.ChainBudget = limits.ChainBudgetTokens
 	}
-	s := &Service{o: o, db: o.DB, rt: o.Runtime, log: o.Logger}
+	s := &Service{o: o, db: o.DB, rt: o.Runtime, log: o.Logger, settle: limits.StopAllSettle}
 	if s.rt != nil {
 		s.rt.SetHooks(runtime.Hooks{Prompt: s.prompt, Finished: s.finished, Stopped: s.stopped, Silent: s.silent, ContinueMeta: s.continueMeta})
 	}
@@ -419,12 +423,12 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	if err != nil {
 		return SendResult{}, err
 	}
-	if s.AllPaused(ctx) {
+	if s.halted() {
 		if o.Relay || o.intent == IntentResult {
-			s.log.Info("Bot 之間的往來暫停中，結果不送回（不叫醒交辦的 Bot）", "from", senderID, "to", ref)
+			s.log.Info("正在全部停下，結果不送回（不叫醒交辦的 Bot）", "from", senderID, "to", ref)
 			return SendResult{}, nil
 		}
-		return SendResult{}, errPaused()
+		return SendResult{}, errHalted()
 	}
 	text = strings.TrimSpace(text)
 	if text == "" {
@@ -1089,8 +1093,8 @@ func (s *Service) ForgetBot(ctx context.Context, botID string) {
 			}
 		}
 		raw, _ := json.Marshal(tm)
-		if s.AllPaused(ctx) {
-			continue // 全部停下中：不叫醒任何 Bot
+		if s.halted() {
+			continue // 正在全部停下：不叫醒任何 Bot
 		}
 		if _, err := s.rt.Start(ctx, runtime.ChatRequest{BotID: sender.ID, ThreadID: thread, Text: text, Source: runtime.SourceBot,
 			Prompt: framed(store.Bot{Name: gone}, Mate{ID: sender.ID, Name: sender.Name}, text, IntentResult, "", ""), Sender: "system", Kind: "peer",

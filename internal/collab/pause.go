@@ -2,58 +2,63 @@ package collab
 
 import (
 	"context"
+	"time"
 
+	"xbot/internal/limits"
 	"xbot/internal/store"
 )
 
-// 總控「全部停下」（使用者決定 2026-10-19：「互相回話之間要有總控可以停止」）：
-// 停掉所有 Bot 正在做與排隊的工作，並暫停 Bot 之間的往來——暫停時不能交辦隊友，
-// 隊友交回的結果、群組接力、停下通知都不再叫醒任何 Bot（否則停下一個又會叫醒另一個）。
-// 你自己對 Bot 說的話不受影響。按「繼續」恢復。存在 setting（collab.paused），重開服務也還在。
+// 總控「全部停下」是緊急停止按鈕（使用者 2026-10-19：「互相回話之間要有總控可以停止」；2026-10-23：「全部停止就直接停止，
+// 不需要用恢復，這像是一個緊急停止按鈕」）：馬上停掉所有 Bot 正在做與排隊的工作，停完就照常，不用按繼續、也不記在任何地方。
+// 停的那段時間（加上 limits.StopAllSettle）Bot 不能交辦隊友，隊友交回的結果、群組接力都不叫醒任何 Bot——
+// 不然剛好做完的那一輪又會叫醒另一個。你自己對 Bot 說的話不受影響。
 
-// PausedKey 是暫停狀態在 setting 表的 key。
-const PausedKey = "collab.paused"
-
-// AllPaused 回答 Bot 之間的往來是不是暫停中。
-func (s *Service) AllPaused(ctx context.Context) bool {
-	var p bool
-	if _, err := s.db.GetSettingInto(ctx, PausedKey, &p); err != nil {
-		return false
-	}
-	return p
-}
-
-// PauseAll 暫停或恢復 Bot 之間的往來；暫停時順便停掉所有 Bot 正在做與排隊的工作，回傳停了幾件。
-func (s *Service) PauseAll(ctx context.Context, paused bool) (int, error) {
-	if err := s.db.SetSetting(ctx, PausedKey, paused); err != nil {
-		return 0, err
-	}
-	if !paused {
-		return 0, nil
-	}
-	bots, err := s.db.ListBots(ctx, true)
-	if err != nil {
-		return 0, err
-	}
-	n := 0
-	for _, b := range bots {
-		tasks, err := s.db.ListTasks(ctx, b.ID, true)
+// StopAll 停掉所有 Bot 正在做與排隊的工作，回傳停了幾件。
+func (s *Service) StopAll(ctx context.Context) (int, error) {
+	s.stopping.Add(1)
+	defer s.stopping.Add(-1)
+	stopped := map[string]bool{}
+	sweep := func() (int, error) {
+		bots, err := s.db.ListBots(ctx, true)
 		if err != nil {
-			return n, err
+			return 0, err
 		}
-		for _, t := range tasks {
-			if t.State == store.TaskDone {
-				continue
+		n := 0
+		for _, b := range bots {
+			tasks, err := s.db.ListTasks(ctx, b.ID, true)
+			if err != nil {
+				return n, err
 			}
-			if ok, err := s.rt.StopTask(ctx, t.ID); err == nil && ok {
-				n++
+			for _, t := range tasks {
+				if t.State == store.TaskDone || stopped[t.ID] {
+					continue
+				}
+				if ok, err := s.rt.StopTask(ctx, t.ID); err == nil && ok {
+					stopped[t.ID] = true
+					n++
+				}
 			}
 		}
+		return n, nil
 	}
-	return n, nil
+	// 停的時候剛好做完的一輪會晚一點交回結果、排出新的工作：等一下再掃，直到沒有新的（最多 StopAllRounds 次）。
+	for range limits.StopAllRounds {
+		n, err := sweep()
+		if err != nil {
+			return len(stopped), err
+		}
+		if n == 0 && len(stopped) > 0 {
+			break
+		}
+		time.Sleep(s.settle)
+	}
+	return len(stopped), nil
 }
 
-// errPaused 是暫停中 Bot 想交辦隊友時收到的錯誤。
-func errPaused() error {
-	return &Error{Code: CodeLimit, Msg: "使用者按了「全部停下」，Bot 之間的往來暫停中。先停下來，把目前結果回報給使用者，等使用者說繼續。"}
+// halted 回答是不是正在全部停下：這段時間不叫醒任何 Bot。
+func (s *Service) halted() bool { return s.stopping.Load() > 0 }
+
+// errHalted 是正在全部停下時 Bot 想交辦隊友收到的錯誤。
+func errHalted() error {
+	return &Error{Code: CodeLimit, Msg: "使用者剛按了「全部停下」，所有工作都停了。先停下來，等使用者再交代。"}
 }

@@ -6,6 +6,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"xbot/internal/limits"
 	"xbot/internal/runtime"
@@ -281,36 +282,45 @@ func TestChainBudgetUnlimitedByDefault(t *testing.T) {
 	}
 }
 
-// 全部停下：停掉工作、暫停 Bot 之間的往來（交辦被拒、結果不叫醒人）；繼續之後恢復。
-func TestPauseAllStopsAndBlocksBotTraffic(t *testing.T) {
+// 全部停下是緊急停止（2026-10-23「不需要用恢復」）：停掉所有正在做與排隊的工作；停的時候交辦被拒、結果與群組接力
+// 不叫醒人；停完就照常，不用按繼續，也不記在任何地方。
+func TestStopAllIsAnEmergencyStop(t *testing.T) {
 	tm := setup(t)
-	chief := tm.bots["Chief"]
-	tm.running(chief, nil)
+	tm.s.settle = 10 * time.Millisecond
+	chief, writer := tm.bots["Chief"], tm.bots["Writer"]
+	running := tm.running(chief, nil)
 	must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Writer", "做第一段", "request", SendOptions{}))
-	if _, err := tm.s.PauseAll(tm.ctx, true); err != nil {
-		t.Fatal(err)
+	n, err := tm.s.StopAll(tm.ctx)
+	if err != nil || n != 2 {
+		t.Fatalf("要停掉 Chief 正在做的和 Writer 排隊的：%d %v", n, err)
 	}
-	if !tm.s.AllPaused(tm.ctx) {
-		t.Fatal("要記住暫停中")
+	if st := tm.task(running).State; st != store.TaskStopping {
+		t.Fatalf("正在做的要停：%s", st)
 	}
+	if q := tm.queued(writer); len(q) != 0 {
+		t.Fatalf("排隊的要停：%+v", q)
+	}
+
+	// 停的那段時間：交辦被拒、交回的結果安靜地不送、群組不接力。
+	tm.s.stopping.Add(1)
 	if _, err := tm.s.Send(tm.ctx, chief, "Writer", "再做一段", "request", SendOptions{}); err == nil || !strings.Contains(err.Error(), "全部停下") {
-		t.Fatalf("暫停中不能交辦：%v", err)
+		t.Fatalf("停的時候不能交辦：%v", err)
 	}
-	writer := tm.bots["Writer"]
 	before, _ := tm.db.ListTasks(tm.ctx, chief, true)
 	if _, err := tm.s.Send(tm.ctx, writer, "Chief", "做好了", "", SendOptions{Relay: true, intent: IntentResult}); err != nil {
 		t.Fatalf("結果安靜地不送：%v", err)
 	}
-	after, _ := tm.db.ListTasks(tm.ctx, chief, true)
-	if len(after) != len(before) {
-		t.Fatalf("暫停中結果不能叫醒交辦的 Bot：%d → %d", len(before), len(after))
+	if after, _ := tm.db.ListTasks(tm.ctx, chief, true); len(after) != len(before) {
+		t.Fatalf("停的時候結果不能叫醒交辦的 Bot：%d → %d", len(before), len(after))
 	}
-	if _, err := tm.s.PauseAll(tm.ctx, false); err != nil {
-		t.Fatal(err)
+	tm.s.stopping.Add(-1)
+
+	// 停完就照常。
+	if tm.s.halted() {
+		t.Fatal("停完不留在停下的狀態")
 	}
-	if _, err := tm.s.Send(tm.ctx, chief, "Writer", "繼續做", "request", SendOptions{}); err != nil {
-		t.Fatalf("繼續之後可以交辦：%v", err)
-	}
+	tm.running(chief, nil)
+	must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Writer", "繼續做", "request", SendOptions{}))
 }
 
 // 2026-10-20：新建的 Bot 回「我是水哥哥」——名冊直接貼了水哥哥的人設「你是水哥哥，使用者的幕僚長…」。

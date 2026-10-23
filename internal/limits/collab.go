@@ -29,6 +29,11 @@ const (
 	// LazyBoy server/collab.py:56 is_silent（len(SILENT) + 40）
 	SilentTailMax = 40
 
+	// StopAllRounds、StopAllSettle：「全部停下」掃幾次、每次之間等多久。停的時候剛好做完的一輪會晚一點交回結果、
+	// 排出新的工作，等一下再掃到沒有新的為止（這段時間不叫醒任何 Bot）。XBot 新增（2026-10-23）。
+	StopAllRounds = 3
+	StopAllSettle = 2 * time.Second
+
 	// ThanksOnlyMax 是「只有道謝、收到」的訊息最多幾個字（不算 @名字）；更長的一律當成有內容。
 	// 這種訊息不叫醒別人、Bot 也不必傳給隊友，免得互相道謝停不下來（2026-10-23）。XBot 新增。
 	ThanksOnlyMax = 40

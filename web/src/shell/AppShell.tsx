@@ -11,7 +11,6 @@ import { backFallback, isChatPath, isTabPath, ownsPhoneHeader, usePhone } from '
 import { Sidebar } from './Sidebar'
 import { ResizeHandle } from './ResizeHandle'
 import { SIDEBAR, sidebarWidthStore } from './panes'
-import { PauseBanner } from './PauseBanner'
 import { cx } from '../ui/cx'
 
 /** 從左邊緣幾 px 內開始拖才算（避開頁面本身的左右滑動）。 */
@@ -96,13 +95,10 @@ export function AppShell({ path, title, children }: { path: string; title: strin
       </div>
 
       <div ref={page} data-phone-page="1" className={tab ? 'flex min-w-0 flex-1 flex-col bg-app max-md:pb-[calc(57px+env(safe-area-inset-bottom))]' : 'flex min-w-0 flex-1 flex-col bg-app'}>
-        {/* 全部停下中的提示：電腦版在最上面；手機的對話頁放在輸入框上面，其他頁浮在底部（分頁列上面） */}
-        {!phone && <PauseBanner />}
         {phone && !ownsPhoneHeader(path) && <PhoneBar title={title} back={backFallback(path)} heading={false} />}
         {children}
       </div>
       {phone && tab && <TabBar path={path} />}
-      {phone && !isChatPath(path) && <PauseBanner place="dock" aboveTabs={tab} />}
       {/* 狀態列（時間、電量）後面的底色：App 蓋滿整個螢幕（black-translucent），捲動的內容不會跑到時間下面 */}
       {phone && <div aria-hidden="true" data-status-bar="1" className="fixed inset-x-0 top-0 z-[35] h-[env(safe-area-inset-top)] bg-app" />}
 
