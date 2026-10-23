@@ -53,7 +53,7 @@ func TestH1MigrationDedupes(t *testing.T) {
 	}
 
 	// Insert duplicate open cards for the same room
-	roomRef := "room_test123"
+	roomRef := "auto_stop:room_test123"
 	now := time.Now().UnixMilli()
 	_, err = rawDB.ExecContext(ctx, `INSERT INTO inbox_item
 		(id, kind, ref, title, body, payload, status, resolution, resolved_by, resolved_at, read_at, expires_at, created_at, updated_at)
@@ -110,5 +110,29 @@ func TestH1MigrationDedupes(t *testing.T) {
 	}
 	if count != 1 {
 		t.Errorf("Expected 1 dismissed card, got %d", count)
+	}
+}
+
+// 訂閱引擎的核准卡 ref 是引擎的 request id，每個 Bot 都從 0 開始數：
+// 兩個 Bot 同時問、ref 一樣，兩張都要留著，之後也還開得出新卡。
+func TestMigration0030KeepsSameRefApprovals(t *testing.T) {
+	ctx := context.Background()
+	db, err := Open(ctx, filepath.Join(t.TempDir(), FileName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	for _, name := range []string{"甲", "乙", "丙"} {
+		bot := newBot(t, db, name)
+		if _, err := db.CreateInboxItem(ctx, InboxItem{Kind: "approval", BotID: bot.ID, Ref: "1", Title: name}); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
+	var count int
+	if err := db.r.QueryRowContext(ctx, `SELECT COUNT(*) FROM inbox_item WHERE kind = 'approval' AND ref = '1' AND status = 'open'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 3 {
+		t.Errorf("open approval cards with ref 1 = %d, want 3", count)
 	}
 }
