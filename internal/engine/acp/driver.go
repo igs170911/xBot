@@ -540,7 +540,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	ac.threads[o.ThreadID] = s
 	ac.mu.Unlock()
 	d.configure(ctx, s, res, o)
-	d.evictOldSessions(ac) // 2026-10-22：檢查是否超過 session 上限，淘汰舊的
+	// D1: Eviction is handled by semaphore blocking Start() when cap is reached
 	return s, nil
 }
 
