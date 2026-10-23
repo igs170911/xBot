@@ -299,3 +299,49 @@ func TestGroupMentionDoesNotWakeSomeoneAlreadyAsked(t *testing.T) {
 		t.Fatalf("沒有交辦過的 Writer 照常叫醒：%+v", q)
 	}
 }
+
+// 主管這一輪先用 post_to_group 貼了分工，最後回答又寫一次差不多的話：只貼一次（2026-10-23 實測同一段話相隔 4 秒貼兩次）。
+// 最後回答有新內容時照貼。
+func TestToolPostIsNotRepeatedByTheFinalAnswer(t *testing.T) {
+	tm := setup(t)
+	chief, writer := tm.bots["Chief"], tm.bots["Writer"]
+	room := must[store.Room](t)(tm.s.CreateRoom(tm.ctx, []string{chief, writer}, RoomOptions{Name: "發表會"}))
+	must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, "@Chief 規劃發表會", ""))
+	turn := tm.queued(chief)[0]
+	tm.start(turn)
+	must[PostGroupResult](t)(tm.s.PostGroup(tm.ctx, chief, room.ID, "分工好了：@Writer 先寫新聞稿，場地我來訂，週五前給你們看。"))
+	before := len(tm.roomLog(room.ID))
+	tm.finish(turn.ID, runtime.VerdictAnswer, "分工好了，@Writer 先寫新聞稿，場地我來訂，週五前給大家看。")
+	if got := len(tm.roomLog(room.ID)); got != before {
+		t.Fatalf("差不多的話不再貼：%d → %d", before, got)
+	}
+	must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, "@Chief 場地呢", ""))
+	turn = tm.queued(chief)[0]
+	tm.start(turn)
+	must[PostGroupResult](t)(tm.s.PostGroup(tm.ctx, chief, room.ID, "我去查場地，稍等。"))
+	before = len(tm.roomLog(room.ID))
+	tm.finish(turn.ID, runtime.VerdictAnswer, "場地訂好了：信義區 A 館 11/5 下午，可坐 120 人，訂金 5,000 已付。")
+	if got := len(tm.roomLog(room.ID)); got != before+1 {
+		t.Fatalf("有新內容照貼：%d → %d", before, got)
+	}
+}
+
+// 群組裡其他 Bot 提到自己電腦裡的檔案：輪到我讀的時候複製到我的電腦、路徑換成我這邊的（同傳話）。
+func TestGroupPostsCarryFilesToTheReader(t *testing.T) {
+	tm := setup(t)
+	chief, writer := tm.bots["Chief"], tm.bots["Writer"]
+	room := must[store.Room](t)(tm.s.CreateRoom(tm.ctx, []string{chief, writer}, RoomOptions{Name: "發表會"}))
+	tm.write(writer, "drafts/press.md", "新聞稿第一版")
+	must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, "@Writer 寫新聞稿", ""))
+	w := tm.queued(writer)[0]
+	tm.start(w)
+	tm.finish(w.ID, runtime.VerdictAnswer, "@Chief 新聞稿好了：/workspace/drafts/press.md")
+	c := tm.queued(chief)[0]
+	p := tm.start(c)
+	if !strings.Contains(p, "/workspace/from/Writer/drafts/press.md") || strings.Contains(p, "好了：/workspace/drafts/press.md") {
+		t.Fatalf("路徑要換成我這邊的：%s", p)
+	}
+	if got := tm.read(chief, "from/Writer/drafts/press.md"); got != "新聞稿第一版" {
+		t.Fatalf("檔案要複製到我的電腦：%q", got)
+	}
+}

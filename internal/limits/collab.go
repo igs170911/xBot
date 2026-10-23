@@ -54,6 +54,10 @@ const (
 	// LazyBoy server/collab.py:468 room_prompt（len(transcript) - 20）
 	RoomBacklog = 20
 
+	// RoomRepeatSimilar：這一輪已經用 post_to_group 貼過的話，和最後回答兩個字一組的重疊比例到這麼多就算同一段，最後回答不再貼。
+	// XBot 新增（2026-10-23：同一段話相隔 4 秒貼兩次）。
+	RoomRepeatSimilar = 0.6
+
 	// RoomNameMax 是群組名稱長度。LazyBoy server/collab.py:379 create_room（plain(name, 60)）
 	RoomNameMax = 60
 

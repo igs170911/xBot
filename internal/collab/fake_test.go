@@ -304,12 +304,6 @@ func peerOf(m store.Message) PeerEvent {
 	return meta.Peer
 }
 
-func roomMetaOf(m store.Message) roomMeta {
-	var rm roomMeta
-	_ = json.Unmarshal(m.Meta, &rm)
-	return rm
-}
-
 func must[T any](t *testing.T) func(T, error) T {
 	return func(v T, err error) T {
 		t.Helper()
