@@ -112,33 +112,34 @@ func (d *Driver) idleReaper() {
 	}
 }
 
-// reapIdleSessions closes sessions that have been idle for too long (B2, 2026-10-22).
+// reapIdleSessions closes sessions that have been idle for too long.
+// Round 11 fix: Snapshot all sessions under d.mu, release lock, then check/close.
 func (d *Driver) reapIdleSessions() {
-	d.mu.Lock()
-	conns := make([]*agentConn, 0, len(d.bots))
-	for _, ac := range d.bots {
-		conns = append(conns, ac)
-	}
-	d.mu.Unlock()
-
 	now := time.Now()
-	for _, ac := range conns {
+	
+	// Snapshot all sessions under lock
+	d.mu.Lock()
+	var allSessions []*session
+	for _, ac := range d.bots {
 		ac.mu.Lock()
-		var toClose []*session
 		for _, s := range ac.sessions {
-			s.mu.Lock()
-			// C2 (2026-10-22): Never reap a session with an in-flight turn.
-			// Check both !running (no active turn) AND that it's been idle long enough.
-			idle := !s.running && now.Sub(s.lastUsed) > limits.ACPSessionIdleTimeout
-			s.mu.Unlock()
-			if idle {
-				toClose = append(toClose, s)
-			}
+			allSessions = append(allSessions, s)
 		}
 		ac.mu.Unlock()
-
-		for _, s := range toClose {
-			d.log.Info("Closing idle session", "bot", ac.botID, "session", s.id, "idle_duration", now.Sub(s.lastUsed).Round(time.Second))
+	}
+	d.mu.Unlock()
+	
+	// Check and close idle sessions WITHOUT holding any locks
+	for _, s := range allSessions {
+		s.mu.Lock()
+		idle := !s.running && now.Sub(s.lastUsed) > limits.ACPSessionIdleTimeout
+		botID := s.botID
+		sessionID := s.id
+		lastUsed := s.lastUsed
+		s.mu.Unlock()
+		
+		if idle {
+			d.log.Info("Closing idle session", "bot", botID, "session", sessionID, "idle_duration", now.Sub(lastUsed).Round(time.Second))
 			_ = d.CloseSession(s)
 		}
 	}
@@ -362,11 +363,14 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 		cancel()
 		return s, nil
 	}
+	// Get sem reference while holding lock, then release
+	sem := ac.sem
+	ac.mu.Unlock()
 
 	// Round 10 fix + C4: Use semaphore channel for cap enforcement
-	// D1: Acquire semaphore token (1 per session)
+	// D1: Acquire semaphore token (1 per session) - NO LOCK HELD
 	select {
-	case <-ac.sem:
+	case <-sem:
 		// Got a token (slot freed or initially available)
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -375,7 +379,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	// D1: Always spawn a new agent process for this session (outside mutex)
 	p, err := d.launch(ctx, o.BotID, ac.mode)
 	if err != nil {
-		ac.sem <- struct{}{} // Release token on spawn failure
+		sem <- struct{}{} // Release token on spawn failure
 		return nil, err
 	}
 
@@ -414,7 +418,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	})
 	if err != nil {
 		c.close()
-		ac.sem <- struct{}{} // Release token on init failure
+		sem <- struct{}{} // Release token on init failure
 		if t, ok := p.(StderrTail); ok && authFailRe.MatchString(t.StderrTail()) {
 			return nil, fmt.Errorf("%s 沒有啟動：%s 還沒登入或登入已過期", d.o.Agent.Label, d.o.Agent.Label)
 		}
@@ -429,7 +433,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	}
 	if err := json.Unmarshal(raw, &init); err != nil || init.ProtocolVersion != ProtocolVersion {
 		c.close()
-		ac.sem <- struct{}{} // Release token
+		sem <- struct{}{} // Release token
 		return nil, fmt.Errorf("%s protocol version mismatch", d.o.Agent.Label)
 	}
 
@@ -480,7 +484,7 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 			id, loaded = o.Resume, true
 			_ = json.Unmarshal(raw, &res)
 		case errors.Is(err, engine.ErrDisconnected):
-			ac.sem <- struct{}{} // Release semaphore
+			sem <- struct{}{} // Release semaphore
 			return nil, err
 		default:
 			d.log.Info("接不回之前的 session，開新的", "bot", o.BotID, "session", o.Resume, "err", err)
@@ -489,18 +493,18 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	if id == "" {
 		raw, err := g.c.call(sctx, "session/new", withPrompt(map[string]any{"cwd": Workspace, "title": o.Title, "mcpServers": mcp}))
 		if err != nil {
-			ac.sem <- struct{}{} // Release semaphore on error
+			sem <- struct{}{} // Release semaphore on error
 			return nil, d.explain("無法開始對話", err)
 		}
 		if err := json.Unmarshal(raw, &res); err != nil || res.SessionID == "" {
-			ac.sem <- struct{}{} // Release semaphore
+			sem <- struct{}{} // Release semaphore
 			return nil, fmt.Errorf("開始對話的回覆不完整：%s", truncate(string(raw), 200))
 		}
 		id = res.SessionID
 	}
 	s := &session{
 		botID: o.BotID, gen: g, id: id, threadID: o.ThreadID, mode: o.Mode,
-		sem:   ac.sem, // D1: Reference to semaphore for release on close
+		sem:   sem, // D1: Reference to semaphore for release on close
 		tools: map[string]*toolState{}, bg: map[string]string{},
 		shown: map[string]bool{}, dropped: map[string]bool{}, q: newQueue(), lastUsed: time.Now(),
 	}
