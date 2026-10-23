@@ -96,12 +96,25 @@ def answer_cards(ids, t0, answered):
         answered[cid] = kind
 
 
+def answer_in_room(team, t0, answered):
+    """主管在群組裡問你自有品牌還是帶貨（沒開提問卡）：過 ANSWER_AFTER 秒在群組照 ANSWER 回一次。"""
+    if answered.get("room"):
+        return
+    with db() as c:
+        asked = c.execute("select created_at from message where scope='room' and scope_id=? and sender=? and created_at>=? and content like '%自有品牌%' order by seq limit 1",
+                          (team["room_id"], "bot:" + team["lead_id"], t0)).fetchone()
+    if asked and time.time() * 1000 - asked[0] >= ANSWER_AFTER * 1000:
+        x("rooms", "post", "--json", json.dumps({"room_id": team["room_id"], "text": ANSWER}, ensure_ascii=False))
+        answered["room"] = True
+
+
 def observe(team, t0, limit_s):
     ids = [team["lead_id"], *team["member_ids"]]
     quiet = 0
     answered = {}
     while time.time() - t0 / 1000 < limit_s:
         answer_cards(ids, t0, answered)
+        answer_in_room(team, t0, answered)
         quiet = quiet + 1 if busy(ids) == 0 else 0
         if quiet >= 6:  # 連續 30 秒沒有人在做事、也沒有排隊
             return "settled"
