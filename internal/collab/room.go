@@ -918,15 +918,43 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	}
 
 	// E6: If replying to owner question/@mention with substantive content, skip judge and always post
-	// Substantive = not acknowledgement AND not agreement filler
-	// Agreement filler = contains agreement words (同意/+1/贊同) OR lacks new information
+	// E6b: Strip leading agreement/ack phrases, then check if remainder has new information
 	skipJudge := false
-	hasAgreementWords := strings.Contains(content, "同意") || strings.Contains(content, "贊同") ||
-		strings.Contains(content, "贊成") || strings.Contains(content, "+1") ||
-		strings.Contains(content, "好的")
-	isAgreementFiller := hasAgreementWords || !HasNewInformation(content)
-	if isReplyToOwnerQuestion && !IsAcknowledgement(content) && !isAgreementFiller {
-		skipJudge = true
+	if isReplyToOwnerQuestion && !IsAcknowledgement(content) {
+		// First check for pure agreement (no substantive content)
+		trimmed := strings.TrimSpace(content)
+		pureAgreement := trimmed == "同意" || trimmed == "贊同" || trimmed == "贊成" || 
+			trimmed == "+1" || trimmed == "我同意" || trimmed == "我也同意" ||
+			trimmed == "好的" || trimmed == "了解" || trimmed == "明白" ||
+			trimmed == "完全同意" || trimmed == "完全贊同" ||
+			strings.Contains(trimmed, "那我們就照這個方向走")
+		
+		if pureAgreement {
+			// Pure agreement with no substantive content - let normal blocking apply
+			skipJudge = false
+		} else {
+			// Strip leading agreement/ack phrases to get remainder
+			remainder := trimmed
+			agreementPrefixes := []string{
+				"同意，", "同意。", "贊同，", "贊同。", "贊成，", "贊成。",
+				"好的，", "好的。", "了解，", "了解。", "明白，", "明白。",
+				"我同意，", "我贊同，", "我也同意，", "我也贊同，",
+				"完全同意，", "完全贊同，",
+				"+1，", "+1。",
+			}
+			for _, prefix := range agreementPrefixes {
+				if strings.HasPrefix(remainder, prefix) {
+					remainder = strings.TrimPrefix(remainder, prefix)
+					remainder = strings.TrimSpace(remainder)
+					break
+				}
+			}
+			
+			// Substantive = remainder has new information
+			if remainder != "" && HasNewInformation(remainder) {
+				skipJudge = true
+			}
+		}
 	}
 
 	// 2026-10-22c：room reply 用 isOutgoing=true（只阻擋 filler）
