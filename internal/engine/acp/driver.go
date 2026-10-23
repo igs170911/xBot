@@ -526,12 +526,12 @@ func (d *Driver) Start(ctx context.Context, o engine.StartOptions) (engine.Sessi
 	if id == "" {
 		raw, err := g.c.call(sctx, "session/new", withPrompt(map[string]any{"cwd": Workspace, "title": o.Title, "mcpServers": mcp}))
 		if err != nil {
-			c.close() // E4: Kill process on session/new failure
+			c.close()         // E4: Kill process on session/new failure
 			sem <- struct{}{} // Release semaphore on error
 			return nil, d.explain("無法開始對話", err)
 		}
 		if err := json.Unmarshal(raw, &res); err != nil || res.SessionID == "" {
-			c.close() // E4: Kill process on unmarshal failure
+			c.close()         // E4: Kill process on unmarshal failure
 			sem <- struct{}{} // Release semaphore
 			return nil, fmt.Errorf("開始對話的回覆不完整：%s", truncate(string(raw), 200))
 		}
