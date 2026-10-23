@@ -292,12 +292,12 @@ func openStack(cfg config.Config) (*stack, error) {
 	// E5a: A tier is "configured" only if provider has an actual API key
 	hasAPIKey := false
 	if set.Tier1.Provider != "" {
-		if prov, err := s.proxy.GetProvider(context.Background(), set.Tier1.Provider); err == nil && len(prov.SealedKey) > 0 {
+		if prov, err := s.pstore.GetProvider(context.Background(), set.Tier1.Provider); err == nil && len(prov.SealedKey) > 0 {
 			hasAPIKey = true
 		}
 	}
 	if !hasAPIKey && set.Tier2.Provider != "" {
-		if prov, err := s.proxy.GetProvider(context.Background(), set.Tier2.Provider); err == nil && len(prov.SealedKey) > 0 {
+		if prov, err := s.pstore.GetProvider(context.Background(), set.Tier2.Provider); err == nil && len(prov.SealedKey) > 0 {
 			hasAPIKey = true
 		}
 	}
