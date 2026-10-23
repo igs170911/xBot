@@ -18,6 +18,7 @@
 | `CarryBytesMax` | 50 MiB | 位元組 | server/collab.py:62 `CARRY_BYTES` | §12、§18、AA-7 | 同上（會超過的那個檔案略過，後面較小的仍可能被複製） |
 | `SilentTailMax` | 40 | 字元 | server/collab.py:56 `is_silent` | AA-4 | PRD 沒寫：`[silent]` 後面 40 字內仍算不發言 |
 | `ThanksOnlyMax` | 40 | 字元 | XBot 新增（2026-10-23） | AA-4 | 只有道謝、收到的話（不算 @名字）最多幾個字：這種話不傳給隊友、群組裡不叫醒被 @ 的人，免得互相道謝停不下來 |
+| `PeerRepeatNote` | 3 | 次 | XBot 新增（2026-10-23） | LP-* | 同一條工作鏈第幾次請同一位隊友做事時，提醒能用就採用、意見一次寫齊（只提醒，不擋） |
 | `RosterAboutMax` | 160 | 字元 | server/collab.py:124 `directory` | AA-1 | — |
 
 ## 2. 群組（`collab.go`）
@@ -107,7 +108,9 @@
 | `ChatTextMax` | 64,000 | 字元 | server/runtime.py:333 `_submit` | §12 | 和 PRD 一致；**XBot 原本的常數錯了**（見第 10 節） |
 | `AnswerTextMax` | 64,000 | 字元 | XBot 新增（同 `ChatTextMax`） | — | — |
 | `StrandedGoalKey` | 80 | 字元 | server/runtime.py:722（`goal[:80]`） | — | PRD 沒寫（X04） |
-| `JudgeTaskDoneWait` | 1 | 秒 | XBot 新增（PRD §20.2 用途 2 等待 1 秒） | §20 FJ-2 | —（X04，`judge.go`） |
+| `JudgeTaskDoneWait` | 8 | 秒 | XBot 新增（PRD §20.2 用途 2 等待 1 秒） | §20 FJ-2 | **有**：PRD 寫 1 秒。10/19～21 的 217 次模型回答沒有一次在 1 秒內（中位數 2.8、九成 5.6 秒），1 秒等於永遠只用規則；改成 8 秒，但只在你交代工作的第一輪、規則判「完成」時才問（2026-10-23） |
+| `JudgeTaskDoneMinP` | 0.8 | 機率 | XBot 新增（2026-10-23） | §20 FJ-4 | 模型把「完成」改判成沒做完要有的把握（只能往嚴的方向改） |
+| `ResearchCallsMin` | 2 | 次 | XBot 新增（2026-10-23） | — | 回覆說研究過、查過，至少要有幾次成功的搜尋、讀網頁或瀏覽器呼叫 |
 | `JudgeReasonMax`／`JudgeAskMax`／`JudgeNoteMax` | 120／300／500 | 字元 | XBot 新增 | §20 FJ-1、FJ-7 | —（X04，`judge.go`） |
 
 ## 7. 定時任務（`routines.go`）

@@ -17,19 +17,26 @@ import (
 var errNotLive = errors.New("快判沒有生效，照規則")
 
 // TaskDone 是用途 2「任務完成了沒」的模型判斷，接在 Fallback 的 Primary（X04 的介面）。
-// 影子模式只記錄；生效模式模型合格才用。規則判成 needs_person 時不問模型、不降級（FJ-4；Fallback 也會再擋一次）。
+// 影子模式只記錄；生效模式模型合格才用。
+//
+// 2026-10-23（影子紀錄 217 次的分析）：只在規則判「做完了」、是你本人、定時任務或 Webhook 交代的第一輪、而且不是閒聊或測試時才問模型；
+// 模型只能往嚴的方向改（做完了 → 交回、只說要做、要你），要有 limits.JudgeTaskDoneMinP 的把握，「卡住」不採用、也不降級。
+// 模型看得到你原本交代的話（原本只看回覆，把「嗨」的回覆當成沒做完）。因為只看第一輪，同一個請求最多被模型叫回去一次。
 type TaskDone struct{ S *Service }
 
 // Judge 實作 Judge。
 func (m TaskDone) Judge(ctx context.Context, in Input) (Result, error) {
-	if m.S == nil || in.Outcome != OutcomeAnswer {
+	if m.S == nil || in.Outcome != OutcomeAnswer || in.Asked == "" || in.Continued || in.Background || IsChitchat(in.Asked) {
 		return Result{}, errNotLive
 	}
 	base, err := (Rules{}).Judge(ctx, in)
 	if err != nil {
 		return Result{}, err
 	}
-	var facts []string
+	if base.Verdict != Done {
+		return Result{}, errNotLive
+	}
+	facts := []string{"the owner asked: " + clipRunes(strings.TrimSpace(in.Asked), limits.JudgeRouteInputMax)}
 	if in.UsedTools {
 		facts = append(facts, "the bot used tools in this turn")
 	} else {
@@ -41,9 +48,12 @@ func (m TaskDone) Judge(ctx context.Context, in Input) (Result, error) {
 	if len(in.Stranded) > 0 {
 		facts = append(facts, fmt.Sprintf("%d background subtasks failed and were not retried", len(in.Stranded)))
 	}
-	d, _ := m.S.Decide(ctx, Ask{Use: UseTaskDone, Text: in.Text, Context: facts, Ref: in.TaskID, BotID: in.BotID,
+	d, _ := m.S.Decide(ctx, Ask{Use: UseTaskDone, Text: headTail(in.Text, limits.JudgeTaskDoneInputMax), Context: facts, Ref: in.TaskID, BotID: in.BotID,
 		Rule: &Answer{Label: string(base.Verdict), Why: base.Reason}})
 	if !d.Live() {
+		return Result{}, errNotLive
+	}
+	if v := Verdict(d.Label); (v != HandedBack && v != OnlyPromised && v != NeedsPerson) || d.P < limits.JudgeTaskDoneMinP {
 		return Result{}, errNotLive
 	}
 	why := d.Why
@@ -51,6 +61,16 @@ func (m TaskDone) Judge(ctx context.Context, in Input) (Result, error) {
 		why = "快判模型判斷"
 	}
 	return Result{Verdict: Verdict(d.Label), Reason: clipRunes(why, limits.JudgeReasonMax), By: ByModel, Confidence: d.P, Ask: base.Ask}, nil
+}
+
+// headTail 把太長的回覆截成開頭一段和結尾一段：沒做完的線索多半在最後（原本只留開頭 800 字，長回覆的結尾都看不到）。
+func headTail(text string, max int) string {
+	r := []rune(strings.TrimSpace(text))
+	if len(r) <= max {
+		return string(r)
+	}
+	head := max * 3 / 10
+	return string(r[:head]) + "\n…\n" + string(r[len(r)-(max-head-3):])
 }
 
 // TaskDoneJudge 是 runtime 用的完成判定：快判模型＋規則兜底（Fallback）。

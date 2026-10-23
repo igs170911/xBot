@@ -154,7 +154,10 @@ var Uses = []*Use{
 		Options: opts("done", "the work is finished and reported", "已完成", "needs_person", "the owner must act: login, verification code, payment, approval, consent before sending", "需要你",
 			"handed_back", "the bot hands unfinished work back to the owner or asks whether to continue", "交回給你",
 			"only_promised", "the bot only said it would do it but did not do anything", "只說要做", "stuck", "an error or unfinished plan stopped the work", "卡住了"),
-		Locked: []string{string(NeedsPerson)}, instr: "Did the bot finish the owner's task in its last reply?", rule: ruleTaskDone,
+		Locked: []string{string(NeedsPerson)}, instr: "Did the bot finish what the owner asked (see context) in its last reply? " +
+			"Greetings, tests, questions it fully answered, and work handed to a teammate it now waits for all count as done. " +
+			"handed_back: the owner already asked for the work, but the bot stopped and asked whether to do it or the next part. " +
+			"only_promised: it only described a plan, said it would do it, or claimed research it did not do.", rule: ruleTaskDone,
 		inputMax: limits.JudgeTaskDoneInputMax, Wired: true, Default: ModeShadow},
 	{ID: UseApproval, N: 3, Name: "要不要找你核定", Desc: "花錢、簽約、上架、對外發送、刪除前先問你；只能多攔，不能放行", Tier: Tier1, Wait: limits.JudgeWaitApproval,
 		Options: opts("yes", "needs the owner's approval: spends money, signs, publishes or lists, sends outside, deletes, or is irreversible", "要你核定",

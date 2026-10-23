@@ -100,6 +100,13 @@ type Input struct {
 	LoopCount int
 	// TaskID、BotID 是這一輪的工作與 Bot（快判記錄用，對得到你的改正）。
 	TaskID, BotID string
+	// Asked 是這件事原本怎麼交代的（你親手打的那則；自動續做時是最一開始那則）。只有你本人、定時任務、Webhook 交代的才有；
+	// 隊友、群組的是空的。模型要看得到你問了什麼，才不會把「嗨」的回覆當成沒做完（10/19～21 影子紀錄 38 次誤判）。
+	Asked string
+	// Continued：這一輪是系統叫它接著做的（自動續做、自動再試）。新的規則和模型只看第一輪，免得一直叫回去。
+	Continued bool
+	// Research 是這一輪成功的搜尋、讀網頁、瀏覽器呼叫次數（IsResearchTool）。
+	Research int
 }
 
 // Result 是一次判斷。
@@ -334,6 +341,83 @@ func AskOf(text string) (ask string, handed bool) {
 	return text[start : loc[1]+end], true
 }
 
+// ── 你交代了，它卻沒做（2026-10-23）────────────────────
+// 10/19～21：「你研究一下職能」沒查任何資料就回 250 字；交代建團隊，結尾連續四次「要我建團隊嗎？」「要繼續建其他成員嗎？」，
+// 每一步都要你推。原本的規則一句都沒抓到（handsBackRe 對 8 個真實結尾 0 命中）。只看第一輪、只看你本人交代的。
+
+// 判斷的原因（NudgeFor 照它給不同的提示）。
+const (
+	reasonResearch = "要你研究，卻沒有真的查資料就回了"
+	reasonOffer    = "你已經交代了，它卻在最後問要不要做"
+)
+
+var (
+	// researchAskRe：要它去研究、查、比較（「研究員」「研究總監」這類名字先拿掉）。
+	researchAskRe = regexp.MustCompile(`(幫我|請你?|麻煩|你|去|先|再|要|仔細)[^。？?\n]{0,4}(上網)?(研究|調查|查一下|查查|查資料|搜尋|比較|比價|找資料)|使用技能「deep-research」`)
+	researchName  = regexp.MustCompile(`研究(員|總監|助理|部|團隊)`)
+	// claimsResearchRe：回覆說研究過、查過。
+	claimsResearchRe = regexp.MustCompile(`研究(完|過|好了)|查(過|完|好了)|搜尋(過|完)|(我|已經|都)(查|研究|搜尋)了`)
+	// researchToolRe：算「真的查了」的工具（Hermes、各 ACP 引擎的名稱）。
+	researchToolRe = regexp.MustCompile(`(?i)web_?search|web_?extract|web_?fetch|^fetch$|url_?fetch|read_?url|browser|x_(keyword|semantic)_search|crawl|scrape|firecrawl|tavily|delegate_task|subagent`)
+	// notNowRe：你說先不要做、先討論、憑印象就好。
+	notNowRe = regexp.MustCompile(`先不要|先別|不要(做|動|查|研究|建|開始)|不用(查|研究|上網)|先(跟我)?討論|先聊|憑(你的)?(經驗|印象)|你覺得|你認為`)
+	// taskAskRe：在交代事情（不是只問問題）。
+	taskAskRe = regexp.MustCompile(`幫我|請你|請幫|麻煩|你去|你先|給我|(建|開|整理|寫|列|設|安排|處理|弄|改|做|規劃|分配|建立|做成|存成|研究|調查|查|比較|搜尋|找)`)
+	// questionOnlyRe：只是問問題（結尾是問號、嗎、呢，而且沒有「幫我、請、給我」）。
+	questionOnlyRe = regexp.MustCompile(`[？?嗎呢吗]\s*$`)
+	askingRe       = regexp.MustCompile(`幫我|請|給我|麻煩`)
+	// echoRe：測試、只要它回一個字這類。
+	echoRe = regexp.MustCompile(`只回|回我一個字|就好[。！!]?\s*$|測試|不要真的`)
+	// offerEndRe：交代的事還沒做，最後問要不要做（「要我建團隊嗎？」「確認後我就動手」「你先回答這三個，我再建」）。
+	offerEndRe = regexp.MustCompile(`(要|需要)我(現在|直接|先|再|就|來|幫你)*(幫你)?(建|做|開|改|設|寫|跑|安排|整理|處理|執行|動手|開始|繼續|建立|新增|產生|生成|規劃|排|拉|加)[^。\n？?]{0,24}(嗎|？|\?)|` +
+		`確認(後|了|一下)?[^。\n]{0,6}我(就|再|馬上)(動手|開始|建|做|執行)|(回答|回覆|告訴我|確認|決定)[^。\n]{0,24}(後|了|之後)?[，,]?我(再|就)(建|做|開始|動手|執行|安排)`)
+	// outwardRe：會離開電腦或刪東西的動作，問一下是對的。
+	outwardRe = regexp.MustCompile(outward)
+)
+
+// IsResearchTool 回答這個工具算不算真的去查（搜尋、讀網頁、瀏覽器）。
+func IsResearchTool(name string) bool { return researchToolRe.MatchString(name) }
+
+// IsChitchat 回答你這則是不是閒聊、打招呼、測試或只是問問題（不是交代工作）：這種不用模型判斷，也不套「沒做完」的新規則。
+func IsChitchat(asked string) bool {
+	a := strings.TrimSpace(researchName.ReplaceAllString(asked, ""))
+	if a == "" || chatRe.MatchString(a) || echoRe.MatchString(a) {
+		return true
+	}
+	return !taskAskRe.MatchString(a) || (questionOnlyRe.MatchString(a) && !askingRe.MatchString(a))
+}
+
+// isGreeting 回答你這則是不是只打招呼、道謝或測試（比 IsChitchat 窄：「衝分潤」這種沒寫動詞的交代不算）。
+func isGreeting(asked string) bool {
+	a := strings.TrimSpace(asked)
+	return a != "" && (chatRe.MatchString(a) || echoRe.MatchString(a))
+}
+
+// researchSkipped：你要它研究，它整輪沒有查，或說研究過卻只查了一兩下。
+func researchSkipped(in Input, text string) bool {
+	if in.Asked == "" || in.Continued || in.Background || notNowRe.MatchString(in.Asked) {
+		return false
+	}
+	if !researchAskRe.MatchString(researchName.ReplaceAllString(in.Asked, "")) {
+		return false
+	}
+	return in.Research == 0 || (claimsResearchRe.MatchString(text) && in.Research < limits.ResearchCallsMin)
+}
+
+// offeredInstead：你交代了一件事（不是只問問題），它最後一段卻問要不要做。花錢、對外發送、刪除這類問一下是對的，不算。
+func offeredInstead(in Input, text string) (string, bool) {
+	if in.Asked == "" || in.Continued || IsChitchat(in.Asked) || notNowRe.MatchString(in.Asked) {
+		return "", false
+	}
+	paras := strings.Split(strings.TrimSpace(text), "\n\n")
+	last := paras[len(paras)-1]
+	m := offerEndRe.FindString(last)
+	if m == "" || outwardRe.MatchString(m) {
+		return "", false
+	}
+	return m, true
+}
+
 // asksSomething：這段話是在要人做事或回答（不是只提到某個詞）。
 // 「才能、之後再、後再」要是對你說的（「你登入後再…」）；「取得結果後再判斷」這種描述流程的不算（2026-10-20 重播快判找到的誤判）。
 var asksRe = regexp.MustCompile(`[？?]|請你|需要你|要你|你[^。\n]{0,20}(才能|之後再|後再)|嗎`)
@@ -361,6 +445,9 @@ func (Rules) Judge(_ context.Context, in Input) (Result, error) {
 	}
 	text := in.Text
 	ask, handed := AskOf(text)
+	if handed && isGreeting(in.Asked) && !NeedsPersonIn(ask) {
+		handed = false // 你只是打招呼、在測試：「要我幫你做什麼嗎？」是在問你要什麼，不是把工作丟回來
+	}
 	promised := Promised(in)
 	r := Result{By: ByRules, Ask: clipRunes(strings.TrimSpace(ask), limits.JudgeAskMax)}
 	unfinished := handed || promised || len(in.PlanLeft) > 0 || len(in.Stranded) > 0
@@ -373,6 +460,8 @@ func (Rules) Judge(_ context.Context, in Input) (Result, error) {
 		r.Verdict, r.Reason = OnlyPromised, "最後說要去做下一步，卻沒有做就結束了"
 	case promised && !handed:
 		r.Verdict, r.Reason = OnlyPromised, "只回了一句要去做的話，整輪沒有用任何工具"
+	case researchSkipped(in, text):
+		r.Verdict, r.Reason = OnlyPromised, reasonResearch
 	case handed:
 		r.Verdict, r.Reason = HandedBack, "把還沒做完的部分交回給你："+firstMatch(handsBackRe, ask)
 	case len(in.Stranded) > 0:
@@ -380,6 +469,10 @@ func (Rules) Judge(_ context.Context, in Input) (Result, error) {
 	case len(in.PlanLeft) > 0:
 		r.Verdict, r.Reason = Stuck, fmt.Sprintf("計畫還有 %d 項沒完成", len(in.PlanLeft))
 	default:
+		if m, ok := offeredInstead(in, text); ok {
+			r.Verdict, r.Reason, r.Ask = HandedBack, reasonOffer+"：「"+m+"」", clipRunes(m, limits.JudgeAskMax)
+			break
+		}
 		r.Verdict, r.Reason = Done, "這一輪正常結束，沒有發現沒做完或要你處理的地方"
 	}
 	r.Reason = clipRunes(r.Reason, limits.JudgeReasonMax)
@@ -413,13 +506,28 @@ func Continues(in Input, r Result) bool {
 	return false
 }
 
-// NudgeFor 組出自動續做的提示，文字照 LazyBoy auto_continue。
-func NudgeFor(in Input) Nudge {
+// NudgeFor 組出自動續做的提示，文字照 LazyBoy auto_continue。r 是這一輪的判斷：沒查就說研究、交代了卻問要不要做、
+// 模型判斷的，照它說清楚哪裡沒做到（2026-10-23；原本一律重算規則，模型判的「只說要做」會拿到「交回」的提示）。
+func NudgeFor(in Input, r Result) Nudge {
 	in.Text = Prose(in.Text)
 	promised := Promised(in)
 	_, handed := AskOf(in.Text)
-	var unfinished string
+	var unfinished, shown string
 	switch {
+	case r.Reason == reasonResearch:
+		unfinished = "使用者要你研究，你還沒有真的查資料就回了。現在從幾個角度用 web_search 查、用 web_extract 讀幾篇原文，" +
+			"再照守則的「回話長度」給結論和骨架，附上來源。"
+		shown = "自動繼續：要研究，先真的去查"
+	case strings.HasPrefix(r.Reason, reasonOffer):
+		unfinished = "使用者已經交代了這件事，你卻在最後問「" + r.Ask + "」。照他交代的直接做完，做完再說一句做了什麼；" +
+			"只有花錢、對外發送、刪除，或有幾條路而選錯很難回頭時才先問。"
+		shown = "自動繼續：照交代的直接做完"
+	case r.By == ByModel && r.Verdict == OnlyPromised:
+		unfinished = "系統判斷你這一輪只說了要做、還沒真的做（" + r.Reason + "）。現在就去做（需要查就呼叫工具），做完直接給結果。"
+		shown = "自動繼續：剛才只說要做，現在真的去做"
+	case r.By == ByModel && r.Verdict == HandedBack:
+		unfinished = "系統判斷你把還沒做完的部分交回給使用者（" + r.Reason + "）。使用者已經交代了，照交代的直接做完。"
+		shown = "自動繼續：自己把剩下的做完"
 	case in.Looped != "":
 		unfinished = fmt.Sprintf("你剛才一直重複呼叫 %s（%d 次），結果都一樣、沒有新進展，系統先把這一輪停下來。", in.Looped, in.LoopCount) +
 			"不要再送同樣的呼叫或同樣的查詢。先用已經拿到的資料把成品做出來（該存的檔照樣存），缺的寫「未取得」；真的還缺，才換一個完全不同的來源或做法。"
@@ -440,8 +548,8 @@ func NudgeFor(in Input) Nudge {
 		"不要問使用者要不要繼續，也不要請使用者代勞整件事。真的需要人做一小步（驗證、點不動的按鈕）時，用 clarify 請使用者在電腦面板做完後按「交還給 Bot」，再接著做。" +
 		"只有需要使用者登入、驗證碼、付款或核定時，才停下來說明需要什麼。" + replystyle.Final +
 		"如果使用者其實還沒交代具體的事（只是打招呼、問你能做什麼、在聊天），就簡短回一句就好，不要自己找事做。"
-	var shown string
 	switch {
+	case shown != "":
 	case in.Looped != "":
 		shown = "自動繼續：一直重複同一個動作，換個做法"
 	case len(in.PlanLeft) > 0:

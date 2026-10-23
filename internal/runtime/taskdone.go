@@ -92,11 +92,12 @@ func strandedKey(botID, goal string) string {
 func (r *Runtime) judgeTurn(t *turn, task store.Task, verdict, final string, stalled bool) (judge.Input, *judge.Result) {
 	t.mu.Lock()
 	in := judge.Input{Outcome: verdict, Text: final, UsedTools: t.usedTools, Stalled: stalled, PlanLeft: append([]string(nil), t.plan...),
-		TaskID: task.ID, BotID: t.botID}
+		TaskID: task.ID, BotID: t.botID, Research: t.research}
 	if t.loop != nil {
 		in.Looped, in.LoopCount = t.loop.Tool, t.loop.Count
 	}
 	t.mu.Unlock()
+	in.Asked, in.Continued = askedFor(r.o.DB, task)
 	if r.o.Stranded != nil && verdict == VerdictAnswer {
 		goals, background := r.o.Stranded(context.Background(), task)
 		in.Background = background
@@ -124,6 +125,28 @@ func (r *Runtime) judgeTurn(t *turn, task store.Task, verdict, final string, sta
 		}
 	}
 	return in, &res
+}
+
+// askedFor 是這件事原本怎麼交代的（你本人、定時任務、Webhook 的；自動續做時是最一開始那件的原文），
+// 以及這一輪是不是系統叫它接著做的。隊友、群組交代的回 ""（判斷只看你交代的事）。
+func askedFor(db *store.DB, task store.Task) (string, bool) {
+	var am autoMeta
+	_ = json.Unmarshal(task.Meta, &am)
+	switch task.Source {
+	case SourceOwner, SourceRoutine, SourceWebhook:
+	default:
+		return "", am.Depth > 0
+	}
+	asked := task.Input
+	if am.Root != "" && am.Root != task.ID {
+		if root, err := db.GetTask(context.Background(), am.Root); err == nil {
+			asked = root.Input
+		}
+	}
+	if !typedByOwner(asked) {
+		asked = ""
+	}
+	return strings.TrimSpace(asked), am.Depth > 0
 }
 
 // continuation 決定要不要叫 Bot 自己接著做（LazyBoy auto_continue）。不續做時回 nil。
@@ -175,7 +198,7 @@ func (r *Runtime) continuation(t *turn, task store.Task, in judge.Input, res jud
 	}
 	meta["auto_continue"], meta["continue_root"] = am.Depth+1, root
 	raw, _ := json.Marshal(meta)
-	n := judge.NudgeFor(in)
+	n := judge.NudgeFor(in, res)
 	if task.Source == SourceBot {
 		name, _ := meta["from_name"].(string)
 		n.Prompt += "\n（這件事是隊友 " + firstNonEmpty(name, "隊友") + " 交辦的；你這次的最後回答會自動送回給它，請直接寫給它看。）"

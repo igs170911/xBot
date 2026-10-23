@@ -78,7 +78,7 @@ func TestOnlyPromised(t *testing.T) {
 	if got := judge(t, in); got.Verdict != OnlyPromised || !Continues(answer(in), got) {
 		t.Fatalf("%+v", got)
 	}
-	if n := NudgeFor(in); !strings.Contains(n.Prompt, "只回了一句要去做的話") || n.Shown != "自動繼續：剛才只說要做，現在真的去做" {
+	if n := NudgeFor(in, Result{}); !strings.Contains(n.Prompt, "只回了一句要去做的話") || n.Shown != "自動繼續：剛才只說要做，現在真的去做" {
 		t.Fatalf("%+v", n)
 	}
 	// 用了工具、回了事實、或真的是回答：不算。
@@ -107,7 +107,7 @@ func TestPlanUnfinishedAndHandBack(t *testing.T) {
 	if got.Verdict != HandedBack || !Continues(answer(in), got) {
 		t.Fatalf("%+v", got)
 	}
-	n := NudgeFor(in)
+	n := NudgeFor(in, Result{})
 	if !strings.Contains(n.Prompt, "找 Threads 新貼文") || !strings.Contains(n.Prompt, "不要問使用者要不要繼續") || n.Shown != "自動繼續：計畫還有 1 項沒完成" {
 		t.Fatalf("%+v", n)
 	}
@@ -124,8 +124,8 @@ func TestPlanUnfinishedAndHandBack(t *testing.T) {
 	} {
 		in := Input{Text: text}
 		got := judge(t, in)
-		if got.Verdict != HandedBack || !Continues(answer(in), got) || NudgeFor(in).Shown != "自動繼續：自己把剩下的做完" {
-			t.Errorf("%q → %+v %+v", text, got, NudgeFor(in))
+		if got.Verdict != HandedBack || !Continues(answer(in), got) || NudgeFor(in, Result{}).Shown != "自動繼續：自己把剩下的做完" {
+			t.Errorf("%q → %+v %+v", text, got, NudgeFor(in, Result{}))
 		}
 	}
 	if got := judge(t, Input{Text: "你想走省錢路線，還是嘴碎路線？"}); got.Verdict != Done {
@@ -161,7 +161,7 @@ func TestStranded(t *testing.T) {
 	if got.Verdict != Stuck || !Continues(answer(in), got) {
 		t.Fatalf("%+v", got)
 	}
-	n := NudgeFor(in)
+	n := NudgeFor(in, Result{})
 	if !strings.Contains(n.Prompt, "研究其他台灣平台") || !strings.Contains(n.Prompt, "message_bot") || n.Shown != "自動繼續：1 個背景子任務失敗，重新處理" {
 		t.Fatalf("%+v", n)
 	}
@@ -283,7 +283,7 @@ func TestEndingWithNextStepIsNotDone(t *testing.T) {
 		if err != nil || r.Verdict != OnlyPromised || !Continues(Input{Outcome: OutcomeAnswer, Text: text, UsedTools: true}, r) {
 			t.Fatalf("%q → %+v %v", text, r, err)
 		}
-		if n := NudgeFor(Input{Outcome: OutcomeAnswer, Text: text, UsedTools: true}); !strings.Contains(n.Prompt, "卻沒有做就結束了") {
+		if n := NudgeFor(Input{Outcome: OutcomeAnswer, Text: text, UsedTools: true}, Result{}); !strings.Contains(n.Prompt, "卻沒有做就結束了") {
 			t.Fatalf("提示：%s", n.Prompt)
 		}
 	}
@@ -352,11 +352,88 @@ func TestLoopHaltIsStuckAndContinues(t *testing.T) {
 	if got.Verdict != Stuck || !Continues(in, got) || !strings.Contains(got.Reason, "web_search（50 次）") {
 		t.Fatalf("%+v", got)
 	}
-	n := NudgeFor(in)
+	n := NudgeFor(in, Result{})
 	if !strings.Contains(n.Prompt, "不要再送同樣的呼叫") || !strings.Contains(n.Prompt, "先用已經拿到的資料把成品做出來") || n.Shown != "自動繼續：一直重複同一個動作，換個做法" {
 		t.Fatalf("%+v", n)
 	}
 	if got, _ := (Fallback{Primary: fakeJudge{r: Result{Verdict: Done, By: ByModel}}}).Judge(context.Background(), in); got.Verdict != Stuck || got.By != ByRules {
 		t.Fatalf("快判模型不能改判：%+v", got)
+	}
+}
+
+// 2026-10-23：你交代了它卻沒做（10/19～21 的真實例子）。只看你本人交代的第一輪。
+func TestResearchAskedButNotDone(t *testing.T) {
+	asked := "三五人吧，你研究一下職能，看我需要什麼我不知道"
+	for _, c := range []struct {
+		name     string
+		in       Input
+		want     Verdict
+		research bool
+	}{
+		{"沒查就回", Input{Asked: asked, Text: "建議五個角色：主管、研究、驗證、文案、資料整理。"}, OnlyPromised, true},
+		{"查了一次就說研究完", Input{Asked: asked, Research: 1, UsedTools: true, Text: "研究完了，建議五個角色。"}, OnlyPromised, true},
+		{"真的查了", Input{Asked: asked, Research: 4, UsedTools: true, Text: "建議五個角色，來源附在檔案。"}, Done, false},
+		{"研究員是名字", Input{Asked: "研究員最近在忙什麼", Text: "研究員在查貓砂。"}, Done, false},
+		{"先不要做、先討論", Input{Asked: "你先不要做動，先跟我討論，研究一下需要哪些角色", Text: "我覺得要五個角色。"}, Done, false},
+		{"系統叫它接著做的那一輪不再套", Input{Asked: asked, Continued: true, Text: "建議五個角色。"}, Done, false},
+		{"隊友交辦的不套", Input{Text: "建議五個角色。"}, Done, false},
+		{"deep-research 技能", Input{Asked: "使用技能「deep-research」：比較三家電信的 5G 吃到飽", Text: "遠傳最划算。"}, OnlyPromised, true},
+	} {
+		c.in.Outcome = OutcomeAnswer
+		got, _ := Rules{}.Judge(context.Background(), c.in)
+		if got.Verdict != c.want {
+			t.Errorf("%s：%+v", c.name, got)
+			continue
+		}
+		if c.research {
+			n := NudgeFor(c.in, got)
+			if !strings.Contains(n.Prompt, "web_search") || n.Shown != "自動繼續：要研究，先真的去查" || !Continues(c.in, got) {
+				t.Errorf("%s 的提示：%+v", c.name, n)
+			}
+		}
+	}
+}
+
+func TestOfferEndingAfterATaskIsHandedBack(t *testing.T) {
+	for _, c := range []struct {
+		name, asked, text string
+		want              Verdict
+	}{
+		{"建了一部分就問", "五人版本其他也要建立", "行銷長建好了。\n\n要我繼續建其他四位成員嗎？", HandedBack},
+		{"要我開群組嗎", "把大家整理到群組裡", "五位成員都建好了，報告線也設了。\n\n要我開一個新群組嗎？", HandedBack},
+		{"確認後就動手", "幫我建一個三人的影片團隊", "我打算這樣分工：A 剪輯、B 腳本、C 發布。確認後我就動手建。", HandedBack},
+		{"只是問問題", "怎麼建團隊比較好？", "先定主管，再分職能。要我直接幫你建嗎？", Done},
+		{"你說先討論", "你先不要做動，先跟我討論要哪些角色", "建議五個角色。\n\n要我建團隊嗎？", Done},
+		{"刪除要先問", "整理一下群組", "整理好了。\n\n要我把舊的群組刪掉嗎？", Done},
+		{"打招呼", "嗨", "嗨！要我幫你做什麼嗎？", Done},
+		{"做完了沒問", "幫我建一個三人的影片團隊", "三位都建好了，群組也開了。", Done},
+	} {
+		in := Input{Outcome: OutcomeAnswer, Asked: c.asked, Text: c.text, UsedTools: true}
+		got, _ := Rules{}.Judge(context.Background(), in)
+		if got.Verdict != c.want {
+			t.Errorf("%s：%+v", c.name, got)
+			continue
+		}
+		if c.want == HandedBack && strings.HasPrefix(got.Reason, reasonOffer) {
+			if n := NudgeFor(in, got); !strings.Contains(n.Prompt, "照他交代的直接做完") || n.Shown != "自動繼續：照交代的直接做完" {
+				t.Errorf("%s 的提示：%+v", c.name, n)
+			}
+		}
+	}
+	in := Input{Outcome: OutcomeAnswer, Asked: "五人版本其他也要建立", Text: "要我繼續建其他四位成員嗎？", Continued: true}
+	if got, _ := (Rules{}).Judge(context.Background(), in); got.Verdict == HandedBack && strings.HasPrefix(got.Reason, reasonOffer) {
+		t.Errorf("接著做的那一輪不再套新規則：%+v", got)
+	}
+}
+
+func TestIsChitchat(t *testing.T) {
+	for asked, want := range map[string]bool{
+		"嗨": true, "測試：台北現在大概幾點？一句話回答就好。": true, "只回我一個字「好」": true, "為啥一定要開電腦？": true,
+		"禿頭怎麼辦，落健有用嗎": true, "幫我建一個三人的影片團隊": false, "你研究一下職能": false, "把這份表整理成三欄": false,
+		"幫我查一下台積電今天的收盤價？": false,
+	} {
+		if got := IsChitchat(asked); got != want {
+			t.Errorf("IsChitchat(%q) = %v，要 %v", asked, got, want)
+		}
 	}
 }

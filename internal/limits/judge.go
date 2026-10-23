@@ -4,9 +4,19 @@ import "time"
 
 // 任務完成判定（X04，PRD §19、§20 用途 2）。
 const (
-	// JudgeTaskDoneWait 是「任務完成了沒」判斷最多等多久；逾時或出錯退回規則（FJ-2）。
-	// XBot 新增（PRD §20.2 用途 2：等待 1 秒）。
-	JudgeTaskDoneWait = 1 * time.Second
+	// JudgeTaskDoneWait 是「任務完成了沒」判斷最多等模型多久；逾時或出錯退回規則（FJ-2）。
+	// PRD §20.2 用途 2 寫 1 秒，但 10/19～21 的 217 次模型回答沒有一次在 1 秒內（中位數 2.8 秒、九成在 5.6 秒內），
+	// 1 秒等於永遠只用規則。只在規則判「做完了」、是你交代工作的第一輪時才問模型，所以只有這些時候多等。
+	// XBot 改（2026-10-23，和 PRD 不同）。
+	JudgeTaskDoneWait = 8 * time.Second
+
+	// JudgeTaskDoneMinP 是模型把規則判的「做完了」改判成沒做完（交回、只說要做、要你）要有的把握。比一般的 JudgeMinP 高：
+	// 只能往嚴的方向改，改了會叫 Bot 接著做。XBot 新增（2026-10-23：影子紀錄裡 p ≥ 0.8 的「交回」八成是真的）。
+	JudgeTaskDoneMinP = 0.8
+
+	// ResearchCallsMin 是回覆裡說「研究過、查過」至少要有幾次成功的搜尋、讀網頁或瀏覽器呼叫（2026-10-21「有研究過嗎」：
+	// 一次搜尋就說研究完）。XBot 新增。
+	ResearchCallsMin = 2
 
 	// JudgeReasonMax 是判斷原因（一行）最多幾個字。XBot 新增（FJ-1：一句原因）。
 	JudgeReasonMax = 120

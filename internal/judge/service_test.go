@@ -353,7 +353,8 @@ func TestSafetyOnlyStricter(t *testing.T) {
 	}
 	// 生效時，模型可以把「已完成」改成更嚴的判斷；Fallback 帶上模型的機率。
 	e.up.set(jsonReply("only_promised", 0.88, "只說要查"))
-	res, err = e.svc.TaskDoneJudge().Judge(ctx, Input{Outcome: OutcomeAnswer, Text: "好的，這就幫你整理三家的價格。", UsedTools: true, TaskID: "t1"})
+	res, err = e.svc.TaskDoneJudge().Judge(ctx, Input{Outcome: OutcomeAnswer, Text: "好的，這就幫你整理三家的價格。", UsedTools: true, TaskID: "t1",
+		Asked: "幫我整理三家的價格"})
 	if err != nil || res.Verdict != OnlyPromised || res.By != ByModel || res.Confidence != 0.88 || res.Reason != "只說要查" {
 		t.Fatalf("模型生效：%+v %v", res, err)
 	}
@@ -539,6 +540,9 @@ func TestRuleFallbacks(t *testing.T) {
 		}
 	}
 	for _, u := range Uses {
+		if u.ID == UseTaskDone {
+			continue // 只在你交代工作的第一輪才問，模型回答中位數 2.8 秒（limits.JudgeTaskDoneWait）
+		}
 		if u.Wait < 300*time.Millisecond || u.Wait > 2*time.Second {
 			t.Errorf("%s 等待上限要在 0.3–2 秒：%v", u.ID, u.Wait)
 		}
@@ -582,5 +586,49 @@ func TestShadowInBackgroundDoesNotWait(t *testing.T) {
 	e.up.set(jsonReply("stuck", 0.9, "其實沒做完"))
 	if d, _ := e.svc.DecideAs(context.Background(), Ask{Use: UseTaskDone, Text: "查好了。"}, ModeShadow); d.Model == nil {
 		t.Fatalf("指定模式時同步：%+v", d)
+	}
+}
+
+// 2026-10-23：模型只在你交代工作的第一輪、規則判「做完了」時才問；只能往嚴的方向改、要有 0.8 的把握，「卡住」不採用。
+func TestTaskDoneModelOnlyUpgradesFirstTurnsOfRealWork(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	e.modes(t, map[string]Mode{UseTaskDone: ModeLive})
+	work := Input{Outcome: OutcomeAnswer, Text: "團隊建好了。", UsedTools: true, Asked: "幫我建一個三人的影片團隊"}
+	judge := e.svc.TaskDoneJudge()
+	for name, in := range map[string]Input{
+		"閒聊":      {Outcome: OutcomeAnswer, Text: "嗨！", Asked: "嗨"},
+		"接著做的那一輪": {Outcome: work.Outcome, Text: work.Text, UsedTools: true, Asked: work.Asked, Continued: true},
+		"隊友交辦的":   {Outcome: work.Outcome, Text: work.Text, UsedTools: true},
+	} {
+		e.up.set(jsonReply("handed_back", 0.95, "沒做完"))
+		n := len(e.up.calls())
+		if res, _ := judge.Judge(ctx, in); res.By != ByRules || len(e.up.calls()) != n {
+			t.Errorf("%s 不問模型：%+v", name, res)
+		}
+	}
+	for _, c := range []struct {
+		label string
+		p     float64
+		want  Verdict
+		by    string
+	}{
+		{"handed_back", 0.9, HandedBack, ByModel},
+		{"only_promised", 0.85, OnlyPromised, ByModel},
+		{"handed_back", 0.7, Done, ByRules},
+		{"stuck", 0.99, Done, ByRules},
+		{"done", 0.99, Done, ByRules},
+	} {
+		e.up.set(jsonReply(c.label, c.p, "模型說"))
+		if res, _ := judge.Judge(ctx, work); res.Verdict != c.want || res.By != c.by {
+			t.Errorf("%s %.2f：%+v", c.label, c.p, res)
+		}
+	}
+	// 模型看得到你原本交代的話。
+	e.up.set(jsonReply("done", 0.99, "做完了"))
+	_, _ = judge.Judge(ctx, work)
+	calls := e.up.calls()
+	if body, _ := json.Marshal(calls[len(calls)-1].Body); !strings.Contains(string(body), "幫我建一個三人的影片團隊") {
+		t.Fatal("要帶上你交代的話")
 	}
 }

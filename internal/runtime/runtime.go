@@ -226,6 +226,7 @@ type turn struct {
 	lastErr   string
 	pending   *pending // Bot 正在等人回覆的請求（一次一個）
 	usedTools bool     // 這一輪呼叫過工具（判斷「只說要做」用）
+	research  int      // 這一輪成功的搜尋、讀網頁、瀏覽器呼叫（判斷「說研究過卻沒查」用，judge.IsResearchTool）
 	toolsAt   int      // 最後一次呼叫工具時 text 寫到哪（之後那段才是最後的回答）
 	// engine、provider：這一輪用的引擎與 Model Proxy 供應商；started：開始送出的時間；quota：引擎報的額度錯誤（EN-7）。
 	engine, provider string
@@ -642,6 +643,9 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 				t.openTools[e.Tool.ID] = true
 			case engine.EventToolResult:
 				delete(t.openTools, e.Tool.ID)
+				if e.Tool.OK && judge.IsResearchTool(e.Tool.Name) {
+					t.research++
+				}
 			}
 		}
 	}

@@ -224,6 +224,25 @@ func (q *Queries) TaskUsedTools(ctx context.Context, taskID string) (bool, error
 	return n > 0, err
 }
 
+// TaskToolsOK 是這件工作成功的工具呼叫名稱（chat.tool_result 且 ok；重播「說研究過卻沒查」用）。
+func (q *Queries) TaskToolsOK(ctx context.Context, taskID string) ([]string, error) {
+	rows, err := q.r.QueryContext(ctx, `SELECT json_extract(payload, '$.tool.name') FROM event WHERE task_id = ? AND kind = 'chat.tool_result'
+		AND json_extract(payload, '$.tool.ok') = 1`, taskID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var name sql.NullString
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		out = append(out, name.String)
+	}
+	return out, rows.Err()
+}
+
 // TaskLastStatus 是這件工作最後一個以 prefix 開頭的狀態文字（例：「計畫：」）；沒有時是空字串。
 func (q *Queries) TaskLastStatus(ctx context.Context, taskID, prefix string) (string, error) {
 	var text sql.NullString

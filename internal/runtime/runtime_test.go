@@ -370,7 +370,7 @@ func TestOwnerTypedMessageGetsTheNote(t *testing.T) {
 		got = append(got, turn.Text)
 		hermestest.ReplyOK(turn)
 	}
-	res, err := f.rt.Chat(ctx, f.bot.ID, "", "幫我比價")
+	res, err := f.rt.Chat(ctx, f.bot.ID, "", "幫我寫一句生日祝福")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +385,7 @@ func TestOwnerTypedMessageGetsTheNote(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.wait(t, res3.TaskID)
-	if len(got) != 3 || !strings.Contains(got[0], OwnerNote+"\n[現在時間：") || !strings.HasPrefix(got[0], "幫我比價") || strings.Contains(got[1], "回覆前提醒") || strings.Contains(got[2], "回覆前提醒") {
+	if len(got) != 3 || !strings.Contains(got[0], OwnerNote+"\n[現在時間：") || !strings.HasPrefix(got[0], "幫我寫一句生日祝福") || strings.Contains(got[1], "回覆前提醒") || strings.Contains(got[2], "回覆前提醒") {
 		t.Fatalf("送給引擎的：%q", got)
 	}
 	msgs, _ := f.db.ListMessages(ctx, store.ScopeThread, res.ThreadID, 0, 0)
