@@ -94,7 +94,6 @@ func (q *Queries) CreateInboxItemIgnoreDupe(ctx context.Context, i InboxItem) (I
 	return created, true, nil
 }
 
-
 // GetInboxItem 讀一張卡。
 func (q *Queries) GetInboxItem(ctx context.Context, id string) (InboxItem, error) {
 	i, err := scanInbox(q.r.QueryRowContext(ctx, `SELECT `+inboxCols+` FROM inbox_item WHERE id = ?`, id))

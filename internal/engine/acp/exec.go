@@ -106,7 +106,7 @@ func (p *execProcess) Close() error {
 		// H4: Proper shutdown order for faster eviction
 		// 1. Close stdin first so ACP agent exits cleanly
 		_ = p.resp.CloseWrite()
-		
+
 		// 2. Wait up to 300ms for clean exit
 		if p.waitForExit(300 * time.Millisecond) {
 			// Clean exit, cleanup and return
@@ -117,7 +117,7 @@ func (p *execProcess) Close() error {
 
 		// 3. SIGTERM the process group, wait up to 500ms
 		p.killProcessGroup()
-		
+
 		// Cleanup
 		p.resp.Close()
 		_ = p.stdout.Close()

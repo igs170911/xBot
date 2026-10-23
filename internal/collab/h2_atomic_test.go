@@ -35,17 +35,24 @@ func TestH2AtomicConsecEmpty(t *testing.T) {
 
 	// Count how many auto-stop cards were created for this room
 	ref := "auto_stop:" + room.ID
-	items, err := tm.db.ListInboxFiltered(ctx, store.InboxFilter{
-		Ref:    ref,
+	allItems, err := tm.db.ListInboxFiltered(ctx, store.InboxFilter{
 		Status: "open",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	// H2: Filter by ref and count
+	count := 0
+	for _, item := range allItems {
+		if item.Ref == ref {
+			count++
+		}
+	}
+
 	// H2: Exactly 1 card should be created despite 1000 concurrent callers
-	if len(items) != 1 {
-		t.Errorf("Expected exactly 1 auto-stop card, got %d", len(items))
+	if count != 1 {
+		t.Errorf("Expected exactly 1 auto-stop card, got %d", count)
 	}
 
 	// Verify final consec_empty count

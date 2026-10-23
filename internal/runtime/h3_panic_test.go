@@ -42,7 +42,7 @@ func TestH3HookPanicsOnce(t *testing.T) {
 	}
 
 	// Queue two tasks
-	task1, err := tm.rt.Start(ctx, ChatRequest{
+	_, err = tm.rt.Start(ctx, ChatRequest{
 		BotID:    botID,
 		ThreadID: thread1.ID,
 		Text:     "Task 1",
@@ -127,7 +127,7 @@ func TestH3HookPanicsTwice(t *testing.T) {
 	}
 
 	// Queue two tasks
-	task1, err := tm.rt.Start(ctx, ChatRequest{
+	_, err = tm.rt.Start(ctx, ChatRequest{
 		BotID:    botID,
 		ThreadID: thread1.ID,
 		Text:     "Task 1",
