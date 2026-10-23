@@ -62,10 +62,10 @@ func newManager() (*service.Manager, config.Config, error) {
 	}, cfg, nil
 }
 
-// cmdService：xbot service install|update|uninstall|start|stop|restart|status|logs
+// cmdService：xbot service install|update|update-computers|sleep-computers|purge-computers|uninstall|start|stop|restart|status|logs
 func cmdService(args []string) error {
 	if len(args) == 0 {
-		return errors.New("用法：xbot service install|update|update-computers|uninstall|start|stop|restart|status|logs")
+		return errors.New("用法：xbot service install|update|update-computers|sleep-computers|purge-computers|uninstall|start|stop|restart|status|logs")
 	}
 	m, cfg, err := newManager()
 	if err != nil {
@@ -94,6 +94,10 @@ func cmdService(args []string) error {
 		return m.Update(src)
 	case "update-computers":
 		return updateComputers(m, cfg)
+	case "sleep-computers":
+		return sleepComputers(m, cfg)
+	case "purge-computers":
+		return purgeComputers(m, cfg)
 	case "uninstall":
 		return m.Uninstall(*purge)
 	case "start", "stop", "restart":

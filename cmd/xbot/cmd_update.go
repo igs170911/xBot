@@ -4,13 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"strings"
 	"time"
 
 	"xbot/internal/computers"
 	"xbot/internal/config"
-	"xbot/internal/opsclient"
 	"xbot/internal/service"
 )
 
@@ -18,14 +15,10 @@ import (
 // 叫已安裝的服務「更新電腦」：映像換過或 XBot 改了電腦的設定時，把電腦逐台重建（資料保留）。
 // 正在工作的 Bot 跳過，之後在「設定 → 電腦與裝置」按「更新電腦」或再執行一次 make update 即可。
 func updateComputers(m *service.Manager, cfg config.Config) error {
-	base := m.URL()
-	if v := strings.TrimSpace(os.Getenv("XBOT_URL")); v != "" {
-		base = strings.TrimRight(v, "/")
-	}
-	if !m.Healthy(base + "/healthz") {
+	c, ok := liveClient(m, cfg)
+	if !ok {
 		return errors.New("服務沒有在執行，略過更新電腦（make start 之後再執行 xbot computers update）")
 	}
-	c := &opsclient.Client{BaseURL: base, Token: cliToken(cfg)}
 	ctx := context.Background()
 	fmt.Println("▶ 檢查 Bot 的電腦要不要更新…")
 	var p computers.Progress

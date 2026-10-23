@@ -17,7 +17,7 @@ XBOT_INSTALLED = $(shell command -v $(HOME)/.local/bin/xbot 2>/dev/null || echo 
 # 主機指令（host-add、host-check）要新版的 xbot：有建好的 bin/xbot 就用它，否則用已安裝的。
 XBOT_CLI = $(shell test -x $(XBOT) && echo $(XBOT) || command -v $(HOME)/.local/bin/xbot 2>/dev/null || echo $(XBOT))
 
-.PHONY: help doctor setup deps dev check fmt gen test test-docker test-race leak-test bench eval-judge bundle e2e e2e-docker box box-latest box-test build web-build install start stop restart \
+.PHONY: help doctor setup deps dev check fmt gen test test-docker test-race leak-test bench eval-judge bundle e2e e2e-docker box box-latest box-test build web-build install start stop restart sleep-all purge-all \
         status logs token up down update box-if-changed backup restore clean uninstall host-add host-check deploy test-host
 
 help: ## 列出所有指令
@@ -140,6 +140,10 @@ logs: ## 即時查看服務紀錄（Ctrl+C 離開）
 	@$(XBOT_INSTALLED) service logs
 token: ## 顯示其他裝置用的登入碼
 	@$(XBOT_INSTALLED) token
+sleep-all: ## 關掉所有 Bot 的電腦（資料與瀏覽器登入都保留，有工作時會自己開機；正在工作的跳過）
+	@$(XBOT_INSTALLED) service sleep-computers
+purge-all: ## 刪掉所有 Bot 的電腦和裡面所有資料，無法復原（Bot、對話、設定保留；要輸入「刪除」確認，YES=1 不問）
+	@YES=$(YES) $(XBOT_INSTALLED) service purge-computers
 
 update: ## 更新：拉新版 → 建置 → 備份 → 換新版重啟（失敗連資料庫一起換回上一版）→ 映像有改就重建 → 更新電腦
 	@if [ -d .git ] && [ -z "$$(git status --porcelain)" ]; then git pull --ff-only; \

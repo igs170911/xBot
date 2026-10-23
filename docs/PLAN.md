@@ -76,6 +76,7 @@ M2 之後再加一條 **協作（Collab）**，負責 `internal/collab`、`org`�
 | `make box` | 建 Bot 電腦映像 | B01 |
 | `make install` | 一鍵安裝到這台機器：`setup` → `build` → `box` → 初始化 `.data/`（或 `~/.local/share/xbot`）→ 安裝 systemd **使用者**服務 → 印出網址與登入碼 | C06 |
 | `make start` / `stop` / `restart` / `status` / `logs` | 管理本機服務（systemd user service）；`status` 顯示服務、Bot 電腦、主機狀態 | C06 |
+| `make sleep-all` / `purge-all` | 所有 Bot 的電腦一次關機（資料保留）／連資料一起刪（要輸入「刪除」確認）；正在工作的跳過 | 2026-10-23 |
 | `make up` / `down` | 另一種方式：用 docker compose 跑整套服務 | C06 |
 | `make update` | 拉新版 → 重建 → 備份資料庫 → 執行 migration → 重啟 → 健康檢查；失敗自動回到上一版 | C06（M3 補完整） |
 | `make backup` / `restore FILE=…` | 備份與還原資料（含資料庫與 Bot 資料，可選擇是否含登入資料） | C06 |

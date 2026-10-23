@@ -116,7 +116,7 @@
 
 | 參數 | 用在 | 說明 |
 |---|---|---|
-| `YES=1` | setup、install、update、uninstall、host-add、deploy | 不詢問直接做 |
+| `YES=1` | setup、install、update、uninstall、purge-all、host-add、deploy | 不詢問直接做 |
 | `WITH_TAILSCALE=1` | setup | 也裝 Tailscale |
 | `SKIP_BROWSERS=1` | setup | 不下載測試用瀏覽器 |
 | `INCLUDE_LOGINS=1`、`NO_COMPUTERS=1`、`OUT=…` | backup | 見下面「備份」 |
@@ -249,6 +249,17 @@ make update
 | 例行清理 | 每天：暫存與 `/workspace/tmp` 3 天、附件 30 天、瀏覽器快取超過 200 MB（見下一節） |
 
 所有固定數字都在 `internal/limits`，對照表見 [limits.md](limits.md)。
+
+### 一次關掉或刪掉所有電腦
+
+`make stop` 只停服務，Bot 的電腦會繼續開著；`make uninstall PURGE=1` 也不會刪 Docker 裡的電腦與資料區。要處理所有電腦用：
+
+| 指令 | 做什麼 |
+|---|---|
+| `make sleep-all`（`xbot service sleep-computers`） | 開著的電腦全部關機（`xbot.computers.sleep`），資料與瀏覽器登入都保留，有工作時自己開機 |
+| `make purge-all`（`xbot service purge-computers`） | 每個 Bot 的電腦連資料區一起刪（`xbot.computers.purge`），無法復原；要輸入「刪除」確認，`YES=1` 不問。沒有電腦的 Bot 也做一次，清掉留下的資料區。Bot、對話、設定保留，下次有工作時開一台全新的 |
+
+兩個都要服務在執行，逐台呼叫操作；正在工作的 Bot 跳過，有一台失敗不影響其他台（最後列出原因，結束碼非 0）。
 
 粗估容量：同時開著 N 台電腦，需要 N × 3 GB 記憶體加上系統本身。每個 Bot 的 volume 大小看它做什麼，瀏覽器資料常常是大宗。
 

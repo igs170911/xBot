@@ -20,7 +20,7 @@ func commands() []command {
 		{"serve", "啟動 XBot 服務", cmdServe},
 		{"doctor", "檢查需要的工具與環境（--mode dev|run，--json）", cmdDoctor},
 		{"setup", "安裝缺少的工具與套件（make setup 會先裝好 Go 再呼叫）", cmdSetup},
-		{"service", "安裝與管理系統服務：install|update|update-computers|uninstall|start|stop|restart|status|logs", cmdService},
+		{"service", "安裝與管理系統服務：install|update|update-computers|sleep-computers|purge-computers|uninstall|start|stop|restart|status|logs", cmdService},
 		{"host", "Bot 電腦主機：host add|check|script（make host-add、make host-check）", cmdHost},
 		{"deploy", "把 XBot 部署到另一台機器（make deploy HOST=使用者@位址）", cmdDeploy},
 		{"backup", "備份資料目錄與 Bot 電腦的資料（--out 檔案，--include-logins，--no-computers）", cmdBackup},
