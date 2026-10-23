@@ -2,6 +2,7 @@ package collab
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -200,9 +201,10 @@ func TestE6bPureAgreementBlocked(t *testing.T) {
 		"好的，那我們就照這個方向走。",
 	}
 
-	for _, reply := range testCases {
-		// Owner asks question
-		must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, "要用這個方案嗎？", ""))
+	for i, reply := range testCases {
+		// Owner asks question (different each time to avoid G5 dedupe)
+		question := fmt.Sprintf("要用這個方案嗎？ (test %d)", i+1)
+		must[PostResult](t)(tm.s.Post(tm.ctx, room.ID, question, ""))
 
 		// Chief responds with pure agreement
 		chiefTask := tm.queued(chief)[0]
