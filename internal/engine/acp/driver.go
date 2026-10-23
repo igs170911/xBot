@@ -1352,11 +1352,11 @@ func (d *Driver) background(ac *agentConn, params json.RawMessage) {
 		running := s.running
 		d.rearm(s)
 		s.mu.Unlock()
-		
+
 		ac.mu.Lock()
 		delete(ac.children, u.Child)
 		ac.mu.Unlock()
-		
+
 		// Skip rest of processing after unlocking
 		if !running {
 			return

@@ -208,14 +208,6 @@ func openStack(cfg config.Config) (*stack, error) {
 		}
 		return resp.Status, resp.Body, err
 	}}
-	// Log the judge backend selection at startup (2026-10-22i)
-	if set, err := s.judge.Settings(context.Background()); err == nil {
-		if set.Tier1.On() || set.Tier2.On() {
-			logger.Info("judge backend: API-based", "tier1", set.Tier1.Provider+"/"+set.Tier1.Model, "tier2", set.Tier2.Provider+"/"+set.Tier2.Model)
-		} else {
-			logger.Warn("judge backend: not configured, using STRICT fallback only")
-		}
-	}
 	s.creds.Close = s.driver.Close
 	// 學到的事（harness2 的做法）：工作沒做完、或你說「不對？」時，老師模型看步驟、提議一條守則；你同意才寫進 SOUL.md。
 	s.lessons = &lessons.Service{DB: db, Logger: logger, Call: s.model.Call, Teacher: teacherModel(db, s.pstore),

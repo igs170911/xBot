@@ -113,6 +113,7 @@ func (p *execProcess) Close() error {
 }
 
 // killProcessGroup 終止這個 exec 及其子行程（2026-10-22k item 7b）
+// G3: Wait on process exit instead of sleeping 3s synchronously
 func (p *execProcess) killProcessGroup() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -142,12 +143,20 @@ func (p *execProcess) killProcessGroup() {
 		}
 	}
 
-	// E4: 等 3 秒讓行程有時間清理
-	time.Sleep(3 * time.Second)
+	// G3: Poll for process exit with 3s deadline (check every 50ms)
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		info2, err := p.api.ExecInspect(ctx, p.execID, client.ExecInspectOptions{})
+		if err != nil || info2.PID == 0 || !info2.Running {
+			// Process exited - return immediately
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 
 	// 如果還在跑，發 SIGKILL
-	info2, err := p.api.ExecInspect(ctx, p.execID, client.ExecInspectOptions{})
-	if err == nil && info2.Running {
+	info3, err := p.api.ExecInspect(ctx, p.execID, client.ExecInspectOptions{})
+	if err == nil && info3.Running {
 		killCmd := []string{"sh", "-c", fmt.Sprintf("kill -KILL -- -%d 2>/dev/null || true", info.PID)}
 		killExec, err := p.api.ExecCreate(ctx, p.containerID, client.ExecCreateOptions{
 			Cmd: killCmd,
@@ -158,6 +167,8 @@ func (p *execProcess) killProcessGroup() {
 				killAtt.Close()
 			}
 		}
+		// Wait briefly for SIGKILL to take effect
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 

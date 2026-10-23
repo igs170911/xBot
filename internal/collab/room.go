@@ -585,6 +585,34 @@ func (s *Service) seat(ctx context.Context, room store.Room, botID, cause string
 	if err != nil {
 		return err
 	}
+
+	// G5: Check recently-finished TTL set (60s)
+	dedupKey := fmt.Sprintf("%s:%s:%s", room.ID, cause, botID)
+	if val, ok := s.recentTasks.Load(dedupKey); ok {
+		if expiry, ok := val.(int64); ok && expiry > time.Now().Unix() {
+			s.log.Debug("G5: dedupe via TTL set", "room", room.ID, "bot", botID, "cause", cause)
+			return nil
+		}
+	}
+
+	// G5: Dedupe same text from same owner in same room within 10s
+	if byOwner && cause != "" {
+		if msg, err := s.db.GetMessage(ctx, cause); err == nil {
+			// Find recent owner messages in this room within last 10s
+			recentMsgs, _ := s.db.ListMessages(ctx, store.ScopeRoom, room.ID, 0, 20)
+			cutoff := time.Now().Add(-10 * time.Second).UnixMilli()
+			for _, m := range recentMsgs {
+				if m.ID == cause || m.Sender != "owner" || m.CreatedAt < cutoff {
+					continue
+				}
+				if strings.TrimSpace(m.Content) == strings.TrimSpace(msg.Content) {
+					s.log.Debug("G5: dedupe same owner text within 10s", "room", room.ID, "bot", botID, "text", plain(m.Content, 50))
+					return nil
+				}
+			}
+		}
+	}
+
 	open, err := s.db.ListTasksByMeta(ctx, "$.room_id", room.ID, true)
 	if err != nil {
 		return err
@@ -828,6 +856,12 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 		}
 	}()
 
+	// G5: Populate TTL set when task finishes (60s TTL)
+	if m.TriggeringMsgID != "" {
+		dedupKey := fmt.Sprintf("%s:%s:%s", m.RoomID, m.TriggeringMsgID, task.BotID)
+		s.recentTasks.Store(dedupKey, time.Now().Add(60*time.Second).Unix())
+	}
+
 	s.log.Debug("roomAnswer called", "room", m.RoomID, "bot", task.BotID, "verdict", verdict, "content_preview", plain(content, 50))
 	room, err := s.db.GetRoom(ctx, m.RoomID)
 	if err != nil {
@@ -928,13 +962,13 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 	if isReplyToOwnerQuestion && !IsAcknowledgement(content) {
 		// F3: Normalize content for agreement check
 		normalized := normalizeForAgreementCheck(content)
-		
+
 		// Pure agreement tokens that should be blocked
 		pureAgreementTokens := []string{
 			"同意", "贊同", "贊成", "+1", "我同意", "我也同意",
 			"好的", "了解", "明白", "完全同意", "完全贊同", "同上",
 		}
-		
+
 		// Check if normalized content is pure agreement
 		isPureAgreement := false
 		for _, token := range pureAgreementTokens {
@@ -943,12 +977,12 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 				break
 			}
 		}
-		
+
 		// Also check for generic restatements
 		if strings.Contains(normalized, "那我們就照這個方向走") {
 			isPureAgreement = true
 		}
-		
+
 		if isPureAgreement {
 			// Pure agreement with no substantive content - let normal blocking apply
 			skipJudge = false
@@ -979,7 +1013,7 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 					break
 				}
 			}
-			
+
 			// F3: Substantive = remainder has new information (not just agreement restatement like '我覺得可以')
 			if remainder != "" && HasNewInformation(remainder) && !isAgreementRestatement(remainder) {
 				skipJudge = true
@@ -1037,7 +1071,8 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 			stopThreshold = 1
 		}
 
-		if consecEmpty >= stopThreshold {
+		if consecEmpty == stopThreshold {
+			// G4: Only create card if atomic increment returned EXACTLY the threshold
 			s.log.Info("連續無新資訊，自動停止", "bot", task.BotID, "room", room.ID, "consecEmpty", consecEmpty, "threshold", stopThreshold, "isAtPleasantry", isAtPleasantry, "isDMThanks", isDMThanks)
 			// 2026-10-22c：通過 Inbox 通知 owner，不在群組貼訊息、不開新輪次
 			// 2026-10-22k (item 6): ref 只包含 room.ID，確保每個 room 只創建一個 inbox item

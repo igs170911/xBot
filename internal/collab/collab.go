@@ -68,6 +68,8 @@ type Service struct {
 	db  *store.DB
 	rt  Runtime
 	log *slog.Logger
+	// G5: TTL set for recently finished tasks (room, msg_id, bot) → expiry time
+	recentTasks sync.Map // map[string]int64
 }
 
 // peerReplyJudge 呼叫快判判斷隊友訊息要不要回（2026-10-22h：透過 PeerJudge 介面）。
@@ -99,7 +101,24 @@ func New(o Options) *Service {
 	if s.rt != nil {
 		s.rt.SetHooks(runtime.Hooks{Prompt: s.prompt, Finished: s.finished, Stopped: s.stopped, Silent: s.silent, ContinueMeta: s.continueMeta})
 	}
+	// G5: Start TTL cleanup goroutine
+	go s.cleanupRecentTasks()
 	return s
+}
+
+// G5: cleanupRecentTasks removes expired entries from the TTL set
+func (s *Service) cleanupRecentTasks() {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		now := time.Now().Unix()
+		s.recentTasks.Range(func(key, value any) bool {
+			if expiry, ok := value.(int64); ok && expiry < now {
+				s.recentTasks.Delete(key)
+			}
+			return true
+		})
+	}
 }
 
 // ── 工作上記的協作資料（task.meta）──────────────────────

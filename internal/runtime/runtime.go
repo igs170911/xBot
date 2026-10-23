@@ -705,7 +705,15 @@ func (r *Runtime) consume(s engine.Session, botID string) {
 						delete(r.active, botID)
 					}
 					r.mu.Unlock()
-					
+
+					// G2: Close done channel to unblock Wait() callers
+					select {
+					case <-t.done:
+						// Already closed
+					default:
+						close(t.done)
+					}
+
 					// F7: Call Finished hook to start the next queued task after panic
 					if h := r.hooks(); h.Finished != nil {
 						defer func() {
@@ -715,6 +723,9 @@ func (r *Runtime) consume(s engine.Session, botID string) {
 						}()
 						h.Finished(store.Task{ID: taskID, BotID: botID}, VerdictFailed, panicMsg)
 					}
+
+					// G2: Kick the queue to start next task
+					r.kick(botID)
 				}
 			}
 		}()
@@ -936,6 +947,14 @@ func (r *Runtime) finish(t *turn, status, text string) {
 			}
 			r.mu.Unlock()
 
+			// G2: Close done channel to unblock Wait() callers
+			select {
+			case <-t.done:
+				// Already closed
+			default:
+				close(t.done)
+			}
+
 			// Call hooks (may panic again, but we've already recovered)
 			if h := r.hooks(); h.Finished != nil {
 				defer func() {
@@ -945,6 +964,9 @@ func (r *Runtime) finish(t *turn, status, text string) {
 				}()
 				h.Finished(store.Task{ID: t.taskID, BotID: t.botID}, VerdictFailed, panicMsg)
 			}
+
+			// G2: Kick the queue to start next task
+			r.kick(t.botID)
 		}
 	}()
 
