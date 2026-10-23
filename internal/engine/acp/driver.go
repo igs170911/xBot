@@ -116,7 +116,7 @@ func (d *Driver) idleReaper() {
 // Round 11 fix: Snapshot all sessions under d.mu, release lock, then check/close.
 func (d *Driver) reapIdleSessions() {
 	now := time.Now()
-	
+
 	// Snapshot all sessions under lock
 	d.mu.Lock()
 	var allSessions []*session
@@ -128,7 +128,7 @@ func (d *Driver) reapIdleSessions() {
 		ac.mu.Unlock()
 	}
 	d.mu.Unlock()
-	
+
 	// Check and close idle sessions WITHOUT holding any locks
 	for _, s := range allSessions {
 		s.mu.Lock()
@@ -137,7 +137,7 @@ func (d *Driver) reapIdleSessions() {
 		sessionID := s.id
 		lastUsed := s.lastUsed
 		s.mu.Unlock()
-		
+
 		if idle {
 			d.log.Info("Closing idle session", "bot", botID, "session", sessionID, "idle_duration", now.Sub(lastUsed).Round(time.Second))
 			_ = d.CloseSession(s)
