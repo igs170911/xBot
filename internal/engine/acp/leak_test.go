@@ -72,8 +72,8 @@ func runFakeAgent() {
 			sessionCount++
 			sessID := fmt.Sprintf("sess_%d", sessionCount)
 
-			// Spawn sleep 3600 in SAME process group (no Setpgid)
-			cmd := exec.Command("sleep", "3600")
+			// E8: Spawn sleep with unique marker (not just 3600) to avoid counting host-wide processes
+			cmd := exec.Command("sleep", "3600.42")
 			if err := cmd.Start(); err == nil {
 				processes.Store(sessID, cmd)
 			}
@@ -296,10 +296,10 @@ func (p *fakeAgentProcess) StderrTail() string {
 	return ""
 }
 
-// countSleepChildren counts live "sleep 3600" processes
+// E8: countSleepChildren counts only our test's sleep processes (not host-wide)
 func countSleepChildren(t *testing.T) int {
 	t.Helper()
-	out, err := exec.Command("pgrep", "-f", "^sleep 3600$").CombinedOutput()
+	out, err := exec.Command("pgrep", "-f", "^sleep 3600\\.42$").CombinedOutput()
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
 			return 0 // No matches

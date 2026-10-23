@@ -69,7 +69,7 @@ test-race: ## 用 race detector 重複跑 Go 測試，抓偶發失敗（合併�
 	$(RUN) go test -race -count=3 ./...
 
 leak-test: ## 執行 MCP 記憶體洩漏測試（需要 Docker）
-	$(RUN) go test -v -tags leak -timeout 120s -run '^TestSession' ./internal/engine/acp/
+	$(RUN) go test -v -tags leak -timeout 120s -run 'TestSession|TestLeak' ./internal/engine/acp/
 
 COUNT ?= 3
 bench: ## 效能基準（中介層、SSE 50 人、對話 1 萬則、待我處理 5000 張、用量 10 萬筆、事件補送）；結果記在 docs/perf.md
