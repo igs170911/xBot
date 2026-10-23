@@ -8,6 +8,7 @@ Bot 之間 40 則（請求 19、結果 15、通知 6）、往來最深 7、文�
 用法：python3 -I scripts/bench/group_eval.py <標籤> [最多等幾分鐘，預設 20]
   - 用你的預設模型開三個新 Bot（測試主管、測試研究、測試文案）；跑完一定刪掉（被打斷也會試著刪）。
     XBOT_BENCH_KEEP=1 時留著查紀錄（id 記在 results/group/kept.json），查完自己刪。
+    XBOT_BENCH_ENGINE=grok 把三個測試 Bot 換到那個引擎（用這台電腦的訂閱登入）。
   - 結果：results/group/<標籤>.json，最後印出摘要。
 """
 import json, os, sqlite3, subprocess, sys, time
@@ -47,6 +48,12 @@ def setup():
     if "error" in out:
         sys.exit("建不了測試團隊：" + json.dumps(out, ensure_ascii=False))
     x("rooms", "update", "--json", json.dumps({"room_id": out["room_id"], "responder_rule": "lead", "lead_id": out["lead_id"]}))
+    engine = os.environ.get("XBOT_BENCH_ENGINE", "")
+    if engine:  # 例：grok（用這台電腦的訂閱登入；預設模型額度用完時用）
+        for b in [out["lead_id"], *out["member_ids"]]:
+            sw = x("engines", "switch", "--json", json.dumps({"bot_id": b, "engine": engine, "link": engine != "hermes"}))
+            if "error" in sw:
+                print("換不過去：", json.dumps(sw, ensure_ascii=False)[:300], flush=True)
     return out
 
 
