@@ -182,7 +182,6 @@ type session struct {
 	gen      *agentGen // D1: This session's own agent process
 	id       string
 	threadID string
-	parent   string // 子代理的 parent session id
 
 	// D1: Release semaphore exactly once
 	releaseSem sync.Once
@@ -281,25 +280,6 @@ func (d *Driver) client(ctx context.Context, botID, mode string) (*agentConn, er
 	d.bots[botID] = ac
 	d.mu.Unlock()
 	return ac, nil
-}
-
-// busy 回答這個 agent 上有沒有進行中的一輪。
-func (ac *agentConn) busy() bool {
-	ac.mu.Lock()
-	sessions := make([]*session, 0, len(ac.sessions))
-	for _, s := range ac.sessions {
-		sessions = append(sessions, s)
-	}
-	ac.mu.Unlock()
-	for _, s := range sessions {
-		s.mu.Lock()
-		running := s.running
-		s.mu.Unlock()
-		if running {
-			return true
-		}
-	}
-	return false
 }
 
 type modeInfo struct {
@@ -670,37 +650,6 @@ func abs(n int) int {
 	return n
 }
 
-// tryEvictIdleSession tries to close the LRU idle session to make room for a new one (B2).
-// Returns true if a session was evicted, false if all sessions are busy.
-// Called with ac.mu held.
-func (d *Driver) tryEvictIdleSession(ac *agentConn) bool {
-	var oldest *session
-	var oldestTime time.Time
-
-	for _, s := range ac.sessions {
-		s.mu.Lock()
-		isIdle := !s.running
-		lastUsed := s.lastUsed
-		s.mu.Unlock()
-
-		if isIdle && (oldest == nil || lastUsed.Before(oldestTime)) {
-			oldest = s
-			oldestTime = lastUsed
-		}
-	}
-
-	if oldest == nil {
-		return false // All sessions are busy
-	}
-
-	d.log.Info("Evicting LRU idle session to make room", "bot", ac.botID, "session", oldest.id, "cap", limits.ACPMaxSessionsPerBox)
-	// Unlock before closing to avoid deadlock
-	ac.mu.Unlock()
-	_ = d.CloseSession(oldest)
-	ac.mu.Lock()
-	return true
-}
-
 // quota 看這一輪的錯誤是不是額度用完、限流、餘額不足或登入過期（EN-7）：agent 的訊息加上結構化的 data
 // （claude-agent-acp 的 errorKind、codex-acp 的 codexErrorInfo）一起分類；沒寫恢復時間時用 agent 之前報的用量狀態。
 func (d *Driver) quota(s *session, err error) *engine.QuotaError {
@@ -1033,7 +982,7 @@ func (d *Driver) Respond(_ context.Context, s engine.Session, requestID string, 
 	}
 	ac := d.botConn(as.botID)
 	if ac == nil {
-		return errors.New("Bot connection not found")
+		return errors.New("bot connection not found")
 	}
 	ac.mu.Lock()
 	p, ok := ac.requests[requestID]
@@ -1179,64 +1128,7 @@ func (d *Driver) killProcessGroup(c *conn, botID, sessionID string) {
 // 2026-10-22n: Removed diffPids, snapshotMCPPids, killMCPPidsInContainer.
 // These don't work because the agent respawns MCP servers when they're killed.
 // D1 (Round 11): Real fix: 1 process per session, kill on CloseSession.
-
-// evictOldSessions（2026-10-22，修正 2026-10-22j）：檢查 session 數是否超過 limits.ACPMaxSessionsPerBox，
-// 超過時關閉最久沒用的**閒置** session。絕不關閉有進行中 prompt 的 session（7a）。
-// 如果全部都忙，不關閉任何 session（排隊等閒置）。
-func (d *Driver) evictOldSessions(ac *agentConn) {
-	ac.mu.Lock()
-	sessions := make([]*session, 0, len(ac.sessions))
-	for _, s := range ac.sessions {
-		sessions = append(sessions, s)
-	}
-	ac.mu.Unlock()
-
-	if len(sessions) <= limits.ACPMaxSessionsPerBox {
-		return
-	}
-
-	// 分離閒置和忙碌的 session（7a）
-	var idle []*session
-	var busy []*session
-	for _, s := range sessions {
-		s.mu.Lock()
-		running := s.running
-		s.mu.Unlock()
-		if running {
-			busy = append(busy, s)
-		} else {
-			idle = append(idle, s)
-		}
-	}
-
-	// 如果沒有閒置的 session，全都在忙，不淘汰（等它們完成）
-	if len(idle) == 0 {
-		d.log.Debug("所有 session 都在忙，不淘汰", "bot", ac.botID, "busy", len(busy))
-		return
-	}
-
-	// 按 lastUsed 排序閒置的 session，最舊的在前
-	slices.SortFunc(idle, func(a, b *session) int {
-		return a.lastUsed.Compare(b.lastUsed)
-	})
-
-	// 計算需要淘汰多少個：只從閒置的中選，保留至少 (limit - busy_count) 個閒置
-	totalNeeded := limits.ACPMaxSessionsPerBox - len(busy)
-	if totalNeeded < 0 {
-		totalNeeded = 0 // 忙碌的已超過上限，但不關它們
-	}
-	toClose := len(idle) - totalNeeded
-	if toClose <= 0 {
-		return // 不需要淘汰
-	}
-
-	// 關閉最舊的閒置 session
-	for i := 0; i < toClose; i++ {
-		s := idle[i]
-		d.log.Info("淘汰閒置 session", "bot", ac.botID, "session", s.id, "thread", s.threadID, "idle_count", len(idle), "busy_count", len(busy))
-		_ = d.CloseSession(s)
-	}
-}
+// D1: Removed evictOldSessions - cap is enforced by semaphore blocking Start().
 
 // D1: disconnected marks only this session as dead (never bot-wide state).
 func (d *Driver) disconnected(ac *agentConn, sessionID string, p Process, cause error) {

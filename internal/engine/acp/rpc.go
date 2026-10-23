@@ -36,7 +36,6 @@ func (e *RPCError) Error() string {
 
 // JSON-RPC 錯誤碼。
 const (
-	codeMethodNotFound = -32601
 	// codeAuthRequired 是 ACP 的「需要登入」（auth_required）。
 	codeAuthRequired = -32000
 )
@@ -169,11 +168,6 @@ func (c *conn) answer(id json.RawMessage, result any) error {
 		return err
 	}
 	return c.write(frame{ID: id, Result: raw})
-}
-
-// refuse 用 JSON-RPC 錯誤回覆 agent 的請求。
-func (c *conn) refuse(id json.RawMessage, code int, msg string) error {
-	return c.write(frame{ID: id, Error: &RPCError{Code: code, Message: msg}})
 }
 
 func (c *conn) read() {
