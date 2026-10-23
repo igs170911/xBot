@@ -1,8 +1,13 @@
-import { ChevronRight, Download } from 'lucide-react'
-import { useState } from 'react'
-import { filesDownloadUrl } from '../api/generated'
+import { ChevronRight, Download, Maximize2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { filesDownloadUrl, filesRead } from '../api/generated'
 import { filesHref, kindFromName } from '../files/data'
 import { FileIcon } from '../files/FilePreview'
+import { isPage, PAGE_MAX_BYTES } from '../files/page'
+import { PageFrame } from '../files/PageFrame'
+import { errText } from '../settings/format'
+import { IconButton } from '../ui/Button'
+import { Dialog } from '../ui/Dialog'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
 import { baseName, fileRefProps, isBoxFile, PATH_RE } from './markdown/fileLink'
@@ -75,13 +80,86 @@ function FileRow({ botId, path }: { botId: string; path: string }) {
   )
 }
 
-/** 一則訊息的檔案：圖片直接顯示，其他是檔案卡。mine＝你的訊息（靠右）。 */
+/** Bot 做的網頁、儀表板：在對話裡直接顯示（沙盒，見 files/page.ts），可以放大、點檔名看原始碼、下載。捲到才讀。 */
+function PageTile({ botId, path }: { botId: string; path: string }) {
+  const name = baseName(path)
+  const [html, setHtml] = useState<string | null>(null)
+  const [note, setNote] = useState('')
+  const [big, setBig] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = box.current
+    if (!el) return
+    let live = true
+    const load = () =>
+      filesRead({ bot_id: botId, path, max_bytes: PAGE_MAX_BYTES })
+        .then((d) => {
+          if (!live) return
+          if (d.truncated) setNote('網頁超過 1 MB，對話裡放不下，請下載後開啟。')
+          else if (!d.text) setNote(d.note || '這個網頁是空的。')
+          else setHtml(d.text)
+        })
+        .catch((e: unknown) => live && setNote(errText(e)))
+    if (typeof IntersectionObserver === 'undefined') {
+      void load()
+      return () => {
+        live = false
+      }
+    }
+    const seen = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          seen.disconnect()
+          void load()
+        }
+      },
+      { rootMargin: '200px' },
+    )
+    seen.observe(el)
+    return () => {
+      live = false
+      seen.disconnect()
+    }
+  }, [botId, path])
+  return (
+    <div ref={box} data-testid="page-tile" className="flex w-[min(100%,560px)] flex-col overflow-hidden rounded-[14px] bg-control">
+      <div className="flex items-center gap-2 py-1.5 pl-2.5 pr-1">
+        <FileIcon kind={kindFromName(name)} size={28} />
+        <span {...fileRefProps(filesHref(botId, path))} title="看原始碼" className="min-w-0 flex-1 cursor-pointer truncate text-ui hover:underline">
+          {name}
+        </span>
+        <IconButton icon={Maximize2} label={`放大 ${name}`} onClick={() => setBig(true)} disabled={!html} />
+        <a href={filesDownloadUrl(botId, path)} download={name} aria-label={`下載 ${name}`} title="下載" className="flex size-9 flex-none items-center justify-center rounded-[10px] text-ink-2 hover:bg-hover hover:text-ink">
+          <Icon icon={Download} size={18} />
+        </a>
+      </div>
+      {html ? (
+        <PageFrame html={html} title={name} className="h-[360px] max-md:h-[300px]" />
+      ) : (
+        <div className="flex h-24 items-center justify-center px-4 text-center text-ui-sm text-ink-3">{note || '網頁載入中…'}</div>
+      )}
+      <Dialog open={big} onClose={() => setBig(false)} title={name} width={1100}>
+        {html && <PageFrame html={html} title={name} className="h-[75vh] rounded-group max-md:h-[70vh]" />}
+      </Dialog>
+    </div>
+  )
+}
+
+/** 一則訊息的檔案：圖片直接顯示，網頁在對話裡打開，其他是檔案卡。mine＝你的訊息（靠右）。 */
 export function FileTiles({ botId, paths, mine }: { botId: string; paths: string[]; mine?: boolean }) {
   const shown = paths.slice(0, TILES_MAX)
   if (!shown.length) return null
   return (
     <div data-testid="file-tiles" className={cx('flex max-w-[85%] flex-col gap-1.5', mine ? 'items-end self-end' : 'items-start self-start')}>
-      {shown.map((p) => (kindFromName(p) === 'image' ? <ImageTile key={p} botId={botId} path={p} /> : <FileRow key={p} botId={botId} path={p} />))}
+      {shown.map((p) =>
+        kindFromName(p) === 'image' ? (
+          <ImageTile key={p} botId={botId} path={p} />
+        ) : isPage(p) && !mine ? (
+          <PageTile key={p} botId={botId} path={p} />
+        ) : (
+          <FileRow key={p} botId={botId} path={p} />
+        ),
+      )}
     </div>
   )
 }

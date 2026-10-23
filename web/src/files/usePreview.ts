@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ApiError, filesRead, type FilesReadOutput } from '../api/generated'
 import { errText } from '../settings/format'
+import { isPage, PAGE_MAX_BYTES } from './page'
 
 type State = { path: string; sheet: string; data?: FilesReadOutput; error?: { text: string; missing: boolean } }
 
@@ -15,7 +16,8 @@ export function usePreview(botId: string, path: string | null): [State | null, (
   useEffect(() => {
     if (!path) return
     let live = true
-    filesRead({ bot_id: botId, path, ...(sheet ? { sheet } : {}) })
+    // 網頁要整份才畫得出來：讀到上限（一般文字預設只讀前面 256 KB）
+    filesRead({ bot_id: botId, path, ...(sheet ? { sheet } : {}), ...(isPage(path) ? { max_bytes: PAGE_MAX_BYTES } : {}) })
       .then((data) => live && setState({ path, sheet, data }))
       .catch((e) => live && setState({ path, sheet, error: { text: errText(e), missing: e instanceof ApiError && e.code === 'not_found' } }))
     return () => {

@@ -9,6 +9,8 @@ import { Icon } from '../ui/Icon'
 import { MenuButton, type MenuItem } from '../ui/Menu'
 import { cx } from '../ui/cx'
 import { kindMeta, sizeLabel, tableSummary, whenLabel, type Table } from './data'
+import { isPage } from './page'
+import { PageFrame } from './PageFrame'
 import { usePreview } from './usePreview'
 
 /** 檔案的種類圖示（E07：圓角方塊裡的彩色圖示）。 */
@@ -109,8 +111,14 @@ function Body({ d, raw, onSheet, sheet }: { d: FilesReadOutput; raw: boolean; on
       </div>
     )
   }
+  if (d.text && !d.binary && !d.truncated && !raw && isPage(d.name)) {
+    // Bot 做的網頁、儀表板：照網頁畫出來（沙盒，見 page.ts）；「原始碼」看程式
+    return <PageFrame html={d.text} title={d.name} className="h-[70vh] rounded-group" />
+  }
   if (d.text !== undefined && d.text !== '' && !d.binary) {
-    const more = d.truncated ? <p className="m-0 text-sub text-ink-2">檔案比較大，這裡只顯示前面。完整內容請下載。</p> : null
+    const more = d.truncated ? (
+      <p className="m-0 text-sub text-ink-2">{isPage(d.name) ? '網頁超過 1 MB，沒辦法在這裡打開，這裡只顯示前面的原始碼。完整的請下載。' : '檔案比較大，這裡只顯示前面。完整內容請下載。'}</p>
+    ) : null
     if (d.kind === 'markdown' && !raw) {
       return (
         <div className="flex flex-col gap-2">
@@ -172,6 +180,7 @@ export function FilePreview({ botId, bot, path, actions, onClose, back, compact,
   const meta = d ? [sizeLabel(d.size), bot?.name, whenLabel(d.modified)].filter(Boolean).join(' · ') : ''
   const canRaw = d && d.table && d.kind === 'csv'
   const canRawMd = d && d.kind === 'markdown'
+  const canRawPage = d && isPage(d.name) && !!d.text && !d.truncated
   return (
     <section aria-label={`預覽：${name}`} className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="file-preview">
       <header className="flex min-h-14 flex-none items-center gap-2.5 border-b border-divider px-4 py-2">
@@ -184,11 +193,11 @@ export function FilePreview({ botId, bot, path, actions, onClose, back, compact,
           <span className="truncate text-meta text-ink-3">{meta || ' '}</span>
           {compact && <span className="truncate font-mono text-[12px] text-ink-3">{path}</span>}
         </div>
-        {(canRaw || canRawMd) && !compact && (
+        {(canRaw || canRawMd || canRawPage) && !compact && (
           <div role="radiogroup" aria-label="顯示方式" className="flex rounded-field bg-inset p-[3px]">
             {[
-              [false, canRaw ? '表格' : '排版'],
-              [true, '原始內容'],
+              [false, canRaw ? '表格' : canRawPage ? '網頁' : '排版'],
+              [true, canRawPage ? '原始碼' : '原始內容'],
             ].map(([v, label]) => (
               <button
                 key={String(v)}
