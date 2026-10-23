@@ -354,11 +354,12 @@ const (
 var (
 	// researchAskRe：要它去研究、查、比較（「研究員」「研究總監」這類名字先拿掉）。
 	researchAskRe = regexp.MustCompile(`(幫我|請你?|麻煩|你|去|先|再|要|仔細)[^。？?\n]{0,4}(上網)?(研究|調查|查一下|查查|查資料|搜尋|比較|比價|找資料)|使用技能「deep-research」`)
-	researchName  = regexp.MustCompile(`研究(員|總監|助理|部|團隊)`)
+	researchName  = regexp.MustCompile(`研究(員|總監|助理|部|團隊|結果|報告|檔案?|資料|的)`)
 	// claimsResearchRe：回覆說研究過、查過。
 	claimsResearchRe = regexp.MustCompile(`研究(完|過|好了)|查(過|完|好了)|搜尋(過|完)|(我|已經|都)(查|研究|搜尋)了`)
 	// researchToolRe：算「真的查了」的工具（Hermes、各 ACP 引擎的名稱）。
-	researchToolRe = regexp.MustCompile(`(?i)web_?search|web_?extract|web_?fetch|^fetch$|url_?fetch|read_?url|browser|x_(keyword|semantic)_search|crawl|scrape|firecrawl|tavily|delegate_task|subagent`)
+	// OpenCode 的結果名稱是「Exa Web Search: …」；Hermes 也會在 execute_code 裡呼叫搜尋（程式化呼叫工具），算有做事。
+	researchToolRe = regexp.MustCompile(`(?i)web[ _]?search|web[ _]?extract|web[ _]?fetch|^fetch|url_?fetch|read_?url|browser|x_(keyword|semantic)_search|crawl|scrape|firecrawl|tavily|delegate_task|subagent|execute_code`)
 	// notNowRe：你說先不要做、先討論、憑印象就好。
 	notNowRe = regexp.MustCompile(`先不要|先別|不要(做|動|查|研究|建|開始)|不用(查|研究|上網)|先(跟我)?討論|先聊|憑(你的)?(經驗|印象)|你覺得|你認為`)
 	// taskAskRe：在交代事情（不是只問問題）。
@@ -395,8 +396,8 @@ func isGreeting(asked string) bool {
 
 // researchSkipped：你要它研究，它整輪沒有查，或說研究過卻只查了一兩下。
 func researchSkipped(in Input, text string) bool {
-	if in.Asked == "" || in.Continued || in.Background || notNowRe.MatchString(in.Asked) {
-		return false
+	if in.Asked == "" || in.Continued || in.Background || notNowRe.MatchString(in.Asked) || progressRe.MatchString(in.Asked) {
+		return false // 問進度（「研究結果回來了嗎」）不是要它現在去查
 	}
 	if !researchAskRe.MatchString(researchName.ReplaceAllString(in.Asked, "")) {
 		return false

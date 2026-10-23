@@ -378,6 +378,8 @@ func TestResearchAskedButNotDone(t *testing.T) {
 		{"系統叫它接著做的那一輪不再套", Input{Asked: asked, Continued: true, Text: "建議五個角色。"}, Done, false},
 		{"隊友交辦的不套", Input{Text: "建議五個角色。"}, Done, false},
 		{"deep-research 技能", Input{Asked: "使用技能「deep-research」：比較三家電信的 5G 吃到飽", Text: "遠傳最划算。"}, OnlyPromised, true},
+		{"問進度裡提到研究結果", Input{Asked: "為啥停止不了？然後你背景做的事情有在做嗎？你說研究結果回來後再補完整方案的事情", Text: "背景的研究還在跑。"}, Done, false},
+		{"在程式裡查", Input{Asked: asked, Research: 2, UsedTools: true, Text: "研究完了，建議五個角色。"}, Done, false},
 	} {
 		c.in.Outcome = OutcomeAnswer
 		got, _ := Rules{}.Judge(context.Background(), c.in)
@@ -423,6 +425,15 @@ func TestOfferEndingAfterATaskIsHandedBack(t *testing.T) {
 	in := Input{Outcome: OutcomeAnswer, Asked: "五人版本其他也要建立", Text: "要我繼續建其他四位成員嗎？", Continued: true}
 	if got, _ := (Rules{}).Judge(context.Background(), in); got.Verdict == HandedBack && strings.HasPrefix(got.Reason, reasonOffer) {
 		t.Errorf("接著做的那一輪不再套新規則：%+v", got)
+	}
+}
+
+func TestResearchTools(t *testing.T) {
+	for name, want := range map[string]bool{"web_search": true, "websearch": true, "Exa Web Search: marketing team roles": true, "web_extract": true,
+		"browser_navigate": true, "execute_code": true, "WebFetch": true, "terminal": false, "write_file": false, "memory": false} {
+		if IsResearchTool(name) != want {
+			t.Errorf("IsResearchTool(%q) 要 %v", name, want)
+		}
 	}
 }
 
