@@ -662,11 +662,11 @@ func ShouldSendToPeer(content, verdict string, isAnswer bool, recentFrom []strin
 	}
 
 	// Stage B：peer_reply 快判（judgeVerdict 由 peerReplyJudge 提供，ENFORCE 模式）
-	// judgeVerdict 空字串表示快判失敗或逾時 → 退路（lenient pass）
+	// E5b: judgeVerdict 空字串表示快判失敗或逾時 → 退路：STRICT (block if no new info)
 	if judgeVerdict == "" {
-		// 快判失敗或逾時 → 退路：lenient pass（只阻擋答案情境外的短文字）
-		if !isAnswer && verdict == "answer" && !HasNewInformation(content) {
-			return false, "stageB:fallback:no_new_info"
+		// E5b: 快判失敗或逾時 → STRICT fallback: block if no new information
+		if !HasNewInformation(content) {
+			return false, "stageB:fallback:strict"
 		}
 		goto checkDuplicate
 	}

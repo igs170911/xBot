@@ -286,14 +286,23 @@ func openStack(cfg config.Config) (*stack, error) {
 	s.memory = &memory.Service{DB: db, Locate: comp.BotFS, Active: s.runtime.Active}
 
 	// Wire production judge for collab layer (2026-10-22, fixed 2026-10-22i, item 1: Grok CLI backend)
-	// 2026-10-22q (Item 3): No API key configured -> Grok CLI judge (not deepseek API tier)
+	// E5a: No API key configured -> Grok CLI judge (not deepseek API tier)
 	var peerJudge collab.PeerJudge
 	set, _ := s.judge.Settings(context.Background())
-	// B3: A tier is "configured" only if it has both provider AND model set
-	hasAPIJudge := (set.Tier1.Provider != "" && set.Tier1.Model != "") ||
-		(set.Tier2.Provider != "" && set.Tier2.Model != "")
+	// E5a: A tier is "configured" only if provider has an actual API key
+	hasAPIKey := false
+	if set.Tier1.Provider != "" {
+		if prov, err := s.proxy.GetProvider(context.Background(), set.Tier1.Provider); err == nil && len(prov.SealedKey) > 0 {
+			hasAPIKey = true
+		}
+	}
+	if !hasAPIKey && set.Tier2.Provider != "" {
+		if prov, err := s.proxy.GetProvider(context.Background(), set.Tier2.Provider); err == nil && len(prov.SealedKey) > 0 {
+			hasAPIKey = true
+		}
+	}
 
-	if hasAPIJudge {
+	if hasAPIKey {
 		// Use Model Proxy API-based judge (current production path)
 		decideFn := func(ctx context.Context, kind, content, botID string) (string, error) {
 			ask := judge.Ask{Use: "peer_reply", Text: content, BotID: botID}

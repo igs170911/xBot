@@ -589,29 +589,53 @@ func (s *Service) seat(ctx context.Context, room store.Room, botID, cause string
 	if err != nil {
 		return err
 	}
+	// E6: Dedupe per (room, message id, bot) - check if task already exists for this message
 	for _, t := range open {
-		if t.BotID != botID || t.State != store.TaskQueued {
+		if t.BotID != botID {
 			continue
 		}
-		patch := map[string]any{}
-		if addressed {
-			patch["addressed"] = true
-		}
-		if byOwner {
-			// 你的發言：這一輪改成你的、排到最前面，輪數重算。
-			patch["by_owner"], patch["round"], patch["cause"] = true, 0, cause
-			if t.LowPriority {
-				_ = s.db.SetTaskPriority(ctx, t.ID, false)
+		// Check if this task is for the same triggering message
+		var existingMeta taskMeta
+		_ = json.Unmarshal(t.Meta, &existingMeta)
+		if t.State == store.TaskQueued && existingMeta.TriggeringMsgID == cause && cause != "" {
+			// Task already exists for this (room, message, bot) - just update metadata
+			patch := map[string]any{}
+			if addressed {
+				patch["addressed"] = true
 			}
+			if byOwner {
+				patch["by_owner"], patch["round"] = true, 0
+				if t.LowPriority {
+					_ = s.db.SetTaskPriority(ctx, t.ID, false)
+				}
+			}
+			if len(patch) > 0 {
+				_ = s.db.PatchTaskMeta(ctx, t.ID, patch)
+			}
+			return nil
 		}
-		// 2026-10-22c：記錄觸發訊息 ID
-		if cause != "" {
-			patch["triggering_msg_id"] = cause
+		// Old behavior: update any queued task for this bot in this room
+		if t.State == store.TaskQueued {
+			patch := map[string]any{}
+			if addressed {
+				patch["addressed"] = true
+			}
+			if byOwner {
+				// 你的發言：這一輪改成你的、排到最前面，輪數重算。
+				patch["by_owner"], patch["round"], patch["cause"] = true, 0, cause
+				if t.LowPriority {
+					_ = s.db.SetTaskPriority(ctx, t.ID, false)
+				}
+			}
+			// 2026-10-22c：記錄觸發訊息 ID
+			if cause != "" {
+				patch["triggering_msg_id"] = cause
+			}
+			if len(patch) > 0 {
+				_ = s.db.PatchTaskMeta(ctx, t.ID, patch)
+			}
+			return nil
 		}
-		if len(patch) > 0 {
-			_ = s.db.PatchTaskMeta(ctx, t.ID, patch)
-		}
-		return nil
 	}
 
 	// 2026-10-22c：Hop 從觸發訊息的 sender_hop 讀取並遞增
@@ -880,8 +904,33 @@ func (s *Service) roomAnswer(ctx context.Context, task store.Task, m taskMeta, v
 		}
 	}
 
+	// E6: Check if replying to owner question or @mention
+	isReplyToOwnerQuestion := false
+	if m.TriggeringMsgID != "" {
+		if trigMsg, err := s.db.GetMessage(ctx, m.TriggeringMsgID); err == nil {
+			if trigMsg.Sender == "owner" {
+				// Owner question or @mention
+				hasQuestion := strings.Contains(trigMsg.Content, "?") || strings.Contains(trigMsg.Content, "？")
+				hasMention := strings.Contains(trigMsg.Content, "@")
+				isReplyToOwnerQuestion = hasQuestion || hasMention
+			}
+		}
+	}
+
+	// E6: If replying to owner question/@mention with substantive content, skip judge and always post
+	skipJudge := false
+	if isReplyToOwnerQuestion && !IsAcknowledgement(content) {
+		skipJudge = true
+	}
+
 	// 2026-10-22c：room reply 用 isOutgoing=true（只阻擋 filler）
-	judgeVerdict := s.peerReplyJudge(ctx, content, task.BotID)
+	judgeVerdict := ""
+	if !skipJudge {
+		judgeVerdict = s.peerReplyJudge(ctx, content, task.BotID)
+	} else {
+		// E6: Replying to owner question with substance - always post
+		judgeVerdict = "handle"
+	}
 	shouldSend, reason := ShouldSendToPeer(content, verdict, isAnswer, recentTexts, judgeVerdict, true)
 
 	// 2026-10-22d：連續無進展自動停止（從 room.ConsecEmpty 讀取）
