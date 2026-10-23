@@ -47,8 +47,8 @@ func (s *Service) StopAll(ctx context.Context) (int, error) {
 		if err != nil {
 			return len(stopped), err
 		}
-		if n == 0 && len(stopped) > 0 {
-			break
+		if n == 0 {
+			break // 這次沒有新的（一開始就沒有在做的工作時，馬上回來）
 		}
 		time.Sleep(s.settle)
 	}
