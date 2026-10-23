@@ -225,3 +225,24 @@ func TestATeammatesRetryCarriesTheAnswerBack(t *testing.T) {
 		t.Fatalf("再做的那一輪的回答送回去：%+v", got)
 	}
 }
+
+// 訊息裡提到的檔案在寄件者電腦找不到：當下告訴寄件者哪些沒帶過去（不然對方回「我這邊是空的」，又多來回幾次）。
+// 「/workspace/from/<寄件者>/…」是對方那邊的位置，不算找不到。
+func TestSendTellsTheSenderWhichFilesWereNotCarried(t *testing.T) {
+	tm := setup(t)
+	chief := tm.bots["Chief"]
+	tm.write(chief, "plan.md", "計畫")
+	tm.running(chief, nil)
+	res := must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Writer",
+		"先讀 /workspace/plan.md、/workspace/plan_v2.md。到你那邊會在 /workspace/from/Chief/plan.md", IntentRequest, SendOptions{}))
+	if res.Files != 1 || len(res.NotCarried) != 1 || res.NotCarried[0] != "/workspace/plan_v2.md" {
+		t.Fatalf("%+v", res)
+	}
+	if !strings.Contains(res.Note, "/workspace/plan_v2.md") || !strings.Contains(res.Note, "再傳一則補上") {
+		t.Fatalf("要告訴寄件者：%s", res.Note)
+	}
+	ok := must[SendResult](t)(tm.s.Send(tm.ctx, chief, "Writer", "只讀 /workspace/plan.md", IntentFYI, SendOptions{}))
+	if len(ok.NotCarried) != 0 || strings.Contains(ok.Note, "注意") {
+		t.Fatalf("都帶到了就不提：%+v", ok)
+	}
+}

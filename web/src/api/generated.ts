@@ -3529,6 +3529,8 @@ export interface CollabMessageBotOutput {
   replayed?: boolean
   /** 複製到對方電腦的檔案數 */
   files?: number
+  /** 訊息裡提到但沒帶給對方的檔案路徑（找不到或超過上限）；確認路徑後再傳一則補上 */
+  not_carried?: string[]
   note: string
 }
 

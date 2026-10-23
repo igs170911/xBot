@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -410,7 +411,9 @@ type SendResult struct {
 	Chain      string `json:"chain_id"`
 	Replayed   bool   `json:"replayed,omitempty"`
 	Files      int    `json:"files,omitempty" desc:"複製到對方電腦的檔案數"`
-	Note       string `json:"note"`
+	// NotCarried 是訊息裡提到、但沒帶過去的檔案（你的電腦找不到，或超過一次帶檔的上限）。
+	NotCarried []string `json:"not_carried,omitempty" desc:"訊息裡提到但沒帶給對方的檔案路徑（找不到或超過上限）；確認路徑後再傳一則補上"`
+	Note       string   `json:"note"`
 }
 
 // Send 讓 senderID 傳訊息給隊友 ref（LazyBoy send）。收件者忙時排隊（低優先，排在你的訊息後面）。
@@ -493,7 +496,7 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	}
 	// 寄件者的對話保留自己的路徑；收件者拿到檔案的副本與指向副本的路徑。
 	sent := text
-	carried, files := s.carryFiles(ctx, senderID, target.ID, sender.Name, text, target.Name)
+	carried, files, missing := s.carryFiles(ctx, senderID, target.ID, sender.Name, text, target.Name)
 	answers := ""
 	if intent == IntentResult {
 		answers = om.ParentTask
@@ -574,6 +577,12 @@ func (s *Service) Send(ctx context.Context, senderID, ref, text, intent string, 
 	if replyExpected(intent) {
 		out.Note = target.Name + " 處理完會自動把結果送回這個對話，不需要查詢或催促。"
 	}
+	if len(missing) > 0 {
+		// 當下就說：不然對方拿到不存在的路徑，回「我這邊是空的」，兩邊又多來回幾次（2026-10-19～21 約 10 則）。
+		out.NotCarried = missing
+		out.Note += "注意：這些檔案沒帶給 " + target.Name + "（你的電腦找不到，或超過一次最多 " + fmt.Sprint(limits.CarryFilesMax) +
+			" 個、" + fmt.Sprint(limits.CarryBytesMax>>20) + " MB）：" + strings.Join(missing, "、") + "。用 ls 確認正確路徑後，再傳一則補上。"
+	}
 	return out, nil
 }
 
@@ -610,16 +619,23 @@ func (s *Service) checkBudget(ctx context.Context, senderID, senderName, chain s
 // carryFiles 把訊息裡提到的檔案從寄件者電腦複製到收件者電腦的 /workspace/from/<寄件者>/，並把訊息改成指向副本（LazyBoy carry_files）。
 // 收件者已經有內容相同的檔案（常是它先前寄來的）就不複製，直接指向它自己的那份。每則最多 CarryFilesMax 個、合計 CarryBytesMax；
 // 超過的略過、不改路徑、不報錯。
-func (s *Service) carryFiles(ctx context.Context, senderID, targetID, senderName, text, targetName string) (string, []string) {
+// missing 是提到了但沒帶過去的路徑（寄件者電腦裡找不到，或超過上限）；「/workspace/from/<寄件者>/…」是對方那邊的位置，不算。
+func (s *Service) carryFiles(ctx context.Context, senderID, targetID, senderName, text, targetName string) (string, []string, []string) {
 	if s.o.Files == nil {
-		return text, nil
+		return text, nil, nil
 	}
+	var missing []string
+	theirs := "/workspace/from/" + Filename(senderName) + "/"
 	moved := map[string]string{}
 	var order []string
 	var total int64
 	for _, match := range fileRef.FindAllString(text, -1) {
 		p := strings.TrimRight(match, ".,;:!?")
-		if _, done := moved[p]; done || len(moved) >= limits.CarryFilesMax {
+		if _, done := moved[p]; done || slices.Contains(missing, p) {
+			continue
+		}
+		if len(moved) >= limits.CarryFilesMax {
+			missing = append(missing, p)
 			continue
 		}
 		rel := strings.TrimPrefix(p, "/workspace/")
@@ -627,6 +643,9 @@ func (s *Service) carryFiles(ctx context.Context, senderID, targetID, senderName
 		if err != nil {
 			if !errors.Is(err, ErrNoFile) && !errors.Is(err, ErrCarryLimit) {
 				s.log.Warn("複製檔案給隊友失敗", "from", senderID, "to", targetID, "path", rel, "err", err)
+			}
+			if !strings.HasPrefix(p, theirs) {
+				missing = append(missing, p)
 			}
 			continue
 		}
@@ -648,7 +667,7 @@ func (s *Service) carryFiles(ctx context.Context, senderID, targetID, senderName
 	for _, p := range order {
 		files = append(files, moved[p])
 	}
-	return text, files
+	return text, files, missing
 }
 
 // ErrCarryLimit 表示這個檔案會超過這次帶檔的大小上限。
