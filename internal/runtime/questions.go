@@ -565,7 +565,8 @@ func (r *Runtime) notifyDone(t *turn, verdict, final string, res *judge.Result, 
 		case peer:
 			return // 隊友之間、群組裡的：結果會回到交辦的 Bot 或群組
 		case res.Verdict == judge.NeedsPerson:
-			if !r.approvalPending(t) {
+			// Bot 自己說在等你（xbot.chat.wait_for_user）的照開：那是它要問的事，不是從回覆猜的
+			if t.saidWaiting() || !r.askedPending(t) {
 				r.askCard(t, *res, t.botName+"需要你處理")
 			}
 			return
@@ -617,13 +618,14 @@ func (r *Runtime) notifyDone(t *turn, verdict, final string, res *judge.Result, 
 	}()
 }
 
-// approvalPending：這件工作開始後，這個 Bot 已經送了一張還沒處理的核准卡（引擎要權限、或它用 xbot.approvals.request 請你核准）。
-// 那張卡就是在等你，不再另開「需要你處理」（2026-10-21 行銷長：「核准卡已經送到你的待我處理」，又多一張「需要你處理」）。
-func (r *Runtime) approvalPending(t *turn) bool {
+// askedPending：這件工作開始後，這個 Bot 已經送了一張還沒處理、要你動手的卡：核准（引擎要權限、或它用 xbot.approvals.request）、
+// 接手電腦（xbot.computers.request_takeover）、連接應用程式（xbot.apps.request）。那張卡就是在等你，從回覆猜出來的
+// 「需要你處理」不再另開（2026-10-21 行銷長：「核准卡已經送到你的待我處理」，又多一張；2026-10-24 蝦皮註冊：接手卡＋需要你卡）。
+func (r *Runtime) askedPending(t *turn) bool {
 	t.mu.Lock()
 	started := t.started
 	t.mu.Unlock()
-	items, err := r.o.DB.ListInboxFiltered(context.Background(), store.InboxFilter{Status: store.InboxOpen, Kinds: []string{"approval"}, BotID: t.botID})
+	items, err := r.o.DB.ListInboxFiltered(context.Background(), store.InboxFilter{Status: store.InboxOpen, Kinds: []string{"approval", "takeover", "signin"}, BotID: t.botID})
 	if err != nil {
 		return false
 	}

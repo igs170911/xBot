@@ -1143,7 +1143,12 @@ func (d *Driver) notification(ac *agentConn, method string, params json.RawMessa
 			s.all.WriteString(e.Text)
 			s.tail.WriteString(e.Text)
 		case engine.EventToolCall:
-			s.cut()
+			if e.Tool == nil || !engine.Signal(e.Tool.Name) {
+				s.cut()
+			} else if t := s.tail.String(); t != "" && !strings.HasSuffix(t, "\n") {
+				s.tail.WriteString("\n\n") // 前後是同一段回答（見 engine.Signal），分段接起來
+				s.all.WriteString("\n\n")
+			}
 		}
 	}
 	s.mu.Unlock()

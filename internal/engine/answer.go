@@ -27,3 +27,9 @@ func FinalAnswer(segs []string) string {
 	}
 	return strings.Join(append(keep, last), "\n\n")
 }
+
+// Signal 回答這個工具是不是只是告訴 XBot 一件事（xbot.chat.wait_for_user：在等你）：它前後寫的字是同一段回答，不在這裡切開。
+// 2026-10-24 deepseek 把三個名字和推薦寫在呼叫它的同一步，工具回來後只補「三個都列在上面了，你點一個就好」；
+// 照工具切開，前面那段（不到 InterimNarrationMax 字）被當成旁白，你只看到最後那句。各引擎的名稱寫法不同
+// （mcp__xbot__xbot_chat_wait_for_user、xbot.chat.wait_for_user），看結尾。
+func Signal(tool string) bool { return strings.Contains(tool, "wait_for_user") }

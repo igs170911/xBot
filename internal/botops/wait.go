@@ -17,7 +17,7 @@ import (
 
 // WaitIn 是 xbot.chat.wait_for_user 的輸入。
 type WaitIn struct {
-	Ask     string   `json:"ask" required:"true" max:"300" desc:"一句話寫給使用者看：要他回答、決定或動手做什麼，例：要建 3 人版還是 5 人版？"`
+	Ask     string   `json:"ask" required:"true" max:"300" desc:"通知卡上的一句話（對話裡看不到）：要他回答、決定或動手做什麼，例：要建 3 人版還是 5 人版？"`
 	Choices []string `json:"choices,omitempty" max:"4" desc:"有幾條路讓他選時給 2～4 個選項（各 20 字內），他點了就當成他的回覆；要他自己寫或動手的不用給"`
 }
 
@@ -27,8 +27,8 @@ type WaitOut struct {
 }
 
 const (
-	waitNote = "記下了：這一輪結束時會通知使用者，在待我處理開一張卡" +
-		"。把同一件事寫在你的回覆裡（要他決定的放第一句），然後結束這一輪；他回覆後你會在這條對話接著做。"
+	waitNote = "記下了：這一輪結束時會通知使用者，選項會變成他可以點的按鈕。要他決定的事要寫在你的回覆裡（已經寫了就不用再寫一次），" +
+		"然後結束這一輪；他回覆後你會在這條對話接著做。"
 	waitPeerNote = "這件事是隊友或群組交辦的，系統不會另外通知使用者：把要使用者做的事寫在回覆裡，交辦的隊友會轉告。"
 )
 
@@ -36,7 +36,7 @@ func registerWait(reg *ops.Registry, d Deps) {
 	ops.Register(reg, ops.Op[WaitIn, WaitOut]{
 		Name: "xbot.chat.wait_for_user", Summary: "說這件事在等使用者回覆",
 		Description: "這件事要等使用者本人回答、決定或動手（在幾條路裡選一條、提供只有他知道的資料、登入、註冊）才能往下做時，" +
-			"結束這一輪前呼叫一次：系統會通知他，選項會變成他可以直接點的按鈕。" +
+			"結束這一輪前呼叫一次：系統會通知他，選項會變成他可以直接點的按鈕。問題和選項的說明要先完整寫在你的回覆裡（ask 只出現在通知卡上）。" +
 			"閒聊順口問的、事情已經做完只是問還要不要別的，不要用；使用者交代過的事不要用它問「要我做嗎」，直接做完。" +
 			"花錢、對外發送、簽約這類要核准的用 xbot.approvals.request。",
 		Scope: ops.ScopeOperate, Risk: ops.RiskSafe, ForBot: true, NoDelegate: true,

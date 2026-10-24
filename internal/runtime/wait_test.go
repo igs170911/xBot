@@ -159,3 +159,61 @@ func TestWaitForUserInATeammateTurn(t *testing.T) {
 		t.Fatalf("隊友交辦的不開卡：%+v", open)
 	}
 }
+
+// deepseek 把選項和推薦寫在呼叫 wait_for_user 的同一步，工具回來後只補一句「你點一個就好」：兩段都是回答
+// （照工具切開的話，前面不到 200 字的那段會被當成旁白丟掉，你只看到最後那句）。真的工具前的旁白照樣不算。
+func TestTextAroundWaitForUserIsOneAnswer(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t)
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Event("message.start", nil)
+		tr.Event("message.delta", map[string]any{"text": "我先看一下。"})
+		tr.Event("tool.start", map[string]any{"tool_id": "c1", "name": "web_search"})
+		tr.Event("tool.complete", map[string]any{"tool_id": "c1", "name": "web_search", "result": "ok"})
+		tr.Event("message.delta", map[string]any{"text": "三個名字：小格、阿限、米格。我推小格。"})
+		tr.Event("tool.start", map[string]any{"tool_id": "w1", "name": "mcp__xbot__xbot_chat_wait_for_user"})
+		f.rt.WaitForUser(ctx, f.bot.ID, WaitAsk{Ask: "IG Bot 要叫哪個名字？", Choices: []string{"小格", "阿限", "米格"}})
+		tr.Event("tool.complete", map[string]any{"tool_id": "w1", "name": "mcp__xbot__xbot_chat_wait_for_user", "result": "ok"})
+		tr.Event("message.delta", map[string]any{"text": "你點一個就好。"})
+		tr.Complete("你點一個就好。", "complete", nil)
+	}
+	res, _ := f.rt.Chat(ctx, f.bot.ID, "", "幫我想三個 IG Bot 的名字讓我挑")
+	f.wait(t, res.TaskID)
+	msgs, _ := f.db.ListMessages(ctx, store.ScopeThread, res.ThreadID, 0, 0)
+	if got := msgs[len(msgs)-1].Content; got != "三個名字：小格、阿限、米格。我推小格。\n\n你點一個就好。" {
+		t.Fatalf("回覆：%q", got)
+	}
+}
+
+// 2026-10-24 蝦皮註冊實測：Bot 用「請你接手電腦」開了接手卡，回覆裡講「只有你本人能做」又被猜成需要你，多一張卡。
+// 已經有要你動手的卡（核准、接手、連接應用程式）就不再從回覆猜一張；Bot 自己說在等你的照開（那是它另外要問的事）。
+func TestNoGuessedCardNextToATakeoverButExplicitWaitStillOpens(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t)
+	explicit := false
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Event("message.start", nil)
+		if _, err := f.db.CreateInboxItem(ctx, store.InboxItem{Kind: "takeover", BotID: f.bot.ID, Title: "小幫手需要你接手電腦"}); err != nil {
+			t.Error(err)
+		}
+		if explicit {
+			f.rt.WaitForUser(ctx, f.bot.ID, WaitAsk{Ask: "註冊好之後賣場要叫什麼名字？"})
+		}
+		tr.Complete("註冊卡在手機簡訊驗證碼，這關只有你本人能做，請你接手填一下。", "complete", nil)
+	}
+	res, _ := f.rt.Chat(ctx, f.bot.ID, "", "幫我把蝦皮賣場註冊起來")
+	if js := chain(t, f, res.TaskID); js[0].Verdict != judge.NeedsPerson {
+		t.Fatalf("%+v", js[0])
+	}
+	open, _ := f.db.ListInboxFiltered(ctx, store.InboxFilter{BotID: f.bot.ID, Status: store.InboxOpen, Kinds: []string{"question"}})
+	if len(open) != 0 {
+		t.Fatalf("有接手卡就不再猜一張：%+v", open)
+	}
+	explicit = true
+	res, _ = f.rt.Chat(ctx, f.bot.ID, "", "幫我把蝦皮賣場註冊起來")
+	chain(t, f, res.TaskID)
+	open, _ = f.db.ListInboxFiltered(ctx, store.InboxFilter{BotID: f.bot.ID, Status: store.InboxOpen, Kinds: []string{"question"}})
+	if len(open) != 1 || open[0].Body != "註冊好之後賣場要叫什麼名字？" {
+		t.Fatalf("它自己說在等你的照開：%+v", open)
+	}
+}

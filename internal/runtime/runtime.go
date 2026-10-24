@@ -788,7 +788,11 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 			switch e.Type {
 			case engine.EventToolCall:
 				t.usedTools = true
-				t.toolsAt = append(t.toolsAt, t.text.Len())
+				if !engine.Signal(e.Tool.Name) {
+					t.toolsAt = append(t.toolsAt, t.text.Len())
+				} else if t.text.Len() > 0 && !strings.HasSuffix(t.text.String(), "\n") {
+					t.text.WriteString("\n\n") // 前後是同一段回答，分段接起來
+				}
 				if t.openTools == nil {
 					t.openTools = map[string]bool{}
 				}
@@ -983,6 +987,10 @@ func (r *Runtime) finish(t *turn, status, text string) {
 			if verdict == VerdictAnswer && answer != "" {
 				final = answer
 			}
+		} else if verdict == VerdictAnswer && len(answer) > len(final) && strings.HasSuffix(answer, strings.TrimSpace(final)) {
+			// 引擎只給最後一則（Hermes 的 message.complete）：工具前先寫好的答案（比旁白長、或和 xbot.chat.wait_for_user
+			// 同一步寫的，見 engine.Signal）也是回答。2026-10-24 deepseek 把三個名字寫在說等你的同一步，最後只剩「你點一個就好」。
+			final = answer
 		}
 		if strings.TrimSpace(final) == "" && prevMsg != "" && prevText != "" {
 			// 插話之後一個字都沒寫：前一個泡泡的內容就是回答，搬到最後這個泡泡（判斷、重試都看這一則）

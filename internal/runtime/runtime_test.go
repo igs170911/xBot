@@ -380,6 +380,25 @@ func TestNarrationBetweenToolsIsNotTheAnswer(t *testing.T) {
 	if got := msgs[len(msgs)-1].Content; got != "C 店最便宜。" {
 		t.Fatalf("回答：%q", got)
 	}
+	// 先寫完一大段答案再存檔、最後說「已存檔」：Hermes 的 message.complete 只有最後那句，答案不能丟（2026-10-24）
+	long := strings.Repeat("這是完整的比價結果。", 30)
+	f.g.OnPrompt = func(t *hermestest.Turn) {
+		t.Event("message.start", nil)
+		t.Event("message.delta", map[string]any{"text": long})
+		t.Event("tool.start", map[string]any{"tool_id": "w", "name": "write_file"})
+		t.Event("tool.complete", map[string]any{"tool_id": "w", "name": "write_file", "result": "ok"})
+		t.Event("message.delta", map[string]any{"text": "已存檔。"})
+		t.Complete("已存檔。", "complete", nil)
+	}
+	res, err = f.rt.Chat(ctx, f.bot.ID, res.ThreadID, "整理成報告")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.wait(t, res.TaskID)
+	msgs, _ = f.db.ListMessages(ctx, store.ScopeThread, res.ThreadID, 0, 0)
+	if got := msgs[len(msgs)-1].Content; got != long+"\n\n已存檔。" {
+		t.Fatalf("先寫好的答案要留著：%q", got)
+	}
 }
 
 // 2026-10-20：「每次交代完都不會繼續執行」。你親手打的訊息送給引擎時附一句提醒（對話裡看不到）；

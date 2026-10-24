@@ -349,6 +349,13 @@ func (r *Runtime) clearWait(ctx context.Context, t *turn) {
 	}
 }
 
+// saidWaiting：Bot 這一輪說了在等你（xbot.chat.wait_for_user）。
+func (t *turn) saidWaiting() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.wait != nil
+}
+
 // waitChoices 是這一輪判成「需要你」時給你點的選項（Bot 用 xbot.chat.wait_for_user 給的）；隊友、群組交辦的不給。
 func (t *turn) waitChoices(res judge.Result) []string {
 	if res.Verdict != judge.NeedsPerson || t.source == SourceBot || t.source == SourceRoom {
