@@ -335,6 +335,34 @@ it('X04：判斷不是「已完成」才在回覆下面標出來；不對？選�
   await waitFor(() => expect(within(main).getAllByTestId('judge-tag')[0]).toHaveTextContent('你改成卡住了'))
 })
 
+it('Bot 說在等你、給了選項：最後那則回覆下面出現按鈕，點了就是你的回覆；你回過話就不再出現', async () => {
+  api.ops['chat.send'] = (input) => ({ bot_id: 'b1', thread_id: 't1', task_id: 'k2', message_id: 'm3', ...input })
+  messages = [
+    { id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '先跟我討論，行銷團隊要幾個人', task_id: 'k1', created_at: Date.now(), updated_at: Date.now() },
+    {
+      id: 'm2',
+      seq: 2,
+      sender: 'bot:b1',
+      kind: 'text',
+      content: '3 人版是主管兼文案；5 人版每個角色各一位。你想要幾人？',
+      task_id: 'k1',
+      status: 'complete',
+      judge: { verdict: 'needs_person', label: '需要你', reason: '在等你：要建 3 人版還是 5 人版？', by: 'rules', choices: ['3 人版', '5 人版'] },
+      created_at: Date.now(),
+      updated_at: Date.now(),
+    },
+  ]
+  window.history.replaceState(null, '', '/bots/b1/threads/t1')
+  render(<App />)
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
+  const row = await within(main).findByTestId('wait-choices')
+  fireEvent.click(within(row).getByRole('button', { name: '5 人版' }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'chat.send')?.input).toEqual({ bot_id: 'b1', text: '5 人版', thread_id: 't1' }))
+  expect(within(row).getByRole('button', { name: '3 人版' })).toBeDisabled()
+  emit(ev({ id: 1, task_id: 'k2', kind: 'message.created', payload: storeMsg('m3', 3, 'owner', { task_id: 'k2' }, '5 人版') }))
+  await waitFor(() => expect(within(main).queryByTestId('wait-choices')).toBeNull())
+})
+
 it('打開聊完的對話串就標成看過了（聊天清單的藍點消失）；看著時 Bot 回的也算', async () => {
   api.ops['chat.list_threads'] = () => ({ threads: [{ ...THREAD, unread: 2 }] })
   api.ops['chat.mark_read'] = () => ({ marked: true })

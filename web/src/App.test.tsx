@@ -111,6 +111,30 @@ it('Bot 在對話裡的提問：在待我處理就地回答（chat.respond）', 
   expect(api.calls.find((c) => c.path === 'chat.respond')?.input).toEqual({ inbox_id: 'q1', text: '不用' })
 })
 
+it('Bot 說在等你、給了選項的「需要你處理」卡：點選項就是在那條對話回覆它；沒選項的可以去對話回覆', async () => {
+  let open = true
+  api.ops['bots.list'] = () => ({ bots: [BOT] })
+  api.ops['inbox.list'] = (input) => ({
+    items:
+      open && input.status === 'open'
+        ? [
+            { id: 'w1', kind: 'question', group: 'decide', bot_id: 'b1', thread_id: 'th1', ref: 'judge:k1', title: '抓蟲需要你處理', body: '要建 3 人版還是 5 人版？', payload: { choices: ['3 人版', '5 人版'] }, status: 'open', read: false, created_at: 1 },
+          ]
+        : [],
+  })
+  api.ops['chat.send'] = (input) => {
+    open = false
+    return { bot_id: 'b1', thread_id: 'th1', task_id: 'k2', message_id: 'm', ...input }
+  }
+  render(<App />)
+  const card = (await screen.findAllByTestId('inbox-item')).find((c) => c.dataset.kind === 'question')!
+  expect(card).toHaveTextContent('要建 3 人版還是 5 人版？')
+  expect(within(card).getByRole('button', { name: '自己回覆' })).toBeInTheDocument()
+  fireEvent.click(within(card).getByRole('button', { name: '3 人版' }))
+  await waitFor(() => expect(api.calls.find((c) => c.path === 'chat.send')?.input).toEqual({ bot_id: 'b1', thread_id: 'th1', text: '3 人版' }))
+  await waitFor(() => expect(screen.queryByText('要建 3 人版還是 5 人版？')).toBeNull())
+})
+
 it('過期的提問可以請它再問一次', async () => {
   let asked = false
   api.ops['inbox.list'] = (input) => ({

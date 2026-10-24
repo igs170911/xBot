@@ -1,0 +1,20 @@
+import { chromium, devices } from '@playwright/test'
+const [path, out] = process.argv.slice(2)
+const b = await chromium.launch()
+for (const [name, opts] of [['desk', { viewport: { width: 1280, height: 800 } }], ['phone', { ...devices['iPhone 14'], viewport: { width: 390, height: 844 } }]]) {
+  const ctx = await b.newContext(opts)
+  const p = await ctx.newPage()
+  await p.route(/\/api\/v1\/(inbox|chat)\.mark_read/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"output":{}}' }))
+  await p.goto('http://127.0.0.1:8780' + path, { waitUntil: 'networkidle' })
+  await p.waitForTimeout(2500)
+  const row = await p.$('[data-testid="wait-choices"]')
+  console.log(name, 'choices:', row ? await row.innerText() : 'none')
+  await p.screenshot({ path: `${out}/wait-${name}.png` })
+  await p.goto('http://127.0.0.1:8780/', { waitUntil: 'networkidle' })
+  await p.waitForTimeout(2000)
+  const card = await p.$('[data-kind="question"]')
+  console.log(name, 'inbox card:', card ? (await card.innerText()).replace(/\n/g, ' | ') : 'none')
+  if (card) await card.screenshot({ path: `${out}/wait-inbox-${name}.png` })
+  await ctx.close()
+}
+await b.close()

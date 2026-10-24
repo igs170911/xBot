@@ -1,5 +1,5 @@
 // Package botops 是 Bot 自己用的操作（C11、PRD MCP-2、AA-1）：Bot 經 product.sock 的 XBot MCP 呼叫，
-// 身分就是那個 Bot（ops.Bot）。xbot.cards.post、xbot.approvals.request、xbot.team.roster。
+// 身分就是那個 Bot（ops.Bot）。xbot.cards.post、xbot.approvals.request、xbot.team.roster、xbot.chat.wait_for_user。
 //
 // 取代 LazyBoy box/product_mcp.py 的 request_approval、other_bots；隊友傳話（message_bot 等）在 X02。
 package botops
@@ -25,6 +25,9 @@ const KindMessageCreated = "message.created"
 type Deps struct {
 	// Active 回傳 Bot 正在進行的對話串與工作（*runtime.Runtime 的 Active）；nil 時一律要帶 thread_id。
 	Active func(botID string) (threadID, taskID string)
+	// Wait 記下 Bot 這一輪結束後在等使用者（*runtime.Runtime 的 WaitForUser）：ok=false 是沒有進行中的一輪，
+	// peer 是這一輪是隊友或群組交辦的。nil 時 xbot.chat.wait_for_user 回 internal。
+	Wait func(ctx context.Context, botID, ask string, choices []string) (peer, ok bool)
 }
 
 // ── 輸入輸出 ──────────────────────────────────────────
@@ -123,6 +126,7 @@ func Register(reg *ops.Registry, d Deps) {
 		Scope:       ops.ScopeRead, Risk: ops.RiskSafe, ForBot: true,
 		Handle: roster,
 	})
+	registerWait(reg, d)
 }
 
 func botOnly(call *ops.Call) (string, error) {

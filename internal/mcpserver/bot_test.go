@@ -22,6 +22,7 @@ import (
 	"xbot/internal/bots"
 	"xbot/internal/inbox"
 	"xbot/internal/ipc"
+	"xbot/internal/limits"
 	"xbot/internal/mcpserver"
 	"xbot/internal/ops"
 	"xbot/internal/proxy"
@@ -41,6 +42,7 @@ type botEnv struct {
 
 	mu     sync.Mutex
 	events []store.Event
+	waits  [][]string // xbot.chat.wait_for_user 收到的（ask 和選項）
 }
 
 func newBotEnv(t *testing.T) *botEnv {
@@ -80,6 +82,14 @@ func newBotEnv(t *testing.T) *botEnv {
 			return e.thA.ID, e.taskA
 		}
 		return "", ""
+	}, Wait: func(_ context.Context, botID, ask string, choices []string) (bool, bool) {
+		if botID != e.a.ID {
+			return false, false
+		}
+		e.mu.Lock()
+		e.waits = append(e.waits, append([]string{ask}, choices...))
+		e.mu.Unlock()
+		return false, true
 	}})
 
 	kr, _ := proxy.NewKeyring(bytes.Repeat([]byte{7}, 32))
@@ -158,7 +168,7 @@ func call(t *testing.T, cs *mcp.ClientSession, name string, args map[string]any,
 }
 
 var botToolNames = []string{"xbot.approvals.list", "xbot.approvals.request", "xbot.approvals.wait", "xbot.bots.create", "xbot.bots.update_my_profile",
-	"xbot.cards.post", "xbot.team.roster"}
+	"xbot.cards.post", "xbot.chat.wait_for_user", "xbot.team.roster"}
 
 func TestBotToolsList(t *testing.T) {
 	e := newBotEnv(t)
@@ -324,6 +334,35 @@ func TestCardsPost(t *testing.T) {
 	}
 	if oe := call(t, csB, "xbot.cards.post", map[string]any{"type": "info", "title": "嗨", "thread_id": e.thB.ID}, &out); oe != nil || out.ThreadID != e.thB.ID {
 		t.Fatalf("%+v %+v", oe, out)
+	}
+}
+
+// Bot 自己說在等使用者：記下那一句和選項；選項太多、太長、沒寫要做什麼要擋；沒有進行中的一輪要說清楚。
+func TestWaitForUser(t *testing.T) {
+	e := newBotEnv(t)
+	cs, err := e.connect(t, e.a.ID, e.ka, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out botops.WaitOut
+	if oe := call(t, cs, "xbot.chat.wait_for_user", map[string]any{"ask": "要建 3 人版還是 5 人版？", "choices": []string{"3 人版", " 5 人版 ", ""}}, &out); oe != nil {
+		t.Fatal(oe)
+	}
+	if !strings.Contains(out.Note, "結束這一輪") || len(e.waits) != 1 || strings.Join(e.waits[0], "|") != "要建 3 人版還是 5 人版？|3 人版|5 人版" {
+		t.Fatalf("%+v %q", out, e.waits)
+	}
+	for _, bad := range []map[string]any{
+		{"ask": "  "},
+		{"ask": "選一個", "choices": []string{"一", "二", "三", "四", "五"}},
+		{"ask": "選一個", "choices": []string{strings.Repeat("長", limits.WaitChoiceMax+1)}},
+	} {
+		if oe := call(t, cs, "xbot.chat.wait_for_user", bad, nil); oe == nil || oe.Code != ops.CodeInvalidInput {
+			t.Fatalf("應該被擋：%v → %+v", bad, oe)
+		}
+	}
+	csB, _ := e.connect(t, e.b.ID, e.kb, nil)
+	if oe := call(t, csB, "xbot.chat.wait_for_user", map[string]any{"ask": "要哪個？"}, nil); oe == nil || oe.Code != ops.CodeConflict {
+		t.Fatalf("沒有進行中的一輪：%+v", oe)
 	}
 }
 

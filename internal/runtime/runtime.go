@@ -240,6 +240,7 @@ type turn struct {
 	quota            *engine.QuotaError
 	plan             []string     // Bot 的計畫裡還沒做完的項目（最新的一份）
 	loop             *engine.Loop // 引擎因為一直重複同一個工具沒有進展而停下這一輪
+	wait             *WaitAsk     // Bot 說這一輪結束後在等你（xbot.chat.wait_for_user）；你插話回了就清掉
 
 	// 看門狗：最後一次收到事件的時間、正在執行的工具、看門狗送出中斷的時間、按停止的時間。
 	seen      time.Time
@@ -496,6 +497,7 @@ func (r *Runtime) trySteer(ctx context.Context, req ChatRequest, threadID, text,
 	r.reanchor(context.WithoutCancel(ctx), t)
 	if sender == "owner" && kind != KindActivity {
 		r.closeJudgeCards(context.WithoutCancel(ctx), req.BotID, threadID)
+		r.clearWait(context.WithoutCancel(ctx), t) // 你已經回了：它在等的就是這則
 	}
 	r.log.Info("插話送進正在做的這一輪", "bot", req.BotID, "task", t.taskID)
 	return res, true
@@ -786,7 +788,11 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 			switch e.Type {
 			case engine.EventToolCall:
 				t.usedTools = true
-				t.toolsAt = append(t.toolsAt, t.text.Len())
+				if !engine.Signal(e.Tool.Name) {
+					t.toolsAt = append(t.toolsAt, t.text.Len())
+				} else if t.text.Len() > 0 && !strings.HasSuffix(t.text.String(), "\n") {
+					t.text.WriteString("\n\n") // 前後是同一段回答，分段接起來
+				}
 				if t.openTools == nil {
 					t.openTools = map[string]bool{}
 				}
@@ -981,6 +987,10 @@ func (r *Runtime) finish(t *turn, status, text string) {
 			if verdict == VerdictAnswer && answer != "" {
 				final = answer
 			}
+		} else if verdict == VerdictAnswer && len(answer) > len(final) && strings.HasSuffix(answer, strings.TrimSpace(final)) {
+			// 引擎只給最後一則（Hermes 的 message.complete）：工具前先寫好的答案（比旁白長、或和 xbot.chat.wait_for_user
+			// 同一步寫的，見 engine.Signal）也是回答。2026-10-24 deepseek 把三個名字寫在說等你的同一步，最後只剩「你點一個就好」。
+			final = answer
 		}
 		if strings.TrimSpace(final) == "" && prevMsg != "" && prevText != "" {
 			// 插話之後一個字都沒寫：前一個泡泡的內容就是回答，搬到最後這個泡泡（判斷、重試都看這一則）
@@ -1035,6 +1045,7 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	var judged *Judgment
 	if res != nil {
 		j := judgmentOf(*res)
+		j.Choices = t.waitChoices(*res)
 		judged = &j
 	}
 	if msgID != "" {

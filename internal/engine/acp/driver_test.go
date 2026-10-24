@@ -440,6 +440,11 @@ func TestFinalAnswerSkipsShortNarration(t *testing.T) {
 	if e := done(acptest.PromptNarrateMany); e.Type != engine.EventDone || e.Text != "做好了，在 /workspace/a.html。" {
 		t.Fatalf("很多句短旁白加起來再長也不算回答：%q", e.Text)
 	}
+	// 說在等你（xbot.chat.wait_for_user）只是通知 XBot：前後是同一段回答（2026-10-24 deepseek 把選項寫在呼叫的同一步），
+	// 整段都是回答時 Text 是空的（runtime 用整輪的文字）。
+	if e := done(acptest.PromptWaitForUser); e.Type != engine.EventDone || e.Status != engine.StatusComplete || e.Text != "" {
+		t.Fatalf("在等你前後的字都是回答：%+v", e)
+	}
 }
 
 // turn 送一則訊息並讀到這一輪結束。

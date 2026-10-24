@@ -31,6 +31,7 @@ import (
 	"xbot/internal/org"
 	"xbot/internal/proxy"
 	"xbot/internal/routines"
+	"xbot/internal/runtime"
 	"xbot/internal/screen"
 	"xbot/internal/skills"
 	"xbot/internal/store"
@@ -146,11 +147,15 @@ func Register(reg *ops.Registry, d Deps) {
 	lessons.Register(reg, d.Lessons)
 	inbox.Register(reg)
 	delegation.Register(reg)
-	var active func(string) (string, string)
+	bod := botops.Deps{}
 	if d.Runtime != nil {
-		active = d.Runtime.Active
+		rt := d.Runtime
+		bod.Active = rt.Active
+		bod.Wait = func(ctx context.Context, botID, ask string, choices []string) (bool, bool) {
+			return rt.WaitForUser(ctx, botID, runtime.WaitAsk{Ask: ask, Choices: choices})
+		}
 	}
-	botops.Register(reg, botops.Deps{Active: active})
+	botops.Register(reg, bod)
 	collab.Register(reg, d.Collab)
 	org.Register(reg, d.Org)
 	models.Register(reg, models.Deps{Providers: d.Providers, Lister: d.Lister, Prober: d.Prober})

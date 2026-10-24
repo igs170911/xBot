@@ -184,7 +184,7 @@ type CreateIn struct {
 	Engine       Engine       `json:"engine,omitempty" desc:"引擎；預設 hermes。claude-code、codex、gemini、opencode、grok 要再用 xbot.engines.link_credentials 同意使用你的訂閱"`
 	Model        string       `json:"model,omitempty" max:"200" desc:"模型；不填用預設模型（xbot.models.get 看設定）"`
 	Effort       Effort       `json:"effort,omitempty" desc:"思考強度；不填是 medium"`
-	ApprovalMode ApprovalMode `json:"approval_mode,omitempty" desc:"權限等級；預設 ask（先問我）。設成其他等級要你核准"`
+	ApprovalMode ApprovalMode `json:"approval_mode,omitempty" desc:"權限等級；預設 edits（一般的事自己做）。設成 auto、full 要你核准"`
 }
 
 // UpdateIn 是 xbot.bots.update 的輸入：有給的欄位才改。
@@ -251,7 +251,7 @@ func Register(reg *ops.Registry, d Deps) {
 	})
 	ops.Register(reg, ops.Op[CreateIn, View]{
 		Name: "xbot.bots.create", Summary: "建立一個 Bot",
-		Description: "新 Bot 的權限等級預設是「先問我」（SEC-1）。它的電腦在第一次對話時才開機。" +
+		Description: "新 Bot 的權限等級預設是「一般的事自己做」（edits：改自己電腦裡的檔案不用問，其他會改東西的事先問）。它的電腦在第一次對話時才開機。" +
 			"代理建立的 Bot 記在它名下：只能碰自己建立的東西的代理（預設）也能碰它（MCP-8）。" +
 			"Bot 自己也能建立幫手 Bot（LP-9）：缺少某種專長、使用者也同意時才建，一次一個；每 24 小時最多 3 個" +
 			"（有團隊管理權限 20 個），全部最多 50 個；名字不能和現有的 Bot 重複。",

@@ -2419,7 +2419,7 @@ export interface BotsCreateInput {
   model?: string
   /** 思考強度；不填是 medium */
   effort?: 'low' | 'medium' | 'high'
-  /** 權限等級；預設 ask（先問我）。設成其他等級要你核准 */
+  /** 權限等級；預設 edits（一般的事自己做）。設成 auto、full 要你核准 */
   approval_mode?: 'ask' | 'edits' | 'auto' | 'full'
 }
 
@@ -2468,7 +2468,7 @@ export interface BotsCreateOutput {
 /**
  * 建立一個 Bot
  *
- * 新 Bot 的權限等級預設是「先問我」（SEC-1）。它的電腦在第一次對話時才開機。代理建立的 Bot 記在它名下：只能碰自己建立的東西的代理（預設）也能碰它（MCP-8）。Bot 自己也能建立幫手 Bot（LP-9）：缺少某種專長、使用者也同意時才建，一次一個；每 24 小時最多 3 個（有團隊管理權限 20 個），全部最多 50 個；名字不能和現有的 Bot 重複。
+ * 新 Bot 的權限等級預設是「一般的事自己做」（edits：改自己電腦裡的檔案不用問，其他會改東西的事先問）。它的電腦在第一次對話時才開機。代理建立的 Bot 記在它名下：只能碰自己建立的東西的代理（預設）也能碰它（MCP-8）。Bot 自己也能建立幫手 Bot（LP-9）：缺少某種專長、使用者也同意時才建，一次一個；每 24 小時最多 3 個（有團隊管理權限 20 個），全部最多 50 個；名字不能和現有的 Bot 重複。
  *
  * `xbot.bots.create`：權限 manage、風險 safe（依輸入可能需要核准）
  */
@@ -3168,6 +3168,8 @@ export interface ChatReadOutput {
       confidence?: number
       /** 系統叫 Bot 自己接著做的那件工作 id */
       continued_by?: string
+      /** Bot 在等你時給的選項，點了就當成你的回覆 */
+      choices?: string[]
       /** 你按「不對？」改正成哪一種 */
       corrected?: 'done' | 'needs_person' | 'handed_back' | 'only_promised' | 'stuck'
     }
@@ -3414,6 +3416,30 @@ export function chatStop(input: ChatStopInput, opts?: CallOptions): Promise<Chat
   return invoke('xbot.chat.stop', input, opts).then((r) => r.output)
 }
 
+// xbot.chat.wait_for_user
+
+export interface ChatWaitForUserInput {
+  /** 通知卡上的一句話（對話裡看不到）：要他回答、決定或動手做什麼，例：要建 3 人版還是 5 人版？ */
+  ask: string
+  /** 有幾條路讓他選時給 2～4 個選項（各 20 字內），他點了就當成他的回覆；要他自己寫或動手的不用給 */
+  choices?: string[]
+}
+
+export interface ChatWaitForUserOutput {
+  note: string
+}
+
+/**
+ * 說這件事在等使用者回覆
+ *
+ * 這件事要等使用者本人回答、決定或動手（在幾條路裡選一條、提供只有他知道的資料、登入、註冊）才能往下做時，寫回覆之前先呼叫一次：系統會通知他，選項會變成他可以直接點的按鈕。再寫給他的回覆，問題和選項的說明寫在回覆裡（ask 只出現在通知卡上）。閒聊順口問的、事情已經做完只是問還要不要別的，不要用；使用者交代過的事不要用它問「要我做嗎」，直接做完。花錢、對外發送、簽約這類要核准的用 xbot.approvals.request。
+ *
+ * `xbot.chat.wait_for_user`：權限 operate、風險 safe
+ */
+export function chatWaitForUser(input: ChatWaitForUserInput, opts?: CallOptions): Promise<ChatWaitForUserOutput> {
+  return invoke('xbot.chat.wait_for_user', input, opts).then((r) => r.output)
+}
+
 // xbot.chat.wait_until_settled
 
 export interface ChatWaitUntilSettledInput {
@@ -3444,6 +3470,8 @@ export interface ChatWaitUntilSettledOutput {
     confidence?: number
     /** 系統叫 Bot 自己接著做的那件工作 id */
     continued_by?: string
+    /** Bot 在等你時給的選項，點了就當成你的回覆 */
+    choices?: string[]
   }
   /** true：完成了，或在等人；false：等到逾時，還在做 */
   settled: boolean
@@ -11634,6 +11662,8 @@ export interface TasksProgressOutput {
       confidence?: number
       /** 系統叫 Bot 自己接著做的那件工作 id */
       continued_by?: string
+      /** Bot 在等你時給的選項，點了就當成你的回覆 */
+      choices?: string[]
     }
     at: number
     /** 回覆的開頭 */
@@ -13951,6 +13981,7 @@ export interface Ops {
   'xbot.chat.send': { input: ChatSendInput; output: ChatSendOutput }
   'xbot.chat.steps': { input: ChatStepsInput; output: ChatStepsOutput }
   'xbot.chat.stop': { input: ChatStopInput; output: ChatStopOutput }
+  'xbot.chat.wait_for_user': { input: ChatWaitForUserInput; output: ChatWaitForUserOutput }
   'xbot.chat.wait_until_settled': { input: ChatWaitUntilSettledInput; output: ChatWaitUntilSettledOutput }
   'xbot.collab.assignment_status': { input: CollabAssignmentStatusInput; output: CollabAssignmentStatusOutput }
   'xbot.collab.message_bot': { input: CollabMessageBotInput; output: CollabMessageBotOutput }
@@ -14211,6 +14242,7 @@ export const OPS: Record<OpName, OpMeta> = {
   'xbot.chat.send': { path: '/api/v1/chat.send', scope: 'operate', risk: 'safe', mutates: true, summary: '對一個 Bot 說話（交辦一件事）' },
   'xbot.chat.steps': { path: '/api/v1/chat.steps', scope: 'read', risk: 'safe', mutates: false, summary: '讀一條對話串的工作步驟（工具、提問、回覆、狀態）' },
   'xbot.chat.stop': { path: '/api/v1/chat.stop', scope: 'operate', risk: 'safe', mutates: true, summary: '停止 Bot 正在做的事' },
+  'xbot.chat.wait_for_user': { path: '/api/v1/chat.wait_for_user', scope: 'operate', risk: 'safe', mutates: true, summary: '說這件事在等使用者回覆' },
   'xbot.chat.wait_until_settled': { path: '/api/v1/chat.wait_until_settled', scope: 'read', risk: 'safe', mutates: false, summary: '等 Bot 做完（或需要人）再回傳它的回覆' },
   'xbot.collab.assignment_status': { path: '/api/v1/collab.assignment_status', scope: 'read', risk: 'safe', mutates: false, summary: '看一件交辦給隊友的工作現在的狀態' },
   'xbot.collab.message_bot': { path: '/api/v1/collab.message_bot', scope: 'operate', risk: 'safe', mutates: true, summary: '傳訊息給隊友（交辦、提問、通知）' },

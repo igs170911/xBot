@@ -41,6 +41,8 @@ type Judgment struct {
 	Confidence float64 `json:"confidence,omitempty"`
 	// ContinuedBy 是系統叫 Bot 自己接著做的那件工作（自動續做）。
 	ContinuedBy string `json:"continued_by,omitempty" desc:"系統叫 Bot 自己接著做的那件工作 id"`
+	// Choices 是 Bot 說在等你時給的選項（xbot.chat.wait_for_user）：對話裡可以直接點，點了就當成你的回覆。
+	Choices []string `json:"choices,omitempty" desc:"Bot 在等你時給的選項，點了就當成你的回覆"`
 }
 
 func judgmentOf(r judge.Result) Judgment {
@@ -95,6 +97,9 @@ func (r *Runtime) judgeTurn(t *turn, task store.Task, verdict, final string, sta
 		TaskID: task.ID, BotID: t.botID, Research: t.research}
 	if t.loop != nil {
 		in.Looped, in.LoopCount = t.loop.Tool, t.loop.Count
+	}
+	if t.wait != nil {
+		in.Waiting = t.wait.Ask
 	}
 	t.mu.Unlock()
 	in.Asked, in.Continued = askedFor(r.o.DB, task)
@@ -304,6 +309,66 @@ func (r *Runtime) continueTurn(t *turn, in judge.Input, req *ChatRequest) string
 	return res.TaskID
 }
 
+// WaitAsk 是 Bot 自己說「這件事在等你」（xbot.chat.wait_for_user）：要你回答、決定或動手做什麼，以及可以直接點的選項。
+// 存在 task.meta.waiting（重播判斷用）。
+type WaitAsk struct {
+	Ask     string   `json:"ask"`
+	Choices []string `json:"choices,omitempty"`
+}
+
+// WaitForUser 記下 Bot 這一輪結束後在等你：完成判定照它說的判成「需要你」，不從回覆猜；卡片寫它那一句、帶它的選項。
+// ok=false 表示 Bot 現在沒有進行中的一輪。peer：這一輪是隊友或群組交辦的（不開卡，由交辦的隊友轉告你）。
+func (r *Runtime) WaitForUser(ctx context.Context, botID string, w WaitAsk) (peer, ok bool) {
+	r.mu.Lock()
+	t := r.active[botID]
+	r.mu.Unlock()
+	if t == nil {
+		return false, false
+	}
+	t.mu.Lock()
+	if t.finished || t.stopping {
+		t.mu.Unlock()
+		return false, false
+	}
+	t.wait = &w
+	t.mu.Unlock()
+	if err := r.o.DB.PatchTaskMeta(ctx, t.taskID, map[string]any{"waiting": w}); err != nil {
+		r.log.Warn("記下在等你失敗", "task", t.taskID, "err", err)
+	}
+	return t.source == SourceBot || t.source == SourceRoom, true
+}
+
+// clearWait：你在這一輪裡回了話（插話），它在等的就是這則，不再算在等你。
+func (r *Runtime) clearWait(ctx context.Context, t *turn) {
+	t.mu.Lock()
+	had := t.wait != nil
+	t.wait = nil
+	t.mu.Unlock()
+	if had {
+		_ = r.o.DB.PatchTaskMeta(ctx, t.taskID, map[string]any{"waiting": nil})
+	}
+}
+
+// saidWaiting：Bot 這一輪說了在等你（xbot.chat.wait_for_user）。
+func (t *turn) saidWaiting() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.wait != nil
+}
+
+// waitChoices 是這一輪判成「需要你」時給你點的選項（Bot 用 xbot.chat.wait_for_user 給的）；隊友、群組交辦的不給。
+func (t *turn) waitChoices(res judge.Result) []string {
+	if res.Verdict != judge.NeedsPerson || t.source == SourceBot || t.source == SourceRoom {
+		return nil
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.wait == nil {
+		return nil
+	}
+	return t.wait.Choices
+}
+
 // askCard 開一張「需要你」卡（kind=question、在「要你決定」）：Bot 這一輪結束時在要你本人做事或把工作交回給你。
 // 同一條對話串已經有一張還開著的就不再開（你在那條對話串回話時會收掉，見 closeJudgeCards）。
 func (r *Runtime) askCard(t *turn, res judge.Result, title string) {
@@ -317,8 +382,12 @@ func (r *Runtime) askCard(t *turn, res judge.Result, title string) {
 			return
 		}
 	}
-	raw, _ := json.Marshal(map[string]any{"bot_name": t.botName, "task_id": t.taskID, "verdict": res.Verdict, "reason": res.Reason,
-		"input": clip(t.shownInput(), 120)})
+	payload := map[string]any{"bot_name": t.botName, "task_id": t.taskID, "verdict": res.Verdict, "reason": res.Reason,
+		"input": clip(t.shownInput(), 120)}
+	if c := t.waitChoices(res); len(c) > 0 {
+		payload["choices"] = c
+	}
+	raw, _ := json.Marshal(payload)
 	it := store.InboxItem{Kind: "question", BotID: t.botID, ThreadID: t.threadID, Ref: judgeRefPrefix + t.taskID, Title: title,
 		Body: clip(firstNonEmpty(res.Ask, res.Reason), limits.JudgeAskMax), Payload: raw}
 	created, err := r.o.DB.CreateInboxItem(ctx, it)

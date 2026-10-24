@@ -486,3 +486,35 @@ func TestNeedsPersonOnlyWhenTheAskingSentenceNeedsYou(t *testing.T) {
 		}
 	}
 }
+
+// 2026-10-24：Bot 用 xbot.chat.wait_for_user 自己說在等你（Input.Waiting）：照它說的判成需要你，卡片引用它那一句。
+// 10/19～23 這幾件的回覆一個關鍵字都沒有，規則判成已完成；你已經交代了、它卻問「要我做嗎」的照樣交回、叫它做完。
+func TestWaitingIsNeedsPerson(t *testing.T) {
+	cases := []struct {
+		name, asked, text, waiting string
+		want                       Verdict
+	}{
+		{"先討論：問你要幾人", "你先不要做動，先跟我討論我如果想要建立一個行銷團隊，需要哪些角色？",
+			"如果團隊規模小，研究員和驗證員可以合併成一人。你想要幾人團隊？人數決定了分工細緻度。", "", Done},
+		{"先討論：說了在等你", "你先不要做動，先跟我討論我如果想要建立一個行銷團隊，需要哪些角色？",
+			"如果團隊規模小，研究員和驗證員可以合併成一人。你想要幾人團隊？人數決定了分工細緻度。", "你想要幾人團隊？", NeedsPerson},
+		{"做不到、要你選哪條路", "把大家的允許模式都變成最高，不用常常遇到小事就問我",
+			"現有 Bot 的允許模式只能在建立時設定。要我幫你重新建立嗎？還是先到網頁上改？", "要重新建立 Bot，還是你到網頁上改？", NeedsPerson},
+		{"交代了卻問要不要做", "幫我建一個三人的行銷團隊", "名單整理好了。要我建團隊嗎？", "要我建團隊嗎？", HandedBack},
+		{"交代了、要刪檔先問", "幫我整理 /workspace 的檔案", "有三組新舊版本。需要我把舊的刪掉嗎？", "需要我把舊的刪掉嗎？", NeedsPerson},
+	}
+	for _, c := range cases {
+		r, err := Rules{}.Judge(context.Background(), Input{Outcome: OutcomeAnswer, Text: c.text, Asked: c.asked, Waiting: c.waiting, UsedTools: true})
+		if err != nil || r.Verdict != c.want {
+			t.Errorf("%s：%s（%s）", c.name, r.Verdict, r.Reason)
+		}
+		if c.want == NeedsPerson && r.Ask != c.waiting {
+			t.Errorf("%s：卡片要引用它說的那一句：%q", c.name, r.Ask)
+		}
+	}
+	// 模型判斷不能把它說的「在等你」降級（FJ-4）。
+	f := Fallback{Primary: fakeJudge{r: Result{Verdict: Done, By: ByModel, Confidence: 0.99}}}
+	if r, _ := f.Judge(context.Background(), Input{Outcome: OutcomeAnswer, Text: "你想要幾人團隊？", Waiting: "你想要幾人團隊？"}); r.Verdict != NeedsPerson {
+		t.Fatalf("%+v", r)
+	}
+}
