@@ -48,7 +48,10 @@ type Driver struct {
 	dials map[string]*sync.Mutex
 }
 
-var _ engine.Driver = (*Driver)(nil)
+var (
+	_ engine.Driver  = (*Driver)(nil)
+	_ engine.Steerer = (*Driver)(nil)
+)
 
 // New 建立 Hermes 驅動。
 func New(connect Connector, log *slog.Logger) *Driver {
@@ -97,6 +100,20 @@ type session struct {
 	awaiting bool
 	timer    *time.Timer
 	q        *queue
+	// 插話（Steer）：open 是正在跑的工具數（只在工具跑的時候插話，Hermes 在這批工具做完時送進去）；steered：這一輪收下過插話。
+	// 這種一輪結束時 done 先留在 held，看 Hermes 會不會自己接著開一輪（插話沒趕上這一輪、或壓縮對話時，Hermes 排到下一輪，
+	// 收完尾馬上自己開）：開了就接成同一件工作（carry 是前一段的回答）；收完尾後 limits.HermesSteerFollowup 內沒開、
+	// 或最多 limits.HermesSteerSettle，就照常結束。
+	open    int
+	steered bool
+	held    *heldDone
+	carry   string
+}
+
+// heldDone 是插話後先留著的 done。
+type heldDone struct {
+	evs   []engine.Event
+	timer *time.Timer
 }
 
 func (s *session) setBusyLocked(busy bool) {
@@ -387,6 +404,38 @@ func durationOr(d, def time.Duration) time.Duration {
 	return def
 }
 
+// Steer 實作 engine.Steerer（session.steer）：只在工具正在跑的時候插話，Hermes 在這批工具做完時把它送進這一輪
+// （模型正在寫的時候插話，Hermes 會等這一輪結束再自己開一輪；工具跑的時候不會）。
+func (d *Driver) Steer(ctx context.Context, s engine.Session, m engine.Message) (bool, error) {
+	hs, err := d.own(s)
+	if err != nil {
+		return false, err
+	}
+	hs.mu.Lock()
+	ok := hs.running && hs.open > 0
+	hs.mu.Unlock()
+	if !ok {
+		return false, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, limits.SteerTimeout)
+	defer cancel()
+	raw, err := hs.bc.c.call(ctx, "session.steer", map[string]any{"session_id": hs.id, "text": m.Text}, 0)
+	if err != nil {
+		return false, err
+	}
+	var res struct {
+		Status string `json:"status"`
+	}
+	_ = json.Unmarshal(raw, &res)
+	if res.Status != "queued" {
+		return false, nil
+	}
+	hs.mu.Lock()
+	hs.steered = true
+	hs.mu.Unlock()
+	return true, nil
+}
+
 // Interrupt 實作 engine.Driver（session.interrupt）。
 func (d *Driver) Interrupt(ctx context.Context, s engine.Session) error {
 	hs, err := d.own(s)
@@ -582,6 +631,14 @@ func (bc *botConn) event(p eventParams) {
 		s.running = true
 		s.setBusyLocked(true)
 		s.stopAwaitingLocked()
+		if h := s.takeHeldLocked(); h != nil {
+			// Hermes 自己接著開了一輪處理插話：接成同一件工作，前一段的回答留著
+			for _, e := range h {
+				if e.Type == engine.EventDone {
+					s.carry = joinAnswer(s.carry, e.Text)
+				}
+			}
+		}
 	case "message.complete":
 		// busy 留著：Hermes 還在收尾，等 session.info。
 		s.running = false
@@ -592,7 +649,15 @@ func (bc *botConn) event(p eventParams) {
 		}
 		if json.Unmarshal(p.Payload, &info) == nil && info.Running != nil {
 			s.setBusyLocked(*info.Running)
+			if !*info.Running && s.held != nil {
+				// 收完尾了：Hermes 要自己接著開一輪的話馬上就會開，再等一下下
+				s.held.timer.Reset(limits.HermesSteerFollowup)
+			}
 		}
+	case "tool.start":
+		s.open++
+	case "tool.complete":
+		s.open = max(s.open-1, 0)
 	case "error":
 		if !s.running {
 			// 輪外的錯誤：這一輪沒開始就結束了，Hermes 那邊也不在跑。
@@ -606,6 +671,9 @@ func (bc *botConn) event(p eventParams) {
 	if p.Type == "error" && !running {
 		// 輪外的錯誤（agent 建不起來、輪被拒絕）：Hermes 不會再送 message.complete，這一輪就此結束。
 		evs = append(evs, engine.Event{Type: engine.EventDone, Status: engine.StatusError})
+	}
+	if p.Type == "message.complete" {
+		evs = s.settleDone(evs)
 	}
 	for _, e := range evs {
 		e.Session = s.id
@@ -626,6 +694,64 @@ func (bc *botConn) event(p eventParams) {
 			}
 		}
 	}
+}
+
+// settleDone 處理一輪結束的 done：前面接過的那一段回答併進來；插話還沒送進這一輪就先留著（見 session.held）。
+func (s *session) settleDone(evs []engine.Event) []engine.Event {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	carry, steered := s.carry, s.steered
+	s.carry, s.steered = "", false
+	out := evs[:0:0]
+	var done []engine.Event
+	for _, e := range evs {
+		if e.Type == engine.EventDone {
+			if carry != "" && e.Status == engine.StatusComplete {
+				e.Text = joinAnswer(carry, e.Text)
+			}
+			if steered && e.Status == engine.StatusComplete {
+				done = append(done, e)
+				continue
+			}
+		}
+		out = append(out, e)
+	}
+	if len(done) > 0 {
+		s.held = &heldDone{evs: done}
+		s.held.timer = time.AfterFunc(limits.HermesSteerSettle, func() {
+			s.mu.Lock()
+			h := s.takeHeldLocked()
+			s.mu.Unlock()
+			for _, e := range h {
+				e.Session = s.id
+				s.q.push(e)
+			}
+		})
+	}
+	return out
+}
+
+// takeHeldLocked 拿走先留著的 done（呼叫端持有 s.mu）。
+func (s *session) takeHeldLocked() []engine.Event {
+	h := s.held
+	if h == nil {
+		return nil
+	}
+	h.timer.Stop()
+	s.held = nil
+	return h.evs
+}
+
+// joinAnswer 把兩段回答接起來（空的那段不算）。
+func joinAnswer(a, b string) string {
+	a, b = strings.TrimSpace(a), strings.TrimSpace(b)
+	switch {
+	case a == "":
+		return b
+	case b == "":
+		return a
+	}
+	return a + "\n\n" + b
 }
 
 func firstNonEmpty(v ...string) string {

@@ -60,7 +60,10 @@ type Driver struct {
 	dials map[string]*sync.Mutex
 }
 
-var _ engine.Driver = (*Driver)(nil)
+var (
+	_ engine.Driver  = (*Driver)(nil)
+	_ engine.Steerer = (*Driver)(nil)
+)
 
 // New 建立 ACP 驅動。
 func New(o Options) *Driver {
@@ -80,6 +83,7 @@ type agentConn struct {
 	c           *conn
 	loadSession bool
 	canClose    bool // agent 支援 session/close（sessionCapabilities.close）：閒置的 session 可以單獨收掉
+	steer       bool // agent 支援插話（initialize 回覆的 _meta.steering.supported：Claude Code、Codex），見 Steer
 
 	mu       sync.Mutex
 	sessions map[string]*session // ACP sessionId → session
@@ -109,7 +113,12 @@ type session struct {
 	mu         sync.Mutex
 	running    bool
 	cancelling bool
-	lastUsed   time.Time // 最近一次開始或結束一輪；收掉閒置 session 時從最久沒用的開始（trim）
+	// active：這一輪 agent 已經開始動了（收到第一個 session/update）。這之前不插話：Codex 那時還沒有可以插話的一輪，
+	// 會等 XBot 這一輪結束再自己開一輪，XBot 收不到（見 Steer）。
+	active bool
+	// steered：這一輪插過話（最後的回答只算插話之後寫的，一定要明確交回，見 endTurn）。
+	steered  bool
+	lastUsed time.Time // 最近一次開始或結束一輪；收掉閒置 session 時從最久沒用的開始（trim）
 	// mode 是 Bot 的權限等級（XBot 代答權限請求時看，autoAllow）。
 	mode string
 	// effortOpt、efforts 是 agent 的思考強度選項（configId 與可以選的值）；effort 是現在設的值。改了下一則就換。
@@ -226,6 +235,11 @@ func (d *Driver) client(ctx context.Context, botID, mode string) (*agentConn, er
 				Close json.RawMessage `json:"close"`
 			} `json:"sessionCapabilities"`
 		} `json:"agentCapabilities"`
+		Meta struct {
+			Steering struct {
+				Supported bool `json:"supported"`
+			} `json:"steering"`
+		} `json:"_meta"`
 	}
 	if err := json.Unmarshal(raw, &init); err != nil {
 		ac.c.close()
@@ -237,6 +251,7 @@ func (d *Driver) client(ctx context.Context, botID, mode string) (*agentConn, er
 	}
 	ac.loadSession = init.AgentCapabilities.LoadSession
 	ac.canClose = ac.loadSession && len(init.AgentCapabilities.SessionCapabilities.Close) > 0 && string(init.AgentCapabilities.SessionCapabilities.Close) != "null"
+	ac.steer = init.Meta.Steering.Supported
 	d.mu.Lock()
 	d.bots[botID] = ac
 	d.mu.Unlock()
@@ -615,7 +630,7 @@ func (d *Driver) Send(ctx context.Context, s engine.Session, m engine.Message) e
 		as.mu.Unlock()
 		return ErrBusy
 	}
-	as.running, as.cancelling, as.denied, as.resumes = true, false, false, 0
+	as.running, as.cancelling, as.denied, as.resumes, as.active, as.steered = true, false, false, 0, false, false
 	intro := as.intro
 	as.intro = ""
 	as.mu.Unlock()
@@ -778,6 +793,7 @@ func (d *Driver) endTurn(s *session, raw json.RawMessage, err error) {
 	s.cancelling = false
 	s.tools = map[string]*toolState{}
 	all, answer := s.all.String(), engine.FinalAnswer(append(s.said, s.tail.String()))
+	steered := s.steered
 	s.all.Reset()
 	s.tail.Reset()
 	s.said = nil
@@ -815,10 +831,56 @@ func (d *Driver) endTurn(s *session, raw json.RawMessage, err error) {
 		s.q.push(engine.Event{Type: engine.EventStatus, Session: s.id, Text: note})
 		note = ""
 	}
-	if note == "" && status == engine.StatusComplete && answer != "" && answer != strings.TrimSpace(all) {
+	if note == "" && status == engine.StatusComplete && answer != "" && (steered || answer != strings.TrimSpace(all)) {
 		note = answer // 最後的回答是用完工具之後寫的那段；前面只是「我先看一下」這類旁白
 	}
 	s.q.push(engine.Event{Type: engine.EventDone, Session: s.id, Status: status, Text: note})
+}
+
+// steerMethod 是 ACP 的插話擴充（Claude Code、Codex 在 initialize 回覆的 _meta.steering 宣告支援）。
+const steerMethod = "_session/steering"
+
+// Steer 實作 engine.Steerer：把訊息送進正在跑的這一輪（_session/steering），不用等它做完再開一輪。
+// agent 開始動了才插話（active）：Codex 在還沒有可以插話的一輪時，會等 XBot 這一輪結束再自己開一輪，XBot 收不到那一輪。
+// 帶 idleBehavior=promptRequired：這一輪已經結束時 Claude Code 回 promptRequired，不會自己開一輪；Codex 不認得這個選項，
+// 碰巧遇到這一輪剛結束時會回 startedNewTurn——取消它，交給 XBot 照常排隊。
+func (d *Driver) Steer(ctx context.Context, s engine.Session, m engine.Message) (bool, error) {
+	as, err := d.own(s)
+	if err != nil {
+		return false, err
+	}
+	as.mu.Lock()
+	ok := as.ac.steer && as.running && as.active && !as.holding && !as.cancelling
+	as.mu.Unlock()
+	if !ok {
+		return false, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, limits.SteerTimeout)
+	defer cancel()
+	raw, err := as.ac.c.call(ctx, steerMethod, map[string]any{"sessionId": as.id, "prompt": []map[string]string{{"type": "text", "text": m.Text}},
+		"_meta": map[string]any{"steering": map[string]string{"idleBehavior": "promptRequired"}}})
+	if err != nil {
+		return false, err
+	}
+	var res struct {
+		Outcome string `json:"outcome"`
+	}
+	_ = json.Unmarshal(raw, &res)
+	switch res.Outcome {
+	case "injected":
+		as.mu.Lock()
+		// 插話之前寫的字已經留在對話裡前一個泡泡（runtime 換了新泡泡）：最後的回答只算插話之後寫的
+		as.cut()
+		as.said = nil
+		as.all.Reset()
+		as.steered = true
+		as.mu.Unlock()
+		return true, nil
+	case "startedNewTurn":
+		d.log.Warn("插話時這一輪剛好結束，agent 自己開了一輪；取消它，改成排隊", "bot", as.ac.botID, "session", as.id)
+		_ = as.ac.c.notify("session/cancel", map[string]string{"sessionId": as.id})
+	}
+	return false, nil
 }
 
 // Interrupt 實作 engine.Driver（session/cancel）：還在等人回覆的權限請求一律以 cancelled 回覆（ACP 規定），
@@ -1070,6 +1132,9 @@ func (d *Driver) notification(ac *agentConn, method string, params json.RawMessa
 		// prompt 回來之後 agent 又動了：它在回報背景工作，等這一輪（turn_completed）結束。
 		s.agentTurn, s.wake = true, false
 		d.rearm(s)
+	}
+	if turnActivity[p.Update.SessionUpdate] && p.Update.SessionUpdate != "user_message_chunk" {
+		s.active = true
 	}
 	evs := normalize(p.Update, s.tools, time.Now())
 	for _, e := range evs {

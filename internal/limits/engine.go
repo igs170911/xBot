@@ -63,6 +63,13 @@ const (
 	// Hermes 預設 250，比主代理的 HermesMaxIterations 還多；子代理只做一小段，60 次夠用。XBot 新增。
 	HermesDelegationMaxIterations = 60
 
+	// SteerTimeout 是插話（engine.Steerer）最多等引擎回覆多久；等不到就照原本的方式排隊。XBot 自訂。
+	SteerTimeout = 15 * time.Second
+	// HermesSteerSettle：收下過插話的一輪結束後，最多再等多久看 Hermes 會不會自己接著開一輪處理它（插話沒趕上這一輪、
+	// 或壓縮對話時，Hermes 排到下一輪）；HermesSteerFollowup 是 Hermes 收完尾（session.info running=false）後再等的時間
+	// （要開的話收完尾馬上就開）。XBot 自訂。
+	HermesSteerSettle   = 15 * time.Second
+	HermesSteerFollowup = 2 * time.Second
 	// HermesIdleWait 是送出新訊息前，最多等 Hermes 把這個 session 的上一輪收完尾（session.info running=false）多久。
 	// Hermes 在 message.complete 之後還要跑 /loop 檢查、寫標題、發布控制快照，跑完才放開 running（tui_gateway/prompt_turn.py
 	// run_body 的 finally）；這段期間送出的 prompt 會被當成插話（busy_input_mode=steer）收下卻不會開新的一輪。

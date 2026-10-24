@@ -32,6 +32,8 @@ export type ChatMsg = {
   restart?: boolean
   /** 被中斷的工作已經按過「接著做」。 */
   resumed?: boolean
+  /** Bot 做事時你補充的，直接送進了那件工作（插話）。 */
+  steered?: boolean
   createdAt: number
   updatedAt: number
   /** 這則回覆是從頭看著它串流的：內容完整，比資料庫的快照（每隔一段時間才存）新。 */
@@ -187,6 +189,7 @@ type MessageMeta = {
   status?: string
   restart?: boolean
   resumed?: boolean
+  steered?: boolean
   actor?: string
   actor_name?: string
   via?: string
@@ -328,6 +331,7 @@ export function applyRead(s: ChatState, out: ChatReadOutput): ChatState {
       status: m.status,
       ...(m.restart ? { restart: true } : {}),
       ...(m.resumed ? { resumed: true } : {}),
+      ...(m.steered ? { steered: true } : {}),
       createdAt: m.created_at,
       updatedAt: m.updated_at,
       live: false,
@@ -412,6 +416,7 @@ export function applyEvent(s: ChatState, e: XBotEvent): ChatState {
         status: meta.status,
         ...(meta.restart ? { restart: true } : {}),
         ...(meta.resumed ? { resumed: true } : {}),
+        ...(meta.steered ? { steered: true } : {}),
         createdAt: m.created_at,
         updatedAt: m.updated_at,
         live: existing ? existing.live : !!meta.streaming && m.content === '',

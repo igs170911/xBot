@@ -56,6 +56,7 @@ type SendOut struct {
 	TaskID    string `json:"task_id" desc:"這件工作的 id，交給 wait_until_settled"`
 	MessageID string `json:"message_id" desc:"你這則訊息的 id"`
 	Queued    bool   `json:"queued,omitempty" desc:"Bot 正在忙：你的訊息排隊（排在隊友交辦、群組的事前面），手上這件做完就開始"`
+	Steered   bool   `json:"steered,omitempty" desc:"Bot 正在這條對話串做事，訊息直接送進那件工作（插話）；task_id 是那件工作"`
 }
 
 // StopIn 是 xbot.chat.stop 的輸入。
@@ -116,6 +117,8 @@ type Message struct {
 	// 沒有 status 時系統已經自動接著做（下一則回覆接在後面）。Resumed：已經按過「接著做」。
 	Restart bool `json:"restart,omitempty" desc:"服務重開時這則回覆還在寫（status=interrupted：做到一半被中斷，可以 xbot.chat.resume）"`
 	Resumed bool `json:"resumed,omitempty" desc:"被中斷的工作已經接著做了"`
+	// Steered：你這則是在 Bot 做事時補充的，直接送進了那件工作（插話）。
+	Steered bool `json:"steered,omitempty" desc:"Bot 做事時補充的訊息，直接送進了那件工作"`
 	// Silent：隊友交辦或群組裡 Bot 回 [silent]（沒有要補充），畫面不顯示。
 	Silent bool `json:"silent,omitempty"`
 	// Peer：kind=peer 時這一行是什麼（已傳訊息給…、來自…的訊息、開了群組…，X02）。
@@ -429,8 +432,9 @@ func (d Deps) send(ctx context.Context, call *ops.Call, in SendIn) (SendOut, err
 		}
 		return SendOut{BotID: b.ID, ThreadID: in.ThreadID}, nil
 	}
+	// Bot 正在這條對話串做事：引擎能插話就直接送進那一輪（Steer），不用等它做完。
 	res, err := rt.Start(ctx, runtime.ChatRequest{BotID: b.ID, ThreadID: in.ThreadID, Text: text,
-		Actor: id.Actor(), ActorName: id.DisplayName(), Via: id.Via, Queue: queue})
+		Actor: id.Actor(), ActorName: id.DisplayName(), Via: id.Via, Queue: queue, Steer: true})
 	var over *proxy.BudgetError
 	switch {
 	case errors.Is(err, runtime.ErrBusy):
@@ -442,7 +446,7 @@ func (d Deps) send(ctx context.Context, call *ops.Call, in SendIn) (SendOut, err
 	case err != nil:
 		return SendOut{}, err
 	}
-	return SendOut{BotID: b.ID, ThreadID: res.ThreadID, TaskID: res.TaskID, MessageID: res.MessageID, Queued: res.Queued}, nil
+	return SendOut{BotID: b.ID, ThreadID: res.ThreadID, TaskID: res.TaskID, MessageID: res.MessageID, Queued: res.Queued, Steered: res.Steered}, nil
 }
 
 func busy() *ops.Error {
@@ -662,6 +666,7 @@ type messageMeta struct {
 	Status    string             `json:"status"`
 	Restart   bool               `json:"restart"`
 	Resumed   bool               `json:"resumed"`
+	Steered   bool               `json:"steered"`
 	Silent    bool               `json:"silent"`
 	Peer      *PeerLine          `json:"peer"`
 	Activity  string             `json:"activity"`
@@ -675,7 +680,7 @@ func messageView(m store.Message) Message {
 	var meta messageMeta
 	_ = json.Unmarshal(m.Meta, &meta)
 	out := Message{ID: m.ID, Seq: m.Seq, Sender: m.Sender, Kind: m.Kind, Content: m.Content, TaskID: meta.TaskID,
-		Actor: meta.Actor, ActorName: meta.ActorName, Via: meta.Via, Streaming: meta.Streaming, Status: meta.Status, Restart: meta.Restart, Resumed: meta.Resumed, Silent: meta.Silent, Peer: meta.Peer,
+		Actor: meta.Actor, ActorName: meta.ActorName, Via: meta.Via, Streaming: meta.Streaming, Status: meta.Status, Restart: meta.Restart, Resumed: meta.Resumed, Steered: meta.Steered, Silent: meta.Silent, Peer: meta.Peer,
 		Activity: meta.Activity, Card: meta.Card, Quota: meta.Quota, Voice: meta.Voice, CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
 	if meta.Judge != nil && meta.Judge.Verdict != "" {
 		out.Judge = &Judgment{Judgment: *meta.Judge}

@@ -548,3 +548,53 @@ func TestAgentWithoutCloseIsRestartedWhenCrowded(t *testing.T) {
 	}
 	turn(t, h, back, "hi")
 }
+
+// 插話（_session/steering）：agent 開始動之後，訊息直接送進這一輪；最後的回答只算插話之後寫的（之前的留在前一個泡泡）。
+// 還沒開始、這一輪已經結束、agent 不支援時回 false，交給 XBot 排隊（2026-10-24「排隊的上限我想解除封印」）。
+func TestSteerInjectsIntoTheRunningTurn(t *testing.T) {
+	plain := setup(t)
+	s := start(t, plain, "th1")
+	if err := plain.d.Send(context.Background(), s, engine.Message{Text: acptest.PromptSteer}); err != nil {
+		t.Fatal(err)
+	}
+	until(t, plain.d.Events(s), engine.EventToolCall)
+	if ok, err := plain.d.Steer(context.Background(), s, engine.Message{Text: "改用藍色"}); ok || err != nil {
+		t.Fatalf("agent 不支援插話：%v %v", ok, err)
+	}
+	h := setup(t)
+	h.agent.Steering = true
+	s = start(t, h, "th2")
+	if ok, err := h.d.Steer(context.Background(), s, engine.Message{Text: "改用藍色"}); ok || err != nil {
+		t.Fatalf("沒有在跑的一輪不能插話：%v %v", ok, err)
+	}
+	if err := h.d.Send(context.Background(), s, engine.Message{Text: acptest.PromptSteer}); err != nil {
+		t.Fatal(err)
+	}
+	until(t, h.d.Events(s), engine.EventToolCall) // agent 開始動了
+	ok, err := h.d.Steer(context.Background(), s, engine.Message{Text: "改用藍色"})
+	if !ok || err != nil {
+		t.Fatalf("插話：%v %v", ok, err)
+	}
+	evs := collect(t, h.d.Events(s))
+	if done := evs[len(evs)-1]; done.Type != engine.EventDone || done.Text != "收到補充：改用藍色" {
+		t.Fatalf("最後的回答只算插話之後寫的：%+v", done)
+	}
+	if got := h.agent.Steers(); len(got) != 1 || got[0] != "改用藍色" {
+		t.Fatalf("agent 收到的插話：%q", got)
+	}
+}
+
+// Codex 在沒有可以插話的一輪時會自己開一輪（startedNewTurn），XBot 收不到那一輪：取消它，回 false 交給 XBot 排隊。
+func TestSteerCancelsATurnTheAgentStartedItself(t *testing.T) {
+	h := setup(t)
+	h.agent.Steering, h.agent.StartsNewTurn = true, true
+	s := start(t, h, "th1")
+	if err := h.d.Send(context.Background(), s, engine.Message{Text: acptest.PromptWait}); err != nil {
+		t.Fatal(err)
+	}
+	until(t, h.d.Events(s), engine.EventText)
+	if ok, err := h.d.Steer(context.Background(), s, engine.Message{Text: "改用藍色"}); ok || err != nil {
+		t.Fatalf("agent 自己開了一輪：要回 false 讓 XBot 排隊：%v %v", ok, err)
+	}
+	eventually(t, "agent 自己開的那一輪要取消", func() bool { return slices.Contains(h.agent.Methods(), "session/cancel") })
+}

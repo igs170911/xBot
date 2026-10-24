@@ -105,6 +105,35 @@ it('送出訊息 → 串流回覆一段段出現 → 工具步驟 → 完成後�
   expect(within(main).getByTestId('bot-status')).toHaveTextContent('待命')
 })
 
+it('Bot 做事時補充的話直接送進那件工作（插話）：標「已送進正在做的工作」，不另外先判斷；回答排在補充那則之後', async () => {
+  api.ops['chat.send'] = () => ({ bot_id: 'b1', thread_id: 't1', task_id: 'k1', message_id: 'm3', steered: true })
+  api.ops['judge.precheck'] = () => ({ chips: [] })
+  render(<App />)
+  const main = await screen.findByRole('main', { name: '和小秘的對話' })
+  await waitFor(() => expect(window.location.pathname).toBe('/bots/b1/threads/t1'))
+  emit(
+    ev({ id: 1, kind: 'message.created', payload: storeMsg('m1', 1, 'owner', { task_id: 'k1' }, '幫我做海報') }),
+    ev({ id: 2, kind: 'message.created', payload: storeMsg('m2', 2, 'bot:b1', { task_id: 'k1', streaming: true }) }),
+    ev({ id: 3, kind: 'task.state', payload: { state: 'running' } }),
+  )
+  const input = within(main).getByRole('textbox')
+  fireEvent.change(input, { target: { value: '改用藍色' } })
+  fireEvent.keyDown(input, { key: 'Enter' })
+  await waitFor(() => expect(api.calls.some((c) => c.path === 'chat.send')).toBe(true))
+  emit(
+    ev({ id: 4, kind: 'message.created', payload: storeMsg('m3', 3, 'owner', { task_id: 'k1', steered: true }, '改用藍色') }),
+    ev({ id: 5, kind: 'message.created', payload: storeMsg('m2', 2, 'bot:b1', { task_id: 'k1' }) }),
+    ev({ id: 6, kind: 'message.created', payload: storeMsg('m4', 4, 'bot:b1', { task_id: 'k1', streaming: true }) }),
+    ev({ kind: 'chat.text', payload: { message_id: 'm4', text: '好，改成藍色了。' } }),
+  )
+  expect(within(main).getByTestId('steered')).toHaveTextContent('已送進正在做的工作')
+  const owners = within(main).getAllByTestId('msg-owner').map((e) => e.textContent)
+  expect(owners).toEqual(['幫我做海報', '改用藍色'])
+  const all = main.textContent ?? ''
+  expect(all.indexOf('好，改成藍色了。')).toBeGreaterThan(all.indexOf('改用藍色'))
+  expect(api.calls.some((c) => c.path === 'judge.precheck')).toBe(false)
+})
+
 it('停止：呼叫 chat.stop，輸入框變成正在停止；收到 cancelled 後顯示已停止', async () => {
   messages = [
     { id: 'm1', seq: 1, sender: 'owner', kind: 'text', content: '整理出貨單', task_id: 'k1', created_at: Date.now(), updated_at: Date.now() },

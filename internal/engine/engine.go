@@ -167,5 +167,13 @@ type Driver interface {
 	Events(s Session) <-chan Event
 }
 
+// Steerer 是能在一輪進行中插話的引擎：訊息直接送進正在做的這一輪，不用等它做完再開一輪
+// （2026-10-24 使用者：「排隊的上限我想解除封印，讓他順一點」）。Hermes 用 session.steer，Claude Code、Codex 用 ACP 的 _session/steering。
+type Steerer interface {
+	// Steer 把 m 送進 s 正在進行的一輪。true＝這一輪一定會看到它、做完才結束；false＝現在沒辦法插話
+	// （還沒開始、在收尾、引擎不支援），呼叫的人照原本的方式排隊。
+	Steer(ctx context.Context, s Session, m Message) (bool, error)
+}
+
 // ErrDisconnected 表示和引擎的連線已中斷。
 var ErrDisconnected = errors.New("和 Bot 的連線已中斷")

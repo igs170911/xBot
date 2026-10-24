@@ -228,6 +228,12 @@ type turn struct {
 	usedTools bool     // 這一輪呼叫過工具（判斷「只說要做」用）
 	research  int      // 這一輪成功的搜尋、讀網頁、瀏覽器呼叫（判斷「說研究過卻沒查」用，judge.IsResearchTool）
 	toolsAt   []int    // 每次呼叫工具時 text 寫到哪（最後一次之後那段才是最後的回答，見 engine.FinalAnswer）
+	// 插話（trySteer）：sent＝input 已經送給引擎（之前的插話直接併進 input）；from＝目前這個回覆泡泡從 text 的哪裡開始
+	// （插話後換新泡泡，見 reanchor）；prevMsg、prevText 是插話前那個泡泡與它的內容。
+	sent     bool
+	from     int
+	prevMsg  string
+	prevText string
 	// engine、provider：這一輪用的引擎與 Model Proxy 供應商；started：開始送出的時間；quota：引擎報的額度錯誤（EN-7）。
 	engine, provider string
 	started          time.Time
@@ -243,6 +249,9 @@ type turn struct {
 
 	// askMu 讓「回覆後改回工作中」和「Bot 又問了新問題」不會交錯（否則新問題的「等你」會被蓋掉）。
 	askMu sync.Mutex
+	// steerMu：插話時先擋住這一輪（引擎的事件、開回覆泡泡），等你那則訊息和新泡泡都排好；不然引擎收下插話馬上接著寫，
+	// 字會寫進舊泡泡、回答排在你那則前面（見 trySteer）。
+	steerMu sync.Mutex
 }
 
 // ChatResult 是 Chat 的結果：訊息已收下，回覆經事件串流回來。
@@ -252,12 +261,14 @@ type ChatResult struct {
 	MessageID string `json:"message_id"` // 使用者那則訊息
 	// Queued：Bot 正在做別的事，這件工作在排隊（做完前面的才開始；你的訊息排在 Bot 交辦的前面，LP-1）。
 	Queued bool `json:"queued,omitempty"`
+	// Steered：Bot 正在這條對話串做事，訊息直接送進了那一輪（插話）；TaskID 是那件工作。
+	Steered bool `json:"steered,omitempty"`
 }
 
 // Chat 把使用者的訊息交給 Bot。threadID 空白時開一條新的對話串。
 // 訊息與任務寫好就回傳；開機、送出與串流在背景進行，進度發布在匯流排上，用 Wait 等結果。
 func (r *Runtime) Chat(ctx context.Context, botID, threadID, text string) (ChatResult, error) {
-	return r.Start(ctx, ChatRequest{BotID: botID, ThreadID: threadID, Text: text})
+	return r.Start(ctx, ChatRequest{BotID: botID, ThreadID: threadID, Text: text, Steer: true})
 }
 
 // 任務來源（task.source）。
@@ -289,6 +300,10 @@ type ChatRequest struct {
 	Queue bool
 	// Title 是開新對話串時的標題；空白時用 Text 開頭。
 	Title string
+	// Steer：Bot 正在這條對話串做事、引擎又能插話時，訊息直接送進那一輪（engine.Steerer），不另外排隊。
+	// SteerPrompt 是插話時送給引擎的文字；空白時是 SteerNote 加上 Prompt。
+	Steer       bool
+	SteerPrompt string
 	// Actor 是誰送出這則訊息（owner、agent:<權杖 id>）；ActorName 是顯示名稱、Via 是從哪裡來（mcp、http…）。
 	// 代理送的記在訊息與工作的 meta 裡：介面標「由 ○○（MCP）傳送」（MCP-13），每日花費算到代理頭上（MCP-12）。
 	Actor, ActorName, Via string
@@ -383,6 +398,11 @@ func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error
 	if sender == "" {
 		sender = "owner"
 	}
+	if req.Steer {
+		if res, ok := r.trySteer(ctx, req, th.ID, text, prompt, sender, kind); ok {
+			return res, nil
+		}
+	}
 
 	r.dispatchMu.Lock()
 	defer r.dispatchMu.Unlock()
@@ -431,6 +451,116 @@ func (r *Runtime) Start(ctx context.Context, req ChatRequest) (ChatResult, error
 		r.publish(botID, th.ID, task.ID, KindTaskState, map[string]string{"state": store.TaskQueued}, true)
 	}
 	return ChatResult{ThreadID: th.ID, TaskID: task.ID, MessageID: msg.ID, Queued: started != task.ID}, nil
+}
+
+// SteerNote 加在插話前面：Bot 正在做事，使用者又傳了一則。
+const SteerNote = "（你在做事的時候，使用者又傳來這則訊息。把它一起考慮進去，做完再一起回覆。）\n"
+
+// trySteer：Bot 正在這條對話串做事時，訊息直接送進那一輪，不另外排隊（2026-10-24 使用者：「排隊的上限我想解除封印，讓他順一點」；
+// 10/19～23 你在 Bot 工作時補的話等了 1～5.5 分鐘它才看到）。還沒送給引擎就併進要送的文字；送出了就交給引擎插話（engine.Steerer），
+// 引擎不能插話（Grok、Gemini、OpenCode，或這一輪正在收尾）就回 false，照原本的方式排隊。
+func (r *Runtime) trySteer(ctx context.Context, req ChatRequest, threadID, text, prompt, sender, kind string) (ChatResult, bool) {
+	r.mu.Lock()
+	t := r.active[req.BotID]
+	r.mu.Unlock()
+	if t == nil || t.threadID != threadID {
+		return ChatResult{}, false
+	}
+	// 還沒送給引擎時併進要送的文字：你的訊息照原文；隊友的通知用插話的版本（框架不同，見 collab.steerNotice）
+	raw, steerText := prompt, SteerNote+prompt
+	if req.SteerPrompt != "" {
+		raw, steerText = req.SteerPrompt, req.SteerPrompt
+	}
+	t.steerMu.Lock()
+	defer t.steerMu.Unlock()
+	if !r.steer(ctx, t, raw, steerText) {
+		return ChatResult{}, false
+	}
+	meta := map[string]any{}
+	for k, v := range req.MessageMeta {
+		meta[k] = v
+	}
+	meta["task_id"], meta["steered"] = t.taskID, true
+	if req.Actor != "" && req.Actor != "owner" {
+		meta["actor"], meta["actor_name"], meta["via"] = req.Actor, req.ActorName, req.Via
+	}
+	rawMeta, _ := json.Marshal(meta)
+	res := ChatResult{ThreadID: threadID, TaskID: t.taskID, Steered: true}
+	msg, err := r.o.DB.AddMessage(ctx, store.Message{Scope: store.ScopeThread, ScopeID: threadID, Sender: sender, Kind: kind, Content: text, Meta: rawMeta})
+	if err != nil {
+		r.log.Warn("記下插話的訊息失敗", "bot", req.BotID, "err", err)
+		return res, true
+	}
+	res.MessageID = msg.ID
+	r.publish(req.BotID, threadID, t.taskID, KindMessageCreated, msg, true)
+	r.reanchor(context.WithoutCancel(ctx), t)
+	if sender == "owner" && kind != KindActivity {
+		r.closeJudgeCards(context.WithoutCancel(ctx), req.BotID, threadID)
+	}
+	r.log.Info("插話送進正在做的這一輪", "bot", req.BotID, "task", t.taskID)
+	return res, true
+}
+
+// steer 把一則訊息送進進行中的一輪：還沒送給引擎就併進要送的 input（raw），送出了就請引擎插話（steerText）。
+func (r *Runtime) steer(ctx context.Context, t *turn, raw, steerText string) bool {
+	t.mu.Lock()
+	if t.finished || t.stopping || t.paused {
+		t.mu.Unlock()
+		return false
+	}
+	if !t.sent {
+		t.input += "\n\n" + raw
+		t.mu.Unlock()
+		return true
+	}
+	s := t.session
+	t.mu.Unlock()
+	st, ok := r.o.Driver.(engine.Steerer)
+	if !ok || s == nil {
+		return false
+	}
+	ok, err := st.Steer(ctx, s, engine.Message{Text: steerText})
+	if err != nil {
+		r.log.Warn("插話失敗，改成排隊", "bot", t.botID, "task", t.taskID, "err", err)
+		return false
+	}
+	return ok
+}
+
+// reanchor：插話之後 Bot 接著寫的字放進你那則訊息後面的新泡泡；之前已經寫的留在原本的泡泡（不再是串流中），
+// 最後的回答才會出現在你補充的那則之後。
+func (r *Runtime) reanchor(ctx context.Context, t *turn) {
+	t.mu.Lock()
+	old := t.messageID
+	t.mu.Unlock()
+	if old == "" {
+		return // 泡泡還沒開：引擎的回覆本來就會排在你這則後面
+	}
+	meta, _ := json.Marshal(map[string]any{"task_id": t.taskID, "streaming": true})
+	msg, err := r.o.DB.AddMessage(ctx, store.Message{Scope: store.ScopeThread, ScopeID: t.threadID, Sender: "bot:" + t.botID, Meta: meta})
+	if err != nil {
+		r.log.Warn("開插話後的回覆泡泡失敗", "task", t.taskID, "err", err)
+		return
+	}
+	plain, _ := json.Marshal(map[string]any{"task_id": t.taskID})
+	t.mu.Lock()
+	if t.finished || t.messageID != old {
+		t.mu.Unlock()
+		_ = r.o.DB.UpdateMessage(ctx, msg.ID, "", nil, plain) // 這一輪剛好結束：空的泡泡不會顯示
+		return
+	}
+	// 前一個泡泡只留回答：用工具前的旁白（「我先查一下」）不留（同 finish 的 engine.FinalAnswer）
+	content := engine.FinalAnswer(segments(t.text.String()[t.from:], since(t.toolsAt, t.from)))
+	t.from = t.text.Len()
+	t.prevMsg, t.prevText, t.messageID = old, content, msg.ID
+	t.mu.Unlock()
+	if err := r.o.DB.UpdateMessage(ctx, old, content, nil, plain); err != nil {
+		r.log.Warn("寫入插話前的回覆失敗", "message", old, "err", err)
+	}
+	if m, err := r.o.DB.GetMessage(ctx, old); err == nil {
+		r.emit(t, KindMessageCreated, m, true)
+	}
+	r.emit(t, KindMessageCreated, msg, true)
 }
 
 // next 在 Bot 空下來時開始排隊中的下一件工作：你的訊息優先，其餘依先來後到（LazyBoy next_task）。
@@ -579,18 +709,25 @@ func (r *Runtime) run(ctx context.Context, t *turn) {
 		}
 	}
 	r.consume(s, t.botID)
+	// 從這裡開始，插話要經過引擎（之前的直接併進 input，見 steer）；回覆泡泡在這之後開，排在插話的那則後面。
+	t.steerMu.Lock()
+	t.mu.Lock()
+	t.sent = true
+	input = t.input
+	t.mu.Unlock()
 
 	meta, _ := json.Marshal(map[string]any{"task_id": t.taskID, "streaming": true})
 	msg, err := r.o.DB.AddMessage(context.WithoutCancel(ctx), store.Message{Scope: store.ScopeThread, ScopeID: t.threadID, Sender: "bot:" + t.botID, Meta: meta})
 	if err != nil {
+		t.steerMu.Unlock()
 		r.finishErr(t, err)
 		return
 	}
 	t.mu.Lock()
 	t.session, t.messageID = s, msg.ID
 	stopping := t.stopping
-	input = t.input
 	t.mu.Unlock()
+	t.steerMu.Unlock()
 	r.emit(t, KindMessageCreated, msg, true)
 	if stopping {
 		r.finish(t, engine.StatusInterrupted, "")
@@ -666,6 +803,11 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 	if !mine {
 		return
 	}
+	// 正在插話：等你那則訊息和新泡泡排好再處理（見 trySteer）
+	t.steerMu.Lock()
+	//lint:ignore SA2001 只是等插話做完的關卡，裡面不用做事
+	t.steerMu.Unlock()
+
 	// 用量、狀態只是記帳，不代表 Bot 又開始動了：問題還在等你時不能把狀態改回 running
 	// （2026-10-19：Hermes 提問後緊接著送 usage，畫面上的提問卡就被收掉，只剩待我處理）。
 	if e.Type != engine.EventNeedsApproval && e.Type != engine.EventRequestClosed && e.Type != engine.EventUsage && e.Type != engine.EventStatus {
@@ -681,7 +823,7 @@ func (r *Runtime) handle(s engine.Session, botID string, e engine.Event) {
 	case engine.EventText:
 		t.mu.Lock()
 		t.text.WriteString(e.Text)
-		content := t.text.String()
+		content := t.text.String()[t.from:]
 		save := time.Since(t.persisted) >= limits.StreamPersistInterval
 		if save {
 			t.persisted = time.Now()
@@ -774,6 +916,17 @@ func (r *Runtime) finishErr(t *turn, err error) {
 	r.finish(t, engine.StatusError, "工作未完成："+err.Error())
 }
 
+// since 是 from 之後的切點（相對於 from）。
+func since(cuts []int, from int) []int {
+	var out []int
+	for _, c := range cuts {
+		if c >= from {
+			out = append(out, c-from)
+		}
+	}
+	return out
+}
+
 // segments 把這一輪寫出的文字依每次呼叫工具的位置切開（最後一段是最後一次呼叫工具之後寫的）。
 func segments(text string, cuts []int) []string {
 	segs := make([]string, 0, len(cuts)+1)
@@ -799,8 +952,10 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	t.askMu.Unlock()
 	p := t.pending
 	t.pending = nil
-	streamed := t.text.String()
-	answer := engine.FinalAnswer(segments(streamed, t.toolsAt))
+	// 插話之後換了新泡泡：這個泡泡只算插話之後寫的（之前的留在前一個泡泡）
+	streamed := t.text.String()[t.from:]
+	answer := engine.FinalAnswer(segments(streamed, since(t.toolsAt, t.from)))
+	prevMsg, prevText := t.prevMsg, t.prevText
 	msgID := t.messageID
 	stopping := t.stopping
 	paused := t.paused
@@ -825,6 +980,16 @@ func (r *Runtime) finish(t *turn, status, text string) {
 			// （和 ACP 驅動同一條規則；比 InterimNarrationMax 長的段落保留，可能是先寫完答案再存檔）
 			if verdict == VerdictAnswer && answer != "" {
 				final = answer
+			}
+		}
+		if strings.TrimSpace(final) == "" && prevMsg != "" && prevText != "" {
+			// 插話之後一個字都沒寫：前一個泡泡的內容就是回答，搬到最後這個泡泡（判斷、重試都看這一則）
+			final = prevText
+			plain, _ := json.Marshal(map[string]any{"task_id": t.taskID})
+			if err := r.o.DB.UpdateMessage(context.Background(), prevMsg, "", nil, plain); err == nil {
+				if m, err := r.o.DB.GetMessage(context.Background(), prevMsg); err == nil {
+					r.emit(t, KindMessageCreated, m, true)
+				}
 			}
 		}
 	case VerdictFailed:

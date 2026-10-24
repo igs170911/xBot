@@ -23,6 +23,9 @@ type fakeRT struct {
 	mu     sync.Mutex
 	active map[string]string // botID → taskID
 	refuse error
+	// steerable：這些 Bot 的引擎能插話。req.Steer 且 Bot 正在同一條對話串做事時，訊息送進那件工作（Steered），記在 steered。
+	steerable map[string]bool
+	steered   []string
 }
 
 func (f *fakeRT) Start(ctx context.Context, req runtime.ChatRequest) (runtime.ChatResult, error) {
@@ -44,6 +47,14 @@ func (f *fakeRT) Start(ctx context.Context, req runtime.ChatRequest) (runtime.Ch
 	source := req.Source
 	if source == "" {
 		source = runtime.SourceOwner
+	}
+	if req.Steer && f.steerable[req.BotID] {
+		if th, id := f.Active(req.BotID); id != "" && th == thread {
+			f.mu.Lock()
+			f.steered = append(f.steered, req.SteerPrompt)
+			f.mu.Unlock()
+			return runtime.ChatResult{ThreadID: thread, TaskID: id, Steered: true}, nil
+		}
 	}
 	prompt := req.Prompt
 	if prompt == "" {
@@ -134,7 +145,7 @@ func setup(t *testing.T) *team {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	rt := &fakeRT{db: db, bus: events.New(), active: map[string]string{}}
+	rt := &fakeRT{db: db, bus: events.New(), active: map[string]string{}, steerable: map[string]bool{}}
 	tm := &team{t: t, ctx: ctx, db: db, rt: rt, files: DirFiles{Root: filepath.Join(dir, "bots")}, bots: map[string]string{}, main: map[string]string{}}
 	tm.s = New(Options{DB: db, Runtime: rt, Files: tm.files})
 	for _, b := range [][2]string{{"Chief", "總管"}, {"Writer", "文案"}, {"Scout", "研究"}} {

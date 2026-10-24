@@ -552,6 +552,9 @@ func (s *Service) prompt(ctx context.Context, task store.Task) (string, bool, er
 			}
 			return p, merged, nil
 		}
+		if m.Intent == IntentFYI {
+			return s.mergeNotices(ctx, task, m)
+		}
 		return "", false, nil
 	}
 	p, err := s.roomPrompt(ctx, task, m)
@@ -601,6 +604,47 @@ func (s *Service) mergeResults(ctx context.Context, task store.Task, m taskMeta)
 	}
 	head := fmt.Sprintf("（你在忙的時候，%d 則隊友的回覆一起到了（%s）。全部看完再一起整合，只寫一個最終結果。）\n\n", len(parts), strings.Join(names, "、"))
 	return head + strings.Join(parts, "\n\n---\n\n"), true
+}
+
+// mergeNotices：Bot 忙的時候同一位隊友連傳了好幾則通知（「上面打錯檔名」「純通知，照做就好」），開始第一則時把其他還在排隊的
+// 一起帶上，一輪看完（2026-10-19～23：每則通知各排 3～6 分鐘、各開一輪重讀整串，只為了讀一句話）。通知不用回覆，交辦紀錄直接結掉。
+func (s *Service) mergeNotices(ctx context.Context, task store.Task, m taskMeta) (string, bool, error) {
+	tasks, err := s.db.ListTasks(ctx, task.BotID, true)
+	if err != nil {
+		return "", false, nil
+	}
+	var ids []string
+	inputs := map[string]string{}
+	metas := map[string]taskMeta{}
+	for _, t := range tasks {
+		if t.ID == task.ID || t.State != store.TaskQueued || t.ThreadID != task.ThreadID {
+			continue
+		}
+		if tm := metaOf(t); tm.Intent == IntentFYI && tm.FromBot == m.FromBot && tm.RoomID == "" {
+			ids = append(ids, t.ID)
+			inputs[t.ID], metas[t.ID] = t.Input, tm
+		}
+	}
+	if len(ids) == 0 {
+		return "", false, nil
+	}
+	merged := s.rt.MergeQueued(ctx, ids, task.ID)
+	if len(merged) == 0 {
+		return "", false, nil
+	}
+	_ = s.db.PatchTaskMeta(ctx, task.ID, map[string]any{"merged": merged})
+	parts := []string{task.Input}
+	for _, id := range merged {
+		parts = append(parts, inputs[id])
+		if tm := metas[id]; tm.AssignmentID != "" {
+			_ = s.db.SetAssignmentStatus(ctx, tm.AssignmentID, store.AssignDone, 0)
+		}
+		if tm := metas[id]; tm.MessageID != "" {
+			_ = s.db.MarkBotMessageAnswered(ctx, tm.MessageID)
+		}
+	}
+	head := fmt.Sprintf("（你在忙的時候，%s 連傳了 %d 則通知。一起看完；後面的以較新的為準。）\n\n", m.FromName, len(parts))
+	return head + strings.Join(parts, "\n\n---\n\n"), true, nil
 }
 
 // roomPrompt 用成員還沒讀過的群組訊息組這一輪的 prompt（LazyBoy room_prompt）。群組裡其他 Bot 的話包在資料框架裡（SEC-8）。

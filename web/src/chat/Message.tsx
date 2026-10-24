@@ -108,6 +108,11 @@ export function OwnerMessage({ msg, below, botId }: { msg: ChatMsg; below?: Reac
       )}
       {botId && <FileTiles botId={botId} paths={paths} mine />}
       {msg.actorName && <AgentMark name={msg.actorName} via={msg.via} verb="傳送" className="self-end" />}
+      {msg.steered && (
+        <span data-testid="steered" className="self-end text-meta text-ink-3">
+          已送進正在做的工作
+        </span>
+      )}
       {below}
       {msg.content && <OwnerActions msg={msg} />}
     </div>

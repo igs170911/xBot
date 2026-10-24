@@ -22,7 +22,10 @@ type routed struct {
 	ch <-chan Event
 }
 
-var _ Driver = (*Router)(nil)
+var (
+	_ Driver  = (*Router)(nil)
+	_ Steerer = (*Router)(nil)
+)
 
 // ErrUnknownEngine 表示 Bot 設定的引擎沒有驅動。
 var ErrUnknownEngine = errors.New("不支援這個引擎")
@@ -105,6 +108,19 @@ func (r *Router) Respond(ctx context.Context, s Session, requestID string, a Ans
 		return err
 	}
 	return rt.d.Respond(ctx, s, requestID, a)
+}
+
+// Steer 實作 Steerer：交給這個 session 的驅動；驅動不能插話就回 false。
+func (r *Router) Steer(ctx context.Context, s Session, m Message) (bool, error) {
+	rt, err := r.route(s)
+	if err != nil {
+		return false, err
+	}
+	st, ok := rt.d.(Steerer)
+	if !ok {
+		return false, nil
+	}
+	return st.Steer(ctx, s, m)
 }
 
 // Events 實作 Driver：轉送驅動的事件；驅動關掉事件之後忘掉這個 session。

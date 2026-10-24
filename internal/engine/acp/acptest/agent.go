@@ -45,6 +45,9 @@ const (
 	PromptBgSubagent = "bg-subagent"
 	// PromptDenyCancels：照 Grok 的樣子要求跑指令；被拒絕就以 cancelled 結束整輪（等人下指令），允許就回「ran」。
 	PromptDenyCancels = "deny-cancels"
+	// PromptSteer：說「我先看一下」、開始跑一個工具，等 XBot 插話（_session/steering，最多 5 秒）；工具做完後回
+	// 「收到補充：<插話的內容>」（沒等到就回「沒有補充」）。
+	PromptSteer = "steer"
 )
 
 // AnswerFirstText 是 PromptAnswerFirst 先寫的那一大段答案。
@@ -94,6 +97,10 @@ type Agent struct {
 	CanClose bool
 	// Profile 是這個假 agent 扮演的引擎（New 是 Claude Code）。
 	Profile Profile
+	// Steering 時在 initialize 宣告支援插話（_meta.steering.supported，Claude Code、Codex）。沒有可以插話的一輪時回
+	// promptRequired；StartsNewTurn 時改成像 Codex 一樣回 startedNewTurn（自己開一輪）。
+	Steering      bool
+	StartsNewTurn bool
 
 	mu       sync.Mutex
 	calls    []Call
@@ -106,6 +113,15 @@ type Agent struct {
 	launches int
 	finish   chan struct{}
 	answers  []json.RawMessage
+	steerIn  map[string]chan string // 正在等插話的 session（PromptSteer）
+	steers   []string               // 收到的插話（依序）
+}
+
+// Steers 是收到的插話內容，依序。
+func (a *Agent) Steers() []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]string(nil), a.steers...)
 }
 
 func (a *Agent) capabilities() map[string]any {
@@ -144,7 +160,7 @@ func New() *Agent { return NewFor("claude-code") }
 // NewFor 建立扮演某個引擎的假 agent（Profiles）。
 func NewFor(engine string) *Agent {
 	return &Agent{Profile: Profiles[engine], sessions: map[string]bool{}, open: map[string]bool{}, cancels: map[string]chan struct{}{}, waiting: map[string]chan json.RawMessage{},
-		finish: make(chan struct{})}
+		finish: make(chan struct{}), steerIn: map[string]chan string{}}
 }
 
 // Calls 回傳到目前為止收到的請求與通知。
@@ -329,12 +345,41 @@ func (p *peer) handle(f frame) {
 	a := p.a
 	switch f.Method {
 	case "initialize":
-		p.result(f.ID, map[string]any{
+		res := map[string]any{
 			"protocolVersion":   1,
 			"agentCapabilities": a.capabilities(),
 			"agentInfo":         map[string]string{"name": "fake-agent", "version": "0"},
 			"authMethods":       []any{},
-		})
+		}
+		if a.Steering {
+			res["_meta"] = map[string]any{"steering": map[string]bool{"supported": true}}
+		}
+		p.result(f.ID, res)
+	case "_session/steering":
+		var params struct {
+			SessionID string `json:"sessionId"`
+			Prompt    []struct {
+				Text string `json:"text"`
+			} `json:"prompt"`
+		}
+		_ = json.Unmarshal(f.Params, &params)
+		text := ""
+		for _, b := range params.Prompt {
+			text += b.Text
+		}
+		a.mu.Lock()
+		ch := a.steerIn[params.SessionID]
+		a.steers = append(a.steers, text)
+		a.mu.Unlock()
+		switch {
+		case ch != nil:
+			ch <- text
+			p.result(f.ID, map[string]string{"outcome": "injected"})
+		case a.StartsNewTurn:
+			p.result(f.ID, map[string]string{"outcome": "startedNewTurn"})
+		default:
+			p.result(f.ID, map[string]string{"outcome": "promptRequired"})
+		}
 	case "session/new":
 		if a.AuthRequired {
 			p.fail(f.ID, -32000, "Authentication required")
@@ -437,6 +482,26 @@ func (p *peer) prompt(f frame) {
 		p.result(f.ID, map[string]any{"stopReason": reason, "usage": map[string]int{"inputTokens": 10, "outputTokens": 5, "totalTokens": 15}})
 	}
 	switch text {
+	case PromptSteer:
+		in := make(chan string, 1)
+		p.a.mu.Lock()
+		p.a.steerIn[sid] = in
+		p.a.mu.Unlock()
+		p.chunk(sid, "agent_message_chunk", "我先看一下。")
+		p.update(sid, map[string]any{"sessionUpdate": "tool_call", "toolCallId": "s1", "title": "sleep 1", "kind": "execute", "status": "in_progress"})
+		got := "沒有補充"
+		select {
+		case t := <-in:
+			got = "收到補充：" + t
+		case <-cancel:
+		case <-time.After(5 * time.Second):
+		}
+		p.a.mu.Lock()
+		delete(p.a.steerIn, sid)
+		p.a.mu.Unlock()
+		p.update(sid, map[string]any{"sessionUpdate": "tool_call_update", "toolCallId": "s1", "status": "completed"})
+		p.chunk(sid, "agent_message_chunk", got)
+		end("end_turn")
 	case PromptNarrate, PromptAnswerFirst:
 		first, last := "我先看一下檔案。", "答案是 42。"
 		if text == PromptAnswerFirst {

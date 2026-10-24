@@ -275,18 +275,22 @@ func TestBusyStopAndTimeout(t *testing.T) {
 }
 
 // Bot 在忙時你又打了一則：排隊，這一輪做完就接著做（像傳訊息一樣隨時可以送；2026-10-21 審查）。
+// 引擎能插話時直接送進那一輪（見 runtime.TestOwnerFollowUpSteersIntoTheRunningTurn）；這裡 Hermes 沒有工具在跑，不插話。
 func TestOwnerMessageQueuesWhileBusy(t *testing.T) {
 	e := setup(t)
 	release := make(chan struct{})
+	started := make(chan struct{})
 	e.g.OnPrompt = func(tr *hermestest.Turn) {
 		tr.Event("message.start", nil)
 		if strings.Contains(tr.Text, "做很久的事") {
+			close(started)
 			<-release
 		}
 		tr.Complete("好", "complete", nil)
 	}
 	raw, err := e.call(owner, "xbot.chat.send", map[string]any{"bot_id": e.bot.ID, "text": "做很久的事"})
 	first := must[SendOut](t, raw, err)
+	<-started // 已經送給引擎（還沒送出時補的話會直接併進那一則）
 	raw, err = e.call(owner, "xbot.chat.send", map[string]any{"bot_id": e.bot.ID, "thread_id": first.ThreadID, "text": "順便補一句"})
 	second := must[SendOut](t, raw, err)
 	if !second.Queued || second.TaskID == "" {

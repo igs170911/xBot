@@ -200,7 +200,7 @@ export function ChatComposer({ name, mode, onSend, onStop, hint, handle, onUploa
     }
   }
 
-  const placeholder = mode === 'stopping' ? `正在停止${name}…` : mode === 'working' ? (phone ? '這輪做完才會送出' : `補充說明給${name}…`) : `交代${name}…`
+  const placeholder = mode === 'stopping' ? `正在停止${name}…` : mode === 'working' ? (phone ? `補充給${name}…` : `補充說明給${name}…`) : `交代${name}…`
   const line = hint ?? (mode === 'working' ? `${name}工作中 · 要改做別的事，先按停止` : mode === 'stopping' ? '正在停止 · 做到一半的檔案會保留' : uploading ? '附件上傳好才能送出' : '')
 
   return (

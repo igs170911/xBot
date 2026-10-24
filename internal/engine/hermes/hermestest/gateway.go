@@ -33,6 +33,8 @@ type Gateway struct {
 	Settle time.Duration
 	// IgnoreQueued 模擬不認得 queued 參數的 Hermes：跑的時候送來的 prompt 一律當成插話。
 	IgnoreQueued bool
+	// SteerNextTurn 模擬壓縮對話時的 session.steer：回 queued，但排到下一輪（這一輪收完尾自己開一輪）。
+	SteerNextTurn bool
 
 	mu       sync.Mutex
 	calls    []Call
@@ -205,6 +207,20 @@ func (g *Gateway) handle(c *wconn, method string, p map[string]any) (any, string
 		return map[string]any{"status": "streaming"}, ""
 	case "config.set":
 		return map[string]any{"key": p["key"], "value": p["value"]}, ""
+	case "session.steer":
+		text, _ := p["text"].(string)
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		t := g.turns[sid]
+		if !g.running[sid] || t == nil {
+			return map[string]any{"status": "rejected", "text": text}, ""
+		}
+		if g.SteerNextTurn {
+			g.queued[sid] = append(g.queued[sid], text)
+		} else {
+			t.steers <- text
+		}
+		return map[string]any{"status": "queued", "text": text}, ""
 	case "session.interrupt":
 		g.mu.Lock()
 		t := g.turns[sid]
@@ -220,7 +236,7 @@ func (g *Gateway) handle(c *wconn, method string, p map[string]any) (any, string
 
 // startTurn 在背景跑一輪；結束後照 Hermes 的順序收尾：等 Settle、放開 running、送 session.info，再接排隊的 prompt。
 func (g *Gateway) startTurn(c *wconn, sid, text string) {
-	t := &Turn{g: g, c: c, SessionID: sid, Text: text, interrupted: make(chan struct{})}
+	t := &Turn{g: g, c: c, SessionID: sid, Text: text, interrupted: make(chan struct{}), steers: make(chan string, 8)}
 	g.mu.Lock()
 	g.turns[sid] = t
 	g.mu.Unlock()
@@ -258,7 +274,11 @@ type Turn struct {
 	Text        string
 	interrupted chan struct{}
 	once        sync.Once
+	steers      chan string
 }
+
+// Steers 是這一輪收到的插話（session.steer）；真的 Hermes 在下一批工具做完時把它送進這一輪。
+func (t *Turn) Steers() <-chan string { return t.steers }
 
 // Event 送一個事件。
 func (t *Turn) Event(typ string, payload any) {

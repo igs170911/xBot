@@ -556,7 +556,8 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
     try {
       const out = await chatSend({ bot_id: botId, text, thread_id: threadId })
       if (firstHome) dismissCard('home') // 開始聊了：首次歡迎不再出現
-      if (out.task_id) runPreCheck(botId, text, out.task_id) // 先判斷（C15）：只是建議，背景跑
+      // 先判斷（C15）：只是建議，背景跑。插話（送進正在做的那件）不另外判斷
+      if (out.task_id && !out.steered) runPreCheck(botId, text, out.task_id)
       if (out.thread_id !== threadId) {
         void reloadThreads()
         navigate(`/bots/${botId}/threads/${out.thread_id}`, { replace: isNew || !threadParam })

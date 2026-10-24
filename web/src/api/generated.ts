@@ -2994,6 +2994,8 @@ export interface ChatAskAgainOutput {
   message_id: string
   /** Bot 正在忙：你的訊息排隊（排在隊友交辦、群組的事前面），手上這件做完就開始 */
   queued?: boolean
+  /** Bot 正在這條對話串做事，訊息直接送進那件工作（插話）；task_id 是那件工作 */
+  steered?: boolean
 }
 
 /**
@@ -3132,6 +3134,8 @@ export interface ChatReadOutput {
     restart?: boolean
     /** 被中斷的工作已經接著做了 */
     resumed?: boolean
+    /** Bot 做事時補充的訊息，直接送進了那件工作 */
+    steered?: boolean
     silent?: boolean
     peer?: {
       /** message_out（已傳訊息給）、message_in（來自…的訊息）、group_created、group_post */
@@ -3297,6 +3301,8 @@ export interface ChatResumeOutput {
   message_id: string
   /** Bot 正在忙：你的訊息排隊（排在隊友交辦、群組的事前面），手上這件做完就開始 */
   queued?: boolean
+  /** Bot 正在這條對話串做事，訊息直接送進那件工作（插話）；task_id 是那件工作 */
+  steered?: boolean
 }
 
 /**
@@ -3331,6 +3337,8 @@ export interface ChatSendOutput {
   message_id: string
   /** Bot 正在忙：你的訊息排隊（排在隊友交辦、群組的事前面），手上這件做完就開始 */
   queued?: boolean
+  /** Bot 正在這條對話串做事，訊息直接送進那件工作（插話）；task_id 是那件工作 */
+  steered?: boolean
 }
 
 /**
