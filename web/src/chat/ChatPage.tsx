@@ -26,7 +26,7 @@ import { ChatComposer, type ComposerHandle, type ComposerMode } from './ChatComp
 import { ATTACH_DIR, filesFrom, hasFiles } from './attachments'
 import { chatStore, loadOlder, loadThread } from './chatStore'
 import { EmptyState } from './EmptyState'
-import { BotMessage, JudgeRow, OutcomeRow, OwnerMessage } from './Message'
+import { BotMessage, ChoiceRow, JudgeRow, OutcomeRow, OwnerMessage } from './Message'
 import { QuotaCard } from './QuotaCard'
 import { PreCheckRow } from './PreCheck'
 import { runPreCheck } from './precheckData'
@@ -73,6 +73,7 @@ function Messages({
   canRetry,
   onResume,
   resuming,
+  onChoose,
 }: {
   items: ChatItem[]
   bot?: Bot
@@ -82,6 +83,8 @@ function Messages({
   /** 服務重開時被中斷的工作按「接著做」（xbot.chat.resume）。 */
   onResume: (taskId: string) => void
   resuming: boolean
+  /** 點 Bot 給的選項（在等你時）：當成你的回覆送出。 */
+  onChoose: (text: string) => Promise<boolean>
 }) {
   const out: ReactNode[] = []
   let last = 0
@@ -89,6 +92,8 @@ function Messages({
   const asked = new Map<string, string>()
   for (const it of items) if (it.type === 'message' && it.msg.sender === 'owner' && it.msg.taskId) asked.set(it.msg.taskId, it.msg.content)
   const lastBot = items.findLast((it) => it.type === 'message' && it.msg.sender !== 'owner')
+  // 你在 Bot 最後那則之後又說過話：它給的選項不再顯示
+  const repliedAfter = items.findLastIndex((it) => it.type === 'message' && it.msg.sender === 'owner') > items.indexOf(lastBot as ChatItem)
   // 一件工作只畫一次步驟（一件工作可能有好幾則訊息，例：Bot 調整五個隊友＝五行；2026-10-19 同一個「工作了…」重複五次）：
   // 做完的放在第一則上面，進行中的接在最後一則下面
   const firstOf = new Map<string, ChatItem>()
@@ -135,6 +140,7 @@ function Messages({
       )
     }
     if (m.sender !== 'owner' && !Card) out.push(<JudgeRow key={'j' + m.id} msg={m} threadId={threadId} />)
+    if (isLast && !repliedAfter && !Card) out.push(<ChoiceRow key={'c' + m.id} msg={m} onChoose={onChoose} />)
   }
   // 工作步驟裡已經畫了的提問卡
   const shown = new Set(items.flatMap((it) => (it.type === 'activity' ? [it.activity.request?.inboxId] : [it.activity?.request?.inboxId])).filter(Boolean) as string[])
@@ -686,7 +692,7 @@ export function ChatPage({ botId, threadParam }: { botId: string; threadParam?: 
             </Button>
           )}
           {empty && (firstHome ? <FirstHome bot={bot} /> : <EmptyState bot={bot} starters={threads?.length === 0} onPick={(t) => composer.current?.fill(t)} onFree={() => composer.current?.fill()} />)}
-          {threadId && <Messages items={items} bot={bot} threadId={threadId} canRetry={!act} onRetry={(t) => void send(t)} onResume={(id) => void resume(id)} resuming={resuming} />}
+          {threadId && <Messages items={items} bot={bot} threadId={threadId} canRetry={!act} onRetry={(t) => void send(t)} onResume={(id) => void resume(id)} resuming={resuming} onChoose={send} />}
         </div>
       </div>
       <div className="flex-none px-6 pb-4 pt-2 max-sm:px-3 max-sm:pb-[max(12px,env(safe-area-inset-bottom))]">

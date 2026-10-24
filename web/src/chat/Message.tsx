@@ -258,6 +258,27 @@ export function JudgeRow({ msg, threadId }: { msg: ChatMsg; threadId: string }) 
   )
 }
 
+// Bot 說在等你、給了選項（xbot.chat.wait_for_user）：在它最後那則回覆下面畫成按鈕，點了就是你的回覆（送進這條對話）。
+// 你回過話之後不再顯示（ChatPage 只在最後一則、你還沒回時傳 onChoose）。
+export function ChoiceRow({ msg, onChoose }: { msg: ChatMsg; onChoose: (text: string) => Promise<boolean> }) {
+  const [picked, setPicked] = useState<string | null>(null)
+  const choices = msg.judge?.verdict === 'needs_person' && !msg.judge.corrected ? (msg.judge.choices ?? []) : []
+  if (!choices.length || msg.streaming) return null
+  const pick = async (c: string) => {
+    setPicked(c)
+    if (!(await onChoose(c))) setPicked(null)
+  }
+  return (
+    <div className="-mt-0.5 flex flex-wrap gap-2" data-testid="wait-choices">
+      {choices.map((c) => (
+        <Button key={c} size="sm" variant={picked === c ? 'primary' : 'secondary'} disabled={picked !== null} onClick={() => void pick(c)}>
+          {c}
+        </Button>
+      ))}
+    </div>
+  )
+}
+
 // 系統在對話裡記的一行（kind=activity，sender=system）：例「自動繼續：剛才只說要做，現在真的去做」（X04）。
 export function ActivityLine({ msg }: CardProps) {
   return (

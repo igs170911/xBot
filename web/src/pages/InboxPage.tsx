@@ -9,7 +9,7 @@ import { StatusChip, type Tone } from '../ui/Pill'
 import { useToast } from '../ui/toast-context'
 import { fetchHealth, type Health } from '../health'
 import { diagOn, toggleDiag } from '../shell/ScrollDiag'
-import { ApiError, approvalsDecide, chatAskAgain, inboxDismiss, inboxUndo, routinesRunNow, usageCaps, type UsageCapsOutput } from '../api/generated'
+import { ApiError, approvalsDecide, chatAskAgain, chatSend, inboxDismiss, inboxUndo, routinesRunNow, usageCaps, type UsageCapsOutput } from '../api/generated'
 import { Meter } from '../settings/charts'
 import { usd } from '../settings/format'
 import { botsStore, type Bot, look } from '../data/bots'
@@ -267,6 +267,21 @@ function InfoItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
       : item.kind === 'routine_failed'
         ? '定時任務沒有完成'
         : '等你處理'
+  // Bot 說在等你、給了選項（xbot.chat.wait_for_user）：點選項就是在那條對話回覆它，卡片跟著收掉。
+  const choices = item.kind === 'question' ? ((item.payload as { choices?: string[] } | null)?.choices ?? []) : []
+  const thread = item.kind === 'question' && item.bot_id && item.thread_id ? `/bots/${item.bot_id}/threads/${item.thread_id}` : ''
+  const choose = async (text: string) => {
+    setBusy(true)
+    try {
+      await chatSend({ bot_id: item.bot_id!, thread_id: item.thread_id!, text })
+      toast.show({ kind: 'done', text: `已回覆${bot.name}：${text}` })
+      await loadInbox()
+    } catch (err) {
+      toast.show({ kind: 'error', text: errText(err) })
+    } finally {
+      setBusy(false)
+    }
+  }
   // 定時任務失敗卡（C32）：重跑一次，然後收掉這張卡。
   const rerun = async () => {
     setBusy(true)
@@ -307,14 +322,29 @@ function InfoItem({ item, bot }: { item: InboxItem; bot: CardBot }) {
           <Button onClick={() => navigate(item.thread_id ? `/bots/${item.bot_id}/threads/${item.thread_id}` : `/bots/${item.bot_id}`)}>看對話</Button>
         </span>
       )}
+      {thread && (
+        <span className="flex flex-[1_1_100%] flex-wrap gap-2 pl-11" data-card-actions="1" data-testid="wait-choices">
+          {choices.map((c) => (
+            <Button key={c} variant="primary" onClick={() => void choose(c)} disabled={busy}>
+              {c}
+            </Button>
+          ))}
+          <Button onClick={() => navigate(thread)}>{choices.length ? '自己回覆' : '去回覆'}</Button>
+          <Button onClick={() => void dismiss()} loading={busy}>
+            知道了
+          </Button>
+        </span>
+      )}
       {item.kind === 'routine_failed' && typeof (item.payload as { routine_id?: unknown } | null)?.routine_id === 'string' && (
         <Button icon={RotateCcw} onClick={() => void rerun()} loading={busy}>
           重跑一次
         </Button>
       )}
-      <Button onClick={() => void dismiss()} loading={busy}>
-        知道了
-      </Button>
+      {!thread && (
+        <Button onClick={() => void dismiss()} loading={busy}>
+          知道了
+        </Button>
+      )}
     </Card>
   )
 }

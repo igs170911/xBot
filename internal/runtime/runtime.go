@@ -240,6 +240,7 @@ type turn struct {
 	quota            *engine.QuotaError
 	plan             []string     // Bot 的計畫裡還沒做完的項目（最新的一份）
 	loop             *engine.Loop // 引擎因為一直重複同一個工具沒有進展而停下這一輪
+	wait             *WaitAsk     // Bot 說這一輪結束後在等你（xbot.chat.wait_for_user）；你插話回了就清掉
 
 	// 看門狗：最後一次收到事件的時間、正在執行的工具、看門狗送出中斷的時間、按停止的時間。
 	seen      time.Time
@@ -496,6 +497,7 @@ func (r *Runtime) trySteer(ctx context.Context, req ChatRequest, threadID, text,
 	r.reanchor(context.WithoutCancel(ctx), t)
 	if sender == "owner" && kind != KindActivity {
 		r.closeJudgeCards(context.WithoutCancel(ctx), req.BotID, threadID)
+		r.clearWait(context.WithoutCancel(ctx), t) // 你已經回了：它在等的就是這則
 	}
 	r.log.Info("插話送進正在做的這一輪", "bot", req.BotID, "task", t.taskID)
 	return res, true
@@ -1035,6 +1037,7 @@ func (r *Runtime) finish(t *turn, status, text string) {
 	var judged *Judgment
 	if res != nil {
 		j := judgmentOf(*res)
+		j.Choices = t.waitChoices(*res)
 		judged = &j
 	}
 	if msgID != "" {

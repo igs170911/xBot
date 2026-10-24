@@ -107,6 +107,8 @@ type Input struct {
 	Continued bool
 	// Research 是這一輪成功的搜尋、讀網頁、瀏覽器呼叫次數（IsResearchTool）。
 	Research int
+	// Waiting 是 Bot 自己說這件事在等使用者時寫的那一句（xbot.chat.wait_for_user）；有就照它判，不從回覆猜。
+	Waiting string
 }
 
 // Result 是一次判斷。
@@ -487,6 +489,16 @@ func (Rules) Judge(_ context.Context, in Input) (Result, error) {
 		// XBot 新增（LazyBoy 沒有）：引擎停下的重複不是做完，也不是要你處理；換個做法自己接著做。
 		return Result{Verdict: Stuck, By: ByRules,
 			Reason: clipRunes(fmt.Sprintf("一直重複用 %s（%d 次）沒有進展，被停下來", in.Looped, in.LoopCount), limits.JudgeReasonMax)}, nil
+	}
+	if w := strings.TrimSpace(in.Waiting); w != "" {
+		// Bot 自己說在等你（2026-10-24）：照它說的開「需要你」，不從回覆找關鍵字猜。10/19～23 你交代的 202 件「已完成」裡
+		// 有 8 件其實在等你決定（「你想要幾人團隊？」「要我幫你重新建立嗎？還是先到網頁上改？」），關鍵字一句都抓不到。
+		// 你已經交代了、它卻問「要我做嗎」的照樣叫它做完（10/21 連續四次「要我建團隊嗎」）。
+		r := Result{By: ByRules, Verdict: NeedsPerson, Reason: clipRunes("在等你："+w, limits.JudgeReasonMax), Ask: clipRunes(w, limits.JudgeAskMax)}
+		if m, ok := offeredInstead(in, w); ok {
+			r.Verdict, r.Reason, r.Ask = HandedBack, clipRunes(reasonOffer+"：「"+m+"」", limits.JudgeReasonMax), clipRunes(m, limits.JudgeAskMax)
+		}
+		return r, nil
 	}
 	text := in.Text
 	ask, handed := AskOf(text)

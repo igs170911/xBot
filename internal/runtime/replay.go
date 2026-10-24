@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -41,6 +42,12 @@ func ReplayInput(ctx context.Context, db *store.DB, t store.Task) (judge.Input, 
 		}
 	}
 	in.Asked, in.Continued = askedFor(db, t)
+	var wm struct {
+		Waiting *WaitAsk `json:"waiting"`
+	}
+	if json.Unmarshal(t.Meta, &wm) == nil && wm.Waiting != nil {
+		in.Waiting = wm.Waiting.Ask
+	}
 	plan, err := db.TaskLastStatus(ctx, t.ID, "計畫：")
 	if err != nil {
 		return in, false, err

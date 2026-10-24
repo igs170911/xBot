@@ -31,6 +31,7 @@ type Runtime interface {
 	AskAgain(ctx context.Context, itemID string) (runtime.ChatResult, store.InboxItem, error)
 	ResumeInterrupted(ctx context.Context, taskID string, req runtime.ChatRequest) (runtime.ChatResult, error)
 	Progress(ctx context.Context, botID, skipTask string) (runtime.Progress, error)
+	WaitForUser(ctx context.Context, botID string, w runtime.WaitAsk) (peer, ok bool)
 }
 
 // Deps 是對話操作需要的服務元件。Runtime 是 nil 時（指令列只產生說明）呼叫會回 internal。

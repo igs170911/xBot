@@ -32,6 +32,11 @@ const (
 	// JudgeAskMax 是「需要你」卡片上引用 Bot 那段話最多幾個字。XBot 新增（同完成通知的 120 字）。
 	JudgeAskMax = 300
 
+	// WaitChoicesMax、WaitChoiceMax：Bot 說在等你（xbot.chat.wait_for_user）時最多給幾個選項、每個選項最多幾個字
+	// （選項是對話裡和卡片上可以直接點的按鈕）。XBot 新增。
+	WaitChoicesMax = 4
+	WaitChoiceMax  = 20
+
 	// StrandedGoalKey 是比對「同一個背景子任務」時看目標的前幾個字。LazyBoy server/runtime.py:722（goal[:80]）
 	StrandedGoalKey = 80
 )

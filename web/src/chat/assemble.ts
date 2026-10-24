@@ -73,6 +73,8 @@ export type Judge = {
   confidence?: number
   /** 系統叫 Bot 自己接著做的那件工作 */
   continued_by?: string
+  /** Bot 說在等你時給的選項（xbot.chat.wait_for_user）：點了就當成你的回覆 */
+  choices?: string[]
   /** 你按「不對？」改成哪一種 */
   corrected?: string
 }
