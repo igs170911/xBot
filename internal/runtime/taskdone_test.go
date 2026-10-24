@@ -183,6 +183,28 @@ func TestAutoContinueStopsAfterTwo(t *testing.T) {
 	}
 }
 
+// 這件工作已經送了一張核准卡在等你（Bot 用 xbot.approvals.request）：判斷「要你本人」也不再多開一張「需要你」卡
+// （2026-10-21 行銷長：「核准卡已經送到你的待我處理」，又多一張「需要你處理」）。
+func TestNoNeedsPersonCardWhenAnApprovalIsWaiting(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t)
+	f.g.OnPrompt = func(tr *hermestest.Turn) {
+		tr.Event("message.start", nil)
+		if _, err := f.db.CreateInboxItem(ctx, store.InboxItem{Kind: "approval", BotID: f.bot.ID, Title: "小幫手 請你核准：發三則留言"}); err != nil {
+			t.Error(err)
+		}
+		tr.Complete("三則留言的草稿寫好了，核准卡送到待我處理了，請你確認內容後我再發。", "complete", nil)
+	}
+	res, _ := f.rt.Chat(ctx, f.bot.ID, "", "寫留言")
+	if js := chain(t, f, res.TaskID); len(js) != 1 || js[0].Verdict != judge.NeedsPerson {
+		t.Fatalf("%+v", js)
+	}
+	open, _ := f.db.ListInboxFiltered(ctx, store.InboxFilter{BotID: f.bot.ID, Status: store.InboxOpen})
+	if len(open) != 1 || open[0].Kind != "approval" {
+		t.Fatalf("只留核准卡：%+v", open)
+	}
+}
+
 // 要你本人（登入、對外發送前的同意）：不續做，開一張「需要你」卡；同一條對話串不重複開；你回話就收掉。
 func TestNeedsPersonOpensACardOnce(t *testing.T) {
 	ctx := context.Background()

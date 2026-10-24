@@ -172,7 +172,8 @@ func (f Fallback) Judge(ctx context.Context, in Input) (Result, error) {
 const outward = `(發|寄|送|貼|回覆|留言|刪|買|下單|付|上架|上線|公開|發佈|發布|發送|送出|正式)`
 
 // needsPersonRe：Bot 需要你本人（登入、驗證碼、錢、只有你能做的決定，或對外發送前的同意）。LazyBoy Runtime.NEEDS_PERSON
-var needsPersonRe = regexp.MustCompile(`(?i)登入|驗證碼|密碼|付款|刷卡|核定|核准|同意|授權|二階段|2FA|captcha|` +
+// XBot 加上「註冊」「你本人」「你親自」（2026-10-24：「有一件事需要你本人處理：momo 分潤要註冊新後台，要用你的資料」）。
+var needsPersonRe = regexp.MustCompile(`(?i)登入|驗證碼|密碼|付款|刷卡|核定|核准|同意|授權|註冊|你本人|你親自|二階段|2FA|captcha|` +
 	`(確認|看過|看一下|看看|檢查|過目|審)[^。\n]{0,12}(再|才|就)` + outward + `|要不要` + outward + `|可以` + outward + `[^。\n]{0,6}嗎|` + outward + `出去嗎`)
 
 // handsBackRe：把工作丟回來，而不是做完（問要不要繼續、請你去做某一步）。LazyBoy Runtime.HANDS_BACK
@@ -230,9 +231,45 @@ func IsPromise(text string) bool {
 	return false
 }
 
-// NeedsPersonIn 回答這段話是不是在要你本人做事（LazyBoy NEEDS_PERSON.search）。
+// NeedsPersonIn 回答這段話是不是在要你本人做事（LazyBoy NEEDS_PERSON.search）。引號裡的字是在講那個詞，不算（見 mentions）。
 func NeedsPersonIn(text string) bool {
-	return needsPersonRe.MatchString(alreadyDoneRe.ReplaceAllString(text, ""))
+	return needsPersonRe.MatchString(mentions(text))
+}
+
+// mentions 拿掉不是在要你做事的寫法：已經完成的（alreadyDoneRe）、引號裡的（「需要你同意」的關卡）。
+func mentions(text string) string {
+	return quotedRe.ReplaceAllString(alreadyDoneRe.ReplaceAllString(text, ""), "")
+}
+
+// quotedRe 是引號裡的一小段（講到那個詞，不是在用它）。
+var quotedRe = regexp.MustCompile(`「[^」\n]{0,40}」|“[^”\n]{0,40}”|"[^"\n]{0,40}"`)
+
+// sentenceRe 切句子（句號、問號、驚嘆號、分號、換行）。
+var sentenceRe = regexp.MustCompile(`[^。！？!?；;\n]+[。！？!?；;]?`)
+
+// policyRe：講自己遇到哪類事會怎麼做（「定價、簽約這類要你拍板的，我會先送核准再做」），不是現在在等你；有「請你」就還是在要你做。
+var (
+	policyRe     = regexp.MustCompile(`這類|這種|之類|一類|遇到|的時候`)
+	policyDoesRe = regexp.MustCompile(`我(都|就)?會`)
+	pleaseRe     = regexp.MustCompile(`請你|麻煩你|需要你本人`)
+)
+
+// needsPersonAsk 回答這段話是不是在要你本人做事：登入、核准、付款這類字要出現在「在要你做事或回答的那一句」裡
+// （2026-10-19～23 的「需要你處理」卡 8 張有 3 張是誤判：介紹功能時說「需要登入的網站我也會自己開」、
+// 描述做過的事時說跳出「需要你同意」的關卡）。回傳那個字。
+func needsPersonAsk(text string) (string, bool) {
+	for _, s := range sentenceRe.FindAllString(mentions(text), -1) {
+		if !asksRe.MatchString(s) {
+			continue
+		}
+		if policyRe.MatchString(s) && policyDoesRe.MatchString(s) && !pleaseRe.MatchString(s) {
+			continue
+		}
+		if w := needsPersonRe.FindString(s); w != "" {
+			return w, true
+		}
+	}
+	return "", false
 }
 
 // alreadyDoneRe：已經完成的登入、核准（「已登入，帳號確認是…」）不是在等你。XBot 新增（2026-10-20：水哥哥說「已登入」就被當成要你登入，停下來不做）。
@@ -459,11 +496,14 @@ func (Rules) Judge(_ context.Context, in Input) (Result, error) {
 	promised := Promised(in)
 	r := Result{By: ByRules, Ask: clipRunes(strings.TrimSpace(ask), limits.JudgeAskMax)}
 	unfinished := handed || promised || len(in.PlanLeft) > 0 || len(in.Stranded) > 0
+	personAsked, _ := needsPersonAsk(ask)
 	switch {
 	// 要你本人的事（登入、驗證碼、付款、核准、對外發送前的同意）：永遠停下等你，不自動續做。
 	// LazyBoy 只在「有沒做完的事」時才看 NEEDS_PERSON（擋自動續做）；XBot 另外把「在要你回答」的結尾也算進來。
-	case NeedsPersonIn(ask) && (unfinished || asksRe.MatchString(ask)):
-		r.Verdict, r.Reason = NeedsPerson, "要你本人處理："+firstMatch(needsPersonRe, ask)
+	case unfinished && NeedsPersonIn(ask):
+		r.Verdict, r.Reason = NeedsPerson, "要你本人處理："+firstMatch(needsPersonRe, mentions(ask))
+	case !unfinished && personAsked != "":
+		r.Verdict, r.Reason = NeedsPerson, "要你本人處理："+personAsked
 	case promised && !handed && in.UsedTools:
 		r.Verdict, r.Reason = OnlyPromised, "最後說要去做下一步，卻沒有做就結束了"
 	case promised && !handed:

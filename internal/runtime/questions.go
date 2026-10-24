@@ -565,7 +565,9 @@ func (r *Runtime) notifyDone(t *turn, verdict, final string, res *judge.Result, 
 		case peer:
 			return // 隊友之間、群組裡的：結果會回到交辦的 Bot 或群組
 		case res.Verdict == judge.NeedsPerson:
-			r.askCard(t, *res, t.botName+"需要你處理")
+			if !r.approvalPending(t) {
+				r.askCard(t, *res, t.botName+"需要你處理")
+			}
 			return
 		case res.Verdict == judge.HandedBack:
 			r.askCard(t, *res, t.botName+"把工作交回給你")
@@ -613,6 +615,24 @@ func (r *Runtime) notifyDone(t *turn, verdict, final string, res *judge.Result, 
 		}
 		r.createNotice(t, it)
 	}()
+}
+
+// approvalPending：這件工作開始後，這個 Bot 已經送了一張還沒處理的核准卡（引擎要權限、或它用 xbot.approvals.request 請你核准）。
+// 那張卡就是在等你，不再另開「需要你處理」（2026-10-21 行銷長：「核准卡已經送到你的待我處理」，又多一張「需要你處理」）。
+func (r *Runtime) approvalPending(t *turn) bool {
+	t.mu.Lock()
+	started := t.started
+	t.mu.Unlock()
+	items, err := r.o.DB.ListInboxFiltered(context.Background(), store.InboxFilter{Status: store.InboxOpen, Kinds: []string{"approval"}, BotID: t.botID})
+	if err != nil {
+		return false
+	}
+	for _, it := range items {
+		if it.TaskID == t.taskID || (!started.IsZero() && it.CreatedAt >= started.UnixMilli()) {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *Runtime) createNotice(t *turn, it store.InboxItem) {
