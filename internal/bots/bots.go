@@ -58,7 +58,8 @@ func (Eyes) EnumValues() []string { return EyeVariants }
 // 值沿用 OpenMausBot shared/approval-mode.ts。
 type ApprovalMode string
 
-// 權限等級。新 Bot 預設 ask（SEC-1）。
+// 權限等級。新 Bot 預設 edits（一般的事自己做）：2026-10-24 使用者決定（原本 SEC-1 是 ask——Claude、Codex、Grok 的 Bot
+// 改自己電腦裡的檔案每次都要你按，做一個儀表板按了 40 次）。匯入的 Bot 照樣從 ask 開始（別人寫的人設，見 botshare、importer）。
 const (
 	ModeAsk   ApprovalMode = "ask"
 	ModeEdits ApprovalMode = "edits"
@@ -448,11 +449,14 @@ func registerReplyStyle(reg *ops.Registry, d Deps) {
 	})
 }
 
+// DefaultMode 是新 Bot 的權限等級。
+const DefaultMode = ModeEdits
+
 func modeRisk(m ApprovalMode) ops.Risk {
-	if m == "" || m == ModeAsk {
+	if m == "" || m == ModeAsk || m == ModeEdits {
 		return ops.RiskSafe
 	}
-	return ops.RiskConfirm // 放寬 Bot 的權限要你核准
+	return ops.RiskConfirm // 放寬到比預設寬（放手做、完全放手）要你核准
 }
 
 func getBot(ctx context.Context, db *store.DB, id string) (store.Bot, error) {
@@ -491,7 +495,7 @@ func create(ctx context.Context, call *ops.Call, in CreateIn) (View, error) {
 		b.Engine = string(EngineHermes)
 	}
 	if b.ApprovalMode == "" {
-		b.ApprovalMode = string(ModeAsk) // SEC-1
+		b.ApprovalMode = string(DefaultMode)
 	}
 	if call.DryRun {
 		return ViewOf(b), nil

@@ -90,7 +90,7 @@ func TestMCPFirstConversation(t *testing.T) {
 		ApprovalMode string `json:"approval_mode"`
 	}
 	callOK(t, cs, "xbot.bots.create", map[string]any{"name": "小秘", "title": "幕僚長", "request_id": "create-1"}, &bot)
-	if bot.ID == "" || bot.ApprovalMode != "ask" {
+	if bot.ID == "" || bot.ApprovalMode != "edits" { // 新 Bot 預設「一般的事自己做」
 		t.Fatalf("%+v", bot)
 	}
 	var sent struct {

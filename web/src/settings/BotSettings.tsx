@@ -297,7 +297,7 @@ function Permissions({ bot, onPick }: { bot: Bot; onPick: (m: (typeof MODES)[num
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2 text-ui">
                   {m.label}
-                  {m.value === 'ask' && <StatusChip size="sm">預設</StatusChip>}
+                  {m.value === 'edits' && <StatusChip size="sm">預設</StatusChip>}
                   {m.value === 'full' && <span className="text-[13px] text-danger">（風險較高）</span>}
                 </span>
                 <span className="block text-[13px] text-ink-2">{m.desc}</span>

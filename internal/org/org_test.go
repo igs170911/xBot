@@ -180,7 +180,7 @@ func TestATeamIsBuiltInOneStep(t *testing.T) {
 			t.Fatalf("%s：%+v", n, all[n])
 		}
 	}
-	if all["前端"].CreatedBy != "owner" || all["前端"].ApprovalMode != "ask" || all["前端"].Title != "前端" {
+	if all["前端"].CreatedBy != "owner" || all["前端"].ApprovalMode != "edits" || all["前端"].Title != "前端" {
 		t.Fatalf("新 Bot：%+v", all["前端"])
 	}
 	if len(made.Created) != 3 {

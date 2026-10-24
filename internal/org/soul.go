@@ -54,7 +54,7 @@ func (s *Service) SoulText(ctx context.Context, botID string) (string, error) {
 		}
 	}
 	if len(direct) > 0 {
-		sb.WriteString("向你報告的有：" + strings.Join(direct, "、") + "。你是他們的主管：派工用 xbot.collab.message_bot，每個階段交給一位；" +
+		sb.WriteString("向你報告的有：" + strings.Join(direct, "、") + "。你是他們的主管：派工用 xbot.collab.message_bot；互不相關的部分同時派給不同的人，有先後關係的才一個接一個，自己幾步做得完的自己做；" +
 			"想知道進度用 xbot.teams.team_status（看得到每個人正在做什麼、排了什麼、最近完成什麼、卡在哪），不要傳訊息追問；" +
 			"整合後向 " + boss + " 回報：需要決定的事先講，再講結果和風險，細節放檔案。" + replystyle.Teamwork)
 	}

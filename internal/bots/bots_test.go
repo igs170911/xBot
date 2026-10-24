@@ -80,7 +80,8 @@ func TestCreateDefaultsAndValidation(t *testing.T) {
 	e := setup(t)
 	var v View
 	e.must(t, owner, "xbot.bots.create", map[string]any{"name": "  小秘 ", "title": "幕僚長"}, &v)
-	if v.Name != "小秘" || v.Engine != "hermes" || v.ApprovalMode != ModeAsk || v.Color != "green" || v.Shape != "cursor" || v.Model != "" {
+	// 新 Bot 預設「一般的事自己做」（2026-10-24 使用者決定）
+	if v.Name != "小秘" || v.Engine != "hermes" || v.ApprovalMode != ModeEdits || v.Color != "green" || v.Shape != "cursor" || v.Model != "" {
 		t.Fatalf("預設值不對：%+v", v)
 	}
 	var v2 View
@@ -89,7 +90,7 @@ func TestCreateDefaultsAndValidation(t *testing.T) {
 		t.Fatalf("指定值沒用上：%+v", v2)
 	}
 	b, _ := e.db.GetBot(ctx, v2.ID)
-	if b.ApprovalMode != "ask" || string(b.Avatar) != `{"shape":"star"}` {
+	if b.ApprovalMode != "edits" || string(b.Avatar) != `{"shape":"star"}` {
 		t.Fatalf("資料庫：%+v %s", b, b.Avatar)
 	}
 	for _, bad := range []map[string]any{
@@ -143,6 +144,11 @@ func TestLooserApprovalModeNeedsApproval(t *testing.T) {
 	}
 	e.must(t, a, "xbot.bots.update", map[string]any{"id": v.ID, "approval_mode": "ask", "title": "新職稱"}, &v)
 	if v.Title != "新職稱" {
+		t.Fatalf("%+v", v)
+	}
+	// 回到預設（一般的事自己做）不算放寬
+	e.must(t, a, "xbot.bots.update", map[string]any{"id": v.ID, "approval_mode": "edits"}, &v)
+	if v.ApprovalMode != ModeEdits {
 		t.Fatalf("%+v", v)
 	}
 	// 你本人直接生效。

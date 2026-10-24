@@ -36,8 +36,8 @@ export const ACCOUNTS: Array<{ value: string; title: string; desc: string }> = [
 ]
 
 export const MODES: Array<{ value: Mode; label: string; desc: string }> = [
-  { value: 'ask', label: '先問我', desc: '花錢、對外發送、改檔案、刪除前都先問你（預設）' },
-  { value: 'edits', label: '一般的事自己做', desc: '讀檔、改檔自己做；其他會改東西的事先問你' },
+  { value: 'ask', label: '先問我', desc: '花錢、對外發送、改檔案、刪除前都先問你' },
+  { value: 'edits', label: '一般的事自己做', desc: '讀檔、改檔自己做；其他會改東西的事先問你（預設）' },
   { value: 'auto', label: '放手做', desc: '大部分自己做；付款、簽約、上架仍然一定問你' },
   { value: 'full', label: '完全放手', desc: '幾乎都自己做，不再逐步問你' },
 ]

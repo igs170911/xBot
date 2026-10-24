@@ -69,7 +69,7 @@ func TestHelperBotsAreRateLimitedAndAnnounced(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if helper.CreatedBy != "bot:"+e.chief.ID || helper.Color == "" || helper.Title != "設計" || helper.Soul != "負責視覺" || helper.ApprovalMode != "ask" {
+	if helper.CreatedBy != "bot:"+e.chief.ID || helper.Color == "" || helper.Title != "設計" || helper.Soul != "負責視覺" || helper.ApprovalMode != string(DefaultMode) {
 		t.Fatalf("幫手 Bot：%+v", helper)
 	}
 	if text, peer := e.lastPeer(t); peer["event"] != "bot_created" || text != "Designer" || peer["peer_id"] != made.ID {

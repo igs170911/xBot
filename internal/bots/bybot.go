@@ -96,7 +96,7 @@ func Build(sp Spec, existing int, actor string) store.Bot {
 	}
 	return store.Bot{Name: Clip(sp.Name, limits.BotCreateNameMax), Title: Clip(sp.Title, limits.BotProfileTitleMax),
 		Description: Clip(persona, limits.BotDescriptionMax), Soul: persona, Color: color, Avatar: av, Engine: string(EngineHermes),
-		ApprovalMode: string(ModeAsk), MemoryEnabled: true, TeamID: sp.TeamID, ReportsTo: sp.ReportsTo, CreatedBy: actor}
+		ApprovalMode: string(DefaultMode), MemoryEnabled: true, TeamID: sp.TeamID, ReportsTo: sp.ReportsTo, CreatedBy: actor}
 }
 
 func (d Deps) createByBot(ctx context.Context, reg *ops.Registry, call *ops.Call, in CreateIn) (View, error) {
@@ -133,7 +133,7 @@ func (d Deps) createByBot(ctx context.Context, reg *ops.Registry, call *ops.Call
 		b.Description = Clip(in.Description, limits.BotDescriptionMax)
 	}
 	if in.ApprovalMode != "" {
-		b.ApprovalMode = string(in.ApprovalMode) // 不是 ask 時登錄表已經先要你核准
+		b.ApprovalMode = string(in.ApprovalMode) // 比預設寬時登錄表已經先要你核准
 	}
 	if in.Model != "" {
 		b.Model = strings.TrimSpace(in.Model)
